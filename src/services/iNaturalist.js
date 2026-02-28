@@ -61,6 +61,62 @@ export async function searchTaxa(query) {
   }))
 }
 
+// ─── Global stats (homepage) ──────────────────────────────────────
+export async function fetchGlobalCounts() {
+  const [obsRes, speciesRes, researchRes] = await Promise.all([
+    fetch(`${INAT_API}/observations?per_page=0`),
+    fetch(`${INAT_API}/observations/species_counts?per_page=0`),
+    fetch(`${INAT_API}/observations?quality_grade=research&per_page=0`),
+  ])
+  const [obs, species, research] = await Promise.all([
+    obsRes.json(), speciesRes.json(), researchRes.json(),
+  ])
+  return {
+    totalObs: obs.total_results || 0,
+    totalSpecies: species.total_results || 0,
+    researchGrade: research.total_results || 0,
+  }
+}
+
+export async function fetchTopSpecies(count = 8) {
+  const res = await fetch(`${INAT_API}/observations/species_counts?per_page=${count}`)
+  if (!res.ok) throw new Error(`iNaturalist API error: ${res.status}`)
+  const data = await res.json()
+  return data.results || []
+}
+
+// ─── Top countries by observation count ───────────────────────────
+const COUNTRIES = [
+  { placeId: 1,    name: 'United States', flag: '🇺🇸' },
+  { placeId: 6712, name: 'Canada',        flag: '🇨🇦' },
+  { placeId: 6744, name: 'Australia',      flag: '🇦🇺' },
+  { placeId: 7161, name: 'Russia',         flag: '🇷🇺' },
+  { placeId: 6793, name: 'Mexico',         flag: '🇲🇽' },
+  { placeId: 6857, name: 'United Kingdom', flag: '🇬🇧' },
+  { placeId: 6986, name: 'South Africa',   flag: '🇿🇦' },
+  { placeId: 7207, name: 'Germany',        flag: '🇩🇪' },
+  { placeId: 6681, name: 'India',          flag: '🇮🇳' },
+  { placeId: 6878, name: 'Brazil',         flag: '🇧🇷' },
+  { placeId: 6803, name: 'New Zealand',    flag: '🇳🇿' },
+  { placeId: 6737, name: 'France',         flag: '🇫🇷' },
+  { placeId: 7015, name: 'Spain',          flag: '🇪🇸' },
+  { placeId: 6756, name: 'Italy',          flag: '🇮🇹' },
+  { placeId: 7142, name: 'Japan',          flag: '🇯🇵' },
+]
+
+export async function fetchTopCountries({ d1, d2 } = {}) {
+  const results = await Promise.all(
+    COUNTRIES.map(async (c) => {
+      const params = new URLSearchParams({ place_id: c.placeId, per_page: 0 })
+      if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+      const res = await fetch(`${INAT_API}/observations?${params}`)
+      const data = await res.json()
+      return { ...c, count: data.total_results || 0 }
+    })
+  )
+  return results.sort((a, b) => b.count - a.count).slice(0, 10)
+}
+
 // ─── Reverse geocode via Nominatim (no key needed) ───────────────
 export async function reverseGeocode(lat, lng) {
   const res = await fetch(

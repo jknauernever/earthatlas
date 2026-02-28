@@ -1,0 +1,263 @@
+/* ─── Container ─── */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Stat counters row ─── */
+.counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.counter {
+  text-align: center;
+  padding: 28px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.counterValue {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.counterLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* ─── Section header ─── */
+.sectionHeader {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sectionSub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ─── Top species grid ─── */
+.speciesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.speciesCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.speciesCard:hover {
+  border-color: var(--sage-dk);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+.speciesPhoto {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.speciesPhotoPlaceholder {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.speciesInfo {
+  flex: 1;
+  min-width: 0;
+}
+.speciesCommon {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speciesScientific {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speciesCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sage-dk);
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+}
+.badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* ─── Section row (header + time pills) ─── */
+.sectionRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.timePills {
+  display: flex;
+  gap: 4px;
+}
+.timePill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.timePill:hover {
+  border-color: var(--sage-dk);
+}
+.timePillActive {
+  background: var(--moss);
+  border-color: var(--moss);
+  color: white;
+}
+
+/* ─── Countries list ─── */
+.countriesList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.countryRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.countryRow:hover {
+  border-color: var(--sage-dk);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.countryFlag {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+.countryName {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  width: 140px;
+  flex-shrink: 0;
+}
+.countryBar {
+  flex: 1;
+  height: 6px;
+  background: var(--parchment);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.countryBarFill {
+  display: block;
+  height: 100%;
+  background: var(--moss);
+  border-radius: 3px;
+  transition: width 0.4s ease-out;
+}
+.countryCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 90px;
+  text-align: right;
+}
+.shimmerCountry {
+  height: 44px;
+}
+
+/* ─── Loading shimmer ─── */
+.shimmer {
+  background: linear-gradient(90deg, var(--parchment) 25%, var(--border) 50%, var(--parchment) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+.shimmerCounter {
+  height: 100px;
+}
+.shimmerCard {
+  height: 76px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .counters {
+    grid-template-columns: 1fr;
+  }
+  .counterValue {
+    font-size: 28px;
+  }
+}

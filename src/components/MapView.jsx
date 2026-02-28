@@ -23,6 +23,7 @@ export default function MapView({ observations, onSelect, coords, radiusKm }) {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])
+  const centerMarkerRef = useRef(null)
   const activeObsRef = useRef(null)
 
   // ─── Initialize map ──────────────────────────────────────────
@@ -70,6 +71,19 @@ export default function MapView({ observations, onSelect, coords, radiusKm }) {
           paint: { 'line-color': '#3d5a3e', 'line-width': 1.5, 'line-dasharray': [4, 3], 'line-opacity': 0.5 },
         })
       }
+
+      // Place crosshair at search center
+      if (centerMarkerRef.current) centerMarkerRef.current.remove()
+      const crosshair = document.createElement('div')
+      crosshair.className = styles.crosshair
+      crosshair.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3d5a3e" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4" opacity="0.4"/>
+        <line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/>
+      </svg>`
+      centerMarkerRef.current = new mapboxgl.Marker({ element: crosshair, anchor: 'center' })
+        .setLngLat([coords.lng, coords.lat])
+        .addTo(map)
 
       // Fit map to the radius circle so the search area is always framed
       const circleCoords = geojson.geometry.coordinates[0]

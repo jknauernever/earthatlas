@@ -78,6 +78,13 @@
 }
 .footer a { color: var(--amber); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
+.built-by {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
 
 @media (max-width: 700px) {
   .source-row { padding: 8px 16px; }

@@ -12,6 +12,7 @@ import MapView          from './components/MapView'
 import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
+import GlobalStats      from './components/GlobalStats'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
@@ -221,8 +222,10 @@ export default function App() {
         {/* Content */}
         {loading ? (
           <LoadingState />
+        ) : totalResults === null && !error ? (
+          <GlobalStats />
         ) : observations.length === 0 && !error ? (
-          <EmptyState variant={totalResults === null ? 'initial' : 'noResults'} />
+          <EmptyState variant="noResults" />
         ) : error ? (
           <EmptyState variant="error" message={error} />
         ) : view === 'grid' ? (
@@ -240,6 +243,9 @@ export default function App() {
         {' '}— a joint initiative of the California Academy of Sciences and National Geographic Society.
         &nbsp;|&nbsp;
         <a href="https://www.inaturalist.org/pages/api+reference" target="_blank" rel="noopener noreferrer">API Reference</a>
+        <div className="built-by">
+          Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+        </div>
       </footer>
 
       <ObservationModal obs={selectedObs} onClose={() => setSelectedObs(null)} />

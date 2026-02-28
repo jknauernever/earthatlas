@@ -12,6 +12,7 @@ import MapView          from './components/MapView'
 import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
+import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
 // ─── View toggle icons ───────────────────────────────────────────
@@ -242,6 +243,7 @@ export default function App() {
       </footer>
 
       <ObservationModal obs={selectedObs} onClose={() => setSelectedObs(null)} />
+      <Analytics />
     </>
   )
 }

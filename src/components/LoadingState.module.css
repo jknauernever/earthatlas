@@ -1,0 +1,24 @@
+.wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 20px; padding: 80px 32px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  grid-template-rows: repeat(3, 24px);
+  gap: 6px;
+}
+.cell {
+  border-radius: 4px;
+  background: var(--moss);
+  opacity: 0;
+  animation: cellFade 1.2s ease-in-out infinite;
+}
+@keyframes cellFade { 0%,100% { opacity:0.1; } 50% { opacity:1; } }
+.text {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--muted);
+  animation: blink 1.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.4; } }

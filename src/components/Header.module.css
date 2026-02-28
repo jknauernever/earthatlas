@@ -1,0 +1,75 @@
+.header {
+  background: var(--moss);
+  background-image: linear-gradient(135deg, #2d4230 0%, var(--moss) 40%, #4a6b4b 100%);
+  color: var(--parchment);
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 32px 24px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.wordmark { display: flex; flex-direction: column; gap: 2px; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cream);
+  letter-spacing: -0.01em;
+}
+.title em { font-style: italic; color: var(--amber-lt); }
+.sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--sage);
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--sage);
+  letter-spacing: 0.06em;
+}
+.dot {
+  width: 6px; height: 6px;
+  background: var(--amber-lt);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.8); }
+}
+
+@media (max-width: 600px) {
+  .inner { padding: 20px 16px; }
+}

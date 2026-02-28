@@ -1,0 +1,26 @@
+{
+  "name": "earthatlas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discover species living around you — powered by iNaturalist",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx"
+  },
+  "dependencies": {
+    "mapbox-gl": "^3.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^9.9.0",
+    "eslint-plugin-react": "^7.35.0",
+    "vite": "^5.4.1"
+  }
+}

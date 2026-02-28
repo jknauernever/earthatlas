@@ -1,9 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { getTaxonMeta, formatDate } from '../utils/taxon'
+import SpeciesMapModal from './SpeciesMapModal'
 import styles from './ObservationModal.module.css'
 
 export default function ObservationModal({ obs, onClose }) {
   const open = !!obs
+  const [showSpeciesMap, setShowSpeciesMap] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -11,6 +13,9 @@ export default function ObservationModal({ obs, onClose }) {
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, onClose])
+
+  // Reset species map when observation changes
+  useEffect(() => { setShowSpeciesMap(false) }, [obs])
 
   if (!obs) return null
 
@@ -82,9 +87,16 @@ export default function ObservationModal({ obs, onClose }) {
                 Wikipedia ↗
               </a>
             )}
+            {taxon?.id && (
+              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setShowSpeciesMap(true)}>
+                Species Map
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {showSpeciesMap && <SpeciesMapModal taxon={taxon} onClose={() => setShowSpeciesMap(false)} />}
     </div>
   )
 }

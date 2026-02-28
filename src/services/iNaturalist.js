@@ -117,6 +117,21 @@ export async function fetchTopCountries({ d1, d2 } = {}) {
   return results.sort((a, b) => b.count - a.count).slice(0, 10)
 }
 
+// ─── Species observations (for species map modal) ────────────────
+export async function fetchSpeciesObservations({ taxonId, d1, d2, perPage = 200 }) {
+  const params = new URLSearchParams({
+    taxon_id: taxonId,
+    per_page: Math.min(perPage, 200),
+    order: 'desc',
+    order_by: 'created_at',
+    quality_grade: 'any',
+  })
+  if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+  const res = await fetch(`${INAT_API}/observations?${params}`)
+  if (!res.ok) throw new Error(`iNaturalist API error: ${res.status}`)
+  return res.json()
+}
+
 // ─── Reverse geocode via Nominatim (no key needed) ───────────────
 export async function reverseGeocode(lat, lng) {
   const res = await fetch(

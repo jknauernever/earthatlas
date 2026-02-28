@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../services/iNaturalist'
 import { getTaxonMeta } from '../utils/taxon'
+import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
 
 const TIME_OPTIONS = [
@@ -26,6 +27,7 @@ export default function GlobalStats() {
   const [countriesTime, setCountriesTime] = useState('today')
   const [countriesLoading, setCountriesLoading] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [selectedTaxon, setSelectedTaxon] = useState(null)
 
   // Fetch global counts + top species on mount
   useEffect(() => {
@@ -120,7 +122,7 @@ export default function GlobalStats() {
               const photo = t.default_photo?.square_url
 
               return (
-                <div key={t.id} className={styles.speciesCard}>
+                <div key={t.id} className={styles.speciesCard} onClick={() => setSelectedTaxon(t)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelectedTaxon(t)} style={{ cursor: 'pointer' }}>
                   <span className={styles.rank}>{i + 1}</span>
                   {photo
                     ? <img className={styles.speciesPhoto} src={photo} alt={scientific} loading="lazy" />
@@ -178,6 +180,8 @@ export default function GlobalStats() {
           ))}
         </div>
       </div>
+
+      <SpeciesMapModal taxon={selectedTaxon} onClose={() => setSelectedTaxon(null)} />
     </div>
   )
 }

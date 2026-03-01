@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { usePostHog } from 'posthog-js/react'
 import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../services/iNaturalist'
 import { getTaxonMeta } from '../utils/taxon'
 import SpeciesMapModal from './SpeciesMapModal'
@@ -77,6 +78,7 @@ function getDateRange(key) {
 }
 
 export default function GlobalStats() {
+  const posthog = usePostHog()
   const [counts, setCounts] = useState(null)
   const [topSpecies, setTopSpecies] = useState(null)
   const [topCountries, setTopCountries] = useState(null)
@@ -199,7 +201,7 @@ export default function GlobalStats() {
               <button
                 key={opt.key}
                 className={`${styles.timePill} ${speciesTime === opt.key ? styles.timePillActive : ''}`}
-                onClick={() => setSpeciesTime(opt.key)}
+                onClick={() => { setSpeciesTime(opt.key); posthog?.capture('species_time_changed', { time_filter: opt.key }) }}
               >
                 {opt.label}
               </button>
@@ -220,7 +222,7 @@ export default function GlobalStats() {
             const photo = t.default_photo?.square_url
 
             return (
-              <div key={t.id} className={styles.speciesCard} onClick={() => setSelectedTaxon(t)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelectedTaxon(t)} style={{ cursor: 'pointer' }}>
+              <div key={t.id} className={styles.speciesCard} onClick={() => { setSelectedTaxon(t); posthog?.capture('species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) }} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') { setSelectedTaxon(t); posthog?.capture('species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) } }} style={{ cursor: 'pointer' }}>
                 <span className={styles.rank}>{i + 1}</span>
                 {photo
                   ? <img className={styles.speciesPhoto} src={photo} alt={scientific} loading="lazy" />
@@ -249,7 +251,7 @@ export default function GlobalStats() {
               <button
                 key={opt.key}
                 className={`${styles.timePill} ${countriesTime === opt.key ? styles.timePillActive : ''}`}
-                onClick={() => setCountriesTime(opt.key)}
+                onClick={() => { setCountriesTime(opt.key); posthog?.capture('countries_time_changed', { time_filter: opt.key }) }}
               >
                 {opt.label}
               </button>

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
 import { getDateRangeStart } from './utils/taxon'
@@ -43,6 +44,8 @@ const MapIcon = () => (
 )
 
 export default function App() {
+  const posthog = usePostHog()
+
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
   const [manualCoords, setManualCoords] = useState(null)
@@ -121,6 +124,13 @@ export default function App() {
       })
       setObservations(data.results || [])
       setTotalResults(data.total_results || 0)
+      posthog?.capture('search_performed', {
+        location: locationName,
+        radius_km: radius,
+        time_window: timeWindow,
+        species_filter: selectedSpecies?.name || null,
+        total_results: data.total_results || 0,
+      })
     } catch (err) {
       setError(err.message)
       setObservations([])
@@ -197,17 +207,17 @@ export default function App() {
             <div className="view-toggle">
               <button
                 className={`view-btn ${view === 'grid' ? 'active' : ''}`}
-                onClick={() => setView('grid')}
+                onClick={() => { setView('grid'); posthog?.capture('view_changed', { view: 'grid' }) }}
                 title="Grid view"
               ><GridIcon /></button>
               <button
                 className={`view-btn ${view === 'list' ? 'active' : ''}`}
-                onClick={() => setView('list')}
+                onClick={() => { setView('list'); posthog?.capture('view_changed', { view: 'list' }) }}
                 title="List view"
               ><ListIcon /></button>
               <button
                 className={`view-btn ${view === 'map' ? 'active' : ''}`}
-                onClick={() => setView('map')}
+                onClick={() => { setView('map'); posthog?.capture('view_changed', { view: 'map' }) }}
                 title="Map view"
               ><MapIcon /></button>
             </div>

@@ -1,13 +1,65 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../services/iNaturalist'
 import { getTaxonMeta } from '../utils/taxon'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
 
+const COUNTER_INFO = {
+  totalObs: {
+    title: 'Total Observations',
+    text: 'The total number of wildlife observations submitted to iNaturalist by citizen scientists worldwide. Each observation represents a single encounter with an organism, documented with a photo, location, and date.',
+  },
+  totalSpecies: {
+    title: 'Species Documented',
+    text: 'The number of distinct species that have been identified across all iNaturalist observations. This includes animals, plants, fungi, and other organisms verified through community identification.',
+  },
+  researchGrade: {
+    title: 'Research Grade',
+    text: 'Observations that meet iNaturalist\'s quality criteria: they have a photo, date, coordinates, and the community agrees on the species identification. Research-grade data is shared with scientific databases like GBIF.',
+  },
+}
+
+function InfoIcon({ statKey, activeInfo, setActiveInfo }) {
+  const ref = useRef(null)
+  const isOpen = activeInfo === statKey
+  const info = COUNTER_INFO[statKey]
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setActiveInfo(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [isOpen, setActiveInfo])
+
+  return (
+    <span className={styles.infoWrap} ref={ref}>
+      <button
+        className={`${styles.infoBtn} ${isOpen ? styles.infoBtnActive : ''}`}
+        onClick={(e) => { e.stopPropagation(); setActiveInfo(isOpen ? null : statKey) }}
+        aria-label={`About ${info.title}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <text x="8" y="12" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="700" fontFamily="var(--font-serif)">i</text>
+        </svg>
+      </button>
+      {isOpen && (
+        <div className={styles.infoPopover}>
+          <div className={styles.infoTitle}>{info.title}</div>
+          <div className={styles.infoText}>{info.text}</div>
+          <div className={styles.infoSource}>Source: <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist.org</a></div>
+        </div>
+      )}
+    </span>
+  )
+}
+
 const TIME_OPTIONS = [
   { key: 'all',   label: 'All Time' },
   { key: '30d',   label: 'Last 30 Days' },
-  { key: 'today', label: 'Today' },
+  { key: '24h',   label: '24 Hours' },
 ]
 
 function localDate(d) {
@@ -18,10 +70,9 @@ function getDateRange(key) {
   if (key === 'all') return {}
   const now = new Date()
   const d2 = localDate(now)
-  if (key === 'today') return { d1: d2, d2 }
-  // 30d
   const d = new Date(now)
-  d.setDate(d.getDate() - 30)
+  if (key === '24h') d.setDate(d.getDate() - 1)
+  else if (key === '30d') d.setDate(d.getDate() - 30)
   return { d1: localDate(d), d2 }
 }
 
@@ -29,12 +80,13 @@ export default function GlobalStats() {
   const [counts, setCounts] = useState(null)
   const [topSpecies, setTopSpecies] = useState(null)
   const [topCountries, setTopCountries] = useState(null)
-  const [speciesTime, setSpeciesTime] = useState('today')
+  const [speciesTime, setSpeciesTime] = useState('24h')
   const [speciesLoading, setSpeciesLoading] = useState(true)
-  const [countriesTime, setCountriesTime] = useState('today')
+  const [countriesTime, setCountriesTime] = useState('24h')
   const [countriesLoading, setCountriesLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [selectedTaxon, setSelectedTaxon] = useState(null)
+  const [activeInfo, setActiveInfo] = useState(null)
 
   // Fetch global counts on mount
   useEffect(() => {
@@ -113,15 +165,24 @@ export default function GlobalStats() {
         <div className={styles.counters}>
           <div className={styles.counter}>
             <div className={styles.counterValue}>{counts.totalObs.toLocaleString()}</div>
-            <div className={styles.counterLabel}>Total Observations</div>
+            <div className={styles.counterLabel}>
+              Total Observations
+              <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+            </div>
           </div>
           <div className={styles.counter}>
             <div className={styles.counterValue}>{counts.totalSpecies.toLocaleString()}</div>
-            <div className={styles.counterLabel}>Species Documented</div>
+            <div className={styles.counterLabel}>
+              Species Documented
+              <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+            </div>
           </div>
           <div className={styles.counter}>
             <div className={styles.counterValue}>{counts.researchGrade.toLocaleString()}</div>
-            <div className={styles.counterLabel}>Research Grade</div>
+            <div className={styles.counterLabel}>
+              Research Grade
+              <InfoIcon statKey="researchGrade" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+            </div>
           </div>
         </div>
       )}

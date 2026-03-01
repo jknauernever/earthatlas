@@ -58,7 +58,7 @@
 /* ─── Top species grid ─── */
 .speciesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 .speciesCard {
@@ -102,18 +102,14 @@
   font-family: var(--font-serif);
   font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 .speciesScientific {
   font-family: var(--font-mono);
   font-size: 9px;
   font-style: italic;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: 1px;
 }
 .speciesCount {
   font-family: var(--font-mono);

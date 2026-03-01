@@ -45,14 +45,19 @@ const TIME_OPTIONS = [
   { key: 'year',  label: 'Year' },
 ]
 
+function localDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function getDateRange(key) {
-  const d2 = new Date().toISOString().split('T')[0]
-  const d = new Date()
+  const now = new Date()
+  const d2 = localDate(now)
+  const d = new Date(now)
   if (key === '24h')   d.setDate(d.getDate() - 1)
   else if (key === 'week')  d.setDate(d.getDate() - 7)
   else if (key === 'month') d.setMonth(d.getMonth() - 1)
   else if (key === 'year')  d.setFullYear(d.getFullYear() - 1)
-  return { d1: d.toISOString().split('T')[0], d2 }
+  return { d1: localDate(d), d2 }
 }
 
 export default function SpeciesMapModal({ taxon, onClose }) {

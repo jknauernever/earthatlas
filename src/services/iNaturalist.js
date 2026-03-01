@@ -78,8 +78,10 @@ export async function fetchGlobalCounts() {
   }
 }
 
-export async function fetchTopSpecies(count = 8) {
-  const res = await fetch(`${INAT_API}/observations/species_counts?per_page=${count}`)
+export async function fetchTopSpecies(count = 8, { d1, d2 } = {}) {
+  const params = new URLSearchParams({ per_page: count })
+  if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+  const res = await fetch(`${INAT_API}/observations/species_counts?${params}`)
   if (!res.ok) throw new Error(`iNaturalist API error: ${res.status}`)
   const data = await res.json()
   return data.results || []

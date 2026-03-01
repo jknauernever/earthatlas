@@ -10,7 +10,7 @@ const INAT_API = 'https://api.inaturalist.org/v1'
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
 // ─── Observations ────────────────────────────────────────────────
-export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId }) {
+export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa }) {
   const params = new URLSearchParams({
     lat,
     lng,
@@ -21,6 +21,7 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     quality_grade: 'any',
   })
   if (taxonId) params.set('taxon_id', taxonId)
+  if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
 
   if (d1) {
     params.set('d1', d1)

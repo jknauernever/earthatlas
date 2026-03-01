@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
@@ -108,7 +108,6 @@ export default function App() {
     if (!coords) return
     setLoading(true)
     setError(null)
-    setActiveTaxon('all')
 
     try {
       const d1   = getDateRangeStart(timeWindow)
@@ -121,6 +120,7 @@ export default function App() {
         d2: d1 ? d2 : undefined,
         perPage,
         taxonId: selectedSpecies?.id,
+        iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
       })
       setObservations(data.results || [])
       setTotalResults(data.total_results || 0)
@@ -129,6 +129,7 @@ export default function App() {
         radius_km: radius,
         time_window: timeWindow,
         species_filter: selectedSpecies?.name || null,
+        taxon_filter: activeTaxon,
         total_results: data.total_results || 0,
       })
     } catch (err) {
@@ -138,12 +139,20 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [coords, radius, timeWindow, perPage, selectedSpecies])
+  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon])
 
-  // ─── Filter observations client-side ───────────────────────────
-  const filtered = activeTaxon === 'all'
-    ? observations
-    : observations.filter(obs => obs.taxon?.iconic_taxon_name === activeTaxon)
+  // ─── Auto-search when any parameter changes ──────────────────
+  const hasSearched = useRef(false)
+  useEffect(() => {
+    if (!coords) return
+    // Skip the very first render — wait for user to set location
+    if (!hasSearched.current && !manualCoords && geoStatus !== 'success') return
+    hasSearched.current = true
+    handleSearch()
+  }, [handleSearch]) // handleSearch already captures all search params
+
+  // Observations are now filtered server-side via iconic_taxa param
+  const filtered = observations
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }

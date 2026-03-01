@@ -2,7 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
+import WhalesApp from './whales/WhalesApp.jsx'
 import './index.css'
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
@@ -18,7 +20,12 @@ if (phKey) {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <PostHogProvider client={posthog}>
-      <App />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/whales" element={<WhalesApp />} />
+          <Route path="/*" element={<App />} />
+        </Routes>
+      </BrowserRouter>
     </PostHogProvider>
   </React.StrictMode>,
 )

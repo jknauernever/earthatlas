@@ -12,7 +12,10 @@ export default function SpeciesList({ observations, onSelect }) {
         const { color, emoji } = getTaxonMeta(iconicTaxon)
         const photo       = obs.photos?.[0]?.url?.replace('square', 'small')
         const date        = formatDate(obs.observed_on, { month: 'short', day: 'numeric' })
-        const inatUrl     = `https://www.inaturalist.org/observations/${obs.id}`
+        const isEBird     = obs.source === 'eBird'
+        const externalUrl = isEBird
+          ? `https://ebird.org/checklist/${obs.id}`
+          : `https://www.inaturalist.org/observations/${obs.id}`
 
         return (
           <div
@@ -40,7 +43,7 @@ export default function SpeciesList({ observations, onSelect }) {
 
             <a
               className={styles.link}
-              href={inatUrl}
+              href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}

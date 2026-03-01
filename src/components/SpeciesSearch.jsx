@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { searchTaxa } from '../services/iNaturalist'
+import { fetchEBirdTaxonomy, searchEBirdTaxa } from '../services/eBird'
 import styles from './SpeciesSearch.module.css'
 
-export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect }) {
+export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSource }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [open, setOpen] = useState(false)
@@ -12,6 +13,15 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect }) {
 
   const displayValue = open ? query : ''
   const placeholder = selectedSpecies ? selectedSpecies.name : 'Any species…'
+
+  // Pre-load eBird taxonomy when source switches to eBird
+  const taxonomyLoaded = useRef(false)
+  useEffect(() => {
+    if (dataSource === 'eBird' && !taxonomyLoaded.current) {
+      taxonomyLoaded.current = true
+      fetchEBirdTaxonomy().catch(() => {})
+    }
+  }, [dataSource])
 
   const handleChange = useCallback((e) => {
     const val = e.target.value
@@ -24,11 +34,19 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect }) {
       return
     }
 
-    timerRef.current = setTimeout(async () => {
-      const taxa = await searchTaxa(val)
-      setResults(taxa)
-    }, 300)
-  }, [])
+    if (dataSource === 'eBird') {
+      // eBird: client-side filter of cached taxonomy (instant)
+      timerRef.current = setTimeout(() => {
+        setResults(searchEBirdTaxa(val))
+      }, 100)
+    } else {
+      // iNaturalist: API call with debounce
+      timerRef.current = setTimeout(async () => {
+        const taxa = await searchTaxa(val)
+        setResults(taxa)
+      }, 300)
+    }
+  }, [dataSource])
 
   const handleSelect = useCallback((taxon) => {
     onSpeciesSelect(taxon)

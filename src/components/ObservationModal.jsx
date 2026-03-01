@@ -16,12 +16,12 @@ export default function ObservationModal({ obs, onClose }) {
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, onClose])
 
-  // Reset species map when observation changes
   useEffect(() => { setShowSpeciesMap(false) }, [obs])
 
   useEffect(() => {
     if (!obs) return
     posthog?.capture('observation_viewed', {
+      source: obs.source || 'iNaturalist',
       species: obs.taxon?.preferred_common_name || obs.taxon?.name,
       scientific_name: obs.taxon?.name,
       taxon: obs.taxon?.iconic_taxon_name,
@@ -32,24 +32,31 @@ export default function ObservationModal({ obs, onClose }) {
 
   if (!obs) return null
 
+  const isEBird = obs.source === 'eBird'
   const taxon       = obs.taxon
   const common      = taxon?.preferred_common_name || taxon?.name || 'Unnamed species'
   const scientific  = taxon?.name || ''
   const iconicTaxon = taxon?.iconic_taxon_name || 'default'
   const { color, emoji } = getTaxonMeta(iconicTaxon)
   const photo       = obs.photos?.[0]?.url?.replace('square', 'large')
-  const inatUrl     = `https://www.inaturalist.org/observations/${obs.id}`
-  const wikiUrl     = taxon?.wikipedia_url
   const dateStr     = formatDate(obs.observed_on, { weekday:'long', year:'numeric', month:'long', day:'numeric' })
-  const quality     = { research: 'Research Grade', needs_id: 'Needs ID', casual: 'Casual' }[obs.quality_grade] || obs.quality_grade
+
+  // Source-specific URLs and fields
+  const externalUrl = isEBird
+    ? `https://ebird.org/checklist/${obs.id}`
+    : `https://www.inaturalist.org/observations/${obs.id}`
+  const externalLabel = isEBird ? 'View on eBird' : 'View on iNaturalist'
+  const wikiUrl = isEBird ? null : taxon?.wikipedia_url
+  const quality = { research: 'Research Grade', needs_id: 'Needs ID', casual: 'Casual' }[obs.quality_grade] || obs.quality_grade
 
   const fields = [
-    { label: 'Observed',       value: dateStr },
-    { label: 'Quality Grade',  value: quality },
-    { label: 'Location',       value: obs.place_guess || 'Unknown' },
-    { label: 'Observer',       value: `@${obs.user?.login || 'Unknown'}` },
-    taxon?.rank && { label: 'Taxonomic Rank', value: taxon.rank },
-    obs.num_identification_agreements != null && {
+    { label: 'Observed', value: dateStr },
+    !isEBird && { label: 'Quality Grade', value: quality },
+    { label: 'Location', value: obs.place_guess || 'Unknown' },
+    !isEBird && { label: 'Observer', value: `@${obs.user?.login || 'Unknown'}` },
+    isEBird && obs.howMany && { label: 'Count', value: `${obs.howMany} individual${obs.howMany !== 1 ? 's' : ''}` },
+    !isEBird && taxon?.rank && { label: 'Taxonomic Rank', value: taxon.rank },
+    !isEBird && obs.num_identification_agreements != null && {
       label: 'ID Agreements',
       value: `${obs.num_identification_agreements} / ${obs.num_identification_agreements + (obs.num_identification_disagreements || 0)}`
     },
@@ -92,15 +99,15 @@ export default function ObservationModal({ obs, onClose }) {
 
           {/* Actions */}
           <div className={styles.actions}>
-            <a className={`${styles.btn} ${styles.btnPrimary}`} href={inatUrl} target="_blank" rel="noopener noreferrer">
-              View on iNaturalist ↗
+            <a className={`${styles.btn} ${styles.btnPrimary}`} href={externalUrl} target="_blank" rel="noopener noreferrer">
+              {externalLabel} ↗
             </a>
             {wikiUrl && (
               <a className={`${styles.btn} ${styles.btnSecondary}`} href={wikiUrl} target="_blank" rel="noopener noreferrer">
                 Wikipedia ↗
               </a>
             )}
-            {taxon?.id && (
+            {!isEBird && taxon?.id && (
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setShowSpeciesMap(true); posthog?.capture('species_map_opened', { species: common, scientific_name: scientific, source: 'observation_modal' }) }}>
                 Species Map
               </button>

@@ -2,6 +2,7 @@ import { getTaxonMeta, formatDate } from '../utils/taxon'
 import styles from './SpeciesCard.module.css'
 
 export default function SpeciesCard({ obs, onClick, index = 0 }) {
+  const isEBird     = obs.source === 'eBird'
   const taxon       = obs.taxon
   const common      = taxon?.preferred_common_name || null
   const scientific  = taxon?.name || 'Unknown species'
@@ -9,11 +10,16 @@ export default function SpeciesCard({ obs, onClick, index = 0 }) {
   const { color, emoji } = getTaxonMeta(iconicTaxon)
   const photo       = obs.photos?.[0]?.url?.replace('square', 'medium')
   const date        = formatDate(obs.observed_on)
-  const observer    = obs.user?.login || 'Unknown'
-  const avatar      = obs.user?.icon_url
-  const inatUrl     = `https://www.inaturalist.org/observations/${obs.id}`
-  const isResearch  = obs.quality_grade === 'research'
   const place       = obs.place_guess?.split(',').slice(0, 2).join(',') || null
+  const isResearch  = obs.quality_grade === 'research'
+
+  // Source-specific
+  const observer    = isEBird ? null : (obs.user?.login || 'Unknown')
+  const avatar      = isEBird ? null : obs.user?.icon_url
+  const externalUrl = isEBird
+    ? `https://ebird.org/checklist/${obs.id}`
+    : `https://www.inaturalist.org/observations/${obs.id}`
+  const externalLabel = isEBird ? 'eBird' : 'iNat'
 
   return (
     <article
@@ -36,7 +42,8 @@ export default function SpeciesCard({ obs, onClick, index = 0 }) {
         ) : null}
         <div className={styles.imgPlaceholder} style={{ display: photo ? 'none' : 'flex' }}>{emoji}</div>
         <span className={styles.taxonBadge} style={{ background: color }}>{iconicTaxon}</span>
-        {isResearch && <span className={styles.quality}>✓ Research Grade</span>}
+        {isResearch && !isEBird && <span className={styles.quality}>✓ Research Grade</span>}
+        {isEBird && obs.howMany && <span className={styles.quality}>×{obs.howMany}</span>}
       </div>
 
       {/* Body */}
@@ -52,18 +59,24 @@ export default function SpeciesCard({ obs, onClick, index = 0 }) {
         </div>
 
         <div className={styles.observer}>
-          {avatar
-            ? <img className={styles.avatar} src={avatar} alt={observer} />
-            : <div className={styles.avatarFallback}>👤</div>}
-          <span className={styles.observerName}>@{observer}</span>
+          {isEBird ? (
+            <span className={styles.observerName}>eBird</span>
+          ) : (
+            <>
+              {avatar
+                ? <img className={styles.avatar} src={avatar} alt={observer} />
+                : <div className={styles.avatarFallback}>👤</div>}
+              <span className={styles.observerName}>@{observer}</span>
+            </>
+          )}
           <a
             className={styles.inatLink}
-            href={inatUrl}
+            href={externalUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
           >
-            iNat ↗
+            {externalLabel} ↗
           </a>
         </div>
       </div>

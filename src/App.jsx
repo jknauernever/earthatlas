@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
+import { fetchEBirdObservations } from './services/eBird'
 import { getDateRangeStart } from './utils/taxon'
 
 import Header           from './components/Header'
@@ -46,6 +47,9 @@ const MapIcon = () => (
 export default function App() {
   const posthog = usePostHog()
 
+  // ─── Data source ─────────────────────────────────────────────
+  const [dataSource, setDataSource] = useState('iNaturalist') // 'iNaturalist' | 'eBird'
+
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
   const [manualCoords, setManualCoords] = useState(null)
@@ -73,9 +77,26 @@ export default function App() {
   // ─── Modal ─────────────────────────────────────────────────────
   const [selectedObs, setSelectedObs] = useState(null)
 
+  // ─── Handle source switch ────────────────────────────────────
+  const handleSourceChange = useCallback((source) => {
+    if (source === dataSource) return
+    setDataSource(source)
+    setSelectedSpecies(null)
+    setActiveTaxon('all')
+    setObservations([])
+    setTotalResults(null)
+    setError(null)
+    // Clamp params for eBird limits
+    if (source === 'eBird') {
+      if (radius > 50) setRadius(50)
+      if (timeWindow === 'year' || timeWindow === 'all') setTimeWindow('month')
+    }
+    posthog?.capture('source_changed', { source })
+  }, [dataSource, posthog, radius, timeWindow])
+
   // ─── Handle locate ─────────────────────────────────────────────
   const handleLocate = useCallback(async () => {
-    setManualCoords(null) // clear manual override so GPS takes over
+    setManualCoords(null)
     setLocationName(null)
     locate()
   }, [locate])
@@ -98,7 +119,7 @@ export default function App() {
   }, [])
 
   // Effect to fire geocoding once geo resolves
-  useState(() => {}) // noop; handled below via render-time comparison
+  useState(() => {})
   if (coords && geoStatus === 'success' && !locationName) {
     handleCoordsReady(coords.lat, coords.lng)
   }
@@ -110,21 +131,36 @@ export default function App() {
     setError(null)
 
     try {
-      const d1   = getDateRangeStart(timeWindow)
-      const d2   = new Date().toISOString().split('T')[0]
-      const data = await fetchObservations({
-        lat: coords.lat,
-        lng: coords.lng,
-        radiusKm: radius,
-        d1,
-        d2: d1 ? d2 : undefined,
-        perPage,
-        taxonId: selectedSpecies?.id,
-        iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
-      })
+      let data
+
+      if (dataSource === 'eBird') {
+        data = await fetchEBirdObservations({
+          lat: coords.lat,
+          lng: coords.lng,
+          radiusKm: radius,
+          timeWindow,
+          perPage,
+          speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
+        })
+      } else {
+        const d1 = getDateRangeStart(timeWindow)
+        const d2 = new Date().toISOString().split('T')[0]
+        data = await fetchObservations({
+          lat: coords.lat,
+          lng: coords.lng,
+          radiusKm: radius,
+          d1,
+          d2: d1 ? d2 : undefined,
+          perPage,
+          taxonId: selectedSpecies?.id,
+          iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
+        })
+      }
+
       setObservations(data.results || [])
       setTotalResults(data.total_results || 0)
       posthog?.capture('search_performed', {
+        source: dataSource,
         location: locationName,
         radius_km: radius,
         time_window: timeWindow,
@@ -139,25 +175,24 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon])
+  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource])
 
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
   useEffect(() => {
     if (!coords) return
-    // Skip the very first render — wait for user to set location
     if (!hasSearched.current && !manualCoords && geoStatus !== 'success') return
     hasSearched.current = true
     handleSearch()
-  }, [handleSearch]) // handleSearch already captures all search params
+  }, [handleSearch])
 
-  // Observations are now filtered server-side via iconic_taxa param
   const filtered = observations
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
+  const sourceName = dataSource === 'eBird' ? 'eBird' : 'iNaturalist'
   const statusText = loading
-    ? 'Fetching observations from iNaturalist…'
+    ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
     ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
@@ -176,11 +211,17 @@ export default function App() {
       {/* Source row */}
       <div className="source-row">
         <span className="source-label">Source ›</span>
-        <button className="source-chip active">
+        <button
+          className={`source-chip ${dataSource === 'iNaturalist' ? 'active' : ''}`}
+          onClick={() => handleSourceChange('iNaturalist')}
+        >
           <span className="source-dot active-dot" />iNaturalist
         </button>
-        <button className="source-chip coming-soon" disabled title="Coming soon">
-          <span className="source-dot ebird-dot" />eBird <span className="soon-tag">SOON</span>
+        <button
+          className={`source-chip ${dataSource === 'eBird' ? 'active' : ''}`}
+          onClick={() => handleSourceChange('eBird')}
+        >
+          <span className="source-dot ebird-dot" />eBird
         </button>
         <button className="source-chip coming-soon" disabled title="Coming soon">
           <span className="source-dot gbif-dot" />GBIF <span className="soon-tag">SOON</span>
@@ -199,9 +240,12 @@ export default function App() {
         perPage={perPage}         onPerPageChange={setPerPage}
         canSearch={canSearch}
         onSearch={handleSearch}
+        dataSource={dataSource}
       />
 
-      <TaxonFilter activeTaxon={activeTaxon} onChange={setActiveTaxon} />
+      {dataSource === 'iNaturalist' && (
+        <TaxonFilter activeTaxon={activeTaxon} onChange={setActiveTaxon} />
+      )}
 
       <main className="main">
         {/* Status bar */}
@@ -259,9 +303,13 @@ export default function App() {
       <footer className="footer">
         Data sourced from{' '}
         <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>
-        {' '}— a joint initiative of the California Academy of Sciences and National Geographic Society.
+        {' '}&amp;{' '}
+        <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a>
+        {' '}— powered by citizen science.
         &nbsp;|&nbsp;
-        <a href="https://www.inaturalist.org/pages/api+reference" target="_blank" rel="noopener noreferrer">API Reference</a>
+        <a href="https://www.inaturalist.org/pages/api+reference" target="_blank" rel="noopener noreferrer">iNat API</a>
+        &nbsp;|&nbsp;
+        <a href="https://documenter.getpostman.com/view/664302/S1ENwy59" target="_blank" rel="noopener noreferrer">eBird API</a>
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
         </div>

@@ -2,8 +2,10 @@ import LocationSearch from './LocationSearch'
 import SpeciesSearch from './SpeciesSearch'
 import styles from './Controls.module.css'
 
-const RADIUS_OPTIONS = [1, 5, 10, 25, 50, 100]
-const TIME_OPTIONS = [
+const RADIUS_OPTIONS_FULL = [1, 5, 10, 25, 50, 100]
+const RADIUS_OPTIONS_EBIRD = [1, 5, 10, 25, 50] // eBird max 50km
+
+const TIME_OPTIONS_FULL = [
   { value: 'hour',  label: 'Past hour'  },
   { value: 'day',   label: 'Past day'   },
   { value: 'week',  label: 'Past week'  },
@@ -11,6 +13,13 @@ const TIME_OPTIONS = [
   { value: 'year',  label: 'Past year'  },
   { value: 'all',   label: 'All time'   },
 ]
+const TIME_OPTIONS_EBIRD = [
+  { value: 'hour',  label: 'Past hour'  },
+  { value: 'day',   label: 'Past day'   },
+  { value: 'week',  label: 'Past week'  },
+  { value: 'month', label: 'Past month' },
+] // eBird max 30 days
+
 const COUNT_OPTIONS = [20, 50, 100, 200]
 
 const LocateIcon = ({ spinning }) => (
@@ -43,8 +52,15 @@ export default function Controls({
   timeWindow, onTimeChange,
   perPage, onPerPageChange,
   canSearch, onSearch,
+  dataSource,
 }) {
   const locating = geoStatus === 'loading'
+  const isEBird = dataSource === 'eBird'
+  const radiusOptions = isEBird ? RADIUS_OPTIONS_EBIRD : RADIUS_OPTIONS_FULL
+  const timeOptions = isEBird ? TIME_OPTIONS_EBIRD : TIME_OPTIONS_FULL
+
+  // Clamp radius if switching to eBird with radius > 50
+  const effectiveRadius = isEBird && radius > 50 ? 50 : radius
 
   return (
     <div className={styles.bar}>
@@ -73,18 +89,19 @@ export default function Controls({
 
         {/* Species search */}
         <div className={styles.group} style={{ flex: '1', minWidth: '160px', maxWidth: '260px' }}>
-          <label className={styles.label}>Species</label>
+          <label className={styles.label}>{isEBird ? 'Bird Species' : 'Species'}</label>
           <SpeciesSearch
             selectedSpecies={selectedSpecies}
             onSpeciesSelect={onSpeciesSelect}
+            dataSource={dataSource}
           />
         </div>
 
         {/* Radius */}
         <div className={styles.group}>
           <label className={styles.label}>Radius</label>
-          <select value={radius} onChange={e => onRadiusChange(Number(e.target.value))}>
-            {RADIUS_OPTIONS.map(r => (
+          <select value={effectiveRadius} onChange={e => onRadiusChange(Number(e.target.value))}>
+            {radiusOptions.map(r => (
               <option key={r} value={r}>{r} km</option>
             ))}
           </select>
@@ -94,7 +111,7 @@ export default function Controls({
         <div className={styles.group}>
           <label className={styles.label}>Time Window</label>
           <select value={timeWindow} onChange={e => onTimeChange(e.target.value)}>
-            {TIME_OPTIONS.map(t => (
+            {timeOptions.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>

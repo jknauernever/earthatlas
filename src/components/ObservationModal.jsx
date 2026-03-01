@@ -33,6 +33,7 @@ export default function ObservationModal({ obs, onClose }) {
   if (!obs) return null
 
   const isEBird = obs.source === 'eBird'
+  const isGBIF  = obs.source === 'GBIF'
   const taxon       = obs.taxon
   const common      = taxon?.preferred_common_name || taxon?.name || 'Unnamed species'
   const scientific  = taxon?.name || ''
@@ -44,21 +45,27 @@ export default function ObservationModal({ obs, onClose }) {
   // Source-specific URLs and fields
   const externalUrl = isEBird
     ? `https://ebird.org/checklist/${obs.id}`
+    : isGBIF
+    ? `https://www.gbif.org/occurrence/${obs.id}`
     : `https://www.inaturalist.org/observations/${obs.id}`
-  const externalLabel = isEBird ? 'View on eBird' : 'View on iNaturalist'
-  const wikiUrl = isEBird ? null : taxon?.wikipedia_url
+  const externalLabel = isEBird ? 'View on eBird' : isGBIF ? 'View on GBIF' : 'View on iNaturalist'
+  const wikiUrl = isEBird || isGBIF ? null : taxon?.wikipedia_url
   const quality = { research: 'Research Grade', needs_id: 'Needs ID', casual: 'Casual' }[obs.quality_grade] || obs.quality_grade
 
   const fields = [
     { label: 'Observed', value: dateStr },
     !isEBird && { label: 'Quality Grade', value: quality },
     { label: 'Location', value: obs.place_guess || 'Unknown' },
-    !isEBird && { label: 'Observer', value: `@${obs.user?.login || 'Unknown'}` },
+    !isEBird && { label: 'Observer', value: isGBIF ? (obs.user?.login || 'GBIF Contributor') : `@${obs.user?.login || 'Unknown'}` },
     isEBird && obs.howMany && { label: 'Count', value: `${obs.howMany} individual${obs.howMany !== 1 ? 's' : ''}` },
     !isEBird && taxon?.rank && { label: 'Taxonomic Rank', value: taxon.rank },
-    !isEBird && obs.num_identification_agreements != null && {
+    !isEBird && !isGBIF && obs.num_identification_agreements != null && {
       label: 'ID Agreements',
       value: `${obs.num_identification_agreements} / ${obs.num_identification_agreements + (obs.num_identification_disagreements || 0)}`
+    },
+    isGBIF && {
+      label: 'Data Source',
+      value: 'GBIF — Global Biodiversity Information Facility',
     },
   ].filter(Boolean)
 
@@ -107,7 +114,7 @@ export default function ObservationModal({ obs, onClose }) {
                 Wikipedia ↗
               </a>
             )}
-            {!isEBird && taxon?.id && (
+            {!isEBird && !isGBIF && taxon?.id && (
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setShowSpeciesMap(true); posthog?.capture('species_map_opened', { species: common, scientific_name: scientific, source: 'observation_modal' }) }}>
                 Species Map
               </button>

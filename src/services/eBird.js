@@ -104,6 +104,54 @@ function normalizeObs(obs, photoUrl) {
   }
 }
 
+// ─── Region stats ────────────────────────────────────────────
+const REGIONS = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'CA', name: 'Canada',        flag: '🇨🇦' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'AU', name: 'Australia',     flag: '🇦🇺' },
+  { code: 'IN', name: 'India',         flag: '🇮🇳' },
+  { code: 'BR', name: 'Brazil',        flag: '🇧🇷' },
+  { code: 'MX', name: 'Mexico',        flag: '🇲🇽' },
+  { code: 'CO', name: 'Colombia',      flag: '🇨🇴' },
+  { code: 'CR', name: 'Costa Rica',    flag: '🇨🇷' },
+  { code: 'ZA', name: 'South Africa',  flag: '🇿🇦' },
+  { code: 'ES', name: 'Spain',         flag: '🇪🇸' },
+  { code: 'DE', name: 'Germany',       flag: '🇩🇪' },
+]
+
+async function fetchRegionStats(code, date) {
+  const y = date.getFullYear()
+  const m = date.getMonth() + 1
+  const d = date.getDate()
+  const res = await fetch(`${EBIRD_API}/product/stats/${code}/${y}/${m}/${d}`, {
+    headers: { 'x-ebirdapitoken': API_KEY },
+  })
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function fetchEBirdDashboardStats(date) {
+  // Fetch stats for all regions in parallel
+  const results = await Promise.all(
+    REGIONS.map(async (region) => {
+      const stats = await fetchRegionStats(region.code, date)
+      return stats ? { ...region, ...stats } : null
+    })
+  )
+  const valid = results.filter(Boolean)
+
+  // Sort by checklists descending
+  valid.sort((a, b) => b.numChecklists - a.numChecklists)
+
+  // Totals across tracked regions
+  const totalChecklists = valid.reduce((s, r) => s + r.numChecklists, 0)
+  const totalContributors = valid.reduce((s, r) => s + r.numContributors, 0)
+  const totalSpecies = valid.reduce((s, r) => s + r.numSpecies, 0)
+
+  return { regions: valid, totalChecklists, totalContributors, totalSpecies }
+}
+
 // ─── Fetch observations ───────────────────────────────────────
 export async function fetchEBirdObservations({ lat, lng, radiusKm, timeWindow, perPage = 200, speciesCode }) {
   const back = timeWindowToDays(timeWindow)

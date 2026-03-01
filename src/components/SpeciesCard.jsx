@@ -3,6 +3,7 @@ import styles from './SpeciesCard.module.css'
 
 export default function SpeciesCard({ obs, onClick, index = 0 }) {
   const isEBird     = obs.source === 'eBird'
+  const isGBIF      = obs.source === 'GBIF'
   const taxon       = obs.taxon
   const common      = taxon?.preferred_common_name || null
   const scientific  = taxon?.name || 'Unknown species'
@@ -18,8 +19,10 @@ export default function SpeciesCard({ obs, onClick, index = 0 }) {
   const avatar      = isEBird ? null : obs.user?.icon_url
   const externalUrl = isEBird
     ? `https://ebird.org/checklist/${obs.id}`
+    : isGBIF
+    ? `https://www.gbif.org/occurrence/${obs.id}`
     : `https://www.inaturalist.org/observations/${obs.id}`
-  const externalLabel = isEBird ? 'eBird' : 'iNat'
+  const externalLabel = isEBird ? 'eBird' : isGBIF ? 'GBIF' : 'iNat'
 
   return (
     <article
@@ -61,6 +64,8 @@ export default function SpeciesCard({ obs, onClick, index = 0 }) {
         <div className={styles.observer}>
           {isEBird ? (
             <span className={styles.observerName}>eBird</span>
+          ) : isGBIF ? (
+            <span className={styles.observerName}>{observer}</span>
           ) : (
             <>
               {avatar

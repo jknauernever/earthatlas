@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { searchTaxa } from '../services/iNaturalist'
 import { fetchEBirdTaxonomy, searchEBirdTaxa } from '../services/eBird'
+import { searchGBIFTaxa } from '../services/gbif'
 import styles from './SpeciesSearch.module.css'
 
 export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSource }) {
@@ -39,8 +40,14 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
       timerRef.current = setTimeout(() => {
         setResults(searchEBirdTaxa(val))
       }, 100)
+    } else if (dataSource === 'GBIF') {
+      // GBIF: species suggest API
+      timerRef.current = setTimeout(async () => {
+        const taxa = await searchGBIFTaxa(val)
+        setResults(taxa)
+      }, 300)
     } else {
-      // iNaturalist: API call with debounce
+      // iNaturalist: taxa autocomplete API
       timerRef.current = setTimeout(async () => {
         const taxa = await searchTaxa(val)
         setResults(taxa)

@@ -13,8 +13,11 @@ export default function SpeciesList({ observations, onSelect }) {
         const photo       = obs.photos?.[0]?.url?.replace('square', 'small')
         const date        = formatDate(obs.observed_on, { month: 'short', day: 'numeric' })
         const isEBird     = obs.source === 'eBird'
+        const isGBIF      = obs.source === 'GBIF'
         const externalUrl = isEBird
           ? `https://ebird.org/checklist/${obs.id}`
+          : isGBIF
+          ? `https://www.gbif.org/occurrence/${obs.id}`
           : `https://www.inaturalist.org/observations/${obs.id}`
 
         return (

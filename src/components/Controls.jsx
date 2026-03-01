@@ -2,8 +2,9 @@ import LocationSearch from './LocationSearch'
 import SpeciesSearch from './SpeciesSearch'
 import styles from './Controls.module.css'
 
-const RADIUS_OPTIONS_FULL = [1, 5, 10, 25, 50, 100]
+const RADIUS_OPTIONS_FULL  = [1, 5, 10, 25, 50, 100]
 const RADIUS_OPTIONS_EBIRD = [1, 5, 10, 25, 50] // eBird max 50km
+const RADIUS_OPTIONS_GBIF  = [1, 5, 10, 25, 50, 100] // GBIF — no hard limit
 
 const TIME_OPTIONS_FULL = [
   { value: 'hour',  label: 'Past hour'  },
@@ -19,6 +20,8 @@ const TIME_OPTIONS_EBIRD = [
   { value: 'week',  label: 'Past week'  },
   { value: 'month', label: 'Past month' },
 ] // eBird max 30 days
+
+const TIME_OPTIONS_GBIF = TIME_OPTIONS_FULL // GBIF supports full date range
 
 const COUNT_OPTIONS = [20, 50, 100, 200]
 
@@ -56,8 +59,9 @@ export default function Controls({
 }) {
   const locating = geoStatus === 'loading'
   const isEBird = dataSource === 'eBird'
-  const radiusOptions = isEBird ? RADIUS_OPTIONS_EBIRD : RADIUS_OPTIONS_FULL
-  const timeOptions = isEBird ? TIME_OPTIONS_EBIRD : TIME_OPTIONS_FULL
+  const isGBIF  = dataSource === 'GBIF'
+  const radiusOptions = isEBird ? RADIUS_OPTIONS_EBIRD : isGBIF ? RADIUS_OPTIONS_GBIF : RADIUS_OPTIONS_FULL
+  const timeOptions   = isEBird ? TIME_OPTIONS_EBIRD   : isGBIF ? TIME_OPTIONS_GBIF   : TIME_OPTIONS_FULL
 
   // Clamp radius if switching to eBird with radius > 50
   const effectiveRadius = isEBird && radius > 50 ? 50 : radius
@@ -90,6 +94,7 @@ export default function Controls({
         {/* Species search */}
         <div className={styles.group} style={{ flex: '1', minWidth: '160px', maxWidth: '260px' }}>
           <label className={styles.label}>{isEBird ? 'Bird Species' : 'Species'}</label>
+          {/* GBIF: uses GBIF species suggest; iNat: uses iNaturalist taxa autocomplete */}
           <SpeciesSearch
             selectedSpecies={selectedSpecies}
             onSpeciesSelect={onSpeciesSelect}

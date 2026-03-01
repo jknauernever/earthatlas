@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
+import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
 import { getDateRangeStart } from './utils/taxon'
 
@@ -15,6 +16,8 @@ import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
 import GlobalStats      from './components/GlobalStats'
+import EBirdStats       from './components/EBirdStats'
+import GBIFStats        from './components/GBIFStats'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
@@ -48,7 +51,7 @@ export default function App() {
   const posthog = usePostHog()
 
   // ─── Data source ─────────────────────────────────────────────
-  const [dataSource, setDataSource] = useState('iNaturalist') // 'iNaturalist' | 'eBird'
+  const [dataSource, setDataSource] = useState('iNaturalist') // 'iNaturalist' | 'eBird' | 'GBIF'
 
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
@@ -133,6 +136,9 @@ export default function App() {
     try {
       let data
 
+      const d1 = getDateRangeStart(timeWindow)
+      const d2 = new Date().toISOString().split('T')[0]
+
       if (dataSource === 'eBird') {
         data = await fetchEBirdObservations({
           lat: coords.lat,
@@ -142,9 +148,18 @@ export default function App() {
           perPage,
           speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
         })
+      } else if (dataSource === 'GBIF') {
+        data = await fetchGBIFOccurrences({
+          lat: coords.lat,
+          lng: coords.lng,
+          radiusKm: radius,
+          d1,
+          d2: d1 ? d2 : undefined,
+          perPage,
+          taxonKey: selectedSpecies?.gbifKey || selectedSpecies?.id,
+          iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
+        })
       } else {
-        const d1 = getDateRangeStart(timeWindow)
-        const d2 = new Date().toISOString().split('T')[0]
         data = await fetchObservations({
           lat: coords.lat,
           lng: coords.lng,
@@ -190,9 +205,9 @@ export default function App() {
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
-  const sourceName = dataSource === 'eBird' ? 'eBird' : 'iNaturalist'
+  const sourceName = dataSource === 'eBird' ? 'eBird' : dataSource === 'GBIF' ? 'GBIF' : 'iNaturalist'
   const statusText = loading
-    ? `Fetching observations from ${sourceName}…`
+    ? `Fetching ${dataSource === 'GBIF' ? 'occurrences' : 'observations'} from ${sourceName}…`
     : totalResults !== null
     ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
@@ -223,8 +238,11 @@ export default function App() {
         >
           <span className="source-dot ebird-dot" />eBird
         </button>
-        <button className="source-chip coming-soon" disabled title="Coming soon">
-          <span className="source-dot gbif-dot" />GBIF <span className="soon-tag">SOON</span>
+        <button
+          className={`source-chip ${dataSource === 'GBIF' ? 'active' : ''}`}
+          onClick={() => handleSourceChange('GBIF')}
+        >
+          <span className="source-dot gbif-dot" />GBIF
         </button>
       </div>
 
@@ -243,7 +261,7 @@ export default function App() {
         dataSource={dataSource}
       />
 
-      {dataSource === 'iNaturalist' && (
+      {(dataSource === 'iNaturalist' || dataSource === 'GBIF') && (
         <TaxonFilter activeTaxon={activeTaxon} onChange={setActiveTaxon} />
       )}
 
@@ -286,7 +304,7 @@ export default function App() {
         {loading ? (
           <LoadingState />
         ) : totalResults === null && !error ? (
-          <GlobalStats />
+          dataSource === 'eBird' ? <EBirdStats /> : dataSource === 'GBIF' ? <GBIFStats /> : <GlobalStats />
         ) : observations.length === 0 && !error ? (
           <EmptyState variant="noResults" />
         ) : error ? (
@@ -303,13 +321,17 @@ export default function App() {
       <footer className="footer">
         Data sourced from{' '}
         <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>
-        {' '}&amp;{' '}
+        {', '}
         <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a>
+        {' & '}
+        <a href="https://www.gbif.org" target="_blank" rel="noopener noreferrer">GBIF</a>
         {' '}— powered by citizen science.
         &nbsp;|&nbsp;
         <a href="https://www.inaturalist.org/pages/api+reference" target="_blank" rel="noopener noreferrer">iNat API</a>
         &nbsp;|&nbsp;
         <a href="https://documenter.getpostman.com/view/664302/S1ENwy59" target="_blank" rel="noopener noreferrer">eBird API</a>
+        &nbsp;|&nbsp;
+        <a href="https://www.gbif.org/developer/occurrence" target="_blank" rel="noopener noreferrer">GBIF API</a>
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
         </div>

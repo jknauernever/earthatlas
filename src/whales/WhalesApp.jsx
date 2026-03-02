@@ -123,9 +123,20 @@ export default function WhalesApp() {
   // Interaction
   const [activeSighting, setActiveSighting] = useState(null)
   const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
+  const [tooManyResults, setTooManyResults] = useState(false)
+  const MAX_SIGHTINGS = 500
+
+  // ─── Zoom → search radius mapping ─────────────────────────────────────────
+  // Approximate km visible at each zoom level, used as search radius
+  function zoomToRadius(z) {
+    if (z == null) return 300
+    // At zoom 6 ≈ 300km, zoom 4 ≈ 1200km, zoom 3 ≈ 2500km, zoom 8 ≈ 75km
+    return Math.round(300 * Math.pow(2, 6 - z))
+  }
+  const mapZoomRef = useRef(null)
 
   // ─── Load data for a location ─────────────────────────────────────────────
-  const loadData = useCallback(async (loc) => {
+  const loadData = useCallback(async (loc, radiusKm) => {
     setLoadingData(true)
     setDataError(null)
     setSightings([])
@@ -135,10 +146,11 @@ export default function WhalesApp() {
     try {
       // Fetch recent sightings + seasonal pattern + iNaturalist in parallel
       // Note: Whale Museum Hotline API (hotline.whalemuseum.org) is offline as of March 2026
+      const r = radiusKm || 300
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings({ lat: loc.lat, lng: loc.lng }),
-        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng }),
-        fetchINatSightings({ lat: loc.lat, lng: loc.lng }),
+        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
+        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
+        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
       ])
 
       const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
@@ -147,10 +159,16 @@ export default function WhalesApp() {
 
       // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
       const allSightings = [...recentSightings, ...inatSightings]
-      const aggregated = aggregateSpecies(allSightings)
 
-      setSightings(allSightings)
-      setSpecies(aggregated)
+      if (allSightings.length > MAX_SIGHTINGS) {
+        setTooManyResults(true)
+        setSightings(allSightings.slice(0, MAX_SIGHTINGS))
+        setSpecies(aggregateSpecies(allSightings.slice(0, MAX_SIGHTINGS)))
+      } else {
+        setTooManyResults(false)
+        setSightings(allSightings)
+        setSpecies(aggregateSpecies(allSightings))
+      }
       setSeasonPattern(pattern)
       setBaselinePattern(pattern)
       setTotalCount(allSightings.length)
@@ -190,6 +208,7 @@ export default function WhalesApp() {
         lat: location.lat,
         lng: location.lng,
         month: monthIdx + 1, // 1-based for API
+        radiusKm: zoomToRadius(mapZoomRef.current),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
@@ -199,7 +218,7 @@ export default function WhalesApp() {
 
   // When mode switches to 'now', reload recent sightings
   useEffect(() => {
-    if (mode === 'now' && location) loadData(location)
+    if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
   }, [mode])
 
   // Fetch per-species seasonal pattern when a species card is clicked
@@ -247,12 +266,13 @@ export default function WhalesApp() {
   }
 
   // ─── Map moved — re-search at new center ────────────────────────────────
-  const handleMapCenterChange = useCallback(async ({ lat, lng }) => {
+  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom }) => {
+    mapZoomRef.current = zoom
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name })
-    loadData(loc)
+    loadData(loc, zoomToRadius(zoom))
   }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
@@ -402,6 +422,12 @@ export default function WhalesApp() {
           </div>
         )}
 
+        {tooManyResults && !loadingData && (
+          <div style={{ padding: '12px 20px', background: 'rgba(212,160,23,0.1)', border: '1px solid rgba(212,160,23,0.25)', borderRadius: 10, fontSize: 13, color: '#b8842a', marginBottom: 8 }}>
+            Showing {MAX_SIGHTINGS} of {totalCount.toLocaleString()} sightings — zoom in for a more detailed view.
+          </div>
+        )}
+
         {dataError && (
           <div style={{ padding: '12px 20px', background: 'rgba(220,80,80,0.1)', border: '1px solid rgba(220,80,80,0.25)', borderRadius: 10, fontSize: 13, color: '#e08080', marginBottom: 20 }}>
             {dataError}
@@ -504,6 +530,9 @@ export default function WhalesApp() {
           </div>
           <div className={styles.footerText}>
             <a className={styles.footerLink} href="/">EarthAtlas.org</a>
+          </div>
+          <div className={styles.footerBuiltBy}>
+            Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
           </div>
         </div>
       </div>

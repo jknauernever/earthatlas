@@ -28,6 +28,8 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
   const flyingRef = useRef(false) // true during programmatic flyTo
+  // Track the last center the user moved to, so we don't flyTo it back
+  const userCenterRef = useRef(null)
 
   // Init map
   useEffect(() => {
@@ -53,7 +55,9 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
       clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         const c = map.getCenter()
-        onCenterChange?.({ lat: c.lat, lng: c.lng })
+        const z = map.getZoom()
+        userCenterRef.current = { lat: c.lat, lng: c.lng }
+        onCenterChange?.({ lat: c.lat, lng: c.lng, zoom: z })
       }, 600)
     })
 
@@ -62,8 +66,11 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
   }, [])
 
   // Update center (programmatic — skip moveend callback)
+  // Only flyTo for genuinely new locations, not echoes from user moves
   useEffect(() => {
     if (!mapRef.current || !center) return
+    const uc = userCenterRef.current
+    if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
     flyingRef.current = true
     mapRef.current.once('moveend', () => { flyingRef.current = false })
     mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })

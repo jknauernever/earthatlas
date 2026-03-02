@@ -675,6 +675,21 @@
 }
 
 /* ─── Species card ───────────────────────────────────────────────────────────── */
+.speciesStatusBanner {
+  margin: -12px -14px 10px;
+  padding: 5px 14px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.speciesStatusIcon {
+  font-size: 12px;
+}
 .speciesCard {
   background: var(--card);
   border: 1px solid var(--border);
@@ -963,3 +978,17 @@
   transition: color 0.15s;
 }
 .footerLink:hover { color: var(--glow); }
+.footerBuiltBy {
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+.footerBuiltBy a {
+  color: var(--text);
+  text-decoration: none;
+}
+.footerBuiltBy a:hover { text-decoration: underline; }

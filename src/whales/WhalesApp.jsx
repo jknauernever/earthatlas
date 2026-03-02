@@ -186,6 +186,14 @@ export default function WhalesApp() {
     await loadData(loc)
   }
 
+  // ─── Map moved — re-search at new center ────────────────────────────────
+  const handleMapCenterChange = useCallback(async ({ lat, lng }) => {
+    const name = await reverseGeocode(lat, lng) || 'this area'
+    const loc = { lat, lng, name }
+    setLocation(loc)
+    loadData(loc)
+  }, [loadData])
+
   // ─── Filtered sightings (time slider) ────────────────────────────────────
   const filteredSightings = useMemo(() => {
     const { start, end } = timeRange
@@ -351,6 +359,7 @@ export default function WhalesApp() {
               sightings={filteredSightings}
               center={location}
               activeSpecies={activeSpecies}
+              onCenterChange={handleMapCenterChange}
             />
             {mode === 'now' && !loadingData && sightings.length > 0 && (
               <TimeSlider

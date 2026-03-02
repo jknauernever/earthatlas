@@ -21,12 +21,13 @@ const STATUS_BY_COLOR = {
  *   onSightingClick — (sighting) => void  called when a pin is clicked
  *   activeSighting  — id of currently highlighted sighting (optional)
  */
-export default function WhaleMap({ sightings = [], center, activeSpecies }) {
+export default function WhaleMap({ sightings = [], center, activeSpecies, onCenterChange }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])  // each entry: { marker, dot, speciesKey }
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
+  const flyingRef = useRef(false) // true during programmatic flyTo
 
   // Init map
   useEffect(() => {
@@ -45,13 +46,26 @@ export default function WhaleMap({ sightings = [], center, activeSpecies }) {
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
+    // Fire onCenterChange after user-initiated moves (not programmatic flyTo)
+    let debounceTimer = null
+    map.on('moveend', () => {
+      if (flyingRef.current) return
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        const c = map.getCenter()
+        onCenterChange?.({ lat: c.lat, lng: c.lng })
+      }, 600)
+    })
+
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+    return () => { clearTimeout(debounceTimer); map.remove(); mapRef.current = null }
   }, [])
 
-  // Update center
+  // Update center (programmatic — skip moveend callback)
   useEffect(() => {
     if (!mapRef.current || !center) return
+    flyingRef.current = true
+    mapRef.current.once('moveend', () => { flyingRef.current = false })
     mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
   }, [center?.lat, center?.lng])
 

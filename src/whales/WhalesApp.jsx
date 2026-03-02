@@ -11,7 +11,8 @@
  *   'patterns' — historical monthly view, scrubbed by month
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useQueryParams } from '../hooks/useQueryParams'
 import styles from './WhalesApp.module.css'
 
 import WhaleMap from './components/WhaleMap'
@@ -40,15 +41,36 @@ function WhaleSilhouette({ className }) {
 
 // ─── Helper: reverse-geocode lat/lng to a human-readable place name ───────────
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+function formatCoords(lat, lng) {
+  const ns = lat >= 0 ? 'N' : 'S'
+  const ew = lng >= 0 ? 'E' : 'W'
+  return `${Math.abs(lat).toFixed(1)}°${ns}, ${Math.abs(lng).toFixed(1)}°${ew}`
+}
+
 async function reverseGeocode(lat, lng) {
   try {
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=place,region,locality&limit=1&access_token=${MAPBOX_TOKEN}`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?limit=1&access_token=${MAPBOX_TOKEN}`
     )
-    if (!res.ok) return null
+    if (!res.ok) return formatCoords(lat, lng)
     const data = await res.json()
-    return data.features?.[0]?.text || null
-  } catch { return null }
+    const f = data.features?.[0]
+    if (!f) return formatCoords(lat, lng)
+
+    // Build "City, State, Country" from the feature + context hierarchy
+    const ctx = f.context || []
+    const find = (prefix) => ctx.find(c => c.id?.startsWith(prefix))
+
+    // The top-level feature may already be a place; otherwise look in context
+    const placeText = f.id?.startsWith('place') ? f.text : find('place')?.text || find('locality')?.text
+    const region = find('region')
+    const regionCode = region?.short_code?.replace(/^[A-Z]{2}-/, '') || region?.text
+    const country = find('country')
+    const countryCode = country?.short_code?.toUpperCase() || country?.text
+
+    const parts = [placeText, regionCode, countryCode].filter(Boolean)
+    return parts.length > 0 ? parts.join(', ') : f.text || f.place_name || formatCoords(lat, lng)
+  } catch { return formatCoords(lat, lng) }
 }
 
 // ─── Helper: format date ──────────────────────────────────────────────────────
@@ -58,12 +80,35 @@ function fmtDate(d) {
   catch { return d }
 }
 
+// ─── Query param schema (stable reference) ────────────────────────
+const QP_SCHEMA = {
+  lat:     { type: 'number' },
+  lng:     { type: 'number' },
+  name:    { type: 'string' },
+  mode:    { type: 'string', default: 'now' },
+  month:   { type: 'number' },
+  species: { type: 'number' },
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function WhalesApp() {
-  const [phase, setPhase] = useState('hero') // 'hero' | 'loading' | 'explore'
-  const [mode, setMode] = useState('now')    // 'now' | 'patterns'
+  const [qp, setQP] = useQueryParams(QP_SCHEMA)
 
-  const [location, setLocation] = useState(null)   // { lat, lng, name }
+  // Derive initial phase from URL: if lat+lng present, skip hero
+  const hasUrlCoords = qp.lat != null && qp.lng != null
+  const [phase, setPhase] = useState(hasUrlCoords ? 'loading' : 'hero')
+
+  const mode = qp.mode
+  const activeMonth = qp.month
+  const activeSpecies = qp.species
+
+  // Derive location from URL params or local state
+  const [localLocation, setLocalLocation] = useState(null)
+  const location = useMemo(() => {
+    if (hasUrlCoords) return { lat: qp.lat, lng: qp.lng, name: qp.name || null }
+    return localLocation
+  }, [hasUrlCoords, qp.lat, qp.lng, qp.name, localLocation])
+
   const [locError, setLocError] = useState(null)
 
   // Data
@@ -76,8 +121,6 @@ export default function WhalesApp() {
   const [totalCount, setTotalCount]     = useState(0)
 
   // Interaction
-  const [activeMonth, setActiveMonth]   = useState(null)  // 0-based month index
-  const [activeSpecies, setActiveSpecies] = useState(null) // speciesKey
   const [activeSighting, setActiveSighting] = useState(null)
   const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
 
@@ -120,9 +163,26 @@ export default function WhalesApp() {
     }
   }, [])
 
+  // ─── Cold load: if URL has coords on mount, load data immediately ─────────
+  const coldLoaded = useRef(false)
+  useEffect(() => {
+    if (coldLoaded.current) return
+    if (hasUrlCoords) {
+      coldLoaded.current = true
+      const loc = { lat: qp.lat, lng: qp.lng, name: qp.name || null }
+      // If no name in URL, reverse geocode
+      if (!qp.name) {
+        reverseGeocode(qp.lat, qp.lng).then(name => {
+          if (name) setQP({ name })
+        })
+      }
+      loadData(loc)
+    }
+  }, [hasUrlCoords, qp.lat, qp.lng, qp.name, loadData, setQP])
+
   // ─── Handle month selection in patterns mode ──────────────────────────────
   const handleMonthChange = useCallback(async (monthIdx) => {
-    setActiveMonth(monthIdx)
+    setQP({ month: monthIdx })
     if (mode !== 'patterns' || !location) return
 
     try {
@@ -135,7 +195,7 @@ export default function WhalesApp() {
       setSpecies(aggregateSpecies(result.sightings))
       setTotalCount(result.sightings.length)
     } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location])
+  }, [mode, location, setQP])
 
   // When mode switches to 'now', reload recent sightings
   useEffect(() => {
@@ -165,7 +225,8 @@ export default function WhalesApp() {
         const lng = pos.coords.longitude
         const name = await reverseGeocode(lat, lng) || 'Your location'
         const loc = { lat, lng, name }
-        setLocation(loc)
+        setLocalLocation(loc)
+        setQP({ lat, lng, name })
         setPhase('loading')
         await loadData(loc)
       },
@@ -179,7 +240,8 @@ export default function WhalesApp() {
   // ─── Manual location search ───────────────────────────────────────────────
   async function handleLocationSelect({ name, lat, lng }) {
     const loc = { lat, lng, name }
-    setLocation(loc)
+    setLocalLocation(loc)
+    setQP({ lat, lng, name })
     setPhase('loading')
     await loadData(loc)
   }
@@ -188,9 +250,17 @@ export default function WhalesApp() {
   const handleMapCenterChange = useCallback(async ({ lat, lng }) => {
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
-    setLocation(loc)
+    setLocalLocation(loc)
+    setQP({ lat, lng, name })
     loadData(loc)
-  }, [loadData])
+  }, [loadData, setQP])
+
+  // ─── "Change location" — clear URL and go back to hero ──────────────────
+  const handleChangeLocation = useCallback(() => {
+    setQP({ lat: null, lng: null, name: null, mode: 'now', month: null, species: null })
+    setLocalLocation(null)
+    setPhase('hero')
+  }, [setQP])
 
   // ─── Filtered sightings (time slider) ────────────────────────────────────
   const filteredSightings = useMemo(() => {
@@ -212,9 +282,9 @@ export default function WhalesApp() {
     return (
       <div className={styles.whalesApp}>
         <nav className={styles.whalesNav}>
-          <div className={styles.navLogo}>
-            EarthAtlas <span className={styles.navLogoAccent}> / Whales</span>
-          </div>
+          <a href="/whales" className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+          </a>
           <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
         </nav>
 
@@ -264,9 +334,9 @@ export default function WhalesApp() {
     return (
       <div className={styles.whalesApp}>
         <nav className={styles.whalesNav}>
-          <div className={styles.navLogo}>
+          <a href="/whales" className={styles.navLogo} style={{ textDecoration: 'none', color: 'inherit' }}>
             EarthAtlas <span className={styles.navLogoAccent}> / Whales</span>
-          </div>
+          </a>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
           <div className={styles.loadingWhale}>🐋</div>
@@ -287,9 +357,9 @@ export default function WhalesApp() {
   return (
     <div className={styles.whalesApp}>
       <nav className={styles.whalesNav}>
-        <div className={styles.navLogo}>
-          EarthAtlas <span className={styles.navLogoAccent}> / Whales</span>
-        </div>
+        <a href="/whales" className={styles.navWordmark}>
+          <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+        </a>
         <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
       </nav>
 
@@ -297,7 +367,7 @@ export default function WhalesApp() {
         {/* Topbar */}
         <div className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <button className={styles.backBtn} onClick={() => setPhase('hero')}>← Change location</button>
+            <button className={styles.backBtn} onClick={handleChangeLocation}>← Change location</button>
             <div className={styles.locationLabel}>
               Near <span>{location?.name || 'your location'}</span>
             </div>
@@ -307,13 +377,13 @@ export default function WhalesApp() {
             <div className={styles.modeBar}>
               <button
                 className={`${styles.modeBtn} ${mode === 'now' ? styles.modeBtnActive : ''}`}
-                onClick={() => setMode('now')}
+                onClick={() => setQP({ mode: 'now', month: null })}
               >
                 Recent sightings
               </button>
               <button
                 className={`${styles.modeBtn} ${mode === 'patterns' ? styles.modeBtnActive : ''}`}
-                onClick={() => setMode('patterns')}
+                onClick={() => setQP({ mode: 'patterns' })}
               >
                 Seasonal patterns
               </button>
@@ -359,14 +429,14 @@ export default function WhalesApp() {
               activeSpecies={activeSpecies}
               onCenterChange={handleMapCenterChange}
             />
-            {mode === 'now' && !loadingData && sightings.length > 0 && (
-              <TimeSlider
-                sightings={sightings}
-                value={timeRange}
-                onChange={setTimeRange}
-              />
-            )}
           </div>
+          {mode === 'now' && !loadingData && sightings.length > 0 && (
+            <TimeSlider
+              sightings={sightings}
+              value={timeRange}
+              onChange={setTimeRange}
+            />
+          )}
 
           {/* Season chart (below map in grid) */}
           <div className={styles.seasonSection}>
@@ -415,7 +485,7 @@ export default function WhalesApp() {
                   species={sp}
                   totalCount={filteredCount}
                   active={activeSpecies === sp.speciesKey}
-                  onClick={() => setActiveSpecies(sp.speciesKey === activeSpecies ? null : sp.speciesKey)}
+                  onClick={() => setQP({ species: sp.speciesKey === activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.07}s` }}
                   styles={styles}
                 />

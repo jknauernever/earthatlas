@@ -397,13 +397,9 @@
   backdrop-filter: blur(10px);
 }
 
-/* ─── Time slider overlay ────────────────────────────────────────────────────── */
+/* ─── Time slider (below map) ────────────────────────────────────────────────── */
 .timeSlider {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  z-index: 10;
+  grid-column: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -412,7 +408,7 @@
   border: 1px solid var(--border-lit);
   border-radius: 30px;
   backdrop-filter: blur(10px);
-  pointer-events: all;
+  margin-top: -8px;
 }
 
 .timeSliderLabel {
@@ -862,17 +858,34 @@
   z-index: 50;
 }
 
-.navLogo {
+.navWordmark {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 300;
-  color: var(--text);
+  flex-direction: column;
+  gap: 1px;
   text-decoration: none;
+  color: inherit;
 }
-.navLogoAccent { color: var(--glow); font-style: italic; }
+.navEyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sage-dk);
+}
+.navTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+.navTitle em { font-style: italic; color: var(--amber-lt); }
+.navAccent {
+  font-weight: 300;
+  font-style: italic;
+  color: var(--glow);
+  font-size: 0.75em;
+}
 
 .navHomeLink {
   font-size: 12px;

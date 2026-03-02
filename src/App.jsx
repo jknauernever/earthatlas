@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
+import { useQueryParams } from './hooks/useQueryParams'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
 import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
@@ -53,22 +54,44 @@ const InsightsIcon = () => (
   </svg>
 )
 
+// ─── Query param schema (stable reference) ────────────────────────
+const QP_SCHEMA = {
+  lat:     { type: 'number' },
+  lng:     { type: 'number' },
+  source:  { type: 'string', default: 'iNaturalist' },
+  radius:  { type: 'number', default: 5 },
+  time:    { type: 'string', default: 'day' },
+  taxon:   { type: 'string', default: 'all' },
+  species: { type: 'string' },
+  view:    { type: 'string', default: 'map' },
+}
+
 export default function App() {
   const posthog = usePostHog()
 
-  // ─── Data source ─────────────────────────────────────────────
-  const [dataSource, setDataSource] = useState('iNaturalist') // 'iNaturalist' | 'eBird' | 'GBIF'
+  // ─── URL state ──────────────────────────────────────────────────
+  const [qp, setQP] = useQueryParams(QP_SCHEMA)
+
+  const dataSource = qp.source
+  const radius     = qp.radius
+  const timeWindow = qp.time
+  const activeTaxon = qp.taxon
+  const view       = qp.view
 
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
   const [manualCoords, setManualCoords] = useState(null)
   const [locationName, setLocationName] = useState(null)
-  const coords = manualCoords || geoCoords
+
+  // URL coords take priority, then manual, then geo
+  const urlCoords = useMemo(
+    () => (qp.lat != null && qp.lng != null ? { lat: qp.lat, lng: qp.lng } : null),
+    [qp.lat, qp.lng]
+  )
+  const coords = urlCoords || manualCoords || geoCoords
 
   // ─── Search params ─────────────────────────────────────────────
-  const [radius,          setRadius]          = useState(5)
-  const [timeWindow,      setTimeWindow]      = useState('day')
-  const [perPage,         setPerPage]         = useState(200)
+  const [perPage]         = useState(200)
   const [selectedSpecies, setSelectedSpecies] = useState(null)
 
   // ─── Results ───────────────────────────────────────────────────
@@ -77,36 +100,53 @@ export default function App() {
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState(null)
 
-  // ─── Filter ────────────────────────────────────────────────────
-  const [activeTaxon, setActiveTaxon] = useState('all')
-
-  // ─── View ──────────────────────────────────────────────────────
-  const [view, setView] = useState('map') // 'grid' | 'list' | 'map'
-
   // ─── Modal ─────────────────────────────────────────────────────
   const [selectedObs, setSelectedObs] = useState(null)
+
+  // ─── Reverse geocode for cold loads from URL ───────────────────
+  const coldLoaded = useRef(false)
+  useEffect(() => {
+    if (coldLoaded.current) return
+    if (urlCoords && !locationName) {
+      coldLoaded.current = true
+      reverseGeocode(urlCoords.lat, urlCoords.lng)
+        .then(name => setLocationName(name))
+        .catch(() => setLocationName(`${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)}`))
+    }
+  }, [urlCoords, locationName])
+
+  // Reverse geocode when geolocation resolves
+  useEffect(() => {
+    if (geoCoords && geoStatus === 'success' && !locationName && !urlCoords) {
+      setQP({ lat: geoCoords.lat, lng: geoCoords.lng })
+      reverseGeocode(geoCoords.lat, geoCoords.lng)
+        .then(name => setLocationName(name))
+        .catch(() => setLocationName(`${geoCoords.lat.toFixed(4)}, ${geoCoords.lng.toFixed(4)}`))
+    }
+  }, [geoCoords, geoStatus, locationName, urlCoords, setQP])
 
   // ─── Handle source switch ────────────────────────────────────
   const handleSourceChange = useCallback((source) => {
     if (source === dataSource) return
-    setDataSource(source)
     setSelectedSpecies(null)
-    setActiveTaxon('all')
     setObservations([])
     setTotalResults(null)
     setError(null)
+
+    const updates = { source, species: null, taxon: 'all' }
     // Set GBIF defaults
     if (source === 'GBIF') {
-      setRadius(5)
-      setTimeWindow('all')
+      updates.radius = 5
+      updates.time = 'all'
     }
     // Clamp params for eBird limits
     if (source === 'eBird') {
-      if (radius > 50) setRadius(50)
-      if (timeWindow === 'year' || timeWindow === 'all') setTimeWindow('month')
+      if (radius > 50) updates.radius = 50
+      if (timeWindow === 'year' || timeWindow === 'all') updates.time = 'month'
     }
+    setQP(updates)
     posthog?.capture('source_changed', { source })
-  }, [dataSource, posthog, radius, timeWindow, view])
+  }, [dataSource, posthog, radius, timeWindow, setQP])
 
   // ─── Handle locate ─────────────────────────────────────────────
   const handleLocate = useCallback(async () => {
@@ -119,24 +159,14 @@ export default function App() {
   const handleLocationSelect = useCallback(({ lat, lng, name }) => {
     setManualCoords({ lat, lng })
     setLocationName(name)
-  }, [])
+    setQP({ lat, lng })
+  }, [setQP])
 
-  // Reverse geocode when coords arrive
-  const prevCoords = useState(null)
-  const handleCoordsReady = useCallback(async (lat, lng) => {
-    try {
-      const name = await reverseGeocode(lat, lng)
-      setLocationName(name)
-    } catch {
-      setLocationName(`${lat.toFixed(4)}, ${lng.toFixed(4)}`)
-    }
-  }, [])
-
-  // Effect to fire geocoding once geo resolves
-  useState(() => {})
-  if (coords && geoStatus === 'success' && !locationName) {
-    handleCoordsReady(coords.lat, coords.lng)
-  }
+  // ─── Handle species select ────────────────────────────────────
+  const handleSpeciesSelect = useCallback((species) => {
+    setSelectedSpecies(species)
+    setQP({ species: species?.id || null })
+  }, [setQP])
 
   // ─── Search ────────────────────────────────────────────────────
   const handleSearch = useCallback(async () => {
@@ -207,7 +237,8 @@ export default function App() {
   const hasSearched = useRef(false)
   useEffect(() => {
     if (!coords) return
-    if (!hasSearched.current && !manualCoords && geoStatus !== 'success') return
+    // Allow immediate search if URL had coords (cold load) or manual/geo set
+    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success') return
     hasSearched.current = true
     handleSearch()
   }, [handleSearch])
@@ -227,7 +258,7 @@ export default function App() {
     ? `Location set — ${locationName || 'ready to search'}.`
     : 'Set your location to begin exploring.'
 
-  const canSearch = !!coords && (geoStatus === 'success' || !!manualCoords) && !loading
+  const canSearch = !!coords && (geoStatus === 'success' || !!manualCoords || !!urlCoords) && !loading
 
   // ─── Render ────────────────────────────────────────────────────
   return (
@@ -263,16 +294,16 @@ export default function App() {
         onLocate={handleLocate}
         onLocationSelect={handleLocationSelect}
         selectedSpecies={selectedSpecies}
-        onSpeciesSelect={setSelectedSpecies}
-        radius={radius}           onRadiusChange={setRadius}
-        timeWindow={timeWindow}   onTimeChange={setTimeWindow}
+        onSpeciesSelect={handleSpeciesSelect}
+        radius={radius}           onRadiusChange={(r) => setQP({ radius: r })}
+        timeWindow={timeWindow}   onTimeChange={(t) => setQP({ time: t })}
         canSearch={canSearch}
         onSearch={handleSearch}
         dataSource={dataSource}
       />
 
       {(dataSource === 'iNaturalist' || dataSource === 'GBIF') && (
-        <TaxonFilter activeTaxon={activeTaxon} onChange={setActiveTaxon} />
+        <TaxonFilter activeTaxon={activeTaxon} onChange={(t) => setQP({ taxon: t })} />
       )}
 
       <main className="main">
@@ -288,23 +319,23 @@ export default function App() {
             <div className="view-toggle">
               <button
                 className={`view-btn ${view === 'grid' ? 'active' : ''}`}
-                onClick={() => { setView('grid'); posthog?.capture('view_changed', { view: 'grid' }) }}
+                onClick={() => { setQP({ view: 'grid' }); posthog?.capture('view_changed', { view: 'grid' }) }}
                 title="Grid view"
               ><GridIcon /></button>
               <button
                 className={`view-btn ${view === 'list' ? 'active' : ''}`}
-                onClick={() => { setView('list'); posthog?.capture('view_changed', { view: 'list' }) }}
+                onClick={() => { setQP({ view: 'list' }); posthog?.capture('view_changed', { view: 'list' }) }}
                 title="List view"
               ><ListIcon /></button>
               <button
                 className={`view-btn ${view === 'map' ? 'active' : ''}`}
-                onClick={() => { setView('map'); posthog?.capture('view_changed', { view: 'map' }) }}
+                onClick={() => { setQP({ view: 'map' }); posthog?.capture('view_changed', { view: 'map' }) }}
                 title="Map view"
               ><MapIcon /></button>
               {totalResults !== null && (
                 <button
                   className={`view-btn ${view === 'insights' ? 'active' : ''}`}
-                  onClick={() => { setView('insights'); posthog?.capture('view_changed', { view: 'insights' }) }}
+                  onClick={() => { setQP({ view: 'insights' }); posthog?.capture('view_changed', { view: 'insights' }) }}
                   title="Insights"
                 ><InsightsIcon /></button>
               )}

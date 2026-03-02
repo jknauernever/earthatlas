@@ -183,6 +183,7 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
         `)
 
       // Pan the map so the full popup is visible after it opens
+      // Set flyingRef so this pan doesn't trigger onCenterChange (which would reload data)
       popup.on('open', () => {
         requestAnimationFrame(() => {
           const popupEl = popup.getElement()
@@ -202,8 +203,11 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
           else if (popupRect.bottom > mapRect.bottom - pad)
             dy = popupRect.bottom - (mapRect.bottom - pad)
 
-          if (dx !== 0 || dy !== 0)
+          if (dx !== 0 || dy !== 0) {
+            flyingRef.current = true
+            map.once('moveend', () => { flyingRef.current = false })
             map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+          }
         })
       })
 

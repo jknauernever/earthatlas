@@ -200,7 +200,7 @@ src/whales/
 ### Key files explained
 
 **`whales.js`** — The data layer. Contains:
-- `SPECIES_META` — curated common names, colors, facts for ~13 common cetaceans, keyed by GBIF species key
+- `SPECIES_META` — curated common names, colors, facts for 97 recognized cetacean species, keyed by GBIF species key
 - `fetchRecentSightings()` — past N days within radius
 - `fetchMonthSightings()` — historical sightings for a specific month (1–12) across all years
 - `fetchSeasonalPattern()` — single GBIF facet query returning all 12 monthly counts

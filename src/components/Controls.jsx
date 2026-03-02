@@ -23,7 +23,6 @@ const TIME_OPTIONS_EBIRD = [
 
 const TIME_OPTIONS_GBIF = TIME_OPTIONS_FULL // GBIF supports full date range
 
-const COUNT_OPTIONS = [20, 50, 100, 200]
 
 const LocateIcon = ({ spinning }) => (
   <svg className={spinning ? 'spin' : ''} xmlns="http://www.w3.org/2000/svg" width="13" height="13"
@@ -53,7 +52,6 @@ export default function Controls({
   selectedSpecies, onSpeciesSelect,
   radius, onRadiusChange,
   timeWindow, onTimeChange,
-  perPage, onPerPageChange,
   canSearch, onSearch,
   dataSource,
 }) {
@@ -118,16 +116,6 @@ export default function Controls({
           <select value={timeWindow} onChange={e => onTimeChange(e.target.value)}>
             {timeOptions.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Result count */}
-        <div className={styles.group}>
-          <label className={styles.label}>Show</label>
-          <select value={perPage} onChange={e => onPerPageChange(Number(e.target.value))}>
-            {COUNT_OPTIONS.map(c => (
-              <option key={c} value={c}>{c} results</option>
             ))}
           </select>
         </div>

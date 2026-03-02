@@ -1,0 +1,420 @@
+/* ─── Container ─── */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Stat counters row ─── */
+.counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.counter {
+  text-align: center;
+  padding: 28px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.counterValue {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.counterLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* ─── Masonry layout ─── */
+.masonry {
+  columns: 2;
+  column-gap: 20px;
+}
+
+/* ─── Card (each viz tile) ─── */
+.card {
+  break-inside: avoid;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card:hover {
+  border-color: var(--sage-dk);
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.cardWide {
+  column-span: all;
+}
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.cardSub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ─── Top species grid ─── */
+.speciesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.speciesCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.speciesCard:hover,
+.speciesCardActive {
+  border-color: var(--sage-dk);
+  box-shadow: 0 2px 8px var(--shadow);
+  background: var(--cream);
+}
+.rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sage-dk);
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+}
+.speciesPhoto {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.speciesPhotoPlaceholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.speciesInfo {
+  flex: 1;
+  min-width: 0;
+}
+.speciesCommon {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speciesScientific {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speciesCount {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ─── Seasonality chart ─── */
+.seasonChart {
+  width: 100%;
+}
+.seasonDetail {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 22px;
+  margin-bottom: 10px;
+}
+.seasonDetailMonth {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.seasonDetailCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.seasonDetailPct {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--moss);
+  font-weight: 600;
+}
+.seasonDetailHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.6;
+}
+.seasonBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 160px;
+}
+.seasonCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+.seasonColActive .seasonBar {
+  background: var(--amber);
+}
+.seasonColActive .seasonLabel {
+  color: var(--ink);
+  font-weight: 700;
+}
+.seasonBarWrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.seasonBar {
+  width: 70%;
+  min-height: 2px;
+  background: var(--moss);
+  border-radius: 3px 3px 0 0;
+  transition: height 0.4s ease-out, opacity 0.15s, background 0.15s;
+}
+.seasonLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color 0.15s;
+}
+
+/* ─── Year trend SVG chart ─── */
+.yearChart {
+  width: 100%;
+}
+.yearSvg {
+  width: 100%;
+  height: auto;
+}
+.yearLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+/* ─── Year filter banner ─── */
+.yearBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--amber);
+  color: var(--cream);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  animation: fadeIn 0.2s ease-out;
+}
+.yearBanner strong {
+  font-size: 14px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+}
+.yearBannerClear {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cream);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.yearBannerClear:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* ─── Taxonomy + Conservation shared row style ─── */
+.taxonList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.taxonRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.taxonRow {
+  transition: all 0.15s;
+}
+.taxonRow:hover,
+.taxonRowActive {
+  border-color: var(--sage-dk);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.taxonEmoji {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+.iucnDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.taxonName {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  width: 140px;
+  flex-shrink: 0;
+}
+.taxonBar {
+  flex: 1;
+  height: 6px;
+  background: var(--cream);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 40px;
+}
+.taxonBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease-out;
+}
+.taxonCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* ─── No data placeholder ─── */
+.noData {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 24px;
+}
+
+/* ─── Loading shimmer ─── */
+.shimmer {
+  background: linear-gradient(90deg, var(--parchment) 25%, var(--border) 50%, var(--parchment) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+.shimmerCounter {
+  height: 100px;
+}
+.shimmerCard {
+  height: 66px;
+}
+.shimmerChart {
+  height: 180px;
+}
+.shimmerRow {
+  height: 40px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .counters {
+    grid-template-columns: 1fr;
+  }
+  .masonry {
+    columns: 1;
+  }
+  .speciesGrid {
+    grid-template-columns: 1fr;
+  }
+  .taxonName {
+    width: 100px;
+  }
+}
+@media (max-width: 480px) {
+  .counterValue {
+    font-size: 28px;
+  }
+  .seasonBars {
+    height: 120px;
+  }
+}

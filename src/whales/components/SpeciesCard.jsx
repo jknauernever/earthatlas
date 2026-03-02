@@ -12,7 +12,7 @@
 export default function SpeciesCard({ species, totalCount = 1, active, onClick, style, styles }) {
   const likelihood = totalCount > 0 ? species.count / totalCount : 0
   const likelihoodLabel = likelihood > 0.4 ? 'High likelihood' : likelihood > 0.15 ? 'Moderate likelihood' : 'Occasional'
-  const color = species.color || '#4dd9c0'
+  const color = species.color || '#1a5276'
 
   return (
     <div
@@ -43,17 +43,6 @@ export default function SpeciesCard({ species, totalCount = 1, active, onClick, 
           />
         </div>
         <div className={styles.likelihoodLabel}>{likelihoodLabel}</div>
-      </div>
-
-      {species.meta?.fact && (
-        <div className={styles.speciesCardFact}>{species.meta.fact}</div>
-      )}
-
-      <div className={styles.speciesCardMeta}>
-        {species.lastSeen && (
-          <div className={styles.speciesLastSeen}>Last seen {formatDate(species.lastSeen)}</div>
-        )}
-        <div className={styles.speciesSource}>GBIF</div>
       </div>
     </div>
   )

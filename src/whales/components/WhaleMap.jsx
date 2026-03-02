@@ -4,6 +4,14 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
+// Dot colors that signal conservation status → label for popup band
+const STATUS_BY_COLOR = {
+  '#e06868': 'Critically Endangered',
+  '#d87060': 'Endangered',
+  '#d08060': 'Endangered',
+  '#c87060': 'Endangered',
+}
+
 /**
  * WhaleMap — Mapbox GL map for cetacean sightings.
  *
@@ -13,10 +21,12 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
  *   onSightingClick — (sighting) => void  called when a pin is clicked
  *   activeSighting  — id of currently highlighted sighting (optional)
  */
-export default function WhaleMap({ sightings = [], center, onSightingClick, activeSighting }) {
+export default function WhaleMap({ sightings = [], center, activeSpecies }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
-  const markersRef = useRef([])
+  const markersRef = useRef([])  // each entry: { marker, dot, speciesKey }
+  const activeSpeciesRef = useRef(activeSpecies)
+  activeSpeciesRef.current = activeSpecies
 
   // Init map
   useEffect(() => {
@@ -25,7 +35,7 @@ export default function WhaleMap({ sightings = [], center, onSightingClick, acti
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/light-v11',
       center: center ? [center.lng, center.lat] : [-100, 35],
       zoom: center ? 6 : 2,
       attributionControl: false,
@@ -45,67 +55,171 @@ export default function WhaleMap({ sightings = [], center, onSightingClick, acti
     mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
   }, [center?.lat, center?.lng])
 
-  // Render markers
+  // Render markers — only re-create when sightings change
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
     // Remove old markers
-    markersRef.current.forEach(m => m.remove())
+    markersRef.current.forEach(m => m.marker.remove())
     markersRef.current = []
 
     sightings.forEach(s => {
       if (!s.lat || !s.lng) return
 
+      // Outer wrapper for Mapbox positioning (receives transform: translate)
       const el = document.createElement('div')
-      el.style.cssText = `
-        width: 12px; height: 12px;
-        border-radius: 50%;
-        background: ${s.color || '#4dd9c0'};
-        border: 2px solid rgba(255,255,255,0.25);
-        cursor: pointer;
-        transition: transform 0.15s;
-        box-shadow: 0 0 8px ${s.color || '#4dd9c0'}88;
-      `
+      el.style.cssText = `cursor: pointer;`
       el.title = s.common
 
-      el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.6)' })
-      el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)' })
-      el.addEventListener('click', () => onSightingClick?.(s))
+      // Inner dot — safe to transform without overwriting Mapbox's translate
+      const dot = document.createElement('div')
+      const dotColor = s.color || '#1a5276'
+      dot.style.cssText = `
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: ${dotColor};
+        border: 2px solid rgba(255,255,255,0.5);
+        transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s;
+        box-shadow: 0 0 4px ${dotColor}44;
+      `
+      el.appendChild(dot)
 
-      if (activeSighting === s.id) {
-        el.style.transform = 'scale(1.8)'
-        el.style.zIndex = '10'
-        el.style.boxShadow = `0 0 16px ${s.color || '#4dd9c0'}`
-      }
+      el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.6)' })
+      el.addEventListener('mouseleave', () => {
+        const active = activeSpeciesRef.current
+        dot.style.transform = active && s.speciesKey === active ? 'scale(1.4)' : 'scale(1)'
+      })
+
+      // Choose best photo: species curated photo → GBIF occurrence photo → none
+      const photo = s.speciesPhoto || (s.photos && s.photos[0]) || null
+
+      const status = STATUS_BY_COLOR[s.color] || null
+
+      const popup = new mapboxgl.Popup({ offset: 12, className: 'whale-popup', closeButton: false, maxWidth: '280px' })
+        .setHTML(`
+          <div style="
+            font-family:'DM Sans',system-ui,sans-serif;
+            background:#ffffff;
+            color:#1a2332;
+            border-radius:12px;
+            overflow:hidden;
+            width:260px;
+            line-height:1.5;
+          ">
+            ${status ? `<div style="
+              background:${s.color};
+              color:#fff;
+              font-size:10px;
+              font-weight:500;
+              letter-spacing:0.08em;
+              text-transform:uppercase;
+              padding:5px 16px;
+              display:flex;align-items:center;gap:5px;
+            "><span style="font-size:12px">⚠</span> ${status}</div>` : ''}
+            ${photo ? `
+            <div style="position:relative;width:100%;height:200px;overflow:hidden;">
+              <img src="${photo}" alt="${s.common}" style="
+                width:100%;height:100%;object-fit:cover;display:block;
+              " onerror="this.parentElement.style.display='none'" />
+              <div style="
+                position:absolute;bottom:0;left:0;right:0;height:60px;
+                background:linear-gradient(transparent, #ffffff);
+              "></div>
+            </div>` : ''}
+            <div style="padding:14px 16px 16px;">
+              <div style="
+                font-family:'Fraunces',Georgia,serif;
+                font-size:20px;font-weight:400;
+                color:#1a2332;
+                margin-bottom:2px;
+                line-height:1.25;
+              ">${s.emoji || '🐋'} ${s.common}</div>
+              ${s.scientific ? `<div style="
+                font-style:italic;
+                color:#5a6b7a;
+                font-size:12px;
+                margin-bottom:10px;
+              ">${s.scientific}</div>` : ''}
+              ${s.fact ? `<div style="
+                font-size:12px;
+                color:#3d4f5f;
+                line-height:1.5;
+                margin-bottom:12px;
+                border-left:2px solid ${s.color || '#1a5276'}44;
+                padding-left:10px;
+              ">${s.fact}</div>` : ''}
+              <div style="
+                font-size:11px;
+                color:#5a6b7a;
+                display:flex;flex-direction:column;gap:3px;
+              ">
+                ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
+                ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}</div>` : ''}
+                <div style="
+                  margin-top:6px;
+                  font-size:10px;
+                  color:#7a8a96;
+                  text-transform:uppercase;
+                  letter-spacing:0.05em;
+                ">via ${s.source || 'GBIF'}</div>
+              </div>
+            </div>
+          </div>
+        `)
+
+      // Pan the map so the full popup is visible after it opens
+      popup.on('open', () => {
+        requestAnimationFrame(() => {
+          const popupEl = popup.getElement()
+          if (!popupEl) return
+          const mapRect = map.getContainer().getBoundingClientRect()
+          const popupRect = popupEl.getBoundingClientRect()
+          const pad = 20
+          let dx = 0, dy = 0
+
+          if (popupRect.left < mapRect.left + pad)
+            dx = popupRect.left - (mapRect.left + pad)
+          else if (popupRect.right > mapRect.right - pad)
+            dx = popupRect.right - (mapRect.right - pad)
+
+          if (popupRect.top < mapRect.top + pad)
+            dy = popupRect.top - (mapRect.top + pad)
+          else if (popupRect.bottom > mapRect.bottom - pad)
+            dy = popupRect.bottom - (mapRect.bottom - pad)
+
+          if (dx !== 0 || dy !== 0)
+            map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+        })
+      })
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([s.lng, s.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 12, className: 'whale-popup', closeButton: false })
-            .setHTML(`
-              <div style="
-                font-family:'DM Sans',system-ui,sans-serif;
-                background:#0d2545;
-                color:#deeef8;
-                padding:10px 14px;
-                border-radius:10px;
-                font-size:13px;
-                line-height:1.5;
-                min-width:160px;
-              ">
-                <div style="font-family:'Fraunces',Georgia,serif;font-size:15px;font-weight:300;margin-bottom:3px">${s.common}</div>
-                ${s.scientific ? `<div style="font-style:italic;color:rgba(180,215,235,0.55);font-size:11px;margin-bottom:6px">${s.scientific}</div>` : ''}
-                ${s.date ? `<div style="font-size:11px;color:rgba(120,165,195,0.7)">${formatDate(s.date)}</div>` : ''}
-                ${s.place ? `<div style="font-size:11px;color:rgba(120,165,195,0.7)">${s.place}</div>` : ''}
-              </div>
-            `)
-        )
+        .setPopup(popup)
         .addTo(map)
 
-      markersRef.current.push(marker)
+      markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
     })
-  }, [sightings, activeSighting])
+  }, [sightings])
+
+  // Highlight dots matching activeSpecies with a white outline
+  useEffect(() => {
+    markersRef.current.forEach(({ dot, speciesKey }) => {
+      if (!activeSpecies) {
+        dot.style.transform = 'scale(1)'
+        dot.style.border = '2px solid rgba(255,255,255,0.5)'
+        dot.style.boxShadow = 'none'
+      } else if (speciesKey === activeSpecies) {
+        dot.style.transform = 'scale(1.4)'
+        dot.style.border = '2.5px solid #d4a017'
+        dot.style.boxShadow = '0 0 0 2px rgba(212,160,23,0.5), 0 0 8px rgba(212,160,23,0.3)'
+      } else {
+        dot.style.transform = 'scale(1)'
+        dot.style.border = '2px solid rgba(255,255,255,0.5)'
+        dot.style.boxShadow = 'none'
+      }
+    })
+  }, [activeSpecies])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

@@ -1,3 +1,6 @@
+/* ─── Whales sub-app fonts ─── */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap');
+
 /* ─── CSS Variables ─── */
 :root {
   --ink:        #1a1610;
@@ -85,6 +88,19 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
 @keyframes cellFade { 0%,100% { opacity:0.1; } 50% { opacity:1; } }
 
 .spin { animation: spin 0.8s linear infinite; }
+
+/* ─── Whale map popup overrides ─── */
+.whale-popup.mapboxgl-popup .mapboxgl-popup-content {
+  background: transparent;
+  padding: 0;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.whale-popup.mapboxgl-popup .mapboxgl-popup-tip {
+  border-top-color: #ffffff;
+  border-bottom-color: #ffffff;
+}
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 6px; }

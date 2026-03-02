@@ -11,19 +11,21 @@
  *   'patterns' — historical monthly view, scrubbed by month
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import styles from './WhalesApp.module.css'
 
 import WhaleMap from './components/WhaleMap'
 import SpeciesCard from './components/SpeciesCard'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
+import TimeSlider from './components/TimeSlider'
 
 import {
   fetchRecentSightings,
   fetchMonthSightings,
   fetchSeasonalPattern,
   fetchHotlineSightings,
+  fetchINatSightings,
   aggregateSpecies,
 } from './services/whales'
 
@@ -69,6 +71,7 @@ export default function WhalesApp() {
   const [sightings, setSightings]       = useState([])
   const [species, setSpecies]           = useState([])
   const [seasonPattern, setSeasonPattern] = useState([])
+  const [baselinePattern, setBaselinePattern] = useState([]) // all-species pattern
   const [loadingData, setLoadingData]   = useState(false)
   const [dataError, setDataError]       = useState(null)
   const [totalCount, setTotalCount]     = useState(0)
@@ -77,6 +80,7 @@ export default function WhalesApp() {
   const [activeMonth, setActiveMonth]   = useState(null)  // 0-based month index
   const [activeSpecies, setActiveSpecies] = useState(null) // speciesKey
   const [activeSighting, setActiveSighting] = useState(null)
+  const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
 
   // ─── Load data for a location ─────────────────────────────────────────────
   const loadData = useCallback(async (loc) => {
@@ -84,26 +88,30 @@ export default function WhalesApp() {
     setDataError(null)
     setSightings([])
     setSpecies([])
+    setTimeRange({ start: null, end: null })
 
     try {
-      // Fetch recent sightings + seasonal pattern in parallel
-      const [recentResult, patternResult, hotlineResult] = await Promise.allSettled([
+      // Fetch recent sightings + seasonal pattern + iNaturalist in parallel
+      const [recentResult, patternResult, hotlineResult, inatResult] = await Promise.allSettled([
         fetchRecentSightings({ lat: loc.lat, lng: loc.lng }),
         fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng }),
         fetchHotlineSightings(),
+        fetchINatSightings({ lat: loc.lat, lng: loc.lng }),
       ])
 
       const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
       const hotlineSightings = hotlineResult.status === 'fulfilled' ? hotlineResult.value : []
+      const inatSightings = inatResult.status === 'fulfilled' ? inatResult.value : []
       const pattern = patternResult.status === 'fulfilled' ? patternResult.value : []
 
-      // Merge sources, dedupe by coordinates proximity
-      const allSightings = [...recentSightings, ...hotlineSightings]
+      // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
+      const allSightings = [...recentSightings, ...hotlineSightings, ...inatSightings]
       const aggregated = aggregateSpecies(allSightings)
 
       setSightings(allSightings)
       setSpecies(aggregated)
       setSeasonPattern(pattern)
+      setBaselinePattern(pattern)
       setTotalCount(allSightings.length)
       setPhase('explore')
     } catch (err) {
@@ -136,6 +144,20 @@ export default function WhalesApp() {
     if (mode === 'now' && location) loadData(location)
   }, [mode])
 
+  // Fetch per-species seasonal pattern when a species card is clicked
+  useEffect(() => {
+    if (!location) return
+    if (!activeSpecies) {
+      setSeasonPattern(baselinePattern)
+      return
+    }
+    let cancelled = false
+    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: activeSpecies })
+      .then(pattern => { if (!cancelled) setSeasonPattern(pattern) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [activeSpecies, location, baselinePattern])
+
   // ─── Geolocation ──────────────────────────────────────────────────────────
   async function handleLocate() {
     setLocError(null)
@@ -163,6 +185,21 @@ export default function WhalesApp() {
     setPhase('loading')
     await loadData(loc)
   }
+
+  // ─── Filtered sightings (time slider) ────────────────────────────────────
+  const filteredSightings = useMemo(() => {
+    const { start, end } = timeRange
+    if (!start && !end) return sightings
+    return sightings.filter(s => {
+      if (!s.date) return false
+      if (start && s.date < start) return false
+      if (end && s.date > end) return false
+      return true
+    })
+  }, [sightings, timeRange])
+
+  const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings])
+  const filteredCount = filteredSightings.length
 
   // ─── Render: Hero ─────────────────────────────────────────────────────────
   if (phase === 'hero') {
@@ -226,11 +263,11 @@ export default function WhalesApp() {
           </div>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
-          <div style={{ fontSize: 48, animation: 'whaleDrift 3s ease-in-out infinite', display: 'inline-block' }}>🐋</div>
+          <div className={styles.loadingWhale}>🐋</div>
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 300, color: 'var(--text)' }}>
             Scanning the ocean near {location?.name || 'you'}…
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(120,165,195,0.6)', maxWidth: 320, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: '#5a6b7a', maxWidth: 320, textAlign: 'center' }}>
             Querying global biodiversity records and Pacific coast sighting networks
           </div>
         </div>
@@ -283,7 +320,7 @@ export default function WhalesApp() {
           <div className={styles.statusStrip}>
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
-              ? `${totalCount} cetacean sightings in the past 90 days · ${species.length} species`
+              ? `${filteredCount} cetacean sightings${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 90 days'} · ${filteredSpecies.length} species`
               : `Showing historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
@@ -306,16 +343,22 @@ export default function WhalesApp() {
               </div>
               {!loadingData && (
                 <div className={styles.mapSightingCount}>
-                  {totalCount.toLocaleString()} sightings shown
+                  {filteredCount.toLocaleString()} sightings shown
                 </div>
               )}
             </div>
             <WhaleMap
-              sightings={sightings}
+              sightings={filteredSightings}
               center={location}
-              onSightingClick={s => setActiveSighting(s.id)}
-              activeSighting={activeSighting}
+              activeSpecies={activeSpecies}
             />
+            {mode === 'now' && !loadingData && sightings.length > 0 && (
+              <TimeSlider
+                sightings={sightings}
+                value={timeRange}
+                onChange={setTimeRange}
+              />
+            )}
           </div>
 
           {/* Season chart (below map in grid) */}
@@ -340,8 +383,8 @@ export default function WhalesApp() {
               <div className={styles.speciesPanelTitle}>
                 {mode === 'now' ? 'Species seen nearby' : 'Species in this month'}
               </div>
-              {species.length > 0 && (
-                <div className={styles.speciesCount}>{species.length} species</div>
+              {filteredSpecies.length > 0 && (
+                <div className={styles.speciesCount}>{filteredSpecies.length} species</div>
               )}
             </div>
 
@@ -349,7 +392,7 @@ export default function WhalesApp() {
               [0, 1, 2, 3].map(i => (
                 <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
               ))
-            ) : species.length === 0 ? (
+            ) : filteredSpecies.length === 0 ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyStateWhale}>🐋</div>
                 <div className={styles.emptyStateText}>No sightings found nearby</div>
@@ -359,11 +402,11 @@ export default function WhalesApp() {
                 </div>
               </div>
             ) : (
-              species.map((sp, i) => (
+              filteredSpecies.map((sp, i) => (
                 <SpeciesCard
                   key={sp.speciesKey || sp.common}
                   species={sp}
-                  totalCount={totalCount}
+                  totalCount={filteredCount}
                   active={activeSpecies === sp.speciesKey}
                   onClick={() => setActiveSpecies(sp.speciesKey === activeSpecies ? null : sp.speciesKey)}
                   style={{ animationDelay: `${i * 0.07}s` }}
@@ -380,9 +423,9 @@ export default function WhalesApp() {
             Sighting data from{' '}
             <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
             {' · '}
-            <a className={styles.footerLink} href="https://www.whalemuseum.org" target="_blank" rel="noopener">Whale Museum Hotline</a>
+            <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
             {' · '}
-            <a className={styles.footerLink} href="https://www.happywhale.com" target="_blank" rel="noopener">Happywhale</a>
+            <a className={styles.footerLink} href="https://www.whalemuseum.org" target="_blank" rel="noopener">Whale Museum Hotline</a>
           </div>
           <div className={styles.footerText}>
             <a className={styles.footerLink} href="/">EarthAtlas.org</a>

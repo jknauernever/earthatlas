@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
-import { fetchEBirdTaxonomy, fetchEBirdDashboardStats } from '../services/eBird'
+import { fetchEBirdDashboardStats } from '../services/eBird'
 import styles from './EBirdStats.module.css'
 
 const COUNTER_INFO = {
@@ -68,29 +68,13 @@ function getStatsDate(key) {
 
 export default function EBirdStats() {
   const posthog = usePostHog()
-  const [speciesCount, setSpeciesCount] = useState(null)
+  // eBird taxonomy has ~16,900 species; updated annually by Cornell Lab.
+  // No need to download the full taxonomy list just for this counter.
+  const speciesCount = 16900
   const [dashStats, setDashStats] = useState(null)
   const [dateKey, setDateKey] = useState('yesterday') // yesterday usually has more complete data
-  const [loading, setLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(true)
   const [activeInfo, setActiveInfo] = useState(null)
-
-  // Fetch taxonomy count on mount
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const taxonomy = await fetchEBirdTaxonomy()
-        if (!cancelled) setSpeciesCount(taxonomy.length)
-      } catch {
-        // silently fail
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [])
 
   // Fetch regional stats when date changes
   const loadStats = useCallback(async (key) => {
@@ -110,29 +94,12 @@ export default function EBirdStats() {
     loadStats(dateKey)
   }, [dateKey, loadStats])
 
-  if (loading) {
-    return (
-      <div className={styles.wrap}>
-        <div className={styles.counters}>
-          {[0, 1, 2].map(i => (
-            <div key={i} className={`${styles.shimmer} ${styles.shimmerCounter}`} />
-          ))}
-        </div>
-        <div className={styles.regionsList}>
-          {[0, 1, 2, 3, 4, 5].map(i => (
-            <div key={i} className={`${styles.shimmer} ${styles.shimmerRegion}`} />
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={styles.wrap}>
       {/* Stat counters */}
       <div className={styles.counters}>
         <div className={styles.counter}>
-          <div className={styles.counterValue}>{speciesCount ? speciesCount.toLocaleString() : '—'}</div>
+          <div className={styles.counterValue}>{speciesCount.toLocaleString()}+</div>
           <div className={styles.counterLabel}>
             Total Known Species
             <InfoIcon statKey="species" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
@@ -140,7 +107,7 @@ export default function EBirdStats() {
         </div>
         <div className={styles.counter}>
           <div className={styles.counterValue}>
-            {dashStats ? dashStats.totalChecklists.toLocaleString() : '—'}
+            {statsLoading ? '…' : dashStats ? dashStats.totalChecklists.toLocaleString() : '—'}
           </div>
           <div className={styles.counterLabel}>
             {dateKey === 'today' ? "Today's" : "Yesterday's"} Checklists
@@ -149,7 +116,7 @@ export default function EBirdStats() {
         </div>
         <div className={styles.counter}>
           <div className={styles.counterValue}>
-            {dashStats ? dashStats.totalSpecies.toLocaleString() : '—'}
+            {statsLoading ? '…' : dashStats ? dashStats.totalSpecies.toLocaleString() : '—'}
           </div>
           <div className={styles.counterLabel}>
             {dateKey === 'today' ? "Today's" : "Yesterday's"} Species Reported

@@ -18,6 +18,7 @@ import EmptyState       from './components/EmptyState'
 import GlobalStats      from './components/GlobalStats'
 import EBirdStats       from './components/EBirdStats'
 import GBIFStats        from './components/GBIFStats'
+import InsightsDashboard from './components/insights/InsightsDashboard'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
@@ -46,6 +47,11 @@ const MapIcon = () => (
     <line x1="16" y1="6" x2="16" y2="22"/>
   </svg>
 )
+const InsightsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/>
+  </svg>
+)
 
 export default function App() {
   const posthog = usePostHog()
@@ -62,7 +68,7 @@ export default function App() {
   // ─── Search params ─────────────────────────────────────────────
   const [radius,          setRadius]          = useState(5)
   const [timeWindow,      setTimeWindow]      = useState('day')
-  const [perPage,         setPerPage]         = useState(50)
+  const [perPage,         setPerPage]         = useState(200)
   const [selectedSpecies, setSelectedSpecies] = useState(null)
 
   // ─── Results ───────────────────────────────────────────────────
@@ -89,13 +95,18 @@ export default function App() {
     setObservations([])
     setTotalResults(null)
     setError(null)
+    // Set GBIF defaults
+    if (source === 'GBIF') {
+      setRadius(5)
+      setTimeWindow('all')
+    }
     // Clamp params for eBird limits
     if (source === 'eBird') {
       if (radius > 50) setRadius(50)
       if (timeWindow === 'year' || timeWindow === 'all') setTimeWindow('month')
     }
     posthog?.capture('source_changed', { source })
-  }, [dataSource, posthog, radius, timeWindow])
+  }, [dataSource, posthog, radius, timeWindow, view])
 
   // ─── Handle locate ─────────────────────────────────────────────
   const handleLocate = useCallback(async () => {
@@ -255,7 +266,6 @@ export default function App() {
         onSpeciesSelect={setSelectedSpecies}
         radius={radius}           onRadiusChange={setRadius}
         timeWindow={timeWindow}   onTimeChange={setTimeWindow}
-        perPage={perPage}         onPerPageChange={setPerPage}
         canSearch={canSearch}
         onSearch={handleSearch}
         dataSource={dataSource}
@@ -291,6 +301,13 @@ export default function App() {
                 onClick={() => { setView('map'); posthog?.capture('view_changed', { view: 'map' }) }}
                 title="Map view"
               ><MapIcon /></button>
+              {totalResults !== null && (
+                <button
+                  className={`view-btn ${view === 'insights' ? 'active' : ''}`}
+                  onClick={() => { setView('insights'); posthog?.capture('view_changed', { view: 'insights' }) }}
+                  title="Insights"
+                ><InsightsIcon /></button>
+              )}
             </div>
           </div>
         </div>
@@ -309,12 +326,21 @@ export default function App() {
           <EmptyState variant="noResults" />
         ) : error ? (
           <EmptyState variant="error" message={error} />
+        ) : view === 'insights' ? (
+          <InsightsDashboard
+            coords={coords}
+            radiusKm={radius}
+            timeWindow={timeWindow}
+            activeTaxon={activeTaxon}
+            selectedSpecies={selectedSpecies}
+            dataSource={dataSource}
+          />
         ) : view === 'grid' ? (
           <SpeciesGrid observations={filtered} onSelect={setSelectedObs} />
         ) : view === 'list' ? (
           <SpeciesList observations={filtered} onSelect={setSelectedObs} />
         ) : (
-          <MapView observations={filtered} onSelect={setSelectedObs} coords={coords} radiusKm={radius} />
+          <MapView observations={filtered} onSelect={setSelectedObs} coords={coords} radiusKm={radius} dataSource={dataSource} />
         )}
       </main>
 

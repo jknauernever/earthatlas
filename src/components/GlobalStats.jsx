@@ -143,44 +143,27 @@ export default function GlobalStats() {
     loadCountries(countriesTime)
   }, [countriesTime, loadCountries])
 
-  if (loading) {
-    return (
-      <div className={styles.wrap}>
-        <div className={styles.counters}>
-          {[0, 1, 2].map(i => (
-            <div key={i} className={`${styles.shimmer} ${styles.shimmerCounter}`} />
-          ))}
-        </div>
-        <div className={styles.speciesGrid}>
-          {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-            <div key={i} className={`${styles.shimmer} ${styles.shimmerCard}`} />
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={styles.wrap}>
       {/* Stat counters */}
-      {counts && (
+      {(counts || loading) && (
         <div className={styles.counters}>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{counts.totalObs.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : counts.totalObs.toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Total Observations
               <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{counts.totalSpecies.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : counts.totalSpecies.toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Species Documented
               <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{counts.researchGrade.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : counts.researchGrade.toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Research Grade
               <InfoIcon statKey="researchGrade" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />

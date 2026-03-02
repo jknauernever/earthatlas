@@ -6,6 +6,8 @@
  * and merge results in App.jsx.
  */
 
+import { cached } from '../utils/cache'
+
 const INAT_API = 'https://api.inaturalist.org/v1'
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
@@ -34,10 +36,12 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
 }
 
 // ─── Species counts (for summary/stats view later) ───────────────
-export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2 }) {
+export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2, taxonId, iconicTaxa }) {
   const params = new URLSearchParams({
     lat, lng, radius: radiusKm, quality_grade: 'any',
   })
+  if (taxonId) params.set('taxon_id', taxonId)
+  if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
   if (d1) { params.set('d1', d1); params.set('d2', d2 || new Date().toISOString().split('T')[0]) }
 
   const res = await fetch(`${INAT_API}/observations/species_counts?${params}`)
@@ -63,29 +67,34 @@ export async function searchTaxa(query) {
 }
 
 // ─── Global stats (homepage) ──────────────────────────────────────
-export async function fetchGlobalCounts() {
-  const [obsRes, speciesRes, researchRes] = await Promise.all([
-    fetch(`${INAT_API}/observations?per_page=0`),
-    fetch(`${INAT_API}/observations/species_counts?per_page=0`),
-    fetch(`${INAT_API}/observations?quality_grade=research&per_page=0`),
-  ])
-  const [obs, species, research] = await Promise.all([
-    obsRes.json(), speciesRes.json(), researchRes.json(),
-  ])
-  return {
-    totalObs: obs.total_results || 0,
-    totalSpecies: species.total_results || 0,
-    researchGrade: research.total_results || 0,
-  }
+export function fetchGlobalCounts() {
+  return cached('inat:globalCounts', async () => {
+    const [obsRes, speciesRes, researchRes] = await Promise.all([
+      fetch(`${INAT_API}/observations?per_page=0`),
+      fetch(`${INAT_API}/observations/species_counts?per_page=0`),
+      fetch(`${INAT_API}/observations?quality_grade=research&per_page=0`),
+    ])
+    const [obs, species, research] = await Promise.all([
+      obsRes.json(), speciesRes.json(), researchRes.json(),
+    ])
+    return {
+      totalObs: obs.total_results || 0,
+      totalSpecies: species.total_results || 0,
+      researchGrade: research.total_results || 0,
+    }
+  })
 }
 
-export async function fetchTopSpecies(count = 8, { d1, d2 } = {}) {
-  const params = new URLSearchParams({ per_page: count })
-  if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
-  const res = await fetch(`${INAT_API}/observations/species_counts?${params}`)
-  if (!res.ok) throw new Error(`iNaturalist API error: ${res.status}`)
-  const data = await res.json()
-  return data.results || []
+export function fetchTopSpecies(count = 8, { d1, d2 } = {}) {
+  const cacheKey = `inat:topSpecies:${count}:${d1 || 'all'}:${d2 || ''}`
+  return cached(cacheKey, async () => {
+    const params = new URLSearchParams({ per_page: count })
+    if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+    const res = await fetch(`${INAT_API}/observations/species_counts?${params}`)
+    if (!res.ok) throw new Error(`iNaturalist API error: ${res.status}`)
+    const data = await res.json()
+    return data.results || []
+  })
 }
 
 // ─── Top countries by observation count ───────────────────────────
@@ -107,17 +116,20 @@ const COUNTRIES = [
   { placeId: 7142, name: 'Japan',          flag: '🇯🇵' },
 ]
 
-export async function fetchTopCountries({ d1, d2 } = {}) {
-  const results = await Promise.all(
-    COUNTRIES.map(async (c) => {
-      const params = new URLSearchParams({ place_id: c.placeId, per_page: 0 })
-      if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
-      const res = await fetch(`${INAT_API}/observations?${params}`)
-      const data = await res.json()
-      return { ...c, count: data.total_results || 0 }
-    })
-  )
-  return results.sort((a, b) => b.count - a.count).slice(0, 10)
+export function fetchTopCountries({ d1, d2 } = {}) {
+  const cacheKey = `inat:topCountries:${d1 || 'all'}:${d2 || ''}`
+  return cached(cacheKey, async () => {
+    const results = await Promise.all(
+      COUNTRIES.map(async (c) => {
+        const params = new URLSearchParams({ place_id: c.placeId, per_page: 0 })
+        if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+        const res = await fetch(`${INAT_API}/observations?${params}`)
+        const data = await res.json()
+        return { ...c, count: data.total_results || 0 }
+      })
+    )
+    return results.sort((a, b) => b.count - a.count).slice(0, 10)
+  })
 }
 
 // ─── Species observations (for species map modal) ────────────────

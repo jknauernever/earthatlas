@@ -3,6 +3,8 @@
  * Docs: https://documenter.getpostman.com/view/664302/S1ENwy59
  */
 
+import { cached } from '../utils/cache'
+
 const EBIRD_API = 'https://api.ebird.org/v2'
 const INAT_API = 'https://api.inaturalist.org/v1'
 const API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -28,24 +30,25 @@ async function fetchBirdPhoto(sciName) {
 // ─── Taxonomy cache ───────────────────────────────────────────
 let taxonomyCache = null
 
-export async function fetchEBirdTaxonomy() {
-  if (taxonomyCache) return taxonomyCache
-  const res = await fetch(`${EBIRD_API}/ref/taxonomy/ebird?fmt=json&locale=en`, {
-    headers: { 'x-ebirdapitoken': API_KEY },
+export function fetchEBirdTaxonomy() {
+  if (taxonomyCache) return Promise.resolve(taxonomyCache)
+  return cached('ebird:taxonomy', async () => {
+    const res = await fetch(`${EBIRD_API}/ref/taxonomy/ebird?fmt=json&locale=en`, {
+      headers: { 'x-ebirdapitoken': API_KEY },
+    })
+    if (!res.ok) throw new Error(`eBird taxonomy error: ${res.status}`)
+    const data = await res.json()
+    taxonomyCache = data
+      .filter(t => t.category === 'species')
+      .map(t => ({
+        speciesCode: t.speciesCode,
+        comName: t.comName,
+        sciName: t.sciName,
+        familyComName: t.familyComName || '',
+        order: t.order || '',
+      }))
+    return taxonomyCache
   })
-  if (!res.ok) throw new Error(`eBird taxonomy error: ${res.status}`)
-  const data = await res.json()
-  // Only keep species-level entries (category === 'species')
-  taxonomyCache = data
-    .filter(t => t.category === 'species')
-    .map(t => ({
-      speciesCode: t.speciesCode,
-      comName: t.comName,
-      sciName: t.sciName,
-      familyComName: t.familyComName || '',
-      order: t.order || '',
-    }))
-  return taxonomyCache
 }
 
 export function searchEBirdTaxa(query) {
@@ -90,9 +93,12 @@ function normalizeObs(obs, photoUrl) {
       preferred_common_name: obs.comName,
       iconic_taxon_name: 'Aves',
       speciesCode: obs.speciesCode,
+      familyComName: obs.familyComName || '',
+      order: obs.order || '',
     },
     photos: photoUrl ? [{ url: photoUrl }] : [],
     observed_on: obs.obsDt ? obs.obsDt.split(' ')[0] : null,
+    _obsDt: obs.obsDt || null,
     quality_grade: obs.obsValid ? 'research' : 'needs_id',
     place_guess: obs.locName || 'Unknown location',
     geojson: {
@@ -131,25 +137,25 @@ async function fetchRegionStats(code, date) {
   return res.json()
 }
 
-export async function fetchEBirdDashboardStats(date) {
-  // Fetch stats for all regions in parallel
-  const results = await Promise.all(
-    REGIONS.map(async (region) => {
-      const stats = await fetchRegionStats(region.code, date)
-      return stats ? { ...region, ...stats } : null
-    })
-  )
-  const valid = results.filter(Boolean)
+export function fetchEBirdDashboardStats(date) {
+  const key = `ebird:dashStats:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+  return cached(key, async () => {
+    const results = await Promise.all(
+      REGIONS.map(async (region) => {
+        const stats = await fetchRegionStats(region.code, date)
+        return stats ? { ...region, ...stats } : null
+      })
+    )
+    const valid = results.filter(Boolean)
 
-  // Sort by checklists descending
-  valid.sort((a, b) => b.numChecklists - a.numChecklists)
+    valid.sort((a, b) => b.numChecklists - a.numChecklists)
 
-  // Totals across tracked regions
-  const totalChecklists = valid.reduce((s, r) => s + r.numChecklists, 0)
-  const totalContributors = valid.reduce((s, r) => s + r.numContributors, 0)
-  const totalSpecies = valid.reduce((s, r) => s + r.numSpecies, 0)
+    const totalChecklists = valid.reduce((s, r) => s + r.numChecklists, 0)
+    const totalContributors = valid.reduce((s, r) => s + r.numContributors, 0)
+    const totalSpecies = valid.reduce((s, r) => s + r.numSpecies, 0)
 
-  return { regions: valid, totalChecklists, totalContributors, totalSpecies }
+    return { regions: valid, totalChecklists, totalContributors, totalSpecies }
+  })
 }
 
 // ─── Fetch observations ───────────────────────────────────────

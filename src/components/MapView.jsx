@@ -19,7 +19,7 @@ function createCircleGeoJSON(center, radiusKm, points = 64) {
   return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } }
 }
 
-export default function MapView({ observations, onSelect, coords, radiusKm }) {
+export default function MapView({ observations, onSelect, coords, radiusKm, dataSource }) {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])
@@ -98,6 +98,98 @@ export default function MapView({ observations, onSelect, coords, radiusKm }) {
       map.once('load', draw)
     }
   }, [coords, radiusKm])
+
+  // ─── GBIF heatmap density tiles ─────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const cleanup = () => {
+      try {
+        if (map.getLayer('gbif-density-heat')) map.removeLayer('gbif-density-heat')
+        if (map.getSource('gbif-density')) map.removeSource('gbif-density')
+      } catch { /* map may already be removed */ }
+    }
+
+    // Try to add source + layer directly; returns true on success
+    const tryAdd = () => {
+      if (dataSource !== 'GBIF') { cleanup(); return true }
+      if (map.getSource('gbif-density')) return true // already present
+      try {
+        map.addSource('gbif-density', {
+          type: 'vector',
+          tiles: [
+            'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}.mvt'
+          ],
+          maxzoom: 14,
+          attribution: 'GBIF.org',
+        })
+        const beforeLayer = map.getLayer('radius-fill') ? 'radius-fill' : undefined
+        map.addLayer({
+          id: 'gbif-density-heat',
+          type: 'heatmap',
+          source: 'gbif-density',
+          'source-layer': 'occurrence',
+          paint: {
+            // Weight: only very high counts push toward 1
+            'heatmap-weight': [
+              'interpolate', ['linear'], ['get', 'total'],
+              1, 0.02,
+              500, 0.15,
+              5000, 0.4,
+              100000, 1,
+            ],
+            // Tight radius so blobs don't merge into a wall
+            'heatmap-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              2, 3,
+              5, 5,
+              8, 8,
+              12, 12,
+            ],
+            // Low intensity — let the data speak
+            'heatmap-intensity': [
+              'interpolate', ['linear'], ['zoom'],
+              2, 0.15,
+              6, 0.25,
+              10, 0.4,
+              14, 0.5,
+            ],
+            // Transparent → light blue → deep blue
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0,    'rgba(0,0,0,0)',
+              0.1,  'rgba(170,210,240,0.25)',
+              0.3,  'rgba(100,165,220,0.4)',
+              0.5,  'rgba(80,100,190,0.55)',
+              0.7,  'rgba(70,40,150,0.7)',
+              1,    'rgba(45,10,100,0.85)',
+            ],
+            'heatmap-opacity': 0.8,
+          },
+        }, beforeLayer)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    // Attempt immediately — if style isn't ready, the addSource will throw and we retry
+    if (tryAdd()) return () => cleanup()
+
+    // Style not ready — retry on load event + poll as safety net
+    const onLoad = () => { if (tryAdd()) clearInterval(poll) }
+    map.once('load', onLoad)
+    const poll = setInterval(() => {
+      if (tryAdd()) { map.off('load', onLoad); clearInterval(poll) }
+    }, 300)
+
+    return () => {
+      cleanup()
+      map.off('load', onLoad)
+      clearInterval(poll)
+    }
+  }, [dataSource])
 
   // ─── Plot markers when observations change ───────────────────
   useEffect(() => {

@@ -11,6 +11,8 @@
  * Attribution: Data from GBIF.org — CC BY 4.0
  */
 
+import { cached } from '../utils/cache'
+
 const GBIF_API = 'https://api.gbif.org/v1'
 
 // ─── Iconic taxon mapping (GBIF class/kingdom → iNaturalist iconic name) ──────
@@ -45,22 +47,33 @@ function deriveIconicTaxon(gbifClass, gbifKingdom) {
   return null
 }
 
-// ─── Map iconic taxon filter → GBIF query param ───────────────────────────────
-function iconicTaxonToGBIFParam(iconicTaxa) {
-  const classMap = {
-    Aves:            { key: 'class',   val: 'Aves'       },
-    Mammalia:        { key: 'class',   val: 'Mammalia'   },
-    Reptilia:        { key: 'class',   val: 'Reptilia'   },
-    Amphibia:        { key: 'class',   val: 'Amphibia'   },
-    Insecta:         { key: 'class',   val: 'Insecta'    },
-    Arachnida:       { key: 'class',   val: 'Arachnida'  },
-    Actinopterygii:  { key: 'class',   val: 'Actinopterygii' },
-    Mollusca:        { key: 'phylum',  val: 'Mollusca'   },
-    Plantae:         { key: 'kingdom', val: 'Plantae'    },
-    Fungi:           { key: 'kingdom', val: 'Fungi'      },
-    Chromista:       { key: 'kingdom', val: 'Chromista'  },
+// ─── Map iconic taxon filter → GBIF backbone taxonKey(s) ─────────────────────
+// GBIF uses numeric backbone taxonomy keys, not text names.
+// Reptilia is paraphyletic in GBIF — use Squamata + Testudines + Crocodylia.
+const ICONIC_TO_TAXON_KEYS = {
+  Aves:           [212],
+  Mammalia:       [359],
+  Reptilia:       [11592253, 11418114, 11493978], // Squamata, Testudines, Crocodylia
+  Amphibia:       [131],
+  Insecta:        [216],
+  Arachnida:      [367],
+  Actinopterygii: [204],
+  Mollusca:       [52],
+  Plantae:        [6],
+  Fungi:          [5],
+  Chromista:      [4],
+}
+
+// ─── Bounding box helper ─────────────────────────────────────────────────────
+function getBoundingBox(lat, lng, radiusKm) {
+  const latDelta = radiusKm / 111
+  const lngDelta = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)))
+  return {
+    minLat: (lat - latDelta).toFixed(6),
+    maxLat: (lat + latDelta).toFixed(6),
+    minLng: (lng - lngDelta).toFixed(6),
+    maxLng: (lng + lngDelta).toFixed(6),
   }
-  return classMap[iconicTaxa] || null
 }
 
 // ─── Normalize a GBIF occurrence to iNaturalist observation shape ─────────────
@@ -117,21 +130,13 @@ export async function fetchGBIFOccurrences({
   taxonKey,
   iconicTaxa,
 }) {
-  // Convert radius to a bounding box
-  // 1° lat ≈ 111 km; 1° lng ≈ 111 km × cos(lat)
-  const latDelta = radiusKm / 111
-  const lngDelta = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)))
-
-  const minLat = lat - latDelta
-  const maxLat = lat + latDelta
-  const minLng = lng - lngDelta
-  const maxLng = lng + lngDelta
+  const bb = getBoundingBox(lat, lng, radiusKm)
 
   const params = new URLSearchParams({
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${minLat.toFixed(6)},${maxLat.toFixed(6)}`,
-    decimalLongitude: `${minLng.toFixed(6)},${maxLng.toFixed(6)}`,
+    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
+    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
     limit: Math.min(perPage, 300),
     offset: 0,
   })
@@ -144,9 +149,10 @@ export async function fetchGBIFOccurrences({
     params.set('taxonKey', taxonKey)
   }
 
-  if (iconicTaxa) {
-    const mapped = iconicTaxonToGBIFParam(iconicTaxa)
-    if (mapped) params.set(mapped.key, mapped.val)
+  // Iconic taxon filter — append taxonKey(s) from backbone taxonomy
+  if (iconicTaxa && !taxonKey) {
+    const keys = ICONIC_TO_TAXON_KEYS[iconicTaxa]
+    if (keys) keys.forEach(k => params.append('taxonKey', k))
   }
 
   const res = await fetch(`${GBIF_API}/occurrence/search?${params}`)
@@ -184,17 +190,19 @@ export async function searchGBIFTaxa(query) {
 
 // ─── Dashboard stats ─────────────────────────────────────────────────────────
 
-export async function fetchGBIFGlobalStats() {
-  const [countRes, speciesRes, datasetRes] = await Promise.all([
-    fetch(`${GBIF_API}/occurrence/count`).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(`${GBIF_API}/species/search?limit=0&rank=SPECIES&status=ACCEPTED`).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(`${GBIF_API}/dataset/search?limit=0`).then(r => r.ok ? r.json() : null).catch(() => null),
-  ])
-  return {
-    totalOccurrences: countRes || 0,
-    totalSpecies: speciesRes?.count || 0,
-    totalDatasets: datasetRes?.count || 0,
-  }
+export function fetchGBIFGlobalStats() {
+  return cached('gbif:globalStats', async () => {
+    const [countRes, speciesRes, datasetRes] = await Promise.all([
+      fetch(`${GBIF_API}/occurrence/count`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${GBIF_API}/species/search?limit=0&rank=SPECIES&status=ACCEPTED`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${GBIF_API}/dataset/search?limit=0`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ])
+    return {
+      totalOccurrences: countRes || 0,
+      totalSpecies: speciesRes?.count || 0,
+      totalDatasets: datasetRes?.count || 0,
+    }
+  })
 }
 
 const COUNTRY_NAMES = {
@@ -215,19 +223,21 @@ const COUNTRY_FLAGS = {
   JAPAN:'🇯🇵',ITALY:'🇮🇹',
 }
 
-export async function fetchGBIFTopCountries(limit = 12) {
-  const res = await fetch(`${GBIF_API}/occurrence/counts/countries`)
-  if (!res.ok) return []
-  const data = await res.json()
-  return Object.entries(data)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([code, count]) => ({
-      code,
-      name: COUNTRY_NAMES[code] || code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
-      flag: COUNTRY_FLAGS[code] || '🌍',
-      count,
-    }))
+export function fetchGBIFTopCountries(limit = 12) {
+  return cached(`gbif:topCountries:${limit}`, async () => {
+    const res = await fetch(`${GBIF_API}/occurrence/counts/countries`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return Object.entries(data)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([code, count]) => ({
+        code,
+        name: COUNTRY_NAMES[code] || code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
+        flag: COUNTRY_FLAGS[code] || '🌍',
+        count,
+      }))
+  })
 }
 
 const KINGDOM_KEYS = [
@@ -238,14 +248,127 @@ const KINGDOM_KEYS = [
   { key: 4, name: 'Chromista', emoji: '🔬' },
 ]
 
-export async function fetchGBIFKingdomCounts() {
-  const results = await Promise.all(
-    KINGDOM_KEYS.map(async (k) => {
-      const res = await fetch(`${GBIF_API}/occurrence/search?limit=0&taxonKey=${k.key}`)
-      if (!res.ok) return { ...k, count: 0 }
-      const data = await res.json()
-      return { ...k, count: data.count || 0 }
+export function fetchGBIFKingdomCounts() {
+  return cached('gbif:kingdomCounts', async () => {
+    const results = await Promise.all(
+      KINGDOM_KEYS.map(async (k) => {
+        const res = await fetch(`${GBIF_API}/occurrence/search?limit=0&taxonKey=${k.key}`)
+        if (!res.ok) return { ...k, count: 0 }
+        const data = await res.json()
+        return { ...k, count: data.count || 0 }
+      })
+    )
+    return results.sort((a, b) => b.count - a.count)
+  })
+}
+
+// ─── Faceted aggregation queries (for Insights dashboard) ────────────────────
+
+export async function fetchGBIFFacets({ lat, lng, radiusKm, d1, d2, taxonKey, iconicTaxa }) {
+  const bb = getBoundingBox(lat, lng, radiusKm)
+
+  const params = new URLSearchParams({
+    hasCoordinate: 'true',
+    occurrenceStatus: 'PRESENT',
+    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
+    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
+    limit: '0',
+    facetLimit: '50',
+  })
+
+  // Add all facets in one request
+  for (const f of ['speciesKey', 'year', 'month', 'classKey', 'iucnRedListCategory', 'basisOfRecord']) {
+    params.append('facet', f)
+  }
+  // High limit to count total unique species; we'll slice top 20 for display
+  params.set('speciesKey.facetLimit', '100000')
+
+  if (d1) params.set('eventDate', `${d1},${d2 || new Date().toISOString().split('T')[0]}`)
+  if (taxonKey) params.set('taxonKey', taxonKey)
+  if (iconicTaxa && !taxonKey) {
+    const keys = ICONIC_TO_TAXON_KEYS[iconicTaxa]
+    if (keys) keys.forEach(k => params.append('taxonKey', k))
+  }
+
+  const res = await fetch(`${GBIF_API}/occurrence/search?${params}`)
+  if (!res.ok) throw new Error(`GBIF facets error: ${res.status}`)
+  const data = await res.json()
+
+  const facetMap = {}
+  for (const f of (data.facets || [])) {
+    facetMap[f.field] = f.counts.map(c => ({ name: c.name, count: c.count }))
+  }
+
+  const allSpeciesKeys = facetMap.SPECIES_KEY || []
+
+  return {
+    totalCount: data.count || 0,
+    totalSpecies: allSpeciesKeys.length,
+    speciesKeys: allSpeciesKeys.slice(0, 20), // top 20 for display
+    years: facetMap.YEAR || [],
+    months: facetMap.MONTH || [],
+    classKeys: facetMap.CLASS_KEY || [],
+    iucnCategories: facetMap.IUCN_RED_LIST_CATEGORY || [],
+    basisOfRecord: facetMap.BASIS_OF_RECORD || [],
+  }
+}
+
+// ─── Resolve species names from GBIF backbone keys ──────────────────────────
+
+const INAT_API = 'https://api.inaturalist.org/v1'
+
+export async function resolveSpeciesNames(speciesKeys) {
+  return Promise.all(
+    speciesKeys.map(async ({ name: key, count }) => {
+      try {
+        const res = await fetch(`${GBIF_API}/species/${key}`)
+        if (!res.ok) return { key, count, scientificName: 'Unknown', commonName: null, iconicTaxon: null }
+        const d = await res.json()
+        return {
+          key: d.key,
+          count,
+          scientificName: d.canonicalName || d.scientificName || 'Unknown',
+          commonName: d.vernacularName || null,
+          iconicTaxon: deriveIconicTaxon(d.class, d.kingdom),
+        }
+      } catch {
+        return { key, count, scientificName: 'Unknown', commonName: null, iconicTaxon: null }
+      }
     })
   )
-  return results.sort((a, b) => b.count - a.count)
+}
+
+export async function resolveClassNames(classKeys) {
+  return Promise.all(
+    classKeys.map(async ({ name: key, count }) => {
+      try {
+        const res = await fetch(`${GBIF_API}/species/${key}`)
+        if (!res.ok) return { key, count, name: `Class ${key}`, iconicTaxon: null }
+        const d = await res.json()
+        return {
+          key: d.key,
+          count,
+          name: d.canonicalName || d.scientificName || `Class ${key}`,
+          iconicTaxon: deriveIconicTaxon(d.canonicalName, d.kingdom),
+        }
+      } catch {
+        return { key, count, name: `Class ${key}`, iconicTaxon: null }
+      }
+    })
+  )
+}
+
+export async function fetchSpeciesPhotos(speciesList) {
+  return Promise.all(
+    speciesList.map(async (s) => {
+      try {
+        const res = await fetch(`${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(s.scientificName)}&per_page=1`)
+        if (!res.ok) return { ...s, photoUrl: null }
+        const data = await res.json()
+        return { ...s, photoUrl: data.results?.[0]?.default_photo?.square_url || null }
+      } catch {
+        return { ...s, photoUrl: null }
+      }
+    })
+  )
 }

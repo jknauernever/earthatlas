@@ -24,7 +24,6 @@ import {
   fetchRecentSightings,
   fetchMonthSightings,
   fetchSeasonalPattern,
-  fetchHotlineSightings,
   fetchINatSightings,
   aggregateSpecies,
 } from './services/whales'
@@ -92,20 +91,19 @@ export default function WhalesApp() {
 
     try {
       // Fetch recent sightings + seasonal pattern + iNaturalist in parallel
-      const [recentResult, patternResult, hotlineResult, inatResult] = await Promise.allSettled([
+      // Note: Whale Museum Hotline API (hotline.whalemuseum.org) is offline as of March 2026
+      const [recentResult, patternResult, inatResult] = await Promise.allSettled([
         fetchRecentSightings({ lat: loc.lat, lng: loc.lng }),
         fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng }),
-        fetchHotlineSightings(),
         fetchINatSightings({ lat: loc.lat, lng: loc.lng }),
       ])
 
       const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
-      const hotlineSightings = hotlineResult.status === 'fulfilled' ? hotlineResult.value : []
       const inatSightings = inatResult.status === 'fulfilled' ? inatResult.value : []
       const pattern = patternResult.status === 'fulfilled' ? patternResult.value : []
 
       // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
-      const allSightings = [...recentSightings, ...hotlineSightings, ...inatSightings]
+      const allSightings = [...recentSightings, ...inatSightings]
       const aggregated = aggregateSpecies(allSightings)
 
       setSightings(allSightings)
@@ -433,8 +431,6 @@ export default function WhalesApp() {
             <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
             {' · '}
             <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
-            {' · '}
-            <a className={styles.footerLink} href="https://www.whalemuseum.org" target="_blank" rel="noopener">Whale Museum Hotline</a>
           </div>
           <div className={styles.footerText}>
             <a className={styles.footerLink} href="/">EarthAtlas.org</a>

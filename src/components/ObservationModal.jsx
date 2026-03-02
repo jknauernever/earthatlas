@@ -65,7 +65,21 @@ export default function ObservationModal({ obs, onClose }) {
     },
     isGBIF && {
       label: 'Data Source',
-      value: 'GBIF — Global Biodiversity Information Facility',
+      value: obs.datasetName || 'GBIF — Global Biodiversity Information Facility',
+    },
+    isGBIF && obs.basisOfRecord && {
+      label: 'Record Type',
+      value: ({
+        HUMAN_OBSERVATION: 'Human Observation',
+        PRESERVED_SPECIMEN: 'Museum Specimen',
+        MACHINE_OBSERVATION: 'Machine Observation',
+        OBSERVATION: 'Observation',
+        FOSSIL_SPECIMEN: 'Fossil Specimen',
+        LIVING_SPECIMEN: 'Living Specimen',
+        MATERIAL_SAMPLE: 'Material Sample',
+        LITERATURE: 'Literature',
+        MATERIAL_CITATION: 'Material Citation',
+      })[obs.basisOfRecord] || obs.basisOfRecord,
     },
   ].filter(Boolean)
 

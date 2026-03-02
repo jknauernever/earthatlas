@@ -10,6 +10,7 @@
  *   months:          [{ name, count }] | null,       — GBIF + eBird
  *   iucnCategories:  [{ name, count }] | null,       — GBIF only
  *   basisOfRecord:   [{ name, count }] | null,       — GBIF only
+ *   datasets:        [{ name, count }] | null,       — GBIF only
  *
  *   // Species: ready to render (commonName, scientificName, count, iconicTaxon, photoUrl)
  *   species:         [...] | null,
@@ -21,7 +22,7 @@
  * }
  */
 
-import { fetchGBIFFacets, resolveSpeciesNames, resolveClassNames, fetchSpeciesPhotos } from './gbif'
+import { fetchGBIFFacets, resolveSpeciesNames, resolveClassNames, resolveDatasetNames, fetchSpeciesPhotos } from './gbif'
 import { fetchObservations, fetchSpeciesCounts } from './iNaturalist'
 import { fetchEBirdObservations } from './eBird'
 import { getDateRangeStart } from '../utils/taxon'
@@ -42,10 +43,12 @@ async function fetchGBIFInsights(params) {
     months: facets.months,
     iucnCategories: facets.iucnCategories,
     basisOfRecord: facets.basisOfRecord,
+    datasets: facets.datasets,
     species: null,          // resolved progressively
     _speciesKeys: facets.speciesKeys,
     classes: null,          // resolved progressively
     _classKeys: facets.classKeys,
+    _datasetKeys: facets.datasets,
   }
 }
 
@@ -248,6 +251,13 @@ export async function resolveGBIFSpeciesPhotos(speciesList) {
  */
 export async function resolveGBIFClasses(classKeys) {
   return resolveClassNames(classKeys)
+}
+
+/**
+ * Progressive resolution for GBIF dataset keys.
+ */
+export async function resolveGBIFDatasets(datasetKeys) {
+  return resolveDatasetNames(datasetKeys)
 }
 
 /**

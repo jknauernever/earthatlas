@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchInsightsData, resolveGBIFSpecies, resolveGBIFSpeciesPhotos, resolveGBIFClasses } from '../../services/insights'
+import { fetchInsightsData, resolveGBIFSpecies, resolveGBIFSpeciesPhotos, resolveGBIFClasses, resolveGBIFDatasets } from '../../services/insights'
 import { fetchGBIFFacets } from '../../services/gbif'
 import { getDateRangeStart } from '../../utils/taxon'
 import TopSpecies from './TopSpecies'
@@ -8,6 +8,8 @@ import YearTrendChart from './YearTrendChart'
 import RecentTrendChart from './RecentTrendChart'
 import TaxonomyBreakdown from './TaxonomyBreakdown'
 import ConservationStatus from './ConservationStatus'
+import DataSources from './DataSources'
+import RecordTypes from './RecordTypes'
 import SpeciesDetailModal from './SpeciesDetailModal'
 import styles from './Insights.module.css'
 
@@ -15,9 +17,11 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
   const [data, setData] = useState(null)
   const [species, setSpecies] = useState(null)
   const [classes, setClasses] = useState(null)
+  const [datasets, setDatasets] = useState(null)
   const [loading, setLoading] = useState(true)
   const [speciesLoading, setSpeciesLoading] = useState(true)
   const [classesLoading, setClassesLoading] = useState(true)
+  const [datasetsLoading, setDatasetsLoading] = useState(true)
   const [selectedYear, setSelectedYear] = useState(null)
   const [focusedSpecies, setFocusedSpecies] = useState(null)
   const fetchId = useRef(0)
@@ -30,9 +34,11 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
     setLoading(true)
     setSpeciesLoading(true)
     setClassesLoading(true)
+    setDatasetsLoading(true)
     setData(null)
     setSpecies(null)
     setClasses(null)
+    setDatasets(null)
     setSelectedYear(null)
 
     const d1 = getDateRangeStart(timeWindow)
@@ -89,11 +95,22 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
       } else {
         setClassesLoading(false)
       }
+
+      // GBIF: progressive dataset resolution
+      if (result._datasetKeys?.length > 0) {
+        const resolved = await resolveGBIFDatasets(result._datasetKeys)
+        if (id !== fetchId.current) return
+        setDatasets(resolved)
+        setDatasetsLoading(false)
+      } else {
+        setDatasetsLoading(false)
+      }
     }).catch(() => {
       if (id !== fetchId.current) return
       setLoading(false)
       setSpeciesLoading(false)
       setClassesLoading(false)
+      setDatasetsLoading(false)
     })
   }, [coords, radiusKm, timeWindow, activeTaxon, selectedSpecies, dataSource])
 
@@ -112,6 +129,7 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
 
     setSpeciesLoading(true)
     setClassesLoading(true)
+    setDatasetsLoading(true)
 
     fetchGBIFFacets({
       lat: coords.lat,
@@ -130,6 +148,7 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
         months: facetData.months,
         iucnCategories: facetData.iucnCategories,
         basisOfRecord: facetData.basisOfRecord,
+        datasets: facetData.datasets,
       }))
 
       if (facetData.speciesKeys.length > 0) {
@@ -154,10 +173,21 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
         setClasses([])
         setClassesLoading(false)
       }
+
+      if (facetData.datasets?.length > 0) {
+        const resolved = await resolveGBIFDatasets(facetData.datasets)
+        if (id !== fetchId.current) return
+        setDatasets(resolved)
+        setDatasetsLoading(false)
+      } else {
+        setDatasets([])
+        setDatasetsLoading(false)
+      }
     }).catch(() => {
       if (id !== fetchId.current) return
       setSpeciesLoading(false)
       setClassesLoading(false)
+      setDatasetsLoading(false)
     })
   }, [selectedYear]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -298,6 +328,28 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
               {selectedYear ? `IUCN categories in ${selectedYear}` : 'IUCN Red List categories'}
             </p>
             <ConservationStatus categories={data?.iucnCategories} loading={loading} />
+          </div>
+        )}
+
+        {/* Data Sources — GBIF only */}
+        {(datasets != null || data?._datasetKeys != null || (loading && dataSource === 'GBIF')) && (
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Data Sources</h2>
+            <p className={styles.cardSub}>
+              {selectedYear ? `Top contributing datasets in ${selectedYear}` : 'Top contributing datasets'}
+            </p>
+            <DataSources datasets={datasets} loading={datasetsLoading} />
+          </div>
+        )}
+
+        {/* Record Types — GBIF only */}
+        {(data?.basisOfRecord != null || (loading && dataSource === 'GBIF')) && (
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Record Types</h2>
+            <p className={styles.cardSub}>
+              {selectedYear ? `How observations were made in ${selectedYear}` : 'How observations were made'}
+            </p>
+            <RecordTypes basisOfRecord={data?.basisOfRecord} loading={loading} />
           </div>
         )}
       </div>

@@ -119,6 +119,9 @@ function normalizeOccurrence(occ) {
     },
     num_identification_agreements: null,
     num_identification_disagreements: null,
+    datasetName: occ.datasetName || null,
+    basisOfRecord: occ.basisOfRecord || null,
+    institutionCode: occ.institutionCode || null,
   }
 }
 
@@ -277,7 +280,7 @@ export async function fetchGBIFFacets({ lat, lng, radiusKm, d1, d2, taxonKey, ic
   })
 
   // Add all facets in one request
-  for (const f of ['speciesKey', 'year', 'month', 'classKey', 'iucnRedListCategory', 'basisOfRecord']) {
+  for (const f of ['speciesKey', 'year', 'month', 'classKey', 'iucnRedListCategory', 'basisOfRecord', 'datasetKey']) {
     params.append('facet', f)
   }
   // High limit to count total unique species; we'll slice top 20 for display
@@ -310,6 +313,7 @@ export async function fetchGBIFFacets({ lat, lng, radiusKm, d1, d2, taxonKey, ic
     classKeys: facetMap.CLASS_KEY || [],
     iucnCategories: facetMap.IUCN_RED_LIST_CATEGORY || [],
     basisOfRecord: facetMap.BASIS_OF_RECORD || [],
+    datasets: facetMap.DATASET_KEY || [],
   }
 }
 
@@ -353,6 +357,26 @@ export async function resolveClassNames(classKeys) {
         }
       } catch {
         return { key, count, name: `Class ${key}`, iconicTaxon: null }
+      }
+    })
+  )
+}
+
+export async function resolveDatasetNames(datasetKeys) {
+  return Promise.all(
+    datasetKeys.slice(0, 15).map(async ({ name: key, count }) => {
+      try {
+        const res = await fetch(`${GBIF_API}/dataset/${key}`)
+        if (!res.ok) return { key, count, title: key, publishingOrganization: null }
+        const d = await res.json()
+        return {
+          key: d.key,
+          count,
+          title: d.title || key,
+          publishingOrganization: d.publishingOrganization?.title || null,
+        }
+      } catch {
+        return { key, count, title: key, publishingOrganization: null }
       }
     })
   )

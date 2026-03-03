@@ -445,7 +445,7 @@ export default function WhalesApp() {
         {/* Content grid */}
         <div className={styles.contentGrid}>
           {/* Map */}
-          <div className={styles.mapWrap}>
+          <div className={styles.mapWrap} style={!(mode === 'now' && !loadingData && sightings.length > 0) ? {borderRadius:'var(--radius-lg)', borderBottom:'1px solid var(--border)'} : {}}>
             <div className={styles.mapOverlay}>
               <div className={styles.mapBadge}>
                 <div className={styles.mapBadgeDot} />

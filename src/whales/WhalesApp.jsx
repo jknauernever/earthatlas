@@ -521,22 +521,22 @@ export default function WhalesApp() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={styles.whalesFooter}>
-          <div className={styles.footerText}>
-            Sighting data from{' '}
-            <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
-            {' · '}
-            <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
-          </div>
-          <div className={styles.footerText}>
-            <a className={styles.footerLink} href="/">EarthAtlas.org</a>
-          </div>
-          <div className={styles.footerBuiltBy}>
-            Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
-          </div>
+      </div>{/* end mainLayout */}
+
+      <footer className={styles.whalesFooter}>
+        <div className={styles.footerText}>
+          Sighting data from{' '}
+          <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
+          {' · '}
+          <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
         </div>
-      </div>
+        <div className={styles.footerText}>
+          <a className={styles.footerLink} href="/">EarthAtlas.org</a>
+        </div>
+        <div className={styles.footerBuiltBy}>
+          Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+        </div>
+      </footer>
     </div>
   )
 }

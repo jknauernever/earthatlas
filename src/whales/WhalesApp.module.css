@@ -895,10 +895,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 28px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: sticky;
   top: 0;
-  background: rgba(255, 255, 255, 0.92);
+  background: #030c18;
   backdrop-filter: blur(16px);
   z-index: 50;
 }
@@ -915,31 +915,31 @@
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--sage-dk);
+  color: #4dd9c0;
 }
 .navTitle {
-  font-family: var(--font-serif);
+  font-family: var(--serif);
   font-size: clamp(20px, 3vw, 28px);
   font-weight: 700;
   line-height: 1;
-  color: var(--text);
+  color: #f0f8ff;
 }
-.navTitle em { font-style: italic; color: var(--amber-lt); }
+.navTitle em { font-style: italic; color: #f0c060; }
 .navAccent {
   font-weight: 300;
   font-style: italic;
-  color: var(--glow);
+  color: #4dd9c0;
   font-size: 0.75em;
 }
 
 .navHomeLink {
   font-size: 12px;
-  color: var(--text-muted);
+  color: rgba(200, 230, 248, 0.55);
   text-decoration: none;
   letter-spacing: 0.08em;
   transition: color 0.15s;
 }
-.navHomeLink:hover { color: var(--glow); }
+.navHomeLink:hover { color: #4dd9c0; }
 
 /* ─── Mode toggle ────────────────────────────────────────────────────────────── */
 .modeBar {
@@ -989,9 +989,9 @@
 
 /* ─── Footer ─────────────────────────────────────────────────────────────────── */
 .whalesFooter {
-  margin-top: 80px;
-  padding: 32px 0;
-  border-top: 1px solid var(--border);
+  padding: 28px 48px;
+  background: #030c18;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1000,25 +1000,25 @@
 }
 .footerText {
   font-size: 12px;
-  color: var(--text-muted);
+  color: rgba(200, 230, 248, 0.45);
 }
 .footerLink {
-  color: var(--text-muted);
+  color: rgba(200, 230, 248, 0.45);
   text-decoration: none;
   transition: color 0.15s;
 }
-.footerLink:hover { color: var(--glow); }
+.footerLink:hover { color: #4dd9c0; }
 .footerBuiltBy {
   width: 100%;
   text-align: center;
-  margin-top: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(200, 230, 248, 0.3);
   letter-spacing: 0.04em;
 }
 .footerBuiltBy a {
-  color: var(--text);
+  color: rgba(200, 230, 248, 0.3);
   text-decoration: none;
 }
-.footerBuiltBy a:hover { text-decoration: underline; }
+.footerBuiltBy a:hover { color: #4dd9c0; }

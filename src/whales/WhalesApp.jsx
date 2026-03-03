@@ -301,12 +301,14 @@ export default function WhalesApp() {
   if (phase === 'hero') {
     return (
       <div className={styles.whalesApp}>
-        <nav className={`${styles.whalesNav} ${styles.whalesNavHero}`}>
-          <a href="/whales" className={styles.navWordmark}>
-            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
-          </a>
-          <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
-        </nav>
+        <header className={styles.whalesNavWrapper}>
+          <nav className={`${styles.whalesNav} ${styles.whalesNavHero}`}>
+            <a href="/whales" className={styles.navWordmark}>
+              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+            </a>
+            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+          </nav>
+        </header>
 
         <div className={styles.hero}>
           <div className={styles.heroBgPhoto} />
@@ -362,11 +364,19 @@ export default function WhalesApp() {
   if (phase === 'loading') {
     return (
       <div className={styles.whalesApp}>
-        <nav className={styles.whalesNav}>
-          <a href="/whales" className={styles.navLogo} style={{ textDecoration: 'none', color: 'inherit' }}>
-            EarthAtlas <span className={styles.navLogoAccent}> / Whales</span>
-          </a>
-        </nav>
+        <header className={styles.whalesNavWrapper}>
+          <nav className={styles.whalesNav}>
+            <a href="/whales" className={styles.navWordmark}>
+              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+            </a>
+            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+          </nav>
+          <div className={styles.navWave}>
+            <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+              <path d="M0 14 C200 0,400 28,600 14 C800 0,1000 28,1200 14 C1300 7,1380 20,1440 14 L1440 32 L0 32 Z" fill="#f2f4f7"/>
+            </svg>
+          </div>
+        </header>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
           <div className={styles.loadingWhale}>🐋</div>
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 300, color: 'var(--text)' }}>
@@ -385,12 +395,19 @@ export default function WhalesApp() {
 
   return (
     <div className={styles.whalesApp}>
-      <nav className={styles.whalesNav}>
-        <a href="/whales" className={styles.navWordmark}>
-          <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
-        </a>
-        <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
-      </nav>
+      <header className={styles.whalesNavWrapper}>
+        <nav className={styles.whalesNav}>
+          <a href="/whales" className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+          </a>
+          <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+        </nav>
+        <div className={styles.navWave}>
+          <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0 14 C200 0,400 28,600 14 C800 0,1000 28,1200 14 C1300 7,1380 20,1440 14 L1440 32 L0 32 Z" fill="#f2f4f7"/>
+          </svg>
+        </div>
+      </header>
 
       <div className={styles.mainLayout}>
         {/* Topbar */}
@@ -530,6 +547,12 @@ export default function WhalesApp() {
         </div>
 
       </div>{/* end mainLayout */}
+
+      <div className={styles.footerWave}>
+        <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d="M0 18 C200 32,400 4,600 18 C800 32,1000 4,1200 18 C1300 25,1380 12,1440 18 L1440 0 L0 0 Z" fill="#f2f4f7"/>
+        </svg>
+      </div>
 
       <footer className={styles.whalesFooter}>
         <div className={styles.footerText}>

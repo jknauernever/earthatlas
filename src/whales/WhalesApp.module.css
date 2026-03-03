@@ -1051,7 +1051,7 @@
   color: #4dd9c0;
 }
 .navTitle {
-  font-family: var(--serif);
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(20px, 3vw, 28px);
   font-weight: 700;
   line-height: 1;

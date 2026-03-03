@@ -99,7 +99,7 @@ export default function WhalesApp() {
   const [phase, setPhase] = useState(hasUrlCoords ? 'loading' : 'hero')
 
   const mode = qp.mode
-  const activeMonth = qp.month
+  const activeMonth = qp.month != null ? qp.month - 1 : null  // URL is 1-based, display is 0-based
   const activeSpecies = qp.species
 
   // Derive location from URL params or local state
@@ -200,7 +200,7 @@ export default function WhalesApp() {
 
   // ─── Handle month selection in patterns mode ──────────────────────────────
   const handleMonthChange = useCallback(async (monthIdx) => {
-    setQP({ month: monthIdx })
+    setQP({ month: monthIdx + 1 }) // store 1-based in URL
     if (mode !== 'patterns' || !location) return
 
     try {

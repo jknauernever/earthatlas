@@ -1,5 +1,4 @@
 import { useMemo, useCallback } from 'react'
-import { useMemo, useCallback } from 'react'
 import styles from '../WhalesApp.module.css'
 
 const MS_PER_DAY = 86400000

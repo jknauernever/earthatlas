@@ -396,9 +396,14 @@
 }
 
 /* ─── Map ─────────────────────────────────────────────────────────────────────── */
-.mapWrap {
+.mapBlock {
   grid-column: 1;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mapWrap {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
   height: 520px;
@@ -406,6 +411,13 @@
   border-bottom: none;
   position: relative;
   background: var(--dark);
+  flex-shrink: 0;
+}
+
+/* when no slider is shown, restore full radius */
+.mapWrap:last-child {
+  border-radius: var(--radius-lg);
+  border-bottom: 1px solid var(--border);
 }
 
 @media (max-width: 900px) {
@@ -465,8 +477,6 @@
 
 /* ─── Time slider (below map) ────────────────────────────────────────────────── */
 .timeSlider {
-  grid-column: 1;
-  grid-row: 2;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -475,7 +485,6 @@
   border: 1px solid var(--border-lit);
   border-top: none;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  margin-top: 0;
 }
 
 .timeSliderLabel {
@@ -589,7 +598,7 @@
 /* ─── Season chart ───────────────────────────────────────────────────────────── */
 .seasonSection {
   grid-column: 1;
-  grid-row: 3;
+  grid-row: 2;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

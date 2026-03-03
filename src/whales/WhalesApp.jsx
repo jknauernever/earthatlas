@@ -444,33 +444,35 @@ export default function WhalesApp() {
 
         {/* Content grid */}
         <div className={styles.contentGrid}>
-          {/* Map */}
-          <div className={styles.mapWrap} style={!(mode === 'now' && !loadingData && sightings.length > 0) ? {borderRadius:'var(--radius-lg)', borderBottom:'1px solid var(--border)'} : {}}>
-            <div className={styles.mapOverlay}>
-              <div className={styles.mapBadge}>
-                <div className={styles.mapBadgeDot} />
-                {mode === 'now' ? 'Past 90 days' : 'Historical'}
-              </div>
-              {!loadingData && (
-                <div className={styles.mapSightingCount}>
-                  {filteredCount.toLocaleString()} sightings shown
+          {/* Map + time slider — wrapped so grid gap doesn't create a seam */}
+          <div className={styles.mapBlock}>
+            <div className={styles.mapWrap}>
+              <div className={styles.mapOverlay}>
+                <div className={styles.mapBadge}>
+                  <div className={styles.mapBadgeDot} />
+                  {mode === 'now' ? 'Past 90 days' : 'Historical'}
                 </div>
-              )}
+                {!loadingData && (
+                  <div className={styles.mapSightingCount}>
+                    {filteredCount.toLocaleString()} sightings shown
+                  </div>
+                )}
+              </div>
+              <WhaleMap
+                sightings={filteredSightings}
+                center={location}
+                activeSpecies={activeSpecies}
+                onCenterChange={handleMapCenterChange}
+              />
             </div>
-            <WhaleMap
-              sightings={filteredSightings}
-              center={location}
-              activeSpecies={activeSpecies}
-              onCenterChange={handleMapCenterChange}
-            />
+            {mode === 'now' && !loadingData && sightings.length > 0 && (
+              <TimeSlider
+                sightings={sightings}
+                value={timeRange}
+                onChange={setTimeRange}
+              />
+            )}
           </div>
-          {mode === 'now' && !loadingData && sightings.length > 0 && (
-            <TimeSlider
-              sightings={sightings}
-              value={timeRange}
-              onChange={setTimeRange}
-            />
-          )}
 
           {/* Season chart (below map in grid) */}
           <div className={styles.seasonSection}>

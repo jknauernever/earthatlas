@@ -300,58 +300,41 @@ export default function WhalesApp() {
   // ─── Render: Hero ─────────────────────────────────────────────────────────
   if (phase === 'hero') {
     return (
-      <div className={styles.whalesApp}>
-        <div className={styles.hero}>
-          <div className={styles.heroBgPhoto} />
-          <div className={styles.heroOverlay} />
-          <div className={styles.whaleCanvas}>
-            <WhaleSilhouette className={styles.whaleSvg} />
-            <WhaleSilhouette className={styles.whaleSvgSmall} />
-          </div>
+      <div className={styles.heroPage}>
+        <div className={styles.heroBgPhoto} />
+        <div className={styles.heroOverlay} />
 
-          {/* Nav sits inside the hero so the photo fills behind it */}
-          <nav className={styles.heroNav}>
-            <a href="/whales" className={styles.navWordmark}>
-              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
-            </a>
-            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
-          </nav>
+        <nav className={styles.heroNav}>
+          <a href="/whales" className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+          </a>
+          <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+        </nav>
 
-          <div className={styles.heroContent}>
-            <div className={styles.heroEyebrow}>EarthAtlas · Cetacean Sightings</div>
-            <h1 className={styles.heroTitle}>
-              Find <em>whales.</em><br />
-              Near you. Whenever you go.
-            </h1>
-            <p className={styles.heroSub}>
-              Discover which whales and dolphins have been seen near any coastline — and when you're most likely to see them.
-            </p>
-
-            <div className={styles.heroActions}>
-              <button className={styles.locateBtn} onClick={handleLocate}>
-                <span>◎</span> Use my location
-              </button>
-
-              {locError && (
-                <div style={{ fontSize: 12, color: 'rgba(240,100,100,0.85)', maxWidth: 320, textAlign: 'center' }}>
-                  {locError}
-                </div>
-              )}
-
-              <div className={styles.locateDivider}>or search a destination</div>
-              <LocationSearch onSelect={handleLocationSelect} styles={styles} />
-            </div>
-          </div>
-
-          <div className={styles.heroWave}>
-            <svg viewBox="0 0 1440 56" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{width:'100%',display:'block'}}>
-              <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#041020"/>
-              <path d="M0 38 C200 16,400 56,600 38 C800 16,1000 56,1200 38 C1320 28,1400 48,1440 38 L1440 56 L0 56 Z" fill="#041020" opacity="0.7"/>
-            </svg>
+        <div className={styles.heroContent}>
+          <div className={styles.heroEyebrow}>EarthAtlas · Cetacean Sightings</div>
+          <h1 className={styles.heroTitle}>
+            Find <em>whales.</em><br />
+            Near you. Whenever you go.
+          </h1>
+          <p className={styles.heroSub}>
+            Discover which whales and dolphins have been seen near any coastline — and when you're most likely to see them.
+          </p>
+          <div className={styles.heroActions}>
+            <button className={styles.locateBtn} onClick={handleLocate}>
+              <span>◎</span> Use my location
+            </button>
+            {locError && (
+              <div style={{ fontSize: 12, color: 'rgba(240,100,100,0.85)', maxWidth: 320, textAlign: 'center' }}>
+                {locError}
+              </div>
+            )}
+            <div className={styles.locateDivider}>or search a destination</div>
+            <LocationSearch onSelect={handleLocationSelect} styles={styles} />
           </div>
         </div>
 
-        <footer className={styles.whalesFooter}>
+        <div className={styles.heroFooter}>
           <div className={styles.footerText}>
             Sighting data from{' '}
             <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
@@ -364,7 +347,7 @@ export default function WhalesApp() {
           <div className={styles.footerBuiltBy}>
             Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
           </div>
-        </footer>
+        </div>
       </div>
     )
   }

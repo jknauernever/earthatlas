@@ -33,70 +33,81 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Hero ───────────────────────────────────────────────────────────────────── */
-.hero {
+/* ─── Hero page — single full-screen layout ─────────────────────────────────── */
+.heroPage {
   position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  overflow: hidden;
   background: #041e42;
-}
-
-/* Nav sitting on top of the photo inside the hero */
-.heroNav {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px 36px;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 .heroBgPhoto {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background-image: url('/whale-hero.jpg');
   background-size: cover;
   background-position: center 45%;
-  transform: scale(1.03);
-  pointer-events: none;
+  z-index: 0;
 }
 
 .heroOverlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(2, 12, 35, 0.48) 0%,
-    rgba(3, 18, 50, 0.18) 40%,
-    rgba(2, 12, 35, 0.78) 85%,
-    rgba(255, 255, 255, 0.0) 100%
+    rgba(2, 12, 35, 0.55) 0%,
+    rgba(3, 18, 50, 0.25) 45%,
+    rgba(2, 12, 35, 0.70) 100%
   );
-  pointer-events: none;
+  z-index: 1;
 }
 
-/* wave at the bottom of the hero fading into the light content */
-.heroWave {
-  position: absolute;
-  bottom: -2px;
-  left: 0;
+.heroNav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 36px;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 32px;
+  max-width: 680px;
+  margin: 0 auto;
   width: 100%;
-  line-height: 0;
-  z-index: 3;
-  pointer-events: none;
+  animation: heroFadeUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.whaleCanvas {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
+.heroFooter {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px 36px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.heroFooter .footerBuiltBy {
+  width: 100%;
+  text-align: center;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .whaleSvg {

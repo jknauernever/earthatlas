@@ -350,6 +350,26 @@ export default function WhalesApp() {
             </svg>
           </div>
         </div>
+
+        <div className={styles.footerWave}>
+          <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0 18 C200 32,400 4,600 18 C800 32,1000 4,1200 18 C1300 25,1380 12,1440 18 L1440 0 L0 0 Z" fill="#f2f4f7"/>
+          </svg>
+        </div>
+        <footer className={styles.whalesFooter}>
+          <div className={styles.footerText}>
+            Sighting data from{' '}
+            <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
+            {' · '}
+            <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
+          </div>
+          <div className={styles.footerText}>
+            <a className={styles.footerLink} href="/">EarthAtlas.org</a>
+          </div>
+          <div className={styles.footerBuiltBy}>
+            Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+          </div>
+        </footer>
       </div>
     )
   }

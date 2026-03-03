@@ -363,11 +363,6 @@ export default function WhalesApp() {
             </a>
             <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
           </nav>
-          <div className={styles.navWave}>
-            <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-              <path d="M0 14 C200 0,400 28,600 14 C800 0,1000 28,1200 14 C1300 7,1380 20,1440 14 L1440 32 L0 32 Z" fill="#f2f4f7"/>
-            </svg>
-          </div>
         </header>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
           <div className={styles.loadingWhale}>🐋</div>
@@ -394,11 +389,6 @@ export default function WhalesApp() {
           </a>
           <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
         </nav>
-        <div className={styles.navWave}>
-          <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0 14 C200 0,400 28,600 14 C800 0,1000 28,1200 14 C1300 7,1380 20,1440 14 L1440 32 L0 32 Z" fill="#f2f4f7"/>
-          </svg>
-        </div>
       </header>
 
       <div className={styles.mainLayout}>

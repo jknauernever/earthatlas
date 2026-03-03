@@ -346,11 +346,11 @@ export default function WhalesApp() {
             </div>
           </div>
 
-          {/* Wave transition into light content */}
+          {/* Wave transition into gray content */}
           <div className={styles.heroWave}>
             <svg viewBox="0 0 1440 56" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{width:'100%',display:'block'}}>
-              <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#ffffff"/>
-              <path d="M0 38 C200 16,400 56,600 38 C800 16,1000 56,1200 38 C1320 28,1400 48,1440 38 L1440 56 L0 56 Z" fill="#ffffff" opacity="0.6"/>
+              <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#f2f4f7"/>
+              <path d="M0 38 C200 16,400 56,600 38 C800 16,1000 56,1200 38 C1320 28,1400 48,1440 38 L1440 56 L0 56 Z" fill="#f2f4f7" opacity="0.6"/>
             </svg>
           </div>
         </div>

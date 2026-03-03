@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback } from 'react'
 import styles from '../WhalesApp.module.css'
 
 const MS_PER_DAY = 86400000
@@ -64,42 +65,75 @@ export default function TimeSlider({ sightings, value, onChange }) {
   const startLabel = value.start ? fmt(value.start) : fmt(minDate)
   const endLabel   = value.end   ? fmt(value.end)   : fmt(maxDate)
 
+  const presets = useMemo(() => [
+    { label: 'Last 24h', days: 1 },
+    { label: 'Last week', days: 7 },
+    { label: 'Last month', days: 30 },
+  ], [])
+
+  function applyPreset(days) {
+    const end = new Date(maxDate + 'T12:00:00')
+    const start = new Date(end.getTime() - days * MS_PER_DAY)
+    const startStr = start.toISOString().split('T')[0]
+    // clamp to actual data range
+    const clampedStart = startStr < minDate ? null : startStr
+    onChange({ start: clampedStart, end: null })
+  }
+
+  function isActivePreset(days) {
+    if (!value.start || value.end) return false
+    const expectedStart = new Date(new Date(maxDate + 'T12:00:00').getTime() - days * MS_PER_DAY)
+      .toISOString().split('T')[0]
+    return value.start === expectedStart
+  }
+
   return (
-    <div className={styles.timeSlider}>
-      <span className={styles.timeSliderLabel}>{fmt(minDate)}</span>
-      <div className={styles.timeSliderMiddle}>
-        {/* Floating labels above each thumb */}
-        <div className={styles.timeSliderThumbLabel} style={{ left: `${loPct}%` }}>
-          {startLabel}
+    <div className={styles.timeSliderBlock}>
+      <div className={styles.timeSlider}>
+        <span className={styles.timeSliderLabel}>{fmt(minDate)}</span>
+        <div className={styles.timeSliderMiddle}>
+          <div className={styles.timeSliderThumbLabel} style={{ left: `${loPct}%` }}>
+            {startLabel}
+          </div>
+          <div className={styles.timeSliderThumbLabel} style={{ left: `${hiPct}%` }}>
+            {endLabel}
+          </div>
+          <div
+            className={styles.timeSliderFill}
+            style={{ left: `${loPct}%`, right: `${100 - hiPct}%` }}
+          />
+          <input
+            type="range"
+            className={`${styles.timeSliderTrack} ${styles.timeSliderTrackLo}`}
+            min={0} max={totalDays} value={loDay} onChange={handleLo}
+          />
+          <input
+            type="range"
+            className={`${styles.timeSliderTrack} ${styles.timeSliderTrackHi}`}
+            min={0} max={totalDays} value={hiDay} onChange={handleHi}
+          />
         </div>
-        <div className={styles.timeSliderThumbLabel} style={{ left: `${hiPct}%` }}>
-          {endLabel}
-        </div>
-        {/* Filled range between the two thumbs */}
-        <div
-          className={styles.timeSliderFill}
-          style={{ left: `${loPct}%`, right: `${100 - hiPct}%` }}
-        />
-        {/* Low handle */}
-        <input
-          type="range"
-          className={`${styles.timeSliderTrack} ${styles.timeSliderTrackLo}`}
-          min={0}
-          max={totalDays}
-          value={loDay}
-          onChange={handleLo}
-        />
-        {/* High handle */}
-        <input
-          type="range"
-          className={`${styles.timeSliderTrack} ${styles.timeSliderTrackHi}`}
-          min={0}
-          max={totalDays}
-          value={hiDay}
-          onChange={handleHi}
-        />
+        <span className={styles.timeSliderLabel}>{fmt(maxDate)}</span>
       </div>
-      <span className={styles.timeSliderLabel}>{fmt(maxDate)}</span>
+      <div className={styles.timeSliderPresets}>
+        {presets.map(({ label, days }) => (
+          <button
+            key={label}
+            className={`${styles.timePresetBtn} ${isActivePreset(days) ? styles.timePresetBtnActive : ''}`}
+            onClick={() => applyPreset(days)}
+          >
+            {label}
+          </button>
+        ))}
+        {(value.start || value.end) && (
+          <button
+            className={styles.timePresetClear}
+            onClick={() => onChange({ start: null, end: null })}
+          >
+            All data
+          </button>
+        )}
+      </div>
     </div>
   )
 }

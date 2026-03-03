@@ -301,15 +301,6 @@ export default function WhalesApp() {
   if (phase === 'hero') {
     return (
       <div className={styles.whalesApp}>
-        <header className={styles.whalesNavWrapper}>
-          <nav className={`${styles.whalesNav} ${styles.whalesNavHero}`}>
-            <a href="/whales" className={styles.navWordmark}>
-              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
-            </a>
-            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
-          </nav>
-        </header>
-
         <div className={styles.hero}>
           <div className={styles.heroBgPhoto} />
           <div className={styles.heroOverlay} />
@@ -317,6 +308,14 @@ export default function WhalesApp() {
             <WhaleSilhouette className={styles.whaleSvg} />
             <WhaleSilhouette className={styles.whaleSvgSmall} />
           </div>
+
+          {/* Nav sits inside the hero so the photo fills behind it */}
+          <nav className={styles.heroNav}>
+            <a href="/whales" className={styles.navWordmark}>
+              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+            </a>
+            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+          </nav>
 
           <div className={styles.heroContent}>
             <div className={styles.heroEyebrow}>EarthAtlas · Cetacean Sightings</div>
@@ -329,10 +328,7 @@ export default function WhalesApp() {
             </p>
 
             <div className={styles.heroActions}>
-              <button
-                className={styles.locateBtn}
-                onClick={handleLocate}
-              >
+              <button className={styles.locateBtn} onClick={handleLocate}>
                 <span>◎</span> Use my location
               </button>
 
@@ -343,12 +339,10 @@ export default function WhalesApp() {
               )}
 
               <div className={styles.locateDivider}>or search a destination</div>
-
               <LocationSearch onSelect={handleLocationSelect} styles={styles} />
             </div>
           </div>
 
-          {/* Wave transition into gray content */}
           <div className={styles.heroWave}>
             <svg viewBox="0 0 1440 56" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{width:'100%',display:'block'}}>
               <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#f2f4f7"/>

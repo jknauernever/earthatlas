@@ -163,12 +163,12 @@
 .heroEyebrow {
   font-family: var(--sans);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #a8e6cf;
+  color: #4dd9c0;
   margin-bottom: 14px;
-  opacity: 0.9;
+  text-shadow: 0 1px 12px rgba(0,0,0,0.5);
 }
 
 .heroTitle {
@@ -188,9 +188,10 @@
 }
 
 .heroSub {
-  font-size: 15px;
-  font-weight: 300;
-  color: rgba(215, 238, 255, 0.75);
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 16px rgba(0,0,0,0.6);
   margin: 0 0 32px;
   max-width: 440px;
   margin-left: auto;
@@ -234,8 +235,10 @@
 
 .locateDivider {
   font-size: 12px;
-  color: rgba(180, 220, 240, 0.55);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
   letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
 }
 
 /* Hero location search */
@@ -1064,12 +1067,39 @@
 
 .navHomeLink {
   font-size: 12px;
-  color: rgba(200, 230, 248, 0.55);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
   letter-spacing: 0.08em;
   transition: color 0.15s;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
 }
 .navHomeLink:hover { color: #4dd9c0; }
+
+/* ─── heroPage footer text ───────────────────────────────────────────────────── */
+.heroFooter .footerText {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+.heroFooter .footerLink {
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.heroFooter .footerLink:hover { color: #4dd9c0; }
+.heroFooter .footerBuiltBy {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+.heroFooter .footerBuiltBy a {
+  color: #4dd9c0;
+  font-weight: 700;
+}
+.heroFooter .footerBuiltBy a:hover { color: #ffffff; }
 
 /* ─── Mode toggle ────────────────────────────────────────────────────────────── */
 .modeBar {

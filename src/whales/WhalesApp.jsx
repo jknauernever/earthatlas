@@ -345,17 +345,12 @@ export default function WhalesApp() {
 
           <div className={styles.heroWave}>
             <svg viewBox="0 0 1440 56" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{width:'100%',display:'block'}}>
-              <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#f2f4f7"/>
-              <path d="M0 38 C200 16,400 56,600 38 C800 16,1000 56,1200 38 C1320 28,1400 48,1440 38 L1440 56 L0 56 Z" fill="#f2f4f7" opacity="0.6"/>
+              <path d="M0 28 C180 0,360 56,540 28 C720 0,900 56,1080 28 C1260 0,1380 42,1440 28 L1440 56 L0 56 Z" fill="#041020"/>
+              <path d="M0 38 C200 16,400 56,600 38 C800 16,1000 56,1200 38 C1320 28,1400 48,1440 38 L1440 56 L0 56 Z" fill="#041020" opacity="0.7"/>
             </svg>
           </div>
         </div>
 
-        <div className={styles.footerWave}>
-          <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0 18 C200 32,400 4,600 18 C800 32,1000 4,1200 18 C1300 25,1380 12,1440 18 L1440 0 L0 0 Z" fill="#f2f4f7"/>
-          </svg>
-        </div>
         <footer className={styles.whalesFooter}>
           <div className={styles.footerText}>
             Sighting data from{' '}

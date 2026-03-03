@@ -35,21 +35,34 @@
 /* ─── Hero ───────────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - 64px); /* subtract nav height */
   display: flex;
   align-items: flex-start;
   justify-content: center;
   overflow: hidden;
   padding-top: 4vh;
-  background: radial-gradient(ellipse at 50% 60%, #f0f4f8 0%, #ffffff 70%);
+  background: #041e42; /* fallback while photo loads */
 }
 
-.heroGlow {
+.heroBgPhoto {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 60% 40% at 30% 70%, rgba(14,138,114,0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 75% 30%, rgba(80,150,200,0.04) 0%, transparent 50%);
+  background-image: url('https://images.rawpixel.com/image_social_landscape/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvZmwzMDY2ODk4NDQyNC1pbWFnZS1rdTVkOXliNS5qcGc.jpg');
+  background-size: cover;
+  background-position: center 45%;
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 12, 35, 0.48) 0%,
+    rgba(3, 18, 50, 0.18) 40%,
+    rgba(2, 12, 35, 0.78) 100%
+  );
   pointer-events: none;
 }
 
@@ -64,21 +77,23 @@
   position: absolute;
   width: 70vw;
   max-width: 700px;
-  opacity: 0.035;
+  opacity: 0.06;
   bottom: 8%;
   right: -5%;
   animation: whaleDrift 18s ease-in-out infinite;
   transform-origin: center;
+  color: white;
 }
 
 .whaleSvgSmall {
   position: absolute;
   width: 25vw;
   max-width: 240px;
-  opacity: 0.025;
+  opacity: 0.04;
   top: 20%;
   left: 5%;
   animation: whaleDrift 26s ease-in-out infinite reverse;
+  color: white;
 }
 
 @keyframes whaleDrift {
@@ -107,9 +122,9 @@
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--glow);
+  color: #a8e6cf;
   margin-bottom: 14px;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .heroTitle {
@@ -118,19 +133,20 @@
   font-weight: 300;
   line-height: 1.08;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: #f0f8ff;
   margin: 0 0 12px;
+  text-shadow: 0 2px 40px rgba(0,0,0,0.4);
 }
 
 .heroTitle em {
   font-style: italic;
-  color: var(--glow);
+  color: #a8e6cf;
 }
 
 .heroSub {
   font-size: 15px;
   font-weight: 300;
-  color: var(--text-sub);
+  color: rgba(215, 238, 255, 0.75);
   margin: 0 0 32px;
   max-width: 440px;
   margin-left: auto;
@@ -150,20 +166,22 @@
   gap: 10px;
   padding: 16px 36px;
   border-radius: 60px;
-  border: 1.5px solid var(--glow);
-  background: var(--glow-dim);
-  color: var(--glow);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #e8f4fd;
   font-family: var(--sans);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.02em;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  width: min(420px, 90vw);
+  justify-content: center;
 }
 .locateBtn:hover {
-  background: rgba(77, 217, 192, 0.25);
-  box-shadow: 0 0 28px var(--glow-dim);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 .locateBtn:disabled {
   opacity: 0.5;
@@ -172,7 +190,7 @@
 
 .locateDivider {
   font-size: 12px;
-  color: var(--text-muted);
+  color: rgba(180, 220, 240, 0.55);
   letter-spacing: 0.08em;
 }
 
@@ -181,8 +199,8 @@
   display: flex;
   align-items: center;
   gap: 0;
-  background: rgba(0,0,0,0.03);
-  border: 1px solid var(--border-lit);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
   border-radius: 60px;
   padding: 4px 4px 4px 20px;
   width: min(420px, 90vw);
@@ -190,26 +208,26 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .heroSearch:focus-within {
-  border-color: var(--glow);
-  box-shadow: 0 0 0 3px var(--glow-dim);
+  border-color: rgba(168, 230, 207, 0.6);
+  box-shadow: 0 0 0 3px rgba(168, 230, 207, 0.15);
 }
 .heroSearchInput {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
-  color: var(--text);
+  color: #e8f4fd;
   font-family: var(--sans);
   font-size: 15px;
   font-weight: 300;
   padding: 10px 0;
 }
-.heroSearchInput::placeholder { color: var(--text-muted); }
+.heroSearchInput::placeholder { color: rgba(180, 215, 240, 0.5); }
 .heroSearchBtn {
   padding: 10px 22px;
   border-radius: 50px;
-  background: var(--glow);
-  color: var(--deep);
+  background: linear-gradient(135deg, #2ea87a, #1c7a55);
+  color: #fff;
   border: none;
   font-family: var(--sans);
   font-size: 14px;
@@ -218,7 +236,7 @@
   transition: opacity 0.15s;
   white-space: nowrap;
 }
-.heroSearchBtn:hover { opacity: 0.85; }
+.heroSearchBtn:hover { opacity: 0.9; }
 
 /* ─── Location search dropdown (reused in main app flow) ─────────────────────── */
 .locationSearchWrap {
@@ -858,6 +876,18 @@
   margin-bottom: 6px;
 }
 .emptyStateSub { font-size: 13px; }
+
+/* Hero nav variant — transparent over the photo */
+.whalesNavHero {
+  background: rgba(2, 12, 35, 0.4) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(16px);
+}
+.whalesNavHero .navTitle { color: #f0f8ff; }
+.whalesNavHero .navTitle em { color: #a8e6cf; }
+.whalesNavHero .navAccent { color: rgba(168, 230, 207, 0.8); }
+.whalesNavHero .navHomeLink { color: rgba(200, 230, 248, 0.6); }
+.whalesNavHero .navHomeLink:hover { color: #a8e6cf; }
 
 /* ─── Nav ─────────────────────────────────────────────────────────────────────── */
 .whalesNav {

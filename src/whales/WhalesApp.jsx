@@ -301,7 +301,7 @@ export default function WhalesApp() {
   if (phase === 'hero') {
     return (
       <div className={styles.whalesApp}>
-        <nav className={styles.whalesNav}>
+        <nav className={`${styles.whalesNav} ${styles.whalesNavHero}`}>
           <a href="/whales" className={styles.navWordmark}>
             <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
           </a>
@@ -309,7 +309,8 @@ export default function WhalesApp() {
         </nav>
 
         <div className={styles.hero}>
-          <div className={styles.heroGlow} />
+          <div className={styles.heroBgPhoto} />
+          <div className={styles.heroOverlay} />
           <div className={styles.whaleCanvas}>
             <WhaleSilhouette className={styles.whaleSvg} />
             <WhaleSilhouette className={styles.whaleSvgSmall} />

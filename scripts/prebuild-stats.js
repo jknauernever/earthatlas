@@ -7,12 +7,16 @@
  * Called automatically before `vite build` via package.json build script.
  */
 
-import { writeFileSync } from 'fs'
+import { writeFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT_PATH = join(__dirname, '..', 'src', 'data', 'preloaded-stats.json')
+const OUT_DIR = join(__dirname, '..', 'src', 'data')
+const OUT_PATH = join(OUT_DIR, 'preloaded-stats.json')
+
+// Ensure src/data/ directory exists (won't exist on fresh clone)
+mkdirSync(OUT_DIR, { recursive: true })
 
 const EBIRD_API_KEY = process.env.VITE_EBIRD_API_KEY || ''
 

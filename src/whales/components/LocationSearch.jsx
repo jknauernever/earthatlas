@@ -47,6 +47,25 @@ export default function LocationSearch({ onSelect, placeholder = 'Enter a place 
     setOpen(false)
   }
 
+  function handleSearch() {
+    if (results.length > 0) {
+      handleSelect(results[0])
+    } else if (query.length >= 2) {
+      // Force an immediate search
+      setLoading(true)
+      fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&types=place,region,locality,district,neighborhood,country,poi&limit=5`
+      )
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+          const features = data.features || []
+          if (features.length > 0) handleSelect(features[0])
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+  }
+
   return (
     <div className={styles.locationSearchWrap}>
       <div className={styles.heroSearch}>
@@ -57,8 +76,9 @@ export default function LocationSearch({ onSelect, placeholder = 'Enter a place 
           placeholder={placeholder}
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 180)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSearch() } }}
         />
-        <button className={styles.heroSearchBtn} type="button">
+        <button className={styles.heroSearchBtn} type="button" onClick={handleSearch}>
           {loading ? '…' : 'Search'}
         </button>
       </div>

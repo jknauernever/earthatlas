@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { fetchEBirdDashboardStats } from '../services/eBird'
 import styles from './EBirdStats.module.css'
+import preloaded from '../data/preloaded-stats.json'
+
+const PRE_EBIRD = preloaded?.eBird?.dashStats || null
 
 const COUNTER_INFO = {
   species: {
@@ -71,9 +74,9 @@ export default function EBirdStats() {
   // eBird taxonomy has ~16,900 species; updated annually by Cornell Lab.
   // No need to download the full taxonomy list just for this counter.
   const speciesCount = 16900
-  const [dashStats, setDashStats] = useState(null)
+  const [dashStats, setDashStats] = useState(PRE_EBIRD)
   const [dateKey, setDateKey] = useState('yesterday') // yesterday usually has more complete data
-  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(!PRE_EBIRD)
   const [activeInfo, setActiveInfo] = useState(null)
 
   // Fetch regional stats when date changes

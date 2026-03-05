@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { fetchGBIFGlobalStats, fetchGBIFTopCountries, fetchGBIFKingdomCounts } from '../services/gbif'
 import styles from './GBIFStats.module.css'
+import preloaded from '../data/preloaded-stats.json'
+
+const PRE_GBIF = preloaded?.GBIF || {}
 
 const COUNTER_INFO = {
   occurrences: {
@@ -63,12 +66,12 @@ function formatBillions(n) {
 
 export default function GBIFStats() {
   const posthog = usePostHog()
-  const [stats, setStats] = useState(null)
-  const [countries, setCountries] = useState(null)
-  const [kingdoms, setKingdoms] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [countriesLoading, setCountriesLoading] = useState(true)
-  const [kingdomsLoading, setKingdomsLoading] = useState(true)
+  const [stats, setStats] = useState(PRE_GBIF.stats || null)
+  const [countries, setCountries] = useState(PRE_GBIF.countries || null)
+  const [kingdoms, setKingdoms] = useState(PRE_GBIF.kingdoms || null)
+  const [loading, setLoading] = useState(!PRE_GBIF.stats)
+  const [countriesLoading, setCountriesLoading] = useState(!PRE_GBIF.countries)
+  const [kingdomsLoading, setKingdomsLoading] = useState(!PRE_GBIF.kingdoms)
   const [activeInfo, setActiveInfo] = useState(null)
 
   useEffect(() => {

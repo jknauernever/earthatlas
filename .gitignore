@@ -7,3 +7,4 @@ dist/
 *.log
 .vercel
 public/gbif-tile-test.html
+src/data/preloaded-stats.json

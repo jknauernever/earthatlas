@@ -4,6 +4,9 @@ import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../servic
 import { getTaxonMeta } from '../utils/taxon'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
+import preloaded from '../data/preloaded-stats.json'
+
+const PRE_INAT = preloaded?.iNaturalist || {}
 
 const COUNTER_INFO = {
   totalObs: {
@@ -79,14 +82,14 @@ function getDateRange(key) {
 
 export default function GlobalStats() {
   const posthog = usePostHog()
-  const [counts, setCounts] = useState(null)
-  const [topSpecies, setTopSpecies] = useState(null)
-  const [topCountries, setTopCountries] = useState(null)
+  const [counts, setCounts] = useState(PRE_INAT.counts || null)
+  const [topSpecies, setTopSpecies] = useState(PRE_INAT.topSpecies || null)
+  const [topCountries, setTopCountries] = useState(PRE_INAT.topCountries || null)
   const [speciesTime, setSpeciesTime] = useState('24h')
-  const [speciesLoading, setSpeciesLoading] = useState(true)
+  const [speciesLoading, setSpeciesLoading] = useState(!PRE_INAT.topSpecies)
   const [countriesTime, setCountriesTime] = useState('24h')
-  const [countriesLoading, setCountriesLoading] = useState(true)
-  const [loading, setLoading] = useState(true)
+  const [countriesLoading, setCountriesLoading] = useState(!PRE_INAT.topCountries)
+  const [loading, setLoading] = useState(!PRE_INAT.counts)
   const [selectedTaxon, setSelectedTaxon] = useState(null)
   const [activeInfo, setActiveInfo] = useState(null)
 

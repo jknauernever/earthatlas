@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "prebuild": "node scripts/prebuild-stats.js",
+    "build": "node scripts/prebuild-stats.js && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx"
   },

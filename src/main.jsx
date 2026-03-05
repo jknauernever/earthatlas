@@ -5,6 +5,7 @@ import { PostHogProvider } from 'posthog-js/react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
 import WhalesApp from './whales/WhalesApp.jsx'
+import ButterfliesApp from './butterflies/ButterfliesApp.jsx'
 import './index.css'
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <Routes>
           <Route path="/whales" element={<WhalesApp />} />
+          <Route path="/butterflies" element={<ButterfliesApp />} />
           <Route path="/*" element={<App />} />
         </Routes>
       </BrowserRouter>

@@ -17,6 +17,7 @@ import styles from './WhalesApp.module.css'
 
 import WhaleMap from './components/WhaleMap'
 import SpeciesCard from './components/SpeciesCard'
+import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
@@ -87,7 +88,7 @@ const QP_SCHEMA = {
   name:    { type: 'string' },
   mode:    { type: 'string', default: 'now' },
   month:   { type: 'number' },
-  species: { type: 'number' },
+  species: { type: 'string' },
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -514,14 +515,26 @@ export default function WhalesApp() {
                   or search a different coastline.
                 </div>
               </div>
+            ) : filteredSpecies.length > 10 ? (
+              filteredSpecies.map((sp, i) => (
+                <SpeciesListItem
+                  key={sp.speciesKey || sp.common}
+                  species={sp}
+                  totalCount={filteredCount}
+                  active={activeSpecies == sp.speciesKey}
+                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                  style={{ animationDelay: `${i * 0.03}s` }}
+                  styles={styles}
+                />
+              ))
             ) : (
               filteredSpecies.map((sp, i) => (
                 <SpeciesCard
                   key={sp.speciesKey || sp.common}
                   species={sp}
                   totalCount={filteredCount}
-                  active={activeSpecies === sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey === activeSpecies ? null : sp.speciesKey })}
+                  active={activeSpecies == sp.speciesKey}
+                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.07}s` }}
                   styles={styles}
                 />

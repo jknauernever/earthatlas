@@ -17,6 +17,7 @@ import styles from './ButterfliesApp.module.css'
 
 import ButterflyMap from './components/ButterflyMap'
 import SpeciesCard from './components/SpeciesCard'
+import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
@@ -75,7 +76,7 @@ const QP_SCHEMA = {
   name:    { type: 'string' },
   mode:    { type: 'string', default: 'now' },
   month:   { type: 'number' },
-  species: { type: 'number' },
+  species: { type: 'string' },
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -112,18 +113,15 @@ export default function ButterfliesApp() {
   const [activeSighting, setActiveSighting] = useState(null)
   const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
   const [tooManyResults, setTooManyResults] = useState(false)
-  const MAX_SIGHTINGS = 500
+  const [mapZoom, setMapZoom] = useState(6)
+  const MAX_SIGHTINGS = 700
+  const HEATMAP_CROSSOVER = 7 // must match ButterflyMap
 
-  // ─── Zoom → search radius mapping ─────────────────────────────────────────
-  function zoomToRadius(z) {
-    if (z == null) return 100
-    // At zoom 6 ≈ 100km, zoom 4 ≈ 400km, zoom 3 ≈ 800km, zoom 8 ≈ 25km
-    return Math.round(100 * Math.pow(2, 6 - z))
-  }
-  const mapZoomRef = useRef(null)
+  // ─── Map bounds for search ────────────────────────────────────────────────
+  const mapBoundsRef = useRef(null)
 
   // ─── Load data for a location ─────────────────────────────────────────────
-  const loadData = useCallback(async (loc, radiusKm) => {
+  const loadData = useCallback(async (loc, bounds) => {
     setLoadingData(true)
     setDataError(null)
     setSightings([])
@@ -131,14 +129,17 @@ export default function ButterfliesApp() {
     setTimeRange({ start: null, end: null })
 
     try {
-      const r = radiusKm || 100
+      const geo = bounds
+        ? { lat: loc.lat, lng: loc.lng, bounds }
+        : { lat: loc.lat, lng: loc.lng, radiusKm: 100 }
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
-        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
-        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
+        fetchRecentSightings(geo),
+        fetchSeasonalPattern(geo),
+        fetchINatSightings(geo),
       ])
 
       const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
+      const gbifTotal = recentResult.status === 'fulfilled' ? recentResult.value.total : 0
       const inatSightings = inatResult.status === 'fulfilled' ? inatResult.value : []
       const pattern = patternResult.status === 'fulfilled' ? patternResult.value : []
 
@@ -156,7 +157,8 @@ export default function ButterfliesApp() {
       }
       setSeasonPattern(pattern)
       setBaselinePattern(pattern)
-      setTotalCount(allSightings.length)
+      // Use the real GBIF total (full count in the bounding box) when larger than fetched
+      setTotalCount(Math.max(gbifTotal, allSightings.length))
       setPhase('explore')
     } catch (err) {
       setDataError('Could not load sightings data. Please try again.')
@@ -188,11 +190,12 @@ export default function ButterfliesApp() {
     if (mode !== 'patterns' || !location) return
 
     try {
+      const geo = mapBoundsRef.current
+        ? { lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current }
+        : { lat: location.lat, lng: location.lng }
       const result = await fetchMonthSightings({
-        lat: location.lat,
-        lng: location.lng,
+        ...geo,
         month: monthIdx + 1, // 1-based for API
-        radiusKm: zoomToRadius(mapZoomRef.current),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
@@ -202,7 +205,7 @@ export default function ButterfliesApp() {
 
   // When mode switches to 'now', reload recent sightings
   useEffect(() => {
-    if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
+    if (mode === 'now' && location) loadData(location, mapBoundsRef.current)
   }, [mode])
 
   // Fetch per-species seasonal pattern when a species card is clicked
@@ -250,13 +253,13 @@ export default function ButterfliesApp() {
   }
 
   // ─── Map moved — re-search at new center ────────────────────────────────
-  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom }) => {
-    mapZoomRef.current = zoom
+  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom, bounds }) => {
+    mapBoundsRef.current = bounds
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name })
-    loadData(loc, zoomToRadius(zoom))
+    loadData(loc, bounds)
   }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
@@ -298,7 +301,7 @@ export default function ButterfliesApp() {
         <div className={styles.heroContent}>
           <div className={styles.heroEyebrow}>EarthAtlas · Lepidoptera Sightings</div>
           <h1 className={styles.heroTitle}>
-            Find <em>butterflies.</em><br />
+            <span style={{ whiteSpace: 'nowrap' }}>Find <em>butterflies.</em></span><br />
             Near you. Any time of year.
           </h1>
           <p className={styles.heroSub}>
@@ -408,7 +411,7 @@ export default function ButterfliesApp() {
           <div className={styles.statusStrip}>
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
-              ? `${filteredCount} lepidoptera sightings${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 30 days'} · ${filteredSpecies.length} species`
+              ? `${totalCount > filteredCount ? `${totalCount.toLocaleString()} lepidoptera sightings nearby` : `${filteredCount} lepidoptera sightings`}${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 30 days'} · ${filteredSpecies.length} species`
               : `Showing historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
@@ -438,7 +441,9 @@ export default function ButterfliesApp() {
                 </div>
                 {!loadingData && (
                   <div className={styles.mapSightingCount}>
-                    {filteredCount.toLocaleString()} sightings shown
+                    {mapZoom >= HEATMAP_CROSSOVER
+                      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()} sightings shown`
+                      : 'Zoom in to see individual sightings'}
                   </div>
                 )}
               </div>
@@ -447,6 +452,7 @@ export default function ButterfliesApp() {
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
+                onZoomChange={setMapZoom}
               />
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (
@@ -498,14 +504,26 @@ export default function ButterfliesApp() {
                   or search a different area.
                 </div>
               </div>
+            ) : filteredSpecies.length > 10 ? (
+              filteredSpecies.map((sp, i) => (
+                <SpeciesListItem
+                  key={sp.speciesKey || sp.common}
+                  species={sp}
+                  totalCount={filteredCount}
+                  active={activeSpecies == sp.speciesKey}
+                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                  style={{ animationDelay: `${i * 0.03}s` }}
+                  styles={styles}
+                />
+              ))
             ) : (
               filteredSpecies.map((sp, i) => (
                 <SpeciesCard
                   key={sp.speciesKey || sp.common}
                   species={sp}
                   totalCount={filteredCount}
-                  active={activeSpecies === sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey === activeSpecies ? null : sp.speciesKey })}
+                  active={activeSpecies == sp.speciesKey}
+                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.07}s` }}
                   styles={styles}
                 />

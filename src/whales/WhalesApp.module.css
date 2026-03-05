@@ -953,6 +953,68 @@
   opacity: 0.7;
 }
 
+/* ─── Species compact list row (>10 species) ────────────────────────────────── */
+.speciesRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  animation: cardIn 0.3s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+.speciesRow:hover {
+  background: var(--card-hover);
+}
+.speciesRowActive {
+  background: var(--card-hover);
+  box-shadow: inset 3px 0 0 var(--glow);
+}
+.speciesRowDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.speciesRowName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speciesRowSci {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: 6px;
+}
+.speciesRowStatus {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.speciesRowLikelihood {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 58px;
+  text-align: right;
+}
+.speciesRowCount {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--serif);
+  flex-shrink: 0;
+  width: 32px;
+  text-align: right;
+}
+
 /* ─── Loading whale ──────────────────────────────────────────────────────────── */
 .loadingWhale {
   font-size: 48px;

@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const HEATMAP_CROSSOVER = 7 // zoom level: below → heatmap, above → markers
 
 // Dot colors that signal conservation status → label for popup band
 const STATUS_BY_COLOR = {
@@ -10,6 +11,22 @@ const STATUS_BY_COLOR = {
   '#d87060': 'Endangered',
   '#d08060': 'Endangered',
   '#c87060': 'Endangered',
+}
+
+// GBIF tile URLs — two layers for context
+// Base: all-time density (faint, always visible context)
+const GBIF_ALLTIME_URL =
+  'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png'
+  + '?taxonKey=797&basisOfRecord=HUMAN_OBSERVATION&style=orangeHeat.point'
+
+// Recent: past-30-day observations (brighter, on top)
+function buildRecentTileUrl() {
+  const d2 = new Date()
+  const d1 = new Date(d2 - 30 * 86400000)
+  const fmt = d => d.toISOString().split('T')[0]
+  return 'https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}@1x.png'
+    + `?taxonKey=797&eventDate=${fmt(d1)},${fmt(d2)}&basisOfRecord=HUMAN_OBSERVATION`
+    + '&style=fire.point'
 }
 
 /**
@@ -21,12 +38,18 @@ const STATUS_BY_COLOR = {
  *   activeSpecies  — speciesKey of currently highlighted species
  *   onCenterChange — ({ lat, lng, zoom }) => void
  */
-export default function ButterflyMap({ sightings = [], center, activeSpecies, onCenterChange }) {
+export default function ButterflyMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const [zoomLevel, setZoomLevel] = useState(center ? 6 : 2)
+  const [markerCount, setMarkerCount] = useState(0)
   const markersRef = useRef([])  // each entry: { marker, dot, speciesKey }
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
+  const onCenterChangeRef = useRef(onCenterChange)
+  onCenterChangeRef.current = onCenterChange
+  const onZoomChangeRef = useRef(onZoomChange)
+  onZoomChangeRef.current = onZoomChange
   const flyingRef = useRef(false) // true during programmatic flyTo
   // Track the last center the user moved to, so we don't flyTo it back
   const userCenterRef = useRef(null)
@@ -48,6 +71,81 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
+    // Add two GBIF heatmap tile layers:
+    //   1. All-time density (faint base — shows historical hotspots)
+    //   2. Recent 30-day (brighter overlay — shows current activity)
+    function addHeatmapLayers() {
+      if (map.getSource('gbif-alltime')) return
+
+      // Base layer: all-time, faint
+      map.addSource('gbif-alltime', {
+        type: 'raster',
+        tiles: [GBIF_ALLTIME_URL],
+        tileSize: 512,
+        attribution: '© GBIF',
+      })
+      map.addLayer({
+        id: 'gbif-alltime',
+        type: 'raster',
+        source: 'gbif-alltime',
+        paint: {
+          'raster-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            HEATMAP_CROSSOVER - 1, 0.35,
+            HEATMAP_CROSSOVER, 0.12,
+            HEATMAP_CROSSOVER + 1, 0,
+          ],
+        },
+      })
+
+      // Recent layer: 30-day, brighter
+      map.addSource('gbif-recent', {
+        type: 'raster',
+        tiles: [buildRecentTileUrl()],
+        tileSize: 512,
+      })
+      map.addLayer({
+        id: 'gbif-recent',
+        type: 'raster',
+        source: 'gbif-recent',
+        paint: {
+          'raster-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            HEATMAP_CROSSOVER - 1, 0.9,
+            HEATMAP_CROSSOVER, 0.35,
+            HEATMAP_CROSSOVER + 1, 0,
+          ],
+        },
+      })
+    }
+    // Use 'load' event (fires after style + all tiles ready)
+    if (map.isStyleLoaded()) addHeatmapLayers()
+    else map.on('load', addHeatmapLayers)
+
+    // Toggle marker visibility based on zoom + track zoom level
+    // Uses marker.remove() / marker.addTo(map) for bulletproof hiding
+    let markersOnMap = true
+    function updateMarkerVisibility() {
+      const z = map.getZoom()
+      setZoomLevel(z)
+      onZoomChangeRef.current?.(z)
+      const show = z >= HEATMAP_CROSSOVER
+      if (show && !markersOnMap) {
+        markersRef.current.forEach(({ marker }) => marker.addTo(map))
+        markersOnMap = true
+      } else if (!show && markersOnMap) {
+        markersRef.current.forEach(({ marker }) => marker.remove())
+        markersOnMap = false
+      }
+      setMarkerCount(markersRef.current.length)
+    }
+    map.on('zoom', updateMarkerVisibility)
+    map.on('zoomend', updateMarkerVisibility)
+    // Expose for sightings effect to call
+    map._updateMarkerVisibility = updateMarkerVisibility
+    map._isMarkersOnMap = () => markersOnMap
+    map._setMarkersOnMap = (v) => { markersOnMap = v }
+
     // Fire onCenterChange after user-initiated moves (not programmatic flyTo)
     let debounceTimer = null
     map.on('moveend', () => {
@@ -56,8 +154,17 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
       debounceTimer = setTimeout(() => {
         const c = map.getCenter()
         const z = map.getZoom()
+        const b = map.getBounds()
         userCenterRef.current = { lat: c.lat, lng: c.lng }
-        onCenterChange?.({ lat: c.lat, lng: c.lng, zoom: z })
+        onCenterChangeRef.current?.({
+          lat: c.lat, lng: c.lng, zoom: z,
+          bounds: {
+            minLat: b.getSouth(),
+            maxLat: b.getNorth(),
+            minLng: b.getWest(),
+            maxLng: b.getEast(),
+          },
+        })
       }, 600)
     })
 
@@ -73,7 +180,13 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
     flyingRef.current = true
     mapRef.current.once('moveend', () => { flyingRef.current = false })
-    mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
+    const currentZoom = mapRef.current.getZoom()
+    // Only set zoom on initial load (from default z2); otherwise preserve user's zoom
+    if (currentZoom <= 2) {
+      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
+    } else {
+      mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
+    }
   }, [center?.lat, center?.lng])
 
   // Render markers — only re-create when sightings change
@@ -225,6 +338,10 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
 
       markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
     })
+    // Sync: add all markers first, then let visibility handler hide if zoomed out
+    map._setMarkersOnMap(true)
+    map._updateMarkerVisibility()
+    setMarkerCount(markersRef.current.length)
   }, [sightings])
 
   // Highlight dots matching activeSpecies with a gold outline
@@ -246,7 +363,21 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     })
   }, [activeSpecies])
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div style={{
+        position: 'absolute', bottom: 8, left: 8,
+        background: 'rgba(0,0,0,0.7)', color: '#fff',
+        fontSize: 10, fontWeight: 500, fontFamily: 'monospace',
+        padding: '3px 8px', borderRadius: 4,
+        pointerEvents: 'none', zIndex: 5,
+        lineHeight: 1.4,
+      }}>
+        z{zoomLevel.toFixed(1)}
+      </div>
+    </div>
+  )
 }
 
 function formatDate(dateStr) {

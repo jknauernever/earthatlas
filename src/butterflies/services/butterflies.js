@@ -121,8 +121,8 @@ function normalizeOccurrence(occ) {
 }
 
 // ─── Recent sightings (past N days) ──────────────────────────────────────────
-export async function fetchRecentSightings({ lat, lng, radiusKm = 100, days = 30, limit = 200 }) {
-  const bb = getBoundingBox(lat, lng, radiusKm)
+export async function fetchRecentSightings({ lat, lng, radiusKm = 100, bounds, days = 30, limit = 300 }) {
+  const bb = bounds || getBoundingBox(lat, lng, radiusKm)
   const d2 = new Date()
   const d1 = new Date(d2 - days * 86400000)
   const fmt = d => d.toISOString().split('T')[0]
@@ -131,8 +131,8 @@ export async function fetchRecentSightings({ lat, lng, radiusKm = 100, days = 30
     taxonKey: LEPIDOPTERA_KEY,
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
+    decimalLatitude: `${Number(bb.minLat).toFixed(5)},${Number(bb.maxLat).toFixed(5)}`,
+    decimalLongitude: `${Number(bb.minLng).toFixed(5)},${Number(bb.maxLng).toFixed(5)}`,
     eventDate: `${fmt(d1)},${fmt(d2)}`,
     limit: Math.min(limit, 300),
   })
@@ -151,15 +151,15 @@ export async function fetchRecentSightings({ lat, lng, radiusKm = 100, days = 30
 }
 
 // ─── Historical sightings for a specific month (all years) ───────────────────
-export async function fetchMonthSightings({ lat, lng, radiusKm = 150, month, limit = 200 }) {
-  const bb = getBoundingBox(lat, lng, radiusKm)
+export async function fetchMonthSightings({ lat, lng, radiusKm = 150, bounds, month, limit = 300 }) {
+  const bb = bounds || getBoundingBox(lat, lng, radiusKm)
 
   const params = new URLSearchParams({
     taxonKey: LEPIDOPTERA_KEY,
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
+    decimalLatitude: `${Number(bb.minLat).toFixed(5)},${Number(bb.maxLat).toFixed(5)}`,
+    decimalLongitude: `${Number(bb.minLng).toFixed(5)},${Number(bb.maxLng).toFixed(5)}`,
     month,
     limit: Math.min(limit, 300),
   })
@@ -175,15 +175,15 @@ export async function fetchMonthSightings({ lat, lng, radiusKm = 150, month, lim
 }
 
 // ─── Seasonal pattern — monthly totals across all years ───────────────────────
-export async function fetchSeasonalPattern({ lat, lng, radiusKm = 200, speciesKey = null }) {
-  const bb = getBoundingBox(lat, lng, radiusKm)
+export async function fetchSeasonalPattern({ lat, lng, radiusKm = 200, bounds, speciesKey = null }) {
+  const bb = bounds || getBoundingBox(lat, lng, radiusKm)
 
   const params = new URLSearchParams({
     taxonKey: speciesKey || LEPIDOPTERA_KEY,
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
+    decimalLatitude: `${Number(bb.minLat).toFixed(5)},${Number(bb.maxLat).toFixed(5)}`,
+    decimalLongitude: `${Number(bb.minLng).toFixed(5)},${Number(bb.maxLng).toFixed(5)}`,
     limit: '0',
     facet: 'month',
     'month.facetLimit': '12',
@@ -254,30 +254,47 @@ function normalizeINatObservation(obs) {
   }
 }
 
-export async function fetchINatSightings({ lat, lng, radiusKm = 100, days = 30, limit = 200 }) {
+export async function fetchINatSightings({ lat, lng, radiusKm = 100, bounds, days = 30, limit = 400 }) {
   try {
     const d2 = new Date()
     const d1 = new Date(d2 - days * 86400000)
     const fmt = d => d.toISOString().split('T')[0]
 
-    const params = new URLSearchParams({
+    // iNat uses nelat/nelng/swlat/swlng when bounds are provided, otherwise lat/lng/radius
+    const geoParams = bounds
+      ? { nelat: bounds.maxLat, nelng: bounds.maxLng, swlat: bounds.minLat, swlng: bounds.minLng }
+      : { lat, lng, radius: radiusKm }
+
+    const baseParams = {
       taxon_id: INAT_LEPIDOPTERA_TAXON,
-      lat,
-      lng,
-      radius: radiusKm,
+      ...geoParams,
       d1: fmt(d1),
       d2: fmt(d2),
       order_by: 'observed_on',
-      per_page: Math.min(limit, 200),
+      per_page: '200',
       geo: 'true',
-    })
+    }
 
-    const res = await fetch(`${INAT_API}/observations?${params}`, {
+    // First page
+    const res1 = await fetch(`${INAT_API}/observations?${new URLSearchParams(baseParams)}`, {
       headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
     })
-    if (!res.ok) return []
-    const data = await res.json()
-    return (data.results || []).map(normalizeINatObservation).filter(Boolean)
+    if (!res1.ok) return []
+    const data1 = await res1.json()
+    const page1 = (data1.results || []).map(normalizeINatObservation).filter(Boolean)
+
+    // If first page was full and we want more, fetch page 2
+    if (page1.length >= 200 && limit > 200) {
+      const res2 = await fetch(`${INAT_API}/observations?${new URLSearchParams({ ...baseParams, page: '2' })}`, {
+        headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
+      })
+      if (res2.ok) {
+        const data2 = await res2.json()
+        const page2 = (data2.results || []).map(normalizeINatObservation).filter(Boolean)
+        return [...page1, ...page2]
+      }
+    }
+    return page1
   } catch {
     return []
   }

@@ -1,4 +1,5 @@
-// Conservation status derived from species color (matches SPECIES_META)
+import SpeciesInfoPopup from '../../components/SpeciesInfoPopup'
+
 const STATUS_BY_COLOR = {
   '#e06868': 'Critically Endangered',
   '#d87060': 'Endangered',
@@ -6,28 +7,19 @@ const STATUS_BY_COLOR = {
   '#c87060': 'Endangered',
 }
 
-/**
- * SpeciesCard — displays a single cetacean species with count, likelihood bar,
- * last seen date, and a curated fact from SPECIES_META.
- *
- * Props:
- *   species     — aggregated species object from aggregateSpecies()
- *   totalCount  — total sightings in the current view (for likelihood calc)
- *   active      — boolean, highlights the card when true
- *   onClick     — () => void
- *   style       — optional inline style (for animation-delay staggering)
- */
-export default function SpeciesCard({ species, totalCount = 1, active, onClick, style, styles }) {
+export default function SpeciesCard({ species, totalCount = 1, active, onClick, style, styles, openInfoKey, setOpenInfoKey }) {
   const likelihood = totalCount > 0 ? species.count / totalCount : 0
   const likelihoodLabel = likelihood > 0.4 ? 'High likelihood' : likelihood > 0.15 ? 'Moderate likelihood' : 'Occasional'
   const color = species.color || '#1a5276'
   const status = STATUS_BY_COLOR[color] || null
+  const infoKey = species.speciesKey || species.common
+  const popupOpen = openInfoKey === infoKey
 
   return (
     <div
       className={`${styles.speciesCard} ${active ? styles.speciesCardActive : ''}`}
       onClick={onClick}
-      style={style}
+      style={{ ...style, position: 'relative', zIndex: popupOpen ? 100 : undefined }}
     >
       {status && (
         <div className={styles.speciesStatusBanner} style={{ background: color }}>
@@ -36,7 +28,10 @@ export default function SpeciesCard({ species, totalCount = 1, active, onClick, 
       )}
       <div className={styles.speciesCardTop}>
         <div className={styles.speciesNameGroup}>
-          <div className={styles.speciesCommon}>{species.common}</div>
+          <div className={styles.speciesCommon}>
+            {species.common}
+            <SpeciesInfoPopup species={species} styles={styles} openInfoKey={openInfoKey} setOpenInfoKey={setOpenInfoKey} />
+          </div>
           {species.scientific && (
             <div className={styles.speciesScientific}>{species.scientific}</div>
           )}
@@ -60,11 +55,4 @@ export default function SpeciesCard({ species, totalCount = 1, active, onClick, 
       </div>
     </div>
   )
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  try {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  } catch { return dateStr }
 }

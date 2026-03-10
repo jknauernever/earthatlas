@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useSEO } from './hooks/useSEO'
 import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useQueryParams } from './hooks/useQueryParams'
@@ -67,6 +68,12 @@ const QP_SCHEMA = {
 }
 
 export default function App() {
+  useSEO({
+    title: null,
+    description: 'Discover species living around you — explore wildlife sightings, seasonal patterns, and biodiversity data powered by GBIF and iNaturalist.',
+    path: '/',
+  })
+
   const posthog = usePostHog()
 
   // ─── URL state ──────────────────────────────────────────────────

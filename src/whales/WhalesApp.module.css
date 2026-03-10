@@ -821,6 +821,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .speciesStatusIcon {
   font-size: 12px;
@@ -833,7 +834,7 @@
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   animation: cardIn 0.45s cubic-bezier(0.34, 1.1, 0.64, 1) both;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
@@ -843,15 +844,16 @@
   transform: translateX(3px);
 }
 .speciesCardActive {
-  border-color: var(--glow);
-  background: var(--card-hover);
+  border-color: #f5c518;
+  background: #fffde6;
+  box-shadow: 0 0 0 1px #f5c518;
 }
 .speciesCardActive::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: var(--glow);
+  background: #f5c518;
   border-radius: 3px 0 0 3px;
 }
 
@@ -968,8 +970,8 @@
   background: var(--card-hover);
 }
 .speciesRowActive {
-  background: var(--card-hover);
-  box-shadow: inset 3px 0 0 var(--glow);
+  background: #fffde6;
+  box-shadow: inset 3px 0 0 #f5c518;
 }
 .speciesRowDot {
   width: 8px;
@@ -1279,4 +1281,116 @@
 }
 .statusDotAmber { background: var(--amber); }
 
-/* Footer styles are defined above with the nav */
+/* ─── Species info popup ─────────────────────────────────────────────────────── */
+.infoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.infoBtn:hover {
+  color: var(--glow);
+  background: var(--glow-dim);
+}
+
+.infoPopup {
+  position: absolute;
+  top: 100%;
+  left: -80px;
+  margin-top: 8px;
+  width: 300px;
+  background: #fff;
+  border: 1px solid var(--border-lit);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  animation: infoPopIn 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
+  z-index: 100;
+}
+
+@keyframes infoPopIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.infoPopupPhoto {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  position: relative;
+  background: var(--dark);
+}
+.infoPopupPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.infoPopupPhoto::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, #fff);
+}
+
+.infoPopupBody {
+  padding: 14px 16px 16px;
+}
+
+.infoPopupName {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.infoPopupSci {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.infoPopupIucn {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 6px 0 8px;
+}
+
+.infoPopupStat {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+.infoPopupStat strong {
+  color: var(--text);
+}
+
+.infoPopupFact {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.55;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+}

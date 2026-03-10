@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
 import WhalesApp from './whales/WhalesApp.jsx'
 import ButterfliesApp from './butterflies/ButterfliesApp.jsx'
+import SharksApp from './sharks/SharksApp.jsx'
+import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import './index.css'
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
@@ -25,6 +27,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/whales" element={<WhalesApp />} />
           <Route path="/butterflies" element={<ButterfliesApp />} />
+          <Route path="/sharks" element={<SharksApp />} />
+          <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
           <Route path="/*" element={<App />} />
         </Routes>
       </BrowserRouter>

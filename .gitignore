@@ -8,3 +8,4 @@ dist/
 .vercel
 public/gbif-tile-test.html
 src/data/preloaded-stats.json
+src/data/species/

@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryParams } from '../hooks/useQueryParams'
+import { useSEO } from '../hooks/useSEO'
 import styles from './ButterfliesApp.module.css'
 
 import ButterflyMap from './components/ButterflyMap'
@@ -81,6 +82,13 @@ const QP_SCHEMA = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ButterfliesApp() {
+  useSEO({
+    title: 'Butterfly Sightings Near You',
+    description: 'Explore butterfly and moth sightings near any location — seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
+    path: '/butterflies',
+    image: '/butterfly-hero.jpg',
+  })
+
   const [qp, setQP] = useQueryParams(QP_SCHEMA)
 
   // Derive initial phase from URL: if lat+lng present, skip hero
@@ -107,6 +115,7 @@ export default function ButterfliesApp() {
   const [baselinePattern, setBaselinePattern] = useState([]) // all-species pattern
   const [loadingData, setLoadingData]   = useState(false)
   const [dataError, setDataError]       = useState(null)
+  const [openInfoKey, setOpenInfoKey]   = useState(null)
   const [totalCount, setTotalCount]     = useState(0)
 
   // Interaction
@@ -514,6 +523,8 @@ export default function ButterfliesApp() {
                   onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.03}s` }}
                   styles={styles}
+                  openInfoKey={openInfoKey}
+                  setOpenInfoKey={setOpenInfoKey}
                 />
               ))
             ) : (
@@ -526,6 +537,8 @@ export default function ButterfliesApp() {
                   onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.07}s` }}
                   styles={styles}
+                  openInfoKey={openInfoKey}
+                  setOpenInfoKey={setOpenInfoKey}
                 />
               ))
             )}

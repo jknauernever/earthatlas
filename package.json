@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/prebuild-stats.js",
-    "build": "node scripts/prebuild-stats.js && vite build",
+    "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && vite build",
+    "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx"
   },

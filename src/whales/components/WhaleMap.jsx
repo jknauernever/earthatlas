@@ -109,7 +109,7 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
       el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.6)' })
       el.addEventListener('mouseleave', () => {
         const active = activeSpeciesRef.current
-        dot.style.transform = active && s.speciesKey === active ? 'scale(1.4)' : 'scale(1)'
+        dot.style.transform = active && String(s.speciesKey) === String(active) ? 'scale(1.4)' : 'scale(1)'
       })
 
       // Choose best photo: species curated photo → GBIF occurrence photo → none
@@ -234,10 +234,10 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
         dot.style.transform = 'scale(1)'
         dot.style.border = '2px solid rgba(255,255,255,0.5)'
         dot.style.boxShadow = 'none'
-      } else if (speciesKey === activeSpecies) {
-        dot.style.transform = 'scale(1.4)'
-        dot.style.border = '2.5px solid #d4a017'
-        dot.style.boxShadow = '0 0 0 2px rgba(212,160,23,0.5), 0 0 8px rgba(212,160,23,0.3)'
+      } else if (String(speciesKey) === String(activeSpecies)) {
+        dot.style.transform = 'scale(1.8)'
+        dot.style.border = '2.5px solid #f5c518'
+        dot.style.boxShadow = '0 0 0 3px #f5c518, 0 0 12px rgba(245,197,24,0.6)'
       } else {
         dot.style.transform = 'scale(1)'
         dot.style.border = '2px solid rgba(255,255,255,0.5)'

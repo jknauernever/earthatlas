@@ -1,5 +1,5 @@
 /**
- * WhalesApp — main page component for earthatlas.org/whales
+ * SharksApp — main page component for earthatlas.org/sharks
  *
  * Phases:
  *   'hero'    — full-bleed entry screen, user has not yet chosen a location
@@ -14,9 +14,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryParams } from '../hooks/useQueryParams'
 import { useSEO } from '../hooks/useSEO'
-import styles from './WhalesApp.module.css'
+import styles from './SharksApp.module.css'
 
-import WhaleMap from './components/WhaleMap'
+import SharkMap from './components/SharkMap'
 import SpeciesCard from './components/SpeciesCard'
 import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
@@ -29,19 +29,26 @@ import {
   fetchSeasonalPattern,
   fetchINatSightings,
   aggregateSpecies,
-} from './services/whales'
+} from './services/sharks'
 
-// ─── Whale SVG silhouette ─────────────────────────────────────────────────────
-// Simple sperm whale silhouette used as ambient background element
-function WhaleSilhouette({ className }) {
+// ─── Shark SVG silhouette ─────────────────────────────────────────────────────
+function SharkSilhouette({ className }) {
   return (
-    <svg className={className} viewBox="0 0 800 300" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M780 140 C760 80 680 50 580 55 C520 58 460 70 400 90 C340 110 280 140 220 155 C170 168 120 168 80 160 C50 154 20 140 0 125 L0 175 C20 165 50 158 80 160 C120 165 170 168 220 165 C280 160 340 145 400 130 C460 115 520 105 580 105 C680 100 755 130 775 180 C785 200 790 220 780 240 L800 240 L800 120 Z M760 180 C750 195 735 208 720 215 C700 223 675 220 655 210 L720 175 C735 168 752 168 760 180Z" />
+    <svg className={className} viewBox="0 0 900 300" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M900 155 C870 90 780 60 660 65 C600 68 540 80 480 100 C410 122 360 145 300 160
+               C240 172 180 170 130 158 C88 148 44 130 0 110 L0 168
+               C44 152 88 145 130 150 C180 156 240 162 300 158
+               C360 152 410 132 480 116 C540 102 600 92 660 92
+               C780 88 865 120 882 175 C890 198 892 220 882 245
+               L900 245 Z
+               M840 178 C832 196 818 210 800 217 C778 225 752 222 730 210
+               L800 172 C818 164 836 164 840 178 Z
+               M480 65 C490 30 510 8 530 0 C520 18 515 40 518 65 Z" />
     </svg>
   )
 }
 
-// ─── Helper: reverse-geocode lat/lng to a human-readable place name ───────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 function formatCoords(lat, lng) {
   const ns = lat >= 0 ? 'N' : 'S'
@@ -58,31 +65,24 @@ async function reverseGeocode(lat, lng) {
     const data = await res.json()
     const f = data.features?.[0]
     if (!f) return formatCoords(lat, lng)
-
-    // Build "City, State, Country" from the feature + context hierarchy
     const ctx = f.context || []
     const find = (prefix) => ctx.find(c => c.id?.startsWith(prefix))
-
-    // The top-level feature may already be a place; otherwise look in context
     const placeText = f.id?.startsWith('place') ? f.text : find('place')?.text || find('locality')?.text
     const region = find('region')
     const regionCode = region?.short_code?.replace(/^[A-Z]{2}-/, '') || region?.text
     const country = find('country')
     const countryCode = country?.short_code?.toUpperCase() || country?.text
-
     const parts = [placeText, regionCode, countryCode].filter(Boolean)
     return parts.length > 0 ? parts.join(', ') : f.text || f.place_name || formatCoords(lat, lng)
   } catch { return formatCoords(lat, lng) }
 }
 
-// ─── Helper: format date ──────────────────────────────────────────────────────
 function fmtDate(d) {
   if (!d) return ''
   try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
   catch { return d }
 }
 
-// ─── Query param schema (stable reference) ────────────────────────
 const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
@@ -93,25 +93,23 @@ const QP_SCHEMA = {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function WhalesApp() {
+export default function SharksApp() {
   useSEO({
-    title: 'Whale Sightings Near You',
-    description: 'Find whales near any coastline — see recent sightings, seasonal patterns, and species data powered by GBIF and iNaturalist.',
-    path: '/whales',
-    image: '/whale-hero.jpg',
+    title: 'Shark Sightings Near You',
+    description: 'Discover which sharks have been sighted near any coastline — and when they\'re most likely to be there. Real-time data from GBIF and iNaturalist.',
+    path: '/sharks',
+    image: '/shark-hero.jpg',
   })
 
   const [qp, setQP] = useQueryParams(QP_SCHEMA)
 
-  // Derive initial phase from URL: if lat+lng present, skip hero
   const hasUrlCoords = qp.lat != null && qp.lng != null
   const [phase, setPhase] = useState(hasUrlCoords ? 'loading' : 'hero')
 
   const mode = qp.mode
-  const activeMonth = qp.month != null ? qp.month - 1 : null  // URL is 1-based, display is 0-based
+  const activeMonth = qp.month != null ? qp.month - 1 : null
   const activeSpecies = qp.species
 
-  // Derive location from URL params or local state
   const [localLocation, setLocalLocation] = useState(null)
   const location = useMemo(() => {
     if (hasUrlCoords) return { lat: qp.lat, lng: qp.lng, name: qp.name || null }
@@ -119,34 +117,33 @@ export default function WhalesApp() {
   }, [hasUrlCoords, qp.lat, qp.lng, qp.name, localLocation])
 
   const [locError, setLocError] = useState(null)
-
-  // Data
-  const [sightings, setSightings]       = useState([])
-  const [species, setSpecies]           = useState([])
+  const [sightings, setSightings]         = useState([])
+  const [species, setSpecies]             = useState([])
   const [seasonPattern, setSeasonPattern] = useState([])
-  const [baselinePattern, setBaselinePattern] = useState([]) // all-species pattern
-  const [loadingData, setLoadingData]   = useState(false)
-  const [dataError, setDataError]       = useState(null)
-  const [openInfoKey, setOpenInfoKey]   = useState(null)
-  const [totalCount, setTotalCount]     = useState(0)
-
-  // Interaction
+  const [baselinePattern, setBaselinePattern] = useState([])
+  const [loadingData, setLoadingData]     = useState(false)
+  const [dataError, setDataError]         = useState(null)
+  const [totalCount, setTotalCount]       = useState(0)
   const [activeSighting, setActiveSighting] = useState(null)
-  const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
+  const [timeRange, setTimeRange]         = useState({ start: null, end: null })
   const [tooManyResults, setTooManyResults] = useState(false)
+  const [openInfoKey, setOpenInfoKey] = useState(null)
   const MAX_SIGHTINGS = 500
 
-  // ─── Zoom → search radius mapping ─────────────────────────────────────────
-  // Approximate km visible at each zoom level, used as search radius
   function zoomToRadius(z) {
-    if (z == null) return 300
-    // At zoom 6 ≈ 300km, zoom 4 ≈ 1200km, zoom 3 ≈ 2500km, zoom 8 ≈ 75km
-    return Math.round(300 * Math.pow(2, 6 - z))
+    if (z == null) return 400
+    return Math.round(400 * Math.pow(2, 6 - z))
   }
   const mapZoomRef = useRef(null)
+  const abortRef = useRef(null)
 
-  // ─── Load data for a location ─────────────────────────────────────────────
   const loadData = useCallback(async (loc, radiusKm) => {
+    // Cancel any in-flight requests
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const signal = controller.signal
+
     setLoadingData(true)
     setDataError(null)
     setSightings([])
@@ -154,21 +151,19 @@ export default function WhalesApp() {
     setTimeRange({ start: null, end: null })
 
     try {
-      // Fetch recent sightings + seasonal pattern + iNaturalist in parallel
-      // Note: Whale Museum Hotline API (hotline.whalemuseum.org) is offline as of March 2026
-      const r = radiusKm || 300
+      const r = radiusKm || 400
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
-        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
-        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r }),
+        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, signal }),
+        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r, signal }),
+        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, signal }),
       ])
 
-      const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
-      const inatSightings = inatResult.status === 'fulfilled' ? inatResult.value : []
-      const pattern = patternResult.status === 'fulfilled' ? patternResult.value : []
+      if (signal.aborted) return
 
-      // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
-      const allSightings = [...recentSightings, ...inatSightings]
+      const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
+      const inatSightings   = inatResult.status === 'fulfilled'   ? inatResult.value : []
+      const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
+      const allSightings    = [...recentSightings, ...inatSightings]
 
       if (allSightings.length > MAX_SIGHTINGS) {
         setTooManyResults(true)
@@ -184,68 +179,60 @@ export default function WhalesApp() {
       setTotalCount(allSightings.length)
       setPhase('explore')
     } catch (err) {
+      if (signal.aborted) return
       setDataError('Could not load sightings data. Please try again.')
       setPhase('explore')
     } finally {
-      setLoadingData(false)
+      if (!signal.aborted) setLoadingData(false)
     }
   }, [])
 
-  // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
   useEffect(() => {
     if (coldLoaded.current) return
     if (hasUrlCoords) {
       coldLoaded.current = true
       const loc = { lat: qp.lat, lng: qp.lng, name: qp.name || null }
-      // If no name in URL, reverse geocode
       if (!qp.name) {
-        reverseGeocode(qp.lat, qp.lng).then(name => {
-          if (name) setQP({ name })
-        })
+        reverseGeocode(qp.lat, qp.lng).then(name => { if (name) setQP({ name }) })
       }
       loadData(loc)
     }
   }, [hasUrlCoords, qp.lat, qp.lng, qp.name, loadData, setQP])
 
-  // ─── Handle month selection in patterns mode ──────────────────────────────
   const handleMonthChange = useCallback(async (monthIdx) => {
-    setQP({ month: monthIdx + 1 }) // store 1-based in URL
+    setQP({ month: monthIdx + 1 })
     if (mode !== 'patterns' || !location) return
-
     try {
       const result = await fetchMonthSightings({
-        lat: location.lat,
-        lng: location.lng,
-        month: monthIdx + 1, // 1-based for API
+        lat: location.lat, lng: location.lng,
+        month: monthIdx + 1,
         radiusKm: zoomToRadius(mapZoomRef.current),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
       setTotalCount(result.sightings.length)
-    } catch { /* fail silently, keep existing sightings */ }
+    } catch { /* silent */ }
   }, [mode, location, setQP])
 
-  // When mode switches to 'now', reload recent sightings
+  // Only reload when mode *changes* (not on mount — coldLoaded handles that)
+  const prevModeRef = useRef(mode)
   useEffect(() => {
+    if (prevModeRef.current === mode) return
+    prevModeRef.current = mode
     if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
-  }, [mode])
+  }, [mode, location, loadData])
 
-  // Fetch per-species seasonal pattern when a species card is clicked
   useEffect(() => {
     if (!location) return
-    if (!activeSpecies) {
-      setSeasonPattern(baselinePattern)
-      return
-    }
+    if (!activeSpecies) { setSeasonPattern(baselinePattern); return }
     let cancelled = false
-    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: activeSpecies })
+    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: Number(activeSpecies) })
       .then(pattern => { if (!cancelled) setSeasonPattern(pattern) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [activeSpecies, location, baselinePattern])
 
-  // ─── Geolocation ──────────────────────────────────────────────────────────
   async function handleLocate() {
     setLocError(null)
     navigator.geolocation.getCurrentPosition(
@@ -259,14 +246,11 @@ export default function WhalesApp() {
         setPhase('loading')
         await loadData(loc)
       },
-      (err) => {
-        setLocError('Location access denied. Try searching for a place below.')
-      },
+      () => { setLocError('Location access denied. Try searching for a place below.') },
       { timeout: 8000 }
     )
   }
 
-  // ─── Manual location search ───────────────────────────────────────────────
   async function handleLocationSelect({ name, lat, lng }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
@@ -275,7 +259,6 @@ export default function WhalesApp() {
     await loadData(loc)
   }
 
-  // ─── Map moved — re-search at new center ────────────────────────────────
   const handleMapCenterChange = useCallback(async ({ lat, lng, zoom }) => {
     mapZoomRef.current = zoom
     const name = await reverseGeocode(lat, lng) || 'this area'
@@ -285,14 +268,12 @@ export default function WhalesApp() {
     loadData(loc, zoomToRadius(zoom))
   }, [loadData, setQP])
 
-  // ─── "Change location" — clear URL and go back to hero ──────────────────
   const handleChangeLocation = useCallback(() => {
     setQP({ lat: null, lng: null, name: null, mode: 'now', month: null, species: null })
     setLocalLocation(null)
     setPhase('hero')
   }, [setQP])
 
-  // ─── Filtered sightings (time slider) ────────────────────────────────────
   const filteredSightings = useMemo(() => {
     const { start, end } = timeRange
     if (!start && !end) return sightings
@@ -305,30 +286,32 @@ export default function WhalesApp() {
   }, [sightings, timeRange])
 
   const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings])
-  const filteredCount = filteredSightings.length
+  const filteredCount   = filteredSightings.length
 
-  // ─── Render: Hero ─────────────────────────────────────────────────────────
+  // ─── Hero ─────────────────────────────────────────────────────────────────
   if (phase === 'hero') {
     return (
       <div className={styles.heroPage}>
         <div className={styles.heroBgPhoto} />
         <div className={styles.heroOverlay} />
+        <SharkSilhouette className={styles.sharkSvg} />
+        <SharkSilhouette className={styles.sharkSvgSmall} />
 
         <nav className={styles.heroNav}>
-          <a href="/whales" className={styles.navWordmark}>
-            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+          <a href="/sharks" className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Sharks</span></span>
           </a>
           <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
         </nav>
 
         <div className={styles.heroContent}>
-          <div className={styles.heroEyebrow}>EarthAtlas · Cetacean Sightings</div>
+          <div className={styles.heroEyebrow}>EarthAtlas · Shark Sightings</div>
           <h1 className={styles.heroTitle}>
-            Find <em>whales.</em><br />
-            Near you. Whenever you go.
+            Find <em>sharks.</em><br />
+            Near you. Before you go.
           </h1>
           <p className={styles.heroSub}>
-            Discover which whales and dolphins have been seen near any coastline — and when you're most likely to see them.
+            Discover which sharks have been sighted near any coastline — and when they're most likely to be there.
           </p>
           <div className={styles.heroActions}>
             <button className={styles.locateBtn} onClick={handleLocate}>
@@ -362,40 +345,40 @@ export default function WhalesApp() {
     )
   }
 
-  // ─── Render: Loading ──────────────────────────────────────────────────────
+  // ─── Loading ──────────────────────────────────────────────────────────────
   if (phase === 'loading') {
     return (
-      <div className={styles.whalesApp}>
-        <header className={styles.whalesNavWrapper}>
-          <nav className={styles.whalesNav}>
-            <a href="/whales" className={styles.navWordmark}>
-              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+      <div className={styles.sharksApp}>
+        <header className={styles.sharksNavWrapper}>
+          <nav className={styles.sharksNav}>
+            <a href="/sharks" className={styles.navWordmark}>
+              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Sharks</span></span>
             </a>
             <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
           </nav>
         </header>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
-          <div className={styles.loadingWhale}>🐋</div>
+          <div className={styles.loadingShark}>🦈</div>
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 300, color: 'var(--text)' }}>
-            Scanning the ocean near {location?.name || 'you'}…
+            Scanning the waters near {location?.name || 'you'}…
           </div>
           <div style={{ fontSize: 13, color: '#5a6b7a', maxWidth: 320, textAlign: 'center' }}>
-            Querying global biodiversity records and Pacific coast sighting networks
+            Querying global biodiversity records and citizen science sighting networks
           </div>
         </div>
       </div>
     )
   }
 
-  // ─── Render: Explore ─────────────────────────────────────────────────────
+  // ─── Explore ──────────────────────────────────────────────────────────────
   const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
 
   return (
-    <div className={styles.whalesApp}>
-      <header className={styles.whalesNavWrapper}>
-        <nav className={styles.whalesNav}>
-          <a href="/whales" className={styles.navWordmark}>
-            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Whales</span></span>
+    <div className={styles.sharksApp}>
+      <header className={styles.sharksNavWrapper}>
+        <nav className={styles.sharksNav}>
+          <a href="/sharks" className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Sharks</span></span>
           </a>
           <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
         </nav>
@@ -410,7 +393,6 @@ export default function WhalesApp() {
               Near <span>{location?.name || 'your location'}</span>
             </div>
           </div>
-
           <div className={styles.topbarRight}>
             <div className={styles.modeBar}>
               <button
@@ -429,12 +411,12 @@ export default function WhalesApp() {
           </div>
         </div>
 
-        {/* Status */}
+        {/* Status strip */}
         {!loadingData && (
           <div className={styles.statusStrip}>
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
-              ? `${filteredCount} cetacean sightings${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 90 days'} · ${filteredSpecies.length} species`
+              ? `${filteredCount} shark sightings${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 90 days'} · ${filteredSpecies.length} species`
               : `Showing historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
@@ -454,7 +436,6 @@ export default function WhalesApp() {
 
         {/* Content grid */}
         <div className={styles.contentGrid}>
-          {/* Map + time slider — wrapped so grid gap doesn't create a seam */}
           <div className={styles.mapBlock}>
             <div className={styles.mapWrap}>
               <div className={styles.mapOverlay}>
@@ -468,7 +449,7 @@ export default function WhalesApp() {
                   </div>
                 )}
               </div>
-              <WhaleMap
+              <SharkMap
                 sightings={filteredSightings}
                 center={location}
                 activeSpecies={activeSpecies}
@@ -480,11 +461,11 @@ export default function WhalesApp() {
                 sightings={sightings}
                 value={timeRange}
                 onChange={setTimeRange}
+                styles={styles}
               />
             )}
           </div>
 
-          {/* Season chart (below map in grid) */}
           <div className={styles.seasonSection}>
             <div className={styles.sectionLabel}>Seasonal patterns</div>
             <div className={styles.sectionTitle}>When are they here?</div>
@@ -500,7 +481,6 @@ export default function WhalesApp() {
             />
           </div>
 
-          {/* Species panel */}
           <div className={styles.speciesPanel}>
             <div className={styles.speciesPanelHead}>
               <div className={styles.speciesPanelTitle}>
@@ -517,7 +497,7 @@ export default function WhalesApp() {
               ))
             ) : filteredSpecies.length === 0 ? (
               <div className={styles.emptyState}>
-                <div className={styles.emptyStateWhale}>🐋</div>
+                <div className={styles.emptyStateShark}>🦈</div>
                 <div className={styles.emptyStateText}>No sightings found nearby</div>
                 <div className={styles.emptyStateSub}>
                   Try switching to Seasonal patterns to see historical data,<br />
@@ -555,8 +535,7 @@ export default function WhalesApp() {
             )}
           </div>
         </div>
-
-      </div>{/* end mainLayout */}
+      </div>
 
       <div className={styles.footerWave}>
         <svg viewBox="0 0 1440 32" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
@@ -564,7 +543,7 @@ export default function WhalesApp() {
         </svg>
       </div>
 
-      <footer className={styles.whalesFooter}>
+      <footer className={styles.sharksFooter}>
         <div className={styles.footerText}>
           Sighting data from{' '}
           <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>

@@ -116,15 +116,22 @@ export default function SharkMap({ sightings = [], center, activeSpecies, onCent
       const iucnLabel = IUCN_LABEL[s.iucn] || null
       const iucnColor = IUCN_COLOR[s.iucn] || null
 
-      const popup = new mapboxgl.Popup({ offset: 12, closeButton: false, maxWidth: '280px' })
+      const isMobile = window.innerWidth <= 600
+      const photoH = isMobile ? 120 : 180
+
+      const popup = new mapboxgl.Popup({
+        offset: isMobile ? 0 : 12,
+        closeButton: isMobile,
+        maxWidth: isMobile ? '100%' : '280px',
+      })
         .setHTML(`
-          <div style="font-family:'DM Sans',system-ui,sans-serif;background:#fff;color:#1a2332;border-radius:12px;overflow:hidden;width:260px;line-height:1.5;">
+          <div style="font-family:'DM Sans',system-ui,sans-serif;background:#fff;color:#1a2332;overflow:hidden;${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}line-height:1.5;">
             ${iucnLabel ? `<div style="background:${iucnColor};color:#fff;font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;padding:5px 16px;display:flex;align-items:center;gap:5px;"><span>⚠</span> ${iucnLabel}</div>` : ''}
-            ${photo ? `<div style="position:relative;width:100%;height:180px;overflow:hidden;"><img src="${photo}" alt="${s.common}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'"/><div style="position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(transparent,#fff);"></div></div>` : ''}
-            <div style="padding:14px 16px 16px;">
-              <div style="font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:400;color:#1a2332;margin-bottom:2px;line-height:1.25;">🦈 ${s.common}</div>
+            ${photo ? `<div style="position:relative;width:100%;height:${photoH}px;overflow:hidden;"><img src="${photo}" alt="${s.common}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'"/><div style="position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(transparent,#fff);"></div></div>` : ''}
+            <div style="padding:${isMobile ? '12px 16px 16px' : '14px 16px 16px'};">
+              <div style="font-family:'Fraunces',Georgia,serif;font-size:${isMobile ? '18px' : '20px'};font-weight:400;color:#1a2332;margin-bottom:2px;line-height:1.25;">🦈 ${s.common}</div>
               ${s.scientific ? `<div style="font-style:italic;color:#5a6b7a;font-size:12px;margin-bottom:10px;">${s.scientific}</div>` : ''}
-              ${s.fact ? `<div style="font-size:12px;color:#3d4f5f;line-height:1.5;margin-bottom:12px;border-left:2px solid ${dotColor}66;padding-left:10px;">${s.fact}</div>` : ''}
+              ${s.fact ? `<div style="font-size:12px;color:#3d4f5f;line-height:1.5;margin-bottom:12px;border-left:2px solid ${dotColor}66;padding-left:10px;${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}">${s.fact}</div>` : ''}
               <div style="font-size:11px;color:#5a6b7a;display:flex;flex-direction:column;gap:3px;">
                 ${s.place ? `<div>📍 ${s.place}</div>` : ''}
                 ${s.date ? `<div>📅 ${formatDate(s.date)}</div>` : ''}
@@ -135,6 +142,12 @@ export default function SharkMap({ sightings = [], center, activeSpecies, onCent
         `)
 
       popup.on('open', () => {
+        if (isMobile) {
+          flyingRef.current = true
+          map.once('moveend', () => { flyingRef.current = false })
+          map.easeTo({ center: [s.lng, s.lat], duration: 300 })
+          return
+        }
         requestAnimationFrame(() => {
           const popupEl = popup.getElement()
           if (!popupEl) return

@@ -117,15 +117,22 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
 
       const status = STATUS_BY_COLOR[s.color] || null
 
-      const popup = new mapboxgl.Popup({ offset: 12, className: 'whale-popup', closeButton: false, maxWidth: '280px' })
+      const isMobile = window.innerWidth <= 600
+      const photoH = isMobile ? 120 : 200
+
+      const popup = new mapboxgl.Popup({
+        offset: isMobile ? 0 : 12,
+        className: 'whale-popup',
+        closeButton: isMobile,
+        maxWidth: isMobile ? '100%' : '280px',
+      })
         .setHTML(`
           <div style="
             font-family:'DM Sans',system-ui,sans-serif;
             background:#ffffff;
             color:#1a2332;
-            border-radius:12px;
             overflow:hidden;
-            width:260px;
+            ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}
             line-height:1.5;
           ">
             ${status ? `<div style="
@@ -139,7 +146,7 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
               display:flex;align-items:center;gap:5px;
             "><span style="font-size:12px">⚠</span> ${status}</div>` : ''}
             ${photo ? `
-            <div style="position:relative;width:100%;height:200px;overflow:hidden;">
+            <div style="position:relative;width:100%;height:${photoH}px;overflow:hidden;">
               <img src="${photo}" alt="${s.common}" style="
                 width:100%;height:100%;object-fit:cover;display:block;
               " onerror="this.parentElement.style.display='none'" />
@@ -148,10 +155,10 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
                 background:linear-gradient(transparent, #ffffff);
               "></div>
             </div>` : ''}
-            <div style="padding:14px 16px 16px;">
+            <div style="padding:${isMobile ? '12px 16px 16px' : '14px 16px 16px'};">
               <div style="
                 font-family:'Fraunces',Georgia,serif;
-                font-size:20px;font-weight:400;
+                font-size:${isMobile ? '18px' : '20px'};font-weight:400;
                 color:#1a2332;
                 margin-bottom:2px;
                 line-height:1.25;
@@ -169,6 +176,7 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
                 margin-bottom:12px;
                 border-left:2px solid ${s.color || '#1a5276'}44;
                 padding-left:10px;
+                ${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}
               ">${s.fact}</div>` : ''}
               <div style="
                 font-size:11px;
@@ -189,9 +197,15 @@ export default function WhaleMap({ sightings = [], center, activeSpecies, onCent
           </div>
         `)
 
-      // Pan the map so the full popup is visible after it opens
-      // Set flyingRef so this pan doesn't trigger onCenterChange (which would reload data)
+      // Keep popup visible: on mobile center on marker; on desktop pan to fit
       popup.on('open', () => {
+        if (isMobile) {
+          // Bottom-sheet popup is fixed at bottom, just center on the marker
+          flyingRef.current = true
+          map.once('moveend', () => { flyingRef.current = false })
+          map.easeTo({ center: [s.lng, s.lat], duration: 300 })
+          return
+        }
         requestAnimationFrame(() => {
           const popupEl = popup.getElement()
           if (!popupEl) return

@@ -214,6 +214,9 @@
   align-items: center;
   gap: 16px;
 }
+@media (max-width: 600px) {
+  .heroActions { width: 100%; gap: 14px; }
+}
 
 .locateBtn {
   display: inline-flex;
@@ -243,7 +246,7 @@
   cursor: default;
 }
 @media (max-width: 600px) {
-  .locateBtn { width: 100%; padding: 14px 24px; font-size: 14px; }
+  .locateBtn { width: 100%; padding: 14px 24px; font-size: 15px; border-radius: 14px; }
 }
 
 .locateDivider {
@@ -268,7 +271,25 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 @media (max-width: 600px) {
-  .heroSearch { width: 100%; padding: 3px 3px 3px 16px; }
+  .heroSearch {
+    width: 100%;
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 6px;
+    gap: 6px;
+  }
+  .heroSearchInput {
+    width: 100%;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 15px;
+  }
+  .heroSearchBtn {
+    width: 100%;
+    border-radius: 12px;
+    padding: 13px;
+    font-size: 15px;
+  }
 }
 .heroSearch:focus-within {
   border-color: rgba(168, 230, 207, 0.6);

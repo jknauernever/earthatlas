@@ -42,6 +42,7 @@
   background: #0a0a0a;
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
   --deep:        #f2f4f7;
   --dark:        #e8ebf0;
   --mid:         #dfe3ea;
@@ -120,6 +121,9 @@
   justify-content: space-between;
   padding: 24px 36px;
 }
+@media (max-width: 600px) {
+  .heroNav { padding: 16px 16px; }
+}
 
 .heroFooter {
   position: relative;
@@ -131,6 +135,9 @@
   gap: 8px;
   padding: 20px 36px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+@media (max-width: 600px) {
+  .heroFooter { padding: 16px 16px 20px; }
 }
 
 .heroFooter .footerBuiltBy {
@@ -175,6 +182,9 @@
   align-items: center;
   justify-content: center;
   animation: heroFadeUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (max-width: 600px) {
+  .heroContent { padding: 0 16px; }
 }
 
 @keyframes heroFadeUp {
@@ -250,6 +260,9 @@
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.5);
 }
+@media (max-width: 600px) {
+  .locateBtn { width: 100%; padding: 14px 24px; font-size: 14px; }
+}
 
 .locateDivider {
   font-size: 12px;
@@ -264,6 +277,9 @@
   position: relative;
   width: min(420px, 90vw);
 }
+@media (max-width: 600px) {
+  .locationSearchWrap { width: 100%; }
+}
 .heroSearch {
   display: flex;
   align-items: center;
@@ -275,6 +291,9 @@
   width: 100%;
   backdrop-filter: blur(12px);
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+@media (max-width: 600px) {
+  .heroSearch { padding: 3px 3px 3px 16px; }
 }
 .heroSearch:focus-within {
   border-color: rgba(255, 150, 150, 0.6);
@@ -373,6 +392,9 @@
   margin: 0 auto;
   padding: 0 24px 80px;
 }
+@media (max-width: 600px) {
+  .mainLayout { padding: 0 12px 60px; }
+}
 
 /* ─── Topbar ─────────────────────────────────────────────────────────────────── */
 .topbar {
@@ -401,6 +423,9 @@
 .backBtn:hover { color: var(--glow); }
 .locationLabel { font-family: var(--serif); font-size: 20px; font-weight: 300; color: var(--text); }
 .locationLabel span { color: var(--glow); font-style: italic; }
+@media (max-width: 600px) {
+  .locationLabel { font-size: 16px; }
+}
 .topbarRight { display: flex; align-items: center; gap: 12px; }
 
 /* ─── Mode bar ───────────────────────────────────────────────────────────────── */
@@ -424,6 +449,9 @@
   cursor: pointer;
   transition: all 0.18s;
   white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .modeBtn { padding: 7px 14px; font-size: 12px; }
 }
 .modeBtnActive {
   background: #fff;
@@ -465,6 +493,9 @@
 }
 @media (max-width: 900px) {
   .contentGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .contentGrid { gap: 16px; }
 }
 
 /* ─── Map ─────────────────────────────────────────────────────────────────────── */
@@ -640,6 +671,9 @@
 .footerWave { margin-top: 40px; line-height: 0; }
 .footerWave svg { width: 100%; display: block; }
 .sharksFooter { background: #f2f4f7; padding: 24px 36px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 600px) {
+  .sharksFooter { padding: 20px 16px 24px; }
+}
 .sharksFooter .footerText { font-size: 12px; color: #5a6b7a; }
 .sharksFooter .footerLink { color: #3d4f5f; text-decoration: none; transition: color 0.15s; }
 .sharksFooter .footerLink:hover { color: var(--glow); }

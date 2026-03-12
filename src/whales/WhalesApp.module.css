@@ -42,6 +42,7 @@
   background: #041e42;
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 
   /* Inherit design tokens so child components (e.g. LocationSearch dropdown) work */
   --deep:        #f2f4f7;
@@ -89,6 +90,9 @@
   justify-content: space-between;
   padding: 24px 36px;
 }
+@media (max-width: 600px) {
+  .heroNav { padding: 16px 16px; }
+}
 
 .heroFooter {
   position: relative;
@@ -100,6 +104,9 @@
   gap: 8px;
   padding: 20px 36px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+@media (max-width: 600px) {
+  .heroFooter { padding: 16px 16px 20px; }
 }
 
 .heroFooter .footerBuiltBy {
@@ -153,6 +160,9 @@
   align-items: center;
   justify-content: center;
   animation: heroFadeUp 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (max-width: 600px) {
+  .heroContent { padding: 0 16px; }
 }
 
 @keyframes heroFadeUp {
@@ -232,6 +242,9 @@
   opacity: 0.5;
   cursor: default;
 }
+@media (max-width: 600px) {
+  .locateBtn { width: 100%; padding: 14px 24px; font-size: 14px; }
+}
 
 .locateDivider {
   font-size: 12px;
@@ -253,6 +266,9 @@
   width: min(420px, 90vw);
   backdrop-filter: blur(12px);
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+@media (max-width: 600px) {
+  .heroSearch { width: 100%; padding: 3px 3px 3px 16px; }
 }
 .heroSearch:focus-within {
   border-color: rgba(168, 230, 207, 0.6);
@@ -290,6 +306,9 @@
   position: relative;
   width: min(420px, 90vw);
 }
+@media (max-width: 600px) {
+  .locationSearchWrap { width: 100%; }
+}
 .locationDropdown {
   position: absolute;
   top: calc(100% + 8px);
@@ -315,6 +334,9 @@
   max-width: 1300px;
   margin: 0 auto;
   padding: 0 24px 80px;
+}
+@media (max-width: 600px) {
+  .mainLayout { padding: 0 12px 60px; }
 }
 
 /* ─── Topbar (post-hero) ─────────────────────────────────────────────────────── */
@@ -360,6 +382,9 @@
   color: var(--glow);
   font-style: italic;
 }
+@media (max-width: 600px) {
+  .locationLabel { font-size: 16px; }
+}
 
 .topbarRight {
   display: flex;
@@ -393,6 +418,9 @@
   .contentGrid {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 600px) {
+  .contentGrid { gap: 16px; }
 }
 
 /* ─── Map ─────────────────────────────────────────────────────────────────────── */
@@ -1076,6 +1104,9 @@
   background-size: cover;
   background-position: center 22%;
 }
+@media (max-width: 600px) {
+  .whalesNav { padding: 12px 16px 40px; }
+}
 
 .whalesNav::before {
   content: '';
@@ -1116,6 +1147,9 @@
   background-image: url('/whale-hero.jpg');
   background-size: cover;
   background-position: center 68%;
+}
+@media (max-width: 600px) {
+  .whalesFooter { padding: 40px 16px 24px; }
 }
 
 .whalesFooter::before {
@@ -1257,6 +1291,9 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .modeBtn { padding: 7px 14px; font-size: 12px; }
 }
 .modeBtnActive {
   background: var(--glow);

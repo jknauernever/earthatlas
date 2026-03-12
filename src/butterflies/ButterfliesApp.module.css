@@ -42,6 +42,7 @@
   background: #1a2b0e;
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 
   /* Inherit design tokens so child components (e.g. LocationSearch dropdown) work */
   --deep:        #f2f4f7;
@@ -92,6 +93,9 @@
   justify-content: space-between;
   padding: 24px 36px;
 }
+@media (max-width: 600px) {
+  .heroNav { padding: 16px 16px; }
+}
 
 .heroFooter {
   position: relative;
@@ -103,6 +107,9 @@
   gap: 8px;
   padding: 20px 36px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+@media (max-width: 600px) {
+  .heroFooter { padding: 16px 16px 20px; }
 }
 
 .heroFooter .footerBuiltBy {
@@ -132,6 +139,15 @@
   -webkit-backdrop-filter: blur(16px);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.3);
+}
+@media (max-width: 600px) {
+  .heroContent {
+    margin: 0 12px;
+    padding: 28px 20px;
+    text-align: center;
+    align-items: center;
+    border-radius: 16px;
+  }
 }
 
 @keyframes heroFadeUp {
@@ -205,6 +221,9 @@
   opacity: 0.5;
   cursor: default;
 }
+@media (max-width: 600px) {
+  .locateBtn { width: 100%; padding: 14px 24px; font-size: 14px; }
+}
 
 .locateDivider {
   font-size: 12px;
@@ -224,6 +243,9 @@
   padding: 4px 4px 4px 20px;
   width: min(420px, 90vw);
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+@media (max-width: 600px) {
+  .heroSearch { width: 100%; padding: 3px 3px 3px 16px; }
 }
 .heroSearch:focus-within {
   border-color: #c47d0e;
@@ -261,6 +283,9 @@
   position: relative;
   width: min(420px, 90vw);
 }
+@media (max-width: 600px) {
+  .locationSearchWrap { width: 100%; }
+}
 .locationDropdown {
   position: absolute;
   top: calc(100% + 8px);
@@ -286,6 +311,9 @@
   max-width: 1300px;
   margin: 0 auto;
   padding: 0 24px 80px;
+}
+@media (max-width: 600px) {
+  .mainLayout { padding: 0 12px 60px; }
 }
 
 /* ─── Topbar (post-hero) ─────────────────────────────────────────────────────── */
@@ -331,6 +359,9 @@
   color: var(--glow);
   font-style: italic;
 }
+@media (max-width: 600px) {
+  .locationLabel { font-size: 16px; }
+}
 
 .topbarRight {
   display: flex;
@@ -364,6 +395,9 @@
   .contentGrid {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 600px) {
+  .contentGrid { gap: 16px; }
 }
 
 /* ─── Map ─────────────────────────────────────────────────────────────────────── */
@@ -1053,6 +1087,9 @@
   background-size: cover;
   background-position: center 22%;
 }
+@media (max-width: 600px) {
+  .butterfliesNav { padding: 12px 16px 40px; }
+}
 
 .butterfliesNav::before {
   content: '';
@@ -1093,6 +1130,9 @@
   background-image: url('/butterfly-hero.jpg');
   background-size: cover;
   background-position: center 68%;
+}
+@media (max-width: 600px) {
+  .butterfliesFooter { padding: 40px 16px 24px; }
 }
 
 .butterfliesFooter::before {
@@ -1234,6 +1274,9 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .modeBtn { padding: 7px 14px; font-size: 12px; }
 }
 .modeBtnActive {
   background: var(--glow);

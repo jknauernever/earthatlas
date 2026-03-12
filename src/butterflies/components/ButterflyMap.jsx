@@ -63,7 +63,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
       center: center ? [center.lng, center.lat] : [-100, 35],
-      zoom: center ? 6 : 2,
+      zoom: center ? 14 : 2,
       attributionControl: false,
       logoPosition: 'bottom-right',
     })
@@ -183,7 +183,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     const currentZoom = mapRef.current.getZoom()
     // Only set zoom on initial load (from default z2); otherwise preserve user's zoom
     if (currentZoom <= 2) {
-      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
+      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 14, duration: 1200 })
     } else {
       mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
     }

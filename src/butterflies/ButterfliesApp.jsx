@@ -31,6 +31,22 @@ import {
   aggregateSpecies,
 } from './services/butterflies'
 
+// ─── Default search radius: 2 miles ≈ 3.22 km ──────────────────────────────
+const DEFAULT_RADIUS_KM = 3.22
+const DEFAULT_ZOOM = 14 // zoom level that shows ~2-mile radius
+
+// Compute a bounding box for a given center and radius in km
+function radiusToBounds(lat, lng, radiusKm) {
+  const latDelta = radiusKm / 111
+  const lngDelta = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)))
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  }
+}
+
 // ─── Helper: reverse-geocode lat/lng to a human-readable place name ───────────
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 function formatCoords(lat, lng) {
@@ -140,7 +156,7 @@ export default function ButterfliesApp() {
     try {
       const geo = bounds
         ? { lat: loc.lat, lng: loc.lng, bounds }
-        : { lat: loc.lat, lng: loc.lng, radiusKm: 100 }
+        : { lat: loc.lat, lng: loc.lng, bounds: radiusToBounds(loc.lat, loc.lng, DEFAULT_RADIUS_KM) }
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
         fetchRecentSightings(geo),
         fetchSeasonalPattern(geo),

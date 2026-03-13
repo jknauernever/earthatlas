@@ -413,7 +413,7 @@
   padding: 0 24px 80px;
 }
 @media (max-width: 600px) {
-  .mainLayout { padding: 0 12px 60px; }
+  .mainLayout { padding: 0 12px 60px; overflow: hidden; width: 100%; }
 }
 
 /* ─── Topbar ─────────────────────────────────────────────────────────────────── */
@@ -532,6 +532,12 @@
 }
 .mapWrap:only-child { border-radius: var(--radius-lg); border-bottom: 1px solid var(--border); }
 @media (max-width: 900px) { .mapWrap { height: 380px; } }
+@media (max-width: 600px) {
+  .mapWrap { height: 300px; }
+  .timeSlider { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+  .timeSliderPresets { padding: 6px 10px; gap: 6px; flex-wrap: wrap; }
+  .timePresetBtn { font-size: 10px; padding: 4px 10px; }
+}
 
 .mapOverlay {
   position: absolute;

@@ -3,46 +3,59 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const HEATMAP_CROSSOVER = 7 // zoom level: below → heatmap, above → markers
 
-// Dot colors that signal conservation status → label for popup band
-const STATUS_BY_COLOR = {
-  '#e06868': 'Critically Endangered',
-  '#d87060': 'Endangered',
-  '#d08060': 'Endangered',
-  '#c87060': 'Endangered',
+// IUCN status labels for popup banners
+const IUCN_LABEL = {
+  CR: 'Critically Endangered',
+  EN: 'Endangered',
+  VU: 'Vulnerable',
+  NT: 'Near Threatened',
+  LC: 'Least Concern',
+}
+const IUCN_COLOR = {
+  CR: '#e74c3c',
+  EN: '#e67e22',
+  VU: '#f39c12',
+  NT: '#27ae60',
+  LC: '#2ecc71',
 }
 
-// GBIF tile URLs — two layers for context
-// Base: all-time density (faint, always visible context)
-const GBIF_ALLTIME_URL =
-  'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png'
-  + '?taxonKey=797&basisOfRecord=HUMAN_OBSERVATION&style=orangeHeat.point'
-
-// Recent: past-30-day observations (brighter, on top)
-function buildRecentTileUrl() {
-  const d2 = new Date()
-  const d1 = new Date(d2 - 30 * 86400000)
-  const fmt = d => d.toISOString().split('T')[0]
-  return 'https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}@1x.png'
-    + `?taxonKey=797&eventDate=${fmt(d1)},${fmt(d2)}&basisOfRecord=HUMAN_OBSERVATION`
-    + '&style=fire.point'
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  try {
+    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch { return dateStr }
 }
 
 /**
- * ButterflyMap — Mapbox GL map for lepidoptera sightings.
+ * ExploreMap — unified Mapbox GL map for all subsites.
  *
  * Props:
  *   sightings      — array of normalized sighting objects
  *   center         — { lat, lng } map center
  *   activeSpecies  — speciesKey of currently highlighted species
- *   onCenterChange — ({ lat, lng, zoom }) => void
+ *   onCenterChange — ({ lat, lng, zoom, bounds? }) => void
+ *   onZoomChange   — (zoom) => void
+ *   config         — {
+ *     fallbackColor: string,    — default dot color (e.g. '#1a5276')
+ *     fallbackEmoji: string,    — default emoji for popups (e.g. '🐋')
+ *     heatmapLayers?: {         — if present, adds GBIF heatmap tile layers
+ *       alltime: string,        — tile URL for all-time density
+ *       recent: string,         — tile URL for recent (30-day) activity
+ *       crossoverZoom: number,  — zoom level: below → heatmap, above → markers
+ *     },
+ *   }
  */
-export default function ButterflyMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, config = {} }) {
+  const {
+    fallbackColor = '#1a5276',
+    fallbackEmoji = '',
+    heatmapLayers = null,
+  } = config
+
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const [zoomLevel, setZoomLevel] = useState(center ? 6 : 2)
-  const [markerCount, setMarkerCount] = useState(0)
   const markersRef = useRef([])  // each entry: { marker, dot, speciesKey }
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
@@ -54,16 +67,20 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
   // Track the last center the user moved to, so we don't flyTo it back
   const userCenterRef = useRef(null)
 
+  const crossoverZoom = heatmapLayers?.crossoverZoom ?? 7
+
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
+    const initialZoom = center ? (heatmapLayers ? 12 : 6) : 2
+
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
       center: center ? [center.lng, center.lat] : [-100, 35],
-      zoom: center ? 12 : 2,
+      zoom: initialZoom,
       attributionControl: false,
       logoPosition: 'bottom-right',
     })
@@ -71,73 +88,73 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
-    // Add two GBIF heatmap tile layers:
-    //   1. All-time density (faint base — shows historical hotspots)
-    //   2. Recent 30-day (brighter overlay — shows current activity)
-    function addHeatmapLayers() {
-      if (map.getSource('gbif-alltime')) return
+    // Add GBIF heatmap tile layers if configured
+    if (heatmapLayers) {
+      function addHeatmapTileLayers() {
+        if (map.getSource('gbif-alltime')) return
 
-      // Base layer: all-time, faint
-      map.addSource('gbif-alltime', {
-        type: 'raster',
-        tiles: [GBIF_ALLTIME_URL],
-        tileSize: 512,
-        attribution: '© GBIF',
-      })
-      map.addLayer({
-        id: 'gbif-alltime',
-        type: 'raster',
-        source: 'gbif-alltime',
-        paint: {
-          'raster-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            HEATMAP_CROSSOVER - 1, 0.35,
-            HEATMAP_CROSSOVER, 0.12,
-            HEATMAP_CROSSOVER + 1, 0,
-          ],
-        },
-      })
+        // Base layer: all-time, faint
+        map.addSource('gbif-alltime', {
+          type: 'raster',
+          tiles: [heatmapLayers.alltime],
+          tileSize: 512,
+          attribution: '© GBIF',
+        })
+        map.addLayer({
+          id: 'gbif-alltime',
+          type: 'raster',
+          source: 'gbif-alltime',
+          paint: {
+            'raster-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              crossoverZoom - 1, 0.35,
+              crossoverZoom, 0.12,
+              crossoverZoom + 1, 0,
+            ],
+          },
+        })
 
-      // Recent layer: 30-day, brighter
-      map.addSource('gbif-recent', {
-        type: 'raster',
-        tiles: [buildRecentTileUrl()],
-        tileSize: 512,
-      })
-      map.addLayer({
-        id: 'gbif-recent',
-        type: 'raster',
-        source: 'gbif-recent',
-        paint: {
-          'raster-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            HEATMAP_CROSSOVER - 1, 0.9,
-            HEATMAP_CROSSOVER, 0.35,
-            HEATMAP_CROSSOVER + 1, 0,
-          ],
-        },
-      })
+        // Recent layer: 30-day, brighter
+        map.addSource('gbif-recent', {
+          type: 'raster',
+          tiles: [heatmapLayers.recent],
+          tileSize: 512,
+        })
+        map.addLayer({
+          id: 'gbif-recent',
+          type: 'raster',
+          source: 'gbif-recent',
+          paint: {
+            'raster-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              crossoverZoom - 1, 0.9,
+              crossoverZoom, 0.35,
+              crossoverZoom + 1, 0,
+            ],
+          },
+        })
+      }
+      if (map.isStyleLoaded()) addHeatmapTileLayers()
+      else map.on('load', addHeatmapTileLayers)
     }
-    // Use 'load' event (fires after style + all tiles ready)
-    if (map.isStyleLoaded()) addHeatmapLayers()
-    else map.on('load', addHeatmapLayers)
 
-    // Toggle marker visibility based on zoom + track zoom level
-    // Uses marker.remove() / marker.addTo(map) for bulletproof hiding
+    // Toggle marker visibility based on zoom when heatmap is present
     let markersOnMap = true
     function updateMarkerVisibility() {
       const z = map.getZoom()
       setZoomLevel(z)
       onZoomChangeRef.current?.(z)
-      const show = z >= HEATMAP_CROSSOVER
-      if (show && !markersOnMap) {
-        markersRef.current.forEach(({ marker }) => marker.addTo(map))
-        markersOnMap = true
-      } else if (!show && markersOnMap) {
-        markersRef.current.forEach(({ marker }) => marker.remove())
-        markersOnMap = false
+
+      if (heatmapLayers) {
+        const show = z >= crossoverZoom
+        if (show && !markersOnMap) {
+          markersRef.current.forEach(({ marker }) => marker.addTo(map))
+          markersOnMap = true
+        } else if (!show && markersOnMap) {
+          markersRef.current.forEach(({ marker }) => marker.remove())
+          markersOnMap = false
+        }
       }
-      setMarkerCount(markersRef.current.length)
     }
     map.on('zoom', updateMarkerVisibility)
     map.on('zoomend', updateMarkerVisibility)
@@ -180,12 +197,17 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
     if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
     flyingRef.current = true
     mapRef.current.once('moveend', () => { flyingRef.current = false })
-    const currentZoom = mapRef.current.getZoom()
-    // Only set zoom on initial load (from default z2); otherwise preserve user's zoom
-    if (currentZoom <= 2) {
-      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 12, duration: 1200 })
+
+    if (heatmapLayers) {
+      // When heatmap is present, only set zoom on initial load (from default z2); otherwise preserve user's zoom
+      const currentZoom = mapRef.current.getZoom()
+      if (currentZoom <= 2) {
+        mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 12, duration: 1200 })
+      } else {
+        mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
+      }
     } else {
-      mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
+      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
     }
   }, [center?.lat, center?.lng])
 
@@ -208,7 +230,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
 
       // Inner dot — safe to transform without overwriting Mapbox's translate
       const dot = document.createElement('div')
-      const dotColor = s.color || '#5a3e28'
+      const dotColor = s.color || fallbackColor
       dot.style.cssText = `
         width: 12px; height: 12px;
         border-radius: 50%;
@@ -225,17 +247,22 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
         dot.style.transform = active && String(s.speciesKey) === String(active) ? 'scale(1.4)' : 'scale(1)'
       })
 
-      // Choose best photo: species curated photo → GBIF occurrence photo → none
-      const photo = s.speciesPhoto || (s.photos && s.photos[0]) || null
+      // Choose best photo: observation photo first, species curated photo as fallback
+      const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
 
-      const status = STATUS_BY_COLOR[s.color] || null
+      // IUCN-based status detection for popup banner
+      const iucn = s.iucn || s.meta?.iucn || null
+      const iucnLabel = IUCN_LABEL[iucn] || null
+      const iucnColor = IUCN_COLOR[iucn] || null
 
       const isMobile = window.innerWidth <= 600
       const photoH = isMobile ? 120 : 200
 
+      const emoji = s.emoji || fallbackEmoji
+      const accentColor = s.color || fallbackColor
+
       const popup = new mapboxgl.Popup({
         offset: isMobile ? 0 : 12,
-        className: 'butterfly-popup',
         closeButton: isMobile,
         maxWidth: isMobile ? '100%' : '280px',
       })
@@ -248,8 +275,8 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
             ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}
             line-height:1.5;
           ">
-            ${status ? `<div style="
-              background:${s.color};
+            ${iucnLabel ? `<div style="
+              background:${iucnColor};
               color:#fff;
               font-size:10px;
               font-weight:500;
@@ -257,7 +284,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
               text-transform:uppercase;
               padding:5px 16px;
               display:flex;align-items:center;gap:5px;
-            "><span style="font-size:12px">⚠</span> ${status}</div>` : ''}
+            "><span style="font-size:12px">⚠</span> ${iucnLabel}</div>` : ''}
             ${photo ? `
             <div style="position:relative;width:100%;height:${photoH}px;overflow:hidden;">
               <img src="${photo}" alt="${s.common}" style="
@@ -275,7 +302,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
                 color:#1a2332;
                 margin-bottom:2px;
                 line-height:1.25;
-              ">${s.emoji || '🦋'} ${s.common}</div>
+              ">${emoji ? emoji + ' ' : ''}${s.common}</div>
               ${s.scientific ? `<div style="
                 font-style:italic;
                 color:#5a6b7a;
@@ -287,7 +314,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
                 color:#3d4f5f;
                 line-height:1.5;
                 margin-bottom:12px;
-                border-left:2px solid ${s.color || '#5a3e28'}44;
+                border-left:2px solid ${accentColor}44;
                 padding-left:10px;
                 ${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}
               ">${s.fact}</div>` : ''}
@@ -306,6 +333,31 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
                   letter-spacing:0.05em;
                 ">via ${s.source || 'GBIF'}</div>
               </div>
+              <div style="
+                display:flex;gap:6px;margin-top:10px;
+              ">
+                ${(s.speciesKey || s.scientific) ? `<a href="/species/${
+                  !isNaN(Number(s.speciesKey)) ? s.speciesKey : encodeURIComponent(s.scientific)
+                }" style="
+                  flex:1;text-align:center;white-space:nowrap;
+                  padding:5px 8px;border-radius:5px;
+                  background:${accentColor}18;color:${accentColor};
+                  font-size:11px;font-weight:500;line-height:1.2;
+                  text-decoration:none;
+                  border:1px solid ${accentColor}30;
+                ">Species info</a>` : ''}
+                <a href="${s.source === 'iNaturalist'
+                  ? 'https://www.inaturalist.org/observations/' + String(s.id).replace('inat-', '')
+                  : 'https://www.gbif.org/occurrence/' + s.id
+                }" target="_blank" rel="noopener noreferrer" style="
+                  flex:1;text-align:center;white-space:nowrap;
+                  padding:5px 8px;border-radius:5px;
+                  background:#f0f2f5;color:#3d4f5f;
+                  font-size:11px;font-weight:500;line-height:1.2;
+                  text-decoration:none;
+                  border:1px solid #e0e4e8;
+                ">View observation ↗</a>
+              </div>
             </div>
           </div>
         `)
@@ -313,6 +365,7 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
       // Keep popup visible: on mobile center on marker; on desktop pan to fit
       popup.on('open', () => {
         if (isMobile) {
+          // Bottom-sheet popup is fixed at bottom, just center on the marker
           flyingRef.current = true
           map.once('moveend', () => { flyingRef.current = false })
           map.easeTo({ center: [s.lng, s.lat], duration: 300 })
@@ -351,10 +404,12 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
 
       markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
     })
-    // Sync: add all markers first, then let visibility handler hide if zoomed out
-    map._setMarkersOnMap(true)
-    map._updateMarkerVisibility()
-    setMarkerCount(markersRef.current.length)
+
+    // Sync marker visibility with heatmap zoom state
+    if (heatmapLayers) {
+      map._setMarkersOnMap(true)
+      map._updateMarkerVisibility()
+    }
   }, [sightings])
 
   // Highlight dots matching activeSpecies with a gold outline
@@ -379,23 +434,18 @@ export default function ButterflyMap({ sightings = [], center, activeSpecies, on
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-      <div style={{
-        position: 'absolute', bottom: 8, left: 8,
-        background: 'rgba(0,0,0,0.7)', color: '#fff',
-        fontSize: 10, fontWeight: 500, fontFamily: 'monospace',
-        padding: '3px 8px', borderRadius: 4,
-        pointerEvents: 'none', zIndex: 5,
-        lineHeight: 1.4,
-      }}>
-        z{zoomLevel.toFixed(1)}
-      </div>
+      {heatmapLayers && (
+        <div style={{
+          position: 'absolute', bottom: 8, left: 8,
+          background: 'rgba(0,0,0,0.7)', color: '#fff',
+          fontSize: 10, fontWeight: 500, fontFamily: 'monospace',
+          padding: '3px 8px', borderRadius: 4,
+          pointerEvents: 'none', zIndex: 5,
+          lineHeight: 1.4,
+        }}>
+          z{zoomLevel.toFixed(1)}
+        </div>
+      )}
     </div>
   )
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  try {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  } catch { return dateStr }
 }

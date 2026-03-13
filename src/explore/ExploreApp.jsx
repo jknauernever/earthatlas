@@ -1,5 +1,8 @@
 /**
- * ButterfliesApp — main page component for earthatlas.org/butterflies
+ * ExploreApp — unified explore component for all EarthAtlas subsites
+ *
+ * Receives a `config` prop that parameterizes every taxon-specific detail:
+ * slug, name, theme colors, hero text, SEO, defaults, service, etc.
  *
  * Phases:
  *   'hero'    — full-bleed entry screen, user has not yet chosen a location
@@ -7,86 +10,24 @@
  *   'explore' — main explore view with map, species cards, season chart
  *
  * Mode (within 'explore'):
- *   'now'      — recent sightings (past 30 days)
+ *   'now'      — recent sightings (past N days)
  *   'patterns' — historical monthly view, scrubbed by month
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryParams } from '../hooks/useQueryParams'
 import { useSEO } from '../hooks/useSEO'
-import styles from './ButterfliesApp.module.css'
+import styles from './ExploreApp.module.css'
 
-import ButterflyMap from './components/ButterflyMap'
+import ExploreMap from './components/ExploreMap'
 import SpeciesCard from './components/SpeciesCard'
 import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
 
-import {
-  fetchRecentSightings,
-  fetchMonthSightings,
-  fetchSeasonalPattern,
-  fetchINatSightings,
-  aggregateSpecies,
-} from './services/butterflies'
+import { reverseGeocode, fmtDate } from './utils'
 
-// ─── Default search radius: 5 miles ≈ 8.05 km ──────────────────────────────
-const DEFAULT_RADIUS_KM = 8.05
-const DEFAULT_ZOOM = 12 // zoom level that shows ~5-mile radius
-
-// Compute a bounding box for a given center and radius in km
-function radiusToBounds(lat, lng, radiusKm) {
-  const latDelta = radiusKm / 111
-  const lngDelta = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)))
-  return {
-    minLat: lat - latDelta,
-    maxLat: lat + latDelta,
-    minLng: lng - lngDelta,
-    maxLng: lng + lngDelta,
-  }
-}
-
-// ─── Helper: reverse-geocode lat/lng to a human-readable place name ───────────
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-function formatCoords(lat, lng) {
-  const ns = lat >= 0 ? 'N' : 'S'
-  const ew = lng >= 0 ? 'E' : 'W'
-  return `${Math.abs(lat).toFixed(1)}°${ns}, ${Math.abs(lng).toFixed(1)}°${ew}`
-}
-
-async function reverseGeocode(lat, lng) {
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?limit=1&access_token=${MAPBOX_TOKEN}`
-    )
-    if (!res.ok) return formatCoords(lat, lng)
-    const data = await res.json()
-    const f = data.features?.[0]
-    if (!f) return formatCoords(lat, lng)
-
-    const ctx = f.context || []
-    const find = (prefix) => ctx.find(c => c.id?.startsWith(prefix))
-
-    const placeText = f.id?.startsWith('place') ? f.text : find('place')?.text || find('locality')?.text
-    const region = find('region')
-    const regionCode = region?.short_code?.replace(/^[A-Z]{2}-/, '') || region?.text
-    const country = find('country')
-    const countryCode = country?.short_code?.toUpperCase() || country?.text
-
-    const parts = [placeText, regionCode, countryCode].filter(Boolean)
-    return parts.length > 0 ? parts.join(', ') : f.text || f.place_name || formatCoords(lat, lng)
-  } catch { return formatCoords(lat, lng) }
-}
-
-// ─── Helper: format date ──────────────────────────────────────────────────────
-function fmtDate(d) {
-  if (!d) return ''
-  try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
-  catch { return d }
-}
-
-// ─── Query param schema (stable reference) ────────────────────────
 const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
@@ -96,13 +37,21 @@ const QP_SCHEMA = {
   species: { type: 'string' },
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-export default function ButterfliesApp() {
+export default function ExploreApp({ config }) {
+  const { service } = config
+  const {
+    fetchRecentSightings,
+    fetchMonthSightings,
+    fetchSeasonalPattern,
+    fetchINatSightings,
+    aggregateSpecies,
+  } = service
+
   useSEO({
-    title: 'Butterfly Sightings Near You',
-    description: 'Explore butterfly and moth sightings near any location — seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
-    path: '/butterflies',
-    image: '/butterfly-hero.jpg',
+    title: config.seo.title,
+    description: config.seo.description,
+    path: `/${config.slug}`,
+    image: config.seo.image,
   })
 
   const [qp, setQP] = useQueryParams(QP_SCHEMA)
@@ -125,28 +74,37 @@ export default function ButterfliesApp() {
   const [locError, setLocError] = useState(null)
 
   // Data
-  const [sightings, setSightings]       = useState([])
-  const [species, setSpecies]           = useState([])
+  const [sightings, setSightings]         = useState([])
+  const [species, setSpecies]             = useState([])
   const [seasonPattern, setSeasonPattern] = useState([])
   const [baselinePattern, setBaselinePattern] = useState([]) // all-species pattern
-  const [loadingData, setLoadingData]   = useState(false)
-  const [dataError, setDataError]       = useState(null)
-  const [openInfoKey, setOpenInfoKey]   = useState(null)
-  const [totalCount, setTotalCount]     = useState(0)
+  const [loadingData, setLoadingData]     = useState(false)
+  const [dataError, setDataError]         = useState(null)
+  const [openInfoKey, setOpenInfoKey]     = useState(null)
+  const [totalCount, setTotalCount]       = useState(0)
 
   // Interaction
   const [activeSighting, setActiveSighting] = useState(null)
-  const [timeRange, setTimeRange]       = useState({ start: null, end: null }) // ISO date bounds, null = full extent
+  const [timeRange, setTimeRange]         = useState({ start: null, end: null })
   const [tooManyResults, setTooManyResults] = useState(false)
-  const [mapZoom, setMapZoom] = useState(6)
-  const MAX_SIGHTINGS = 700
-  const HEATMAP_CROSSOVER = 7 // must match ButterflyMap
+  const MAX_SIGHTINGS = config.defaults.maxSightings
 
-  // ─── Map bounds for search ────────────────────────────────────────────────
-  const mapBoundsRef = useRef(null)
+  // ─── Zoom → search radius mapping ─────────────────────────────────────────
+  function zoomToRadius(z) {
+    if (z == null) return config.defaults.radiusKm
+    return Math.round(config.defaults.radiusKm * Math.pow(2, config.defaults.zoom - z))
+  }
+  const mapZoomRef = useRef(null)
+  const abortRef = useRef(null)
 
   // ─── Load data for a location ─────────────────────────────────────────────
-  const loadData = useCallback(async (loc, bounds) => {
+  const loadData = useCallback(async (loc, radiusKm) => {
+    // Cancel any in-flight requests
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const signal = controller.signal
+
     setLoadingData(true)
     setDataError(null)
     setSightings([])
@@ -154,19 +112,18 @@ export default function ButterfliesApp() {
     setTimeRange({ start: null, end: null })
 
     try {
-      const geo = bounds
-        ? { lat: loc.lat, lng: loc.lng, bounds }
-        : { lat: loc.lat, lng: loc.lng, bounds: radiusToBounds(loc.lat, loc.lng, DEFAULT_RADIUS_KM) }
+      const r = radiusKm || config.defaults.radiusKm
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings(geo),
-        fetchSeasonalPattern(geo),
-        fetchINatSightings(geo),
+        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, days: config.defaults.days, signal }),
+        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r, signal }),
+        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, days: config.defaults.days, signal }),
       ])
 
+      if (signal.aborted) return
+
       const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
-      const gbifTotal = recentResult.status === 'fulfilled' ? recentResult.value.total : 0
-      const inatSightings = inatResult.status === 'fulfilled' ? inatResult.value : []
-      const pattern = patternResult.status === 'fulfilled' ? patternResult.value : []
+      const inatSightings   = inatResult.status === 'fulfilled'   ? inatResult.value : []
+      const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
 
       // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
       const allSightings = [...recentSightings, ...inatSightings]
@@ -182,16 +139,16 @@ export default function ButterfliesApp() {
       }
       setSeasonPattern(pattern)
       setBaselinePattern(pattern)
-      // Use the real GBIF total (full count in the bounding box) when larger than fetched
-      setTotalCount(Math.max(gbifTotal, allSightings.length))
+      setTotalCount(allSightings.length)
       setPhase('explore')
     } catch (err) {
+      if (signal.aborted) return
       setDataError('Could not load sightings data. Please try again.')
       setPhase('explore')
     } finally {
-      setLoadingData(false)
+      if (!signal.aborted) setLoadingData(false)
     }
-  }, [])
+  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, aggregateSpecies, config.defaults.radiusKm, config.defaults.days, MAX_SIGHTINGS])
 
   // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
@@ -215,23 +172,25 @@ export default function ButterfliesApp() {
     if (mode !== 'patterns' || !location) return
 
     try {
-      const geo = mapBoundsRef.current
-        ? { lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current }
-        : { lat: location.lat, lng: location.lng }
       const result = await fetchMonthSightings({
-        ...geo,
+        lat: location.lat,
+        lng: location.lng,
         month: monthIdx + 1, // 1-based for API
+        radiusKm: zoomToRadius(mapZoomRef.current),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
       setTotalCount(result.sightings.length)
     } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location, setQP])
+  }, [mode, location, setQP, fetchMonthSightings, aggregateSpecies])
 
-  // When mode switches to 'now', reload recent sightings
+  // Only reload when mode *changes* (not on mount — coldLoaded handles that)
+  const prevModeRef = useRef(mode)
   useEffect(() => {
-    if (mode === 'now' && location) loadData(location, mapBoundsRef.current)
-  }, [mode])
+    if (prevModeRef.current === mode) return
+    prevModeRef.current = mode
+    if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
+  }, [mode, location, loadData])
 
   // Fetch per-species seasonal pattern when a species card is clicked
   useEffect(() => {
@@ -241,11 +200,11 @@ export default function ButterfliesApp() {
       return
     }
     let cancelled = false
-    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: activeSpecies })
+    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: Number(activeSpecies) })
       .then(pattern => { if (!cancelled) setSeasonPattern(pattern) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [activeSpecies, location, baselinePattern])
+  }, [activeSpecies, location, baselinePattern, fetchSeasonalPattern])
 
   // ─── Geolocation ──────────────────────────────────────────────────────────
   async function handleLocate() {
@@ -261,7 +220,7 @@ export default function ButterfliesApp() {
         setPhase('loading')
         await loadData(loc)
       },
-      (err) => {
+      () => {
         setLocError('Location access denied. Try searching for a place below.')
       },
       { timeout: 8000 }
@@ -278,13 +237,13 @@ export default function ButterfliesApp() {
   }
 
   // ─── Map moved — re-search at new center ────────────────────────────────
-  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom, bounds }) => {
-    mapBoundsRef.current = bounds
+  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom }) => {
+    mapZoomRef.current = zoom
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name })
-    loadData(loc, bounds)
+    loadData(loc, zoomToRadius(zoom))
   }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
@@ -306,35 +265,49 @@ export default function ButterfliesApp() {
     })
   }, [sightings, timeRange])
 
-  const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings])
+  const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings, aggregateSpecies])
   const filteredCount = filteredSightings.length
+
+  // ─── Theme CSS custom properties ──────────────────────────────────────────
+  const themeVars = {
+    '--glow': config.theme.glow,
+    '--glow-dim': config.theme.glowDim,
+    '--glow-mid': config.theme.glowMid,
+    '--hero-bg': config.hero.bgColor,
+    '--hero-image': `url(${config.hero.image})`,
+  }
+
+  const heroVars = {
+    '--hero-bg': config.hero.bgColor,
+    '--hero-accent': config.hero.accentColor,
+  }
 
   // ─── Render: Hero ─────────────────────────────────────────────────────────
   if (phase === 'hero') {
     return (
-      <div className={styles.heroPage}>
-        <div className={styles.heroBgPhoto} />
+      <div className={styles.heroPage} style={{ ...heroVars, ...themeVars }}>
+        <div className={styles.heroBgPhoto} style={{ backgroundImage: `url(${config.hero.image})`, ...config.hero.imageStyle }} />
         <div className={styles.heroOverlay} />
 
         <nav className={styles.heroNav}>
-          <a href="/butterflies" className={styles.navWordmark}>
-            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Butterflies</span></span>
+          <a href={`/${config.slug}`} className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent} style={{ color: config.hero.navAccent }}>/ {config.name}</span></span>
           </a>
-          <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+          <a href="/" className={styles.navHomeLink}>&larr; Back to EarthAtlas</a>
         </nav>
 
         <div className={styles.heroContent}>
-          <div className={styles.heroEyebrow}>EarthAtlas · Lepidoptera Sightings</div>
+          <div className={styles.heroEyebrow}>{config.hero.eyebrow}</div>
           <h1 className={styles.heroTitle}>
-            <span style={{ whiteSpace: 'nowrap' }}>Find <em>butterflies.</em></span><br />
-            Near you. Any time of year.
+            {config.hero.title[0]}<em>{config.hero.title[1]}</em><br />
+            {config.hero.subtitle}
           </h1>
           <p className={styles.heroSub}>
-            Discover which butterflies and moths have been seen near any location — and when you're most likely to see them.
+            {config.hero.description}
           </p>
           <div className={styles.heroActions}>
             <button className={styles.locateBtn} onClick={handleLocate}>
-              <span>◎</span> Use my location
+              <span>&#9678;</span> Use my location
             </button>
             {locError && (
               <div style={{ fontSize: 12, color: 'rgba(240,100,100,0.85)', maxWidth: 320, textAlign: 'center' }}>
@@ -342,7 +315,7 @@ export default function ButterfliesApp() {
               </div>
             )}
             <div className={styles.locateDivider}>or search a destination</div>
-            <LocationSearch onSelect={handleLocationSelect} placeholder="Enter a region, park, or trail…" styles={styles} />
+            <LocationSearch onSelect={handleLocationSelect} styles={styles} />
           </div>
         </div>
 
@@ -350,14 +323,14 @@ export default function ButterfliesApp() {
           <div className={styles.footerText}>
             Sighting data from{' '}
             <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
-            {' · '}
+            {' \u00b7 '}
             <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
           </div>
           <div className={styles.footerText}>
-            <a className={styles.footerLink} href="/">EarthAtlas.org</a>
+            Built by <a className={styles.footerLink} href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
           </div>
-          <div className={styles.footerBuiltBy}>
-            Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+          <div className={styles.footerText}>
+            &copy; 2026 <a className={styles.footerLink} href="/">EarthAtlas.org</a>
           </div>
         </div>
       </div>
@@ -366,40 +339,41 @@ export default function ButterfliesApp() {
 
   // ─── Render: Loading ──────────────────────────────────────────────────────
   if (phase === 'loading') {
+    const loadingMessage = config.loading.message.replace('{location}', location?.name || 'you')
     return (
-      <div className={styles.butterfliesApp}>
-        <header className={styles.butterfliesNavWrapper}>
-          <nav className={styles.butterfliesNav}>
-            <a href="/butterflies" className={styles.navWordmark}>
-              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Butterflies</span></span>
+      <div className={styles.exploreApp} style={themeVars}>
+        <header className={styles.exploreNavWrapper}>
+          <nav className={styles.exploreNav}>
+            <a href={`/${config.slug}`} className={styles.navWordmark}>
+              <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent} style={{ color: config.hero.navAccent }}>/ {config.name}</span></span>
             </a>
-            <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+            <a href="/" className={styles.navHomeLink}>&larr; Back to EarthAtlas</a>
           </nav>
         </header>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', flexDirection: 'column', gap: 20 }}>
-          <div className={styles.loadingEmoji}>🦋</div>
+          <div className={styles.loadingEmoji}>{config.loading.emoji}</div>
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 300, color: 'var(--text)' }}>
-            Searching for butterflies near {location?.name || 'you'}…
+            {loadingMessage}
           </div>
           <div style={{ fontSize: 13, color: '#5a6b7a', maxWidth: 320, textAlign: 'center' }}>
-            Querying global biodiversity records and citizen science observations
+            {config.loading.detail}
           </div>
         </div>
       </div>
     )
   }
 
-  // ─── Render: Explore ─────────────────────────────────────────────────────
+  // ─── Render: Explore ──────────────────────────────────────────────────────
   const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
 
   return (
-    <div className={styles.butterfliesApp}>
-      <header className={styles.butterfliesNavWrapper}>
-        <nav className={styles.butterfliesNav}>
-          <a href="/butterflies" className={styles.navWordmark}>
-            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent}>/ Butterflies</span></span>
+    <div className={styles.exploreApp} style={themeVars}>
+      <header className={styles.exploreNavWrapper}>
+        <nav className={styles.exploreNav}>
+          <a href={`/${config.slug}`} className={styles.navWordmark}>
+            <span className={styles.navTitle}>Earth<em>Atlas</em> <span className={styles.navAccent} style={{ color: config.hero.navAccent }}>/ {config.name}</span></span>
           </a>
-          <a href="/" className={styles.navHomeLink}>← Back to EarthAtlas</a>
+          <a href="/" className={styles.navHomeLink}>&larr; Back to EarthAtlas</a>
         </nav>
       </header>
 
@@ -407,12 +381,11 @@ export default function ButterfliesApp() {
         {/* Topbar */}
         <div className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <button className={styles.backBtn} onClick={handleChangeLocation}>← Change location</button>
+            <button className={styles.backBtn} onClick={handleChangeLocation}>&larr; Change location</button>
             <div className={styles.locationLabel}>
               Near <span>{location?.name || 'your location'}</span>
             </div>
           </div>
-
           <div className={styles.topbarRight}>
             <div className={styles.modeBar}>
               <button
@@ -431,12 +404,12 @@ export default function ButterfliesApp() {
           </div>
         </div>
 
-        {/* Status */}
+        {/* Status strip */}
         {!loadingData && (
           <div className={styles.statusStrip}>
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
-              ? `${totalCount > filteredCount ? `${totalCount.toLocaleString()} lepidoptera sightings nearby` : `${filteredCount} lepidoptera sightings`}${timeRange.start || timeRange.end ? ` · ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} – ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ' in the past 30 days'} · ${filteredSpecies.length} species`
+              ? `${filteredCount} ${config.taxonLabel} sightings${timeRange.start || timeRange.end ? ` \u00b7 ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} \u2013 ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ` in the past ${config.defaults.days} days`} \u00b7 ${filteredSpecies.length} species`
               : `Showing historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
@@ -462,22 +435,24 @@ export default function ButterfliesApp() {
               <div className={styles.mapOverlay}>
                 <div className={styles.mapBadge}>
                   <div className={styles.mapBadgeDot} />
-                  {mode === 'now' ? 'Past 30 days' : 'Historical'}
+                  {mode === 'now' ? `Past ${config.defaults.days} days` : 'Historical'}
                 </div>
                 {!loadingData && (
                   <div className={styles.mapSightingCount}>
-                    {mapZoom >= HEATMAP_CROSSOVER
-                      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()} sightings shown`
-                      : 'Zoom in to see individual sightings'}
+                    {filteredCount.toLocaleString()} sightings shown
                   </div>
                 )}
               </div>
-              <ButterflyMap
+              <ExploreMap
                 sightings={filteredSightings}
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
-                onZoomChange={setMapZoom}
+                config={{
+                  fallbackColor: config.fallback.color,
+                  fallbackEmoji: config.fallback.emoji,
+                  heatmapLayers: config.heatmapLayers,
+                }}
               />
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (
@@ -485,11 +460,12 @@ export default function ButterfliesApp() {
                 sightings={sightings}
                 value={timeRange}
                 onChange={setTimeRange}
+                styles={styles}
               />
             )}
           </div>
 
-          {/* Season chart */}
+          {/* Season chart (below map in grid) */}
           <div className={styles.seasonSection}>
             <div className={styles.sectionLabel}>Seasonal patterns</div>
             <div className={styles.sectionTitle}>When are they here?</div>
@@ -522,12 +498,12 @@ export default function ButterfliesApp() {
               ))
             ) : filteredSpecies.length === 0 ? (
               <div className={styles.emptyState}>
-                <div className={styles.emptyStateEmoji}>🦋</div>
-                <div className={styles.emptyStateText}>No sightings found nearby</div>
-                <div className={styles.emptyStateSub}>
-                  Try switching to Seasonal patterns to see historical data,<br />
-                  or search a different area.
-                </div>
+                <div className={styles.emptyStateEmoji}>{config.empty.emoji}</div>
+                <div className={styles.emptyStateText}>{config.empty.text}</div>
+                <div
+                  className={styles.emptyStateSub}
+                  dangerouslySetInnerHTML={{ __html: config.empty.sub }}
+                />
               </div>
             ) : filteredSpecies.length > 10 ? (
               filteredSpecies.map((sp, i) => (
@@ -569,11 +545,11 @@ export default function ButterfliesApp() {
         </svg>
       </div>
 
-      <footer className={styles.butterfliesFooter}>
+      <footer className={styles.exploreFooter}>
         <div className={styles.footerText}>
           Sighting data from{' '}
           <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
-          {' · '}
+          {' \u00b7 '}
           <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
         </div>
         <div className={styles.footerText}>

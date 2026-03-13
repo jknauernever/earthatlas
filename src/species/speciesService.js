@@ -64,6 +64,30 @@ export async function getPreloadedBundle(taxonId) {
   }
 }
 
+// ─── GBIF → iNat resolution ─────────────────────────────────────────────────
+
+/**
+ * Given a GBIF species key, resolve the scientific name via GBIF,
+ * then find the matching iNaturalist taxon ID.
+ * Returns the iNat taxon ID (number) or null.
+ */
+export function resolveGBIFToINat(gbifKey) {
+  return cached(`gbif-to-inat:${gbifKey}`, async () => {
+    const gbifRes = await fetch(`${GBIF_API}/species/${gbifKey}`)
+    if (!gbifRes.ok) return null
+    const gbifData = await gbifRes.json()
+    const sciName = gbifData.species || gbifData.canonicalName || gbifData.scientificName
+    if (!sciName) return null
+
+    const inatRes = await fetch(`${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(sciName)}&per_page=5&rank=species`)
+    if (!inatRes.ok) return null
+    const inatData = await inatRes.json()
+    // Match on exact scientific name
+    const match = inatData.results?.find(t => t.name?.toLowerCase() === sciName.toLowerCase())
+    return match?.id || inatData.results?.[0]?.id || null
+  })
+}
+
 // ─── Live API fetches (fallback) ───────────────────────────────────────────
 
 export function fetchTaxonDetail(taxonId) {

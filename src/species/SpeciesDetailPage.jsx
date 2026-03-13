@@ -9,6 +9,8 @@ import {
   fetchWikipediaExtract,
   fetchGBIFPoints,
   getPreloadedBundle,
+  resolveGBIFToINat,
+  resolveInatId,
 } from './speciesService.js'
 import styles from './SpeciesDetailPage.module.css'
 
@@ -32,7 +34,9 @@ function toSlug(name) {
 
 export default function SpeciesDetailPage() {
   const { taxonId: rawId } = useParams()
-  const taxonId = parseInt(rawId, 10)
+  const isNumeric = /^\d+$/.test(rawId)
+  const taxonId = isNumeric ? parseInt(rawId, 10) : null
+  const scientificName = isNumeric ? null : decodeURIComponent(rawId)
 
   const [taxon, setTaxon] = useState(null)
   const [seasonality, setSeasonality] = useState(null)
@@ -49,7 +53,7 @@ export default function SpeciesDetailPage() {
 
   // ─── Load data: preloaded bundle first, then live API fallback ────────
   useEffect(() => {
-    if (!taxonId || isNaN(taxonId)) { setError('Invalid species ID'); setLoading(false); return }
+    if (!taxonId && !scientificName) { setError('Invalid species ID'); setLoading(false); return }
 
     let cancelled = false
     setLoading(true)
@@ -61,22 +65,46 @@ export default function SpeciesDetailPage() {
     setGbifPoints(null)
 
     ;(async () => {
-      // Try preloaded build-time data first
-      const preloaded = await getPreloadedBundle(taxonId)
-      if (cancelled) return
+      // Try preloaded build-time data first (only for numeric IDs)
+      if (taxonId) {
+        const preloaded = await getPreloadedBundle(taxonId)
+        if (cancelled) return
 
-      if (preloaded) {
-        setTaxon(preloaded.taxon)
-        setSeasonality(preloaded.seasonality)
-        setRecentObs(preloaded.recentObs)
-        setWiki(preloaded.wiki)
-        setGbifPoints(preloaded.gbifPoints)
-        setLoading(false)
-        return
+        if (preloaded) {
+          setTaxon(preloaded.taxon)
+          setSeasonality(preloaded.seasonality)
+          setRecentObs(preloaded.recentObs)
+          setWiki(preloaded.wiki)
+          setGbifPoints(preloaded.gbifPoints)
+          setLoading(false)
+          return
+        }
       }
 
-      // Fall back to live API
-      const t = await fetchTaxonDetail(taxonId)
+      // Resolve the effective iNat taxon ID
+      let resolvedId = null
+
+      if (scientificName) {
+        // URL param is a scientific name — resolve via iNat search
+        resolvedId = await resolveInatId(scientificName)
+        if (cancelled) return
+      } else {
+        // Numeric ID — try as iNat ID first, then as GBIF key
+        let t = await fetchTaxonDetail(taxonId).catch(() => null)
+        if (cancelled) return
+
+        if (t) {
+          resolvedId = taxonId
+        } else {
+          // Might be a GBIF species key — resolve to iNat
+          resolvedId = await resolveGBIFToINat(taxonId)
+          if (cancelled) return
+        }
+      }
+
+      if (!resolvedId) throw new Error('Species not found')
+
+      const t = await fetchTaxonDetail(resolvedId)
       if (cancelled) return
       if (!t) throw new Error('Species not found')
 
@@ -84,8 +112,8 @@ export default function SpeciesDetailPage() {
       setLoading(false)
 
       // Fire secondary fetches in parallel
-      fetchSeasonality(taxonId).then(d => { if (!cancelled) setSeasonality(d) }).catch(() => {})
-      fetchRecentObservations(taxonId).then(d => { if (!cancelled) setRecentObs(d) }).catch(() => {})
+      fetchSeasonality(resolvedId).then(d => { if (!cancelled) setSeasonality(d) }).catch(() => {})
+      fetchRecentObservations(resolvedId).then(d => { if (!cancelled) setRecentObs(d) }).catch(() => {})
       fetchWikipediaExtract(t.wikipedia_url).then(d => { if (!cancelled) setWiki(d) }).catch(() => {})
       fetchGBIFPoints(t.name).then(d => { if (!cancelled) setGbifPoints(d) }).catch(() => {})
     })().catch(err => {
@@ -96,7 +124,7 @@ export default function SpeciesDetailPage() {
     })
 
     return () => { cancelled = true }
-  }, [taxonId])
+  }, [taxonId, scientificName])
 
   // ─── SEO ─────────────────────────────────────────────────────────────
   const commonName = taxon?.preferred_common_name || taxon?.name || ''

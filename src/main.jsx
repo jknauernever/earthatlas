@@ -4,9 +4,10 @@ import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
-import WhalesApp from './whales/WhalesApp.jsx'
-import ButterfliesApp from './butterflies/ButterfliesApp.jsx'
-import SharksApp from './sharks/SharksApp.jsx'
+import ExploreApp from './explore/ExploreApp.jsx'
+import whalesConfig from './explore/configs/whales.js'
+import sharksConfig from './explore/configs/sharks.js'
+import butterfliesConfig from './explore/configs/butterflies.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import './index.css'
 
@@ -25,9 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <PostHogProvider client={posthog}>
       <BrowserRouter>
         <Routes>
-          <Route path="/whales" element={<WhalesApp />} />
-          <Route path="/butterflies" element={<ButterfliesApp />} />
-          <Route path="/sharks" element={<SharksApp />} />
+          <Route path="/whales" element={<ExploreApp config={whalesConfig} />} />
+          <Route path="/butterflies" element={<ExploreApp config={butterfliesConfig} />} />
+          <Route path="/sharks" element={<ExploreApp config={sharksConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
           <Route path="/*" element={<App />} />
         </Routes>

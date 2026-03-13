@@ -32,7 +32,7 @@ const config = {
     image: '/butterfly-hero.jpg',
     eyebrow: 'EarthAtlas \u00b7 Lepidoptera Sightings',
     title: ['Find ', 'butterflies.'],
-    subtitle: 'Near you. Any time of year.',
+    subtitle: 'Near you, or wherever you\u2019re going.',
     description: "Discover which butterflies and moths have been seen near any location \u2014 and when you\u2019re most likely to see them.",
     accentColor: '#ffd166',
     navAccent: '#f5d06a',

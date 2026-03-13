@@ -299,9 +299,9 @@ export default function ExploreApp({ config }) {
         <div className={styles.heroContent}>
           <div className={styles.heroEyebrow}>{config.hero.eyebrow}</div>
           <h1 className={styles.heroTitle}>
-            {config.hero.title[0]}<em>{config.hero.title[1]}</em><br />
-            {config.hero.subtitle}
+            {config.hero.title[0]}<em>{config.hero.title[1]}</em>
           </h1>
+          <div className={styles.heroSubtitle}>{config.hero.subtitle}</div>
           <p className={styles.heroSub}>
             {config.hero.description}
           </p>

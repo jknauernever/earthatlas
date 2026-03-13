@@ -18,7 +18,7 @@ const config = {
     image: '/whale-hero.jpg',
     eyebrow: 'EarthAtlas \u00b7 Cetacean Sightings',
     title: ['Find ', 'whales.'],
-    subtitle: 'Near you. Whenever you go.',
+    subtitle: 'Near you, or wherever you\u2019re going.',
     description: "Discover which whales and dolphins have been seen near any coastline \u2014 and when you\u2019re most likely to see them.",
     accentColor: '#a8e6cf',
     navAccent: '#4dd9c0',

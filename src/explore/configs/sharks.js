@@ -18,7 +18,7 @@ const config = {
     image: '/shark-hero.jpg',
     eyebrow: 'EarthAtlas \u00b7 Shark Sightings',
     title: ['Find ', 'sharks.'],
-    subtitle: 'Near you. Before you go.',
+    subtitle: 'Near you, or wherever you\u2019re going.',
     description: "Discover which sharks have been sighted near any coastline \u2014 and when they\u2019re most likely to be there.",
     accentColor: '#ff6b6b',
     navAccent: '#ff6b6b',

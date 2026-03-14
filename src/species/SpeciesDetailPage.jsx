@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import { useSEO } from '../hooks/useSEO.js'
@@ -8,6 +8,8 @@ import {
   fetchRecentObservations,
   fetchWikipediaExtract,
   fetchGBIFPoints,
+  fetchINatMapPoints,
+  resolveGBIFTaxonKey,
   getPreloadedBundle,
   resolveGBIFToINat,
   resolveInatId,
@@ -43,10 +45,20 @@ export default function SpeciesDetailPage() {
   const [recentObs, setRecentObs] = useState(null)
   const [wiki, setWiki] = useState(null)
   const [gbifPoints, setGbifPoints] = useState(null)
+  const [gbifTaxonKey, setGbifTaxonKey] = useState(null)
+  const [inatTaxonId, setInatTaxonId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lightboxIdx, setLightboxIdx] = useState(null)
   const [hoverMonth, setHoverMonth] = useState(null)
+  const [mapMode, setMapMode] = useState('heatmap') // 'recent' | 'heatmap'
+  const [mapDateRange, setMapDateRange] = useState(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+    return { start: thirtyAgo, end: today }
+  })
+  const [mapZoom, setMapZoom] = useState(1.2)
+  const [selectedObs, setSelectedObs] = useState(null)
 
   const mapRef = useRef(null)
   const mapContainerRef = useRef(null)
@@ -109,13 +121,21 @@ export default function SpeciesDetailPage() {
       if (!t) throw new Error('Species not found')
 
       setTaxon(t)
+      setInatTaxonId(resolvedId)
       setLoading(false)
 
       // Fire secondary fetches in parallel
       fetchSeasonality(resolvedId).then(d => { if (!cancelled) setSeasonality(d) }).catch(() => {})
       fetchRecentObservations(resolvedId).then(d => { if (!cancelled) setRecentObs(d) }).catch(() => {})
       fetchWikipediaExtract(t.wikipedia_url).then(d => { if (!cancelled) setWiki(d) }).catch(() => {})
-      fetchGBIFPoints(t.name).then(d => { if (!cancelled) setGbifPoints(d) }).catch(() => {})
+      // Fetch from both GBIF and iNaturalist, merge into one set of map points
+      Promise.all([
+        fetchGBIFPoints(t.name).catch(() => []),
+        fetchINatMapPoints(resolvedId).catch(() => []),
+      ]).then(([gbif, inat]) => {
+        if (!cancelled) setGbifPoints([...gbif, ...inat])
+      })
+      resolveGBIFTaxonKey(t.name).then(k => { if (!cancelled) setGbifTaxonKey(k) }).catch(() => {})
     })().catch(err => {
       if (!cancelled) {
         setError(err.message || 'Failed to load species data')
@@ -153,59 +173,213 @@ export default function SpeciesDetailPage() {
     attribution: tp.photo?.attribution || '',
   })).filter(p => p.url)
 
-  // ─── Map ─────────────────────────────────────────────────────────────
+  // ─── Find densest cluster center ────────────────────────────────────
+  const findDenseCenter = useCallback((pts) => {
+    if (!pts?.length) return null
+    // Grid points into 10° cells, find the cell with most points
+    const grid = {}
+    for (const p of pts) {
+      const key = `${Math.round(p.lat / 10) * 10},${Math.round(p.lng / 10) * 10}`
+      if (!grid[key]) grid[key] = { count: 0, sumLat: 0, sumLng: 0 }
+      grid[key].count++
+      grid[key].sumLat += p.lat
+      grid[key].sumLng += p.lng
+    }
+    let best = null
+    for (const cell of Object.values(grid)) {
+      if (!best || cell.count > best.count) best = cell
+    }
+    return best ? [best.sumLng / best.count, best.sumLat / best.count] : null
+  }, [])
+
+  // ─── Build GeoJSON from points (filtered to date range within last 30 days)
+  const buildGeoJSON = useCallback((pts, range) => {
+    const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+    const today = new Date().toISOString().split('T')[0]
+    const lo = range.start && range.start > thirtyAgo ? range.start : thirtyAgo
+    const hi = range.end && range.end < today ? range.end : today
+
+    const filtered = pts.filter(p => p.date && p.date >= lo && p.date <= hi)
+    filtered.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1)
+
+    const rangeMs = Math.max(new Date(hi + 'T12:00:00') - new Date(lo + 'T12:00:00'), 1)
+
+    return {
+      type: 'FeatureCollection',
+      features: filtered.map(p => {
+        const elapsed = (new Date(p.date + 'T12:00:00') - new Date(lo + 'T12:00:00')) / rangeMs
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+          properties: {
+            date: p.date,
+            recency: Math.max(0, Math.min(1, elapsed)),
+            place: p.place || '',
+            observer: p.observer || '',
+            source: p.source || 'GBIF',
+            sourceId: p.sourceId || '',
+            photo: p.photo || '',
+          },
+        }
+      }),
+    }
+  }, [])
+
+  // ─── Map: create/destroy on mode, style, or data changes ──────────
   useEffect(() => {
-    if (!gbifPoints?.length || !mapContainerRef.current || mapRef.current) return
+    if (!mapContainerRef.current) return
     if (!MAPBOX_TOKEN) return
+    if (!gbifPoints?.length) return
+
+    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
 
     mapboxgl.accessToken = MAPBOX_TOKEN
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: 'mapbox://styles/mapbox/outdoors-v12',
       center: [0, 20],
-      zoom: 1.3,
+      zoom: 1.2,
       attributionControl: false,
+      logoPosition: 'bottom-right',
     })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+    map.on('zoom', () => setMapZoom(map.getZoom()))
 
     map.on('load', () => {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: gbifPoints.map(p => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { date: p.date },
-        })),
-      }
-      map.addSource('occurrences', { type: 'geojson', data: geojson })
-      map.addLayer({
-        id: 'occ-dots',
-        type: 'circle',
-        source: 'occurrences',
-        paint: {
-          'circle-radius': 4,
-          'circle-color': '#3d5a3e',
-          'circle-opacity': 0.7,
-          'circle-stroke-width': 0.5,
-          'circle-stroke-color': '#fff',
-        },
-      })
+      // Match space color to page background so globe floats on parchment, not black
+      try {
+        map.setFog({
+          color: '#f5f0e8',
+          'high-color': '#f5f0e8',
+          'space-color': '#f5f0e8',
+          'horizon-blend': 0.02,
+          'star-intensity': 0,
+        })
+      } catch (e) { console.warn('setFog failed:', e) }
 
-      // Fit bounds to points
-      if (gbifPoints.length > 1) {
-        const bounds = new mapboxgl.LngLatBounds()
-        gbifPoints.forEach(p => bounds.extend([p.lng, p.lat]))
-        map.fitBounds(bounds, { padding: 60, maxZoom: 8 })
+      if (mapMode === 'heatmap') {
+        const allPoints = {
+          type: 'FeatureCollection',
+          features: gbifPoints.map(p => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+            properties: {},
+          })),
+        }
+        map.addSource('heat-points', { type: 'geojson', data: allPoints })
+        map.addLayer({
+          id: 'heat-layer',
+          type: 'heatmap',
+          source: 'heat-points',
+          paint: {
+            'heatmap-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 4,
+              2, 8,
+              4, 16,
+              6, 24,
+              9, 32,
+            ],
+            'heatmap-intensity': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 0.4,
+              2, 0.6,
+              4, 1,
+              8, 1.5,
+            ],
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0,    'rgba(0, 0, 0, 0)',
+              0.05, 'rgba(65, 105, 225, 0.4)',
+              0.15, 'rgb(0, 180, 120)',
+              0.35, 'rgb(255, 200, 0)',
+              0.55, 'rgb(255, 120, 0)',
+              0.75, 'rgb(230, 50, 20)',
+              1.0,  'rgb(180, 0, 30)',
+            ],
+            'heatmap-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 0.6,
+              12, 0.6,
+            ],
+          },
+        })
       } else {
-        map.setCenter([gbifPoints[0].lng, gbifPoints[0].lat])
-        map.setZoom(5)
+        // Show all data initially (date range filter applied by update effect)
+        const geojson = buildGeoJSON(gbifPoints, mapDateRange)
+
+        map.addSource('occurrences', { type: 'geojson', data: geojson })
+        map.addLayer({
+          id: 'occ-dots',
+          type: 'circle',
+          source: 'occurrences',
+          layout: {
+            'circle-sort-key': ['get', 'recency'],
+          },
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 6, 3, 7, 5, 8, 10, 10],
+            'circle-color': '#e67e22',
+            'circle-opacity': ['interpolate', ['linear'], ['get', 'recency'], 0, 0.25, 1, 0.95],
+            'circle-stroke-width': 1,
+            'circle-stroke-color': 'rgba(255,255,255,0.8)',
+          },
+        })
+
+        // Click handler for observation dots
+        map.on('click', 'occ-dots', (e) => {
+          const f = e.features?.[0]
+          if (!f) return
+          const p = f.properties
+          const [lng, lat] = f.geometry.coordinates
+          setSelectedObs({
+            lat, lng,
+            date: p.date || null,
+            place: p.place || null,
+            observer: p.observer || null,
+            source: p.source || 'GBIF',
+            sourceId: p.sourceId || null,
+            photo: p.photo || null,
+          })
+          map.easeTo({ center: [lng, lat], duration: 400 })
+        })
+        // Clicking on empty space clears selection
+        map.on('click', (e) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ['occ-dots'] })
+          if (!features.length) setSelectedObs(null)
+        })
+        map.on('mouseenter', 'occ-dots', () => { map.getCanvas().style.cursor = 'pointer' })
+        map.on('mouseleave', 'occ-dots', () => { map.getCanvas().style.cursor = '' })
+      }
+
+      // Spin the globe to the densest observation area
+      // For recent mode, use only 30-day points so the globe faces the recent data
+      if (mapMode === 'recent') {
+        const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+        const recentPts = gbifPoints.filter(p => p.date && p.date >= thirtyAgo)
+        const center = findDenseCenter(recentPts.length ? recentPts : gbifPoints)
+        if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
+      } else {
+        const center = findDenseCenter(gbifPoints)
+        if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
       }
     })
 
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
-  }, [gbifPoints])
+  }, [gbifPoints, gbifTaxonKey, inatTaxonId, mapMode, buildGeoJSON, findDenseCenter])
+
+  // ─── Update dots when date range slider changes (no map recreation) ─
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || mapMode !== 'recent' || !gbifPoints?.length) return
+    const update = () => {
+      const src = map.getSource('occurrences')
+      if (src) src.setData(buildGeoJSON(gbifPoints, mapDateRange))
+    }
+    if (map.isStyleLoaded()) update()
+    else map.once('load', update)
+  }, [mapDateRange, gbifPoints, mapMode, buildGeoJSON])
 
   // ─── Lightbox keyboard nav ──────────────────────────────────────────
   useEffect(() => {
@@ -260,18 +434,30 @@ export default function SpeciesDetailPage() {
       <div className={styles.hero}>
         {heroPhoto && <img className={styles.heroImg} src={heroPhoto} alt={commonName} />}
         <div className={styles.heroOverlay}>
-          <div className={styles.heroCommon}>{commonName}</div>
-          <div className={styles.heroScientific}>{sciName}</div>
-          <div className={styles.heroMeta}>
-            {iucnLabel && (
-              <span className={styles.iucnBadge} style={{ background: iucnColor }}>
-                {iucnCode} — {iucnLabel}
-              </span>
-            )}
-            {taxon.observations_count > 0 && (
-              <span className={styles.heroStat}>
-                <strong>{taxon.observations_count.toLocaleString()}</strong> observations on iNaturalist
-              </span>
+          <div className={styles.heroScrim}>
+            <div className={styles.heroCommon}>{commonName}</div>
+            <div className={styles.heroScientific}>{sciName}</div>
+            <div className={styles.heroMeta}>
+              {iucnLabel && (
+                <span className={styles.iucnBadge} style={{ background: iucnColor }}>
+                  {iucnCode} — {iucnLabel}
+                </span>
+              )}
+              {taxon.observations_count > 0 && (
+                <span className={styles.heroStat}>
+                  <strong>{taxon.observations_count.toLocaleString()}</strong> observations on iNaturalist
+                </span>
+              )}
+            </div>
+            {wiki?.extract && (
+              <div className={styles.heroWiki}>
+                <p>{wiki.extract.length > 300 ? wiki.extract.slice(0, 300).replace(/\s+\S*$/, '') + '…' : wiki.extract}</p>
+                {taxon.wikipedia_url && (
+                  <a className={styles.heroWikiMore} href={taxon.wikipedia_url} target="_blank" rel="noopener noreferrer">
+                    Read more on Wikipedia →
+                  </a>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -296,6 +482,125 @@ export default function SpeciesDetailPage() {
           </div>
         )}
 
+        {/* ─── Global Map ─── */}
+        {MAPBOX_TOKEN && (
+          <div className={styles.section}>
+            <div className={styles.mapHeader}>
+              <h2 className={styles.sectionTitle}>Global Distribution</h2>
+              <div className={styles.mapToggle}>
+                <button
+                  className={`${styles.mapToggleBtn} ${mapMode === 'recent' ? styles.mapToggleBtnActive : ''}`}
+                  onClick={() => setMapMode('recent')}
+                >
+                  Recent
+                </button>
+                <button
+                  className={`${styles.mapToggleBtn} ${mapMode === 'heatmap' ? styles.mapToggleBtnActive : ''}`}
+                  onClick={() => { setMapMode('heatmap'); setSelectedObs(null) }}
+                >
+                  All-time heatmap
+                </button>
+              </div>
+            </div>
+            {gbifPoints === null ? (
+              <div className={styles.shimmer} style={{ height: 440, borderRadius: 12 }} />
+            ) : gbifPoints.length === 0 ? (
+              <div className={styles.noRecentObs}>
+                <div className={styles.noRecentObsTitle}>No observation data available</div>
+                <div className={styles.noRecentObsText}>
+                  We don't have any occurrence records for this species yet.
+                </div>
+              </div>
+            ) : mapMode === 'recent' && !gbifPoints.some(p => {
+              const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+              return p.date && p.date >= thirtyAgo
+            }) ? (
+              <div className={styles.noRecentObs}>
+                <div className={styles.noRecentObsTitle}>No observations in the last 30 days</div>
+                <div className={styles.noRecentObsText}>
+                  This species hasn't been recorded recently. View the all-time heatmap to see where it's been observed historically.
+                </div>
+                <button
+                  className={styles.noRecentObsBtn}
+                  onClick={() => setMapMode('heatmap')}
+                >
+                  View all-time heatmap
+                </button>
+              </div>
+            ) : (
+              <div className={styles.mapLayout}>
+                <div className={styles.mapContainer}>
+                  <div className={styles.mapWrapOuter}>
+                    <div ref={mapContainerRef} className={styles.mapWrap} />
+                    <div className={styles.mapZoom}>z{mapZoom.toFixed(1)}</div>
+                  </div>
+                  {mapMode === 'recent' && (
+                    <MapTimeSlider value={mapDateRange} onChange={setMapDateRange} />
+                  )}
+                </div>
+                {mapMode === 'recent' && <div className={styles.mapSidebar}>
+                  {selectedObs ? (
+                    <div className={styles.obsCard}>
+                      {selectedObs.photo && (
+                        <img
+                          className={styles.obsCardPhoto}
+                          src={selectedObs.photo}
+                          alt="Observation"
+                          onError={e => { e.target.style.display = 'none' }}
+                        />
+                      )}
+                      <div className={styles.obsCardBody}>
+                        <div className={styles.obsCardTitle}>{commonName || sciName}</div>
+                        {selectedObs.date && (
+                          <div className={styles.obsCardRow}>
+                            <span className={styles.obsCardIcon}>{'\u{1F4C5}'}</span>
+                            {new Date(selectedObs.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                          </div>
+                        )}
+                        {selectedObs.place && (
+                          <div className={styles.obsCardRow}>
+                            <span className={styles.obsCardIcon}>{'\u{1F4CD}'}</span>
+                            {selectedObs.place}
+                          </div>
+                        )}
+                        {selectedObs.observer && (
+                          <div className={styles.obsCardRow}>
+                            <span className={styles.obsCardIcon}>{'\u{1F464}'}</span>
+                            {selectedObs.observer}
+                          </div>
+                        )}
+                        <div className={styles.obsCardCoords}>
+                          {selectedObs.lat.toFixed(4)}, {selectedObs.lng.toFixed(4)}
+                        </div>
+                        <div className={styles.obsCardActions}>
+                          {selectedObs.sourceId && (
+                            <a
+                              className={styles.obsCardLink}
+                              href={selectedObs.source === 'iNaturalist'
+                                ? `https://www.inaturalist.org/observations/${selectedObs.sourceId}`
+                                : `https://www.gbif.org/occurrence/${selectedObs.sourceId}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              View on {selectedObs.source} {'\u2197'}
+                            </a>
+                          )}
+                        </div>
+                        <div className={styles.obsCardSource}>via {selectedObs.source}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.obsCardEmpty}>
+                      Click an observation on the map to see details
+                    </div>
+                  )}
+                </div>}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── Photo Gallery ─── */}
         {photos.length > 0 && (
           <div className={styles.section}>
@@ -307,21 +612,6 @@ export default function SpeciesDetailPage() {
                   {p.attribution && <div className={styles.galleryAttribution}>{p.attribution}</div>}
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* ─── Wikipedia ─── */}
-        {wiki?.extract_html && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>About {commonName || sciName}</h2>
-            <div className={styles.wikiBlock}>
-              <div dangerouslySetInnerHTML={{ __html: wiki.extract_html }} />
-              {taxon.wikipedia_url && (
-                <a className={styles.wikiMore} href={taxon.wikipedia_url} target="_blank" rel="noopener noreferrer">
-                  Read full article on Wikipedia →
-                </a>
-              )}
             </div>
           </div>
         )}
@@ -393,19 +683,6 @@ export default function SpeciesDetailPage() {
           </div>
         )}
 
-        {/* ─── Global Map ─── */}
-        {MAPBOX_TOKEN && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Global Distribution</h2>
-            {gbifPoints === null ? (
-              <div className={styles.shimmer} style={{ height: 440, borderRadius: 12 }} />
-            ) : gbifPoints.length === 0 ? (
-              <div style={{ color: 'var(--muted)', fontSize: 14 }}>No occurrence data available from GBIF.</div>
-            ) : (
-              <div ref={mapContainerRef} className={styles.mapWrap} />
-            )}
-          </div>
-        )}
       </div>
 
       {/* ─── Lightbox ─── */}
@@ -431,6 +708,55 @@ export default function SpeciesDetailPage() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+const MS_PER_DAY = 86400000
+
+function MapTimeSlider({ value, onChange }) {
+  const today = new Date().toISOString().split('T')[0]
+  const thirtyAgo = new Date(Date.now() - 30 * MS_PER_DAY).toISOString().split('T')[0]
+  const totalDays = 30
+
+  const dateToDay = (d) => Math.round((new Date(d + 'T12:00:00') - new Date(thirtyAgo + 'T12:00:00')) / MS_PER_DAY)
+  const dayToDate = (day) => new Date(new Date(thirtyAgo + 'T12:00:00').getTime() + day * MS_PER_DAY).toISOString().split('T')[0]
+  const fmt = (d) => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) } catch { return d } }
+
+  const loDay = value.start ? Math.max(0, dateToDay(value.start)) : 0
+  const hiDay = value.end ? Math.min(totalDays, dateToDay(value.end)) : totalDays
+  const loPct = (loDay / totalDays) * 100
+  const hiPct = (hiDay / totalDays) * 100
+
+  return (
+    <div className={styles.tsBlock}>
+      <div className={styles.tsSlider}>
+        <span className={styles.tsLabel}>{fmt(thirtyAgo)}</span>
+        <div className={styles.tsMiddle}>
+          {loDay > 0 && <div className={styles.tsThumbLabel} style={{ left: `${loPct}%` }}>{fmt(value.start || thirtyAgo)}</div>}
+          {hiDay < totalDays && <div className={styles.tsThumbLabel} style={{ left: `${hiPct}%` }}>{fmt(value.end || today)}</div>}
+          <div className={styles.tsFill} style={{ left: `${loPct}%`, right: `${100 - hiPct}%` }} />
+          <input
+            type="range"
+            className={`${styles.tsTrack} ${styles.tsTrackLo}`}
+            min={0} max={totalDays} value={loDay}
+            onChange={e => {
+              const day = Math.min(parseInt(e.target.value, 10), hiDay - 1)
+              onChange({ ...value, start: day <= 0 ? thirtyAgo : dayToDate(day) })
+            }}
+          />
+          <input
+            type="range"
+            className={`${styles.tsTrack} ${styles.tsTrackHi}`}
+            min={0} max={totalDays} value={hiDay}
+            onChange={e => {
+              const day = Math.max(parseInt(e.target.value, 10), loDay + 1)
+              onChange({ ...value, end: day >= totalDays ? today : dayToDate(day) })
+            }}
+          />
+        </div>
+        <span className={styles.tsLabel}>{fmt(today)}</span>
+      </div>
     </div>
   )
 }

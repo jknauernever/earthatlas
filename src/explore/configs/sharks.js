@@ -39,7 +39,7 @@ const config = {
 
   fallback: {
     commonName: 'Unknown shark',
-    color: '#e8e8e8',
+    color: '#e67e22',
     emoji: '🦈',
   },
 

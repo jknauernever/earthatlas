@@ -111,6 +111,30 @@ export function fetchSeasonality(taxonId) {
   })
 }
 
+export function fetchINatMapPoints(taxonId, perPage = 200) {
+  if (!taxonId) return Promise.resolve([])
+
+  return cached(`inat-map-pts:${taxonId}:${perPage}`, async () => {
+    const res = await fetch(
+      `${INAT_API}/observations?taxon_id=${taxonId}&per_page=${perPage}&order=desc&order_by=observed_on&quality_grade=research&geo=true`
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.results || [])
+      .filter(o => o.geojson?.coordinates)
+      .map(o => ({
+        lat: o.geojson.coordinates[1],
+        lng: o.geojson.coordinates[0],
+        date: o.observed_on || null,
+        place: o.place_guess || null,
+        observer: o.user?.login || null,
+        source: 'iNaturalist',
+        sourceId: String(o.id),
+        photo: o.photos?.[0]?.url?.replace('square', 'medium') || null,
+      }))
+  })
+}
+
 export function fetchRecentObservations(taxonId, perPage = 8) {
   return cached(`recent:${taxonId}`, async () => {
     const res = await fetch(
@@ -137,20 +161,31 @@ export function fetchWikipediaExtract(wikipediaUrl) {
   })
 }
 
-export function fetchGBIFPoints(scientificName) {
-  if (!scientificName) return Promise.resolve([])
+/**
+ * Resolve a scientific name to a GBIF taxon key.
+ */
+export function resolveGBIFTaxonKey(scientificName) {
+  if (!scientificName) return Promise.resolve(null)
 
-  return cached(`gbif-pts:${scientificName}`, async () => {
-    const matchRes = await fetch(
+  return cached(`gbif-key:${scientificName}`, async () => {
+    const res = await fetch(
       `${GBIF_API}/species/match?name=${encodeURIComponent(scientificName)}&strict=true`
     )
-    if (!matchRes.ok) return []
-    const matchData = await matchRes.json()
-    const taxonKey = matchData.usageKey
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.usageKey || null
+  })
+}
+
+export function fetchGBIFPoints(scientificName, limit = 800) {
+  if (!scientificName) return Promise.resolve([])
+
+  return cached(`gbif-pts:${scientificName}:${limit}`, async () => {
+    const taxonKey = await resolveGBIFTaxonKey(scientificName)
     if (!taxonKey) return []
 
     const occRes = await fetch(
-      `${GBIF_API}/occurrence/search?taxonKey=${taxonKey}&hasCoordinate=true&limit=300&hasGeospatialIssue=false`
+      `${GBIF_API}/occurrence/search?taxonKey=${taxonKey}&hasCoordinate=true&limit=${limit}&hasGeospatialIssue=false`
     )
     if (!occRes.ok) return []
     const occData = await occRes.json()
@@ -160,8 +195,11 @@ export function fetchGBIFPoints(scientificName) {
       .map(o => ({
         lat: o.decimalLatitude,
         lng: o.decimalLongitude,
-        date: o.eventDate || null,
-        basisOfRecord: o.basisOfRecord || null,
+        date: o.eventDate?.split('T')[0] || null,
+        place: [o.locality, o.stateProvince, o.country].filter(Boolean).join(', ') || null,
+        observer: o.recordedBy || o.institutionCode || null,
+        source: 'GBIF',
+        sourceId: String(o.key),
       }))
   })
 }

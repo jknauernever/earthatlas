@@ -42,7 +42,7 @@ export function useQueryParams(schema) {
       const next = new URLSearchParams(prev)
       for (const [key, value] of Object.entries(updates)) {
         const def = schema[key]?.default
-        if (value == null || value === def) {
+        if (value == null) {
           next.delete(key)
         } else {
           // Round numbers to 4 decimal places for coordinates

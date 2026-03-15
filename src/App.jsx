@@ -6,14 +6,16 @@ import { useQueryParams } from './hooks/useQueryParams'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
 import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
-import { getDateRangeStart } from './utils/taxon'
+import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
 
 import Header           from './components/Header'
 import Controls         from './components/Controls'
 import TaxonFilter      from './components/TaxonFilter'
 import SpeciesGrid      from './components/SpeciesGrid'
 import SpeciesList      from './components/SpeciesList'
-import MapView          from './components/MapView'
+import ExploreMap       from './explore/components/ExploreMap'
+import SpeciesListItem  from './explore/components/SpeciesListItem'
+import exploreStyles    from './explore/ExploreApp.module.css'
 import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
@@ -59,9 +61,9 @@ const InsightsIcon = () => (
 const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
-  source:  { type: 'string', default: 'iNaturalist' },
+  source:  { type: 'string', default: 'All' },
   radius:  { type: 'number', default: 5 },
-  time:    { type: 'string', default: 'day' },
+  time:    { type: 'string', default: 'week' },
   taxon:   { type: 'string', default: 'all' },
   species: { type: 'string' },
   view:    { type: 'string', default: 'map' },
@@ -151,6 +153,10 @@ export default function App() {
       if (radius > 50) updates.radius = 50
       if (timeWindow === 'year' || timeWindow === 'all') updates.time = 'month'
     }
+    // "All" uses iNaturalist-friendly defaults
+    if (source === 'All') {
+      updates.time = 'week'
+    }
     setQP(updates)
     posthog?.capture('source_changed', { source })
   }, [dataSource, posthog, radius, timeWindow, setQP])
@@ -176,52 +182,94 @@ export default function App() {
   }, [setQP])
 
   // ─── Search ────────────────────────────────────────────────────
+  // GBIF dataset keys for deduplication (iNat and eBird both export to GBIF)
+  const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
+  const GBIF_EBIRD_DATASET = '4fa7b334-ce0d-4e88-aaae-2e0c138d049e'
+
   const handleSearch = useCallback(async () => {
     if (!coords) return
     setLoading(true)
     setError(null)
 
     try {
-      let data
-
       const d1 = getDateRangeStart(timeWindow)
       const d2 = new Date().toISOString().split('T')[0]
+      const iconicFilter = activeTaxon !== 'all' ? activeTaxon : undefined
+      let allResults = []
+      let totalCount = 0
 
-      if (dataSource === 'eBird') {
-        data = await fetchEBirdObservations({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm: radius,
-          timeWindow,
-          perPage,
+      if (dataSource === 'All') {
+        // Fetch all three sources in parallel
+        const [inatData, ebirdData, gbifData] = await Promise.all([
+          fetchObservations({
+            lat: coords.lat, lng: coords.lng, radiusKm: radius,
+            d1, d2: d1 ? d2 : undefined, perPage,
+            taxonId: selectedSpecies?.id,
+            iconicTaxa: iconicFilter,
+          }).catch(() => ({ results: [], total_results: 0 })),
+
+          fetchEBirdObservations({
+            lat: coords.lat, lng: coords.lng,
+            radiusKm: Math.min(radius, 50), // eBird max 50km
+            timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
+            perPage,
+            speciesCode: selectedSpecies?.speciesCode || undefined,
+          }).catch(() => ({ results: [], total_results: 0 })),
+
+          fetchGBIFOccurrences({
+            lat: coords.lat, lng: coords.lng, radiusKm: radius,
+            d1, d2: d1 ? d2 : undefined, perPage,
+            taxonKey: selectedSpecies?.gbifKey || undefined,
+            iconicTaxa: iconicFilter,
+          }).catch(() => ({ results: [], total_results: 0 })),
+        ])
+
+        // Filter GBIF results to remove records sourced from iNat or eBird (avoid duplicates)
+        const gbifFiltered = (gbifData.results || []).filter(
+          r => r.datasetKey !== GBIF_INAT_DATASET && r.datasetKey !== GBIF_EBIRD_DATASET
+        )
+
+        allResults = [
+          ...(inatData.results || []),
+          ...(ebirdData.results || []),
+          ...gbifFiltered,
+        ]
+        totalCount = allResults.length
+
+      } else if (dataSource === 'eBird') {
+        const data = await fetchEBirdObservations({
+          lat: coords.lat, lng: coords.lng, radiusKm: radius,
+          timeWindow, perPage,
           speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
         })
+        allResults = data.results || []
+        totalCount = data.total_results || 0
+
       } else if (dataSource === 'GBIF') {
-        data = await fetchGBIFOccurrences({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm: radius,
-          d1,
-          d2: d1 ? d2 : undefined,
-          perPage,
+        const data = await fetchGBIFOccurrences({
+          lat: coords.lat, lng: coords.lng, radiusKm: radius,
+          d1, d2: d1 ? d2 : undefined, perPage,
           taxonKey: selectedSpecies?.gbifKey || selectedSpecies?.id,
-          iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
+          iconicTaxa: iconicFilter,
         })
+        allResults = data.results || []
+        totalCount = data.total_results || 0
+
       } else {
-        data = await fetchObservations({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm: radius,
-          d1,
-          d2: d1 ? d2 : undefined,
-          perPage,
+        const data = await fetchObservations({
+          lat: coords.lat, lng: coords.lng, radiusKm: radius,
+          d1, d2: d1 ? d2 : undefined, perPage,
           taxonId: selectedSpecies?.id,
-          iconicTaxa: activeTaxon !== 'all' ? activeTaxon : undefined,
+          iconicTaxa: iconicFilter,
         })
+        allResults = data.results || []
+        totalCount = data.total_results || 0
       }
 
-      setObservations(data.results || [])
-      setTotalResults(data.total_results || 0)
+      setObservations(allResults)
+      setTotalResults(totalCount)
+      // Ensure search params are reflected in URL for shareability
+      setQP({ lat: coords.lat, lng: coords.lng, radius, time: timeWindow, source: dataSource })
       posthog?.capture('search_performed', {
         source: dataSource,
         location: locationName,
@@ -229,7 +277,7 @@ export default function App() {
         time_window: timeWindow,
         species_filter: selectedSpecies?.name || null,
         taxon_filter: activeTaxon,
-        total_results: data.total_results || 0,
+        total_results: totalCount,
       })
     } catch (err) {
       setError(err.message)
@@ -250,13 +298,69 @@ export default function App() {
     handleSearch()
   }, [handleSearch])
 
+  // ─── Map species state ──────────────────────────────────────
+  const [activeMapSpecies, setActiveMapSpecies] = useState(null)
+  const [openInfoKey, setOpenInfoKey] = useState(null)
+
+  // Normalize observations to the sighting format ExploreMap expects
+  const mapSightings = useMemo(() => {
+    return observations.map(obs => {
+      const taxon = obs.taxon
+      const lng = obs.geojson?.coordinates?.[0]
+      const lat = obs.geojson?.coordinates?.[1]
+      if (lng == null || lat == null) return null
+      const iconicTaxon = taxon?.iconic_taxon_name || 'default'
+      const { emoji } = getTaxonMeta(iconicTaxon)
+      const isEBird = obs.source === 'eBird'
+      const isGBIF = obs.source === 'GBIF'
+      return {
+        id: String(obs.id),
+        speciesKey: taxon?.id || taxon?.name || null,
+        common: taxon?.preferred_common_name || taxon?.name || 'Unknown species',
+        scientific: taxon?.name || '',
+        color: '#e67e22',
+        emoji,
+        lat,
+        lng,
+        date: obs.observed_on || null,
+        place: obs.place_guess || null,
+        observer: isEBird ? 'eBird' : isGBIF ? (obs.recordedBy || 'GBIF') : (obs.user?.login || 'iNaturalist'),
+        photos: obs.photos?.map(p => p.url?.replace('square', 'medium')).filter(Boolean) || [],
+        source: isEBird ? 'eBird' : isGBIF ? 'GBIF' : 'iNaturalist',
+      }
+    }).filter(Boolean)
+  }, [observations])
+
+  // Aggregate sightings into species for the sidebar
+  const mapSpeciesList = useMemo(() => {
+    const map = {}
+    for (const s of mapSightings) {
+      const key = s.speciesKey || s.common
+      if (!map[key]) {
+        map[key] = {
+          speciesKey: s.speciesKey,
+          common: s.common,
+          scientific: s.scientific,
+          color: s.color,
+          emoji: s.emoji,
+          count: 0,
+          photos: [],
+          meta: { emoji: s.emoji },
+        }
+      }
+      map[key].count++
+      if (s.photos.length > 0 && map[key].photos.length === 0) map[key].photos = s.photos
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count)
+  }, [mapSightings])
+
   const filtered = observations
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
-  const sourceName = dataSource === 'eBird' ? 'eBird' : dataSource === 'GBIF' ? 'GBIF' : 'iNaturalist'
+  const sourceName = dataSource === 'All' ? 'iNaturalist, eBird & GBIF' : dataSource === 'eBird' ? 'eBird' : dataSource === 'GBIF' ? 'GBIF' : 'iNaturalist'
   const statusText = loading
-    ? `Fetching ${dataSource === 'GBIF' ? 'occurrences' : 'observations'} from ${sourceName}…`
+    ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
     ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
@@ -276,22 +380,28 @@ export default function App() {
       <div className="source-row">
         <span className="source-label">Source ›</span>
         <button
+          className={`source-chip ${dataSource === 'All' ? 'active' : ''}`}
+          onClick={() => handleSourceChange('All')}
+        >
+          <span className={`source-dot ${dataSource === 'All' ? 'dot-active' : ''}`} />All
+        </button>
+        <button
           className={`source-chip ${dataSource === 'iNaturalist' ? 'active' : ''}`}
           onClick={() => handleSourceChange('iNaturalist')}
         >
-          <span className="source-dot active-dot" />iNaturalist
+          <span className={`source-dot ${dataSource === 'All' || dataSource === 'iNaturalist' ? 'dot-active' : ''}`} />iNaturalist
         </button>
         <button
           className={`source-chip ${dataSource === 'eBird' ? 'active' : ''}`}
           onClick={() => handleSourceChange('eBird')}
         >
-          <span className="source-dot ebird-dot" />eBird
+          <span className={`source-dot ${dataSource === 'All' || dataSource === 'eBird' ? 'dot-active' : ''}`} />eBird
         </button>
         <button
           className={`source-chip ${dataSource === 'GBIF' ? 'active' : ''}`}
           onClick={() => handleSourceChange('GBIF')}
         >
-          <span className="source-dot gbif-dot" />GBIF
+          <span className={`source-dot ${dataSource === 'All' || dataSource === 'GBIF' ? 'dot-active' : ''}`} />GBIF
         </button>
       </div>
 
@@ -309,7 +419,7 @@ export default function App() {
         dataSource={dataSource}
       />
 
-      {(dataSource === 'iNaturalist' || dataSource === 'GBIF') && (
+      {(dataSource === 'iNaturalist' || dataSource === 'GBIF' || dataSource === 'All') && totalResults !== null && (
         <TaxonFilter activeTaxon={activeTaxon} onChange={(t) => setQP({ taxon: t })} />
       )}
 
@@ -359,7 +469,7 @@ export default function App() {
         {loading ? (
           <LoadingState />
         ) : totalResults === null && !error ? (
-          dataSource === 'eBird' ? <EBirdStats /> : dataSource === 'GBIF' ? <GBIFStats /> : <GlobalStats />
+          dataSource === 'eBird' ? <EBirdStats /> : dataSource === 'GBIF' ? <GBIFStats /> : <GlobalStats dataSource={dataSource} />
         ) : observations.length === 0 && !error ? (
           <EmptyState variant="noResults" />
         ) : error ? (
@@ -378,7 +488,37 @@ export default function App() {
         ) : view === 'list' ? (
           <SpeciesList observations={filtered} onSelect={setSelectedObs} />
         ) : (
-          <MapView observations={filtered} onSelect={setSelectedObs} coords={coords} radiusKm={radius} dataSource={dataSource} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, minHeight: 500 }}>
+            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <ExploreMap
+                sightings={mapSightings}
+                center={coords}
+                activeSpecies={activeMapSpecies}
+                radiusKm={radius}
+                config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', maxHeight: 600 }}>
+              <div className={exploreStyles.speciesPanelHead}>
+                <div className={exploreStyles.speciesPanelTitle}>Species seen nearby</div>
+                <div className={exploreStyles.speciesCount}>{mapSpeciesList.length} species</div>
+              </div>
+              {mapSpeciesList.map(sp => {
+                const isActive = String(activeMapSpecies) === String(sp.speciesKey)
+                return (
+                  <SpeciesListItem
+                    key={sp.speciesKey || sp.common}
+                    species={sp}
+                    active={isActive}
+                    onClick={() => setActiveMapSpecies(isActive ? null : sp.speciesKey)}
+                    styles={exploreStyles}
+                    openInfoKey={openInfoKey}
+                    setOpenInfoKey={setOpenInfoKey}
+                  />
+                )
+              })}
+            </div>
+          </div>
         )}
       </main>
 
@@ -389,13 +529,7 @@ export default function App() {
         <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a>
         {' & '}
         <a href="https://www.gbif.org" target="_blank" rel="noopener noreferrer">GBIF</a>
-        {' '}— powered by citizen science.
-        &nbsp;|&nbsp;
-        <a href="https://www.inaturalist.org/pages/api+reference" target="_blank" rel="noopener noreferrer">iNat API</a>
-        &nbsp;|&nbsp;
-        <a href="https://documenter.getpostman.com/view/664302/S1ENwy59" target="_blank" rel="noopener noreferrer">eBird API</a>
-        &nbsp;|&nbsp;
-        <a href="https://www.gbif.org/developer/occurrence" target="_blank" rel="noopener noreferrer">GBIF API</a>
+        {' '}— <strong>powered by citizen science</strong>.
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
         </div>

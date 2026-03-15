@@ -1,34 +1,53 @@
-import { getTaxonMeta, formatDate } from '../utils/taxon'
+import { useMemo } from 'react'
+import { getTaxonMeta } from '../utils/taxon'
 import styles from './SpeciesList.module.css'
 
+function aggregateBySpecies(observations) {
+  const map = {}
+  for (const obs of observations) {
+    const taxon = obs.taxon
+    const key = taxon?.id || taxon?.name || obs.id
+    if (!map[key]) {
+      map[key] = {
+        taxon,
+        count: 0,
+        bestPhoto: null,
+      }
+    }
+    map[key].count++
+    if (!map[key].bestPhoto) {
+      const photo = obs.photos?.[0]?.url?.replace('square', 'small')
+      if (photo) map[key].bestPhoto = photo
+    }
+  }
+  return Object.values(map).sort((a, b) => b.count - a.count)
+}
+
 export default function SpeciesList({ observations, onSelect }) {
+  const species = useMemo(() => aggregateBySpecies(observations), [observations])
+
   return (
     <div className={styles.list}>
-      {observations.map((obs, i) => {
-        const taxon       = obs.taxon
-        const common      = taxon?.preferred_common_name || taxon?.name || 'Unnamed species'
-        const scientific  = taxon?.name || ''
+      {species.map((sp, i) => {
+        const taxon = sp.taxon
+        const common = taxon?.preferred_common_name || taxon?.name || 'Unnamed species'
+        const scientific = taxon?.name || ''
         const iconicTaxon = taxon?.iconic_taxon_name || 'default'
-        const { color, emoji } = getTaxonMeta(iconicTaxon)
-        const photo       = obs.photos?.[0]?.url?.replace('square', 'small')
-        const date        = formatDate(obs.observed_on, { month: 'short', day: 'numeric' })
-        const isEBird     = obs.source === 'eBird'
-        const isGBIF      = obs.source === 'GBIF'
-        const externalUrl = isEBird
-          ? `https://ebird.org/checklist/${obs.id}`
-          : isGBIF
-          ? `https://www.gbif.org/occurrence/${obs.id}`
-          : `https://www.inaturalist.org/observations/${obs.id}`
+        const { emoji } = getTaxonMeta(iconicTaxon)
+        const photo = sp.bestPhoto
+
+        // Find first observation for this species to pass to onSelect
+        const firstObs = observations.find(o => (o.taxon?.id || o.taxon?.name) === (taxon?.id || taxon?.name))
 
         return (
           <div
-            key={obs.id}
+            key={taxon?.id || i}
             className={styles.row}
             style={{ animationDelay: `${Math.min(i * 0.025, 0.8)}s` }}
-            onClick={() => onSelect(obs)}
+            onClick={() => onSelect(firstObs)}
             role="button"
             tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && onSelect(obs)}
+            onKeyDown={e => e.key === 'Enter' && onSelect(firstObs)}
           >
             {photo
               ? <img className={styles.thumb} src={photo} alt={scientific} loading="lazy"
@@ -41,16 +60,7 @@ export default function SpeciesList({ observations, onSelect }) {
               <div className={styles.scientific}>{scientific}</div>
             </div>
 
-            <span className={styles.badge} style={{ background: color }}>{iconicTaxon}</span>
-            <div className={styles.date}>{date}</div>
-
-            <a
-              className={styles.link}
-              href={externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-            >↗</a>
+            <span className={styles.count}>{sp.count}</span>
           </div>
         )
       })}

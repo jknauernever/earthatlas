@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { getTaxonMeta } from '../utils/taxon'
@@ -22,9 +22,9 @@ function createCircleGeoJSON(center, radiusKm, points = 64) {
 export default function MapView({ observations, onSelect, coords, radiusKm, dataSource }) {
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
-  const markersRef = useRef([])
+  const markersRef = useRef([])  // each entry: { id, taxonKey, marker, el }
   const centerMarkerRef = useRef(null)
-  const activeObsRef = useRef(null)
+  const [activeSpeciesKey, setActiveSpeciesKey] = useState(null)
 
   // ─── Initialize map ──────────────────────────────────────────
   useEffect(() => {
@@ -207,6 +207,7 @@ export default function MapView({ observations, onSelect, coords, radiusKm, data
 
       const iconicTaxon = obs.taxon?.iconic_taxon_name || 'default'
       const { color } = getTaxonMeta(iconicTaxon)
+      const taxonKey = obs.taxon?.id || obs.taxon?.name || null
 
       const el = document.createElement('div')
       el.className = styles.marker
@@ -216,36 +217,62 @@ export default function MapView({ observations, onSelect, coords, radiusKm, data
         .setLngLat([lng, lat])
         .addTo(map)
 
-      el.addEventListener('click', () => {
-        setActiveObs(obs.id)
-        onSelect(obs)
-      })
+      el.addEventListener('click', () => onSelect(obs))
 
-      markersRef.current.push({ id: obs.id, marker, el })
+      markersRef.current.push({ id: obs.id, taxonKey, marker, el, color })
     })
   }, [observations, coords, onSelect]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Highlight active marker ─────────────────────────────────
-  const setActiveObs = useCallback((id) => {
-    // Remove previous active
+  // ─── Highlight markers for active species ──────────────────────
+  useEffect(() => {
     markersRef.current.forEach(m => {
-      m.el.classList.remove(styles.markerActive)
+      if (!activeSpeciesKey) {
+        // No species selected — reset all markers
+        m.el.classList.remove(styles.markerActive)
+        m.el.style.opacity = '1'
+      } else if (String(m.taxonKey) === String(activeSpeciesKey)) {
+        m.el.classList.add(styles.markerActive)
+        m.el.style.opacity = '1'
+      } else {
+        m.el.classList.remove(styles.markerActive)
+        m.el.style.opacity = '0.2'
+      }
     })
-    // Set new active
-    const entry = markersRef.current.find(m => m.id === id)
-    if (entry) {
-      entry.el.classList.add(styles.markerActive)
-      const lngLat = entry.marker.getLngLat()
-      mapRef.current?.flyTo({ center: lngLat, speed: 1.2 })
+
+    // Fit map to matching markers
+    if (activeSpeciesKey && mapRef.current) {
+      const matching = markersRef.current.filter(m => String(m.taxonKey) === String(activeSpeciesKey))
+      if (matching.length > 1) {
+        const bounds = new mapboxgl.LngLatBounds()
+        matching.forEach(m => bounds.extend(m.marker.getLngLat()))
+        mapRef.current.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 600 })
+      } else if (matching.length === 1) {
+        mapRef.current.flyTo({ center: matching[0].marker.getLngLat(), speed: 1.2 })
+      }
     }
-    activeObsRef.current = id
+  }, [activeSpeciesKey])
+
+  // ─── Handle species row click ──────────────────────────────────
+  const handleSpeciesClick = useCallback((taxonKey) => {
+    setActiveSpeciesKey(prev => String(prev) === String(taxonKey) ? null : taxonKey)
   }, [])
 
-  // ─── Handle list row click ───────────────────────────────────
-  const handleRowClick = useCallback((obs) => {
-    setActiveObs(obs.id)
-    onSelect(obs)
-  }, [setActiveObs, onSelect])
+  const species = useMemo(() => {
+    const map = {}
+    for (const obs of observations) {
+      const taxon = obs.taxon
+      const key = taxon?.id || taxon?.name || obs.id
+      if (!map[key]) {
+        map[key] = { taxon, count: 0, bestPhoto: null, firstObs: obs }
+      }
+      map[key].count++
+      if (!map[key].bestPhoto) {
+        const photo = obs.photos?.[0]?.url?.replace('square', 'small')
+        if (photo) map[key].bestPhoto = photo
+      }
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count)
+  }, [observations])
 
   return (
     <div className={styles.container}>
@@ -259,24 +286,24 @@ export default function MapView({ observations, onSelect, coords, radiusKm, data
         <div className={styles.listHeader}>
           Species list — {observations.length} observation{observations.length !== 1 ? 's' : ''}
         </div>
-        {observations.map(obs => {
-          const taxon      = obs.taxon
+        {species.map(sp => {
+          const taxon      = sp.taxon
+          const taxonKey   = taxon?.id || taxon?.name
           const common     = taxon?.preferred_common_name || taxon?.name || 'Unnamed species'
           const scientific = taxon?.name || ''
           const iconicTaxon = taxon?.iconic_taxon_name || 'default'
-          const { color, emoji } = getTaxonMeta(iconicTaxon)
-          const photo      = obs.photos?.[0]?.url?.replace('square', 'small')
-          const hasCoords  = obs.geojson?.coordinates != null
+          const { emoji } = getTaxonMeta(iconicTaxon)
+          const photo      = sp.bestPhoto
+          const isActive   = String(activeSpeciesKey) === String(taxonKey)
 
           return (
             <div
-              key={obs.id}
-              className={`${styles.row} ${activeObsRef.current === obs.id ? styles.rowActive : ''}`}
-              onClick={() => handleRowClick(obs)}
+              key={taxonKey || scientific}
+              className={`${styles.row} ${isActive ? styles.rowActive : ''}`}
+              onClick={() => handleSpeciesClick(taxonKey)}
               role="button"
               tabIndex={0}
-              onKeyDown={e => e.key === 'Enter' && handleRowClick(obs)}
-              style={{ opacity: hasCoords ? 1 : 0.5 }}
+              onKeyDown={e => e.key === 'Enter' && handleRowClick(sp.firstObs)}
             >
               {photo
                 ? <img className={styles.thumb} src={photo} alt={scientific} loading="lazy"
@@ -289,7 +316,7 @@ export default function MapView({ observations, onSelect, coords, radiusKm, data
                 <div className={styles.scientific}>{scientific}</div>
               </div>
 
-              <span className={styles.badge} style={{ background: color }}>{iconicTaxon}</span>
+              <span className={styles.count}>{sp.count}</span>
             </div>
           )
         })}

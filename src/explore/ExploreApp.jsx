@@ -20,7 +20,6 @@ import { useSEO } from '../hooks/useSEO'
 import styles from './ExploreApp.module.css'
 
 import ExploreMap from './components/ExploreMap'
-import SpeciesCard from './components/SpeciesCard'
 import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
@@ -512,29 +511,14 @@ export default function ExploreApp({ config }) {
                   dangerouslySetInnerHTML={{ __html: config.empty.sub }}
                 />
               </div>
-            ) : filteredSpecies.length > 10 ? (
+            ) : (
               filteredSpecies.map((sp, i) => (
                 <SpeciesListItem
                   key={sp.speciesKey || sp.common}
                   species={sp}
-                  totalCount={filteredCount}
                   active={activeSpecies == sp.speciesKey}
                   onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
                   style={{ animationDelay: `${i * 0.03}s` }}
-                  styles={styles}
-                  openInfoKey={openInfoKey}
-                  setOpenInfoKey={setOpenInfoKey}
-                />
-              ))
-            ) : (
-              filteredSpecies.map((sp, i) => (
-                <SpeciesCard
-                  key={sp.speciesKey || sp.common}
-                  species={sp}
-                  totalCount={filteredCount}
-                  active={activeSpecies == sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
-                  style={{ animationDelay: `${i * 0.07}s` }}
                   styles={styles}
                   openInfoKey={openInfoKey}
                   setOpenInfoKey={setOpenInfoKey}

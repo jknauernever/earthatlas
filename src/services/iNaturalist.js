@@ -69,18 +69,19 @@ export async function searchTaxa(query) {
 // ─── Global stats (homepage) ──────────────────────────────────────
 export function fetchGlobalCounts() {
   return cached('inat:globalCounts', async () => {
-    const [obsRes, speciesRes, researchRes] = await Promise.all([
+    const d90 = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0]
+    const [obsRes, speciesRes, observersRes] = await Promise.all([
       fetch(`${INAT_API}/observations?per_page=0`),
       fetch(`${INAT_API}/observations/species_counts?per_page=0`),
-      fetch(`${INAT_API}/observations?quality_grade=research&per_page=0`),
+      fetch(`${INAT_API}/observations/observers?d1=${d90}&per_page=0`),
     ])
-    const [obs, species, research] = await Promise.all([
-      obsRes.json(), speciesRes.json(), researchRes.json(),
+    const [obs, species, observers] = await Promise.all([
+      obsRes.json(), speciesRes.json(), observersRes.json(),
     ])
     return {
       totalObs: obs.total_results || 0,
       totalSpecies: species.total_results || 0,
-      researchGrade: research.total_results || 0,
+      activeObservers: observers.total_results || 0,
     }
   })
 }

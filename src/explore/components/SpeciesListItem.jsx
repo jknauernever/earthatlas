@@ -1,19 +1,10 @@
 import SpeciesInfoPopup from '../../components/SpeciesInfoPopup'
 
-const STATUS_BY_COLOR = {
-  '#e06868': 'CR',
-  '#d87060': 'EN',
-  '#d08060': 'EN',
-  '#c87060': 'EN',
-}
-
-export default function SpeciesListItem({ species, totalCount = 1, active, onClick, style, styles, openInfoKey, setOpenInfoKey }) {
-  const likelihood = totalCount > 0 ? species.count / totalCount : 0
-  const likelihoodLabel = likelihood > 0.4 ? 'High' : likelihood > 0.15 ? 'Moderate' : 'Occasional'
+export default function SpeciesListItem({ species, active, onClick, style, styles, openInfoKey, setOpenInfoKey }) {
   const color = species.color || '#1a5276'
-  const status = STATUS_BY_COLOR[color] || null
   const infoKey = species.speciesKey || species.common
   const popupOpen = openInfoKey === infoKey
+  const photo = (species.photos && species.photos[0]) || species.meta?.photoUrl || null
 
   return (
     <div
@@ -21,7 +12,13 @@ export default function SpeciesListItem({ species, totalCount = 1, active, onCli
       onClick={onClick}
       style={{ ...style, position: 'relative', zIndex: popupOpen ? 100 : undefined }}
     >
-      <div className={styles.speciesRowDot} style={{ background: color }} />
+      {photo
+        ? <img className={styles.speciesRowThumb} src={photo} alt={species.common} loading="lazy"
+            onError={e => { e.currentTarget.style.display='none'; e.currentTarget.nextSibling.style.display='flex' }} />
+        : null}
+      <div className={styles.speciesRowThumbPlaceholder} style={{ display: photo ? 'none' : 'flex', borderColor: color }}>
+        {species.meta?.emoji || ''}
+      </div>
       <div className={styles.speciesRowName}>
         {species.common}
         {species.scientific && (
@@ -29,8 +26,6 @@ export default function SpeciesListItem({ species, totalCount = 1, active, onCli
         )}
       </div>
       <SpeciesInfoPopup species={species} styles={styles} openInfoKey={openInfoKey} setOpenInfoKey={setOpenInfoKey} />
-      {status && <span className={styles.speciesRowStatus} style={{ color }}>{status}</span>}
-      <span className={styles.speciesRowLikelihood}>{likelihoodLabel}</span>
       <span className={styles.speciesRowCount} style={{ color }}>
         {species.count}
       </span>

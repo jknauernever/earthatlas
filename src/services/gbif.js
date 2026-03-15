@@ -119,6 +119,7 @@ function normalizeOccurrence(occ) {
     },
     num_identification_agreements: null,
     num_identification_disagreements: null,
+    datasetKey: occ.datasetKey || null,
     datasetName: occ.datasetName || null,
     basisOfRecord: occ.basisOfRecord || null,
     institutionCode: occ.institutionCode || null,

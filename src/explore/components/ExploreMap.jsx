@@ -46,7 +46,7 @@ function formatDate(dateStr) {
  *     },
  *   }
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, config = {} }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, config = {} }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -211,6 +211,25 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     }
   }, [center?.lat, center?.lng])
 
+  // Fit map to search radius when radiusKm is provided
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !center || !radiusKm) return
+
+    const earthRadius = 6371 // km
+    const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
+    const dLng = dLat / Math.cos(center.lat * Math.PI / 180)
+
+    const bounds = new mapboxgl.LngLatBounds(
+      [center.lng - dLng, center.lat - dLat],
+      [center.lng + dLng, center.lat + dLat]
+    )
+
+    flyingRef.current = true
+    map.once('moveend', () => { flyingRef.current = false })
+    map.fitBounds(bounds, { padding: 40, duration: 800 })
+  }, [center?.lat, center?.lng, radiusKm])
+
   // Render markers — only re-create when sightings change
   useEffect(() => {
     const map = mapRef.current
@@ -236,7 +255,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         border-radius: 50%;
         background: ${dotColor};
         border: 2px solid rgba(255,255,255,0.5);
-        transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s;
+        transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s, opacity 0.25s;
         box-shadow: 0 0 4px ${dotColor}44;
       `
       el.appendChild(dot)
@@ -419,14 +438,17 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         dot.style.transform = 'scale(1)'
         dot.style.border = '2px solid rgba(255,255,255,0.5)'
         dot.style.boxShadow = 'none'
+        dot.style.opacity = '1'
       } else if (String(speciesKey) === String(activeSpecies)) {
         dot.style.transform = 'scale(1.8)'
-        dot.style.border = '2.5px solid #f5c518'
-        dot.style.boxShadow = '0 0 0 3px #f5c518, 0 0 12px rgba(245,197,24,0.6)'
+        dot.style.border = '2.5px solid #ffeb3b'
+        dot.style.boxShadow = '0 0 0 4px rgba(255,235,59,0.5), 0 0 18px rgba(255,235,59,0.7), 0 0 30px rgba(255,235,59,0.3)'
+        dot.style.opacity = '1'
       } else {
-        dot.style.transform = 'scale(1)'
-        dot.style.border = '2px solid rgba(255,255,255,0.5)'
+        dot.style.transform = 'scale(0.7)'
+        dot.style.border = '2px solid rgba(255,255,255,0.3)'
         dot.style.boxShadow = 'none'
+        dot.style.opacity = '0.3'
       }
     })
   }, [activeSpecies])

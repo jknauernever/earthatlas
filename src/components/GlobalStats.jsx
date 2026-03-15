@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../services/iNaturalist'
+import { fetchGBIFGlobalStats } from '../services/gbif'
+import { fetchEBirdDashboardStats } from '../services/eBird'
 import { getTaxonMeta } from '../utils/taxon'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
@@ -8,7 +10,7 @@ import preloaded from '../data/preloaded-stats.json'
 
 const PRE_INAT = preloaded?.iNaturalist || {}
 
-const COUNTER_INFO = {
+const COUNTER_INFO_INAT = {
   totalObs: {
     title: 'Total Observations',
     text: 'The total number of wildlife observations submitted to iNaturalist by citizen scientists worldwide. Each observation represents a single encounter with an organism, documented with a photo, location, and date.',
@@ -17,16 +19,31 @@ const COUNTER_INFO = {
     title: 'Species Documented',
     text: 'The number of distinct species that have been identified across all iNaturalist observations. This includes animals, plants, fungi, and other organisms verified through community identification.',
   },
-  researchGrade: {
-    title: 'Research Grade',
-    text: 'Observations that meet iNaturalist\'s quality criteria: they have a photo, date, coordinates, and the community agrees on the species identification. Research-grade data is shared with scientific databases like GBIF.',
+  activeObservers: {
+    title: 'Active Observers (90 Days)',
+    text: 'Unique people who have submitted at least one observation to iNaturalist in the past 90 days. Each observer contributes photos, locations, and identifications to the global biodiversity record.',
   },
 }
 
-function InfoIcon({ statKey, activeInfo, setActiveInfo }) {
+const COUNTER_INFO_ALL = {
+  totalObs: {
+    title: 'Total Occurrences',
+    text: 'Biodiversity occurrence records aggregated by GBIF from hundreds of data sources worldwide — including iNaturalist, eBird, museum collections, and research institutions.',
+  },
+  totalSpecies: {
+    title: 'Species Documented',
+    text: 'Distinct species identified across all iNaturalist observations, verified through community identification. Includes animals, plants, fungi, and other organisms.',
+  },
+  activeObservers: {
+    title: 'Active Observers (90 Days)',
+    text: 'Unique people who have submitted at least one observation to iNaturalist in the past 90 days. Each observer contributes photos, locations, and identifications to the global biodiversity record.',
+  },
+}
+
+function InfoIcon({ statKey, activeInfo, setActiveInfo, counterInfo }) {
   const ref = useRef(null)
   const isOpen = activeInfo === statKey
-  const info = COUNTER_INFO[statKey]
+  const info = counterInfo[statKey]
 
   useEffect(() => {
     if (!isOpen) return
@@ -53,7 +70,7 @@ function InfoIcon({ statKey, activeInfo, setActiveInfo }) {
         <div className={styles.infoPopover}>
           <div className={styles.infoTitle}>{info.title}</div>
           <div className={styles.infoText}>{info.text}</div>
-          <div className={styles.infoSource}>Source: <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist.org</a></div>
+          <div className={styles.infoSource}>Source: <a href="https://www.gbif.org" target="_blank" rel="noopener noreferrer">GBIF</a>, <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>, <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a></div>
         </div>
       )}
     </span>
@@ -80,7 +97,7 @@ function getDateRange(key) {
   return { d1: localDate(d), d2 }
 }
 
-export default function GlobalStats() {
+export default function GlobalStats({ dataSource = 'iNaturalist' }) {
   const posthog = usePostHog()
   const [counts, setCounts] = useState(PRE_INAT.counts || null)
   const [topSpecies, setTopSpecies] = useState(PRE_INAT.topSpecies || null)
@@ -93,13 +110,29 @@ export default function GlobalStats() {
   const [selectedTaxon, setSelectedTaxon] = useState(null)
   const [activeInfo, setActiveInfo] = useState(null)
 
-  // Fetch global counts on mount
+  // Fetch global counts on mount — aggregate across sources when "All"
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const c = await fetchGlobalCounts()
-        if (!cancelled) setCounts(c)
+        if (dataSource === 'All') {
+          const [inat, gbif] = await Promise.all([
+            fetchGlobalCounts().catch(() => null),
+            fetchGBIFGlobalStats().catch(() => null),
+          ])
+          if (!cancelled) {
+            // GBIF totalOccurrences is the superset (includes iNat + eBird + museums)
+            // Use iNat species count — it's community-verified and more meaningful than GBIF backbone count
+            setCounts({
+              totalObs: (gbif?.totalOccurrences || 0),
+              totalSpecies: (inat?.totalSpecies || 0),
+              activeObservers: (inat?.activeObservers || 0),
+            })
+          }
+        } else {
+          const c = await fetchGlobalCounts()
+          if (!cancelled) setCounts(c)
+        }
       } catch {
         // Silently fail
       } finally {
@@ -108,7 +141,7 @@ export default function GlobalStats() {
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [dataSource])
 
   // Fetch top species when time toggle changes
   const loadSpecies = useCallback(async (timeKey) => {
@@ -146,6 +179,9 @@ export default function GlobalStats() {
     loadCountries(countriesTime)
   }, [countriesTime, loadCountries])
 
+  const isAll = dataSource === 'All'
+  const counterInfo = isAll ? COUNTER_INFO_ALL : COUNTER_INFO_INAT
+
   return (
     <div className={styles.wrap}>
       {/* Stat counters */}
@@ -154,26 +190,60 @@ export default function GlobalStats() {
           <div className={styles.counter}>
             <div className={styles.counterValue}>{loading ? '…' : counts.totalObs.toLocaleString()}</div>
             <div className={styles.counterLabel}>
-              Total Observations
-              <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+              Total Occurrences
+              <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
             <div className={styles.counterValue}>{loading ? '…' : counts.totalSpecies.toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Species Documented
-              <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+              <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : counts.researchGrade.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : counts.activeObservers.toLocaleString()}</div>
             <div className={styles.counterLabel}>
-              Research Grade
-              <InfoIcon statKey="researchGrade" activeInfo={activeInfo} setActiveInfo={setActiveInfo} />
+              Active Observers in the Last 90 Days
+              <InfoIcon statKey="activeObservers" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
         </div>
       )}
+
+      {/* Explore subsites */}
+      <div>
+        <div className={styles.sectionRow}>
+          <div>
+            <h2 className={styles.sectionHeader}>Explore by Group</h2>
+            <p className={styles.sectionSub}>Specialized sighting explorers</p>
+          </div>
+        </div>
+        <div className={styles.subsiteGrid} style={{ marginTop: 16 }}>
+          {[
+            { slug: 'tigers', name: 'Tigers', emoji: '🐯', image: '/tiger-hero.jpg', desc: 'Tiger sightings across Asia' },
+            { slug: 'lions', name: 'Lions', emoji: '🦁', image: '/lion-hero.jpg', desc: 'Lion sightings across Africa & Asia' },
+            { slug: 'sharks', name: 'Sharks', emoji: '🦈', image: '/shark-hero.jpg', desc: 'Shark encounters & data' },
+            { slug: 'dolphins', name: 'Dolphins', emoji: '🐬', image: '/dolphin-hero.jpg', desc: 'Dolphin sightings worldwide' },
+            { slug: 'elephants', name: 'Elephants', emoji: '🐘', image: '/elephant-hero.jpg', desc: 'Elephant sightings & data' },
+            { slug: 'bears', name: 'Bears', emoji: '🐻', image: '/bear-hero.jpg', desc: 'Bear sightings worldwide' },
+            { slug: 'monkeys', name: 'Monkeys & Primates', emoji: '🐒', image: '/monkey-hero.jpg', desc: 'Primate sightings & data' },
+            { slug: 'whales', name: 'Whales', emoji: '🐋', image: '/whale-hero.jpg', desc: 'Cetacean sightings worldwide' },
+            { slug: 'hippos', name: 'Hippos', emoji: '🦛', image: '/hippo-hero.jpg', desc: 'Hippo sightings in Africa' },
+            { slug: 'wolves', name: 'Wolves', emoji: '🐺', image: '/wolf-hero.jpg', desc: 'Wolf & wild canid sightings' },
+            { slug: 'butterflies', name: 'Butterflies', emoji: '🦋', image: '/butterfly-hero.jpg', desc: 'Lepidoptera near you' },
+          ].map(site => (
+            <a key={site.slug} href={`/${site.slug}`} className={styles.subsiteCard}>
+              <img className={styles.subsiteImg} src={site.image} alt={site.name} loading="lazy" />
+              <div className={styles.subsiteOverlay}>
+                <div className={styles.subsiteEmoji}>{site.emoji}</div>
+                <div className={styles.subsiteName}>{site.name}</div>
+                <div className={styles.subsiteDesc}>{site.desc}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
 
       {/* Top species */}
       <div>

@@ -33,14 +33,12 @@
 .common { font-family: var(--font-serif); font-size: 15px; font-weight: 600; }
 .common.unnamed { font-style: italic; color: var(--muted); }
 .scientific { font-family: var(--font-mono); font-size: 10px; font-style: italic; color: var(--muted); }
-.badge {
-  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
-  text-transform: uppercase; padding: 2px 10px; border-radius: 999px;
-  color: white; flex-shrink: 0;
+.count {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
 }
-.date { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
-.link {
-  color: var(--amber); text-decoration: none; font-size: 14px;
-  flex-shrink: 0; opacity: 0.7; transition: opacity 0.12s;
-}
-.link:hover { opacity: 1; }

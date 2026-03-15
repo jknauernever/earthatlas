@@ -104,15 +104,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.badge {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
-  color: white;
+.count {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
   flex-shrink: 0;
+  min-width: 28px;
+  text-align: right;
 }
 
 /* ─── Crosshair center marker ─── */

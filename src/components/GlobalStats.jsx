@@ -188,21 +188,21 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
       {(counts || loading) && (
         <div className={styles.counters}>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : counts.totalObs.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : (counts.totalObs ?? 0).toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Total Occurrences
               <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : counts.totalSpecies.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : (counts.totalSpecies ?? 0).toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Species Documented
               <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : counts.activeObservers.toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : (counts.activeObservers ?? 0).toLocaleString()}</div>
             <div className={styles.counterLabel}>
               Active Observers in the Last 90 Days
               <InfoIcon statKey="activeObservers" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />

@@ -225,6 +225,7 @@ export async function fetchInsightsData(source, params) {
     case 'GBIF':
       return fetchGBIFInsights(params)
     case 'iNaturalist':
+    case 'All':
       return fetchINatInsights(params)
     case 'eBird':
       return fetchEBirdInsights(params)

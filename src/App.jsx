@@ -227,6 +227,7 @@ export default function App() {
         // Filter GBIF results to remove records sourced from iNat or eBird (avoid duplicates)
         const gbifFiltered = (gbifData.results || []).filter(
           r => r.datasetKey !== GBIF_INAT_DATASET && r.datasetKey !== GBIF_EBIRD_DATASET
+            && r.basisOfRecord !== 'LIVING_SPECIMEN'
         )
 
         allResults = [

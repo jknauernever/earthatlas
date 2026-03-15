@@ -139,6 +139,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     let results = (data.results || [])
       .filter(o => o.decimalLatitude && o.decimalLongitude)
       .filter(o => o.datasetKey !== GBIF_INAT_DATASET)
+      .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
 
     if (postFilter) results = results.filter(postFilter)
 
@@ -196,6 +197,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
           order_by: 'observed_on',
           per_page: Math.min(limit, 200),
           geo: 'true',
+          captive: 'false',
         })
         const res = await fetch(`${INAT_API}/observations?${params}`, {
           headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
@@ -212,6 +214,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     let gbifResults = (gbifData.results || [])
       .filter(o => o.decimalLatitude && o.decimalLongitude)
       .filter(o => o.datasetKey !== GBIF_INAT_DATASET) // avoid duplicates with iNat
+      .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
     if (postFilter) gbifResults = gbifResults.filter(postFilter)
 
     const gbifSightings = gbifResults.map(normalizeOccurrence)
@@ -272,6 +275,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         order_by: 'observed_on',
         per_page: Math.min(limit, 200),
         geo: 'true',
+        captive: 'false',
       })
 
       const res = await fetch(`${INAT_API}/observations?${params}`, {

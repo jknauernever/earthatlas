@@ -21,6 +21,7 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     order: 'desc',
     order_by: 'created_at',
     quality_grade: 'any',
+    captive: 'false',
   })
   if (taxonId) params.set('taxon_id', taxonId)
   if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
@@ -38,7 +39,7 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
 // ─── Species counts (for summary/stats view later) ───────────────
 export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2, taxonId, iconicTaxa }) {
   const params = new URLSearchParams({
-    lat, lng, radius: radiusKm, quality_grade: 'any',
+    lat, lng, radius: radiusKm, quality_grade: 'any', captive: 'false',
   })
   if (taxonId) params.set('taxon_id', taxonId)
   if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
@@ -141,6 +142,7 @@ export async function fetchSpeciesObservations({ taxonId, d1, d2, perPage = 200 
     order: 'desc',
     order_by: 'created_at',
     quality_grade: 'any',
+    captive: 'false',
   })
   if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
   const res = await fetch(`${INAT_API}/observations?${params}`)

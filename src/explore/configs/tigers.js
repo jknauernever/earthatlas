@@ -18,16 +18,16 @@ const config = {
     bgColor: '#1a0e00',
     image: '/tiger-hero.jpg',
     eyebrow: 'EarthAtlas \u00b7 Tiger Sightings',
-    title: ['Find ', 'tigers.'],
-    subtitle: 'Near you, or wherever you\u2019re going.',
-    description: "Discover where tigers have been sighted across their range \u2014 and when you\u2019re most likely to see them.",
+    title: ['Explore ', 'tiger sightings.'],
+    subtitle: 'Across their range in Asia.',
+    description: "Discover where tigers have been sighted across their range \u2014 from India\u2019s national parks to the forests of Southeast Asia.",
     accentColor: '#ffb347',
     navAccent: '#ffb347',
   },
 
   seo: {
-    title: 'Tiger Sightings Near You',
-    description: 'Find tiger sightings and observations near any location \u2014 seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
+    title: 'Tiger Sightings \u2014 EarthAtlas',
+    description: 'Explore tiger sightings and observations across Asia \u2014 seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
     image: '/tiger-hero.jpg',
   },
 
@@ -56,6 +56,13 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.',
   },
 
+  localizable: false,
+  hotspots: [
+    { name: 'Ranthambore, India', lat: 26.02, lng: 76.50, emoji: '🇮🇳' },
+    { name: 'Sundarbans, Bangladesh', lat: 21.95, lng: 89.18, emoji: '🇧🇩' },
+    { name: 'Chitwan, Nepal', lat: 27.53, lng: 84.35, emoji: '🇳🇵' },
+    { name: 'Sumatra, Indonesia', lat: -0.59, lng: 101.34, emoji: '🇮🇩' },
+  ],
   heatmapLayers: null,
   postFilter: null,
 }

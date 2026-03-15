@@ -261,6 +261,70 @@
   text-shadow: 0 1px 8px rgba(0,0,0,0.5);
 }
 
+/* Hotspot chips */
+.hotspotChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: min(480px, 90vw);
+}
+.hotspotChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 60px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e8f4fd;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+}
+.hotspotChip:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Empty-state hotspot rescue */
+.emptyHotspots {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.emptyHotspotsLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.hotspotChipSmall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 60px;
+  border: 1.5px solid var(--border);
+  background: var(--parchment);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hotspotChipSmall:hover {
+  border-color: var(--glow, var(--sage-dk));
+  background: var(--glow-dim, rgba(0,0,0,0.03));
+}
+
 /* Hero location search */
 .heroSearch {
   display: flex;

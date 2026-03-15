@@ -18,16 +18,16 @@ const config = {
     bgColor: '#1a1510',
     image: '/hippo-hero.jpg',
     eyebrow: 'EarthAtlas · Hippo Sightings',
-    title: ['Find ', 'hippos.'],
-    subtitle: 'Near you, or wherever you\'re going.',
-    description: "Discover where hippos have been sighted across Africa — from river giants to the elusive pygmy hippo.",
+    title: ['Explore ', 'hippo sightings.'],
+    subtitle: 'Across sub-Saharan Africa.',
+    description: "Discover where hippos have been sighted \u2014 from river giants in East Africa\u2019s waterways to the elusive pygmy hippo of West Africa.",
     accentColor: '#c4a888',
     navAccent: '#c4a888',
   },
 
   seo: {
-    title: 'Hippo Sightings Near You',
-    description: 'Find hippopotamus sightings and observations — seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
+    title: 'Hippo Sightings \u2014 EarthAtlas',
+    description: 'Explore hippopotamus sightings and observations across Africa \u2014 seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',
     image: '/hippo-hero.jpg',
   },
 
@@ -35,6 +35,13 @@ const config = {
   fallback: { commonName: 'Unknown hippo', color: '#6a5a4a', emoji: '🦛' },
   loading: { emoji: '🦛', message: 'Searching for hippos near {location}…', detail: 'Querying global biodiversity records for hippo sightings' },
   empty: { emoji: '🦛', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
+  localizable: false,
+  hotspots: [
+    { name: 'Kruger, South Africa', lat: -23.99, lng: 31.55, emoji: '🇿🇦' },
+    { name: 'Okavango Delta, Botswana', lat: -19.50, lng: 22.95, emoji: '🇧🇼' },
+    { name: 'Serengeti, Tanzania', lat: -2.33, lng: 34.83, emoji: '🇹🇿' },
+    { name: 'Queen Elizabeth NP, Uganda', lat: -0.20, lng: 30.00, emoji: '🇺🇬' },
+  ],
   heatmapLayers: null,
   postFilter: null,
 }

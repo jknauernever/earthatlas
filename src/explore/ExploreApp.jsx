@@ -312,13 +312,35 @@ export default function ExploreApp({ config }) {
             {config.hero.description}
           </p>
           <div className={styles.heroActions}>
-            <button className={styles.locateBtn} onClick={handleLocate}>
-              <span>&#9678;</span> Use my location
-            </button>
+            {config.localizable !== false && (
+              <button className={styles.locateBtn} onClick={handleLocate}>
+                <span>&#9678;</span> Use my location
+              </button>
+            )}
             {locError && (
               <div style={{ fontSize: 12, color: 'rgba(240,100,100,0.85)', maxWidth: 320, textAlign: 'center' }}>
                 {locError}
               </div>
+            )}
+            {config.hotspots && config.hotspots.length > 0 && (
+              <>
+                {config.localizable !== false ? (
+                  <div className={styles.locateDivider}>or jump to a hotspot</div>
+                ) : (
+                  <div className={styles.locateDivider}>explore a hotspot</div>
+                )}
+                <div className={styles.hotspotChips}>
+                  {config.hotspots.map(hs => (
+                    <button
+                      key={hs.name}
+                      className={styles.hotspotChip}
+                      onClick={() => handleLocationSelect({ name: hs.name, lat: hs.lat, lng: hs.lng })}
+                    >
+                      {hs.emoji || '📍'} {hs.name}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
             <div className={styles.locateDivider}>or search a destination</div>
             <LocationSearch onSelect={handleLocationSelect} styles={styles} />
@@ -510,6 +532,22 @@ export default function ExploreApp({ config }) {
                   className={styles.emptyStateSub}
                   dangerouslySetInnerHTML={{ __html: config.empty.sub }}
                 />
+                {config.localizable === false && config.hotspots && config.hotspots.length > 0 && (
+                  <div className={styles.emptyHotspots}>
+                    <div className={styles.emptyHotspotsLabel}>Try a known habitat:</div>
+                    <div className={styles.hotspotChips}>
+                      {config.hotspots.slice(0, 3).map(hs => (
+                        <button
+                          key={hs.name}
+                          className={styles.hotspotChipSmall}
+                          onClick={() => handleLocationSelect({ name: hs.name, lat: hs.lat, lng: hs.lng })}
+                        >
+                          {hs.emoji || '📍'} {hs.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               filteredSpecies.map((sp, i) => (

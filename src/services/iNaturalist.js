@@ -112,8 +112,8 @@ const COUNTRIES = [
   { placeId: 6878, name: 'Brazil',         flag: '🇧🇷' },
   { placeId: 6803, name: 'New Zealand',    flag: '🇳🇿' },
   { placeId: 6737, name: 'France',         flag: '🇫🇷' },
-  { placeId: 7015, name: 'Spain',          flag: '🇪🇸' },
-  { placeId: 6756, name: 'Italy',          flag: '🇮🇹' },
+  { placeId: 6774, name: 'Spain',          flag: '🇪🇸' },
+  { placeId: 6973, name: 'Italy',          flag: '🇮🇹' },
   { placeId: 7142, name: 'Japan',          flag: '🇯🇵' },
 ]
 

@@ -89,12 +89,10 @@ function localDate(d) {
 
 function getDateRange(key) {
   if (key === 'all') return {}
-  const now = new Date()
-  const d2 = localDate(now)
-  const d = new Date(now)
+  const d = new Date()
   if (key === '24h') d.setDate(d.getDate() - 1)
   else if (key === '30d') d.setDate(d.getDate() - 30)
-  return { d1: localDate(d), d2 }
+  return { d1: localDate(d) }
 }
 
 export default function GlobalStats({ dataSource = 'iNaturalist' }) {

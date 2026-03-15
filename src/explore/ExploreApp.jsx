@@ -63,6 +63,7 @@ export default function ExploreApp({ config }) {
   const mode = qp.mode
   const activeMonth = qp.month != null ? qp.month - 1 : null  // URL is 1-based, display is 0-based
   const activeSpecies = qp.species
+  const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
 
   // Derive location from URL params or local state
   const [localLocation, setLocalLocation] = useState(null)
@@ -107,8 +108,6 @@ export default function ExploreApp({ config }) {
 
     setLoadingData(true)
     setDataError(null)
-    setSightings([])
-    setSpecies([])
     setTimeRange({ start: null, end: null })
 
     try {
@@ -176,13 +175,14 @@ export default function ExploreApp({ config }) {
         lat: location.lat,
         lng: location.lng,
         month: monthIdx + 1, // 1-based for API
+        speciesKey: activeSpecies ? Number(activeSpecies) : null,
         radiusKm: zoomToRadius(mapZoomRef.current),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
-      setTotalCount(result.sightings.length)
+      setTotalCount(result.total)
     } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location, setQP, fetchMonthSightings, aggregateSpecies])
+  }, [mode, location, activeSpecies, setQP, fetchMonthSightings, aggregateSpecies])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)
@@ -190,7 +190,14 @@ export default function ExploreApp({ config }) {
     if (prevModeRef.current === mode) return
     prevModeRef.current = mode
     if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
-  }, [mode, location, loadData])
+    if (mode === 'patterns' && location) handleMonthChange(displayedMonth)
+  }, [mode, location, loadData, handleMonthChange, displayedMonth])
+
+  // Re-fetch month sightings when species selection changes in patterns mode
+  useEffect(() => {
+    if (mode !== 'patterns' || !location) return
+    handleMonthChange(displayedMonth)
+  }, [activeSpecies])
 
   // Fetch per-species seasonal pattern when a species card is clicked
   useEffect(() => {
@@ -364,7 +371,6 @@ export default function ExploreApp({ config }) {
   }
 
   // ─── Render: Explore ──────────────────────────────────────────────────────
-  const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
 
   return (
     <div className={styles.exploreApp} style={themeVars}>
@@ -410,7 +416,7 @@ export default function ExploreApp({ config }) {
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
               ? `${filteredCount} ${config.taxonLabel} sightings${timeRange.start || timeRange.end ? ` \u00b7 ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} \u2013 ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ` in the past ${config.defaults.days} days`} \u00b7 ${filteredSpecies.length} species`
-              : `Showing historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
+              : `${totalCount.toLocaleString()} historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
         )}
@@ -448,6 +454,7 @@ export default function ExploreApp({ config }) {
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
+                patternsMonth={mode === 'patterns' ? displayedMonth + 1 : null}
                 config={{
                   fallbackColor: config.fallback.color,
                   fallbackEmoji: config.fallback.emoji,

@@ -150,33 +150,78 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
   }
 
-  async function fetchMonthSightings({ lat, lng, radiusKm = 400, bounds, month, limit = 200, signal }) {
+  async function fetchMonthSightings({ lat, lng, radiusKm = 400, bounds, month, speciesKey = null, limit = 200, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
 
-    const params = new URLSearchParams({
-      taxonKey: gbifTaxonKey,
-      hasCoordinate: 'true',
-      occurrenceStatus: 'PRESENT',
-      decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-      decimalLongitude: `${bb.minLng},${bb.maxLng}`,
-      month,
-      limit: Math.min(limit, 300),
-    })
+    // Fetch GBIF and iNaturalist in parallel
+    const [gbifResult, inatResult] = await Promise.allSettled([
+      (async () => {
+        const params = new URLSearchParams({
+          taxonKey: speciesKey || gbifTaxonKey,
+          hasCoordinate: 'true',
+          occurrenceStatus: 'PRESENT',
+          decimalLatitude: `${bb.minLat},${bb.maxLat}`,
+          decimalLongitude: `${bb.minLng},${bb.maxLng}`,
+          month,
+          limit: Math.min(limit, 300),
+        })
+        const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
+        if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
+        return res.json()
+      })(),
+      (async () => {
+        // Look up iNat taxon ID: use species scientific name if filtering by species, else group ID
+        let taxonId = inatTaxonId
+        if (speciesKey) {
+          const meta = getSpeciesMeta(speciesKey)
+          if (meta?.scientific) {
+            // Query iNat for the taxon ID by scientific name
+            const tRes = await fetch(`${INAT_API}/taxa?q=${encodeURIComponent(meta.scientific)}&per_page=1`, {
+              headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
+              signal,
+            })
+            if (tRes.ok) {
+              const tData = await tRes.json()
+              if (tData.results?.[0]?.id) taxonId = tData.results[0].id
+            }
+          }
+        }
+        const geoParams = bounds
+          ? { nelat: bounds.maxLat, nelng: bounds.maxLng, swlat: bounds.minLat, swlng: bounds.minLng }
+          : { lat, lng, radius: radiusKm }
+        const params = new URLSearchParams({
+          taxon_id: taxonId,
+          ...geoParams,
+          month,
+          order_by: 'observed_on',
+          per_page: Math.min(limit, 200),
+          geo: 'true',
+        })
+        const res = await fetch(`${INAT_API}/observations?${params}`, {
+          headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
+          signal,
+        })
+        if (!res.ok) return { results: [], total_results: 0 }
+        return res.json()
+      })(),
+    ])
 
-    const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
-    if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
-    const data = await res.json()
+    const gbifData = gbifResult.status === 'fulfilled' ? gbifResult.value : { results: [], count: 0 }
+    const inatData = inatResult.status === 'fulfilled' ? inatResult.value : { results: [], total_results: 0 }
 
-    let results = (data.results || [])
+    let gbifResults = (gbifData.results || [])
       .filter(o => o.decimalLatitude && o.decimalLongitude)
+      .filter(o => o.datasetKey !== GBIF_INAT_DATASET) // avoid duplicates with iNat
+    if (postFilter) gbifResults = gbifResults.filter(postFilter)
 
-    if (postFilter) results = results.filter(postFilter)
+    const gbifSightings = gbifResults.map(normalizeOccurrence)
+    const inatSightings = (inatData.results || []).map(normalizeINatObservation).filter(Boolean)
 
-    const sightings = results.map(normalizeOccurrence)
+    const allSightings = [...gbifSightings, ...inatSightings]
 
     return {
-      total: postFilter ? sightings.length : (data.count || 0),
-      sightings,
+      total: allSightings.length,
+      sightings: allSightings,
     }
   }
 

@@ -46,7 +46,7 @@ function formatDate(dateStr) {
  *     },
  *   }
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, config = {} }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, config = {} }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -430,6 +430,87 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       }
     })
   }, [activeSpecies])
+
+  // ─── Seasonal heatmap layer (patterns mode) ─────────────────────────────
+  // Renders sightings as a native Mapbox heatmap layer (same style as /species page)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const sourceId = 'seasonal-heat-points'
+    const layerId = 'seasonal-heat-layer'
+
+    function update() {
+      if (!patternsMonth) {
+        // Remove heatmap when leaving patterns mode, restore markers
+        if (map.getLayer(layerId)) map.removeLayer(layerId)
+        if (map.getSource(sourceId)) map.removeSource(sourceId)
+        markersRef.current.forEach(({ marker }) => marker.addTo(map))
+        return
+      }
+
+      // Hide all markers — heatmap replaces them
+      markersRef.current.forEach(({ marker }) => marker.remove())
+
+      // Build GeoJSON from sightings (already filtered server-side when a species is selected)
+      const geojson = {
+        type: 'FeatureCollection',
+        features: sightings
+          .filter(s => s.lat && s.lng)
+          .map(s => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+            properties: {},
+          })),
+      }
+
+      if (map.getSource(sourceId)) {
+        map.getSource(sourceId).setData(geojson)
+      } else {
+        map.addSource(sourceId, { type: 'geojson', data: geojson })
+        map.addLayer({
+          id: layerId,
+          type: 'heatmap',
+          source: sourceId,
+          paint: {
+            'heatmap-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 4,
+              2, 8,
+              4, 16,
+              6, 24,
+              9, 32,
+            ],
+            'heatmap-intensity': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 0.4,
+              2, 0.6,
+              4, 1,
+              8, 1.5,
+            ],
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0,    'rgba(0, 0, 0, 0)',
+              0.05, 'rgba(65, 105, 225, 0.4)',
+              0.15, 'rgb(0, 180, 120)',
+              0.35, 'rgb(255, 200, 0)',
+              0.55, 'rgb(255, 120, 0)',
+              0.75, 'rgb(230, 50, 20)',
+              1.0,  'rgb(180, 0, 30)',
+            ],
+            'heatmap-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 0.6,
+              12, 0.6,
+            ],
+          },
+        })
+      }
+    }
+
+    if (map.isStyleLoaded()) update()
+    else map.on('load', update)
+  }, [patternsMonth, sightings])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

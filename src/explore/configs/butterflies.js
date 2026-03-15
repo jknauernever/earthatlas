@@ -20,6 +20,7 @@ const config = {
   name: 'Butterflies',
   emoji: '🦋',
   taxonLabel: 'lepidoptera',
+  gbifTaxonKey: GBIF_TAXON_KEY,
 
   theme: {
     glow: '#c47d0e',

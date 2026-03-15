@@ -6,6 +6,7 @@ const config = {
   name: 'Sharks',
   emoji: '🦈',
   taxonLabel: 'shark',
+  gbifTaxonKey: GBIF_TAXON_KEY,
 
   theme: {
     glow: '#c0392b',

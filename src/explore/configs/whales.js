@@ -6,6 +6,7 @@ const config = {
   name: 'Whales',
   emoji: '🐋',
   taxonLabel: 'cetacean',
+  gbifTaxonKey: GBIF_TAXON_KEY,
 
   theme: {
     glow: '#0e8a72',

@@ -27,24 +27,134 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
+// ─── Shared popup HTML builder ─────────────────────────────────────────────
+function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
+  const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
+  const iucn = s.iucn || s.meta?.iucn || null
+  const iucnLabel = IUCN_LABEL[iucn] || null
+  const iucnColor = IUCN_COLOR[iucn] || null
+  const isMobile = window.innerWidth <= 600
+  const photoH = isMobile ? 120 : 200
+  const emoji = s.emoji || fallbackEmoji
+  const accentColor = s.color || fallbackColor
+
+  return `
+    <div style="
+      font-family:'DM Sans',system-ui,sans-serif;
+      background:#ffffff;
+      color:#1a2332;
+      overflow:hidden;
+      ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}
+      line-height:1.5;
+    ">
+      ${iucnLabel ? `<div style="
+        background:${iucnColor};
+        color:#fff;
+        font-size:10px;
+        font-weight:500;
+        letter-spacing:0.08em;
+        text-transform:uppercase;
+        padding:5px 16px;
+        display:flex;align-items:center;gap:5px;
+      "><span style="font-size:12px">\u26A0</span> ${iucnLabel}</div>` : ''}
+      ${photo ? `
+      <div style="position:relative;width:100%;height:${photoH}px;overflow:hidden;">
+        <img src="${photo}" alt="${s.common}" style="
+          width:100%;height:100%;object-fit:cover;display:block;
+        " onerror="this.parentElement.style.display='none'" />
+        <div style="
+          position:absolute;bottom:0;left:0;right:0;height:60px;
+          background:linear-gradient(transparent, #ffffff);
+        "></div>
+      </div>` : ''}
+      <div style="padding:${isMobile ? '12px 16px 16px' : '14px 16px 16px'};">
+        <div style="
+          font-family:'Fraunces',Georgia,serif;
+          font-size:${isMobile ? '18px' : '20px'};font-weight:400;
+          color:#1a2332;
+          margin-bottom:2px;
+          line-height:1.25;
+        ">${emoji ? emoji + ' ' : ''}${s.common}</div>
+        ${s.scientific ? `<div style="
+          font-style:italic;
+          color:#5a6b7a;
+          font-size:12px;
+          margin-bottom:10px;
+        ">${s.scientific}</div>` : ''}
+        ${s.fact ? `<div style="
+          font-size:12px;
+          color:#3d4f5f;
+          line-height:1.5;
+          margin-bottom:12px;
+          border-left:2px solid ${accentColor}44;
+          padding-left:10px;
+          ${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}
+        ">${s.fact}</div>` : ''}
+        <div style="
+          font-size:11px;
+          color:#5a6b7a;
+          display:flex;flex-direction:column;gap:3px;
+        ">
+          ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
+          ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}</div>` : ''}
+          <div style="
+            margin-top:6px;
+            font-size:10px;
+            color:#7a8a96;
+            text-transform:uppercase;
+            letter-spacing:0.05em;
+          ">via ${s.source || 'GBIF'}</div>
+        </div>
+        <div style="
+          display:flex;gap:6px;margin-top:10px;
+        ">
+          ${(s.speciesKey || s.scientific) ? `<a href="/species/${
+            !isNaN(Number(s.speciesKey)) ? s.speciesKey : encodeURIComponent(s.scientific)
+          }" style="
+            flex:1;text-align:center;white-space:nowrap;
+            padding:5px 8px;border-radius:5px;
+            background:${accentColor}18;color:${accentColor};
+            font-size:11px;font-weight:500;line-height:1.2;
+            text-decoration:none;
+            border:1px solid ${accentColor}30;
+          ">Species info</a>` : ''}
+          <a href="${s.source === 'iNaturalist'
+            ? 'https://www.inaturalist.org/observations/' + String(s.id).replace('inat-', '')
+            : 'https://www.gbif.org/occurrence/' + s.id
+          }" target="_blank" rel="noopener noreferrer" style="
+            flex:1;text-align:center;white-space:nowrap;
+            padding:5px 8px;border-radius:5px;
+            background:#f0f2f5;color:#3d4f5f;
+            font-size:11px;font-weight:500;line-height:1.2;
+            text-decoration:none;
+            border:1px solid #e0e4e8;
+          ">View observation \u2197</a>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+// ─── Hex to RGB for heatmap color ramp ─────────────────────────────────────
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+// Crossover zone: heatmap fades out, circles fade in
+const CROSSOVER_LO = 7   // heatmap starts fading
+const CROSSOVER_HI = 9   // circles fully visible
+
 /**
- * ExploreMap — unified Mapbox GL map for all subsites.
+ * ExploreMap — unified Mapbox GL map for all EarthAtlas subsites.
  *
- * Props:
- *   sightings      — array of normalized sighting objects
- *   center         — { lat, lng } map center
- *   activeSpecies  — speciesKey of currently highlighted species
- *   onCenterChange — ({ lat, lng, zoom, bounds? }) => void
- *   onZoomChange   — (zoom) => void
- *   config         — {
- *     fallbackColor: string,    — default dot color (e.g. '#1a5276')
- *     fallbackEmoji: string,    — default emoji for popups (e.g. '🐋')
- *     heatmapLayers?: {         — if present, adds GBIF heatmap tile layers
- *       alltime: string,        — tile URL for all-time density
- *       recent: string,         — tile URL for recent (30-day) activity
- *       crossoverZoom: number,  — zoom level: below → heatmap, above → markers
- *     },
- *   }
+ * Rendering tiers:
+ *   z < 7   — native GL heatmap layer (GPU, from sighting GeoJSON)
+ *   z 7–9   — smooth crossfade (heatmap fading out, circle dots fading in)
+ *   z > 9   — circle dot layer with click-to-popup
+ *
+ * For subsites with config.heatmapLayers (e.g. butterflies), the GBIF raster
+ * tile heatmap is used instead, with DOM markers toggled at the crossover zoom.
  */
 export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, config = {} }) {
   const {
@@ -56,7 +166,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const [zoomLevel, setZoomLevel] = useState(center ? 6 : 2)
-  const markersRef = useRef([])  // each entry: { marker, dot, speciesKey }
+  const markersRef = useRef([])  // DOM markers (only used for heatmapLayers path)
+  const sightingsRef = useRef(sightings) // full sighting objects for popup lookup
+  sightingsRef.current = sightings
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
   const onCenterChangeRef = useRef(onCenterChange)
@@ -64,12 +176,16 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   const onZoomChangeRef = useRef(onZoomChange)
   onZoomChangeRef.current = onZoomChange
   const flyingRef = useRef(0) // counter: >0 means programmatic fly in progress
-  // Track the last center the user moved to, so we don't flyTo it back
   const userCenterRef = useRef(null)
+  const popupRef = useRef(null) // single reusable popup instance
+  const fallbackColorRef = useRef(fallbackColor)
+  fallbackColorRef.current = fallbackColor
+  const fallbackEmojiRef = useRef(fallbackEmoji)
+  fallbackEmojiRef.current = fallbackEmoji
 
   const crossoverZoom = heatmapLayers?.crossoverZoom ?? 7
 
-  // Init map
+  // ─── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
@@ -88,12 +204,10 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
-    // Add GBIF heatmap tile layers if configured
+    // ── GBIF raster tile heatmap (butterflies path) ────────────────────────
     if (heatmapLayers) {
       function addHeatmapTileLayers() {
         if (map.getSource('gbif-alltime')) return
-
-        // Base layer: all-time, faint
         map.addSource('gbif-alltime', {
           type: 'raster',
           tiles: [heatmapLayers.alltime],
@@ -113,8 +227,6 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             ],
           },
         })
-
-        // Recent layer: 30-day, brighter
         map.addSource('gbif-recent', {
           type: 'raster',
           tiles: [heatmapLayers.recent],
@@ -136,16 +248,13 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       }
       if (map.isStyleLoaded()) addHeatmapTileLayers()
       else map.on('load', addHeatmapTileLayers)
-    }
 
-    // Toggle marker visibility based on zoom when heatmap is present
-    let markersOnMap = true
-    function updateMarkerVisibility() {
-      const z = map.getZoom()
-      setZoomLevel(z)
-      onZoomChangeRef.current?.(z)
-
-      if (heatmapLayers) {
+      // Toggle DOM marker visibility based on zoom (heatmapLayers path only)
+      let markersOnMap = true
+      function updateMarkerVisibility() {
+        const z = map.getZoom()
+        setZoomLevel(z)
+        onZoomChangeRef.current?.(z)
         const show = z >= crossoverZoom
         if (show && !markersOnMap) {
           markersRef.current.forEach(({ marker }) => marker.addTo(map))
@@ -155,15 +264,165 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           markersOnMap = false
         }
       }
-    }
-    map.on('zoom', updateMarkerVisibility)
-    map.on('zoomend', updateMarkerVisibility)
-    // Expose for sightings effect to call
-    map._updateMarkerVisibility = updateMarkerVisibility
-    map._isMarkersOnMap = () => markersOnMap
-    map._setMarkersOnMap = (v) => { markersOnMap = v }
+      map.on('zoom', updateMarkerVisibility)
+      map.on('zoomend', updateMarkerVisibility)
+      map._updateMarkerVisibility = updateMarkerVisibility
+      map._isMarkersOnMap = () => markersOnMap
+      map._setMarkersOnMap = (v) => { markersOnMap = v }
+    } else {
+      // ── Native GL layers (heatmap + circles) from sighting GeoJSON ───────
+      function addSightingLayers() {
+        if (map.getSource('sighting-src')) return
 
-    // Fire onCenterChange after user-initiated moves (not programmatic flyTo)
+        map.addSource('sighting-src', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+        })
+
+        // Heatmap layer — visible at low zoom, fades out at crossover
+        const [r, g, b] = hexToRgb(fallbackColorRef.current)
+        map.addLayer({
+          id: 'sighting-heat',
+          type: 'heatmap',
+          source: 'sighting-src',
+          paint: {
+            'heatmap-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 6,
+              4, 14,
+              CROSSOVER_LO, 22,
+              CROSSOVER_HI, 30,
+            ],
+            'heatmap-intensity': [
+              'interpolate', ['linear'], ['zoom'],
+              0, 0.3,
+              CROSSOVER_LO, 0.8,
+              CROSSOVER_HI, 1.2,
+            ],
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0,    'rgba(0, 0, 0, 0)',
+              0.08, `rgba(${r}, ${g}, ${b}, 0.15)`,
+              0.2,  `rgba(${r}, ${g}, ${b}, 0.4)`,
+              0.4,  `rgba(${r}, ${g}, ${b}, 0.7)`,
+              0.65, `rgba(${Math.min(r + 60, 255)}, ${Math.min(g + 40, 255)}, ${Math.max(b - 30, 0)}, 0.85)`,
+              0.85, 'rgba(240, 160, 40, 0.9)',
+              1.0,  'rgba(230, 70, 30, 0.95)',
+            ],
+            'heatmap-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO - 1, 0.75,
+              CROSSOVER_LO, 0.65,
+              CROSSOVER_HI, 0,
+            ],
+          },
+        })
+
+        // Circle layer — fades in at crossover, fully visible at high zoom
+        map.addLayer({
+          id: 'sighting-circles',
+          type: 'circle',
+          source: 'sighting-src',
+          paint: {
+            'circle-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO, 3,
+              CROSSOVER_HI, 5,
+              14, 7,
+            ],
+            'circle-color': ['get', 'color'],
+            'circle-stroke-color': 'rgba(255, 255, 255, 0.6)',
+            'circle-stroke-width': 1.5,
+            'circle-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO, 0,
+              CROSSOVER_HI, 1,
+            ],
+            'circle-stroke-opacity': [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO, 0,
+              CROSSOVER_HI, 1,
+            ],
+          },
+        })
+
+        // Click handler — popup on circle click
+        map.on('click', 'sighting-circles', (e) => {
+          if (!e.features || !e.features[0]) return
+          const idx = e.features[0].properties.idx
+          const s = sightingsRef.current[idx]
+          if (!s) return
+
+          // Remove existing popup
+          if (popupRef.current) popupRef.current.remove()
+
+          const isMobile = window.innerWidth <= 600
+          const popup = new mapboxgl.Popup({
+            offset: isMobile ? 0 : 12,
+            closeButton: isMobile,
+            maxWidth: isMobile ? '100%' : '280px',
+          })
+            .setLngLat([s.lng, s.lat])
+            .setHTML(buildPopupHTML(s, {
+              fallbackColor: fallbackColorRef.current,
+              fallbackEmoji: fallbackEmojiRef.current,
+            }))
+            .addTo(map)
+
+          popupRef.current = popup
+
+          // Pan to fit popup
+          popup.on('open', () => {
+            if (isMobile) {
+              flyingRef.current++
+              map.once('moveend', () => { flyingRef.current-- })
+              map.easeTo({ center: [s.lng, s.lat], duration: 300 })
+              return
+            }
+            requestAnimationFrame(() => {
+              const popupEl = popup.getElement()
+              if (!popupEl) return
+              const mapRect = map.getContainer().getBoundingClientRect()
+              const popupRect = popupEl.getBoundingClientRect()
+              const pad = 20
+              let dx = 0, dy = 0
+              if (popupRect.left < mapRect.left + pad)
+                dx = popupRect.left - (mapRect.left + pad)
+              else if (popupRect.right > mapRect.right - pad)
+                dx = popupRect.right - (mapRect.right - pad)
+              if (popupRect.top < mapRect.top + pad)
+                dy = popupRect.top - (mapRect.top + pad)
+              else if (popupRect.bottom > mapRect.bottom - pad)
+                dy = popupRect.bottom - (mapRect.bottom - pad)
+              if (dx !== 0 || dy !== 0) {
+                flyingRef.current++
+                map.once('moveend', () => { flyingRef.current-- })
+                map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+              }
+            })
+          })
+        })
+
+        // Cursor pointer on hover
+        map.on('mouseenter', 'sighting-circles', () => {
+          map.getCanvas().style.cursor = 'pointer'
+        })
+        map.on('mouseleave', 'sighting-circles', () => {
+          map.getCanvas().style.cursor = ''
+        })
+      }
+
+      if (map.isStyleLoaded()) addSightingLayers()
+      else map.on('load', addSightingLayers)
+
+      // Track zoom for display
+      map.on('zoom', () => {
+        setZoomLevel(map.getZoom())
+        onZoomChangeRef.current?.(map.getZoom())
+      })
+    }
+
+    // ── Fire onCenterChange after user-initiated moves ─────────────────────
     let debounceTimer = null
     map.on('moveend', () => {
       if (flyingRef.current > 0) return
@@ -186,11 +445,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     })
 
     mapRef.current = map
-    return () => { clearTimeout(debounceTimer); map.remove(); mapRef.current = null }
+    return () => {
+      clearTimeout(debounceTimer)
+      if (popupRef.current) popupRef.current.remove()
+      map.remove()
+      mapRef.current = null
+    }
   }, [])
 
-  // Update center (programmatic — skip moveend callback)
-  // Only flyTo for genuinely new locations, not echoes from user moves
+  // ─── Update center (programmatic flyTo) ──────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || !center) return
     const uc = userCenterRef.current
@@ -199,7 +462,6 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     mapRef.current.once('moveend', () => { flyingRef.current-- })
 
     if (heatmapLayers) {
-      // When heatmap is present, only set zoom on initial load (from default z2); otherwise preserve user's zoom
       const currentZoom = mapRef.current.getZoom()
       if (currentZoom <= 2) {
         mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 12, duration: 1200 })
@@ -211,26 +473,23 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     }
   }, [center?.lat, center?.lng])
 
-  // Fit map to search radius when radiusKm is provided, or auto-fit to sightings
+  // ─── Fit to radius or auto-fit (Anywhere mode) ──────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
     if (center && radiusKm) {
-      const earthRadius = 6371 // km
+      const earthRadius = 6371
       const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
       const dLng = dLat / Math.cos(center.lat * Math.PI / 180)
-
       const bounds = new mapboxgl.LngLatBounds(
         [center.lng - dLng, center.lat - dLat],
         [center.lng + dLng, center.lat + dLat]
       )
-
       flyingRef.current++
       map.once('moveend', () => { flyingRef.current-- })
       map.fitBounds(bounds, { padding: 40, duration: 800 })
     } else if (!radiusKm && !center && sightings.length > 0) {
-      // No radius and no center (Anywhere mode) — auto-fit to sighting bounds
       const bounds = new mapboxgl.LngLatBounds()
       for (const s of sightings) {
         if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])
@@ -243,231 +502,183 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     }
   }, [center?.lat, center?.lng, radiusKm, sightings])
 
-  // Render markers — only re-create when sightings change
+  // ─── Update sighting data ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
-    // Remove old markers
-    markersRef.current.forEach(m => m.marker.remove())
-    markersRef.current = []
+    if (heatmapLayers) {
+      // ── DOM markers path (butterflies with GBIF tile heatmap) ────────────
+      markersRef.current.forEach(m => m.marker.remove())
+      markersRef.current = []
 
-    sightings.forEach(s => {
-      if (!s.lat || !s.lng) return
+      sightings.forEach(s => {
+        if (!s.lat || !s.lng) return
 
-      // Outer wrapper for Mapbox positioning (receives transform: translate)
-      const el = document.createElement('div')
-      el.style.cssText = `cursor: pointer;`
-      el.title = s.common
+        const el = document.createElement('div')
+        el.style.cssText = `cursor: pointer;`
+        el.title = s.common
 
-      // Inner dot — safe to transform without overwriting Mapbox's translate
-      const dot = document.createElement('div')
-      const dotColor = s.color || fallbackColor
-      dot.style.cssText = `
-        width: 12px; height: 12px;
-        border-radius: 50%;
-        background: ${dotColor};
-        border: 2px solid rgba(255,255,255,0.5);
-        transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s, opacity 0.25s;
-        box-shadow: 0 0 4px ${dotColor}44;
-      `
-      el.appendChild(dot)
+        const dot = document.createElement('div')
+        const dotColor = s.color || fallbackColor
+        dot.style.cssText = `
+          width: 12px; height: 12px;
+          border-radius: 50%;
+          background: ${dotColor};
+          border: 2px solid rgba(255,255,255,0.5);
+          transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s, opacity 0.25s;
+          box-shadow: 0 0 4px ${dotColor}44;
+        `
+        el.appendChild(dot)
 
-      el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.6)' })
-      el.addEventListener('mouseleave', () => {
-        const active = activeSpeciesRef.current
-        dot.style.transform = active && String(s.speciesKey) === String(active) ? 'scale(1.4)' : 'scale(1)'
-      })
+        el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.6)' })
+        el.addEventListener('mouseleave', () => {
+          const active = activeSpeciesRef.current
+          dot.style.transform = active && String(s.speciesKey) === String(active) ? 'scale(1.4)' : 'scale(1)'
+        })
 
-      // Choose best photo: observation photo first, species curated photo as fallback
-      const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
+        const isMobile = window.innerWidth <= 600
+        const popup = new mapboxgl.Popup({
+          offset: isMobile ? 0 : 12,
+          closeButton: isMobile,
+          maxWidth: isMobile ? '100%' : '280px',
+        }).setHTML(buildPopupHTML(s, { fallbackColor, fallbackEmoji }))
 
-      // IUCN-based status detection for popup banner
-      const iucn = s.iucn || s.meta?.iucn || null
-      const iucnLabel = IUCN_LABEL[iucn] || null
-      const iucnColor = IUCN_COLOR[iucn] || null
-
-      const isMobile = window.innerWidth <= 600
-      const photoH = isMobile ? 120 : 200
-
-      const emoji = s.emoji || fallbackEmoji
-      const accentColor = s.color || fallbackColor
-
-      const popup = new mapboxgl.Popup({
-        offset: isMobile ? 0 : 12,
-        closeButton: isMobile,
-        maxWidth: isMobile ? '100%' : '280px',
-      })
-        .setHTML(`
-          <div style="
-            font-family:'DM Sans',system-ui,sans-serif;
-            background:#ffffff;
-            color:#1a2332;
-            overflow:hidden;
-            ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}
-            line-height:1.5;
-          ">
-            ${iucnLabel ? `<div style="
-              background:${iucnColor};
-              color:#fff;
-              font-size:10px;
-              font-weight:500;
-              letter-spacing:0.08em;
-              text-transform:uppercase;
-              padding:5px 16px;
-              display:flex;align-items:center;gap:5px;
-            "><span style="font-size:12px">⚠</span> ${iucnLabel}</div>` : ''}
-            ${photo ? `
-            <div style="position:relative;width:100%;height:${photoH}px;overflow:hidden;">
-              <img src="${photo}" alt="${s.common}" style="
-                width:100%;height:100%;object-fit:cover;display:block;
-              " onerror="this.parentElement.style.display='none'" />
-              <div style="
-                position:absolute;bottom:0;left:0;right:0;height:60px;
-                background:linear-gradient(transparent, #ffffff);
-              "></div>
-            </div>` : ''}
-            <div style="padding:${isMobile ? '12px 16px 16px' : '14px 16px 16px'};">
-              <div style="
-                font-family:'Fraunces',Georgia,serif;
-                font-size:${isMobile ? '18px' : '20px'};font-weight:400;
-                color:#1a2332;
-                margin-bottom:2px;
-                line-height:1.25;
-              ">${emoji ? emoji + ' ' : ''}${s.common}</div>
-              ${s.scientific ? `<div style="
-                font-style:italic;
-                color:#5a6b7a;
-                font-size:12px;
-                margin-bottom:10px;
-              ">${s.scientific}</div>` : ''}
-              ${s.fact ? `<div style="
-                font-size:12px;
-                color:#3d4f5f;
-                line-height:1.5;
-                margin-bottom:12px;
-                border-left:2px solid ${accentColor}44;
-                padding-left:10px;
-                ${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}
-              ">${s.fact}</div>` : ''}
-              <div style="
-                font-size:11px;
-                color:#5a6b7a;
-                display:flex;flex-direction:column;gap:3px;
-              ">
-                ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
-                ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}</div>` : ''}
-                <div style="
-                  margin-top:6px;
-                  font-size:10px;
-                  color:#7a8a96;
-                  text-transform:uppercase;
-                  letter-spacing:0.05em;
-                ">via ${s.source || 'GBIF'}</div>
-              </div>
-              <div style="
-                display:flex;gap:6px;margin-top:10px;
-              ">
-                ${(s.speciesKey || s.scientific) ? `<a href="/species/${
-                  !isNaN(Number(s.speciesKey)) ? s.speciesKey : encodeURIComponent(s.scientific)
-                }" style="
-                  flex:1;text-align:center;white-space:nowrap;
-                  padding:5px 8px;border-radius:5px;
-                  background:${accentColor}18;color:${accentColor};
-                  font-size:11px;font-weight:500;line-height:1.2;
-                  text-decoration:none;
-                  border:1px solid ${accentColor}30;
-                ">Species info</a>` : ''}
-                <a href="${s.source === 'iNaturalist'
-                  ? 'https://www.inaturalist.org/observations/' + String(s.id).replace('inat-', '')
-                  : 'https://www.gbif.org/occurrence/' + s.id
-                }" target="_blank" rel="noopener noreferrer" style="
-                  flex:1;text-align:center;white-space:nowrap;
-                  padding:5px 8px;border-radius:5px;
-                  background:#f0f2f5;color:#3d4f5f;
-                  font-size:11px;font-weight:500;line-height:1.2;
-                  text-decoration:none;
-                  border:1px solid #e0e4e8;
-                ">View observation ↗</a>
-              </div>
-            </div>
-          </div>
-        `)
-
-      // Keep popup visible: on mobile center on marker; on desktop pan to fit
-      popup.on('open', () => {
-        if (isMobile) {
-          // Bottom-sheet popup is fixed at bottom, just center on the marker
-          flyingRef.current++
-          map.once('moveend', () => { flyingRef.current-- })
-          map.easeTo({ center: [s.lng, s.lat], duration: 300 })
-          return
-        }
-        requestAnimationFrame(() => {
-          const popupEl = popup.getElement()
-          if (!popupEl) return
-          const mapRect = map.getContainer().getBoundingClientRect()
-          const popupRect = popupEl.getBoundingClientRect()
-          const pad = 20
-          let dx = 0, dy = 0
-
-          if (popupRect.left < mapRect.left + pad)
-            dx = popupRect.left - (mapRect.left + pad)
-          else if (popupRect.right > mapRect.right - pad)
-            dx = popupRect.right - (mapRect.right - pad)
-
-          if (popupRect.top < mapRect.top + pad)
-            dy = popupRect.top - (mapRect.top + pad)
-          else if (popupRect.bottom > mapRect.bottom - pad)
-            dy = popupRect.bottom - (mapRect.bottom - pad)
-
-          if (dx !== 0 || dy !== 0) {
+        popup.on('open', () => {
+          if (isMobile) {
             flyingRef.current++
             map.once('moveend', () => { flyingRef.current-- })
-            map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+            map.easeTo({ center: [s.lng, s.lat], duration: 300 })
+            return
           }
+          requestAnimationFrame(() => {
+            const popupEl = popup.getElement()
+            if (!popupEl) return
+            const mapRect = map.getContainer().getBoundingClientRect()
+            const popupRect = popupEl.getBoundingClientRect()
+            const pad = 20
+            let dx = 0, dy = 0
+            if (popupRect.left < mapRect.left + pad) dx = popupRect.left - (mapRect.left + pad)
+            else if (popupRect.right > mapRect.right - pad) dx = popupRect.right - (mapRect.right - pad)
+            if (popupRect.top < mapRect.top + pad) dy = popupRect.top - (mapRect.top + pad)
+            else if (popupRect.bottom > mapRect.bottom - pad) dy = popupRect.bottom - (mapRect.bottom - pad)
+            if (dx !== 0 || dy !== 0) {
+              flyingRef.current++
+              map.once('moveend', () => { flyingRef.current-- })
+              map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+            }
+          })
         })
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([s.lng, s.lat])
+          .setPopup(popup)
+          .addTo(map)
+
+        markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
       })
 
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([s.lng, s.lat])
-        .setPopup(popup)
-        .addTo(map)
-
-      markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
-    })
-
-    // Sync marker visibility with heatmap zoom state
-    if (heatmapLayers) {
       map._setMarkersOnMap(true)
       map._updateMarkerVisibility()
+    } else {
+      // ── GeoJSON source path (heatmap + circles) ──────────────────────────
+      const src = map.getSource('sighting-src')
+      if (!src) return // layers not added yet (style still loading)
+
+      const geojson = {
+        type: 'FeatureCollection',
+        features: sightings
+          .map((s, i) => {
+            if (!s.lat || !s.lng) return null
+            return {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+              properties: {
+                idx: i,
+                color: s.color || fallbackColor,
+                speciesKey: String(s.speciesKey || ''),
+              },
+            }
+          })
+          .filter(Boolean),
+      }
+
+      src.setData(geojson)
     }
   }, [sightings])
 
-  // Highlight dots matching activeSpecies with a gold outline
+  // ─── Active species highlighting ─────────────────────────────────────────
   useEffect(() => {
-    markersRef.current.forEach(({ dot, speciesKey }) => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (heatmapLayers) {
+      // DOM markers path
+      markersRef.current.forEach(({ dot, speciesKey }) => {
+        if (!activeSpecies) {
+          dot.style.transform = 'scale(1)'
+          dot.style.border = '2px solid rgba(255,255,255,0.5)'
+          dot.style.boxShadow = 'none'
+          dot.style.opacity = '1'
+        } else if (String(speciesKey) === String(activeSpecies)) {
+          dot.style.transform = 'scale(1.8)'
+          dot.style.border = '2.5px solid #ffeb3b'
+          dot.style.boxShadow = '0 0 0 4px rgba(255,235,59,0.5), 0 0 18px rgba(255,235,59,0.7), 0 0 30px rgba(255,235,59,0.3)'
+          dot.style.opacity = '1'
+        } else {
+          dot.style.transform = 'scale(0.7)'
+          dot.style.border = '2px solid rgba(255,255,255,0.3)'
+          dot.style.boxShadow = 'none'
+          dot.style.opacity = '0.3'
+        }
+      })
+    } else {
+      // GL layers path — data-driven paint expressions
+      if (!map.getLayer('sighting-circles')) return
+
       if (!activeSpecies) {
-        dot.style.transform = 'scale(1)'
-        dot.style.border = '2px solid rgba(255,255,255,0.5)'
-        dot.style.boxShadow = 'none'
-        dot.style.opacity = '1'
-      } else if (String(speciesKey) === String(activeSpecies)) {
-        dot.style.transform = 'scale(1.8)'
-        dot.style.border = '2.5px solid #ffeb3b'
-        dot.style.boxShadow = '0 0 0 4px rgba(255,235,59,0.5), 0 0 18px rgba(255,235,59,0.7), 0 0 30px rgba(255,235,59,0.3)'
-        dot.style.opacity = '1'
+        // Reset to defaults
+        map.setPaintProperty('sighting-circles', 'circle-radius', [
+          'interpolate', ['linear'], ['zoom'],
+          CROSSOVER_LO, 3,
+          CROSSOVER_HI, 5,
+          14, 7,
+        ])
+        map.setPaintProperty('sighting-circles', 'circle-opacity', [
+          'interpolate', ['linear'], ['zoom'],
+          CROSSOVER_LO, 0,
+          CROSSOVER_HI, 1,
+        ])
+        map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
+        map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.6)')
+        map.setFilter('sighting-heat', null)
       } else {
-        dot.style.transform = 'scale(0.7)'
-        dot.style.border = '2px solid rgba(255,255,255,0.3)'
-        dot.style.boxShadow = 'none'
-        dot.style.opacity = '0.3'
+        const key = String(activeSpecies)
+        // Highlight matching, dim non-matching
+        map.setPaintProperty('sighting-circles', 'circle-radius', [
+          'interpolate', ['linear'], ['zoom'],
+          CROSSOVER_LO, ['case', ['==', ['get', 'speciesKey'], key], 5, 2],
+          CROSSOVER_HI, ['case', ['==', ['get', 'speciesKey'], key], 8, 3],
+          14, ['case', ['==', ['get', 'speciesKey'], key], 10, 4],
+        ])
+        map.setPaintProperty('sighting-circles', 'circle-opacity', [
+          'interpolate', ['linear'], ['zoom'],
+          CROSSOVER_LO, 0,
+          CROSSOVER_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
+        ])
+        map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
+          'case', ['==', ['get', 'speciesKey'], key], 2.5, 1,
+        ])
+        map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
+          'case', ['==', ['get', 'speciesKey'], key], '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
+        ])
+        // Focus heatmap on selected species
+        map.setFilter('sighting-heat', ['==', ['get', 'speciesKey'], key])
       }
-    })
+    }
   }, [activeSpecies])
 
-  // ─── Seasonal heatmap layer (patterns mode) ─────────────────────────────
-  // Renders sightings as a native Mapbox heatmap layer (same style as /species page)
+  // ─── Seasonal heatmap layer (patterns mode) ──────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -477,17 +688,49 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     function update() {
       if (!patternsMonth) {
-        // Remove heatmap when leaving patterns mode, restore markers
+        // Remove seasonal heatmap, restore sighting layers
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
-        markersRef.current.forEach(({ marker }) => marker.addTo(map))
+        if (heatmapLayers) {
+          markersRef.current.forEach(({ marker }) => marker.addTo(map))
+        } else {
+          // Restore sighting GL layers visibility
+          if (map.getLayer('sighting-heat')) {
+            map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO - 1, 0.75,
+              CROSSOVER_LO, 0.65,
+              CROSSOVER_HI, 0,
+            ])
+          }
+          if (map.getLayer('sighting-circles')) {
+            map.setPaintProperty('sighting-circles', 'circle-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO, 0,
+              CROSSOVER_HI, 1,
+            ])
+            map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              CROSSOVER_LO, 0,
+              CROSSOVER_HI, 1,
+            ])
+          }
+        }
         return
       }
 
-      // Hide all markers — heatmap replaces them
-      markersRef.current.forEach(({ marker }) => marker.remove())
+      // Hide sighting layers during patterns mode
+      if (heatmapLayers) {
+        markersRef.current.forEach(({ marker }) => marker.remove())
+      } else {
+        if (map.getLayer('sighting-heat')) map.setPaintProperty('sighting-heat', 'heatmap-opacity', 0)
+        if (map.getLayer('sighting-circles')) {
+          map.setPaintProperty('sighting-circles', 'circle-opacity', 0)
+          map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', 0)
+        }
+      }
 
-      // Build GeoJSON from sightings (already filtered server-side when a species is selected)
+      // Build seasonal heatmap from sightings
       const geojson = {
         type: 'FeatureCollection',
         features: sightings
@@ -510,18 +753,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           paint: {
             'heatmap-radius': [
               'interpolate', ['linear'], ['zoom'],
-              0, 4,
-              2, 8,
-              4, 16,
-              6, 24,
-              9, 32,
+              0, 4, 2, 8, 4, 16, 6, 24, 9, 32,
             ],
             'heatmap-intensity': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.4,
-              2, 0.6,
-              4, 1,
-              8, 1.5,
+              0, 0.4, 2, 0.6, 4, 1, 8, 1.5,
             ],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
@@ -535,8 +771,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             ],
             'heatmap-opacity': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.6,
-              12, 0.6,
+              0, 0.6, 12, 0.6,
             ],
           },
         })

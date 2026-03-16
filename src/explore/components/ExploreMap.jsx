@@ -582,28 +582,38 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       map._updateMarkerVisibility()
     } else {
       // ── GeoJSON source path (heatmap + circles) ──────────────────────────
-      const src = map.getSource('sighting-src')
-      if (!src) return // layers not added yet (style still loading)
+      function updateSource() {
+        const src = map.getSource('sighting-src')
+        if (!src) return false
 
-      const geojson = {
-        type: 'FeatureCollection',
-        features: sightings
-          .map((s, i) => {
-            if (!s.lat || !s.lng) return null
-            return {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-              properties: {
-                idx: i,
-                color: s.color || fallbackColor,
-                speciesKey: String(s.speciesKey || ''),
-              },
-            }
-          })
-          .filter(Boolean),
+        const geojson = {
+          type: 'FeatureCollection',
+          features: sightings
+            .map((s, i) => {
+              if (!s.lat || !s.lng) return null
+              return {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+                properties: {
+                  idx: i,
+                  color: s.color || fallbackColor,
+                  speciesKey: String(s.speciesKey || ''),
+                },
+              }
+            })
+            .filter(Boolean),
+        }
+
+        src.setData(geojson)
+        return true
       }
 
-      src.setData(geojson)
+      // Source may not exist yet if style is still loading
+      if (!updateSource()) {
+        const onLoad = () => { updateSource(); map.off('load', onLoad) }
+        map.on('load', onLoad)
+        return () => map.off('load', onLoad)
+      }
     }
   }, [sightings])
 

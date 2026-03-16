@@ -218,7 +218,9 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     if (postFilter) gbifResults = gbifResults.filter(postFilter)
 
     const gbifSightings = gbifResults.map(normalizeOccurrence)
-    const inatSightings = (inatData.results || []).map(normalizeINatObservation).filter(Boolean)
+    let inatSightings = (inatData.results || []).map(normalizeINatObservation).filter(Boolean)
+    // Apply postFilter to iNat results too (e.g. condors: filter out non-condor vultures)
+    if (postFilter) inatSightings = inatSightings.filter(s => postFilter(s))
 
     const allSightings = [...gbifSightings, ...inatSightings]
 

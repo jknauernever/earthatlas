@@ -230,6 +230,8 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
             { slug: 'hippos', name: 'Hippos', emoji: '🦛', image: '/hippo-hero.jpg', desc: 'Hippo sightings in Africa' },
             { slug: 'wolves', name: 'Wolves', emoji: '🐺', image: '/wolf-hero.jpg', desc: 'Wolf & wild canid sightings' },
             { slug: 'butterflies', name: 'Butterflies', emoji: '🦋', image: '/butterfly-hero.jpg', desc: 'Lepidoptera near you' },
+            { slug: 'condors', name: 'Condors', emoji: '🦅', image: '/condor-hero.jpg', desc: 'Condor sightings across the Americas' },
+            { slug: 'sloths', name: 'Sloths', emoji: '🦥', image: '/sloth-hero.jpg', desc: 'Sloth sightings in Central & South America' },
           ].map(site => (
             <a key={site.slug} href={`/${site.slug}`} className={styles.subsiteCard}>
               <img className={styles.subsiteImg} src={site.image} alt={site.name} loading="lazy" />

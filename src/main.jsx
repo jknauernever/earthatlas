@@ -16,6 +16,8 @@ import bearsConfig from './explore/configs/bears.js'
 import monkeysConfig from './explore/configs/monkeys.js'
 import hipposConfig from './explore/configs/hippos.js'
 import wolvesConfig from './explore/configs/wolves.js'
+import condorsConfig from './explore/configs/condors.js'
+import slothsConfig from './explore/configs/sloths.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import './index.css'
 
@@ -45,6 +47,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/monkeys" element={<ExploreApp config={monkeysConfig} />} />
           <Route path="/hippos" element={<ExploreApp config={hipposConfig} />} />
           <Route path="/wolves" element={<ExploreApp config={wolvesConfig} />} />
+          <Route path="/condors" element={<ExploreApp config={condorsConfig} />} />
+          <Route path="/sloths" element={<ExploreApp config={slothsConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
           <Route path="/*" element={<App />} />
         </Routes>

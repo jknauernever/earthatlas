@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/prebuild-stats.js",
-    "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && vite build",
+    "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && node scripts/generate-sitemap.js && vite build",
     "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx"
@@ -26,6 +26,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "eslint": "^9.9.0",
     "eslint-plugin-react": "^7.35.0",
+    "sharp": "^0.34.5",
     "vite": "^5.4.1"
   }
 }

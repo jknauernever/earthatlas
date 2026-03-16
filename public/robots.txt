@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# Sitemaps
 Sitemap: https://earthatlas.org/sitemap.xml
+
+# Host
+Host: https://earthatlas.org

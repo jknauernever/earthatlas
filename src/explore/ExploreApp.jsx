@@ -482,6 +482,7 @@ export default function ExploreApp({ config }) {
                   fallbackColor: config.fallback.color,
                   fallbackEmoji: config.fallback.emoji,
                   heatmapLayers: config.heatmapLayers,
+                  defaultZoom: config.defaults.zoom,
                 }}
               />
             </div>

@@ -161,11 +161,12 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
     heatmapLayers = null,
+    defaultZoom = 6,
   } = config
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
-  const [zoomLevel, setZoomLevel] = useState(center ? 6 : 2)
+  const [zoomLevel, setZoomLevel] = useState(center ? defaultZoom : 2)
   const markersRef = useRef([])  // DOM markers (only used for heatmapLayers path)
   const sightingsRef = useRef(sightings) // full sighting objects for popup lookup
   sightingsRef.current = sightings
@@ -191,7 +192,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
-    const initialZoom = center ? (heatmapLayers ? 12 : 6) : 2
+    const initialZoom = center ? (heatmapLayers ? 12 : defaultZoom) : 2
 
     const map = new mapboxgl.Map({
       container: containerRef.current,

@@ -90,6 +90,10 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
 
 .spin { animation: spin 0.8s linear infinite; }
 
+/* ─── Hide Mapbox logo and info button ─── */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib-button { display: none !important; }
+
 /* ─── Map popup overrides ─── */
 .mapboxgl-popup .mapboxgl-popup-content {
   background: transparent;

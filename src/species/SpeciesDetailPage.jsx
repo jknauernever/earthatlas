@@ -242,7 +242,7 @@ export default function SpeciesDetailPage() {
       attributionControl: false,
       logoPosition: 'bottom-right',
     })
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.on('zoom', () => setMapZoom(map.getZoom()))
 

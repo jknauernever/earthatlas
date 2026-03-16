@@ -229,8 +229,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       flyingRef.current++
       map.once('moveend', () => { flyingRef.current-- })
       map.fitBounds(bounds, { padding: 40, duration: 800 })
-    } else if (!radiusKm && sightings.length > 0) {
-      // No radius — auto-fit to sighting bounds
+    } else if (!radiusKm && !center && sightings.length > 0) {
+      // No radius and no center (Anywhere mode) — auto-fit to sighting bounds
       const bounds = new mapboxgl.LngLatBounds()
       for (const s of sightings) {
         if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])

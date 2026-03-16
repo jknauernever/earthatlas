@@ -211,24 +211,37 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     }
   }, [center?.lat, center?.lng])
 
-  // Fit map to search radius when radiusKm is provided
+  // Fit map to search radius when radiusKm is provided, or auto-fit to sightings
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !center || !radiusKm) return
+    if (!map) return
 
-    const earthRadius = 6371 // km
-    const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
-    const dLng = dLat / Math.cos(center.lat * Math.PI / 180)
+    if (center && radiusKm) {
+      const earthRadius = 6371 // km
+      const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
+      const dLng = dLat / Math.cos(center.lat * Math.PI / 180)
 
-    const bounds = new mapboxgl.LngLatBounds(
-      [center.lng - dLng, center.lat - dLat],
-      [center.lng + dLng, center.lat + dLat]
-    )
+      const bounds = new mapboxgl.LngLatBounds(
+        [center.lng - dLng, center.lat - dLat],
+        [center.lng + dLng, center.lat + dLat]
+      )
 
-    flyingRef.current = true
-    map.once('moveend', () => { flyingRef.current = false })
-    map.fitBounds(bounds, { padding: 40, duration: 800 })
-  }, [center?.lat, center?.lng, radiusKm])
+      flyingRef.current = true
+      map.once('moveend', () => { flyingRef.current = false })
+      map.fitBounds(bounds, { padding: 40, duration: 800 })
+    } else if (!radiusKm && sightings.length > 0) {
+      // No radius — auto-fit to sighting bounds
+      const bounds = new mapboxgl.LngLatBounds()
+      for (const s of sightings) {
+        if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])
+      }
+      if (!bounds.isEmpty()) {
+        flyingRef.current = true
+        map.once('moveend', () => { flyingRef.current = false })
+        map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 12 })
+      }
+    }
+  }, [center?.lat, center?.lng, radiusKm, sightings])
 
   // Render markers — only re-create when sightings change
   useEffect(() => {

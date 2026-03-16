@@ -14,15 +14,17 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org'
 // ─── Observations ────────────────────────────────────────────────
 export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa }) {
   const params = new URLSearchParams({
-    lat,
-    lng,
-    radius: radiusKm,
     per_page: Math.min(perPage, 200),
     order: 'desc',
     order_by: 'created_at',
     quality_grade: 'any',
     captive: 'false',
   })
+  if (lat != null && lng != null && radiusKm) {
+    params.set('lat', lat)
+    params.set('lng', lng)
+    params.set('radius', radiusKm)
+  }
   if (taxonId) params.set('taxon_id', taxonId)
   if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
 
@@ -39,8 +41,13 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
 // ─── Species counts (for summary/stats view later) ───────────────
 export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2, taxonId, iconicTaxa }) {
   const params = new URLSearchParams({
-    lat, lng, radius: radiusKm, quality_grade: 'any', captive: 'false',
+    quality_grade: 'any', captive: 'false',
   })
+  if (lat != null && lng != null && radiusKm) {
+    params.set('lat', lat)
+    params.set('lng', lng)
+    params.set('radius', radiusKm)
+  }
   if (taxonId) params.set('taxon_id', taxonId)
   if (iconicTaxa) params.set('iconic_taxa', iconicTaxa)
   if (d1) { params.set('d1', d1); params.set('d2', d2 || new Date().toISOString().split('T')[0]) }

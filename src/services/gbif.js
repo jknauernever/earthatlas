@@ -134,16 +134,18 @@ export async function fetchGBIFOccurrences({
   taxonKey,
   iconicTaxa,
 }) {
-  const bb = getBoundingBox(lat, lng, radiusKm)
-
   const params = new URLSearchParams({
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
     limit: Math.min(perPage, 300),
     offset: 0,
   })
+
+  if (lat != null && lng != null && radiusKm) {
+    const bb = getBoundingBox(lat, lng, radiusKm)
+    params.set('decimalLatitude', `${bb.minLat},${bb.maxLat}`)
+    params.set('decimalLongitude', `${bb.minLng},${bb.maxLng}`)
+  }
 
   if (d1) {
     params.set('eventDate', `${d1},${d2 || new Date().toISOString().split('T')[0]}`)

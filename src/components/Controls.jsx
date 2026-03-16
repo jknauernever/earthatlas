@@ -2,9 +2,9 @@ import LocationSearch from './LocationSearch'
 import SpeciesSearch from './SpeciesSearch'
 import styles from './Controls.module.css'
 
-const RADIUS_OPTIONS_FULL  = [1, 5, 10, 25, 50, 100]
+const RADIUS_OPTIONS_FULL  = [1, 5, 10, 25, 50, 100, 'any']
 const RADIUS_OPTIONS_EBIRD = [1, 5, 10, 25, 50] // eBird max 50km
-const RADIUS_OPTIONS_GBIF  = [1, 5, 10, 25, 50, 100] // GBIF — no hard limit
+const RADIUS_OPTIONS_GBIF  = [1, 5, 10, 25, 50, 100, 'any']
 
 const TIME_OPTIONS_FULL = [
   { value: 'hour',  label: 'Past hour'  },
@@ -105,7 +105,7 @@ export default function Controls({
           <label className={styles.label}>Radius</label>
           <select value={effectiveRadius} onChange={e => onRadiusChange(Number(e.target.value))}>
             {radiusOptions.map(r => (
-              <option key={r} value={r}>{r} km</option>
+              <option key={r} value={r === 'any' ? 0 : r}>{r === 'any' ? 'Anywhere' : `${r} km`}</option>
             ))}
           </select>
         </div>

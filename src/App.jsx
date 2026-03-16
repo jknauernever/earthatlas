@@ -200,7 +200,8 @@ export default function App() {
   const GBIF_EBIRD_DATASET = '4fa7b334-ce0d-4e88-aaae-2e0c138d049e'
 
   const handleSearch = useCallback(async () => {
-    if (!coords) return
+    if (!coords && !isAnywhere) return
+    if (isAnywhere && !selectedSpecies) return
     setLoading(true)
     setError(null)
 
@@ -211,17 +212,17 @@ export default function App() {
       let allResults = []
       let totalCount = 0
 
+      // Location params — omitted for "anywhere" searches
+      const locParams = isAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: radius }
+
       if (dataSource === 'All') {
-        // When a species filter is active, only query sources that can filter by it
-        // (eBird needs speciesCode, GBIF needs taxonKey — if we don't have those, skip them
-        // to avoid merging unfiltered results from other sources)
         const hasSpeciesFilter = !!selectedSpecies
-        const canFilterEBird = !hasSpeciesFilter || !!selectedSpecies?.speciesCode
+        const canFilterEBird = !isAnywhere && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
         const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
 
         const [inatData, ebirdData, gbifData] = await Promise.all([
           fetchObservations({
-            lat: coords.lat, lng: coords.lng, radiusKm: radius,
+            ...locParams,
             d1, d2: d1 ? d2 : undefined, perPage,
             taxonId: selectedSpecies?.id,
             iconicTaxa: iconicFilter,
@@ -230,7 +231,7 @@ export default function App() {
           canFilterEBird
             ? fetchEBirdObservations({
                 lat: coords.lat, lng: coords.lng,
-                radiusKm: Math.min(radius, 50), // eBird max 50km
+                radiusKm: Math.min(radius, 50),
                 timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
                 perPage,
                 speciesCode: selectedSpecies?.speciesCode || undefined,
@@ -239,7 +240,7 @@ export default function App() {
 
           canFilterGBIF
             ? fetchGBIFOccurrences({
-                lat: coords.lat, lng: coords.lng, radiusKm: radius,
+                ...locParams,
                 d1, d2: d1 ? d2 : undefined, perPage,
                 taxonKey: selectedSpecies?.gbifKey || undefined,
                 iconicTaxa: iconicFilter,
@@ -247,7 +248,6 @@ export default function App() {
             : Promise.resolve({ results: [], total_results: 0 }),
         ])
 
-        // Filter GBIF results to remove records sourced from iNat or eBird (avoid duplicates)
         const gbifFiltered = (gbifData.results || []).filter(
           r => r.datasetKey !== GBIF_INAT_DATASET && r.datasetKey !== GBIF_EBIRD_DATASET
             && r.basisOfRecord !== 'LIVING_SPECIMEN'
@@ -261,17 +261,23 @@ export default function App() {
         totalCount = allResults.length
 
       } else if (dataSource === 'eBird') {
-        const data = await fetchEBirdObservations({
-          lat: coords.lat, lng: coords.lng, radiusKm: radius,
-          timeWindow, perPage,
-          speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
-        })
-        allResults = data.results || []
-        totalCount = data.total_results || 0
+        if (isAnywhere) {
+          // eBird requires lat/lng — can't do anywhere searches
+          allResults = []
+          totalCount = 0
+        } else {
+          const data = await fetchEBirdObservations({
+            lat: coords.lat, lng: coords.lng, radiusKm: radius,
+            timeWindow, perPage,
+            speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
+          })
+          allResults = data.results || []
+          totalCount = data.total_results || 0
+        }
 
       } else if (dataSource === 'GBIF') {
         const data = await fetchGBIFOccurrences({
-          lat: coords.lat, lng: coords.lng, radiusKm: radius,
+          ...locParams,
           d1, d2: d1 ? d2 : undefined, perPage,
           taxonKey: selectedSpecies?.gbifKey || selectedSpecies?.id,
           iconicTaxa: iconicFilter,
@@ -281,7 +287,7 @@ export default function App() {
 
       } else {
         const data = await fetchObservations({
-          lat: coords.lat, lng: coords.lng, radiusKm: radius,
+          ...locParams,
           d1, d2: d1 ? d2 : undefined, perPage,
           taxonId: selectedSpecies?.id,
           iconicTaxa: iconicFilter,
@@ -293,7 +299,9 @@ export default function App() {
       setObservations(allResults)
       setTotalResults(totalCount)
       // Ensure search params are reflected in URL for shareability
-      setQP({ lat: coords.lat, lng: coords.lng, radius, time: timeWindow, source: dataSource })
+      const urlParams = { radius, time: timeWindow, source: dataSource }
+      if (coords) { urlParams.lat = coords.lat; urlParams.lng = coords.lng }
+      setQP(urlParams)
       posthog?.capture('search_performed', {
         source: dataSource,
         location: locationName,
@@ -310,14 +318,14 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource])
+  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource, isAnywhere])
 
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
   useEffect(() => {
-    if (!coords) return
+    if (!coords && !isAnywhere) return
     // Allow immediate search if URL had coords (cold load) or manual/geo set
-    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success') return
+    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere) return
     hasSearched.current = true
     handleSearch()
   }, [handleSearch])
@@ -386,14 +394,18 @@ export default function App() {
   const statusText = loading
     ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
-    ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
+    ? isAnywhere
+      ? `${totalResults.toLocaleString()} total observations worldwide — ${TIME_LABELS[timeWindow]}.`
+      : `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
     ? `Error: ${error}`
     : coords
     ? `Location set — ${locationName || 'ready to search'}.`
-    : 'Set your location to begin exploring.'
+    : 'Set your location to begin exploring, or select a species and search Anywhere.'
 
-  const canSearch = !!coords && (geoStatus === 'success' || !!manualCoords || !!urlCoords) && !loading
+  const isAnywhere = radius === 0
+  const hasLocation = !!coords && (geoStatus === 'success' || !!manualCoords || !!urlCoords)
+  const canSearch = (hasLocation || (isAnywhere && !!selectedSpecies)) && !loading
 
   // ─── Render ────────────────────────────────────────────────────
   return (
@@ -518,7 +530,7 @@ export default function App() {
                 sightings={mapSightings}
                 center={coords}
                 activeSpecies={activeMapSpecies}
-                radiusKm={radius}
+                radiusKm={isAnywhere ? undefined : radius}
                 config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
               />
             </div>

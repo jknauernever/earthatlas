@@ -524,8 +524,8 @@ export default function App() {
         ) : view === 'list' ? (
           <SpeciesList observations={filtered} onSelect={setSelectedObs} />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, minHeight: 500 }}>
-            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div className="map-layout">
+            <div className="map-container">
               <ExploreMap
                 sightings={mapSightings}
                 center={coords}
@@ -534,8 +534,8 @@ export default function App() {
                 config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', maxHeight: 600 }}>
-              <div className={exploreStyles.speciesPanelHead}>
+            <div className="species-sidebar">
+              <div className={exploreStyles.speciesPanelHead} style={{ padding: '8px 12px 4px' }}>
                 <div className={exploreStyles.speciesPanelTitle}>Species seen nearby</div>
                 <div className={exploreStyles.speciesCount}>{mapSpeciesList.length} species</div>
               </div>

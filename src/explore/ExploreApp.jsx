@@ -94,6 +94,19 @@ export default function ExploreApp({ config }) {
   const mapBoundsRef = useRef(null)
   const abortRef = useRef(null)
 
+  // Compute approximate viewport bounds from center + zoom (for initial load)
+  function boundsFromZoom(lat, lng, zoom) {
+    const z = zoom || config.defaults.zoom || 6
+    const latSpan = 180 / Math.pow(2, z)
+    const lngSpan = 360 / Math.pow(2, z)
+    return {
+      minLat: lat - latSpan,
+      maxLat: lat + latSpan,
+      minLng: lng - lngSpan,
+      maxLng: lng + lngSpan,
+    }
+  }
+
   // ─── Load data for a location ─────────────────────────────────────────────
   const loadData = useCallback(async (loc, { bounds } = {}) => {
     // Cancel any in-flight requests
@@ -107,10 +120,10 @@ export default function ExploreApp({ config }) {
     setTimeRange({ start: null, end: null })
 
     try {
-      // Use viewport bounds when available, otherwise wide initial search
+      // Use viewport bounds when available, otherwise estimate from default zoom
       const geo = bounds
         ? { lat: loc.lat, lng: loc.lng, bounds }
-        : { lat: loc.lat, lng: loc.lng, radiusKm: 3000 }
+        : { lat: loc.lat, lng: loc.lng, bounds: boundsFromZoom(loc.lat, loc.lng) }
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
         fetchRecentSightings({ ...geo, days: config.defaults.days, signal }),
         fetchSeasonalPattern({ ...geo, signal }),
@@ -176,7 +189,7 @@ export default function ExploreApp({ config }) {
         lng: location.lng,
         month: monthIdx + 1, // 1-based for API
         speciesKey: activeSpecies ? Number(activeSpecies) : null,
-        ...(bounds ? { bounds } : { radiusKm: 3000 }),
+        ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng) }),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))

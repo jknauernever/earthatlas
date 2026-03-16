@@ -87,6 +87,7 @@ export default function App() {
   const timeWindow = qp.time
   const activeTaxon = qp.taxon
   const view       = qp.view
+  const isAnywhere = radius === 0
 
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
@@ -403,7 +404,6 @@ export default function App() {
     ? `Location set — ${locationName || 'ready to search'}.`
     : 'Set your location to begin exploring, or select a species and search Anywhere.'
 
-  const isAnywhere = radius === 0
   const hasLocation = !!coords && (geoStatus === 'success' || !!manualCoords || !!urlCoords)
   const canSearch = (hasLocation || (isAnywhere && !!selectedSpecies)) && !loading
 

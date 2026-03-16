@@ -42,7 +42,7 @@ The homepage also displays:
 
 ### Explore Subsites — Focused Animal Group Explorers
 
-EarthAtlas has 13 dedicated animal group explorers, each at its own route:
+EarthAtlas has 14 dedicated group explorers, each at its own route:
 
 | Route | Group | GBIF Taxon | Species Tracked |
 |---|---|---|---|
@@ -59,6 +59,7 @@ EarthAtlas has 13 dedicated animal group explorers, each at its own route:
 | `/wolves` | Wolves & Wild Canids | Family Canidae (key 9701) | 6 species |
 | `/condors` | Condors | Family Cathartidae (key 3242141) | 2 species |
 | `/sloths` | Sloths | Order Pilosa (key 1494) | 6 species |
+| `/fungi` | Fungi | Kingdom Fungi (key 5) | 10 species |
 
 Each subsite provides:
 
@@ -166,7 +167,7 @@ EarthAtlas uses a warm, natural-feeling design language:
 
 ### Config-Driven Subsite Architecture
 
-All 13 animal group explorers share the same `ExploreApp` component. Each is parameterized by a **config object** that defines:
+All 14 group explorers share the same `ExploreApp` component. Each is parameterized by a **config object** that defines:
 
 ```
 config = {

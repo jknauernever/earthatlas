@@ -36,8 +36,10 @@ function toSlug(name) {
 
 export default function SpeciesDetailPage() {
   const { taxonId: rawId } = useParams()
-  const isNumeric = /^\d+$/.test(rawId)
-  const taxonId = isNumeric ? parseInt(rawId, 10) : null
+  // Support formats: "12345", "12345-species-slug", or "scientific-name"
+  const numericMatch = rawId.match(/^(\d+)/)
+  const isNumeric = !!numericMatch
+  const taxonId = isNumeric ? parseInt(numericMatch[1], 10) : null
   const scientificName = isNumeric ? null : decodeURIComponent(rawId)
 
   const [taxon, setTaxon] = useState(null)

@@ -314,26 +314,28 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         paint: {
           'circle-radius': [
             'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 2,
-            XFADE_HI, 5,
-            14, 7,
+            XFADE_LO, 3,
+            XFADE_HI, 6,
+            14, 8,
           ],
-          'circle-color': ['get', 'color'],
-          'circle-stroke-color': 'rgba(255, 255, 255, 0.7)',
+          'circle-color': '#ff6a00',
+          'circle-stroke-color': '#ffffff',
           'circle-stroke-width': [
             'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 0.5,
-            XFADE_HI, 1.5,
+            XFADE_LO, 1,
+            XFADE_HI, 2,
           ],
           'circle-opacity': [
             'interpolate', ['linear'], ['zoom'],
             XFADE_LO, 0,
-            XFADE_HI, 0.9,
+            XFADE_LO + 1, 0.7,
+            XFADE_HI, 1,
           ],
           'circle-stroke-opacity': [
             'interpolate', ['linear'], ['zoom'],
             XFADE_LO, 0,
-            XFADE_HI, 0.85,
+            XFADE_LO + 1, 0.8,
+            XFADE_HI, 1,
           ],
         },
       })
@@ -537,35 +539,41 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       // Reset to defaults
       map.setPaintProperty('sighting-circles', 'circle-radius', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 2,
-        XFADE_HI, 5,
-        14, 7,
+        XFADE_LO, 3,
+        XFADE_HI, 6,
+        14, 8,
       ])
+      map.setPaintProperty('sighting-circles', 'circle-color', '#ff6a00')
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
         'interpolate', ['linear'], ['zoom'],
         XFADE_LO, 0,
-        XFADE_HI, 0.9,
+        XFADE_LO + 1, 0.7,
+        XFADE_HI, 1,
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 0.5,
-        XFADE_HI, 1.5,
+        XFADE_LO, 1,
+        XFADE_HI, 2,
       ])
-      map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.7)')
+      map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
       map.setFilter('sighting-heat', null)
     } else {
       const key = String(activeSpecies)
       // Highlight matching, dim non-matching
       map.setPaintProperty('sighting-circles', 'circle-radius', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, ['case', ['==', ['get', 'speciesKey'], key], 4, 1],
-        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 8, 3],
-        14, ['case', ['==', ['get', 'speciesKey'], key], 10, 4],
+        XFADE_LO, ['case', ['==', ['get', 'speciesKey'], key], 5, 2],
+        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 9, 4],
+        14, ['case', ['==', ['get', 'speciesKey'], key], 11, 5],
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-color', [
+        'case', ['==', ['get', 'speciesKey'], key], '#ff4400', '#ff6a00',
       ])
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
         'interpolate', ['linear'], ['zoom'],
         XFADE_LO, 0,
-        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.2],
+        XFADE_LO + 1, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
+        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
         'case', ['==', ['get', 'speciesKey'], key], 2.5, 0.5,

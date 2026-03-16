@@ -108,16 +108,17 @@ export default function ExploreApp({ config }) {
   }
 
   // ─── Load data for a location ─────────────────────────────────────────────
-  const loadData = useCallback(async (loc, { bounds } = {}) => {
+  const loadData = useCallback(async (loc, { bounds, silent = false } = {}) => {
     // Cancel any in-flight requests
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
     const signal = controller.signal
 
-    setLoadingData(true)
+    // Only show loading state on initial load, not on pan/zoom re-fetches
+    if (!silent) setLoadingData(true)
     setDataError(null)
-    setTimeRange({ start: null, end: null })
+    if (!silent) setTimeRange({ start: null, end: null })
 
     try {
       // Use viewport bounds when available, otherwise estimate from default zoom
@@ -202,7 +203,7 @@ export default function ExploreApp({ config }) {
   useEffect(() => {
     if (prevModeRef.current === mode) return
     prevModeRef.current = mode
-    if (mode === 'now' && location) loadData(location, { bounds: mapBoundsRef.current })
+    if (mode === 'now' && location) loadData(location, { bounds: mapBoundsRef.current, silent: true })
     if (mode === 'patterns' && location) handleMonthChange(displayedMonth)
   }, [mode, location, loadData, handleMonthChange, displayedMonth])
 
@@ -264,7 +265,7 @@ export default function ExploreApp({ config }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name })
-    loadData(loc, { bounds })
+    loadData(loc, { bounds, silent: true })
   }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
@@ -536,11 +537,11 @@ export default function ExploreApp({ config }) {
               )}
             </div>
 
-            {loadingData ? (
+            {loadingData && filteredSpecies.length === 0 ? (
               [0, 1, 2, 3].map(i => (
                 <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
               ))
-            ) : filteredSpecies.length === 0 ? (
+            ) : filteredSpecies.length === 0 && !loadingData ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyStateEmoji}>{config.empty.emoji}</div>
                 <div className={styles.emptyStateText}>{config.empty.text}</div>

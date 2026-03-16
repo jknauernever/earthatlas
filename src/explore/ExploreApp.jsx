@@ -89,16 +89,13 @@ export default function ExploreApp({ config }) {
   const [tooManyResults, setTooManyResults] = useState(false)
   const MAX_SIGHTINGS = config.defaults.maxSightings
 
-  // ─── Zoom → search radius mapping ─────────────────────────────────────────
-  function zoomToRadius(z) {
-    if (z == null) return config.defaults.radiusKm
-    return Math.round(config.defaults.radiusKm * Math.pow(2, config.defaults.zoom - z))
-  }
+  // ─── Map state ────────────────────────────────────────────────────────────
   const mapZoomRef = useRef(null)
+  const mapBoundsRef = useRef(null)
   const abortRef = useRef(null)
 
   // ─── Load data for a location ─────────────────────────────────────────────
-  const loadData = useCallback(async (loc, radiusKm) => {
+  const loadData = useCallback(async (loc, { bounds } = {}) => {
     // Cancel any in-flight requests
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
@@ -110,11 +107,14 @@ export default function ExploreApp({ config }) {
     setTimeRange({ start: null, end: null })
 
     try {
-      const r = radiusKm || config.defaults.radiusKm
+      // Use viewport bounds when available, otherwise wide initial search
+      const geo = bounds
+        ? { lat: loc.lat, lng: loc.lng, bounds }
+        : { lat: loc.lat, lng: loc.lng, radiusKm: 3000 }
       const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, days: config.defaults.days, signal }),
-        fetchSeasonalPattern({ lat: loc.lat, lng: loc.lng, radiusKm: r, signal }),
-        fetchINatSightings({ lat: loc.lat, lng: loc.lng, radiusKm: r, days: config.defaults.days, signal }),
+        fetchRecentSightings({ ...geo, days: config.defaults.days, signal }),
+        fetchSeasonalPattern({ ...geo, signal }),
+        fetchINatSightings({ ...geo, days: config.defaults.days, signal }),
       ])
 
       if (signal.aborted) return
@@ -146,7 +146,7 @@ export default function ExploreApp({ config }) {
     } finally {
       if (!signal.aborted) setLoadingData(false)
     }
-  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, aggregateSpecies, config.defaults.radiusKm, config.defaults.days, MAX_SIGHTINGS])
+  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, aggregateSpecies, config.defaults.days, MAX_SIGHTINGS])
 
   // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
@@ -170,12 +170,13 @@ export default function ExploreApp({ config }) {
     if (mode !== 'patterns' || !location) return
 
     try {
+      const bounds = mapBoundsRef.current
       const result = await fetchMonthSightings({
         lat: location.lat,
         lng: location.lng,
         month: monthIdx + 1, // 1-based for API
         speciesKey: activeSpecies ? Number(activeSpecies) : null,
-        radiusKm: zoomToRadius(mapZoomRef.current),
+        ...(bounds ? { bounds } : { radiusKm: 3000 }),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
@@ -188,7 +189,7 @@ export default function ExploreApp({ config }) {
   useEffect(() => {
     if (prevModeRef.current === mode) return
     prevModeRef.current = mode
-    if (mode === 'now' && location) loadData(location, zoomToRadius(mapZoomRef.current))
+    if (mode === 'now' && location) loadData(location, { bounds: mapBoundsRef.current })
     if (mode === 'patterns' && location) handleMonthChange(displayedMonth)
   }, [mode, location, loadData, handleMonthChange, displayedMonth])
 
@@ -243,13 +244,14 @@ export default function ExploreApp({ config }) {
   }
 
   // ─── Map moved — re-search at new center ────────────────────────────────
-  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom }) => {
+  const handleMapCenterChange = useCallback(async ({ lat, lng, zoom, bounds }) => {
     mapZoomRef.current = zoom
+    mapBoundsRef.current = bounds
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name })
-    loadData(loc, zoomToRadius(zoom))
+    loadData(loc, { bounds })
   }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────

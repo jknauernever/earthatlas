@@ -178,6 +178,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   const flyingRef = useRef(0) // counter: >0 means programmatic fly in progress
   const userCenterRef = useRef(null)
   const popupRef = useRef(null) // single reusable popup instance
+  const initialFitDone = useRef(false) // only auto-fit on first data load
   const fallbackColorRef = useRef(fallbackColor)
   fallbackColorRef.current = fallbackColor
   const fallbackEmojiRef = useRef(fallbackEmoji)
@@ -465,16 +466,18 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
       }
     } else {
-      mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 6, duration: 1200 })
+      // Just center the map — data will determine the zoom via auto-fit
+      mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
     }
   }, [center?.lat, center?.lng])
 
-  // ─── Fit to radius or auto-fit (Anywhere mode) ──────────────────────────
+  // ─── Auto-fit to data on first load ─────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || sightings.length === 0) return
 
-    if (center && radiusKm) {
+    if (radiusKm && center) {
+      // Homepage map with explicit radius — fit to radius circle
       const earthRadius = 6371
       const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
       const dLng = dLat / Math.cos(center.lat * Math.PI / 180)
@@ -485,7 +488,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       flyingRef.current++
       map.once('moveend', () => { flyingRef.current-- })
       map.fitBounds(bounds, { padding: 40, duration: 800 })
-    } else if (!radiusKm && !center && sightings.length > 0) {
+    } else if (!initialFitDone.current) {
+      // Explore pages — fit to the data bounds on first load only
+      initialFitDone.current = true
       const bounds = new mapboxgl.LngLatBounds()
       for (const s of sightings) {
         if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])

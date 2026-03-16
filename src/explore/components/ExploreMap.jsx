@@ -498,8 +498,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       flyingRef.current++
       map.once('moveend', () => { flyingRef.current-- })
       map.fitBounds(bounds, { padding: 40, duration: 800 })
-    } else if (!initialFitDone.current) {
-      // Explore pages — fit to the data bounds on first load only
+    } else if (!initialFitDone.current && !center) {
+      // Anywhere mode (no center) — fit to the data bounds on first load
       initialFitDone.current = true
       const bounds = new mapboxgl.LngLatBounds()
       for (const s of sightings) {

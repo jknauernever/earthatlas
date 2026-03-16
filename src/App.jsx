@@ -6,6 +6,7 @@ import { useQueryParams } from './hooks/useQueryParams'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
 import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
+import { resolveSpecies } from './services/taxonCrosswalk'
 import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
 
 import Header           from './components/Header'
@@ -176,9 +177,21 @@ export default function App() {
   }, [setQP])
 
   // ─── Handle species select ────────────────────────────────────
-  const handleSpeciesSelect = useCallback((species) => {
-    setSelectedSpecies(species)
-    setQP({ species: species?.id || null })
+  const handleSpeciesSelect = useCallback(async (species) => {
+    if (!species) {
+      setSelectedSpecies(null)
+      setQP({ species: null })
+      return
+    }
+    // Enrich with cross-source IDs via the taxon crosswalk
+    const resolved = await resolveSpecies(species.scientificName || species.name)
+    const enriched = {
+      ...species,
+      gbifKey: species.gbifKey || resolved.gbifTaxonKey || null,
+      speciesCode: species.speciesCode || resolved.eBirdSpeciesCode || null,
+    }
+    setSelectedSpecies(enriched)
+    setQP({ species: enriched.id || null })
   }, [setQP])
 
   // ─── Search ────────────────────────────────────────────────────

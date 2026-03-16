@@ -63,7 +63,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   onCenterChangeRef.current = onCenterChange
   const onZoomChangeRef = useRef(onZoomChange)
   onZoomChangeRef.current = onZoomChange
-  const flyingRef = useRef(false) // true during programmatic flyTo
+  const flyingRef = useRef(0) // counter: >0 means programmatic fly in progress
   // Track the last center the user moved to, so we don't flyTo it back
   const userCenterRef = useRef(null)
 
@@ -166,7 +166,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     // Fire onCenterChange after user-initiated moves (not programmatic flyTo)
     let debounceTimer = null
     map.on('moveend', () => {
-      if (flyingRef.current) return
+      if (flyingRef.current > 0) return
       clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         const c = map.getCenter()
@@ -195,8 +195,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     if (!mapRef.current || !center) return
     const uc = userCenterRef.current
     if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
-    flyingRef.current = true
-    mapRef.current.once('moveend', () => { flyingRef.current = false })
+    flyingRef.current++
+    mapRef.current.once('moveend', () => { flyingRef.current-- })
 
     if (heatmapLayers) {
       // When heatmap is present, only set zoom on initial load (from default z2); otherwise preserve user's zoom
@@ -226,8 +226,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         [center.lng + dLng, center.lat + dLat]
       )
 
-      flyingRef.current = true
-      map.once('moveend', () => { flyingRef.current = false })
+      flyingRef.current++
+      map.once('moveend', () => { flyingRef.current-- })
       map.fitBounds(bounds, { padding: 40, duration: 800 })
     } else if (!radiusKm && sightings.length > 0) {
       // No radius — auto-fit to sighting bounds
@@ -236,8 +236,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])
       }
       if (!bounds.isEmpty()) {
-        flyingRef.current = true
-        map.once('moveend', () => { flyingRef.current = false })
+        flyingRef.current++
+        map.once('moveend', () => { flyingRef.current-- })
         map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 12 })
       }
     }
@@ -398,8 +398,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       popup.on('open', () => {
         if (isMobile) {
           // Bottom-sheet popup is fixed at bottom, just center on the marker
-          flyingRef.current = true
-          map.once('moveend', () => { flyingRef.current = false })
+          flyingRef.current++
+          map.once('moveend', () => { flyingRef.current-- })
           map.easeTo({ center: [s.lng, s.lat], duration: 300 })
           return
         }
@@ -422,8 +422,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             dy = popupRect.bottom - (mapRect.bottom - pad)
 
           if (dx !== 0 || dy !== 0) {
-            flyingRef.current = true
-            map.once('moveend', () => { flyingRef.current = false })
+            flyingRef.current++
+            map.once('moveend', () => { flyingRef.current-- })
             map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
           }
         })

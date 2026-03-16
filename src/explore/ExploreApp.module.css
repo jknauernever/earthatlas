@@ -523,7 +523,7 @@
 .mapWrap {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
-  height: 520px;
+  height: 570px;
   border: 1px solid var(--border);
   border-bottom: none;
   position: relative;

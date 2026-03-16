@@ -199,7 +199,13 @@ export default function App() {
       let totalCount = 0
 
       if (dataSource === 'All') {
-        // Fetch all three sources in parallel
+        // When a species filter is active, only query sources that can filter by it
+        // (eBird needs speciesCode, GBIF needs taxonKey — if we don't have those, skip them
+        // to avoid merging unfiltered results from other sources)
+        const hasSpeciesFilter = !!selectedSpecies
+        const canFilterEBird = !hasSpeciesFilter || !!selectedSpecies?.speciesCode
+        const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
+
         const [inatData, ebirdData, gbifData] = await Promise.all([
           fetchObservations({
             lat: coords.lat, lng: coords.lng, radiusKm: radius,
@@ -208,20 +214,24 @@ export default function App() {
             iconicTaxa: iconicFilter,
           }).catch(() => ({ results: [], total_results: 0 })),
 
-          fetchEBirdObservations({
-            lat: coords.lat, lng: coords.lng,
-            radiusKm: Math.min(radius, 50), // eBird max 50km
-            timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
-            perPage,
-            speciesCode: selectedSpecies?.speciesCode || undefined,
-          }).catch(() => ({ results: [], total_results: 0 })),
+          canFilterEBird
+            ? fetchEBirdObservations({
+                lat: coords.lat, lng: coords.lng,
+                radiusKm: Math.min(radius, 50), // eBird max 50km
+                timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
+                perPage,
+                speciesCode: selectedSpecies?.speciesCode || undefined,
+              }).catch(() => ({ results: [], total_results: 0 }))
+            : Promise.resolve({ results: [], total_results: 0 }),
 
-          fetchGBIFOccurrences({
-            lat: coords.lat, lng: coords.lng, radiusKm: radius,
-            d1, d2: d1 ? d2 : undefined, perPage,
-            taxonKey: selectedSpecies?.gbifKey || undefined,
-            iconicTaxa: iconicFilter,
-          }).catch(() => ({ results: [], total_results: 0 })),
+          canFilterGBIF
+            ? fetchGBIFOccurrences({
+                lat: coords.lat, lng: coords.lng, radiusKm: radius,
+                d1, d2: d1 ? d2 : undefined, perPage,
+                taxonKey: selectedSpecies?.gbifKey || undefined,
+                iconicTaxa: iconicFilter,
+              }).catch(() => ({ results: [], total_results: 0 }))
+            : Promise.resolve({ results: [], total_results: 0 }),
         ])
 
         // Filter GBIF results to remove records sourced from iNat or eBird (avoid duplicates)

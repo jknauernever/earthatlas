@@ -42,7 +42,6 @@ const config = {
     { name: 'Serengeti, Tanzania', lat: -2.33, lng: 34.83, emoji: '🇹🇿' },
     { name: 'Queen Elizabeth NP, Uganda', lat: -0.20, lng: 30.00, emoji: '🇺🇬' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

@@ -63,7 +63,6 @@ const config = {
     { name: 'Chitwan, Nepal', lat: 27.53, lng: 84.35, emoji: '🇳🇵' },
     { name: 'Sumatra, Indonesia', lat: -0.59, lng: 101.34, emoji: '🇮🇩' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

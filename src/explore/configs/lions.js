@@ -42,7 +42,6 @@ const config = {
     { name: 'Masai Mara, Kenya', lat: -1.50, lng: 35.14, emoji: '🇰🇪' },
     { name: 'Gir Forest, India', lat: 21.12, lng: 70.79, emoji: '🇮🇳' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

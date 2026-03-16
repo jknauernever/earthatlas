@@ -42,7 +42,6 @@ const config = {
     { name: 'Costa Rica', lat: 10.28, lng: -84.09, emoji: '🇨🇷' },
     { name: 'Kibale, Uganda', lat: 0.49, lng: 30.36, emoji: '🇺🇬' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

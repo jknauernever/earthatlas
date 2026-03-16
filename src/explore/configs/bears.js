@@ -35,7 +35,6 @@ const config = {
   fallback: { commonName: 'Unknown bear', color: '#6b4226', emoji: '🐻' },
   loading: { emoji: '🐻', message: 'Searching for bears near {location}…', detail: 'Querying global biodiversity records for bear sightings' },
   empty: { emoji: '🐻', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
-  heatmapLayers: null,
   postFilter: null,
 }
 

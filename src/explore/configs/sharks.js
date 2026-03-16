@@ -56,7 +56,6 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different coastline.',
   },
 
-  heatmapLayers: null,
   postFilter: isShark,
 }
 

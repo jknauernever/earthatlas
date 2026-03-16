@@ -64,7 +64,6 @@ const config = {
     { name: 'Suriname', lat: 5.85, lng: -55.20, emoji: '🇸🇷' },
     { name: 'Iquitos, Peru', lat: -3.75, lng: -73.25, emoji: '🇵🇪' },
   ],
-  heatmapLayers: null,
   postFilter: isSloth,
 }
 

@@ -35,7 +35,6 @@ const config = {
   fallback: { commonName: 'Unknown canid', color: '#5a5a6a', emoji: '🐺' },
   loading: { emoji: '🐺', message: 'Searching for wolves near {location}…', detail: 'Querying global biodiversity records for wolf and wild canid sightings' },
   empty: { emoji: '🐺', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
-  heatmapLayers: null,
   postFilter: null,
 }
 

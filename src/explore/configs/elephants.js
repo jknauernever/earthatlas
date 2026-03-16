@@ -42,7 +42,6 @@ const config = {
     { name: 'Kruger, South Africa', lat: -23.99, lng: 31.55, emoji: '🇿🇦' },
     { name: 'Sri Lanka', lat: 7.87, lng: 80.77, emoji: '🇱🇰' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

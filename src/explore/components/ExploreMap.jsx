@@ -135,12 +135,6 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   `
 }
 
-// ─── Hex to RGB for heatmap color ramp ─────────────────────────────────────
-function hexToRgb(hex) {
-  const n = parseInt(hex.replace('#', ''), 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-}
-
 // Crossfade zone: heatmap fades out, circles fade in
 const XFADE_LO = 7   // heatmap starts fading, circles start appearing
 const XFADE_HI = 10  // heatmap gone, circles fully visible
@@ -148,26 +142,22 @@ const XFADE_HI = 10  // heatmap gone, circles fully visible
 /**
  * ExploreMap — unified Mapbox GL map for all EarthAtlas subsites.
  *
- * Rendering tiers:
- *   z < 7   — native GL heatmap layer (GPU, from sighting GeoJSON)
- *   z 7–9   — smooth crossfade (heatmap fading out, circle dots fading in)
- *   z > 9   — circle dot layer with click-to-popup
- *
- * For subsites with config.heatmapLayers (e.g. butterflies), the GBIF raster
- * tile heatmap is used instead, with DOM markers toggled at the crossover zoom.
+ * Rendering tiers (all GL-native, GPU-rendered):
+ *   z < 7   — heatmap layer (from sighting GeoJSON)
+ *   z 7–10  — smooth crossfade (heatmap fading out, circle dots fading in)
+ *   z > 10  — circle dot layer with click-to-popup
  */
 export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, config = {} }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
-    heatmapLayers = null,
     defaultZoom = 6,
+    gbifTaxonKey = null,
   } = config
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const [zoomLevel, setZoomLevel] = useState(center ? defaultZoom : 2)
-  const markersRef = useRef([])  // DOM markers (only used for heatmapLayers path)
   const sightingsRef = useRef(sightings) // full sighting objects for popup lookup
   sightingsRef.current = sightings
   const activeSpeciesRef = useRef(activeSpecies)
@@ -185,14 +175,12 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   const fallbackEmojiRef = useRef(fallbackEmoji)
   fallbackEmojiRef.current = fallbackEmoji
 
-  const crossoverZoom = heatmapLayers?.crossoverZoom ?? 7
-
   // ─── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
-    const initialZoom = center ? (heatmapLayers ? 12 : defaultZoom) : 2
+    const initialZoom = center ? defaultZoom : 2
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -206,228 +194,224 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
-    // ── GBIF raster tile heatmap (butterflies path) ────────────────────────
-    if (heatmapLayers) {
-      function addHeatmapTileLayers() {
-        if (map.getSource('gbif-alltime')) return
-        map.addSource('gbif-alltime', {
-          type: 'raster',
-          tiles: [heatmapLayers.alltime],
-          tileSize: 512,
-          attribution: '© GBIF',
+    // ── Native GL layers (heatmap + circles) from sighting GeoJSON ─────────
+    function addSightingLayers() {
+      if (map.getSource('sighting-src')) return
+
+      // GBIF vector tile density heatmap — covers the entire globe
+      if (gbifTaxonKey) {
+        map.addSource('gbif-density', {
+          type: 'vector',
+          tiles: [
+            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}.mvt?taxonKey=${gbifTaxonKey}&basisOfRecord=HUMAN_OBSERVATION`,
+          ],
+          maxzoom: 14,
         })
         map.addLayer({
-          id: 'gbif-alltime',
-          type: 'raster',
-          source: 'gbif-alltime',
-          paint: {
-            'raster-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              crossoverZoom - 1, 0.35,
-              crossoverZoom, 0.12,
-              crossoverZoom + 1, 0,
-            ],
-          },
-        })
-        map.addSource('gbif-recent', {
-          type: 'raster',
-          tiles: [heatmapLayers.recent],
-          tileSize: 512,
-        })
-        map.addLayer({
-          id: 'gbif-recent',
-          type: 'raster',
-          source: 'gbif-recent',
-          paint: {
-            'raster-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              crossoverZoom - 1, 0.9,
-              crossoverZoom, 0.35,
-              crossoverZoom + 1, 0,
-            ],
-          },
-        })
-      }
-      if (map.isStyleLoaded()) addHeatmapTileLayers()
-      else map.on('load', addHeatmapTileLayers)
-
-      // Toggle DOM marker visibility based on zoom (heatmapLayers path only)
-      let markersOnMap = true
-      function updateMarkerVisibility() {
-        const z = map.getZoom()
-        setZoomLevel(z)
-        onZoomChangeRef.current?.(z)
-        const show = z >= crossoverZoom
-        if (show && !markersOnMap) {
-          markersRef.current.forEach(({ marker }) => marker.addTo(map))
-          markersOnMap = true
-        } else if (!show && markersOnMap) {
-          markersRef.current.forEach(({ marker }) => marker.remove())
-          markersOnMap = false
-        }
-      }
-      map.on('zoom', updateMarkerVisibility)
-      map.on('zoomend', updateMarkerVisibility)
-      map._updateMarkerVisibility = updateMarkerVisibility
-      map._isMarkersOnMap = () => markersOnMap
-      map._setMarkersOnMap = (v) => { markersOnMap = v }
-    } else {
-      // ── Native GL layers (heatmap + circles) from sighting GeoJSON ───────
-      function addSightingLayers() {
-        if (map.getSource('sighting-src')) return
-
-        map.addSource('sighting-src', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        })
-
-        // Heatmap layer — bright glowing blobs at low zoom, crossfades out
-        map.addLayer({
-          id: 'sighting-heat',
+          id: 'gbif-density-heat',
           type: 'heatmap',
-          source: 'sighting-src',
+          source: 'gbif-density',
+          'source-layer': 'occurrence',
           paint: {
+            'heatmap-weight': [
+              'interpolate', ['linear'],
+              ['get', 'total'],
+              0, 0,
+              1, 0.05,
+              10, 0.15,
+              100, 0.4,
+              1000, 0.8,
+              10000, 1,
+            ],
             'heatmap-radius': [
               'interpolate', ['linear'], ['zoom'],
-              0, 10,
-              4, 20,
-              XFADE_LO, 30,
-              XFADE_HI, 40,
+              0, 2,
+              3, 6,
+              5, 14,
+              XFADE_LO, 22,
+              XFADE_HI, 30,
             ],
             'heatmap-intensity': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.6,
-              4, 0.8,
-              XFADE_LO, 1.2,
-              XFADE_HI, 1.5,
+              0, 0.15,
+              3, 0.25,
+              5, 0.4,
+              XFADE_LO, 0.7,
+              XFADE_HI, 1.0,
             ],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
               0,    'rgba(0, 0, 0, 0)',
-              0.05, 'rgba(255, 180, 0, 0.25)',
-              0.15, 'rgba(255, 190, 0, 0.5)',
-              0.3,  'rgba(255, 200, 20, 0.7)',
-              0.5,  'rgba(255, 190, 0, 0.8)',
-              0.7,  'rgba(255, 160, 0, 0.85)',
-              0.85, 'rgba(255, 120, 0, 0.9)',
-              1.0,  'rgba(255, 80, 0, 0.95)',
+              0.1,  'rgba(255, 200, 0, 0.1)',
+              0.25, 'rgba(255, 190, 0, 0.2)',
+              0.4,  'rgba(255, 180, 0, 0.35)',
+              0.55, 'rgba(255, 160, 0, 0.45)',
+              0.7,  'rgba(255, 130, 0, 0.55)',
+              0.85, 'rgba(255, 100, 0, 0.65)',
+              1.0,  'rgba(255, 60, 0, 0.75)',
             ],
             'heatmap-opacity': [
               'interpolate', ['linear'], ['zoom'],
               XFADE_LO - 1, 0.85,
-              XFADE_LO, 0.75,
+              XFADE_LO, 0.6,
               XFADE_HI, 0,
             ],
           },
         })
-
-        // Circle layer — crossfades in as heatmap fades out
-        map.addLayer({
-          id: 'sighting-circles',
-          type: 'circle',
-          source: 'sighting-src',
-          paint: {
-            'circle-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 2,
-              XFADE_HI, 5,
-              14, 7,
-            ],
-            'circle-color': ['get', 'color'],
-            'circle-stroke-color': 'rgba(255, 255, 255, 0.7)',
-            'circle-stroke-width': [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 0.5,
-              XFADE_HI, 1.5,
-            ],
-            'circle-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 0,
-              XFADE_HI, 0.9,
-            ],
-            'circle-stroke-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 0,
-              XFADE_HI, 0.85,
-            ],
-          },
-        })
-
-        // Click handler — popup on circle click
-        map.on('click', 'sighting-circles', (e) => {
-          if (!e.features || !e.features[0]) return
-          const idx = e.features[0].properties.idx
-          const s = sightingsRef.current[idx]
-          if (!s) return
-
-          // Remove existing popup
-          if (popupRef.current) popupRef.current.remove()
-
-          const isMobile = window.innerWidth <= 600
-          const popup = new mapboxgl.Popup({
-            offset: isMobile ? 0 : 12,
-            closeButton: isMobile,
-            maxWidth: isMobile ? '100%' : '280px',
-          })
-            .setLngLat([s.lng, s.lat])
-            .setHTML(buildPopupHTML(s, {
-              fallbackColor: fallbackColorRef.current,
-              fallbackEmoji: fallbackEmojiRef.current,
-            }))
-            .addTo(map)
-
-          popupRef.current = popup
-
-          // Pan to fit popup
-          popup.on('open', () => {
-            if (isMobile) {
-              flyingRef.current++
-              map.once('moveend', () => { flyingRef.current-- })
-              map.easeTo({ center: [s.lng, s.lat], duration: 300 })
-              return
-            }
-            requestAnimationFrame(() => {
-              const popupEl = popup.getElement()
-              if (!popupEl) return
-              const mapRect = map.getContainer().getBoundingClientRect()
-              const popupRect = popupEl.getBoundingClientRect()
-              const pad = 20
-              let dx = 0, dy = 0
-              if (popupRect.left < mapRect.left + pad)
-                dx = popupRect.left - (mapRect.left + pad)
-              else if (popupRect.right > mapRect.right - pad)
-                dx = popupRect.right - (mapRect.right - pad)
-              if (popupRect.top < mapRect.top + pad)
-                dy = popupRect.top - (mapRect.top + pad)
-              else if (popupRect.bottom > mapRect.bottom - pad)
-                dy = popupRect.bottom - (mapRect.bottom - pad)
-              if (dx !== 0 || dy !== 0) {
-                flyingRef.current++
-                map.once('moveend', () => { flyingRef.current-- })
-                map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
-              }
-            })
-          })
-        })
-
-        // Cursor pointer on hover
-        map.on('mouseenter', 'sighting-circles', () => {
-          map.getCanvas().style.cursor = 'pointer'
-        })
-        map.on('mouseleave', 'sighting-circles', () => {
-          map.getCanvas().style.cursor = ''
-        })
       }
 
-      if (map.isStyleLoaded()) addSightingLayers()
-      else map.on('load', addSightingLayers)
+      map.addSource('sighting-src', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
 
-      // Track zoom for display
-      map.on('zoom', () => {
-        setZoomLevel(map.getZoom())
-        onZoomChangeRef.current?.(map.getZoom())
+      // Heatmap layer — bright glowing blobs at low zoom, crossfades out
+      map.addLayer({
+        id: 'sighting-heat',
+        type: 'heatmap',
+        source: 'sighting-src',
+        paint: {
+          'heatmap-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 30,
+            3, 40,
+            5, 35,
+            XFADE_LO, 30,
+            XFADE_HI, 40,
+          ],
+          'heatmap-intensity': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 0.6,
+            4, 0.8,
+            XFADE_LO, 1.2,
+            XFADE_HI, 1.5,
+          ],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,    'rgba(0, 0, 0, 0)',
+            0.05, 'rgba(255, 180, 0, 0.25)',
+            0.15, 'rgba(255, 190, 0, 0.5)',
+            0.3,  'rgba(255, 200, 20, 0.7)',
+            0.5,  'rgba(255, 190, 0, 0.8)',
+            0.7,  'rgba(255, 160, 0, 0.85)',
+            0.85, 'rgba(255, 120, 0, 0.9)',
+            1.0,  'rgba(255, 80, 0, 0.95)',
+          ],
+          'heatmap-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO - 1, 0.85,
+            XFADE_LO, 0.75,
+            XFADE_HI, 0,
+          ],
+        },
+      })
+
+      // Circle layer — crossfades in as heatmap fades out
+      map.addLayer({
+        id: 'sighting-circles',
+        type: 'circle',
+        source: 'sighting-src',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 2,
+            XFADE_HI, 5,
+            14, 7,
+          ],
+          'circle-color': ['get', 'color'],
+          'circle-stroke-color': 'rgba(255, 255, 255, 0.7)',
+          'circle-stroke-width': [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 0.5,
+            XFADE_HI, 1.5,
+          ],
+          'circle-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 0,
+            XFADE_HI, 0.9,
+          ],
+          'circle-stroke-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 0,
+            XFADE_HI, 0.85,
+          ],
+        },
+      })
+
+      // Click handler — popup on circle click
+      map.on('click', 'sighting-circles', (e) => {
+        if (!e.features || !e.features[0]) return
+        const idx = e.features[0].properties.idx
+        const s = sightingsRef.current[idx]
+        if (!s) return
+
+        // Remove existing popup
+        if (popupRef.current) popupRef.current.remove()
+
+        const isMobile = window.innerWidth <= 600
+        const popup = new mapboxgl.Popup({
+          offset: isMobile ? 0 : 12,
+          closeButton: isMobile,
+          maxWidth: isMobile ? '100%' : '280px',
+        })
+          .setLngLat([s.lng, s.lat])
+          .setHTML(buildPopupHTML(s, {
+            fallbackColor: fallbackColorRef.current,
+            fallbackEmoji: fallbackEmojiRef.current,
+          }))
+          .addTo(map)
+
+        popupRef.current = popup
+
+        // Pan to fit popup
+        popup.on('open', () => {
+          if (isMobile) {
+            flyingRef.current++
+            map.once('moveend', () => { flyingRef.current-- })
+            map.easeTo({ center: [s.lng, s.lat], duration: 300 })
+            return
+          }
+          requestAnimationFrame(() => {
+            const popupEl = popup.getElement()
+            if (!popupEl) return
+            const mapRect = map.getContainer().getBoundingClientRect()
+            const popupRect = popupEl.getBoundingClientRect()
+            const pad = 20
+            let dx = 0, dy = 0
+            if (popupRect.left < mapRect.left + pad)
+              dx = popupRect.left - (mapRect.left + pad)
+            else if (popupRect.right > mapRect.right - pad)
+              dx = popupRect.right - (mapRect.right - pad)
+            if (popupRect.top < mapRect.top + pad)
+              dy = popupRect.top - (mapRect.top + pad)
+            else if (popupRect.bottom > mapRect.bottom - pad)
+              dy = popupRect.bottom - (mapRect.bottom - pad)
+            if (dx !== 0 || dy !== 0) {
+              flyingRef.current++
+              map.once('moveend', () => { flyingRef.current-- })
+              map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+            }
+          })
+        })
+      })
+
+      // Cursor pointer on hover
+      map.on('mouseenter', 'sighting-circles', () => {
+        map.getCanvas().style.cursor = 'pointer'
+      })
+      map.on('mouseleave', 'sighting-circles', () => {
+        map.getCanvas().style.cursor = ''
       })
     }
+
+    if (map.isStyleLoaded()) addSightingLayers()
+    else map.on('load', addSightingLayers)
+
+    // Track zoom for display
+    map.on('zoom', () => {
+      setZoomLevel(map.getZoom())
+      onZoomChangeRef.current?.(map.getZoom())
+    })
 
     // ── Fire onCenterChange after user-initiated moves ─────────────────────
     let debounceTimer = null
@@ -465,20 +449,12 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     if (!mapRef.current || !center) return
     const uc = userCenterRef.current
     if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
+    // Skip if map is already at the target center (avoids stuck flyingRef on init)
+    const mc = mapRef.current.getCenter()
+    if (Math.abs(mc.lat - center.lat) < 0.001 && Math.abs(mc.lng - center.lng) < 0.001) return
     flyingRef.current++
     mapRef.current.once('moveend', () => { flyingRef.current-- })
-
-    if (heatmapLayers) {
-      const currentZoom = mapRef.current.getZoom()
-      if (currentZoom <= 2) {
-        mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: 12, duration: 1200 })
-      } else {
-        mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
-      }
-    } else {
-      // Just center the map — data will determine the zoom via auto-fit
-      mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
-    }
+    mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
   }, [center?.lat, center?.lng])
 
   // ─── Auto-fit to data on first load ─────────────────────────────────────
@@ -518,188 +494,87 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     const map = mapRef.current
     if (!map) return
 
-    if (heatmapLayers) {
-      // ── DOM markers path (butterflies with GBIF tile heatmap) ────────────
-      markersRef.current.forEach(m => m.marker.remove())
-      markersRef.current = []
+    function updateSource() {
+      const src = map.getSource('sighting-src')
+      if (!src) return false
 
-      sightings.forEach(s => {
-        if (!s.lat || !s.lng) return
-
-        const el = document.createElement('div')
-        el.style.cssText = `cursor: pointer;`
-        el.title = s.common
-
-        const dot = document.createElement('div')
-        const dotColor = s.color || fallbackColor
-        dot.style.cssText = `
-          width: 12px; height: 12px;
-          border-radius: 50%;
-          background: ${dotColor};
-          border: 2px solid rgba(255,255,255,0.5);
-          transition: transform 0.15s, border-color 0.25s, border-width 0.15s, box-shadow 0.25s, opacity 0.25s;
-          box-shadow: 0 0 4px ${dotColor}44;
-        `
-        el.appendChild(dot)
-
-        el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.6)' })
-        el.addEventListener('mouseleave', () => {
-          const active = activeSpeciesRef.current
-          dot.style.transform = active && String(s.speciesKey) === String(active) ? 'scale(1.4)' : 'scale(1)'
-        })
-
-        const isMobile = window.innerWidth <= 600
-        const popup = new mapboxgl.Popup({
-          offset: isMobile ? 0 : 12,
-          closeButton: isMobile,
-          maxWidth: isMobile ? '100%' : '280px',
-        }).setHTML(buildPopupHTML(s, { fallbackColor, fallbackEmoji }))
-
-        popup.on('open', () => {
-          if (isMobile) {
-            flyingRef.current++
-            map.once('moveend', () => { flyingRef.current-- })
-            map.easeTo({ center: [s.lng, s.lat], duration: 300 })
-            return
-          }
-          requestAnimationFrame(() => {
-            const popupEl = popup.getElement()
-            if (!popupEl) return
-            const mapRect = map.getContainer().getBoundingClientRect()
-            const popupRect = popupEl.getBoundingClientRect()
-            const pad = 20
-            let dx = 0, dy = 0
-            if (popupRect.left < mapRect.left + pad) dx = popupRect.left - (mapRect.left + pad)
-            else if (popupRect.right > mapRect.right - pad) dx = popupRect.right - (mapRect.right - pad)
-            if (popupRect.top < mapRect.top + pad) dy = popupRect.top - (mapRect.top + pad)
-            else if (popupRect.bottom > mapRect.bottom - pad) dy = popupRect.bottom - (mapRect.bottom - pad)
-            if (dx !== 0 || dy !== 0) {
-              flyingRef.current++
-              map.once('moveend', () => { flyingRef.current-- })
-              map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
+      const geojson = {
+        type: 'FeatureCollection',
+        features: sightings
+          .map((s, i) => {
+            if (!s.lat || !s.lng) return null
+            return {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+              properties: {
+                idx: i,
+                color: s.color || fallbackColor,
+                speciesKey: String(s.speciesKey || ''),
+              },
             }
           })
-        })
-
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([s.lng, s.lat])
-          .setPopup(popup)
-          .addTo(map)
-
-        markersRef.current.push({ marker, dot, speciesKey: s.speciesKey })
-      })
-
-      map._setMarkersOnMap(true)
-      map._updateMarkerVisibility()
-    } else {
-      // ── GeoJSON source path (heatmap + circles) ──────────────────────────
-      function updateSource() {
-        const src = map.getSource('sighting-src')
-        if (!src) return false
-
-        const geojson = {
-          type: 'FeatureCollection',
-          features: sightings
-            .map((s, i) => {
-              if (!s.lat || !s.lng) return null
-              return {
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-                properties: {
-                  idx: i,
-                  color: s.color || fallbackColor,
-                  speciesKey: String(s.speciesKey || ''),
-                },
-              }
-            })
-            .filter(Boolean),
-        }
-
-        src.setData(geojson)
-        return true
+          .filter(Boolean),
       }
 
-      // Source may not exist yet if style is still loading
-      if (!updateSource()) {
-        const onLoad = () => { updateSource(); map.off('load', onLoad) }
-        map.on('load', onLoad)
-        return () => map.off('load', onLoad)
-      }
+      src.setData(geojson)
+      return true
+    }
+
+    // Source may not exist yet if style is still loading
+    if (!updateSource()) {
+      const onLoad = () => { updateSource(); map.off('load', onLoad) }
+      map.on('load', onLoad)
+      return () => map.off('load', onLoad)
     }
   }, [sightings])
 
   // ─── Active species highlighting ─────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !map.getLayer('sighting-circles')) return
 
-    if (heatmapLayers) {
-      // DOM markers path
-      markersRef.current.forEach(({ dot, speciesKey }) => {
-        if (!activeSpecies) {
-          dot.style.transform = 'scale(1)'
-          dot.style.border = '2px solid rgba(255,255,255,0.5)'
-          dot.style.boxShadow = 'none'
-          dot.style.opacity = '1'
-        } else if (String(speciesKey) === String(activeSpecies)) {
-          dot.style.transform = 'scale(1.8)'
-          dot.style.border = '2.5px solid #ffeb3b'
-          dot.style.boxShadow = '0 0 0 4px rgba(255,235,59,0.5), 0 0 18px rgba(255,235,59,0.7), 0 0 30px rgba(255,235,59,0.3)'
-          dot.style.opacity = '1'
-        } else {
-          dot.style.transform = 'scale(0.7)'
-          dot.style.border = '2px solid rgba(255,255,255,0.3)'
-          dot.style.boxShadow = 'none'
-          dot.style.opacity = '0.3'
-        }
-      })
+    if (!activeSpecies) {
+      // Reset to defaults
+      map.setPaintProperty('sighting-circles', 'circle-radius', [
+        'interpolate', ['linear'], ['zoom'],
+        XFADE_LO, 2,
+        XFADE_HI, 5,
+        14, 7,
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-opacity', [
+        'interpolate', ['linear'], ['zoom'],
+        XFADE_LO, 0,
+        XFADE_HI, 0.9,
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
+        'interpolate', ['linear'], ['zoom'],
+        XFADE_LO, 0.5,
+        XFADE_HI, 1.5,
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.7)')
+      map.setFilter('sighting-heat', null)
     } else {
-      // GL layers path — data-driven paint expressions
-      if (!map.getLayer('sighting-circles')) return
-
-      if (!activeSpecies) {
-        // Reset to defaults
-        map.setPaintProperty('sighting-circles', 'circle-radius', [
-          'interpolate', ['linear'], ['zoom'],
-          XFADE_LO, 2,
-          XFADE_HI, 5,
-          14, 7,
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-opacity', [
-          'interpolate', ['linear'], ['zoom'],
-          XFADE_LO, 0,
-          XFADE_HI, 0.9,
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-          'interpolate', ['linear'], ['zoom'],
-          XFADE_LO, 0.5,
-          XFADE_HI, 1.5,
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.7)')
-        map.setFilter('sighting-heat', null)
-      } else {
-        const key = String(activeSpecies)
-        // Highlight matching, dim non-matching
-        map.setPaintProperty('sighting-circles', 'circle-radius', [
-          'interpolate', ['linear'], ['zoom'],
-          XFADE_LO, ['case', ['==', ['get', 'speciesKey'], key], 4, 1],
-          XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 8, 3],
-          14, ['case', ['==', ['get', 'speciesKey'], key], 10, 4],
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-opacity', [
-          'interpolate', ['linear'], ['zoom'],
-          XFADE_LO, 0,
-          XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.2],
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-          'case', ['==', ['get', 'speciesKey'], key], 2.5, 0.5,
-        ])
-        map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
-          'case', ['==', ['get', 'speciesKey'], key], '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
-        ])
-        // Focus heatmap on selected species
-        map.setFilter('sighting-heat', ['==', ['get', 'speciesKey'], key])
-      }
+      const key = String(activeSpecies)
+      // Highlight matching, dim non-matching
+      map.setPaintProperty('sighting-circles', 'circle-radius', [
+        'interpolate', ['linear'], ['zoom'],
+        XFADE_LO, ['case', ['==', ['get', 'speciesKey'], key], 4, 1],
+        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 8, 3],
+        14, ['case', ['==', ['get', 'speciesKey'], key], 10, 4],
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-opacity', [
+        'interpolate', ['linear'], ['zoom'],
+        XFADE_LO, 0,
+        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.2],
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
+        'case', ['==', ['get', 'speciesKey'], key], 2.5, 0.5,
+      ])
+      map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
+        'case', ['==', ['get', 'speciesKey'], key], '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
+      ])
+      // Focus heatmap on selected species
+      map.setFilter('sighting-heat', ['==', ['get', 'speciesKey'], key])
     }
   }, [activeSpecies])
 
@@ -716,43 +591,43 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // Remove seasonal heatmap, restore sighting layers
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
-        if (heatmapLayers) {
-          markersRef.current.forEach(({ marker }) => marker.addTo(map))
-        } else {
-          // Restore sighting GL layers visibility
-          if (map.getLayer('sighting-heat')) {
-            map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO - 1, 0.8,
-              XFADE_LO, 0.7,
-              XFADE_HI, 0,
-            ])
-          }
-          if (map.getLayer('sighting-circles')) {
-            map.setPaintProperty('sighting-circles', 'circle-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 0,
-              XFADE_HI, 0.9,
-            ])
-            map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO, 0,
-              XFADE_HI, 0.85,
-            ])
-          }
+        if (map.getLayer('gbif-density-heat')) {
+          map.setPaintProperty('gbif-density-heat', 'heatmap-opacity', [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO - 1, 0.85,
+            XFADE_LO, 0.6,
+            XFADE_HI, 0,
+          ])
+        }
+        if (map.getLayer('sighting-heat')) {
+          map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO - 1, 0.85,
+            XFADE_LO, 0.75,
+            XFADE_HI, 0,
+          ])
+        }
+        if (map.getLayer('sighting-circles')) {
+          map.setPaintProperty('sighting-circles', 'circle-opacity', [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 0,
+            XFADE_HI, 0.9,
+          ])
+          map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', [
+            'interpolate', ['linear'], ['zoom'],
+            XFADE_LO, 0,
+            XFADE_HI, 0.85,
+          ])
         }
         return
       }
 
       // Hide sighting layers during patterns mode
-      if (heatmapLayers) {
-        markersRef.current.forEach(({ marker }) => marker.remove())
-      } else {
-        if (map.getLayer('sighting-heat')) map.setPaintProperty('sighting-heat', 'heatmap-opacity', 0)
-        if (map.getLayer('sighting-circles')) {
-          map.setPaintProperty('sighting-circles', 'circle-opacity', 0)
-          map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', 0)
-        }
+      if (map.getLayer('gbif-density-heat')) map.setPaintProperty('gbif-density-heat', 'heatmap-opacity', 0)
+      if (map.getLayer('sighting-heat')) map.setPaintProperty('sighting-heat', 'heatmap-opacity', 0)
+      if (map.getLayer('sighting-circles')) {
+        map.setPaintProperty('sighting-circles', 'circle-opacity', 0)
+        map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', 0)
       }
 
       // Build seasonal heatmap from sightings

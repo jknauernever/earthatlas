@@ -64,7 +64,6 @@ const config = {
     { name: 'Hokkaido, Japan', lat: 43.06, lng: 141.35, emoji: '🇯🇵' },
     { name: 'Tasmania, Australia', lat: -42.00, lng: 146.50, emoji: '🇦🇺' },
   ],
-  heatmapLayers: null,
   postFilter: null,
 }
 

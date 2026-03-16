@@ -494,8 +494,8 @@ export default function ExploreApp({ config }) {
                 config={{
                   fallbackColor: config.fallback.color,
                   fallbackEmoji: config.fallback.emoji,
-                  heatmapLayers: config.heatmapLayers,
                   defaultZoom: config.defaults.zoom,
+                  gbifTaxonKey: config.gbifTaxonKey,
                 }}
               />
             </div>

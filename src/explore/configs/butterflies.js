@@ -1,20 +1,6 @@
 import { GBIF_TAXON_KEY, INAT_TAXON_ID, SPECIES_META } from '../species-data/butterflies'
 import { createExploreService } from '../shared-service'
 
-// GBIF tile URLs for heatmap layers
-const GBIF_ALLTIME_URL =
-  'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png'
-  + '?taxonKey=797&basisOfRecord=HUMAN_OBSERVATION&style=orangeHeat.point'
-
-function buildRecentTileUrl() {
-  const d2 = new Date()
-  const d1 = new Date(d2 - 30 * 86400000)
-  const fmt = d => d.toISOString().split('T')[0]
-  return 'https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}@1x.png'
-    + `?taxonKey=797&eventDate=${fmt(d1)},${fmt(d2)}&basisOfRecord=HUMAN_OBSERVATION`
-    + '&style=fire.point'
-}
-
 const config = {
   slug: 'butterflies',
   name: 'Butterflies',
@@ -71,11 +57,6 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different area.',
   },
 
-  heatmapLayers: {
-    alltimeTileUrl: GBIF_ALLTIME_URL,
-    buildRecentTileUrl,
-    crossoverZoom: 7,
-  },
 
   postFilter: null,
 }

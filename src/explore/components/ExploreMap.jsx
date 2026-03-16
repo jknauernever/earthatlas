@@ -280,8 +280,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           data: { type: 'FeatureCollection', features: [] },
         })
 
-        // Heatmap layer — density visualization at low zoom, crossfades out
-        const [r, g, b] = hexToRgb(fallbackColorRef.current)
+        // Heatmap layer — bright glowing blobs at low zoom, crossfades out
         map.addLayer({
           id: 'sighting-heat',
           type: 'heatmap',
@@ -289,32 +288,33 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           paint: {
             'heatmap-radius': [
               'interpolate', ['linear'], ['zoom'],
-              0, 8,
-              4, 18,
-              XFADE_LO, 28,
+              0, 10,
+              4, 20,
+              XFADE_LO, 30,
               XFADE_HI, 40,
             ],
             'heatmap-intensity': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.3,
-              4, 0.6,
-              XFADE_LO, 1,
+              0, 0.6,
+              4, 0.8,
+              XFADE_LO, 1.2,
               XFADE_HI, 1.5,
             ],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
               0,    'rgba(0, 0, 0, 0)',
-              0.05, `rgba(${r}, ${g}, ${b}, 0.12)`,
-              0.15, `rgba(${r}, ${g}, ${b}, 0.3)`,
-              0.35, `rgba(${r}, ${g}, ${b}, 0.55)`,
-              0.55, `rgba(${Math.min(r + 40, 255)}, ${Math.min(g + 30, 255)}, ${b}, 0.7)`,
-              0.75, `rgba(${Math.min(r + 80, 255)}, ${Math.min(g + 60, 255)}, ${Math.max(b - 20, 0)}, 0.8)`,
-              1.0,  `rgba(${Math.min(r + 100, 255)}, ${Math.min(g + 80, 255)}, ${Math.max(b - 40, 0)}, 0.9)`,
+              0.05, 'rgba(255, 180, 0, 0.25)',
+              0.15, 'rgba(255, 190, 0, 0.5)',
+              0.3,  'rgba(255, 200, 20, 0.7)',
+              0.5,  'rgba(255, 190, 0, 0.8)',
+              0.7,  'rgba(255, 160, 0, 0.85)',
+              0.85, 'rgba(255, 120, 0, 0.9)',
+              1.0,  'rgba(255, 80, 0, 0.95)',
             ],
             'heatmap-opacity': [
               'interpolate', ['linear'], ['zoom'],
-              XFADE_LO - 1, 0.8,
-              XFADE_LO, 0.7,
+              XFADE_LO - 1, 0.85,
+              XFADE_LO, 0.75,
               XFADE_HI, 0,
             ],
           },

@@ -809,18 +809,16 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-      {heatmapLayers && (
-        <div style={{
-          position: 'absolute', bottom: 8, left: 8,
-          background: 'rgba(0,0,0,0.7)', color: '#fff',
-          fontSize: 10, fontWeight: 500, fontFamily: 'monospace',
-          padding: '3px 8px', borderRadius: 4,
-          pointerEvents: 'none', zIndex: 5,
-          lineHeight: 1.4,
-        }}>
-          z{zoomLevel.toFixed(1)}
-        </div>
-      )}
+      <div style={{
+        position: 'absolute', bottom: 8, left: 8,
+        background: 'rgba(0,0,0,0.55)', color: 'rgba(255,255,255,0.75)',
+        fontSize: 10, fontWeight: 500, fontFamily: 'monospace',
+        padding: '2px 6px', borderRadius: 3,
+        pointerEvents: 'none', zIndex: 5,
+        lineHeight: 1.4,
+      }}>
+        z{zoomLevel.toFixed(1)}
+      </div>
     </div>
   )
 }

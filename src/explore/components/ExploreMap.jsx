@@ -141,9 +141,9 @@ function hexToRgb(hex) {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-// Crossover zone: heatmap fades out, circles fade in
-const CROSSOVER_LO = 7   // heatmap starts fading
-const CROSSOVER_HI = 9   // circles fully visible
+// Heatmap fades out over this range; circles are always visible
+const HEAT_FADE_LO = 5   // heatmap starts fading
+const HEAT_FADE_HI = 8   // heatmap fully gone
 
 /**
  * ExploreMap — unified Mapbox GL map for all EarthAtlas subsites.
@@ -279,7 +279,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           data: { type: 'FeatureCollection', features: [] },
         })
 
-        // Heatmap layer — visible at low zoom, fades out at crossover
+        // Heatmap layer — subtle ambient glow behind dots, fades out at mid zoom
         const [r, g, b] = hexToRgb(fallbackColorRef.current)
         map.addLayer({
           id: 'sighting-heat',
@@ -288,37 +288,36 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           paint: {
             'heatmap-radius': [
               'interpolate', ['linear'], ['zoom'],
-              0, 6,
-              4, 14,
-              CROSSOVER_LO, 22,
-              CROSSOVER_HI, 30,
+              0, 4,
+              4, 10,
+              HEAT_FADE_LO, 16,
+              HEAT_FADE_HI, 22,
             ],
             'heatmap-intensity': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.3,
-              CROSSOVER_LO, 0.8,
-              CROSSOVER_HI, 1.2,
+              0, 0.2,
+              HEAT_FADE_LO, 0.5,
+              HEAT_FADE_HI, 0.8,
             ],
             'heatmap-color': [
               'interpolate', ['linear'], ['heatmap-density'],
               0,    'rgba(0, 0, 0, 0)',
-              0.08, `rgba(${r}, ${g}, ${b}, 0.15)`,
-              0.2,  `rgba(${r}, ${g}, ${b}, 0.4)`,
-              0.4,  `rgba(${r}, ${g}, ${b}, 0.7)`,
-              0.65, `rgba(${Math.min(r + 60, 255)}, ${Math.min(g + 40, 255)}, ${Math.max(b - 30, 0)}, 0.85)`,
-              0.85, 'rgba(240, 160, 40, 0.9)',
-              1.0,  'rgba(230, 70, 30, 0.95)',
+              0.1,  `rgba(${r}, ${g}, ${b}, 0.08)`,
+              0.3,  `rgba(${r}, ${g}, ${b}, 0.2)`,
+              0.5,  `rgba(${r}, ${g}, ${b}, 0.35)`,
+              0.7,  `rgba(${r}, ${g}, ${b}, 0.5)`,
+              0.9,  `rgba(${Math.min(r + 40, 255)}, ${Math.min(g + 30, 255)}, ${b}, 0.6)`,
+              1.0,  `rgba(${Math.min(r + 60, 255)}, ${Math.min(g + 50, 255)}, ${b}, 0.7)`,
             ],
             'heatmap-opacity': [
               'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO - 1, 0.75,
-              CROSSOVER_LO, 0.65,
-              CROSSOVER_HI, 0,
+              HEAT_FADE_LO, 0.55,
+              HEAT_FADE_HI, 0,
             ],
           },
         })
 
-        // Circle layer — fades in at crossover, fully visible at high zoom
+        // Circle layer — always visible, grows with zoom
         map.addLayer({
           id: 'sighting-circles',
           type: 'circle',
@@ -326,23 +325,20 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           paint: {
             'circle-radius': [
               'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO, 3,
-              CROSSOVER_HI, 5,
+              0, 3,
+              6, 4,
+              10, 6,
               14, 7,
             ],
             'circle-color': ['get', 'color'],
-            'circle-stroke-color': 'rgba(255, 255, 255, 0.6)',
-            'circle-stroke-width': 1.5,
-            'circle-opacity': [
+            'circle-stroke-color': 'rgba(255, 255, 255, 0.7)',
+            'circle-stroke-width': [
               'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO, 0,
-              CROSSOVER_HI, 1,
+              0, 1,
+              10, 1.5,
             ],
-            'circle-stroke-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO, 0,
-              CROSSOVER_HI, 1,
-            ],
+            'circle-opacity': 0.85,
+            'circle-stroke-opacity': 0.85,
           },
         })
 
@@ -650,34 +646,34 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // Reset to defaults
         map.setPaintProperty('sighting-circles', 'circle-radius', [
           'interpolate', ['linear'], ['zoom'],
-          CROSSOVER_LO, 3,
-          CROSSOVER_HI, 5,
+          0, 3,
+          6, 4,
+          10, 6,
           14, 7,
         ])
-        map.setPaintProperty('sighting-circles', 'circle-opacity', [
+        map.setPaintProperty('sighting-circles', 'circle-opacity', 0.85)
+        map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
           'interpolate', ['linear'], ['zoom'],
-          CROSSOVER_LO, 0,
-          CROSSOVER_HI, 1,
+          0, 1,
+          10, 1.5,
         ])
-        map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
-        map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.6)')
+        map.setPaintProperty('sighting-circles', 'circle-stroke-color', 'rgba(255, 255, 255, 0.7)')
         map.setFilter('sighting-heat', null)
       } else {
         const key = String(activeSpecies)
         // Highlight matching, dim non-matching
         map.setPaintProperty('sighting-circles', 'circle-radius', [
           'interpolate', ['linear'], ['zoom'],
-          CROSSOVER_LO, ['case', ['==', ['get', 'speciesKey'], key], 5, 2],
-          CROSSOVER_HI, ['case', ['==', ['get', 'speciesKey'], key], 8, 3],
+          0, ['case', ['==', ['get', 'speciesKey'], key], 5, 2],
+          6, ['case', ['==', ['get', 'speciesKey'], key], 6, 3],
+          10, ['case', ['==', ['get', 'speciesKey'], key], 9, 4],
           14, ['case', ['==', ['get', 'speciesKey'], key], 10, 4],
         ])
         map.setPaintProperty('sighting-circles', 'circle-opacity', [
-          'interpolate', ['linear'], ['zoom'],
-          CROSSOVER_LO, 0,
-          CROSSOVER_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
+          'case', ['==', ['get', 'speciesKey'], key], 1, 0.2,
         ])
         map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-          'case', ['==', ['get', 'speciesKey'], key], 2.5, 1,
+          'case', ['==', ['get', 'speciesKey'], key], 2.5, 0.5,
         ])
         map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
           'case', ['==', ['get', 'speciesKey'], key], '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
@@ -708,22 +704,13 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           if (map.getLayer('sighting-heat')) {
             map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
               'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO - 1, 0.75,
-              CROSSOVER_LO, 0.65,
-              CROSSOVER_HI, 0,
+              HEAT_FADE_LO, 0.55,
+              HEAT_FADE_HI, 0,
             ])
           }
           if (map.getLayer('sighting-circles')) {
-            map.setPaintProperty('sighting-circles', 'circle-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO, 0,
-              CROSSOVER_HI, 1,
-            ])
-            map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              CROSSOVER_LO, 0,
-              CROSSOVER_HI, 1,
-            ])
+            map.setPaintProperty('sighting-circles', 'circle-opacity', 0.85)
+            map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', 0.85)
           }
         }
         return

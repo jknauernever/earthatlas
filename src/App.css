@@ -82,7 +82,57 @@
   letter-spacing: 0.04em;
 }
 
+/* ─── Map view layout ─── */
+.map-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  min-height: 520px;
+}
+.map-container {
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 420px;
+}
+.species-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 520px;
+  overflow-y: auto;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* ─── Mobile ─── */
 @media (max-width: 700px) {
-  .source-row { padding: 8px 16px; }
-  .main       { padding: 20px 16px 48px; }
+  .source-row {
+    padding: 8px 12px;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .source-chip { font-size: 9px; padding: 4px 8px; white-space: nowrap; }
+
+  .main { padding: 16px 12px 48px; }
+
+  .status-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .status-text { font-size: 13px; }
+  .status-right { width: 100%; justify-content: space-between; }
+
+  .map-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .map-container { min-height: 300px; }
+  .species-sidebar { max-height: 360px; }
+
+  .footer { padding: 20px 16px; font-size: 11px; }
 }

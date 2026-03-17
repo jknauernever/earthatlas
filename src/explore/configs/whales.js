@@ -56,6 +56,8 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different coastline.',
   },
 
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'whales ocean cetacean marine',
   postFilter: null,
 }
 

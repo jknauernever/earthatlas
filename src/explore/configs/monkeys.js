@@ -35,6 +35,8 @@ const config = {
   fallback: { commonName: 'Unknown primate', color: '#5a4a2a', emoji: '🐒' },
   loading: { emoji: '🐒', message: 'Searching for primates near {location}…', detail: 'Querying global biodiversity records for primate sightings' },
   empty: { emoji: '🐒', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'primates monkeys apes conservation',
   localizable: false,
   hotspots: [
     { name: 'Borneo, Malaysia', lat: 1.55, lng: 110.35, emoji: '🇲🇾' },

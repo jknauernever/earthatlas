@@ -57,7 +57,8 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different area.',
   },
 
-
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'butterflies moths pollinators',
   postFilter: null,
 }
 

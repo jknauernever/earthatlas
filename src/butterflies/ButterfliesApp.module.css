@@ -1334,6 +1334,44 @@
 }
 .statusDotAmber { background: var(--amber); }
 
+/* ─── Panel tabs (Species / Latest) ──────────────────────────────────────────── */
+.panelTabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+.panelTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.panelTab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.5);
+}
+.panelTabActive {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* ─── Species info popup ─────────────────────────────────────────────────────── */
 .infoBtn {
   display: inline-flex;

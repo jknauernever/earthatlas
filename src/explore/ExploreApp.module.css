@@ -501,10 +501,25 @@
   grid-template-rows: auto auto auto;
   gap: 28px;
   align-items: start;
+  transition: grid-template-columns 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Expanded feed mode: map shrinks, feed takes 3/4 */
+.contentGridExpanded {
+  grid-template-columns: 340px 1fr;
+}
+.contentGridExpanded .mapBlock {
+  grid-row: 1;
+}
+.contentGridExpanded .seasonSection {
+  display: none;
 }
 
 @media (max-width: 900px) {
   .contentGrid {
+    grid-template-columns: 1fr;
+  }
+  .contentGridExpanded {
     grid-template-columns: 1fr;
   }
 }
@@ -920,6 +935,54 @@
 
 @media (max-width: 900px) {
   .speciesPanel { grid-column: 1; grid-row: auto; }
+}
+
+/* ─── Panel tabs (Species / Latest) ──────────────────────────────────────────── */
+.panelTabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.panelTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.panelTab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.5);
+}
+.panelTabActive {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.panelTabCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--glow);
+  background: var(--glow-dim);
+  padding: 0 6px;
+  border-radius: 10px;
+  line-height: 1.7;
 }
 
 .speciesPanelHead {

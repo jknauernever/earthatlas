@@ -64,6 +64,8 @@ const config = {
     { name: 'Colca Canyon, Peru', lat: -15.61, lng: -71.88, emoji: '🇵🇪' },
     { name: 'Torres del Paine, Chile', lat: -51.00, lng: -73.00, emoji: '🇨🇱' },
   ],
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'condor conservation endangered',
   postFilter: isCondor,
 }
 

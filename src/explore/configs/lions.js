@@ -35,6 +35,8 @@ const config = {
   fallback: { commonName: 'Unknown lion', color: '#c9a33c', emoji: '🦁' },
   loading: { emoji: '🦁', message: 'Searching for lions near {location}…', detail: 'Querying global biodiversity records for lion sightings' },
   empty: { emoji: '🦁', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'lions wildlife conservation Africa',
   localizable: false,
   hotspots: [
     { name: 'Serengeti, Tanzania', lat: -2.33, lng: 34.83, emoji: '🇹🇿' },

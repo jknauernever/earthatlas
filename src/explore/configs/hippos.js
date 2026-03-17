@@ -35,6 +35,8 @@ const config = {
   fallback: { commonName: 'Unknown hippo', color: '#6a5a4a', emoji: '🦛' },
   loading: { emoji: '🦛', message: 'Searching for hippos near {location}…', detail: 'Querying global biodiversity records for hippo sightings' },
   empty: { emoji: '🦛', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'hippos hippopotamus wildlife',
   localizable: false,
   hotspots: [
     { name: 'Kruger, South Africa', lat: -23.99, lng: 31.55, emoji: '🇿🇦' },

@@ -56,6 +56,8 @@ const config = {
     sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.',
   },
 
+  inatTaxonId: INAT_TAXON_ID,
+  newsQuery: 'tigers wildlife conservation Asia',
   localizable: false,
   hotspots: [
     { name: 'Ranthambore, India', lat: 26.02, lng: 76.50, emoji: '🇮🇳' },

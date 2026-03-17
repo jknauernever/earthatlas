@@ -34,7 +34,7 @@ const SPECIES_NAMES = {
   wolves: 'wolves',
 }
 
-export default async function handler(req) {
+export default { async fetch(req) {
   // Auth: Vercel Cron sends CRON_SECRET, admin sends ADMIN_SECRET
   const auth = req.headers.get('authorization') || ''
   const cronSecret = process.env.CRON_SECRET
@@ -144,6 +144,7 @@ export default async function handler(req) {
     console.error('Pipeline error:', err)
     return json({ error: err.message }, 500)
   }
+}
 }
 
 function normalizeUrl(url) {

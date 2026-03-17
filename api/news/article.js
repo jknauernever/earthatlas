@@ -9,7 +9,7 @@
 
 import { getArticleBySlug, validateApiKey } from '../../lib/db.js'
 
-export default async function handler(req) {
+export default { async fetch(req) {
   const { searchParams } = new URL(req.url)
   const slug = searchParams.get('slug')
 
@@ -59,6 +59,7 @@ export default async function handler(req) {
     console.error('Article API error:', err)
     return json({ error: 'Internal error' }, 500)
   }
+}
 }
 
 function json(data, status = 200, extraHeaders = {}) {

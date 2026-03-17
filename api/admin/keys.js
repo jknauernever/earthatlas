@@ -11,7 +11,7 @@
 
 import { migrate, getAllApiKeys, createApiKey, updateApiKey, deleteApiKey } from '../../lib/db.js'
 
-export default async function handler(req) {
+export default { async fetch(req) {
   if (!authorize(req)) {
     return json({ error: 'Unauthorized' }, 401)
   }
@@ -56,6 +56,7 @@ export default async function handler(req) {
     console.error('Admin keys error:', err)
     return json({ error: err.message }, 500)
   }
+}
 }
 
 function authorize(req) {

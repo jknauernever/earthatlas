@@ -11,7 +11,7 @@
 
 import { getArticles, validateApiKey } from '../../lib/db.js'
 
-export default async function handler(req) {
+export default { async fetch(req) {
   const { searchParams, hostname } = new URL(req.url)
   const species = searchParams.get('species')
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50)
@@ -63,6 +63,7 @@ export default async function handler(req) {
     console.error('Feed API error:', err)
     return json({ error: 'Internal error' }, 500)
   }
+}
 }
 
 function json(data, status = 200, extraHeaders = {}) {

@@ -438,7 +438,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     })
 
     mapRef.current = map
+
+    // Resize map when container dimensions change (e.g. feed expand/collapse)
+    const ro = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.resize()
+    })
+    ro.observe(containerRef.current)
+
     return () => {
+      ro.disconnect()
       clearTimeout(debounceTimer)
       if (popupRef.current) popupRef.current.remove()
       map.remove()

@@ -22,6 +22,18 @@ const SPECIES_THEME = {
   wolves:      { accent: '#636e72', label: 'Wolves',       path: '/wolves' },
 }
 
+function formatBody(text) {
+  if (!text) return null
+  // If it already contains HTML block tags, render as HTML
+  if (/<(?:p|div|h[1-6]|ul|ol|blockquote)\b/i.test(text)) {
+    return <div dangerouslySetInnerHTML={{ __html: text }} />
+  }
+  // Otherwise split on double newlines into paragraphs
+  return text.split(/\n\n+/).filter(Boolean).map((para, i) => (
+    <p key={i}>{para.trim()}</p>
+  ))
+}
+
 export default function NewsArticlePage() {
   const { species, slug } = useParams()
   const [article, setArticle] = useState(null)
@@ -147,10 +159,9 @@ export default function NewsArticlePage() {
           )}
 
           {/* Body */}
-          <div
-            className={styles.body}
-            dangerouslySetInnerHTML={{ __html: article.summary }}
-          />
+          <div className={styles.body}>
+            {formatBody(article.summary)}
+          </div>
 
           {/* Source link */}
           {article.sourceUrl && (

@@ -8,7 +8,7 @@
  *   - Admin manual trigger: POST /api/news/process?species=sharks
  */
 
-import { migrate, getEnabledFeeds, articleExists, upsertArticle, touchFeed } from '../../lib/db.js'
+import { migrate, getEnabledFeeds, articleExists, imageExistsForSpecies, upsertArticle, touchFeed } from '../../lib/db.js'
 import { fetchRSSFeed } from '../../lib/rss.js'
 import { rewriteArticle } from '../../lib/ai.js'
 import { resolveImage } from '../../lib/images.js'
@@ -99,11 +99,13 @@ export default { async fetch(req) {
               continue
             }
 
-            // Resolve image
+            // Resolve image (skip duplicates within the same species)
+            const isDuplicate = (url) => imageExistsForSpecies(url, feed.species_slug)
             const { url: imageUrl, credit: imageCredit } = await resolveImage({
               rssImage: item.image,
               articleUrl: item.link,
               imageKeywords: rewritten.imageKeywords,
+              isDuplicate,
             })
 
             // Generate slug

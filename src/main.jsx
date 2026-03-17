@@ -21,6 +21,8 @@ import slothsConfig from './explore/configs/sloths.js'
 import fungiConfig from './explore/configs/fungi.js'
 import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
+import NewsArticlePage from './news/NewsArticlePage.jsx'
+import AdminApp from './admin/AdminApp.jsx'
 import './index.css'
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
@@ -54,6 +56,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/fungi" element={<ExploreApp config={fungiConfig} />} />
           <Route path="/birds" element={<ExploreApp config={birdsConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
+          <Route path="/news/:species/:slug" element={<NewsArticlePage />} />
+          <Route path="/admin" element={<AdminApp />} />
           <Route path="/*" element={<App />} />
         </Routes>
       </BrowserRouter>

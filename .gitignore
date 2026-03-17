@@ -9,3 +9,4 @@ dist/
 public/gbif-tile-test.html
 src/data/preloaded-stats.json
 src/data/species/
+.env*.local

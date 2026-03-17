@@ -1,0 +1,208 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   NewsArticlePage — hosted article page
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  min-height: 100vh;
+  background: #fafbfc;
+  padding: 0 20px 80px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
+/* ─── Loading ───────────────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg, #f0f2f5 25%, #e4e7ec 50%, #f0f2f5 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ─── Error ─────────────────────────────────────────────────────────────────── */
+.errorBox {
+  text-align: center;
+  padding: 80px 20px;
+}
+.errorBox h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  color: #111a24;
+  margin: 0 0 8px;
+}
+.errorBox p {
+  color: #5a6b7a;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+/* ─── Breadcrumb ────────────────────────────────────────────────────────────── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 12px;
+  color: #8a95a5;
+  margin-bottom: 24px;
+}
+.breadcrumb a {
+  color: #5a6b7a;
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  color: #111a24;
+  text-decoration: underline;
+}
+.breadcrumbSep {
+  color: #c0c8d0;
+}
+
+/* ─── Article ───────────────────────────────────────────────────────────────── */
+.article {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 36px 40px 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.categoryBadge {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+.source {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b7a;
+}
+
+.date {
+  font-size: 12px;
+  color: #8a95a5;
+}
+
+.headline {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.25;
+  color: #111a24;
+  letter-spacing: -0.01em;
+  margin: 0 0 24px;
+}
+
+/* ─── Hero image ────────────────────────────────────────────────────────────── */
+.heroFigure {
+  margin: 0 -40px 28px;
+}
+.heroImage {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 420px;
+}
+.imageCredit {
+  font-size: 11px;
+  color: #8a95a5;
+  padding: 8px 40px 0;
+  font-style: italic;
+}
+
+/* ─── Body ──────────────────────────────────────────────────────────────────── */
+.body {
+  font-size: 16px;
+  line-height: 1.75;
+  color: #2a3a4a;
+  margin-bottom: 28px;
+}
+.body p {
+  margin: 0 0 16px;
+}
+.body h2, .body h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 400;
+  color: #111a24;
+  margin: 24px 0 8px;
+}
+
+/* ─── Source link ────────────────────────────────────────────────────────────── */
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111a24;
+  text-decoration: none;
+  padding: 12px 20px;
+  border: 1.5px solid #111a24;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.sourceLink:hover {
+  background: #111a24;
+  color: #f0f8ff;
+}
+
+/* ─── Footer ────────────────────────────────────────────────────────────────── */
+.footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.backLink {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5a6b7a;
+  text-decoration: none;
+}
+.backLink:hover {
+  color: #111a24;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .article {
+    padding: 24px 20px 28px;
+    border-radius: 8px;
+  }
+  .headline {
+    font-size: 24px;
+  }
+  .heroFigure {
+    margin: 0 -20px 20px;
+  }
+  .imageCredit {
+    padding: 8px 20px 0;
+  }
+  .body {
+    font-size: 15px;
+  }
+}

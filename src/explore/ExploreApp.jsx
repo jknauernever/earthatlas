@@ -24,6 +24,7 @@ import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
+import FeedPanel from '../components/FeedPanel'
 
 import { reverseGeocode, fmtDate } from './utils'
 
@@ -84,6 +85,8 @@ export default function ExploreApp({ config }) {
   const [dataError, setDataError]         = useState(null)
   const [openInfoKey, setOpenInfoKey]     = useState(null)
   const [totalCount, setTotalCount]       = useState(0)
+  const [panelTab, setPanelTab]           = useState('species') // 'species' | 'latest'
+  const [feedExpanded, setFeedExpanded]   = useState(false)
 
   // Interaction
   const [activeSighting, setActiveSighting] = useState(null)
@@ -499,7 +502,7 @@ export default function ExploreApp({ config }) {
         )}
 
         {/* Content grid */}
-        <div className={styles.contentGrid}>
+        <div className={`${styles.contentGrid} ${feedExpanded ? styles.contentGridExpanded : ''}`}>
           {/* Map + time slider */}
           <div className={styles.mapBlock}>
             <div className={styles.mapWrap}>
@@ -560,59 +563,81 @@ export default function ExploreApp({ config }) {
             />
           </div>
 
-          {/* Species panel */}
+          {/* Species / Latest panel */}
           <div className={styles.speciesPanel}>
-            <div className={styles.speciesPanelHead}>
-              <div className={styles.speciesPanelTitle}>
-                {mode === 'now' ? 'Species seen nearby' : 'Species in this month'}
-              </div>
-              {filteredSpecies.length > 0 && (
-                <div className={styles.speciesCount}>{filteredSpecies.length} species</div>
-              )}
+            <div className={styles.panelTabs}>
+              <button
+                className={`${styles.panelTab} ${panelTab === 'species' ? styles.panelTabActive : ''}`}
+                onClick={() => setPanelTab('species')}
+              >
+                Species
+                {filteredSpecies.length > 0 && (
+                  <span className={styles.panelTabCount}>{filteredSpecies.length}</span>
+                )}
+              </button>
+              <button
+                className={`${styles.panelTab} ${panelTab === 'latest' ? styles.panelTabActive : ''}`}
+                onClick={() => setPanelTab('latest')}
+              >
+                Latest
+              </button>
             </div>
 
-            {loadingData && filteredSpecies.length === 0 ? (
-              [0, 1, 2, 3].map(i => (
-                <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
-              ))
-            ) : filteredSpecies.length === 0 && !loadingData ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyStateEmoji}>{config.empty.emoji}</div>
-                <div className={styles.emptyStateText}>{config.empty.text}</div>
-                <div
-                  className={styles.emptyStateSub}
-                  dangerouslySetInnerHTML={{ __html: config.empty.sub }}
-                />
-                {config.localizable === false && config.hotspots && config.hotspots.length > 0 && (
-                  <div className={styles.emptyHotspots}>
-                    <div className={styles.emptyHotspotsLabel}>Try a known habitat:</div>
-                    <div className={styles.hotspotChips}>
-                      {config.hotspots.slice(0, 3).map(hs => (
-                        <button
-                          key={hs.name}
-                          className={styles.hotspotChipSmall}
-                          onClick={() => handleLocationSelect({ name: hs.name, lat: hs.lat, lng: hs.lng })}
-                        >
-                          {hs.emoji || '📍'} {hs.name}
-                        </button>
-                      ))}
-                    </div>
+            {panelTab === 'species' ? (
+              <>
+                {loadingData && filteredSpecies.length === 0 ? (
+                  [0, 1, 2, 3].map(i => (
+                    <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
+                  ))
+                ) : filteredSpecies.length === 0 && !loadingData ? (
+                  <div className={styles.emptyState}>
+                    <div className={styles.emptyStateEmoji}>{config.empty.emoji}</div>
+                    <div className={styles.emptyStateText}>{config.empty.text}</div>
+                    <div
+                      className={styles.emptyStateSub}
+                      dangerouslySetInnerHTML={{ __html: config.empty.sub }}
+                    />
+                    {config.localizable === false && config.hotspots && config.hotspots.length > 0 && (
+                      <div className={styles.emptyHotspots}>
+                        <div className={styles.emptyHotspotsLabel}>Try a known habitat:</div>
+                        <div className={styles.hotspotChips}>
+                          {config.hotspots.slice(0, 3).map(hs => (
+                            <button
+                              key={hs.name}
+                              className={styles.hotspotChipSmall}
+                              onClick={() => handleLocationSelect({ name: hs.name, lat: hs.lat, lng: hs.lng })}
+                            >
+                              {hs.emoji || '📍'} {hs.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  filteredSpecies.map((sp, i) => (
+                    <SpeciesListItem
+                      key={sp.speciesKey || sp.common}
+                      species={sp}
+                      active={activeSpecies == sp.speciesKey}
+                      onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                      style={{ animationDelay: `${i * 0.03}s` }}
+                      styles={styles}
+                      openInfoKey={openInfoKey}
+                      setOpenInfoKey={setOpenInfoKey}
+                    />
+                  ))
                 )}
-              </div>
+              </>
             ) : (
-              filteredSpecies.map((sp, i) => (
-                <SpeciesListItem
-                  key={sp.speciesKey || sp.common}
-                  species={sp}
-                  active={activeSpecies == sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
-                  style={{ animationDelay: `${i * 0.03}s` }}
-                  styles={styles}
-                  openInfoKey={openInfoKey}
-                  setOpenInfoKey={setOpenInfoKey}
-                />
-              ))
+              <FeedPanel
+                inatTaxonId={config.inatTaxonId}
+                newsQuery={config.newsQuery}
+                speciesSlug={config.slug}
+                accentColor={config.hero.accentColor}
+                expanded={feedExpanded}
+                onToggleExpand={() => setFeedExpanded(prev => !prev)}
+              />
             )}
           </div>
         </div>

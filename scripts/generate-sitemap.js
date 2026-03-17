@@ -58,6 +58,25 @@ for (const key of sortedKeys) {
   addUrl(`/species/${key}`, 0.7)
 }
 
+// ─── News article pages (if database is available) ────────────────────────────
+let newsCount = 0
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+if (dbUrl) {
+  try {
+    const { neon } = await import('@neondatabase/serverless')
+    const sql = neon(dbUrl)
+    const articles = await sql.query(`SELECT species_slug, slug FROM articles WHERE status = 'published' ORDER BY pub_date DESC LIMIT 5000`, [])
+    for (const a of articles) {
+      addUrl(`/news/${a.species_slug}/${a.slug}`, 0.6, 'daily')
+    }
+    newsCount = articles.length
+  } catch (err) {
+    console.log(`⚠ Could not fetch news articles for sitemap: ${err.message}`)
+  }
+} else {
+  console.log('ℹ No DATABASE_URL — skipping news article URLs in sitemap')
+}
+
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.join('\n')}
@@ -65,4 +84,4 @@ ${urls.join('\n')}
 `
 
 writeFileSync(join(ROOT, 'public/sitemap.xml'), xml)
-console.log(`✓ Sitemap generated: 1 homepage + ${slugs.length} subsites + ${sortedKeys.length} species pages = ${urls.length} URLs`)
+console.log(`✓ Sitemap generated: 1 homepage + ${slugs.length} subsites + ${sortedKeys.length} species pages + ${newsCount} news articles = ${urls.length} URLs`)

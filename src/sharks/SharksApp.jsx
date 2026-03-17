@@ -22,6 +22,7 @@ import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
+import FeedPanel from '../components/FeedPanel'
 
 import {
   fetchRecentSightings,
@@ -128,6 +129,7 @@ export default function SharksApp() {
   const [timeRange, setTimeRange]         = useState({ start: null, end: null })
   const [tooManyResults, setTooManyResults] = useState(false)
   const [openInfoKey, setOpenInfoKey] = useState(null)
+  const [panelTab, setPanelTab] = useState('species')
   const MAX_SIGHTINGS = 500
 
   function zoomToRadius(z) {
@@ -482,56 +484,84 @@ export default function SharksApp() {
           </div>
 
           <div className={styles.speciesPanel}>
-            <div className={styles.speciesPanelHead}>
-              <div className={styles.speciesPanelTitle}>
-                {mode === 'now' ? 'Species seen nearby' : 'Species in this month'}
-              </div>
-              {filteredSpecies.length > 0 && (
-                <div className={styles.speciesCount}>{filteredSpecies.length} species</div>
-              )}
+            <div className={styles.panelTabs}>
+              <button
+                className={`${styles.panelTab} ${panelTab === 'species' ? styles.panelTabActive : ''}`}
+                onClick={() => setPanelTab('species')}
+              >
+                Species
+              </button>
+              <button
+                className={`${styles.panelTab} ${panelTab === 'latest' ? styles.panelTabActive : ''}`}
+                onClick={() => setPanelTab('latest')}
+              >
+                Latest
+              </button>
             </div>
 
-            {loadingData ? (
-              [0, 1, 2, 3].map(i => (
-                <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
-              ))
-            ) : filteredSpecies.length === 0 ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyStateShark}>🦈</div>
-                <div className={styles.emptyStateText}>No sightings found nearby</div>
-                <div className={styles.emptyStateSub}>
-                  Try switching to Seasonal patterns to see historical data,<br />
-                  or search a different coastline.
+            {panelTab === 'species' && (
+              <>
+                <div className={styles.speciesPanelHead}>
+                  <div className={styles.speciesPanelTitle}>
+                    {mode === 'now' ? 'Species seen nearby' : 'Species in this month'}
+                  </div>
+                  {filteredSpecies.length > 0 && (
+                    <div className={styles.speciesCount}>{filteredSpecies.length} species</div>
+                  )}
                 </div>
-              </div>
-            ) : filteredSpecies.length > 10 ? (
-              filteredSpecies.map((sp, i) => (
-                <SpeciesListItem
-                  key={sp.speciesKey || sp.common}
-                  species={sp}
-                  totalCount={filteredCount}
-                  active={activeSpecies == sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
-                  style={{ animationDelay: `${i * 0.03}s` }}
-                  styles={styles}
-                  openInfoKey={openInfoKey}
-                  setOpenInfoKey={setOpenInfoKey}
-                />
-              ))
-            ) : (
-              filteredSpecies.map((sp, i) => (
-                <SpeciesCard
-                  key={sp.speciesKey || sp.common}
-                  species={sp}
-                  totalCount={filteredCount}
-                  active={activeSpecies == sp.speciesKey}
-                  onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
-                  style={{ animationDelay: `${i * 0.07}s` }}
-                  styles={styles}
-                  openInfoKey={openInfoKey}
-                  setOpenInfoKey={setOpenInfoKey}
-                />
-              ))
+
+                {loadingData ? (
+                  [0, 1, 2, 3].map(i => (
+                    <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
+                  ))
+                ) : filteredSpecies.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <div className={styles.emptyStateShark}>🦈</div>
+                    <div className={styles.emptyStateText}>No sightings found nearby</div>
+                    <div className={styles.emptyStateSub}>
+                      Try switching to Seasonal patterns to see historical data,<br />
+                      or search a different coastline.
+                    </div>
+                  </div>
+                ) : filteredSpecies.length > 10 ? (
+                  filteredSpecies.map((sp, i) => (
+                    <SpeciesListItem
+                      key={sp.speciesKey || sp.common}
+                      species={sp}
+                      totalCount={filteredCount}
+                      active={activeSpecies == sp.speciesKey}
+                      onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                      style={{ animationDelay: `${i * 0.03}s` }}
+                      styles={styles}
+                      openInfoKey={openInfoKey}
+                      setOpenInfoKey={setOpenInfoKey}
+                    />
+                  ))
+                ) : (
+                  filteredSpecies.map((sp, i) => (
+                    <SpeciesCard
+                      key={sp.speciesKey || sp.common}
+                      species={sp}
+                      totalCount={filteredCount}
+                      active={activeSpecies == sp.speciesKey}
+                      onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                      style={{ animationDelay: `${i * 0.07}s` }}
+                      styles={styles}
+                      openInfoKey={openInfoKey}
+                      setOpenInfoKey={setOpenInfoKey}
+                    />
+                  ))
+                )}
+              </>
+            )}
+
+            {panelTab === 'latest' && (
+              <FeedPanel
+                inatTaxonId={47273}
+                newsQuery="sharks ocean marine"
+                speciesSlug="sharks"
+                accentColor="#ff6b6b"
+              />
             )}
           </div>
         </div>

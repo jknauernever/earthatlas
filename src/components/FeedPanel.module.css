@@ -1,0 +1,468 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FeedPanel — newspaper / magazine layout
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.feedPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ─── Loading / empty ────────────────────────────────────────────────────────── */
+.shimmerGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shimmer {
+  height: 80px;
+  background: linear-gradient(90deg, #f8f9fb 25%, #eef0f4 50%, #f8f9fb 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: #5a6b7a;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPACT MODE (360px right panel)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.compactHeader {
+  margin-bottom: 10px;
+}
+.compactRule {
+  height: 3px;
+  background: #111a24;
+  margin-bottom: 8px;
+}
+.compactDateline {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #5a6b7a;
+}
+
+/* ─── Compact item ───────────────────────────────────────────────────────────── */
+.compactItem {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+  animation: feedIn 0.3s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+.compactItem:hover {
+  background: rgba(0, 0, 0, 0.015);
+}
+.compactItem:last-of-type {
+  border-bottom: none;
+}
+
+@keyframes feedIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Featured first item */
+.compactItemFeatured {
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 14px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+.compactFeaturedImage {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.compactFeaturedImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.compactFeaturedScrim {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.15));
+}
+
+.compactBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.compactTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: #111a24;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.compactItemFeatured .compactTitle {
+  font-size: 17px;
+  font-weight: 300;
+  line-height: 1.3;
+  -webkit-line-clamp: 3;
+}
+.compactSci {
+  font-size: 11px;
+  font-style: italic;
+  color: #5a6b7a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compactFooter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8a95a5;
+  white-space: nowrap;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.compactSource {
+  font-weight: 600;
+  color: #5a6b7a;
+  letter-spacing: 0.02em;
+}
+.compactDot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #8a95a5;
+  flex-shrink: 0;
+}
+.compactTime {
+  flex-shrink: 0;
+}
+.compactPlace {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compactThumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* ─── Expand button ──────────────────────────────────────────────────────────── */
+.expandBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  margin-top: 12px;
+  border-radius: 10px;
+  border: 1.5px solid #111a24;
+  background: #111a24;
+  color: #f0f8ff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.expandBtn:hover {
+  background: #2a3a4a;
+  border-color: #2a3a4a;
+}
+.expandBtnIcon {
+  display: flex;
+  align-items: center;
+}
+.expandBtnCount {
+  font-weight: 400;
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   EXPANDED MODE (3/4 width magazine layout)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.expandedFeed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: expandIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes expandIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Masthead ───────────────────────────────────────────────────────────────── */
+.masthead {
+  margin-bottom: 24px;
+}
+.mastheadRule {
+  height: 3px;
+  background: #111a24;
+}
+.mastheadInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+.mastheadTitle {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111a24;
+  letter-spacing: -0.02em;
+}
+.mastheadDate {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a6b7a;
+}
+
+.collapseBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  color: #5a6b7a;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.collapseBtn:hover {
+  color: #111a24;
+  border-color: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* ─── Expanded two-column layout ─────────────────────────────────────────────── */
+.expandedLayout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* ─── Articles masonry (left) ────────────────────────────────────────────────── */
+.articlesMasonry {
+  columns: 2;
+  column-gap: 20px;
+}
+
+.articleCard {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  break-inside: avoid;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s, transform 0.2s;
+  animation: feedIn 0.3s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+.articleCard:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+.articleCard:hover .articleTitle {
+  color: #2a3a4a;
+}
+.articleCard:hover .articleImage img {
+  transform: scale(1.03);
+}
+
+.articleImage {
+  width: 100%;
+  overflow: hidden;
+  background: #e8ebf0;
+}
+.articleImage img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.articleBody {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.articleSource {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a6b7a;
+}
+
+.articleTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: #111a24;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color 0.2s;
+}
+
+.articleDesc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #3d4f5f;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.articleTime {
+  font-size: 11px;
+  color: #8a95a5;
+  margin-top: 2px;
+}
+
+/* ─── Sightings strip (right) ────────────────────────────────────────────────── */
+.sightingsStrip {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  padding-left: 20px;
+}
+
+.stripHeader {
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 2px solid #111a24;
+}
+
+.stripLabel {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #111a24;
+}
+
+.sightingRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+.sightingRow:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.sightingThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.sightingInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sightingBadge {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #111a24;
+}
+
+.sightingLabel {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #3d4f5f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .expandedLayout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .articlesMasonry {
+    columns: 1;
+  }
+  .sightingsStrip {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 16px;
+  }
+}

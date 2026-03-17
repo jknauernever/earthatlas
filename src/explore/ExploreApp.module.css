@@ -938,14 +938,44 @@
 }
 
 /* ─── Panel tabs (Species / Latest) ──────────────────────────────────────────── */
+.panelTabsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
 .panelTabs {
+  flex: 1;
   display: flex;
   gap: 4px;
   padding: 3px;
   background: var(--dark);
   border: 1px solid var(--border);
   border-radius: 10px;
-  margin-bottom: 4px;
+}
+.expandFeedBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--glow-mid);
+  background: var(--glow-dim);
+  color: var(--glow);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.expandFeedBtn:hover {
+  background: var(--glow-mid);
+  color: #fff;
+  border-color: var(--glow);
+}
+.expandFeedBtn svg {
+  flex-shrink: 0;
 }
 
 .panelTab {

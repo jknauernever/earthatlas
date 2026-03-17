@@ -85,7 +85,7 @@ export default function ExploreApp({ config }) {
   const [dataError, setDataError]         = useState(null)
   const [openInfoKey, setOpenInfoKey]     = useState(null)
   const [totalCount, setTotalCount]       = useState(0)
-  const [panelTab, setPanelTab]           = useState('species') // 'species' | 'latest'
+  const [panelTab, setPanelTab]           = useState('latest') // 'species' | 'latest'
   const [feedExpanded, setFeedExpanded]   = useState(false)
 
   // Interaction
@@ -565,22 +565,35 @@ export default function ExploreApp({ config }) {
 
           {/* Species / Latest panel */}
           <div className={styles.speciesPanel}>
-            <div className={styles.panelTabs}>
-              <button
-                className={`${styles.panelTab} ${panelTab === 'species' ? styles.panelTabActive : ''}`}
-                onClick={() => setPanelTab('species')}
-              >
-                Species
-                {filteredSpecies.length > 0 && (
-                  <span className={styles.panelTabCount}>{filteredSpecies.length}</span>
-                )}
-              </button>
-              <button
-                className={`${styles.panelTab} ${panelTab === 'latest' ? styles.panelTabActive : ''}`}
-                onClick={() => setPanelTab('latest')}
-              >
-                Latest
-              </button>
+            <div className={styles.panelTabsRow}>
+              <div className={styles.panelTabs}>
+                <button
+                  className={`${styles.panelTab} ${panelTab === 'species' ? styles.panelTabActive : ''}`}
+                  onClick={() => setPanelTab('species')}
+                >
+                  Species
+                  {filteredSpecies.length > 0 && (
+                    <span className={styles.panelTabCount}>{filteredSpecies.length}</span>
+                  )}
+                </button>
+                <button
+                  className={`${styles.panelTab} ${panelTab === 'latest' ? styles.panelTabActive : ''}`}
+                  onClick={() => setPanelTab('latest')}
+                >
+                  Latest
+                </button>
+              </div>
+              {panelTab === 'latest' && !feedExpanded && (
+                <button
+                  className={styles.expandFeedBtn}
+                  onClick={() => setFeedExpanded(true)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M1 5h5V1M13 9H8v4M1 5l4-4M13 9l-4 4" />
+                  </svg>
+                  Expand
+                </button>
+              )}
             </div>
 
             {panelTab === 'species' ? (

@@ -583,6 +583,16 @@
   background: var(--glow);
   animation: pulse 2s infinite;
 }
+.mapBadgeSpinner {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--glow-dim);
+  border-top-color: var(--glow);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.4; transform: scale(0.7); }

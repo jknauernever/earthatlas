@@ -43,6 +43,7 @@ export default function ExploreApp({ config }) {
     fetchMonthSightings,
     fetchSeasonalPattern,
     fetchINatSightings,
+    fetchEBirdSightings,
     aggregateSpecies,
   } = service
 
@@ -79,6 +80,7 @@ export default function ExploreApp({ config }) {
   const [seasonPattern, setSeasonPattern] = useState([])
   const [baselinePattern, setBaselinePattern] = useState([]) // all-species pattern
   const [loadingData, setLoadingData]     = useState(false)
+  const [fetching, setFetching]           = useState(false)  // lightweight spinner for pan/zoom re-fetches
   const [dataError, setDataError]         = useState(null)
   const [openInfoKey, setOpenInfoKey]     = useState(null)
   const [totalCount, setTotalCount]       = useState(0)
@@ -115,8 +117,9 @@ export default function ExploreApp({ config }) {
     abortRef.current = controller
     const signal = controller.signal
 
-    // Only show loading state on initial load, not on pan/zoom re-fetches
+    // Only show full loading state on initial load, not on pan/zoom re-fetches
     if (!silent) setLoadingData(true)
+    setFetching(true)
     setDataError(null)
     if (!silent) setTimeRange({ start: null, end: null })
 
@@ -125,42 +128,53 @@ export default function ExploreApp({ config }) {
       const geo = bounds
         ? { lat: loc.lat, lng: loc.lng, bounds }
         : { lat: loc.lat, lng: loc.lng, bounds: boundsFromZoom(loc.lat, loc.lng) }
-      const [recentResult, patternResult, inatResult] = await Promise.allSettled([
-        fetchRecentSightings({ ...geo, days: config.defaults.days, signal }),
+      const [recentResult, patternResult, inatResult, ebirdResult] = await Promise.allSettled([
+        fetchRecentSightings({ ...geo, days: config.defaults.days, limit: MAX_SIGHTINGS, signal }),
         fetchSeasonalPattern({ ...geo, signal }),
         fetchINatSightings({ ...geo, days: config.defaults.days, signal }),
+        fetchEBirdSightings({ ...geo, days: config.defaults.days, signal }),
       ])
 
       if (signal.aborted) return
 
-      const recentSightings = recentResult.status === 'fulfilled' ? recentResult.value.sightings : []
+      const recentData      = recentResult.status === 'fulfilled' ? recentResult.value : { sightings: [], total: 0 }
       const inatSightings   = inatResult.status === 'fulfilled'   ? inatResult.value : []
+      const ebirdSightings  = ebirdResult.status === 'fulfilled'  ? ebirdResult.value : []
       const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
 
+
       // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
-      const allSightings = [...recentSightings, ...inatSightings]
+      const allSightings = [...recentData.sightings, ...inatSightings, ...ebirdSightings]
+
+      // Use the GBIF estimated total as the "real" total for display
+      const apiTotal = Math.max(recentData.total, allSightings.length)
 
       if (allSightings.length > MAX_SIGHTINGS) {
         setTooManyResults(true)
         setSightings(allSightings.slice(0, MAX_SIGHTINGS))
         setSpecies(aggregateSpecies(allSightings.slice(0, MAX_SIGHTINGS)))
       } else {
-        setTooManyResults(false)
+        setTooManyResults(allSightings.length < apiTotal)
         setSightings(allSightings)
         setSpecies(aggregateSpecies(allSightings))
       }
       setSeasonPattern(pattern)
       setBaselinePattern(pattern)
-      setTotalCount(allSightings.length)
+      setTotalCount(apiTotal)
       setPhase('explore')
+      initialLoadDone.current = true
     } catch (err) {
       if (signal.aborted) return
       setDataError('Could not load sightings data. Please try again.')
       setPhase('explore')
+      initialLoadDone.current = true
     } finally {
-      if (!signal.aborted) setLoadingData(false)
+      if (!signal.aborted) {
+        setLoadingData(false)
+        setFetching(false)
+      }
     }
-  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, aggregateSpecies, config.defaults.days, MAX_SIGHTINGS])
+  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, fetchEBirdSightings, aggregateSpecies, config.defaults.days, MAX_SIGHTINGS])
 
   // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
@@ -258,7 +272,11 @@ export default function ExploreApp({ config }) {
   }
 
   // ─── Map moved — re-search at new center ────────────────────────────────
+  const initialLoadDone = useRef(false)
   const handleMapCenterChange = useCallback(async ({ lat, lng, zoom, bounds }) => {
+    // Skip map-move re-fetches until initial load completes (otherwise the
+    // map's own moveend event aborts the first GBIF request mid-pagination)
+    if (!initialLoadDone.current) return
     mapZoomRef.current = zoom
     mapBoundsRef.current = bounds
     const name = await reverseGeocode(lat, lng) || 'this area'
@@ -452,7 +470,17 @@ export default function ExploreApp({ config }) {
           <div className={styles.statusStrip}>
             <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
             {mode === 'now'
-              ? `${filteredCount} ${config.taxonLabel} sightings${timeRange.start || timeRange.end ? ` \u00b7 ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} \u2013 ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}` : ` in the past ${config.defaults.days} days`} \u00b7 ${filteredSpecies.length} species`
+              ? <>
+                  {totalCount > filteredCount
+                    ? `${totalCount.toLocaleString()} ${config.taxonLabel} sightings`
+                    : `${filteredCount} ${config.taxonLabel} sightings`
+                  }
+                  {timeRange.start || timeRange.end
+                    ? ` \u00b7 ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} \u2013 ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}`
+                    : ` in the past ${config.defaults.days} days`
+                  }
+                  {` \u00b7 ${filteredSpecies.length} species`}
+                </>
               : `${totalCount.toLocaleString()} historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
             }
           </div>
@@ -460,7 +488,7 @@ export default function ExploreApp({ config }) {
 
         {tooManyResults && !loadingData && (
           <div style={{ padding: '12px 20px', background: 'rgba(212,160,23,0.1)', border: '1px solid rgba(212,160,23,0.25)', borderRadius: 10, fontSize: 13, color: '#b8842a', marginBottom: 8 }}>
-            Showing {MAX_SIGHTINGS} of {totalCount.toLocaleString()} sightings — zoom in for a more detailed view.
+            Showing {filteredCount.toLocaleString()} of {totalCount.toLocaleString()} sightings — zoom in for a more detailed view.
           </div>
         )}
 
@@ -477,12 +505,18 @@ export default function ExploreApp({ config }) {
             <div className={styles.mapWrap}>
               <div className={styles.mapOverlay}>
                 <div className={styles.mapBadge}>
-                  <div className={styles.mapBadgeDot} />
-                  {mode === 'now' ? `Past ${config.defaults.days} days` : 'Historical'}
+                  {fetching
+                    ? <div className={styles.mapBadgeSpinner} />
+                    : <div className={styles.mapBadgeDot} />
+                  }
+                  {fetching
+                    ? 'Updating\u2026'
+                    : mode === 'now' ? `Past ${config.defaults.days} days` : 'Historical'
+                  }
                 </div>
                 {!loadingData && (
                   <div className={styles.mapSightingCount}>
-                    {filteredCount.toLocaleString()} sightings shown
+                    {filteredCount.toLocaleString()} sightings shown{tooManyResults ? ` of ${totalCount.toLocaleString()}` : ''}
                   </div>
                 )}
               </div>

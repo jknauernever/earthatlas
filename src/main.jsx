@@ -19,6 +19,7 @@ import wolvesConfig from './explore/configs/wolves.js'
 import condorsConfig from './explore/configs/condors.js'
 import slothsConfig from './explore/configs/sloths.js'
 import fungiConfig from './explore/configs/fungi.js'
+import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import './index.css'
 
@@ -51,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/condors" element={<ExploreApp config={condorsConfig} />} />
           <Route path="/sloths" element={<ExploreApp config={slothsConfig} />} />
           <Route path="/fungi" element={<ExploreApp config={fungiConfig} />} />
+          <Route path="/birds" element={<ExploreApp config={birdsConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
           <Route path="/*" element={<App />} />
         </Routes>

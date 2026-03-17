@@ -27,8 +27,9 @@ function getBoundingBox(lat, lng, radiusKm) {
  * @param {Object} config.speciesMeta    — { [gbifSpeciesKey]: { common, scientific, color, emoji, ... } }
  * @param {Object} [config.fallback]     — { commonName, color, emoji } defaults for unknown species
  * @param {Function} [config.postFilter] — optional filter applied to raw GBIF occurrences (e.g. isShark)
+ * @param {boolean}  [config.useEBird]   — if true, fetch from eBird API as primary source (for birds)
  */
-export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter }) {
+export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter, useEBird = false }) {
   const defaultCommon = fallback.commonName || 'Unknown species'
   const defaultColor = fallback.color || '#888888'
   const defaultEmoji = fallback.emoji || '🔵'
@@ -122,31 +123,66 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     const d1 = new Date(d2 - days * 86400000)
     const fmt = d => d.toISOString().split('T')[0]
 
-    const params = new URLSearchParams({
+    const PAGE_SIZE = 300
+    const maxPages = Math.ceil(Math.min(limit, 1500) / PAGE_SIZE)  // up to 5 pages
+
+    const baseParams = {
       taxonKey: gbifTaxonKey,
       hasCoordinate: 'true',
       occurrenceStatus: 'PRESENT',
       decimalLatitude: `${bb.minLat},${bb.maxLat}`,
       decimalLongitude: `${bb.minLng},${bb.maxLng}`,
       eventDate: `${fmt(d1)},${fmt(d2)}`,
-      limit: Math.min(limit, 300),
-    })
+      limit: PAGE_SIZE,
+    }
 
-    const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
+    // Fetch first page to get the total count
+    const params = new URLSearchParams(baseParams)
+    const url = `${GBIF_API}/occurrence/search?${params}`
+    const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
     const data = await res.json()
+    const totalAvailable = data.count || 0
+    let allResults = data.results || []
 
-    let results = (data.results || [])
+    // Fetch additional pages in parallel if more results are available
+    if (totalAvailable > PAGE_SIZE && maxPages > 1 && !signal?.aborted) {
+      const pageCount = Math.min(maxPages, Math.ceil(totalAvailable / PAGE_SIZE))
+      const pagePromises = []
+      for (let page = 1; page < pageCount; page++) {
+        const p = new URLSearchParams({ ...baseParams, offset: page * PAGE_SIZE })
+        pagePromises.push(
+          fetch(`${GBIF_API}/occurrence/search?${p}`, { signal })
+            .then(r => r.ok ? r.json() : { results: [] })
+            .catch(() => ({ results: [] }))
+        )
+      }
+      const pages = await Promise.all(pagePromises)
+      for (const pg of pages) {
+        allResults = allResults.concat(pg.results || [])
+      }
+    }
+
+    let results = allResults
       .filter(o => o.decimalLatitude && o.decimalLongitude)
-      .filter(o => o.datasetKey !== GBIF_INAT_DATASET)
       .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
+    // Only exclude iNat-sourced records from GBIF if we're NOT using eBird
+    // (for birds, ~99% of GBIF records ARE from iNat, so filtering them leaves nothing)
+    if (!useEBird) {
+      results = results.filter(o => o.datasetKey !== GBIF_INAT_DATASET)
+    }
 
     if (postFilter) results = results.filter(postFilter)
 
     const sightings = results.map(normalizeOccurrence)
 
+    // Estimate true total by applying the same filter ratio to GBIF's count
+    // (GBIF's count includes iNat records we filter out, so raw count is inflated)
+    const filterRatio = allResults.length > 0 ? results.length / allResults.length : 1
+    const estimatedTotal = Math.round(totalAvailable * filterRatio)
+
     return {
-      total: postFilter ? sightings.length : (data.count || 0),
+      total: postFilter ? sightings.length : estimatedTotal,
       sightings,
     }
   }
@@ -259,6 +295,9 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   }
 
   async function fetchINatSightings({ lat, lng, radiusKm = 300, bounds, days = 90, limit = 200, signal }) {
+    // When useEBird is true, GBIF already includes most iNat records but with a sync lag.
+    // Fetch only the last 30 days from iNat to fill the recency gap.
+    if (useEBird) days = 30
     try {
       const d2 = new Date()
       const d1 = new Date(d2 - days * 86400000)
@@ -287,6 +326,71 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       if (!res.ok) return []
       const data = await res.json()
       return (data.results || []).map(normalizeINatObservation).filter(Boolean)
+    } catch {
+      return []
+    }
+  }
+
+  // ─── eBird fetch ─────────────────────────────────────────────────────────────
+
+  const EBIRD_API = 'https://api.ebird.org/v2'
+  const EBIRD_KEY = typeof import.meta !== 'undefined' ? import.meta.env.VITE_EBIRD_API_KEY : null
+
+  function normalizeEBirdObs(obs) {
+    const sciName = obs.sciName || ''
+    const speciesKey = gbifKeyFromScientific(sciName)
+    const meta = speciesKey ? getSpeciesMeta(speciesKey) : null
+    return {
+      id: `ebird-${obs.subId}-${obs.speciesCode}`,
+      speciesKey: speciesKey || sciName || null,
+      common: obs.comName || meta?.common || sciName || defaultCommon,
+      scientific: sciName,
+      color: meta?.color || defaultColor,
+      emoji: meta?.emoji || defaultEmoji,
+      fact: meta?.fact || null,
+      speciesPhoto: meta?.photoUrl || null,
+      iucn: meta?.iucn || null,
+      lat: obs.lat,
+      lng: obs.lng,
+      date: obs.obsDt ? obs.obsDt.split(' ')[0] : null,
+      place: obs.locName || null,
+      observer: 'eBird Observer',
+      photos: [],
+      source: 'eBird',
+    }
+  }
+
+  async function fetchEBirdSightings({ lat, lng, bounds, days = 90, signal }) {
+    if (!useEBird || !EBIRD_KEY) return []
+    try {
+      const centerLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : lat
+      const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : lng
+      const viewportKm = bounds
+        ? ((bounds.maxLat - bounds.minLat) * 111)
+        : 100
+
+      // eBird max radius is 50km — skip if viewport is way larger (would only cover a tiny fraction)
+      if (viewportKm > 200) return []
+
+      const dist = Math.min(50, Math.max(5, Math.round(viewportKm / 2)))
+      const back = Math.min(days, 30)  // eBird max lookback is 30 days
+
+      const params = new URLSearchParams({
+        lat: centerLat.toFixed(4),
+        lng: centerLng.toFixed(4),
+        dist,
+        back,
+        maxResults: 10000,
+        includeProvisional: true,
+      })
+
+      const res = await fetch(`${EBIRD_API}/data/obs/geo/recent?${params}`, {
+        headers: { 'x-ebirdapitoken': EBIRD_KEY },
+        signal,
+      })
+      if (!res.ok) return []
+      const rawResults = await res.json()
+      return rawResults.map(normalizeEBirdObs).filter(Boolean)
     } catch {
       return []
     }
@@ -321,6 +425,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     fetchMonthSightings,
     fetchSeasonalPattern,
     fetchINatSightings,
+    fetchEBirdSightings,
     aggregateSpecies,
     getSpeciesMeta,
   }

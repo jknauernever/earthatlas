@@ -43,20 +43,20 @@ export default function TimeSlider({ sightings, value, onChange, styles }) {
     return { minDate: min, maxDate: max, totalDays: days }
   }, [sightings])
 
-  if (!minDate || !maxDate || totalDays < 1) return null
+  const loDay = value.start && minDate ? dateToDay(minDate, value.start) : 0
+  const hiDay = value.end && minDate   ? dateToDay(minDate, value.end)   : totalDays
 
-  const loDay = value.start ? dateToDay(minDate, value.start) : 0
-  const hiDay = value.end   ? dateToDay(minDate, value.end)   : totalDays
-
-  const loPct = (loDay / totalDays) * 100
-  const hiPct = (hiDay / totalDays) * 100
+  const loPct = totalDays > 0 ? (loDay / totalDays) * 100 : 0
+  const hiPct = totalDays > 0 ? (hiDay / totalDays) * 100 : 100
 
   const handleLo = useCallback((e) => {
+    if (!minDate) return
     const day = Math.min(parseInt(e.target.value, 10), hiDay - 1)
     onChange({ ...value, start: day <= 0 ? null : dayToDate(minDate, day) })
   }, [hiDay, minDate, onChange, value])
 
   const handleHi = useCallback((e) => {
+    if (!minDate) return
     const day = Math.max(parseInt(e.target.value, 10), loDay + 1)
     onChange({ ...value, end: day >= totalDays ? null : dayToDate(minDate, day) })
   }, [loDay, totalDays, minDate, onChange, value])
@@ -69,6 +69,9 @@ export default function TimeSlider({ sightings, value, onChange, styles }) {
     { label: 'Last week', days: 7 },
     { label: 'Last month', days: 30 },
   ], [])
+
+  // Must be after all hooks — early returns before hooks violate Rules of Hooks
+  if (!minDate || !maxDate || totalDays < 1) return null
 
   function applyPreset(days) {
     const end = new Date(maxDate + 'T12:00:00')

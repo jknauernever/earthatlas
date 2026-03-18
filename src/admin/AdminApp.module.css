@@ -213,6 +213,15 @@
   border-color: #d0d5dc;
 }
 
+.statusOk {
+  color: #27ae60;
+  font-size: 12px;
+}
+.statusErr {
+  color: #e74c3c;
+  font-size: 12px;
+}
+
 /* ─── Table ─────────────────────────────────────────────────────────────────── */
 .table {
   width: 100%;

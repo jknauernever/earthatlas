@@ -133,9 +133,11 @@ function FeedsPanel() {
   const [showForm, setShowForm] = useState(false)
   const [processing, setProcessing] = useState({}) // feedId → true while updating
   const [updatingAll, setUpdatingAll] = useState(false)
+  const [feedStatus, setFeedStatus] = useState({}) // feedId → { ok, message }
 
-  const load = useCallback(() => {
-    setLoading(true)
+  // silent=true skips the loading spinner so the table doesn't flash
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     const q = species ? `?species=${species}` : ''
     apiFetch(`/api/admin/feeds${q}`)
       .then(r => r.json())
@@ -150,7 +152,7 @@ function FeedsPanel() {
     await apiFetch('/api/admin/feeds', { method: 'POST', body: JSON.stringify(form) })
     setForm({ speciesSlug: '', name: '', url: '' })
     setShowForm(false)
-    load()
+    load(true)
   }
 
   const toggle = async (feed) => {
@@ -158,22 +160,31 @@ function FeedsPanel() {
       method: 'PUT',
       body: JSON.stringify({ id: feed.id, enabled: !feed.enabled }),
     })
-    load()
+    load(true)
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this feed?')) return
     await apiFetch(`/api/admin/feeds?id=${id}`, { method: 'DELETE' })
-    load()
+    load(true)
   }
 
   const updateFeed = async (feedId) => {
     setProcessing(p => ({ ...p, [feedId]: true }))
+    setFeedStatus(s => ({ ...s, [feedId]: null }))
     try {
-      await apiFetch(`/api/news/process?feed=${feedId}`, { method: 'POST' })
-    } catch {}
+      const res = await apiFetch(`/api/news/process?feed=${feedId}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setFeedStatus(s => ({ ...s, [feedId]: { ok: false, message: data.error || `Error ${res.status}` } }))
+      } else {
+        setFeedStatus(s => ({ ...s, [feedId]: { ok: true, message: `${data.processed || 0} new, ${data.skipped || 0} skipped` } }))
+      }
+    } catch (err) {
+      setFeedStatus(s => ({ ...s, [feedId]: { ok: false, message: err.message || 'Request failed' } }))
+    }
     setProcessing(p => ({ ...p, [feedId]: false }))
-    load()
+    load(true)
   }
 
   const updateAll = async () => {
@@ -183,7 +194,7 @@ function FeedsPanel() {
       await apiFetch(`/api/news/dispatch${q}`, { method: 'POST' })
     } catch {}
     setUpdatingAll(false)
-    load()
+    load(true)
   }
 
   return (
@@ -256,7 +267,11 @@ function FeedsPanel() {
                   </button>
                 </td>
                 <td className={styles.muted}>
-                  {processing[f.id] ? 'Updating...' : f.last_fetched ? new Date(f.last_fetched).toLocaleString() : 'Never'}
+                  {processing[f.id]
+                    ? 'Updating...'
+                    : feedStatus[f.id]
+                      ? <span className={feedStatus[f.id].ok ? styles.statusOk : styles.statusErr}>{feedStatus[f.id].message}</span>
+                      : f.last_fetched ? new Date(f.last_fetched).toLocaleString() : 'Never'}
                 </td>
                 <td>
                   <div className={styles.rowActions}>

@@ -7,24 +7,58 @@ const SPECIES = [
   'sloths','tigers','wolves',
 ]
 
+// All admin API calls use credentials so the browser sends the session cookie
+const apiFetch = (url, opts = {}) =>
+  fetch(url, { credentials: 'same-origin', ...opts, headers: { 'Content-Type': 'application/json', ...opts.headers } })
+
 export default function AdminApp() {
-  const [token, setToken] = useState(() => sessionStorage.getItem('admin_token') || '')
   const [authed, setAuthed] = useState(false)
+  const [checking, setChecking] = useState(true)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [tab, setTab] = useState('feeds')
 
-  const login = (e) => {
+  // Check for existing session on mount
+  useEffect(() => {
+    fetch('/api/admin/session', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(d => { if (d.authenticated) setAuthed(true) })
+      .catch(() => {})
+      .finally(() => setChecking(false))
+  }, [])
+
+  const login = async (e) => {
     e.preventDefault()
-    sessionStorage.setItem('admin_token', token)
-    setAuthed(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAuthed(true)
+        setPassword('')
+      } else {
+        setError(data.error || 'Login failed')
+      }
+    } catch {
+      setError('Network error')
+    }
   }
 
-  // Quick auth check
-  useEffect(() => {
-    if (!token) return
-    fetch('/api/admin/feeds', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { if (r.ok) setAuthed(true) })
-      .catch(() => {})
-  }, [])
+  const logout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+    setAuthed(false)
+    setUsername('')
+  }
+
+  if (checking) {
+    return <div className={styles.page}><div className={styles.loginBox}><p className={styles.muted}>Loading...</p></div></div>
+  }
 
   if (!authed) {
     return (
@@ -33,21 +67,29 @@ export default function AdminApp() {
           <h1>EarthAtlas Admin</h1>
           <form onSubmit={login}>
             <input
-              type="password"
-              placeholder="Admin secret"
-              value={token}
-              onChange={e => setToken(e.target.value)}
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
               className={styles.input}
               autoFocus
+              autoComplete="username"
             />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className={styles.input}
+              autoComplete="current-password"
+            />
+            {error && <p className={styles.error}>{error}</p>}
             <button type="submit" className={styles.btnPrimary}>Sign in</button>
           </form>
         </div>
       </div>
     )
   }
-
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
   return (
     <div className={styles.page}>
@@ -65,12 +107,13 @@ export default function AdminApp() {
               </button>
             ))}
           </nav>
+          <button className={styles.btnDanger} onClick={logout}>Logout</button>
         </header>
 
-        {tab === 'feeds' && <FeedsPanel headers={headers} />}
-        {tab === 'articles' && <ArticlesPanel headers={headers} />}
-        {tab === 'keys' && <KeysPanel headers={headers} />}
-        {tab === 'pipeline' && <PipelinePanel headers={headers} />}
+        {tab === 'feeds' && <FeedsPanel />}
+        {tab === 'articles' && <ArticlesPanel />}
+        {tab === 'keys' && <KeysPanel />}
+        {tab === 'pipeline' && <PipelinePanel />}
       </div>
     </div>
   )
@@ -80,7 +123,7 @@ export default function AdminApp() {
    Feeds Panel
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function FeedsPanel({ headers }) {
+function FeedsPanel() {
   const [feeds, setFeeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [species, setSpecies] = useState('')
@@ -90,25 +133,25 @@ function FeedsPanel({ headers }) {
   const load = useCallback(() => {
     setLoading(true)
     const q = species ? `?species=${species}` : ''
-    fetch(`/api/admin/feeds${q}`, { headers })
+    apiFetch(`/api/admin/feeds${q}`)
       .then(r => r.json())
       .then(d => setFeeds(d.feeds || []))
       .finally(() => setLoading(false))
-  }, [species, headers])
+  }, [species])
 
   useEffect(() => { load() }, [load])
 
   const create = async (e) => {
     e.preventDefault()
-    await fetch('/api/admin/feeds', { method: 'POST', headers, body: JSON.stringify(form) })
+    await apiFetch('/api/admin/feeds', { method: 'POST', body: JSON.stringify(form) })
     setForm({ speciesSlug: '', name: '', url: '' })
     setShowForm(false)
     load()
   }
 
   const toggle = async (feed) => {
-    await fetch('/api/admin/feeds', {
-      method: 'PUT', headers,
+    await apiFetch('/api/admin/feeds', {
+      method: 'PUT',
       body: JSON.stringify({ id: feed.id, enabled: !feed.enabled }),
     })
     load()
@@ -116,7 +159,7 @@ function FeedsPanel({ headers }) {
 
   const remove = async (id) => {
     if (!confirm('Delete this feed?')) return
-    await fetch(`/api/admin/feeds?id=${id}`, { method: 'DELETE', headers })
+    await apiFetch(`/api/admin/feeds?id=${id}`, { method: 'DELETE' })
     load()
   }
 
@@ -203,7 +246,7 @@ function FeedsPanel({ headers }) {
    Articles Panel
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function ArticlesPanel({ headers }) {
+function ArticlesPanel() {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
   const [species, setSpecies] = useState('sharks')
@@ -211,17 +254,17 @@ function ArticlesPanel({ headers }) {
 
   const load = useCallback(() => {
     setLoading(true)
-    fetch(`/api/admin/articles?species=${species}&status=${status}&limit=50`, { headers })
+    apiFetch(`/api/admin/articles?species=${species}&status=${status}&limit=50`)
       .then(r => r.json())
       .then(d => setArticles(d.articles || []))
       .finally(() => setLoading(false))
-  }, [species, status, headers])
+  }, [species, status])
 
   useEffect(() => { load() }, [load])
 
   const changeStatus = async (id, newStatus) => {
-    await fetch('/api/admin/articles', {
-      method: 'PATCH', headers,
+    await apiFetch('/api/admin/articles', {
+      method: 'PATCH',
       body: JSON.stringify({ id, status: newStatus }),
     })
     load()
@@ -289,26 +332,26 @@ function ArticlesPanel({ headers }) {
    API Keys Panel
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function KeysPanel({ headers }) {
+function KeysPanel() {
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
 
   const load = useCallback(() => {
     setLoading(true)
-    fetch('/api/admin/keys', { headers })
+    apiFetch('/api/admin/keys')
       .then(r => r.json())
       .then(d => setKeys(d.keys || []))
       .finally(() => setLoading(false))
-  }, [headers])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
   const create = async (e) => {
     e.preventDefault()
     if (!newName.trim()) return
-    await fetch('/api/admin/keys', {
-      method: 'POST', headers,
+    await apiFetch('/api/admin/keys', {
+      method: 'POST',
       body: JSON.stringify({ name: newName }),
     })
     setNewName('')
@@ -316,8 +359,8 @@ function KeysPanel({ headers }) {
   }
 
   const toggle = async (key) => {
-    await fetch('/api/admin/keys', {
-      method: 'PUT', headers,
+    await apiFetch('/api/admin/keys', {
+      method: 'PUT',
       body: JSON.stringify({ id: key.id, enabled: !key.enabled }),
     })
     load()
@@ -325,7 +368,7 @@ function KeysPanel({ headers }) {
 
   const remove = async (id) => {
     if (!confirm('Revoke this API key? This cannot be undone.')) return
-    await fetch(`/api/admin/keys?id=${id}`, { method: 'DELETE', headers })
+    await apiFetch(`/api/admin/keys?id=${id}`, { method: 'DELETE' })
     load()
   }
 
@@ -385,7 +428,7 @@ function KeysPanel({ headers }) {
    Pipeline Panel
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function PipelinePanel({ headers }) {
+function PipelinePanel() {
   const [species, setSpecies] = useState('')
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState(null)
@@ -395,7 +438,7 @@ function PipelinePanel({ headers }) {
     setResult(null)
     const q = species ? `?species=${species}` : ''
     try {
-      const res = await fetch(`/api/news/process${q}`, { method: 'POST', headers })
+      const res = await apiFetch(`/api/news/process${q}`, { method: 'POST' })
       const data = await res.json()
       setResult(data)
     } catch (err) {

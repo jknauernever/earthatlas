@@ -8,6 +8,7 @@
  *   - Admin manual trigger: POST /api/news/process?species=sharks
  */
 
+import { authorizeRequest, json } from '../../lib/auth.js'
 import { migrate, getEnabledFeeds, articleExists, imageExistsForSpecies, upsertArticle, touchFeed } from '../../lib/db.js'
 import { fetchRSSFeed } from '../../lib/rss.js'
 import { rewriteArticle } from '../../lib/ai.js'
@@ -35,13 +36,12 @@ const SPECIES_NAMES = {
 }
 
 export default { async fetch(req) {
-  // Auth: Vercel Cron sends CRON_SECRET, admin sends ADMIN_SECRET
+  // Auth: Vercel Cron sends CRON_SECRET, admin via Bearer token or session cookie
   const auth = req.headers.get('authorization') || ''
   const cronSecret = process.env.CRON_SECRET
-  const adminSecret = process.env.ADMIN_SECRET
 
   const isCron = cronSecret && auth === `Bearer ${cronSecret}`
-  const isAdmin = adminSecret && auth === `Bearer ${adminSecret}`
+  const isAdmin = authorizeRequest(req)
 
   if (!isCron && !isAdmin) {
     return json({ error: 'Unauthorized' }, 401)
@@ -164,9 +164,3 @@ function normalizeUrl(url) {
   }
 }
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}

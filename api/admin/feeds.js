@@ -10,9 +10,10 @@
  */
 
 import { migrate, getAllFeeds, createFeed, updateFeed, deleteFeed } from '../../lib/db.js'
+import { authorizeRequest, json } from '../../lib/auth.js'
 
 export default { async fetch(req) {
-  if (!authorize(req)) {
+  if (!authorizeRequest(req)) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
@@ -62,16 +63,3 @@ export default { async fetch(req) {
 }
 }
 
-function authorize(req) {
-  const secret = process.env.ADMIN_SECRET
-  if (!secret) return false
-  const auth = req.headers.get('authorization') || ''
-  return auth === `Bearer ${secret}`
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}

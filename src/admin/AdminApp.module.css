@@ -32,6 +32,11 @@
   flex-direction: column;
   gap: 10px;
 }
+.error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin: 0;
+}
 
 /* ─── Header ────────────────────────────────────────────────────────────────── */
 .header {

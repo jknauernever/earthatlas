@@ -129,6 +129,8 @@ function FeedsPanel() {
   const [species, setSpecies] = useState('')
   const [form, setForm] = useState({ speciesSlug: '', name: '', url: '' })
   const [showForm, setShowForm] = useState(false)
+  const [processing, setProcessing] = useState({}) // feedId → true while updating
+  const [updatingAll, setUpdatingAll] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -163,6 +165,25 @@ function FeedsPanel() {
     load()
   }
 
+  const updateFeed = async (feedId) => {
+    setProcessing(p => ({ ...p, [feedId]: true }))
+    try {
+      await apiFetch(`/api/news/process?feed=${feedId}`, { method: 'POST' })
+    } catch {}
+    setProcessing(p => ({ ...p, [feedId]: false }))
+    load()
+  }
+
+  const updateAll = async () => {
+    setUpdatingAll(true)
+    const q = species ? `?species=${species}` : ''
+    try {
+      await apiFetch(`/api/news/process${q}`, { method: 'POST' })
+    } catch {}
+    setUpdatingAll(false)
+    load()
+  }
+
   return (
     <section>
       <div className={styles.sectionHeader}>
@@ -173,6 +194,9 @@ function FeedsPanel() {
         </select>
         <button className={styles.btnPrimary} onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Feed'}
+        </button>
+        <button className={styles.btnPrimary} onClick={updateAll} disabled={updatingAll}>
+          {updatingAll ? 'Updating...' : 'Update Feeds'}
         </button>
       </div>
 
@@ -229,9 +253,16 @@ function FeedsPanel() {
                     {f.enabled ? 'Enabled' : 'Disabled'}
                   </button>
                 </td>
-                <td className={styles.muted}>{f.last_fetched ? new Date(f.last_fetched).toLocaleString() : 'Never'}</td>
+                <td className={styles.muted}>
+                  {processing[f.id] ? 'Updating...' : f.last_fetched ? new Date(f.last_fetched).toLocaleString() : 'Never'}
+                </td>
                 <td>
-                  <button className={styles.btnDanger} onClick={() => remove(f.id)}>Delete</button>
+                  <div className={styles.rowActions}>
+                    <button className={styles.btnSmall} onClick={() => updateFeed(f.id)} disabled={processing[f.id]}>
+                      {processing[f.id] ? 'Updating...' : 'Update'}
+                    </button>
+                    <button className={styles.btnDanger} onClick={() => remove(f.id)}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}

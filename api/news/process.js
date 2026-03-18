@@ -9,7 +9,7 @@
  */
 
 import { authorizeRequest, json } from '../../lib/auth.js'
-import { migrate, getEnabledFeeds, articleExists, imageExistsForSpecies, upsertArticle, touchFeed } from '../../lib/db.js'
+import { migrate, getEnabledFeeds, getFeedById, articleExists, imageExistsForSpecies, upsertArticle, touchFeed } from '../../lib/db.js'
 import { fetchRSSFeed } from '../../lib/rss.js'
 import { rewriteArticle } from '../../lib/ai.js'
 import { resolveImage } from '../../lib/images.js'
@@ -49,13 +49,20 @@ export default { async fetch(req) {
 
   const { searchParams } = new URL(req.url)
   const speciesFilter = searchParams.get('species') || null
+  const feedId = searchParams.get('feed') || null
 
   try {
     await migrate()
 
-    const feeds = await getEnabledFeeds(speciesFilter)
+    let feeds
+    if (feedId) {
+      const feed = await getFeedById(parseInt(feedId, 10))
+      feeds = feed ? [feed] : []
+    } else {
+      feeds = await getEnabledFeeds(speciesFilter)
+    }
     if (feeds.length === 0) {
-      return json({ message: 'No enabled feeds found', processed: 0 })
+      return json({ message: feedId ? 'Feed not found' : 'No enabled feeds found', processed: 0 })
     }
 
     const results = { processed: 0, skipped: 0, errors: 0, feeds: feeds.length }

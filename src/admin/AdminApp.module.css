@@ -330,6 +330,13 @@
   flex-shrink: 0;
 }
 
+/* ─── Row actions ──────────────────────────────────────────────────────────── */
+.rowActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 /* ─── Pipeline result ───────────────────────────────────────────────────────── */
 .resultBox {
   background: #111a24;

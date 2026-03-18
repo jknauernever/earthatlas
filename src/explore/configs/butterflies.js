@@ -36,7 +36,7 @@ const config = {
     radiusKm: 8.05,
     days: 30,
     maxSightings: 700,
-    zoom: 12,
+    zoom: 10,
   },
 
   fallback: {

@@ -188,6 +188,14 @@ function FeedsPanel() {
   }
 
   const [dispatchStatus, setDispatchStatus] = useState(null) // { ok, message }
+  const [polling, setPolling] = useState(false)
+
+  // Poll feed list every 5s while dispatch is active so Last Fetched updates live
+  useEffect(() => {
+    if (!polling) return
+    const id = setInterval(() => load(true), 5000)
+    return () => clearInterval(id)
+  }, [polling, load])
 
   const updateAll = async () => {
     setUpdatingAll(true)
@@ -199,7 +207,13 @@ function FeedsPanel() {
       if (!res.ok) {
         setDispatchStatus({ ok: false, message: data.error || `Error ${res.status}` })
       } else {
-        setDispatchStatus({ ok: true, message: `Dispatched ${data.dispatched} feeds — processing in background` })
+        setDispatchStatus({ ok: true, message: `Dispatched ${data.dispatched} feeds — updating live...` })
+        // Start polling — stop after 2 minutes (workers should be done by then)
+        setPolling(true)
+        setTimeout(() => {
+          setPolling(false)
+          setDispatchStatus(s => s?.ok ? { ok: true, message: `Dispatched ${data.dispatched} feeds — done` } : s)
+        }, 120_000)
       }
     } catch (err) {
       setDispatchStatus({ ok: false, message: err.message || 'Request failed' })

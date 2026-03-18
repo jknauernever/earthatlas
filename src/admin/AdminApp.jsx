@@ -199,26 +199,30 @@ function FeedsPanel() {
 
   const updateAll = async () => {
     setUpdatingAll(true)
-    setDispatchStatus({ ok: true, message: 'Dispatching feeds...' })
+    setPolling(true)
+    setDispatchStatus({ ok: true, message: 'Processing feeds...' })
     const q = species ? `?species=${species}` : ''
     try {
       const res = await apiFetch(`/api/news/dispatch${q}`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         setDispatchStatus({ ok: false, message: data.error || `Error ${res.status}` })
+        setPolling(false)
       } else {
-        setDispatchStatus({ ok: true, message: `Dispatched ${data.dispatched} feeds — updating live...` })
-        // Start polling — stop after 2 minutes (workers should be done by then)
-        setPolling(true)
-        setTimeout(() => {
-          setPolling(false)
-          setDispatchStatus(s => s?.ok ? { ok: true, message: `Dispatched ${data.dispatched} feeds — done` } : s)
-        }, 120_000)
+        const { dispatched, succeeded = 0, failed = 0 } = data
+        const msg = failed > 0
+          ? `Done — ${succeeded} of ${dispatched} feeds succeeded, ${failed} failed`
+          : `Done — ${dispatched} feeds updated`
+        setDispatchStatus({ ok: failed === 0, message: msg })
+        // Keep polling briefly to catch any final timestamp updates
+        setTimeout(() => setPolling(false), 10_000)
       }
     } catch (err) {
       setDispatchStatus({ ok: false, message: err.message || 'Request failed' })
+      setPolling(false)
     }
     setUpdatingAll(false)
+    load(true)
   }
 
   return (

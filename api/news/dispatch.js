@@ -1,12 +1,14 @@
 /**
  * Fan-out dispatcher for per-feed processing.
  *
- * Fetches the list of enabled feeds, then fires off requests to
+ * Fetches the list of enabled feeds, then fires parallel requests to
  * /api/news/process?feed=<id> so each feed runs in its own serverless
  * invocation with its own timeout budget.
  *
- * Fire-and-forget: returns immediately after dispatching. Workers
- * continue processing independently, so the caller can navigate away.
+ * We await each worker's initial response to ensure the request is
+ * accepted (the worker continues processing independently). The client
+ * can navigate away once the dispatch response is received — workers
+ * are already running in their own invocations.
  *
  * Triggered by:
  *   - Vercel Cron: POST /api/news/dispatch
@@ -15,6 +17,8 @@
 
 import { authorizeRequest, json } from '../../lib/auth.js'
 import { migrate, getEnabledFeeds } from '../../lib/db.js'
+
+const CONCURRENCY_LIMIT = 5
 
 export default { async fetch(req) {
   // Auth: Vercel Cron sends CRON_SECRET, admin via Bearer token or session cookie
@@ -55,18 +59,39 @@ export default { async fetch(req) {
       if (adminAuth) headers['Authorization'] = adminAuth
     }
 
-    // Fire off all worker requests without awaiting them.
-    // Each fetch() initiates a separate serverless invocation that
-    // runs independently — even if this function returns first.
-    for (const feed of feeds) {
-      const url = new URL(baseUrl)
-      url.searchParams.set('feed', feed.id)
-      fetch(url.toString(), { method: 'POST', headers }).catch(() => {})
+    // Dispatch in batches with concurrency limit.
+    // We await each batch to ensure requests are accepted by Vercel,
+    // but we only wait for the response status — each worker processes
+    // independently in its own serverless invocation.
+    const results = []
+    for (let i = 0; i < feeds.length; i += CONCURRENCY_LIMIT) {
+      const batch = feeds.slice(i, i + CONCURRENCY_LIMIT)
+      const batchResults = await Promise.allSettled(
+        batch.map(async (feed) => {
+          const url = new URL(baseUrl)
+          url.searchParams.set('feed', feed.id)
+          const res = await fetch(url.toString(), { method: 'POST', headers })
+          // Read the response so the connection is fully established,
+          // but the worker has already started processing
+          const body = await res.json().catch(() => ({}))
+          return { feedId: feed.id, name: feed.name, status: res.status, ...body }
+        })
+      )
+      results.push(...batchResults)
     }
+
+    const succeeded = results.filter(r => r.status === 'fulfilled').length
+    const failed = results.filter(r => r.status === 'rejected').length
 
     return json({
       dispatched: feeds.length,
-      feeds: feeds.map(f => ({ id: f.id, name: f.name, species: f.species_slug })),
+      succeeded,
+      failed,
+      results: results.map(r =>
+        r.status === 'fulfilled'
+          ? { status: 'ok', ...r.value }
+          : { status: 'error', error: r.reason?.message || String(r.reason) }
+      ),
     })
   } catch (err) {
     console.error('Dispatch error:', err)

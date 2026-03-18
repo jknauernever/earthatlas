@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import styles from './AdminApp.module.css'
 
 const SPECIES = [
+  'general',
   'sharks','whales','dolphins','birds','butterflies','bears',
   'condors','elephants','fungi','hippos','lions','monkeys',
   'sloths','tigers','wolves',

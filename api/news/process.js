@@ -11,7 +11,7 @@
 import { authorizeRequest, json } from '../../lib/auth.js'
 import { migrate, getEnabledFeeds, getFeedById, articleExists, imageExistsForSpecies, upsertArticle, touchFeed } from '../../lib/db.js'
 import { fetchRSSFeed } from '../../lib/rss.js'
-import { rewriteArticle } from '../../lib/ai.js'
+import { rewriteArticle, classifyArticle } from '../../lib/ai.js'
 import { resolveImage } from '../../lib/images.js'
 import { slugify } from '../../lib/slugify.js'
 import { createHash } from 'crypto'
@@ -66,21 +66,17 @@ export default { async fetch(req) {
     }
 
     const results = { processed: 0, skipped: 0, errors: 0, feeds: feeds.length }
+    const SPECIES_SLUGS = Object.keys(SPECIES_NAMES)
 
     for (const feed of feeds) {
       try {
+        const isGeneral = feed.species_slug === 'general'
         const items = await fetchRSSFeed(feed.url, { maxItems: 10 })
 
         for (const item of items) {
           try {
             // Normalize URL for dedup
             const sourceUrl = normalizeUrl(item.link)
-
-            // Skip if already processed
-            if (await articleExists(sourceUrl)) {
-              results.skipped++
-              continue
-            }
 
             // Content for AI
             const rawContent = item.content || item.description || ''
@@ -93,8 +89,36 @@ export default { async fetch(req) {
               .update(item.title + rawContent)
               .digest('hex')
 
-            // AI rewrite
-            const speciesName = SPECIES_NAMES[feed.species_slug] || feed.species_slug
+            // For general feeds: classify which species this article matches
+            let targetSlugs
+            if (isGeneral) {
+              // Skip if already classified for ANY species (avoid re-classifying)
+              if (await articleExists(sourceUrl)) {
+                results.skipped++
+                continue
+              }
+              targetSlugs = await classifyArticle({
+                title: item.title,
+                content: rawContent.slice(0, 3000),
+                speciesList: SPECIES_SLUGS,
+              })
+              if (targetSlugs.length === 0) {
+                results.skipped++ // not relevant to any tracked species
+                continue
+              }
+            } else {
+              // Species-specific feed: skip if already processed for this species
+              if (await articleExists(sourceUrl, feed.species_slug)) {
+                results.skipped++
+                continue
+              }
+              targetSlugs = [feed.species_slug]
+            }
+
+            // AI rewrite (once per article, not per species)
+            const speciesName = isGeneral
+              ? targetSlugs.map(s => SPECIES_NAMES[s] || s).join(', ')
+              : (SPECIES_NAMES[feed.species_slug] || feed.species_slug)
             const rewritten = await rewriteArticle({
               title: item.title,
               content: rawContent.slice(0, 3000),
@@ -106,35 +130,41 @@ export default { async fetch(req) {
               continue
             }
 
-            // Resolve image (skip duplicates within the same species)
-            const isDuplicate = (url) => imageExistsForSpecies(url, feed.species_slug)
-            const { url: imageUrl, credit: imageCredit } = await resolveImage({
-              rssImage: item.image,
-              articleUrl: item.link,
-              imageKeywords: rewritten.imageKeywords,
-              isDuplicate,
-            })
-
-            // Generate slug
             const slug = slugify(rewritten.title)
 
-            // Store
-            await upsertArticle({
-              feedId: feed.id,
-              speciesSlug: feed.species_slug,
-              sourceUrl,
-              originalTitle: item.title,
-              title: rewritten.title,
-              summary: rewritten.summary,
-              slug,
-              imageUrl,
-              imageCredit,
-              sourceName: item.source || feed.name,
-              pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : null,
-              contentHash,
-            })
+            // Insert one article row per matched species
+            for (const speciesSlug of targetSlugs) {
+              try {
+                // Resolve image per species (skip duplicates within the same species)
+                const isDuplicate = (url) => imageExistsForSpecies(url, speciesSlug)
+                const { url: imageUrl, credit: imageCredit } = await resolveImage({
+                  rssImage: item.image,
+                  articleUrl: item.link,
+                  imageKeywords: rewritten.imageKeywords,
+                  isDuplicate,
+                })
 
-            results.processed++
+                await upsertArticle({
+                  feedId: feed.id,
+                  speciesSlug,
+                  sourceUrl,
+                  originalTitle: item.title,
+                  title: rewritten.title,
+                  summary: rewritten.summary,
+                  slug,
+                  imageUrl,
+                  imageCredit,
+                  sourceName: item.source || feed.name,
+                  pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : null,
+                  contentHash,
+                })
+
+                results.processed++
+              } catch (speciesErr) {
+                console.error(`Error storing article for species "${speciesSlug}":`, speciesErr.message)
+                results.errors++
+              }
+            }
           } catch (itemErr) {
             console.error(`Error processing item "${item.title}":`, itemErr.message)
             results.errors++

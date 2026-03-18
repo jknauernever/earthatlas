@@ -349,6 +349,60 @@
   margin-top: 16px;
 }
 
+/* ─── Keywords ─────────────────────────────────────────────────────────────── */
+.keywordGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.keywordGroup {
+  background: #fff;
+  border: 1px solid #e0e4e8;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.keywordGroupTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 14px;
+  font-weight: 400;
+  margin: 0 0 10px;
+  text-transform: capitalize;
+}
+
+.keywordTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keywordTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: #e8ebf0;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.keywordRemove {
+  border: none;
+  background: transparent;
+  color: #8a95a5;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  margin-left: 2px;
+}
+.keywordRemove:hover {
+  color: #e74c3c;
+}
+
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .header {

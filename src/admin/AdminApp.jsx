@@ -98,7 +98,7 @@ export default function AdminApp() {
         <header className={styles.header}>
           <h1>EarthAtlas Admin</h1>
           <nav className={styles.tabs}>
-            {['feeds', 'articles', 'keys', 'pipeline'].map(t => (
+            {['feeds', 'articles', 'keywords', 'keys', 'pipeline'].map(t => (
               <button
                 key={t}
                 className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
@@ -113,6 +113,7 @@ export default function AdminApp() {
 
         {tab === 'feeds' && <FeedsPanel />}
         {tab === 'articles' && <ArticlesPanel />}
+        {tab === 'keywords' && <KeywordsPanel />}
         {tab === 'keys' && <KeysPanel />}
         {tab === 'pipeline' && <PipelinePanel />}
       </div>
@@ -354,6 +355,121 @@ function ArticlesPanel() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Keywords Panel
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function KeywordsPanel() {
+  const [keywords, setKeywords] = useState([])
+  const [grouped, setGrouped] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [species, setSpecies] = useState('')
+  const [form, setForm] = useState({ speciesSlug: '', keyword: '' })
+
+  const load = useCallback(() => {
+    setLoading(true)
+    apiFetch('/api/admin/keywords')
+      .then(r => r.json())
+      .then(d => {
+        setKeywords(d.keywords || [])
+        setGrouped(d.grouped || {})
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const add = async (e) => {
+    e.preventDefault()
+    if (!form.speciesSlug || !form.keyword.trim()) return
+    await apiFetch('/api/admin/keywords', {
+      method: 'POST',
+      body: JSON.stringify(form),
+    })
+    setForm(f => ({ ...f, keyword: '' }))
+    load()
+  }
+
+  const remove = async (id) => {
+    await apiFetch(`/api/admin/keywords?id=${id}`, { method: 'DELETE' })
+    load()
+  }
+
+  // Filter species to show (exclude 'general' — it's not a target category)
+  const KEYWORD_SPECIES = SPECIES.filter(s => s !== 'general')
+  const displaySpecies = species
+    ? KEYWORD_SPECIES.filter(s => s === species)
+    : KEYWORD_SPECIES
+
+  return (
+    <section>
+      <div className={styles.sectionHeader}>
+        <h2>Species Keywords</h2>
+        <select value={species} onChange={e => setSpecies(e.target.value)} className={styles.select}>
+          <option value="">All species</option>
+          {KEYWORD_SPECIES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      <p className={styles.muted}>
+        Map related terms to species categories. These keywords help the AI classify articles from general news feeds
+        (Reuters, AP, BBC, etc.) into the correct species pages.
+      </p>
+
+      <form onSubmit={add} className={styles.formRow}>
+        <select
+          value={form.speciesSlug}
+          onChange={e => setForm(f => ({ ...f, speciesSlug: e.target.value }))}
+          className={styles.select}
+          required
+        >
+          <option value="">Species...</option>
+          {KEYWORD_SPECIES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <input
+          placeholder="Keyword (e.g. mushroom, spores, mycelium)"
+          value={form.keyword}
+          onChange={e => setForm(f => ({ ...f, keyword: e.target.value }))}
+          className={styles.input}
+          required
+        />
+        <button type="submit" className={styles.btnPrimary}>Add</button>
+      </form>
+
+      {loading ? (
+        <p className={styles.muted}>Loading...</p>
+      ) : (
+        <div className={styles.keywordGrid}>
+          {displaySpecies.map(slug => {
+            const items = grouped[slug] || []
+            return (
+              <div key={slug} className={styles.keywordGroup}>
+                <h3 className={styles.keywordGroupTitle}>{slug}</h3>
+                {items.length === 0 ? (
+                  <p className={styles.muted}>No keywords yet</p>
+                ) : (
+                  <div className={styles.keywordTags}>
+                    {items.map(kw => (
+                      <span key={kw.id} className={styles.keywordTag}>
+                        {kw.keyword}
+                        <button
+                          className={styles.keywordRemove}
+                          onClick={() => remove(kw.id)}
+                          title="Remove"
+                        >&times;</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </section>

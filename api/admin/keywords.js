@@ -1,13 +1,15 @@
 /**
  * Admin API — Species keyword mapping CRUD.
  *
- * GET    /api/admin/keywords              — list all keywords (grouped by species)
- * POST   /api/admin/keywords              — add keyword { speciesSlug, keyword }
- * DELETE /api/admin/keywords?id=5         — delete keyword
+ * GET    /api/admin/keywords                    — list all keywords (grouped by species)
+ * POST   /api/admin/keywords                    — add keyword { speciesSlug, keyword }
+ * PUT    /api/admin/keywords?species=sharks      — AI suggest keywords for a species
+ * DELETE /api/admin/keywords?id=5               — delete keyword
  */
 
-import { migrate, getAllKeywords, addKeyword, deleteKeyword } from '../../lib/db.js'
+import { migrate, getAllKeywords, getKeywordsForSpecies, addKeyword, deleteKeyword } from '../../lib/db.js'
 import { authorizeRequest, json } from '../../lib/auth.js'
+import { suggestKeywords } from '../../lib/ai.js'
 
 export default { async fetch(req) {
   if (!authorizeRequest(req)) return json({ error: 'Unauthorized' }, 401)
@@ -34,6 +36,15 @@ export default { async fetch(req) {
     }
     const row = await addKeyword({ speciesSlug, keyword })
     return json({ keyword: row, created: !!row })
+  }
+
+  if (method === 'PUT') {
+    const speciesSlug = searchParams.get('species')
+    if (!speciesSlug) return json({ error: 'species query param required' }, 400)
+    const existing = await getKeywordsForSpecies(speciesSlug)
+    const existingKeywords = existing.map(r => r.keyword)
+    const suggestions = await suggestKeywords({ speciesSlug, existingKeywords })
+    return json({ speciesSlug, suggestions })
   }
 
   if (method === 'DELETE') {

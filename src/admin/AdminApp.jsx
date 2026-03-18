@@ -371,6 +371,8 @@ function KeywordsPanel() {
   const [loading, setLoading] = useState(true)
   const [species, setSpecies] = useState('')
   const [form, setForm] = useState({ speciesSlug: '', keyword: '' })
+  const [suggesting, setSuggesting] = useState({}) // slug → true while loading
+  const [suggestions, setSuggestions] = useState({}) // slug → ['kw1', 'kw2', ...]
 
   const load = useCallback(() => {
     setLoading(true)
@@ -398,6 +400,50 @@ function KeywordsPanel() {
 
   const remove = async (id) => {
     await apiFetch(`/api/admin/keywords?id=${id}`, { method: 'DELETE' })
+    load()
+  }
+
+  const suggest = async (slug) => {
+    setSuggesting(s => ({ ...s, [slug]: true }))
+    try {
+      const res = await apiFetch(`/api/admin/keywords?species=${slug}`, { method: 'PUT' })
+      const data = await res.json()
+      setSuggestions(s => ({ ...s, [slug]: data.suggestions || [] }))
+    } catch {
+      setSuggestions(s => ({ ...s, [slug]: [] }))
+    }
+    setSuggesting(s => ({ ...s, [slug]: false }))
+  }
+
+  const acceptSuggestion = async (slug, keyword) => {
+    await apiFetch('/api/admin/keywords', {
+      method: 'POST',
+      body: JSON.stringify({ speciesSlug: slug, keyword }),
+    })
+    // Remove from suggestions list
+    setSuggestions(s => ({
+      ...s,
+      [slug]: (s[slug] || []).filter(k => k !== keyword),
+    }))
+    load()
+  }
+
+  const dismissSuggestion = (slug, keyword) => {
+    setSuggestions(s => ({
+      ...s,
+      [slug]: (s[slug] || []).filter(k => k !== keyword),
+    }))
+  }
+
+  const acceptAll = async (slug) => {
+    const items = suggestions[slug] || []
+    for (const keyword of items) {
+      await apiFetch('/api/admin/keywords', {
+        method: 'POST',
+        body: JSON.stringify({ speciesSlug: slug, keyword }),
+      })
+    }
+    setSuggestions(s => ({ ...s, [slug]: [] }))
     load()
   }
 
@@ -448,12 +494,24 @@ function KeywordsPanel() {
         <div className={styles.keywordGrid}>
           {displaySpecies.map(slug => {
             const items = grouped[slug] || []
+            const slugSuggestions = suggestions[slug] || []
+            const isSuggesting = suggesting[slug]
             return (
               <div key={slug} className={styles.keywordGroup}>
-                <h3 className={styles.keywordGroupTitle}>{slug}</h3>
-                {items.length === 0 ? (
+                <div className={styles.keywordGroupHeader}>
+                  <h3 className={styles.keywordGroupTitle}>{slug}</h3>
+                  <button
+                    className={styles.btnSmall}
+                    onClick={() => suggest(slug)}
+                    disabled={isSuggesting}
+                  >
+                    {isSuggesting ? 'Thinking...' : 'AI Suggest'}
+                  </button>
+                </div>
+                {items.length === 0 && slugSuggestions.length === 0 && (
                   <p className={styles.muted}>No keywords yet</p>
-                ) : (
+                )}
+                {items.length > 0 && (
                   <div className={styles.keywordTags}>
                     {items.map(kw => (
                       <span key={kw.id} className={styles.keywordTag}>
@@ -465,6 +523,32 @@ function KeywordsPanel() {
                         >&times;</button>
                       </span>
                     ))}
+                  </div>
+                )}
+                {slugSuggestions.length > 0 && (
+                  <div className={styles.suggestionsBlock}>
+                    <div className={styles.suggestionsHeader}>
+                      <span className={styles.suggestionsLabel}>Suggestions</span>
+                      <button className={styles.btnSmall} onClick={() => acceptAll(slug)}>Accept All</button>
+                      <button className={styles.btnSmall} onClick={() => setSuggestions(s => ({ ...s, [slug]: [] }))}>Dismiss All</button>
+                    </div>
+                    <div className={styles.keywordTags}>
+                      {slugSuggestions.map(kw => (
+                        <span key={kw} className={`${styles.keywordTag} ${styles.keywordSuggestion}`}>
+                          {kw}
+                          <button
+                            className={styles.keywordAccept}
+                            onClick={() => acceptSuggestion(slug, kw)}
+                            title="Accept"
+                          >+</button>
+                          <button
+                            className={styles.keywordRemove}
+                            onClick={() => dismissSuggestion(slug, kw)}
+                            title="Dismiss"
+                          >&times;</button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

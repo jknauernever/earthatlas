@@ -9,7 +9,7 @@
  */
 
 import { authorizeRequest, json } from '../../lib/auth.js'
-import { migrate, getEnabledFeeds, getFeedById, articleExists, imageExistsForSpecies, upsertArticle, touchFeed, getAllKeywords } from '../../lib/db.js'
+import { migrate, getEnabledFeeds, getFeedById, articleExists, classifiedUrlExists, markClassifiedUrl, imageExistsForSpecies, upsertArticle, touchFeed, getAllKeywords } from '../../lib/db.js'
 import { fetchRSSFeed } from '../../lib/rss.js'
 import { rewriteArticle, classifyArticle } from '../../lib/ai.js'
 import { resolveImage } from '../../lib/images.js'
@@ -100,8 +100,8 @@ export default { async fetch(req) {
             // For general feeds: classify which species this article matches
             let targetSlugs
             if (isGeneral) {
-              // Skip if already classified for ANY species (avoid re-classifying)
-              if (await articleExists(sourceUrl)) {
+              // Skip if already classified (matched or not) or stored as an article
+              if (await classifiedUrlExists(sourceUrl) || await articleExists(sourceUrl)) {
                 results.skipped++
                 continue
               }
@@ -111,6 +111,8 @@ export default { async fetch(req) {
                 speciesList: SPECIES_SLUGS,
                 keywordMap,
               })
+              // Mark as classified regardless of match, so we never re-classify
+              await markClassifiedUrl(sourceUrl, feed.id)
               if (targetSlugs.length === 0) {
                 results.skipped++ // not relevant to any tracked species
                 continue

@@ -187,14 +187,24 @@ function FeedsPanel() {
     load(true)
   }
 
+  const [dispatchStatus, setDispatchStatus] = useState(null) // { ok, message }
+
   const updateAll = async () => {
     setUpdatingAll(true)
+    setDispatchStatus({ ok: true, message: 'Dispatching feeds...' })
     const q = species ? `?species=${species}` : ''
     try {
-      await apiFetch(`/api/news/dispatch${q}`, { method: 'POST' })
-    } catch {}
+      const res = await apiFetch(`/api/news/dispatch${q}`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setDispatchStatus({ ok: false, message: data.error || `Error ${res.status}` })
+      } else {
+        setDispatchStatus({ ok: true, message: `Dispatched ${data.dispatched} feeds — processing in background` })
+      }
+    } catch (err) {
+      setDispatchStatus({ ok: false, message: err.message || 'Request failed' })
+    }
     setUpdatingAll(false)
-    load(true)
   }
 
   return (
@@ -209,8 +219,13 @@ function FeedsPanel() {
           {showForm ? 'Cancel' : '+ Add Feed'}
         </button>
         <button className={styles.btnPrimary} onClick={updateAll} disabled={updatingAll}>
-          {updatingAll ? 'Updating...' : 'Update Feeds'}
+          {updatingAll ? 'Dispatching...' : 'Update Feeds'}
         </button>
+        {dispatchStatus && (
+          <span className={dispatchStatus.ok ? styles.statusOk : styles.statusErr}>
+            {dispatchStatus.message}
+          </span>
+        )}
       </div>
 
       {showForm && (

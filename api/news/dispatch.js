@@ -1,9 +1,12 @@
 /**
  * Fan-out dispatcher for per-feed processing.
  *
- * Fetches the list of enabled feeds, then fires parallel requests to
+ * Fetches the list of enabled feeds, then fires off requests to
  * /api/news/process?feed=<id> so each feed runs in its own serverless
  * invocation with its own timeout budget.
+ *
+ * Fire-and-forget: returns immediately after dispatching. Workers
+ * continue processing independently, so the caller can navigate away.
  *
  * Triggered by:
  *   - Vercel Cron: POST /api/news/dispatch
@@ -12,8 +15,6 @@
 
 import { authorizeRequest, json } from '../../lib/auth.js'
 import { migrate, getEnabledFeeds } from '../../lib/db.js'
-
-const CONCURRENCY_LIMIT = 5
 
 export default { async fetch(req) {
   // Auth: Vercel Cron sends CRON_SECRET, admin via Bearer token or session cookie
@@ -48,42 +49,24 @@ export default { async fetch(req) {
     if (isCron) {
       headers['Authorization'] = `Bearer ${cronSecret}`
     } else {
-      // Forward the cookie and/or authorization header from the admin
       const cookie = req.headers.get('cookie')
       if (cookie) headers['Cookie'] = cookie
       const adminAuth = req.headers.get('authorization')
       if (adminAuth) headers['Authorization'] = adminAuth
     }
 
-    // Process feeds with concurrency limit
-    const results = []
-    for (let i = 0; i < feeds.length; i += CONCURRENCY_LIMIT) {
-      const batch = feeds.slice(i, i + CONCURRENCY_LIMIT)
-      const batchResults = await Promise.allSettled(
-        batch.map(async (feed) => {
-          const url = new URL(baseUrl)
-          url.searchParams.set('feed', feed.id)
-          const res = await fetch(url.toString(), { method: 'POST', headers })
-          const body = await res.json()
-          if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`)
-          return { feedId: feed.id, name: feed.name, ...body }
-        })
-      )
-      results.push(...batchResults)
+    // Fire off all worker requests without awaiting them.
+    // Each fetch() initiates a separate serverless invocation that
+    // runs independently — even if this function returns first.
+    for (const feed of feeds) {
+      const url = new URL(baseUrl)
+      url.searchParams.set('feed', feed.id)
+      fetch(url.toString(), { method: 'POST', headers }).catch(() => {})
     }
-
-    const succeeded = results.filter(r => r.status === 'fulfilled').length
-    const failed = results.filter(r => r.status === 'rejected').length
 
     return json({
       dispatched: feeds.length,
-      succeeded,
-      failed,
-      results: results.map(r =>
-        r.status === 'fulfilled'
-          ? { status: 'ok', ...r.value }
-          : { status: 'error', error: r.reason?.message || String(r.reason) }
-      ),
+      feeds: feeds.map(f => ({ id: f.id, name: f.name, species: f.species_slug })),
     })
   } catch (err) {
     console.error('Dispatch error:', err)

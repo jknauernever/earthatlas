@@ -178,7 +178,7 @@ function FeedsPanel() {
     setUpdatingAll(true)
     const q = species ? `?species=${species}` : ''
     try {
-      await apiFetch(`/api/news/process${q}`, { method: 'POST' })
+      await apiFetch(`/api/news/dispatch${q}`, { method: 'POST' })
     } catch {}
     setUpdatingAll(false)
     load()

@@ -63,15 +63,40 @@ const BASEMAPS = {
     attribution: '&copy; Stadia Maps',
     tileSize: 512,
   },
+  'Stadia Alidade Smooth': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia Alidade Smooth Dark': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia Outdoors': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia OSM Bright': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia Stamen Toner': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
   'Stadia Stamen Terrain': {
     tiles: [`https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
     attribution: '&copy; Stadia Maps',
     tileSize: 512,
   },
-  'Stadia Dark': {
-    tiles: [`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
+  'Stadia Stamen Watercolor': {
+    tiles: [`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg?api_key=${STADIA_KEY}`],
     attribution: '&copy; Stadia Maps',
-    tileSize: 512,
+    tileSize: 256,
   },
   // ── Google (requires API key in VITE_GOOGLE_MAPS_KEY) ──
   'Google Satellite': {

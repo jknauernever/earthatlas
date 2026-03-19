@@ -22,13 +22,103 @@ const MAX_HEIGHT = 800000
 const COLUMN_SIZE = 0.12
 const GLOW_SIZE = 0.35
 
+// Basemaps: string = Mapbox style URL, object = custom XYZ raster tiles
 const BASEMAPS = {
-  'Satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
-  'Satellite (no labels)': 'mapbox://styles/mapbox/satellite-v9',
-  'Dark': 'mapbox://styles/mapbox/dark-v11',
-  'Light': 'mapbox://styles/mapbox/light-v11',
-  'Outdoors': 'mapbox://styles/mapbox/outdoors-v12',
-  'Streets': 'mapbox://styles/mapbox/streets-v12',
+  // ── Mapbox ──
+  'Mapbox Satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+  'Mapbox Satellite (no labels)': 'mapbox://styles/mapbox/satellite-v9',
+  'Mapbox Dark': 'mapbox://styles/mapbox/dark-v11',
+  'Mapbox Light': 'mapbox://styles/mapbox/light-v11',
+  'Mapbox Outdoors': 'mapbox://styles/mapbox/outdoors-v12',
+  'Mapbox Streets': 'mapbox://styles/mapbox/streets-v12',
+  // ── ESRI ──
+  'ESRI World Imagery': {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    attribution: '&copy; Esri',
+  },
+  'ESRI World Topo': {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],
+    attribution: '&copy; Esri',
+  },
+  'ESRI Dark Gray': {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+    attribution: '&copy; Esri',
+  },
+  // ── CartoDB ──
+  'CartoDB Dark Matter': {
+    tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'],
+    attribution: '&copy; CARTO',
+    tileSize: 512,
+  },
+  'CartoDB Voyager': {
+    tiles: ['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+    attribution: '&copy; CARTO',
+    tileSize: 512,
+  },
+  'CartoDB Positron': {
+    tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png'],
+    attribution: '&copy; CARTO',
+    tileSize: 512,
+  },
+  // ── Stadia ──
+  'Stadia Alidade Satellite': {
+    tiles: ['https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}@2x.jpg'],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia Stamen Terrain': {
+    tiles: ['https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}@2x.png'],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  'Stadia Dark': {
+    tiles: ['https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}@2x.png'],
+    attribution: '&copy; Stadia Maps',
+    tileSize: 512,
+  },
+  // ── Google (requires API key in VITE_GOOGLE_MAPS_KEY) ──
+  'Google Satellite': {
+    tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+    attribution: '&copy; Google',
+  },
+  'Google Hybrid': {
+    tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+    attribution: '&copy; Google',
+  },
+  'Google Terrain': {
+    tiles: ['https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'],
+    attribution: '&copy; Google',
+  },
+}
+
+// Build a Mapbox style object for custom XYZ tile sources
+function buildCustomStyle(config) {
+  return {
+    version: 8,
+    sources: {
+      'custom-tiles': {
+        type: 'raster',
+        tiles: config.tiles,
+        tileSize: config.tileSize || 256,
+        attribution: config.attribution || '',
+      },
+    },
+    layers: [
+      {
+        id: 'custom-tiles-layer',
+        type: 'raster',
+        source: 'custom-tiles',
+        minzoom: 0,
+        maxzoom: 22,
+      },
+    ],
+  }
+}
+
+function getStyle(basemap) {
+  const entry = BASEMAPS[basemap]
+  if (typeof entry === 'string') return entry
+  return buildCustomStyle(entry)
 }
 
 export default function LiveGlobe() {
@@ -52,7 +142,7 @@ export default function LiveGlobe() {
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
-  const [basemap, setBasemap] = useState('Satellite')
+  const [basemap, setBasemap] = useState('Mapbox Satellite')
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
 
@@ -79,10 +169,9 @@ export default function LiveGlobe() {
       const r = Math.round(255 - t * (255 - 100))
       const g = Math.round(240 - t * (240 - 30))
       const b = Math.round(80 - t * 80)
-      const color = `rgb(${r},${g},${b})`
-
       // Opacity: very bright at first, fades aggressively
       const opacity = Math.max(0.06, Math.pow(1 - t, 0.7))
+      const color = `rgba(${r},${g},${b},${opacity.toFixed(3)})`
 
       const s = COLUMN_SIZE
       const lng = o.lng, lat = o.lat
@@ -98,7 +187,7 @@ export default function LiveGlobe() {
             [lng - s, lat - s],
           ]],
         },
-        properties: { opacity, height, color, kind: 'column' },
+        properties: { height, color, kind: 'column' },
       })
 
       // Glow halo at the base for new observations
@@ -106,6 +195,7 @@ export default function LiveGlobe() {
       if (glowT < 1) {
         const glowOpacity = 0.7 * (1 - glowT)
         const gs = GLOW_SIZE * (1 - glowT * 0.5) // shrinks slightly as it fades
+        const glowB = Math.round(100 + 155 * (1 - glowT))
         features.push({
           type: 'Feature',
           geometry: {
@@ -119,9 +209,8 @@ export default function LiveGlobe() {
             ]],
           },
           properties: {
-            opacity: glowOpacity,
             height: 5000,
-            color: `rgb(255, 255, ${Math.round(100 + 155 * (1 - glowT))})`,
+            color: `rgba(255, 255, ${glowB}, ${glowOpacity.toFixed(3)})`,
             kind: 'glow',
           },
         })
@@ -205,7 +294,7 @@ export default function LiveGlobe() {
         'fill-extrusion-color': ['get', 'color'],
         'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': ['get', 'opacity'],
+        'fill-extrusion-opacity': 0.9,
       },
     })
 
@@ -219,7 +308,7 @@ export default function LiveGlobe() {
         'fill-extrusion-color': ['get', 'color'],
         'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': ['get', 'opacity'],
+        'fill-extrusion-opacity': 0.9,
       },
     })
 
@@ -233,7 +322,7 @@ export default function LiveGlobe() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: BASEMAPS[basemap],
+      style: getStyle(basemap),
       center: [10, 40],
       zoom: 1.8,
       projection: 'globe',

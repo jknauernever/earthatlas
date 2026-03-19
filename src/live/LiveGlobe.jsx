@@ -334,8 +334,17 @@ export default function LiveGlobe() {
     if (basemapMountRef.current) { basemapMountRef.current = false; return }
     const map = mapRef.current
     if (!map) return
-    // setStyle triggers style.load which re-adds source/layers via addLayers
     mapReadyRef.current = false
+    map.once('style.load', () => {
+      map.setFog({
+        color: 'rgb(10, 14, 23)',
+        'high-color': 'rgb(20, 30, 60)',
+        'horizon-blend': 0.08,
+        'space-color': 'rgb(6, 8, 16)',
+        'star-intensity': 0.7,
+      })
+      addLayers(map)
+    })
     map.setStyle(getStyle(basemap))
   }, [basemap])
 

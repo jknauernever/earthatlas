@@ -6,6 +6,8 @@ import styles from './LiveGlobe.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || ''
+const THUNDERFOREST_KEY = import.meta.env.VITE_THUNDERFOREST_KEY || ''
 
 // ─── Constants ────────────────────────────────────────────────────────────
 const CAMERA_ROTATE = 'rotate'
@@ -21,6 +23,33 @@ const DOT_RADIUS = 4
 
 // Basemaps: string = Mapbox style URL, object = custom XYZ raster tiles
 const BASEMAPS = {
+  // ── Featured ──
+  'NASA Blue Marble': {
+    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default//EPSG3857_500m/{z}/{y}/{x}.jpeg'],
+    attribution: '&copy; NASA GIBS',
+    maxzoom: 8,
+  },
+  'NASA Blue Marble (Next Gen)': {
+    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default//EPSG3857_500m/{z}/{y}/{x}.jpeg'],
+    attribution: '&copy; NASA GIBS',
+    maxzoom: 8,
+  },
+  'ESRI Ocean': {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'],
+    attribution: '&copy; Esri',
+  },
+  'ESRI NatGeo': {
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}'],
+    attribution: '&copy; Esri',
+  },
+  'MapTiler Landscape': {
+    tiles: [`https://api.maptiler.com/maps/landscape/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`],
+    attribution: '&copy; MapTiler',
+  },
+  'Thunderforest Pioneer': {
+    tiles: [`https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey=${THUNDERFOREST_KEY}`],
+    attribution: '&copy; Thunderforest',
+  },
   // ── Mapbox ──
   'Mapbox Satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
   'Mapbox Satellite (no labels)': 'mapbox://styles/mapbox/satellite-v9',
@@ -124,7 +153,7 @@ function buildCustomStyle(config) {
         tiles: config.tiles,
         tileSize: config.tileSize || 256,
         attribution: config.attribution || '',
-        maxzoom: 19,
+        maxzoom: config.maxzoom || 19,
       },
     },
     layers: [

@@ -46,6 +46,9 @@ export default function LiveGlobe() {
   const interactTimeoutRef = useRef(null)
   const seenIdsRef = useRef(new Set())
   const mapReadyRef = useRef(false)
+  const flyQueueRef = useRef([])
+  const flyingRef = useRef(false)  // true while a flyTo animation + dwell is in progress
+  const flyTimerRef = useRef(null)
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
@@ -187,7 +190,7 @@ export default function LiveGlobe() {
 
     function rotateStep() {
       if (!running) return
-      if (cameraModeRef.current === CAMERA_ROTATE && !interactingRef.current) {
+      if (cameraModeRef.current === CAMERA_ROTATE && !interactingRef.current && !flyingRef.current) {
         const center = map.getCenter()
         // Spin the globe on its north/south axis by shifting longitude
         center.lng = (center.lng + ROTATION_SPEED) % 360
@@ -202,6 +205,55 @@ export default function LiveGlobe() {
       cancelAnimationFrame(rotationRef.current)
     }
   }, [])
+
+  // ─── Fly-to tour: sequentially visit observations ──────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    let running = true
+
+    function flyToNext() {
+      if (!running || cameraModeRef.current !== CAMERA_FLYTO) {
+        flyingRef.current = false
+        return
+      }
+
+      // Pick a random observation to visit
+      const obs = observationsRef.current
+      if (obs.length === 0) {
+        flyTimerRef.current = setTimeout(flyToNext, 1000)
+        return
+      }
+
+      const target = obs[Math.floor(Math.random() * obs.length)]
+      flyingRef.current = true
+
+      map.flyTo({
+        center: [target.lng, target.lat],
+        zoom: 4,
+        pitch: 45,
+        duration: 3000,
+        essential: true,
+      })
+
+      // After fly animation completes (3s) + dwell (2s), go to next
+      flyTimerRef.current = setTimeout(flyToNext, 5000)
+    }
+
+    // Start touring when in fly-to mode
+    if (cameraMode === CAMERA_FLYTO) {
+      flyToNext()
+    } else {
+      flyingRef.current = false
+    }
+
+    return () => {
+      running = false
+      clearTimeout(flyTimerRef.current)
+      flyingRef.current = false
+    }
+  }, [cameraMode])
 
   // ─── Add observation to the globe ──────────────────────────────────────
   const addObservation = useCallback((obs) => {
@@ -222,17 +274,6 @@ export default function LiveGlobe() {
 
     observationsRef.current.push(obs)
     syncSource()
-
-    // Fly-to mode
-    if (cameraModeRef.current === CAMERA_FLYTO) {
-      map.flyTo({
-        center: [obs.lng, obs.lat],
-        zoom: 3.5,
-        pitch: 40,
-        duration: 3000,
-        essential: true,
-      })
-    }
 
     // Update counts
     const species = new Set()

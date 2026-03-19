@@ -141,8 +141,8 @@ export default function LiveGlobe() {
   const [basemap, setBasemap] = useState('Mapbox Dark')
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
-
-  const photoMarkersRef = useRef(new Map()) // id → mapboxgl.Marker
+  const [photoOverlays, setPhotoOverlays] = useState([]) // { id, x, y, opacity, obs }
+  const [hoveredPhoto, setHoveredPhoto] = useState(null)
 
   const cameraModeRef = useRef(cameraMode)
   cameraModeRef.current = cameraMode
@@ -179,99 +179,43 @@ export default function LiveGlobe() {
     src.setData(buildGeoJSON())
   }
 
-  // ─── Photo markers (HTML overlays for observations with photos) ───────
-
-  // Check if a point is on the front side of the globe
-  function isOnFrontSide(lngLat) {
+  // ─── Photo overlays (React-rendered, positioned via map.project) ───────
+  function isOnFrontSide(lng, lat) {
     const map = mapRef.current
     if (!map) return false
     const center = map.getCenter()
     const toRad = d => d * Math.PI / 180
-    const dLng = toRad(lngLat[0] - center.lng)
+    const dLng = toRad(lng - center.lng)
     const lat1 = toRad(center.lat)
-    const lat2 = toRad(lngLat[1])
+    const lat2 = toRad(lat)
     const cosAngle = Math.sin(lat1) * Math.sin(lat2) +
       Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLng)
-    return cosAngle > 0.1 // slight margin to hide near edges
+    return cosAngle > 0.15
   }
 
-  function createPhotoMarker(obs) {
+  function updatePhotoOverlays() {
     const map = mapRef.current
-    if (!map || !obs.photoUrl) return
-
-    const el = document.createElement('div')
-    el.className = 'live-photo-marker'
-
-    const thumb = document.createElement('img')
-    thumb.src = obs.photoUrl
-    thumb.className = 'live-photo-thumb'
-    el.appendChild(thumb)
-
-    // Expanded card (hidden by default)
-    const card = document.createElement('div')
-    card.className = 'live-photo-card'
-    card.innerHTML = `
-      <img src="${obs.photoUrl.replace('/square', '/medium').replace('/small', '/medium')}" class="live-photo-card-img" />
-      <div class="live-photo-card-info">
-        <div class="live-photo-card-name">${obs.commonName || 'Unknown'}</div>
-        ${obs.scientificName ? `<div class="live-photo-card-sci">${obs.scientificName}</div>` : ''}
-        ${obs.location ? `<div class="live-photo-card-loc">${obs.location}</div>` : ''}
-        <div class="live-photo-card-source">${obs.source}</div>
-      </div>
-    `
-    el.appendChild(card)
-
-    el.addEventListener('mouseenter', () => card.classList.add('visible'))
-    el.addEventListener('mouseleave', () => card.classList.remove('visible'))
-
-    const lngLat = [obs.lng, obs.lat]
-    const visible = isOnFrontSide(lngLat)
-    el.style.display = visible ? '' : 'none'
-
-    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -8] })
-      .setLngLat(lngLat)
-      .addTo(map)
-
-    photoMarkersRef.current.set(obs.id, { marker, lngLat })
-  }
-
-  function syncPhotoMarkers() {
-    const activeIds = new Set(observationsRef.current.map(o => o.id))
-
-    // Remove markers for expired observations
-    for (const [id, entry] of photoMarkersRef.current) {
-      if (!activeIds.has(id)) {
-        entry.marker.remove()
-        photoMarkersRef.current.delete(id)
-      }
-    }
-
-    // Add markers for new observations with photos
-    for (const obs of observationsRef.current) {
-      if (obs.photoUrl && !photoMarkersRef.current.has(obs.id)) {
-        createPhotoMarker(obs)
-      }
-    }
-
-    updatePhotoMarkerVisibility()
-  }
-
-  function updatePhotoMarkerVisibility() {
+    if (!map) return
     const now = Date.now()
-    const obsMap = new Map(observationsRef.current.map(o => [o.id, o]))
+    const canvas = map.getCanvas()
+    const w = canvas.width / (window.devicePixelRatio || 1)
+    const h = canvas.height / (window.devicePixelRatio || 1)
 
-    for (const [id, entry] of photoMarkersRef.current) {
-      const el = entry.marker.getElement()
-      const visible = isOnFrontSide(entry.lngLat)
-      el.style.display = visible ? '' : 'none'
+    const overlays = []
+    for (const obs of observationsRef.current) {
+      if (!obs.photoUrl) continue
+      if (!isOnFrontSide(obs.lng, obs.lat)) continue
 
-      // Update opacity based on age
-      const obs = obsMap.get(id)
-      if (obs && visible) {
-        const t = Math.min((now - obs.addedAt) / FADE_DURATION, 1)
-        el.style.opacity = Math.max(0.1, 1.0 - t * 0.9)
-      }
+      const pt = map.project([obs.lng, obs.lat])
+      // Skip if projected outside viewport
+      if (pt.x < -30 || pt.x > w + 30 || pt.y < -30 || pt.y > h + 30) continue
+
+      const t = Math.min((now - obs.addedAt) / FADE_DURATION, 1)
+      const opacity = Math.max(0.1, 1.0 - t * 0.9)
+
+      overlays.push({ id: obs.id, x: pt.x, y: pt.y, opacity, obs })
     }
+    setPhotoOverlays(overlays)
   }
 
   function tick() {
@@ -285,7 +229,7 @@ export default function LiveGlobe() {
       seenIdsRef.current = activeIds
     }
     syncSource()
-    syncPhotoMarkers()
+    updatePhotoOverlays()
     updateCounts()
   }
 
@@ -312,7 +256,7 @@ export default function LiveGlobe() {
     seenIdsRef.current.add(obs.id)
     observationsRef.current.push(obs)
     syncSource()
-    syncPhotoMarkers()
+    updatePhotoOverlays()
     updateCounts()
 
     if (queue.length > 0) scheduleDrip()
@@ -413,8 +357,8 @@ export default function LiveGlobe() {
     map.on('touchend', onInteractEnd)
     map.on('wheel', () => { onInteractStart(); onInteractEnd() })
 
-    // Hide photo markers on the back side of the globe during render
-    map.on('render', () => updatePhotoMarkerVisibility())
+    // Update photo overlay positions as globe moves
+    map.on('move', () => updatePhotoOverlays())
 
     mapRef.current = map
 
@@ -425,8 +369,6 @@ export default function LiveGlobe() {
       clearInterval(renderTimerRef.current)
       clearTimeout(flyTimerRef.current)
       clearInterval(pollIntervalRef.current)
-      for (const entry of photoMarkersRef.current.values()) entry.marker.remove()
-      photoMarkersRef.current.clear()
       map.remove()
       mapRef.current = null
     }
@@ -590,9 +532,6 @@ export default function LiveGlobe() {
     seenIdsRef.current.clear()
     dripQueueRef.current = []
     clearTimeout(dripTimerRef.current)
-    // Remove all photo markers
-    for (const marker of photoMarkersRef.current.values()) marker.remove()
-    photoMarkersRef.current.clear()
     syncSource()
     setObsCount(0)
     setSpeciesCount(0)
@@ -614,6 +553,47 @@ export default function LiveGlobe() {
   return (
     <div className={styles.container}>
       <div ref={containerRef} className={styles.mapWrap} />
+
+      {/* Photo thumbnails */}
+      {photoOverlays.map(p => (
+        <div
+          key={p.id}
+          className="live-photo-marker"
+          style={{
+            position: 'absolute',
+            left: p.x,
+            top: p.y,
+            transform: 'translate(-50%, -100%) translateY(-12px)',
+            opacity: p.opacity,
+            zIndex: hoveredPhoto === p.id ? 50 : 5,
+            pointerEvents: 'auto',
+          }}
+          onMouseEnter={() => setHoveredPhoto(p.id)}
+          onMouseLeave={() => setHoveredPhoto(null)}
+        >
+          <img src={p.obs.photoUrl} className="live-photo-thumb" alt="" />
+          <div className="live-photo-stem" />
+          {hoveredPhoto === p.id && (
+            <div className="live-photo-card visible">
+              <img
+                src={p.obs.photoUrl.replace('/square', '/medium').replace('/small', '/medium')}
+                className="live-photo-card-img"
+                alt=""
+              />
+              <div className="live-photo-card-info">
+                <div className="live-photo-card-name">{p.obs.commonName || 'Unknown'}</div>
+                {p.obs.scientificName && (
+                  <div className="live-photo-card-sci">{p.obs.scientificName}</div>
+                )}
+                {p.obs.location && (
+                  <div className="live-photo-card-loc">{p.obs.location}</div>
+                )}
+                <div className="live-photo-card-source">{p.obs.source}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
 
       {/* Branding */}
       <a href="/" className={styles.branding}>

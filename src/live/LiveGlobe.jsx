@@ -151,7 +151,7 @@ export default function LiveGlobe() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/satellite-streets-v12',
       center: [10, 20],
       zoom: 1.8,
       projection: 'globe',

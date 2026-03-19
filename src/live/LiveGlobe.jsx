@@ -91,12 +91,14 @@ const BASEMAPS = {
 function buildCustomStyle(config) {
   return {
     version: 8,
+    glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
     sources: {
       'custom-tiles': {
         type: 'raster',
         tiles: config.tiles,
         tileSize: config.tileSize || 256,
         attribution: config.attribution || '',
+        maxzoom: 19,
       },
     },
     layers: [
@@ -104,8 +106,6 @@ function buildCustomStyle(config) {
         id: 'custom-tiles-layer',
         type: 'raster',
         source: 'custom-tiles',
-        minzoom: 0,
-        maxzoom: 22,
       },
     ],
   }
@@ -336,7 +336,7 @@ export default function LiveGlobe() {
     if (!map) return
     // setStyle triggers style.load which re-adds source/layers via addLayers
     mapReadyRef.current = false
-    map.setStyle(BASEMAPS[basemap])
+    map.setStyle(getStyle(basemap))
   }, [basemap])
 
   // ─── Override body styles for fullscreen ────────────────────────────────

@@ -209,7 +209,7 @@ export default function LiveGlobe() {
     el.addEventListener('mouseenter', () => card.classList.add('visible'))
     el.addEventListener('mouseleave', () => card.classList.remove('visible'))
 
-    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -8] })
       .setLngLat([obs.lng, obs.lat])
       .addTo(map)
 

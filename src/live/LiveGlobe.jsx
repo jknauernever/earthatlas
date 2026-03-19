@@ -14,11 +14,13 @@ const CAMERA_FIXED = 'fixed'
 const COLOR_NEW = '#ff6a00'       // bright orange for new observations
 const COLOR_OLD = '#8b3a00'       // dark orange for fading observations
 const FADE_DURATION = 5 * 60 * 1000
+const GLOW_DURATION = 60 * 1000   // glow visible for first 60s
 const POLL_INTERVAL = 60000
 const ROTATION_SPEED = 0.03
 const RENDER_TICK = 1000
-const MAX_HEIGHT = 200000
+const MAX_HEIGHT = 800000
 const COLUMN_SIZE = 0.12
+const GLOW_SIZE = 0.35
 
 const BASEMAPS = {
   'Satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -62,37 +64,70 @@ export default function LiveGlobe() {
   // ─── Build GeoJSON with age-based height & opacity ─────────────────────
   function buildGeoJSON() {
     const now = Date.now()
-    return {
-      type: 'FeatureCollection',
-      features: observationsRef.current.map(o => {
-        const age = now - o.addedAt
-        const t = Math.min(age / FADE_DURATION, 1)
-        const opacity = Math.max(0.08, 1.0 - t * 0.92)
-        const height = Math.max(1000, MAX_HEIGHT * (1 - t))
-        // Interpolate bright orange → dark orange
-        const r = Math.round(255 - t * (255 - 139))
-        const g = Math.round(106 - t * (106 - 58))
-        const b = Math.round(0)
-        const color = `rgb(${r},${g},${b})`
+    const features = []
+    for (const o of observationsRef.current) {
+      const age = now - o.addedAt
+      const t = Math.min(age / FADE_DURATION, 1)
 
-        const s = COLUMN_SIZE
-        const lng = o.lng, lat = o.lat
-        return {
+      // Height: dramatic drop — new columns are very tall, shrink with sqrt curve
+      const height = Math.max(2000, MAX_HEIGHT * Math.pow(1 - t, 0.5))
+
+      // Color: bright yellow-white → orange → dark brown
+      // t=0: rgb(255, 240, 80) hot yellow
+      // t=0.3: rgb(255, 120, 0) bright orange
+      // t=1: rgb(100, 30, 0) dark brown
+      const r = Math.round(255 - t * (255 - 100))
+      const g = Math.round(240 - t * (240 - 30))
+      const b = Math.round(80 - t * 80)
+      const color = `rgb(${r},${g},${b})`
+
+      // Opacity: very bright at first, fades aggressively
+      const opacity = Math.max(0.06, Math.pow(1 - t, 0.7))
+
+      const s = COLUMN_SIZE
+      const lng = o.lng, lat = o.lat
+      features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [lng - s, lat - s],
+            [lng + s, lat - s],
+            [lng + s, lat + s],
+            [lng - s, lat + s],
+            [lng - s, lat - s],
+          ]],
+        },
+        properties: { opacity, height, color, kind: 'column' },
+      })
+
+      // Glow halo at the base for new observations
+      const glowT = Math.min(age / GLOW_DURATION, 1)
+      if (glowT < 1) {
+        const glowOpacity = 0.7 * (1 - glowT)
+        const gs = GLOW_SIZE * (1 - glowT * 0.5) // shrinks slightly as it fades
+        features.push({
           type: 'Feature',
           geometry: {
             type: 'Polygon',
             coordinates: [[
-              [lng - s, lat - s],
-              [lng + s, lat - s],
-              [lng + s, lat + s],
-              [lng - s, lat + s],
-              [lng - s, lat - s],
+              [lng - gs, lat - gs],
+              [lng + gs, lat - gs],
+              [lng + gs, lat + gs],
+              [lng - gs, lat + gs],
+              [lng - gs, lat - gs],
             ]],
           },
-          properties: { opacity, height, color },
-        }
-      }),
+          properties: {
+            opacity: glowOpacity,
+            height: 5000,
+            color: `rgb(255, 255, ${Math.round(100 + 155 * (1 - glowT))})`,
+            kind: 'glow',
+          },
+        })
+      }
     }
+    return { type: 'FeatureCollection', features }
   }
 
   function syncSource() {
@@ -160,15 +195,31 @@ export default function LiveGlobe() {
       data: buildGeoJSON(),
     })
 
+    // Glow halo layer (rendered first, behind columns)
     map.addLayer({
-      id: 'live-obs-columns',
+      id: 'live-obs-glow',
       type: 'fill-extrusion',
       source: 'live-obs',
+      filter: ['==', ['get', 'kind'], 'glow'],
       paint: {
         'fill-extrusion-color': ['get', 'color'],
         'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 0.8,
+        'fill-extrusion-opacity': ['get', 'opacity'],
+      },
+    })
+
+    // Main columns
+    map.addLayer({
+      id: 'live-obs-columns',
+      type: 'fill-extrusion',
+      source: 'live-obs',
+      filter: ['==', ['get', 'kind'], 'column'],
+      paint: {
+        'fill-extrusion-color': ['get', 'color'],
+        'fill-extrusion-height': ['get', 'height'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': ['get', 'opacity'],
       },
     })
 

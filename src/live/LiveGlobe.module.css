@@ -173,6 +173,44 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* ─── Basemap selector (bottom-center) ─────────────────────────────────── */
+.basemapSelector {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.basemapSelect {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 7px 28px 7px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.5)' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  letter-spacing: 0.02em;
+}
+
+.basemapSelect:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.basemapSelect option {
+  background: #1a1e2e;
+  color: #fff;
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .branding {

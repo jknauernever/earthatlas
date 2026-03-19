@@ -11,23 +11,31 @@ const CAMERA_ROTATE = 'rotate'
 const CAMERA_FLYTO = 'flyto'
 const CAMERA_FIXED = 'fixed'
 
-const DOT_COLOR = '#4ecdc4'            // single color for all dots
-const FADE_DURATION = 5 * 60 * 1000    // 5 minutes to fully fade
-const POLL_INTERVAL = 60000            // fetch new data every 60s
-const ROTATION_SPEED = 0.03            // degrees per frame
-const RENDER_TICK = 1000               // update opacities/heights every 1s
-const MAX_HEIGHT = 200000              // max extrusion height (meters) for newest obs
-const COLUMN_SIZE = 0.12               // half-width of column in degrees (~13km)
+const DOT_COLOR = '#4ecdc4'
+const FADE_DURATION = 5 * 60 * 1000
+const POLL_INTERVAL = 60000
+const ROTATION_SPEED = 0.03
+const RENDER_TICK = 1000
+const MAX_HEIGHT = 200000
+const COLUMN_SIZE = 0.12
+
+const BASEMAPS = {
+  'Satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+  'Satellite (no labels)': 'mapbox://styles/mapbox/satellite-v9',
+  'Dark': 'mapbox://styles/mapbox/dark-v11',
+  'Light': 'mapbox://styles/mapbox/light-v11',
+  'Outdoors': 'mapbox://styles/mapbox/outdoors-v12',
+  'Streets': 'mapbox://styles/mapbox/streets-v12',
+}
 
 export default function LiveGlobe() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const mapReadyRef = useRef(false)
 
-  // Each obs: { id, lng, lat, addedAt, commonName, scientificName, source, ... }
   const observationsRef = useRef([])
   const seenIdsRef = useRef(new Set())
-  const dripQueueRef = useRef([])      // new obs waiting to be dripped onto globe
+  const dripQueueRef = useRef([])
   const dripTimerRef = useRef(null)
   const renderTimerRef = useRef(null)
 
@@ -36,9 +44,12 @@ export default function LiveGlobe() {
   const interactTimeoutRef = useRef(null)
   const flyingRef = useRef(false)
   const flyTimerRef = useRef(null)
+  const pollIntervalRef = useRef(null)
+  const pollCancelledRef = useRef(false)
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
+  const [basemap, setBasemap] = useState('Satellite')
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
 
@@ -47,19 +58,17 @@ export default function LiveGlobe() {
   const sourceFilterRef = useRef(sourceFilter)
   sourceFilterRef.current = sourceFilter
 
-  // ─── Build GeoJSON with age-based height & opacity ──────────────────────
+  // ─── Build GeoJSON with age-based height & opacity ─────────────────────
   function buildGeoJSON() {
     const now = Date.now()
     return {
       type: 'FeatureCollection',
       features: observationsRef.current.map(o => {
         const age = now - o.addedAt
-        // 1.0 when brand new → 0.08 at FADE_DURATION
         const t = Math.min(age / FADE_DURATION, 1)
         const opacity = Math.max(0.08, 1.0 - t * 0.92)
         const height = Math.max(1000, MAX_HEIGHT * (1 - t))
 
-        // Tiny square polygon for fill-extrusion
         const s = COLUMN_SIZE
         const lng = o.lng, lat = o.lat
         return {
@@ -80,21 +89,18 @@ export default function LiveGlobe() {
     }
   }
 
-  // ─── Push current state to map ─────────────────────────────────────────
   function syncSource() {
     const src = mapRef.current?.getSource('live-obs')
     if (!src) return
     src.setData(buildGeoJSON())
   }
 
-  // ─── Expire old observations & refresh display ─────────────────────────
   function tick() {
     const now = Date.now()
     const before = observationsRef.current.length
     observationsRef.current = observationsRef.current.filter(
       o => (now - o.addedAt) < FADE_DURATION
     )
-    // Clean up seenIds for expired obs so they could re-appear if re-fetched
     if (observationsRef.current.length < before) {
       const activeIds = new Set(observationsRef.current.map(o => o.id))
       seenIdsRef.current = activeIds
@@ -112,15 +118,12 @@ export default function LiveGlobe() {
     setSpeciesCount(species.size)
   }
 
-  // ─── Drip a single observation onto the globe ──────────────────────────
   function dripOne() {
     const queue = dripQueueRef.current
     if (queue.length === 0) return
 
     const obs = queue.shift()
-    // Skip if already on globe (shouldn't happen but safety check)
     if (seenIdsRef.current.has(obs.id)) {
-      // Try next one immediately
       if (queue.length > 0) scheduleDrip()
       return
     }
@@ -131,7 +134,6 @@ export default function LiveGlobe() {
     syncSource()
     updateCounts()
 
-    // Schedule next drip
     if (queue.length > 0) scheduleDrip()
   }
 
@@ -139,9 +141,32 @@ export default function LiveGlobe() {
     clearTimeout(dripTimerRef.current)
     const queue = dripQueueRef.current
     if (queue.length === 0) return
-    // Spread remaining queue evenly across the poll interval
     const delay = Math.max(500, POLL_INTERVAL / (queue.length + 1))
     dripTimerRef.current = setTimeout(dripOne, delay)
+  }
+
+  // ─── Add source + layers to map ────────────────────────────────────────
+  function addLayers(map) {
+    if (map.getSource('live-obs')) return
+
+    map.addSource('live-obs', {
+      type: 'geojson',
+      data: buildGeoJSON(),
+    })
+
+    map.addLayer({
+      id: 'live-obs-columns',
+      type: 'fill-extrusion',
+      source: 'live-obs',
+      paint: {
+        'fill-extrusion-color': DOT_COLOR,
+        'fill-extrusion-height': ['get', 'height'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.7,
+      },
+    })
+
+    mapReadyRef.current = true
   }
 
   // ─── Initialize map ────────────────────────────────────────────────────
@@ -151,7 +176,7 @@ export default function LiveGlobe() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: BASEMAPS[basemap],
       center: [10, 20],
       zoom: 1.8,
       projection: 'globe',
@@ -168,33 +193,11 @@ export default function LiveGlobe() {
         'space-color': 'rgb(6, 8, 16)',
         'star-intensity': 0.7,
       })
+      addLayers(map)
     })
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
-    map.on('load', () => {
-      map.addSource('live-obs', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      })
-
-      // 3D columns — height and opacity driven by age
-      map.addLayer({
-        id: 'live-obs-columns',
-        type: 'fill-extrusion',
-        source: 'live-obs',
-        paint: {
-          'fill-extrusion-color': DOT_COLOR,
-          'fill-extrusion-height': ['get', 'height'],
-          'fill-extrusion-base': 0,
-          'fill-extrusion-opacity': 0.7,
-        },
-      })
-
-      mapReadyRef.current = true
-    })
-
-    // Track user interaction for rotation pause
     const onInteractStart = () => {
       interactingRef.current = true
       clearTimeout(interactTimeoutRef.current)
@@ -220,12 +223,35 @@ export default function LiveGlobe() {
       clearTimeout(dripTimerRef.current)
       clearInterval(renderTimerRef.current)
       clearTimeout(flyTimerRef.current)
+      clearInterval(pollIntervalRef.current)
       map.remove()
       mapRef.current = null
     }
   }, [])
 
-  // ─── Render tick: update opacities & expire old dots ───────────────────
+  // ─── Basemap change ────────────────────────────────────────────────────
+  const basemapMountRef = useRef(true)
+  useEffect(() => {
+    if (basemapMountRef.current) { basemapMountRef.current = false; return }
+    const map = mapRef.current
+    if (!map) return
+    // setStyle triggers style.load which re-adds source/layers via addLayers
+    mapReadyRef.current = false
+    map.setStyle(BASEMAPS[basemap])
+  }, [basemap])
+
+  // ─── Override body styles for fullscreen ────────────────────────────────
+  useEffect(() => {
+    const prev = document.body.style.cssText
+    document.body.style.cssText = 'margin:0;padding:0;overflow:hidden;background:#0a0e17;min-height:0;'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.cssText = prev
+      document.documentElement.style.overflow = ''
+    }
+  }, [])
+
+  // ─── Render tick ───────────────────────────────────────────────────────
   useEffect(() => {
     renderTimerRef.current = setInterval(tick, RENDER_TICK)
     return () => clearInterval(renderTimerRef.current)
@@ -275,7 +301,6 @@ export default function LiveGlobe() {
         duration: 3000,
         essential: true,
       })
-      // 3s fly + 2s dwell
       flyTimerRef.current = setTimeout(flyToNext, 5000)
     }
 
@@ -291,13 +316,12 @@ export default function LiveGlobe() {
 
   // ─── Polling loop ──────────────────────────────────────────────────────
   useEffect(() => {
-    let cancelled = false
-    let pollInterval = null
+    pollCancelledRef.current = false
 
     function waitForMap(cb) {
       if (mapReadyRef.current) { cb(); return }
       const check = setInterval(() => {
-        if (cancelled) { clearInterval(check); return }
+        if (pollCancelledRef.current) { clearInterval(check); return }
         if (mapReadyRef.current) { clearInterval(check); cb() }
       }, 100)
     }
@@ -305,28 +329,23 @@ export default function LiveGlobe() {
     async function poll() {
       try {
         const observations = await fetchAllRecent()
-        if (cancelled) return
+        if (pollCancelledRef.current) return
 
-        // Apply source filter
         const filtered = sourceFilterRef.current === 'All'
           ? observations
           : observations.filter(o => o.source === sourceFilterRef.current)
 
-        // Find new observations not already on globe
         const newObs = filtered.filter(o => !seenIdsRef.current.has(o.id))
 
         if (observationsRef.current.length === 0 && newObs.length === 0) {
-          // Very first load — drip all fetched observations in quickly
           dripQueueRef.current = [...filtered]
-          // Fast initial drip: ~200ms apart
           const fastDrip = () => {
-            if (cancelled || dripQueueRef.current.length === 0) return
+            if (pollCancelledRef.current || dripQueueRef.current.length === 0) return
             dripOne()
             dripTimerRef.current = setTimeout(fastDrip, 200)
           }
           fastDrip()
         } else if (newObs.length > 0) {
-          // Subsequent polls — queue new obs and spread them out
           dripQueueRef.current = [...dripQueueRef.current, ...newObs]
           scheduleDrip()
         }
@@ -338,14 +357,14 @@ export default function LiveGlobe() {
     }
 
     waitForMap(() => {
-      if (cancelled) return
+      if (pollCancelledRef.current) return
       poll()
-      pollInterval = setInterval(poll, POLL_INTERVAL)
+      pollIntervalRef.current = setInterval(poll, POLL_INTERVAL)
     })
 
     return () => {
-      cancelled = true
-      clearInterval(pollInterval)
+      pollCancelledRef.current = true
+      clearInterval(pollIntervalRef.current)
       clearTimeout(dripTimerRef.current)
     }
   }, [])
@@ -355,7 +374,6 @@ export default function LiveGlobe() {
   useEffect(() => {
     if (filterMountRef.current) { filterMountRef.current = false; return }
 
-    // Clear everything
     observationsRef.current = []
     seenIdsRef.current.clear()
     dripQueueRef.current = []
@@ -364,7 +382,6 @@ export default function LiveGlobe() {
     setObsCount(0)
     setSpeciesCount(0)
 
-    // Re-fetch and drip
     fetchAllRecent().then(observations => {
       const filtered = sourceFilter === 'All'
         ? observations
@@ -435,6 +452,19 @@ export default function LiveGlobe() {
             {src}
           </button>
         ))}
+      </div>
+
+      {/* Basemap selector */}
+      <div className={styles.basemapSelector}>
+        <select
+          className={styles.basemapSelect}
+          value={basemap}
+          onChange={e => setBasemap(e.target.value)}
+        >
+          {Object.keys(BASEMAPS).map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
       </div>
     </div>
   )

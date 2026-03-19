@@ -192,7 +192,7 @@ export default function LiveGlobe() {
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
-  const [basemap, setBasemap] = useState('Mapbox Dark')
+  const [basemap, setBasemap] = useState('NASA Blue Marble')
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
   const [photoOverlays, setPhotoOverlays] = useState([]) // { id, x, y, opacity, obs }

@@ -29,23 +29,7 @@ const BASEMAPS = {
     attribution: '&copy; NASA GIBS',
     maxzoom: 8,
     paint: {
-      'raster-brightness-min': 0.15,
-      'raster-brightness-max': 1.0,
-      'raster-saturation': 0.2,
-      'raster-contrast': 0.1,
-      'raster-opacity': 0.9,
-    },
-  },
-  'NASA Blue Marble (Next Gen)': {
-    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'],
-    attribution: '&copy; NASA GIBS',
-    maxzoom: 8,
-    paint: {
-      'raster-brightness-min': 0.15,
-      'raster-brightness-max': 1.0,
-      'raster-saturation': 0.2,
-      'raster-contrast': 0.1,
-      'raster-opacity': 0.9,
+      'raster-brightness-min': 0.13,
     },
   },
   'ESRI Ocean': {

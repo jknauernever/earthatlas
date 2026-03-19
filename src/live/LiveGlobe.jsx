@@ -5,6 +5,7 @@ import { fetchAllRecent } from './liveService'
 import styles from './LiveGlobe.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
 
 // ─── Constants ────────────────────────────────────────────────────────────
 const CAMERA_ROTATE = 'rotate'
@@ -58,17 +59,17 @@ const BASEMAPS = {
   },
   // ── Stadia ──
   'Stadia Alidade Satellite': {
-    tiles: ['https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}@2x.jpg'],
+    tiles: [`https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}@2x.jpg?api_key=${STADIA_KEY}`],
     attribution: '&copy; Stadia Maps',
     tileSize: 512,
   },
   'Stadia Stamen Terrain': {
-    tiles: ['https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}@2x.png'],
+    tiles: [`https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
     attribution: '&copy; Stadia Maps',
     tileSize: 512,
   },
   'Stadia Dark': {
-    tiles: ['https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}@2x.png'],
+    tiles: [`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}@2x.png?api_key=${STADIA_KEY}`],
     attribution: '&copy; Stadia Maps',
     tileSize: 512,
   },

@@ -70,6 +70,29 @@ Each subsite provides:
 - **Per-species seasonal chart** — click a species to see its specific monthly activity pattern
 - **Time slider** — filter displayed sightings by date range within the loaded data
 
+### Live Globe — Real-Time Observation Visualizer
+
+The live globe at [earthatlas.org/live](https://earthatlas.org/live) displays a real-time 3D globe showing biodiversity observations as they are reported worldwide.
+
+- **Mapbox GL globe projection** with dark basemap and atmospheric fog/stars
+- **Real-time polling** — fetches recent observations from iNaturalist and eBird every 60 seconds
+- **Drip-in animation** — new observations appear one at a time with staggered timing rather than all at once
+- **Orange dot markers** — bright and opaque when new, fading to near-transparent over 5 minutes before disappearing
+- **Yellow glow** — new observations pulse with a yellow halo for the first 5 seconds
+- **Photo thumbnails** — observations with photos show a 50x50px thumbnail above their dot (front-side of globe only), with hover-to-expand cards showing species name, scientific name, location, and source
+- **Camera modes:**
+  - **Rotate** — slow continuous rotation (default)
+  - **Fly-to** — automatically flies to random observations every 5 seconds
+  - **Fixed** — user-controlled pan/zoom only
+- **Source filter** — toggle between All, iNaturalist, and eBird
+- **Basemap selector** — Mapbox styles (Dark, Satellite, Light, Outdoors, Streets) plus third-party tilesets (ESRI, CartoDB, Stadia, Google)
+- **Live stats** — observation count and unique species count displayed in real time
+
+**Key files:**
+- `src/live/LiveGlobe.jsx` — main component (map init, data polling, rendering)
+- `src/live/LiveGlobe.module.css` — layout and UI overlay styles
+- `src/live/liveService.js` — data fetching from iNaturalist and eBird APIs, with Macaulay Library photo lookup for birds
+
 ### Species Detail Pages
 
 Each species has a dedicated page at `/species/:taxonId` with:
@@ -346,6 +369,11 @@ earthatlas/
 │   │       ├── SeasonChart.jsx     Monthly distribution bar chart
 │   │       ├── LocationSearch.jsx  Location autocomplete
 │   │       └── TimeSlider.jsx      Date range / month scrubber
+│   │
+│   ├── live/                       Live globe visualization
+│   │   ├── LiveGlobe.jsx           Real-time 3D globe (/live)
+│   │   ├── LiveGlobe.module.css    Globe layout and overlay styles
+│   │   └── liveService.js          iNaturalist + eBird polling, photo lookup
 │   │
 │   ├── species/                    Species detail pages
 │   │   ├── SpeciesDetailPage.jsx   Single-species page (/species/:taxonId)

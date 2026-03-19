@@ -37,6 +37,87 @@ body {
     radial-gradient(ellipse at 80% 100%, rgba(184, 132, 42, 0.06) 0%, transparent 50%);
 }
 
+/* ─── Live globe photo markers ─── */
+.live-photo-marker {
+  position: relative;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.live-photo-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 106, 0, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  display: block;
+}
+
+.live-photo-card {
+  display: none;
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  background: rgba(15, 18, 28, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.live-photo-card.visible {
+  display: block;
+}
+
+.live-photo-card-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.live-photo-card-info {
+  padding: 10px 12px;
+}
+
+.live-photo-card-name {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.live-photo-card-sci {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.live-photo-card-loc {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 2px;
+}
+
+.live-photo-card-source {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #ff6a00;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ─── Shared button base ─── */
 .btn {
   font-family: var(--font-mono);

@@ -142,6 +142,8 @@ export default function LiveGlobe() {
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
 
+  const photoMarkersRef = useRef(new Map()) // id → mapboxgl.Marker
+
   const cameraModeRef = useRef(cameraMode)
   cameraModeRef.current = cameraMode
   const sourceFilterRef = useRef(sourceFilter)
@@ -177,6 +179,72 @@ export default function LiveGlobe() {
     src.setData(buildGeoJSON())
   }
 
+  // ─── Photo markers (HTML overlays for observations with photos) ───────
+  function createPhotoMarker(obs) {
+    const map = mapRef.current
+    if (!map || !obs.photoUrl) return
+
+    const el = document.createElement('div')
+    el.className = 'live-photo-marker'
+
+    const thumb = document.createElement('img')
+    thumb.src = obs.photoUrl
+    thumb.className = 'live-photo-thumb'
+    el.appendChild(thumb)
+
+    // Expanded card (hidden by default)
+    const card = document.createElement('div')
+    card.className = 'live-photo-card'
+    card.innerHTML = `
+      <img src="${obs.photoUrl.replace('/square', '/medium').replace('/small', '/medium')}" class="live-photo-card-img" />
+      <div class="live-photo-card-info">
+        <div class="live-photo-card-name">${obs.commonName || 'Unknown'}</div>
+        ${obs.scientificName ? `<div class="live-photo-card-sci">${obs.scientificName}</div>` : ''}
+        ${obs.location ? `<div class="live-photo-card-loc">${obs.location}</div>` : ''}
+        <div class="live-photo-card-source">${obs.source}</div>
+      </div>
+    `
+    el.appendChild(card)
+
+    el.addEventListener('mouseenter', () => card.classList.add('visible'))
+    el.addEventListener('mouseleave', () => card.classList.remove('visible'))
+
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([obs.lng, obs.lat])
+      .addTo(map)
+
+    photoMarkersRef.current.set(obs.id, marker)
+  }
+
+  function syncPhotoMarkers() {
+    const activeIds = new Set(observationsRef.current.map(o => o.id))
+
+    // Remove markers for expired observations
+    for (const [id, marker] of photoMarkersRef.current) {
+      if (!activeIds.has(id)) {
+        marker.remove()
+        photoMarkersRef.current.delete(id)
+      }
+    }
+
+    // Add markers for new observations with photos
+    for (const obs of observationsRef.current) {
+      if (obs.photoUrl && !photoMarkersRef.current.has(obs.id)) {
+        createPhotoMarker(obs)
+      }
+    }
+
+    // Update opacity based on age
+    const now = Date.now()
+    for (const obs of observationsRef.current) {
+      const marker = photoMarkersRef.current.get(obs.id)
+      if (!marker) continue
+      const t = Math.min((now - obs.addedAt) / FADE_DURATION, 1)
+      const opacity = Math.max(0.1, 1.0 - t * 0.9)
+      marker.getElement().style.opacity = opacity
+    }
+  }
+
   function tick() {
     const now = Date.now()
     const before = observationsRef.current.length
@@ -188,6 +256,7 @@ export default function LiveGlobe() {
       seenIdsRef.current = activeIds
     }
     syncSource()
+    syncPhotoMarkers()
     updateCounts()
   }
 
@@ -214,6 +283,7 @@ export default function LiveGlobe() {
     seenIdsRef.current.add(obs.id)
     observationsRef.current.push(obs)
     syncSource()
+    syncPhotoMarkers()
     updateCounts()
 
     if (queue.length > 0) scheduleDrip()
@@ -486,6 +556,9 @@ export default function LiveGlobe() {
     seenIdsRef.current.clear()
     dripQueueRef.current = []
     clearTimeout(dripTimerRef.current)
+    // Remove all photo markers
+    for (const marker of photoMarkersRef.current.values()) marker.remove()
+    photoMarkersRef.current.clear()
     syncSource()
     setObsCount(0)
     setSpeciesCount(0)

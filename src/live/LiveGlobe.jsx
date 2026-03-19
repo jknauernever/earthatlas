@@ -25,12 +25,12 @@ const DOT_RADIUS = 4
 const BASEMAPS = {
   // ── Featured ──
   'NASA Blue Marble': {
-    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default//EPSG3857_500m/{z}/{y}/{x}.jpeg'],
+    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'],
     attribution: '&copy; NASA GIBS',
     maxzoom: 8,
   },
   'NASA Blue Marble (Next Gen)': {
-    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default//EPSG3857_500m/{z}/{y}/{x}.jpeg'],
+    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'],
     attribution: '&copy; NASA GIBS',
     maxzoom: 8,
   },

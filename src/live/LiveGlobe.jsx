@@ -15,7 +15,9 @@ const DOT_COLOR = '#4ecdc4'            // single color for all dots
 const FADE_DURATION = 5 * 60 * 1000    // 5 minutes to fully fade
 const POLL_INTERVAL = 60000            // fetch new data every 60s
 const ROTATION_SPEED = 0.03            // degrees per frame
-const RENDER_TICK = 1000               // update dot opacities every 1s
+const RENDER_TICK = 1000               // update opacities/heights every 1s
+const MAX_HEIGHT = 200000              // max extrusion height (meters) for newest obs
+const COLUMN_SIZE = 0.12               // half-width of column in degrees (~13km)
 
 export default function LiveGlobe() {
   const containerRef = useRef(null)
@@ -45,7 +47,7 @@ export default function LiveGlobe() {
   const sourceFilterRef = useRef(sourceFilter)
   sourceFilterRef.current = sourceFilter
 
-  // ─── Build GeoJSON with age-based opacity ──────────────────────────────
+  // ─── Build GeoJSON with age-based height & opacity ──────────────────────
   function buildGeoJSON() {
     const now = Date.now()
     return {
@@ -53,11 +55,26 @@ export default function LiveGlobe() {
       features: observationsRef.current.map(o => {
         const age = now - o.addedAt
         // 1.0 when brand new → 0.08 at FADE_DURATION
-        const opacity = Math.max(0.08, 1.0 - (age / FADE_DURATION) * 0.92)
+        const t = Math.min(age / FADE_DURATION, 1)
+        const opacity = Math.max(0.08, 1.0 - t * 0.92)
+        const height = Math.max(1000, MAX_HEIGHT * (1 - t))
+
+        // Tiny square polygon for fill-extrusion
+        const s = COLUMN_SIZE
+        const lng = o.lng, lat = o.lat
         return {
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: [o.lng, o.lat] },
-          properties: { opacity },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [lng - s, lat - s],
+              [lng + s, lat - s],
+              [lng + s, lat + s],
+              [lng - s, lat + s],
+              [lng - s, lat - s],
+            ]],
+          },
+          properties: { opacity, height },
         }
       }),
     }
@@ -140,6 +157,7 @@ export default function LiveGlobe() {
       projection: 'globe',
       attributionControl: false,
       logoPosition: 'bottom-right',
+      pitch: 20,
     })
 
     map.on('style.load', () => {
@@ -160,31 +178,16 @@ export default function LiveGlobe() {
         data: { type: 'FeatureCollection', features: [] },
       })
 
-      // Outer glow — uses per-feature opacity
+      // 3D columns — height and opacity driven by age
       map.addLayer({
-        id: 'live-obs-glow',
-        type: 'circle',
+        id: 'live-obs-columns',
+        type: 'fill-extrusion',
         source: 'live-obs',
         paint: {
-          'circle-radius': 16,
-          'circle-color': DOT_COLOR,
-          'circle-opacity': ['*', ['get', 'opacity'], 0.15],
-          'circle-blur': 1,
-        },
-      })
-
-      // Main dot — uses per-feature opacity
-      map.addLayer({
-        id: 'live-obs-dots',
-        type: 'circle',
-        source: 'live-obs',
-        paint: {
-          'circle-radius': 4,
-          'circle-color': DOT_COLOR,
-          'circle-opacity': ['get', 'opacity'],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 0.8,
-          'circle-stroke-opacity': ['*', ['get', 'opacity'], 0.5],
+          'fill-extrusion-color': DOT_COLOR,
+          'fill-extrusion-height': ['get', 'height'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.7,
         },
       })
 

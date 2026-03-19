@@ -183,12 +183,12 @@ export default function LiveGlobe() {
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: BASEMAPS[basemap],
-      center: [10, 20],
+      center: [10, 40],
       zoom: 1.8,
       projection: 'globe',
       attributionControl: false,
       logoPosition: 'bottom-right',
-      pitch: 20,
+      pitch: 0,
     })
 
     map.on('style.load', () => {

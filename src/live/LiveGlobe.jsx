@@ -32,6 +32,14 @@ const BASEMAPS = {
       'raster-brightness-min': 0.13,
     },
   },
+  'NASA Blue Marble (Next Gen)': {
+    tiles: ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'],
+    attribution: '&copy; NASA GIBS',
+    maxzoom: 8,
+    paint: {
+      'raster-brightness-min': 0.13,
+    },
+  },
   'ESRI Ocean': {
     tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'],
     attribution: '&copy; Esri',

@@ -23,6 +23,7 @@ import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import NewsArticlePage from './news/NewsArticlePage.jsx'
 import AdminApp from './admin/AdminApp.jsx'
+import LiveGlobe from './live/LiveGlobe.jsx'
 import './index.css'
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
@@ -57,6 +58,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/birds" element={<ExploreApp config={birdsConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
           <Route path="/news/:species/:slug" element={<NewsArticlePage />} />
+          <Route path="/live" element={<LiveGlobe />} />
           <Route path="/admin" element={<AdminApp />} />
           <Route path="/*" element={<App />} />
         </Routes>

@@ -190,11 +190,11 @@ export default function LiveGlobe() {
         properties: { height, color, kind: 'column' },
       })
 
-      // Glow halo at the base for new observations
+      // Glow halo at the base for new observations (flat, wide)
       const glowT = Math.min(age / GLOW_DURATION, 1)
       if (glowT < 1) {
-        const glowOpacity = 0.7 * (1 - glowT)
-        const gs = GLOW_SIZE * (1 - glowT * 0.5) // shrinks slightly as it fades
+        const glowOpacity = 0.5 * (1 - glowT)
+        const gs = GLOW_SIZE * (1 - glowT * 0.5)
         const glowB = Math.round(100 + 155 * (1 - glowT))
         features.push({
           type: 'Feature',
@@ -209,7 +209,7 @@ export default function LiveGlobe() {
             ]],
           },
           properties: {
-            height: 5000,
+            height: 100,
             color: `rgba(255, 255, ${glowB}, ${glowOpacity.toFixed(3)})`,
             kind: 'glow',
           },

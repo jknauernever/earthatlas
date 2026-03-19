@@ -180,6 +180,21 @@ export default function LiveGlobe() {
   }
 
   // ─── Photo markers (HTML overlays for observations with photos) ───────
+
+  // Check if a point is on the front side of the globe
+  function isOnFrontSide(lngLat) {
+    const map = mapRef.current
+    if (!map) return false
+    const center = map.getCenter()
+    const toRad = d => d * Math.PI / 180
+    const dLng = toRad(lngLat[0] - center.lng)
+    const lat1 = toRad(center.lat)
+    const lat2 = toRad(lngLat[1])
+    const cosAngle = Math.sin(lat1) * Math.sin(lat2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLng)
+    return cosAngle > 0.1 // slight margin to hide near edges
+  }
+
   function createPhotoMarker(obs) {
     const map = mapRef.current
     if (!map || !obs.photoUrl) return
@@ -209,20 +224,24 @@ export default function LiveGlobe() {
     el.addEventListener('mouseenter', () => card.classList.add('visible'))
     el.addEventListener('mouseleave', () => card.classList.remove('visible'))
 
+    const lngLat = [obs.lng, obs.lat]
+    const visible = isOnFrontSide(lngLat)
+    el.style.display = visible ? '' : 'none'
+
     const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, -8] })
-      .setLngLat([obs.lng, obs.lat])
+      .setLngLat(lngLat)
       .addTo(map)
 
-    photoMarkersRef.current.set(obs.id, marker)
+    photoMarkersRef.current.set(obs.id, { marker, lngLat })
   }
 
   function syncPhotoMarkers() {
     const activeIds = new Set(observationsRef.current.map(o => o.id))
 
     // Remove markers for expired observations
-    for (const [id, marker] of photoMarkersRef.current) {
+    for (const [id, entry] of photoMarkersRef.current) {
       if (!activeIds.has(id)) {
-        marker.remove()
+        entry.marker.remove()
         photoMarkersRef.current.delete(id)
       }
     }
@@ -234,14 +253,24 @@ export default function LiveGlobe() {
       }
     }
 
-    // Update opacity based on age
+    updatePhotoMarkerVisibility()
+  }
+
+  function updatePhotoMarkerVisibility() {
     const now = Date.now()
-    for (const obs of observationsRef.current) {
-      const marker = photoMarkersRef.current.get(obs.id)
-      if (!marker) continue
-      const t = Math.min((now - obs.addedAt) / FADE_DURATION, 1)
-      const opacity = Math.max(0.1, 1.0 - t * 0.9)
-      marker.getElement().style.opacity = opacity
+    const obsMap = new Map(observationsRef.current.map(o => [o.id, o]))
+
+    for (const [id, entry] of photoMarkersRef.current) {
+      const el = entry.marker.getElement()
+      const visible = isOnFrontSide(entry.lngLat)
+      el.style.display = visible ? '' : 'none'
+
+      // Update opacity based on age
+      const obs = obsMap.get(id)
+      if (obs && visible) {
+        const t = Math.min((now - obs.addedAt) / FADE_DURATION, 1)
+        el.style.opacity = Math.max(0.1, 1.0 - t * 0.9)
+      }
     }
   }
 
@@ -384,6 +413,9 @@ export default function LiveGlobe() {
     map.on('touchend', onInteractEnd)
     map.on('wheel', () => { onInteractStart(); onInteractEnd() })
 
+    // Hide photo markers on the back side of the globe during render
+    map.on('render', () => updatePhotoMarkerVisibility())
+
     mapRef.current = map
 
     return () => {
@@ -393,6 +425,8 @@ export default function LiveGlobe() {
       clearInterval(renderTimerRef.current)
       clearTimeout(flyTimerRef.current)
       clearInterval(pollIntervalRef.current)
+      for (const entry of photoMarkersRef.current.values()) entry.marker.remove()
+      photoMarkersRef.current.clear()
       map.remove()
       mapRef.current = null
     }

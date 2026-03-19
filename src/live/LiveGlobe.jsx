@@ -11,7 +11,8 @@ const CAMERA_ROTATE = 'rotate'
 const CAMERA_FLYTO = 'flyto'
 const CAMERA_FIXED = 'fixed'
 
-const DOT_COLOR = '#4ecdc4'
+const COLOR_NEW = '#ff6a00'       // bright orange for new observations
+const COLOR_OLD = '#8b3a00'       // dark orange for fading observations
 const FADE_DURATION = 5 * 60 * 1000
 const POLL_INTERVAL = 60000
 const ROTATION_SPEED = 0.03
@@ -68,6 +69,11 @@ export default function LiveGlobe() {
         const t = Math.min(age / FADE_DURATION, 1)
         const opacity = Math.max(0.08, 1.0 - t * 0.92)
         const height = Math.max(1000, MAX_HEIGHT * (1 - t))
+        // Interpolate bright orange → dark orange
+        const r = Math.round(255 - t * (255 - 139))
+        const g = Math.round(106 - t * (106 - 58))
+        const b = Math.round(0)
+        const color = `rgb(${r},${g},${b})`
 
         const s = COLUMN_SIZE
         const lng = o.lng, lat = o.lat
@@ -83,7 +89,7 @@ export default function LiveGlobe() {
               [lng - s, lat - s],
             ]],
           },
-          properties: { opacity, height },
+          properties: { opacity, height, color },
         }
       }),
     }
@@ -159,10 +165,10 @@ export default function LiveGlobe() {
       type: 'fill-extrusion',
       source: 'live-obs',
       paint: {
-        'fill-extrusion-color': DOT_COLOR,
+        'fill-extrusion-color': ['get', 'color'],
         'fill-extrusion-height': ['get', 'height'],
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 0.7,
+        'fill-extrusion-opacity': 0.8,
       },
     })
 

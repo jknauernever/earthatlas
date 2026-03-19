@@ -61,8 +61,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #4ecdc4;
-  box-shadow: 0 0 6px #4ecdc4, 0 0 12px rgba(78, 205, 196, 0.4);
+  background: #ff6a00;
+  box-shadow: 0 0 6px #ff6a00, 0 0 12px rgba(255, 106, 0, 0.4);
   animation: livePulse 2s ease-in-out infinite;
 }
 

@@ -45,6 +45,7 @@ export default function LiveGlobe() {
   const interactingRef = useRef(false)
   const interactTimeoutRef = useRef(null)
   const seenIdsRef = useRef(new Set())
+  const mapReadyRef = useRef(false)
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
@@ -144,6 +145,8 @@ export default function LiveGlobe() {
           'circle-stroke-opacity': 0.4,
         },
       })
+
+      mapReadyRef.current = true
     })
 
     // Track user interaction for rotation pause
@@ -257,44 +260,74 @@ export default function LiveGlobe() {
   useEffect(() => {
     let cancelled = false
 
+    // Wait for map source to be ready before fetching data
+    function waitForMap(cb) {
+      if (mapReadyRef.current) { cb(); return }
+      const check = setInterval(() => {
+        if (cancelled) { clearInterval(check); return }
+        if (mapReadyRef.current) { clearInterval(check); cb() }
+      }, 100)
+    }
+
     async function poll() {
       try {
         const observations = await fetchAllRecent()
         if (cancelled) return
 
+        console.log(`[LiveGlobe] Fetched ${observations.length} observations`)
+
         const newObs = observations.filter(o => !seenIdsRef.current.has(o.id))
 
-        if (observationsRef.current.length === 0 && newObs.length === 0) {
-          // First load — seed with stagger
+        if (observationsRef.current.length === 0) {
+          // First load — seed all at once (no stagger for now, just get dots on screen)
           const initial = observations.slice(0, MAX_OBS)
-          animQueueRef.current = [...animQueueRef.current, ...initial]
-          clearTimeout(animTimerRef.current)
-          const fastProcess = () => {
-            const q = animQueueRef.current
-            if (q.length === 0 || cancelled) return
-            addObservation(q.shift())
-            animTimerRef.current = setTimeout(fastProcess, 300)
+          for (const o of initial) {
+            seenIdsRef.current.add(o.id)
+            observationsRef.current.push(o)
           }
-          fastProcess()
+          syncSource()
+          // Update counts
+          const species = new Set()
+          observationsRef.current.forEach(o => {
+            if (o.scientificName) species.add(o.scientificName)
+          })
+          setObsCount(observationsRef.current.length)
+          setSpeciesCount(species.size)
+          console.log(`[LiveGlobe] Seeded ${observationsRef.current.length} dots on globe`)
         } else if (newObs.length > 0) {
-          animQueueRef.current = [...animQueueRef.current, ...newObs]
-          if (animQueueRef.current.length === newObs.length) {
-            clearTimeout(animTimerRef.current)
-            processQueue()
+          // Subsequent polls — add new observations
+          for (const o of newObs) {
+            seenIdsRef.current.add(o.id)
+            if (observationsRef.current.length >= MAX_OBS) {
+              observationsRef.current.shift()
+            }
+            observationsRef.current.push(o)
           }
+          syncSource()
+          const species = new Set()
+          observationsRef.current.forEach(o => {
+            if (o.scientificName) species.add(o.scientificName)
+          })
+          setObsCount(observationsRef.current.length)
+          setSpeciesCount(species.size)
+          console.log(`[LiveGlobe] Added ${newObs.length} new observations`)
         }
       } catch (err) {
         console.error('[LiveGlobe] Poll error:', err)
       }
     }
 
-    poll()
-    const interval = setInterval(poll, POLL_INTERVAL)
+    waitForMap(() => {
+      if (cancelled) return
+      poll()
+      const interval = setInterval(poll, POLL_INTERVAL)
+      // Store cleanup ref
+      animTimerRef.current = interval
+    })
 
     return () => {
       cancelled = true
-      clearInterval(interval)
-      clearTimeout(animTimerRef.current)
+      clearInterval(animTimerRef.current)
     }
   }, [addObservation])
 

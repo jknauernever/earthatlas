@@ -219,6 +219,7 @@ export default function App() {
       if (dataSource === 'All') {
         const hasSpeciesFilter = !!selectedSpecies
         const canFilterEBird = !isAnywhere && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
+          && (!iconicFilter || iconicFilter === 'Aves')
         const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
 
         const [inatData, ebirdData, gbifData] = await Promise.all([

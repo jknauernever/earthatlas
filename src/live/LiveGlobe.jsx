@@ -149,34 +149,122 @@ const BASEMAPS = {
 }
 
 // Build a Mapbox style object for custom XYZ tile sources
-function buildCustomStyle(config) {
+function buildCustomStyle(config, labels = false) {
+  const sources = {
+    'custom-tiles': {
+      type: 'raster',
+      tiles: config.tiles,
+      tileSize: config.tileSize || 256,
+      attribution: config.attribution || '',
+      maxzoom: config.maxzoom || 19,
+    },
+  }
+
+  const layers = [
+    {
+      id: 'custom-tiles-layer',
+      type: 'raster',
+      source: 'custom-tiles',
+      paint: config.paint || {},
+    },
+  ]
+
+  if (labels) {
+    sources['mapbox-streets'] = {
+      type: 'vector',
+      url: 'mapbox://mapbox.mapbox-streets-v8',
+    }
+
+    // Country boundaries
+    layers.push({
+      id: 'admin-boundaries',
+      type: 'line',
+      source: 'mapbox-streets',
+      'source-layer': 'admin',
+      filter: ['==', ['get', 'admin_level'], 0],
+      paint: {
+        'line-color': 'rgba(255, 255, 255, 0.3)',
+        'line-width': 1,
+      },
+    })
+
+    // Country labels
+    layers.push({
+      id: 'country-labels',
+      type: 'symbol',
+      source: 'mapbox-streets',
+      'source-layer': 'place_label',
+      filter: ['==', ['get', 'class'], 'country'],
+      layout: {
+        'text-field': ['get', 'name_en'],
+        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14, 8, 18],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.1,
+        'text-max-width': 8,
+      },
+      paint: {
+        'text-color': 'rgba(255, 255, 255, 0.7)',
+        'text-halo-color': 'rgba(0, 0, 0, 0.6)',
+        'text-halo-width': 1.5,
+      },
+    })
+
+    // State/region labels (visible when zoomed in)
+    layers.push({
+      id: 'state-labels',
+      type: 'symbol',
+      source: 'mapbox-streets',
+      'source-layer': 'place_label',
+      filter: ['==', ['get', 'class'], 'state'],
+      minzoom: 3,
+      layout: {
+        'text-field': ['get', 'name_en'],
+        'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 9, 6, 12],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': 'rgba(255, 255, 255, 0.45)',
+        'text-halo-color': 'rgba(0, 0, 0, 0.5)',
+        'text-halo-width': 1,
+      },
+    })
+
+    // City labels (visible when more zoomed in)
+    layers.push({
+      id: 'city-labels',
+      type: 'symbol',
+      source: 'mapbox-streets',
+      'source-layer': 'place_label',
+      filter: ['in', ['get', 'class'], ['literal', ['city', 'town']]],
+      minzoom: 4,
+      layout: {
+        'text-field': ['get', 'name_en'],
+        'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 8, 8, 13],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': 'rgba(255, 255, 255, 0.4)',
+        'text-halo-color': 'rgba(0, 0, 0, 0.5)',
+        'text-halo-width': 1,
+      },
+    })
+  }
+
   return {
     version: 8,
     glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
-    sources: {
-      'custom-tiles': {
-        type: 'raster',
-        tiles: config.tiles,
-        tileSize: config.tileSize || 256,
-        attribution: config.attribution || '',
-        maxzoom: config.maxzoom || 19,
-      },
-    },
-    layers: [
-      {
-        id: 'custom-tiles-layer',
-        type: 'raster',
-        source: 'custom-tiles',
-        paint: config.paint || {},
-      },
-    ],
+    sources,
+    layers,
   }
 }
 
-function getStyle(basemap) {
+function getStyle(basemap, labels = false) {
   const entry = BASEMAPS[basemap]
   if (typeof entry === 'string') return entry
-  return buildCustomStyle(entry)
+  return buildCustomStyle(entry, labels)
 }
 
 export default function LiveGlobe() {
@@ -197,10 +285,13 @@ export default function LiveGlobe() {
   const flyTimerRef = useRef(null)
   const pollIntervalRef = useRef(null)
   const pollCancelledRef = useRef(false)
+  const viewRefetchRef = useRef(null)
+  const lastViewRef = useRef(null)
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
   const [sourceFilter, setSourceFilter] = useState('All')
   const [basemap, setBasemap] = useState('NASA Blue Marble')
+  const [showLabels, setShowLabels] = useState(false)
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
   const [photoOverlays, setPhotoOverlays] = useState([]) // { id, x, y, opacity, obs }
@@ -210,6 +301,23 @@ export default function LiveGlobe() {
   cameraModeRef.current = cameraMode
   const sourceFilterRef = useRef(sourceFilter)
   sourceFilterRef.current = sourceFilter
+
+  function getMapView() {
+    const map = mapRef.current
+    if (!map) return undefined
+    const c = map.getCenter()
+    const b = map.getBounds()
+    return {
+      center: { lat: c.lat, lng: c.lng },
+      zoom: map.getZoom(),
+      bounds: {
+        swlat: b.getSouth(),
+        swlng: b.getWest(),
+        nelat: b.getNorth(),
+        nelng: b.getEast(),
+      },
+    }
+  }
 
   // ─── Build GeoJSON point features with age-based opacity + glow ────────
   function buildGeoJSON() {
@@ -380,7 +488,7 @@ export default function LiveGlobe() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: getStyle(basemap),
+      style: getStyle(basemap, showLabels),
       center: [10, 40],
       zoom: 1.8,
       projection: 'globe',
@@ -422,6 +530,53 @@ export default function LiveGlobe() {
     // Update photo overlay positions as globe moves
     map.on('move', () => updatePhotoOverlays())
 
+    // Detect significant view changes and re-fetch
+    map.on('moveend', () => {
+      const c = map.getCenter()
+      const z = map.getZoom()
+      const last = lastViewRef.current
+      if (last) {
+        const dLat = Math.abs(c.lat - last.lat)
+        const dLng = Math.abs(c.lng - last.lng)
+        const dZoom = Math.abs(z - last.zoom)
+        // Only re-fetch if the view changed significantly
+        if (dLat < 5 && dLng < 5 && dZoom < 0.5) return
+      }
+      lastViewRef.current = { lat: c.lat, lng: c.lng, zoom: z }
+      // Debounce: wait 1s after last moveend before re-fetching
+      clearTimeout(viewRefetchRef.current)
+      viewRefetchRef.current = setTimeout(async () => {
+        if (!mapReadyRef.current) return
+        try {
+          const view = getMapView()
+          const observations = await fetchAllRecent(view)
+          const filtered = sourceFilterRef.current === 'All'
+            ? observations
+            : observations.filter(o => o.source === sourceFilterRef.current)
+
+          // Clear old data and replace
+          observationsRef.current = []
+          seenIdsRef.current.clear()
+          dripQueueRef.current = []
+          clearTimeout(dripTimerRef.current)
+
+          const now = Date.now()
+          const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+          for (let i = 0; i < shuffled.length; i++) {
+            const obs = shuffled[i]
+            obs.addedAt = now - (i / shuffled.length) * FADE_DURATION * 0.8
+            seenIdsRef.current.add(obs.id)
+            observationsRef.current.push(obs)
+          }
+          syncSource()
+          updatePhotoOverlays()
+          updateCounts()
+        } catch (err) {
+          console.error('[LiveGlobe] View refetch error:', err)
+        }
+      }, 1000)
+    })
+
     mapRef.current = map
 
     return () => {
@@ -431,6 +586,7 @@ export default function LiveGlobe() {
       clearInterval(renderTimerRef.current)
       clearTimeout(flyTimerRef.current)
       clearInterval(pollIntervalRef.current)
+      clearTimeout(viewRefetchRef.current)
       map.remove()
       mapRef.current = null
     }
@@ -453,8 +609,8 @@ export default function LiveGlobe() {
       })
       addLayers(map)
     })
-    map.setStyle(getStyle(basemap))
-  }, [basemap])
+    map.setStyle(getStyle(basemap, showLabels))
+  }, [basemap, showLabels])
 
   // ─── Override body styles for fullscreen ────────────────────────────────
   useEffect(() => {
@@ -542,9 +698,11 @@ export default function LiveGlobe() {
       }, 100)
     }
 
+    let isFirstPoll = true
+
     async function poll() {
       try {
-        const observations = await fetchAllRecent()
+        const observations = await fetchAllRecent(getMapView())
         if (pollCancelledRef.current) return
 
         const filtered = sourceFilterRef.current === 'All'
@@ -553,14 +711,23 @@ export default function LiveGlobe() {
 
         const newObs = filtered.filter(o => !seenIdsRef.current.has(o.id))
 
-        if (observationsRef.current.length === 0 && newObs.length === 0) {
-          dripQueueRef.current = [...filtered]
-          const fastDrip = () => {
-            if (pollCancelledRef.current || dripQueueRef.current.length === 0) return
-            dripOne()
-            dripTimerRef.current = setTimeout(fastDrip, 200)
+        if (isFirstPoll && filtered.length > 0) {
+          // First load: place all observations immediately with staggered addedAt
+          // so they expire at different times, creating continuous refresh
+          isFirstPoll = false
+          const now = Date.now()
+          const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+          for (let i = 0; i < shuffled.length; i++) {
+            const obs = shuffled[i]
+            if (seenIdsRef.current.has(obs.id)) continue
+            // Spread addedAt across 80% of FADE_DURATION so expirations are staggered
+            obs.addedAt = now - (i / shuffled.length) * FADE_DURATION * 0.8
+            seenIdsRef.current.add(obs.id)
+            observationsRef.current.push(obs)
           }
-          fastDrip()
+          syncSource()
+          updatePhotoOverlays()
+          updateCounts()
         } else if (newObs.length > 0) {
           dripQueueRef.current = [...dripQueueRef.current, ...newObs]
           scheduleDrip()
@@ -598,17 +765,22 @@ export default function LiveGlobe() {
     setObsCount(0)
     setSpeciesCount(0)
 
-    fetchAllRecent().then(observations => {
+    fetchAllRecent(getMapView()).then(observations => {
       const filtered = sourceFilter === 'All'
         ? observations
         : observations.filter(o => o.source === sourceFilter)
-      dripQueueRef.current = filtered
-      const fastDrip = () => {
-        if (dripQueueRef.current.length === 0) return
-        dripOne()
-        dripTimerRef.current = setTimeout(fastDrip, 200)
+      // Place all immediately with staggered addedAt
+      const now = Date.now()
+      const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+      for (let i = 0; i < shuffled.length; i++) {
+        const obs = shuffled[i]
+        obs.addedAt = now - (i / shuffled.length) * FADE_DURATION * 0.8
+        seenIdsRef.current.add(obs.id)
+        observationsRef.current.push(obs)
       }
-      fastDrip()
+      syncSource()
+      updatePhotoOverlays()
+      updateCounts()
     }).catch(() => {})
   }, [sourceFilter])
 
@@ -626,8 +798,9 @@ export default function LiveGlobe() {
             left: p.x,
             top: p.y,
             transform: 'translate(-50%, -100%) translateY(-12px)',
-            opacity: p.opacity,
+            opacity: hoveredPhoto === p.id ? 1 : p.opacity,
             zIndex: hoveredPhoto === p.id ? 50 : 5,
+            transition: 'opacity 0.2s ease',
             pointerEvents: 'auto',
           }}
           onMouseEnter={() => setHoveredPhoto(p.id)}
@@ -636,7 +809,17 @@ export default function LiveGlobe() {
           <img src={p.obs.photoUrl} className="live-photo-thumb" alt="" />
           <div className="live-photo-stem" />
           {hoveredPhoto === p.id && (
-            <div className="live-photo-card visible">
+            <a
+              className="live-photo-card visible"
+              href={p.obs.taxonId
+                ? `https://earthatlas.org/species/${p.obs.taxonId}`
+                : p.obs.scientificName
+                  ? `https://earthatlas.org/species/${encodeURIComponent(p.obs.scientificName)}`
+                  : null}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
               <img
                 src={p.obs.photoUrl.replace('/square', '/medium').replace('/small', '/medium')}
                 className="live-photo-card-img"
@@ -652,7 +835,7 @@ export default function LiveGlobe() {
                 )}
                 <div className="live-photo-card-source">{p.obs.source}</div>
               </div>
-            </div>
+            </a>
           )}
         </div>
       ))}
@@ -711,7 +894,7 @@ export default function LiveGlobe() {
         ))}
       </div>
 
-      {/* Basemap selector */}
+      {/* Basemap selector + labels toggle */}
       <div className={styles.basemapSelector}>
         <select
           className={styles.basemapSelect}
@@ -722,6 +905,13 @@ export default function LiveGlobe() {
             <option key={name} value={name}>{name}</option>
           ))}
         </select>
+        <button
+          className={showLabels ? styles.labelsBtnActive : styles.labelsBtn}
+          onClick={() => setShowLabels(v => !v)}
+          title="Toggle place labels"
+        >
+          Labels
+        </button>
       </div>
     </div>
   )

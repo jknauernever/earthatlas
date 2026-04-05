@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../services/iNaturalist'
 import { fetchGBIFGlobalStats } from '../services/gbif'
@@ -39,6 +39,38 @@ const COUNTER_INFO_ALL = {
     title: 'Active Observers (90 Days)',
     text: 'Unique people who have submitted at least one observation to iNaturalist in the past 90 days. Each observer contributes photos, locations, and identifications to the global biodiversity record.',
   },
+}
+
+const ANIM_DURATION = 1200 // ms
+
+function AnimatedNumber({ value }) {
+  const [display, setDisplay] = useState(value)
+  const ref = useRef({ value, raf: null })
+
+  useLayoutEffect(() => {
+    const from = ref.current.value
+    const to = value
+    ref.current.value = to
+    if (from === to) return
+
+    if (ref.current.raf) cancelAnimationFrame(ref.current.raf)
+
+    const start = performance.now()
+    const diff = to - from
+
+    function tick(now) {
+      const t = Math.min((now - start) / ANIM_DURATION, 1)
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3)
+      setDisplay(Math.round(from + diff * eased))
+      if (t < 1) ref.current.raf = requestAnimationFrame(tick)
+    }
+
+    ref.current.raf = requestAnimationFrame(tick)
+    return () => { if (ref.current.raf) cancelAnimationFrame(ref.current.raf) }
+  }, [value])
+
+  return display.toLocaleString()
 }
 
 function InfoIcon({ statKey, activeInfo, setActiveInfo, counterInfo }) {
@@ -189,21 +221,21 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
       {(counts || loading) && (
         <div className={styles.counters}>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : (counts.totalObs ?? 0).toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : <AnimatedNumber value={counts.totalObs ?? 0} />}</div>
             <div className={styles.counterLabel}>
               Total Occurrences
               <InfoIcon statKey="totalObs" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : (counts.totalSpecies ?? 0).toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : <AnimatedNumber value={counts.totalSpecies ?? 0} />}</div>
             <div className={styles.counterLabel}>
               Species Documented
               <InfoIcon statKey="totalSpecies" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />
             </div>
           </div>
           <div className={styles.counter}>
-            <div className={styles.counterValue}>{loading ? '…' : (counts.activeObservers ?? 0).toLocaleString()}</div>
+            <div className={styles.counterValue}>{loading ? '…' : <AnimatedNumber value={counts.activeObservers ?? 0} />}</div>
             <div className={styles.counterLabel}>
               Active Observers in the Last 90 Days
               <InfoIcon statKey="activeObservers" activeInfo={activeInfo} setActiveInfo={setActiveInfo} counterInfo={counterInfo} />

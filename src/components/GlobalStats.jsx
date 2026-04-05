@@ -9,6 +9,7 @@ import styles from './GlobalStats.module.css'
 import preloaded from '../data/preloaded-stats.json'
 
 const PRE_INAT = preloaded?.iNaturalist || {}
+const PRE_ALL = preloaded?.allCounts || null
 
 const COUNTER_INFO_INAT = {
   totalObs: {
@@ -97,14 +98,15 @@ function getDateRange(key) {
 
 export default function GlobalStats({ dataSource = 'iNaturalist' }) {
   const posthog = usePostHog()
-  const [counts, setCounts] = useState(PRE_INAT.counts || null)
+  const initialCounts = dataSource === 'All' ? (PRE_ALL || PRE_INAT.counts) : PRE_INAT.counts
+  const [counts, setCounts] = useState(initialCounts || null)
   const [topSpecies, setTopSpecies] = useState(PRE_INAT.topSpecies || null)
   const [topCountries, setTopCountries] = useState(PRE_INAT.topCountries || null)
   const [speciesTime, setSpeciesTime] = useState('24h')
   const [speciesLoading, setSpeciesLoading] = useState(!PRE_INAT.topSpecies)
   const [countriesTime, setCountriesTime] = useState('24h')
   const [countriesLoading, setCountriesLoading] = useState(!PRE_INAT.topCountries)
-  const [loading, setLoading] = useState(!PRE_INAT.counts)
+  const [loading, setLoading] = useState(!initialCounts)
   const [selectedTaxon, setSelectedTaxon] = useState(null)
   const [activeInfo, setActiveInfo] = useState(null)
 
@@ -121,10 +123,11 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
           if (!cancelled) {
             // GBIF totalOccurrences is the superset (includes iNat + eBird + museums)
             // Use iNat species count — it's community-verified and more meaningful than GBIF backbone count
+            // Fall back to preloaded values so counters never show 0
             setCounts({
-              totalObs: (gbif?.totalOccurrences || 0),
-              totalSpecies: (inat?.totalSpecies || 0),
-              activeObservers: (inat?.activeObservers || 0),
+              totalObs: (gbif?.totalOccurrences || PRE_ALL?.totalObs || 0),
+              totalSpecies: (inat?.totalSpecies || PRE_ALL?.totalSpecies || 0),
+              activeObservers: (inat?.activeObservers || PRE_ALL?.activeObservers || 0),
             })
           }
         } else {

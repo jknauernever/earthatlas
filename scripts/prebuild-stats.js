@@ -23,15 +23,18 @@ const EBIRD_API_KEY = process.env.VITE_EBIRD_API_KEY || ''
 // ─── iNaturalist ────────────────────────────────────────────────────────────
 
 async function fetchINatGlobalCounts() {
-  const [obs, species, research] = await Promise.all([
+  const d90 = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0]
+  const [obs, species, research, observers] = await Promise.all([
     fetch('https://api.inaturalist.org/v1/observations?per_page=0').then(r => r.json()),
     fetch('https://api.inaturalist.org/v1/observations/species_counts?per_page=0').then(r => r.json()),
     fetch('https://api.inaturalist.org/v1/observations?quality_grade=research&per_page=0').then(r => r.json()),
+    fetch(`https://api.inaturalist.org/v1/observations/observers?d1=${d90}&per_page=0`).then(r => r.json()),
   ])
   return {
     totalObs: obs.total_results,
     totalSpecies: species.total_results,
     researchGrade: research.total_results,
+    activeObservers: observers.total_results,
   }
 }
 
@@ -218,8 +221,16 @@ async function main() {
       fetchGBIFKingdomCounts().catch(err => { console.warn('GBIF kingdoms failed:', err.message); return null }),
     ])
 
+  // Aggregated "All" view counts — GBIF occurrences + iNat species/observers
+  const allCounts = (gbifStats || inatCounts) ? {
+    totalObs: gbifStats?.totalOccurrences || 0,
+    totalSpecies: inatCounts?.totalSpecies || 0,
+    activeObservers: inatCounts?.activeObservers || 0,
+  } : null
+
   const output = {
     fetchedAt: new Date().toISOString(),
+    allCounts,
     iNaturalist: {
       counts: inatCounts,
       topSpecies: inatSpecies,
@@ -242,6 +253,6 @@ async function main() {
 main().catch(err => {
   console.error('Prebuild failed:', err)
   // Write empty fallback so build doesn't break
-  writeFileSync(OUT_PATH, JSON.stringify({ fetchedAt: null, iNaturalist: {}, eBird: {}, GBIF: {} }))
+  writeFileSync(OUT_PATH, JSON.stringify({ fetchedAt: null, allCounts: null, iNaturalist: {}, eBird: {}, GBIF: {} }))
   process.exit(0) // don't fail the build
 })

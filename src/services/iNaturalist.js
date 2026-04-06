@@ -12,7 +12,7 @@ const INAT_API = 'https://api.inaturalist.org/v1'
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
 // ─── Observations ────────────────────────────────────────────────
-export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa }) {
+export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa, bounds }) {
   const params = new URLSearchParams({
     per_page: Math.min(perPage, 200),
     order: 'desc',
@@ -20,7 +20,13 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     quality_grade: 'any',
     captive: 'false',
   })
-  if (lat != null && lng != null && radiusKm) {
+  if (bounds) {
+    // Clamp to valid ranges (map can pan past ±180 longitude)
+    params.set('nelat', Math.min(90, bounds.maxLat))
+    params.set('nelng', Math.min(180, bounds.maxLng))
+    params.set('swlat', Math.max(-90, bounds.minLat))
+    params.set('swlng', Math.max(-180, bounds.minLng))
+  } else if (lat != null && lng != null && radiusKm) {
     params.set('lat', lat)
     params.set('lng', lng)
     params.set('radius', radiusKm)
@@ -33,9 +39,27 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     params.set('d2', d2 || new Date().toISOString().split('T')[0])
   }
 
-  const res = await fetch(`${INAT_API}/observations?${params}`)
-  if (!res.ok) throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`)
-  return res.json() // { total_results, results: [...] }
+  // iNat caps at 200 per request — fetch multiple pages in parallel if needed
+  const pageSize = Math.min(perPage, 200)
+  const pages = Math.ceil(Math.min(perPage, 400) / pageSize)
+
+  if (pages <= 1) {
+    const res = await fetch(`${INAT_API}/observations?${params}`)
+    if (!res.ok) throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`)
+    return res.json()
+  }
+
+  const fetches = []
+  for (let page = 1; page <= pages; page++) {
+    const p = new URLSearchParams(params)
+    p.set('page', page)
+    fetches.push(fetch(`${INAT_API}/observations?${p}`).then(r => r.ok ? r.json() : { results: [], total_results: 0 }))
+  }
+  const results = await Promise.all(fetches)
+  return {
+    total_results: results[0].total_results,
+    results: results.flatMap(r => r.results || []),
+  }
 }
 
 // ─── Species counts (for summary/stats view later) ───────────────
@@ -60,7 +84,7 @@ export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2, taxonId, 
 // ─── Taxon autocomplete ──────────────────────────────────────────
 export async function searchTaxa(query) {
   if (!query.trim()) return []
-  const params = new URLSearchParams({ q: query, per_page: 8 })
+  const params = new URLSearchParams({ q: query, per_page: 15 })
   const res = await fetch(`${INAT_API}/taxa/autocomplete?${params}`)
   if (!res.ok) return []
   const data = await res.json()
@@ -69,6 +93,8 @@ export async function searchTaxa(query) {
     name: t.preferred_common_name || t.name,
     scientificName: t.name,
     rank: t.rank,
+    rankLevel: t.rank_level,
+    parentId: t.parent_id,
     iconicTaxon: t.iconic_taxon_name,
     photoUrl: t.default_photo?.square_url || null,
   }))

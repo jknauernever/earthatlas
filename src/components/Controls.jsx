@@ -64,12 +64,24 @@ export default function Controls({
   // Clamp radius if switching to eBird with radius > 50
   const effectiveRadius = isEBird && radius > 50 ? 50 : radius
 
+  const hasLocation = !!locationName || geoStatus === 'loading'
+
   return (
     <div className={styles.bar}>
       <div className={styles.inner}>
+        {/* Species search — primary action */}
+        <div className={styles.group} style={{ flex: '1.5', minWidth: '220px', maxWidth: '360px' }}>
+          <label className={styles.label}>{isEBird ? 'Bird Species' : 'Species'}</label>
+          <SpeciesSearch
+            selectedSpecies={selectedSpecies}
+            onSpeciesSelect={onSpeciesSelect}
+            dataSource={dataSource}
+          />
+        </div>
+
         {/* Location search */}
-        <div className={styles.group} style={{ flex: '1', minWidth: '200px', maxWidth: '340px' }}>
-          <label className={styles.label}>Location</label>
+        <div className={styles.group} style={{ flex: '1', minWidth: '180px', maxWidth: '300px' }}>
+          <label className={styles.label}>Location <span className={styles.optional}>(optional)</span></label>
           <LocationSearch
             locationName={locationName || (geoStatus === 'loading' ? 'Detecting…' : null)}
             onLocationSelect={onLocationSelect}
@@ -89,26 +101,17 @@ export default function Controls({
           </button>
         </div>
 
-        {/* Species search */}
-        <div className={styles.group} style={{ flex: '1', minWidth: '160px', maxWidth: '260px' }}>
-          <label className={styles.label}>{isEBird ? 'Bird Species' : 'Species'}</label>
-          {/* GBIF: uses GBIF species suggest; iNat: uses iNaturalist taxa autocomplete */}
-          <SpeciesSearch
-            selectedSpecies={selectedSpecies}
-            onSpeciesSelect={onSpeciesSelect}
-            dataSource={dataSource}
-          />
-        </div>
-
-        {/* Radius */}
-        <div className={styles.group}>
-          <label className={styles.label}>Radius</label>
-          <select value={effectiveRadius} onChange={e => onRadiusChange(Number(e.target.value))}>
-            {radiusOptions.map(r => (
-              <option key={r} value={r === 'any' ? 0 : r}>{r === 'any' ? 'Anywhere' : `${r} km`}</option>
-            ))}
-          </select>
-        </div>
+        {/* Radius — only show when a location is set */}
+        {hasLocation && (
+          <div className={styles.group}>
+            <label className={styles.label}>Radius</label>
+            <select value={effectiveRadius} onChange={e => onRadiusChange(Number(e.target.value))}>
+              {radiusOptions.filter(r => r !== 'any').map(r => (
+                <option key={r} value={r}>{`${r} km`}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Time window */}
         <div className={styles.group}>

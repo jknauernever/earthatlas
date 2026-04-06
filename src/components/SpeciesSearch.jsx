@@ -4,6 +4,56 @@ import { fetchEBirdTaxonomy, searchEBirdTaxa } from '../services/eBird'
 import { searchGBIFTaxa } from '../services/gbif'
 import styles from './SpeciesSearch.module.css'
 
+// Group taxa results by species-level binomial name, collapsing subspecies.
+// Preserves the original API relevance ordering.
+function groupBySpecies(results) {
+  const groups = new Map()
+  // Track insertion order — each entry is either a group key or a standalone taxon
+  const order = []
+  const seen = new Set()
+
+  for (const taxon of results) {
+    const sci = taxon.scientificName || ''
+    const parts = sci.split(/\s+/)
+    const binomial = parts.length >= 2 ? `${parts[0]} ${parts[1]}`.toLowerCase() : null
+    const isSubspecies = binomial && !sci.includes('×') &&
+      (taxon.rank === 'subspecies' || taxon.rank === 'variety' || taxon.rank === 'form')
+
+    if (isSubspecies) {
+      if (!groups.has(binomial)) {
+        groups.set(binomial, { parent: null, subspecies: [] })
+        order.push({ type: 'group', key: binomial })
+      }
+      groups.get(binomial).subspecies.push(taxon)
+    } else if (binomial && taxon.rank === 'species') {
+      if (groups.has(binomial)) {
+        groups.get(binomial).parent = taxon
+      } else {
+        groups.set(binomial, { parent: taxon, subspecies: [] })
+        order.push({ type: 'group', key: binomial })
+      }
+    } else {
+      order.push({ type: 'standalone', taxon: { ...taxon, subspeciesCount: 0 } })
+    }
+  }
+
+  const output = []
+  for (const entry of order) {
+    if (entry.type === 'standalone') {
+      output.push(entry.taxon)
+    } else {
+      const { parent, subspecies } = groups.get(entry.key)
+      if (parent) {
+        output.push({ ...parent, subspeciesCount: subspecies.length })
+      } else {
+        for (const sub of subspecies) output.push({ ...sub, subspeciesCount: 0 })
+      }
+    }
+  }
+
+  return output
+}
+
 export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSource }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -47,10 +97,10 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
         setResults(taxa)
       }, 300)
     } else {
-      // iNaturalist: taxa autocomplete API
+      // iNaturalist / All: taxa autocomplete API — group subspecies
       timerRef.current = setTimeout(async () => {
         const taxa = await searchTaxa(val)
-        setResults(taxa)
+        setResults(groupBySpecies(taxa))
       }, 300)
     }
   }, [dataSource])
@@ -135,7 +185,12 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
               )}
               <span className={styles.optionText}>
                 <span className={styles.commonName}>{taxon.name}</span>
-                <span className={styles.sciName}>{taxon.scientificName}</span>
+                <span className={styles.sciName}>
+                  {taxon.scientificName}
+                  {taxon.subspeciesCount > 0 && (
+                    <span className={styles.subHint}> · includes subspecies</span>
+                  )}
+                </span>
               </span>
             </button>
           ))}

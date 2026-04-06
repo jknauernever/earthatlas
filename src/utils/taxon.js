@@ -2,7 +2,7 @@
 export const TAXON_META = {
   Plantae:         { color: '#3d5a3e', emoji: '🌿', label: 'Plants'     },
   Aves:            { color: '#4a6b8a', emoji: '🐦', label: 'Birds'      },
-  Mammalia:        { color: '#7a5c3a', emoji: '🦌', label: 'Mammals'    },
+  Mammalia:        { color: '#7a5c3a', emoji: '🐾', label: 'Mammals'    },
   Insecta:         { color: '#8a6a2a', emoji: '🦋', label: 'Insects'    },
   Reptilia:        { color: '#5a7a3a', emoji: '🦎', label: 'Reptiles'   },
   Amphibia:        { color: '#3a7a6a', emoji: '🐸', label: 'Amphibians' },
@@ -23,7 +23,7 @@ export const TAXON_FILTER_OPTIONS = [
   { key: 'all',           label: 'All Taxa'    },
   { key: 'Plantae',       label: '🌿 Plants'   },
   { key: 'Aves',          label: '🐦 Birds'    },
-  { key: 'Mammalia',      label: '🦌 Mammals'  },
+  { key: 'Mammalia',      label: '🐾 Mammals'  },
   { key: 'Insecta',       label: '🦋 Insects'  },
   { key: 'Reptilia',      label: '🦎 Reptiles' },
   { key: 'Amphibia',      label: '🐸 Amphibians'},

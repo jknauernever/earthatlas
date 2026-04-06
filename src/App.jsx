@@ -102,7 +102,7 @@ export default function App() {
   const coords = urlCoords || manualCoords || geoCoords
 
   // ─── Search params ─────────────────────────────────────────────
-  const [perPage]         = useState(200)
+  const [perPage]         = useState(400)
   const [selectedSpecies, setSelectedSpecies] = useState(null)
 
   // ─── Results ───────────────────────────────────────────────────
@@ -110,6 +110,8 @@ export default function App() {
   const [totalResults, setTotalResults] = useState(null)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState(null)
+  const [mapBounds,    setMapBounds]    = useState(null)
+  const [searchId,     setSearchId]     = useState(0)
 
   // ─── Modal ─────────────────────────────────────────────────────
   const [selectedObs, setSelectedObs] = useState(null)
@@ -200,10 +202,16 @@ export default function App() {
   const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
   const GBIF_EBIRD_DATASET = '4fa7b334-ce0d-4e88-aaae-2e0c138d049e'
 
-  const handleSearch = useCallback(async () => {
-    if (!coords && !isAnywhere) return
-    if (isAnywhere && !selectedSpecies) return
-    setLoading(true)
+  const handleSearch = useCallback(async (searchBounds) => {
+    // No location and no species — nothing to search
+    if (!coords && !selectedSpecies) return
+    // Treat as worldwide when no location is set and no bounds provided
+    const effectiveAnywhere = (isAnywhere || !coords) && !searchBounds
+    // Only show full loading state for initial searches, not map-move re-queries
+    if (!searchBounds) {
+      setLoading(true)
+      setSearchId(id => id + 1)
+    }
     setError(null)
 
     try {
@@ -213,12 +221,15 @@ export default function App() {
       let allResults = []
       let totalCount = 0
 
-      // Location params — omitted for "anywhere" searches
-      const locParams = isAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: radius }
+      // Location params — use map bounds if available, radius if location set, or omit for worldwide
+      const locParams = searchBounds
+        ? { bounds: searchBounds }
+        : effectiveAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: radius }
 
       if (dataSource === 'All') {
         const hasSpeciesFilter = !!selectedSpecies
-        const canFilterEBird = !isAnywhere && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
+        const canFilterEBird = !effectiveAnywhere && !!coords && !searchBounds
+          && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
           && (!iconicFilter || iconicFilter === 'Aves')
         const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
 
@@ -260,11 +271,16 @@ export default function App() {
           ...(ebirdData.results || []),
           ...gbifFiltered,
         ]
-        totalCount = allResults.length
+        // Use iNat total as primary count, add unique GBIF records (excluding
+        // iNat/eBird datasets already counted) and eBird observations
+        const inatTotal = inatData.total_results || 0
+        const ebirdTotal = ebirdData.total_results || 0
+        const gbifUniqueCount = gbifFiltered.length // already deduplicated against iNat/eBird datasets
+        totalCount = inatTotal + ebirdTotal + gbifUniqueCount
 
       } else if (dataSource === 'eBird') {
-        if (isAnywhere) {
-          // eBird requires lat/lng — can't do anywhere searches
+        if (effectiveAnywhere) {
+          // eBird requires lat/lng — can't do worldwide searches
           allResults = []
           totalCount = 0
         } else {
@@ -325,12 +341,26 @@ export default function App() {
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
   useEffect(() => {
-    if (!coords && !isAnywhere) return
-    // Allow immediate search if URL had coords (cold load) or manual/geo set
-    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere) return
+    if (!coords && !selectedSpecies) return
+    // Allow immediate search if URL had coords (cold load) or manual/geo set or species selected
+    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere && !selectedSpecies) return
     hasSearched.current = true
     handleSearch()
   }, [handleSearch])
+
+  // ─── Re-fetch when map view changes ─────────────────────────
+  const mapMoveTimer = useRef(null)
+  const handleSearchRef = useRef(handleSearch)
+  handleSearchRef.current = handleSearch
+  const handleMapMove = useCallback((viewState) => {
+    if (!hasSearched.current) return
+    clearTimeout(mapMoveTimer.current)
+    mapMoveTimer.current = setTimeout(() => {
+      if (viewState.bounds) {
+        handleSearchRef.current(viewState.bounds)
+      }
+    }, 400)
+  }, [])
 
   // ─── Map species state ──────────────────────────────────────
   const [activeMapSpecies, setActiveMapSpecies] = useState(null)
@@ -365,27 +395,59 @@ export default function App() {
     }).filter(Boolean)
   }, [observations])
 
-  // Aggregate sightings into species for the sidebar
+  // Aggregate sightings into species for the sidebar — group by binomial name
+  // so observations from different sources and subspecies merge into one entry
   const mapSpeciesList = useMemo(() => {
     const map = {}
     for (const s of mapSightings) {
-      const key = s.speciesKey || s.common
-      if (!map[key]) {
-        map[key] = {
+      const sciName = s.scientific?.toLowerCase() || ''
+      const parts = sciName.split(/\s+/)
+      const binomial = parts.length >= 2 ? `${parts[0]} ${parts[1]}` : sciName || s.common?.toLowerCase() || s.speciesKey
+      const isSubspecies = parts.length > 2
+
+      // Capitalize first letter for display
+      const displayBinomial = binomial.charAt(0).toUpperCase() + binomial.slice(1)
+
+      if (!map[binomial]) {
+        map[binomial] = {
           speciesKey: s.speciesKey,
           common: s.common,
-          scientific: s.scientific,
+          scientific: displayBinomial,
           color: s.color,
           emoji: s.emoji,
           count: 0,
           photos: [],
           meta: { emoji: s.emoji },
+          subspecies: {},
         }
       }
-      map[key].count++
-      if (s.photos.length > 0 && map[key].photos.length === 0) map[key].photos = s.photos
+      map[binomial].count++
+      if (s.photos.length > 0 && map[binomial].photos.length === 0) map[binomial].photos = s.photos
+      // Prefer the species-level common name over a subspecies common name
+      if (!isSubspecies && s.common) map[binomial].common = s.common
+
+      // Track subspecies
+      if (isSubspecies) {
+        const subKey = sciName
+        if (!map[binomial].subspecies[subKey]) {
+          map[binomial].subspecies[subKey] = {
+            speciesKey: s.speciesKey,
+            common: s.common,
+            scientific: s.scientific,
+            count: 0,
+            photos: [],
+          }
+        }
+        map[binomial].subspecies[subKey].count++
+        if (s.photos.length > 0 && map[binomial].subspecies[subKey].photos.length === 0) {
+          map[binomial].subspecies[subKey].photos = s.photos
+        }
+      }
     }
-    return Object.values(map).sort((a, b) => b.count - a.count)
+    return Object.values(map).map(sp => ({
+      ...sp,
+      subspecies: Object.values(sp.subspecies).sort((a, b) => b.count - a.count),
+    })).sort((a, b) => b.count - a.count)
   }, [mapSightings])
 
   const filtered = observations
@@ -396,17 +458,17 @@ export default function App() {
   const statusText = loading
     ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
-    ? isAnywhere
-      ? `${totalResults.toLocaleString()} total observations worldwide — ${TIME_LABELS[timeWindow]}.`
-      : `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
+    ? (isAnywhere || !coords)
+      ? `${totalResults.toLocaleString()} total observations worldwide — ${TIME_LABELS[timeWindow]}. Displaying the most recent. Zoom in to see individual observations.`
+      : `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
     : error
     ? `Error: ${error}`
     : coords
     ? `Location set — ${locationName || 'ready to search'}.`
-    : 'Set your location to begin exploring, or select a species and search Anywhere.'
+    : 'Search for a species to explore worldwide, or set a location to search nearby.'
 
   const hasLocation = !!coords && (geoStatus === 'success' || !!manualCoords || !!urlCoords)
-  const canSearch = (hasLocation || (isAnywhere && !!selectedSpecies)) && !loading
+  const canSearch = (hasLocation || !!selectedSpecies) && !loading
 
   // ─── Render ────────────────────────────────────────────────────
   return (
@@ -456,7 +518,7 @@ export default function App() {
         dataSource={dataSource}
       />
 
-      {(dataSource === 'iNaturalist' || dataSource === 'GBIF' || dataSource === 'All') && totalResults !== null && (
+      {(dataSource === 'iNaturalist' || dataSource === 'GBIF' || dataSource === 'All') && totalResults !== null && !selectedSpecies && (
         <TaxonFilter activeTaxon={activeTaxon} onChange={(t) => setQP({ taxon: t })} />
       )}
 
@@ -467,7 +529,7 @@ export default function App() {
           <div className="status-right">
             {totalResults !== null && (
               <span className="result-count">
-                {filtered.length} observation{filtered.length !== 1 ? 's' : ''}
+                {totalResults.toLocaleString()} observation{totalResults !== 1 ? 's' : ''}
               </span>
             )}
             <div className="view-toggle">
@@ -531,27 +593,48 @@ export default function App() {
                 sightings={mapSightings}
                 center={coords}
                 activeSpecies={activeMapSpecies}
+                onCenterChange={handleMapMove}
                 radiusKm={isAnywhere ? undefined : radius}
+                searchId={searchId}
                 config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
               />
             </div>
             <div className="species-sidebar">
               <div className={exploreStyles.speciesPanelHead} style={{ padding: '8px 12px 4px' }}>
-                <div className={exploreStyles.speciesPanelTitle}>Species seen nearby</div>
-                <div className={exploreStyles.speciesCount}>{mapSpeciesList.length} species</div>
+                <div className={exploreStyles.speciesPanelTitle}>Recent observations in view</div>
               </div>
               {mapSpeciesList.map(sp => {
-                const isActive = String(activeMapSpecies) === String(sp.speciesKey)
+                const isActive = activeMapSpecies?.toLowerCase() === sp.scientific?.toLowerCase()
                 return (
-                  <SpeciesListItem
-                    key={sp.speciesKey || sp.common}
-                    species={sp}
-                    active={isActive}
-                    onClick={() => setActiveMapSpecies(isActive ? null : sp.speciesKey)}
-                    styles={exploreStyles}
-                    openInfoKey={openInfoKey}
-                    setOpenInfoKey={setOpenInfoKey}
-                  />
+                  <div key={sp.scientific || sp.common}>
+                    <SpeciesListItem
+                      species={sp}
+                      active={isActive}
+                      onClick={() => setActiveMapSpecies(isActive ? null : sp.scientific?.toLowerCase())}
+                      styles={exploreStyles}
+                      openInfoKey={openInfoKey}
+                      setOpenInfoKey={setOpenInfoKey}
+                    />
+                    {/* Subspecies — always visible under parent */}
+                    {sp.subspecies.length > 0 && sp.subspecies.map(sub => {
+                      const subActive = activeMapSpecies?.toLowerCase() === sub.scientific?.toLowerCase()
+                      return (
+                        <SpeciesListItem
+                          key={sub.scientific}
+                          species={{ ...sub, color: sp.color, emoji: sp.emoji, meta: sp.meta }}
+                          active={subActive}
+                          onClick={(e) => {
+                            e?.stopPropagation?.()
+                            setActiveMapSpecies(subActive ? sp.scientific?.toLowerCase() : sub.scientific?.toLowerCase())
+                          }}
+                          styles={exploreStyles}
+                          style={{ paddingLeft: 28, opacity: subActive ? 1 : 0.75, fontSize: '0.9em' }}
+                          openInfoKey={openInfoKey}
+                          setOpenInfoKey={setOpenInfoKey}
+                        />
+                      )
+                    })}
+                  </div>
                 )
               })}
             </div>

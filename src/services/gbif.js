@@ -133,15 +133,24 @@ export async function fetchGBIFOccurrences({
   perPage = 50,
   taxonKey,
   iconicTaxa,
+  bounds,
 }) {
   const params = new URLSearchParams({
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    limit: Math.min(perPage, 300),
+    limit: Math.min(perPage, 400),
     offset: 0,
   })
 
-  if (lat != null && lng != null && radiusKm) {
+  if (bounds) {
+    // Clamp to valid ranges (map can pan past ±180 longitude)
+    const minLat = Math.max(-90, bounds.minLat)
+    const maxLat = Math.min(90, bounds.maxLat)
+    const minLng = Math.max(-180, bounds.minLng)
+    const maxLng = Math.min(180, bounds.maxLng)
+    params.set('decimalLatitude', `${minLat},${maxLat}`)
+    params.set('decimalLongitude', `${minLng},${maxLng}`)
+  } else if (lat != null && lng != null && radiusKm) {
     const bb = getBoundingBox(lat, lng, radiusKm)
     params.set('decimalLatitude', `${bb.minLat},${bb.maxLat}`)
     params.set('decimalLongitude', `${bb.minLng},${bb.maxLng}`)
@@ -271,16 +280,18 @@ export function fetchGBIFKingdomCounts() {
 // ─── Faceted aggregation queries (for Insights dashboard) ────────────────────
 
 export async function fetchGBIFFacets({ lat, lng, radiusKm, d1, d2, taxonKey, iconicTaxa }) {
-  const bb = getBoundingBox(lat, lng, radiusKm)
-
   const params = new URLSearchParams({
     hasCoordinate: 'true',
     occurrenceStatus: 'PRESENT',
-    decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-    decimalLongitude: `${bb.minLng},${bb.maxLng}`,
     limit: '0',
     facetLimit: '50',
   })
+
+  if (lat != null && lng != null && radiusKm) {
+    const bb = getBoundingBox(lat, lng, radiusKm)
+    params.set('decimalLatitude', `${bb.minLat},${bb.maxLat}`)
+    params.set('decimalLongitude', `${bb.minLng},${bb.maxLng}`)
+  }
 
   // Add all facets in one request
   for (const f of ['speciesKey', 'year', 'month', 'classKey', 'iucnRedListCategory', 'basisOfRecord', 'datasetKey']) {

@@ -147,7 +147,7 @@ const XFADE_HI = 10  // heatmap gone, circles fully visible
  *   z 7–10  — smooth crossfade (heatmap fading out, circle dots fading in)
  *   z > 10  — circle dot layer with click-to-popup
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, config = {} }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, searchId = 0, config = {} }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -166,7 +166,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   onCenterChangeRef.current = onCenterChange
   const onZoomChangeRef = useRef(onZoomChange)
   onZoomChangeRef.current = onZoomChange
-  const flyingRef = useRef(0) // counter: >0 means programmatic fly in progress
+  const flyingUntilRef = useRef(0) // timestamp until which programmatic moves are in progress
+  const isFlying = () => Date.now() < flyingUntilRef.current
+  const markFlying = (ms = 2500) => { flyingUntilRef.current = Math.max(flyingUntilRef.current, Date.now() + ms) }
   const userCenterRef = useRef(null)
   const popupRef = useRef(null) // single reusable popup instance
   const initialFitDone = useRef(false) // only auto-fit on first data load
@@ -180,12 +182,12 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
-    const initialZoom = center ? defaultZoom : 2
+    const initialZoom = center ? defaultZoom : 1.5
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: center ? [center.lng, center.lat] : [-100, 35],
+      style: 'mapbox://styles/mapbox/outdoors-v12',
+      center: center ? [center.lng, center.lat] : [0, 20],
       zoom: initialZoom,
       attributionControl: false,
       logoPosition: 'bottom-right',
@@ -193,6 +195,19 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+
+    // Globe-style fog — match space color to page background
+    map.on('load', () => {
+      try {
+        map.setFog({
+          color: '#f5f0e8',
+          'high-color': '#f5f0e8',
+          'space-color': '#f5f0e8',
+          'horizon-blend': 0.02,
+          'star-intensity': 0,
+        })
+      } catch (e) { /* fog not supported */ }
+    })
 
     // ── Native GL layers (heatmap + circles) from sighting GeoJSON ─────────
     function addSightingLayers() {
@@ -368,8 +383,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // Pan to fit popup
         popup.on('open', () => {
           if (isMobile) {
-            flyingRef.current++
-            map.once('moveend', () => { flyingRef.current-- })
+            markFlying(500)
             map.easeTo({ center: [s.lng, s.lat], duration: 300 })
             return
           }
@@ -389,8 +403,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             else if (popupRect.bottom > mapRect.bottom - pad)
               dy = popupRect.bottom - (mapRect.bottom - pad)
             if (dx !== 0 || dy !== 0) {
-              flyingRef.current++
-              map.once('moveend', () => { flyingRef.current-- })
+              markFlying(500)
               map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
             }
           })
@@ -418,7 +431,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     // ── Fire onCenterChange after user-initiated moves ─────────────────────
     let debounceTimer = null
     map.on('moveend', () => {
-      if (flyingRef.current > 0) return
+      if (isFlying()) return
       clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         const c = map.getCenter()
@@ -462,10 +475,14 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     // Skip if map is already at the target center (avoids stuck flyingRef on init)
     const mc = mapRef.current.getCenter()
     if (Math.abs(mc.lat - center.lat) < 0.001 && Math.abs(mc.lng - center.lng) < 0.001) return
-    flyingRef.current++
-    mapRef.current.once('moveend', () => { flyingRef.current-- })
+    markFlying(1500)
     mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
   }, [center?.lat, center?.lng])
+
+  // ─── Reset fit flag when a new search starts ────────────────────────────
+  useEffect(() => {
+    initialFitDone.current = false
+  }, [searchId])
 
   // ─── Auto-fit to data on first load ─────────────────────────────────────
   useEffect(() => {
@@ -481,21 +498,41 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         [center.lng - dLng, center.lat - dLat],
         [center.lng + dLng, center.lat + dLat]
       )
-      flyingRef.current++
-      map.once('moveend', () => { flyingRef.current-- })
+      markFlying(1100)
       map.fitBounds(bounds, { padding: 40, duration: 800 })
-    } else if (!initialFitDone.current && !center) {
-      // Anywhere mode (no center) — fit to the data bounds on first load
+    } else if (!center && !initialFitDone.current) {
+      // Worldwide mode — fly to the densest cluster ONCE on first data load
       initialFitDone.current = true
+      const valid = sightings.filter(s => s.lat != null && s.lng != null)
+      if (valid.length === 0) return
+
+      // Find density center using a simple grid-based approach
+      const GRID = 10 // degrees per cell
+      const cells = {}
+      for (const s of valid) {
+        const cellKey = `${Math.round(s.lat / GRID)},${Math.round(s.lng / GRID)}`
+        if (!cells[cellKey]) cells[cellKey] = { sumLat: 0, sumLng: 0, count: 0 }
+        cells[cellKey].sumLat += s.lat
+        cells[cellKey].sumLng += s.lng
+        cells[cellKey].count++
+      }
+      const densest = Object.values(cells).sort((a, b) => b.count - a.count)[0]
+      const targetLat = densest.sumLat / densest.count
+      const targetLng = densest.sumLng / densest.count
+
+      // Zoom level based on spread of points in the densest cluster
       const bounds = new mapboxgl.LngLatBounds()
-      for (const s of sightings) {
-        if (s.lat != null && s.lng != null) bounds.extend([s.lng, s.lat])
-      }
-      if (!bounds.isEmpty()) {
-        flyingRef.current++
-        map.once('moveend', () => { flyingRef.current-- })
-        map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 12 })
-      }
+      for (const s of valid) bounds.extend([s.lng, s.lat])
+      const span = Math.max(bounds.getNorth() - bounds.getSouth(), bounds.getEast() - bounds.getWest())
+      const zoom = span > 100 ? 2 : span > 40 ? 3 : span > 15 ? 4 : span > 5 ? 5 : 6
+
+      markFlying(2500)
+      map.flyTo({
+        center: [targetLng, targetLat],
+        zoom,
+        duration: 2000,
+        essential: true,
+      })
     }
   }, [center?.lat, center?.lng, radiusKm, sightings])
 
@@ -520,6 +557,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
                 idx: i,
                 color: s.color || fallbackColor,
                 speciesKey: String(s.speciesKey || ''),
+                scientific: (s.scientific || '').toLowerCase(),
+                binomial: (s.scientific || '').toLowerCase().split(/\s+/).slice(0, 2).join(' '),
               },
             }
           })
@@ -566,31 +605,65 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
       map.setFilter('sighting-heat', null)
     } else {
-      const key = String(activeSpecies)
+      const key = String(activeSpecies).toLowerCase()
+      // Determine if filtering by binomial (parent species) or exact scientific name (subspecies)
+      const isBinomial = key.split(/\s+/).length <= 2
+      const matchProp = isBinomial ? 'binomial' : 'scientific'
+      const matchExpr = ['==', ['get', matchProp], key]
+
       // Highlight matching, dim non-matching
       map.setPaintProperty('sighting-circles', 'circle-radius', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, ['case', ['==', ['get', 'speciesKey'], key], 5, 2],
-        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 9, 4],
-        14, ['case', ['==', ['get', 'speciesKey'], key], 11, 5],
+        XFADE_LO, ['case', matchExpr, 5, 2],
+        XFADE_HI, ['case', matchExpr, 9, 4],
+        14, ['case', matchExpr, 11, 5],
       ])
       map.setPaintProperty('sighting-circles', 'circle-color', [
-        'case', ['==', ['get', 'speciesKey'], key], '#ff4400', '#ff6a00',
+        'case', matchExpr, '#ff4400', '#ff6a00',
       ])
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
         'interpolate', ['linear'], ['zoom'],
         XFADE_LO, 0,
-        XFADE_LO + 1, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
-        XFADE_HI, ['case', ['==', ['get', 'speciesKey'], key], 1, 0.25],
+        XFADE_LO + 1, ['case', matchExpr, 1, 0.25],
+        XFADE_HI, ['case', matchExpr, 1, 0.25],
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-        'case', ['==', ['get', 'speciesKey'], key], 2.5, 0.5,
+        'case', matchExpr, 2.5, 0.5,
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
-        'case', ['==', ['get', 'speciesKey'], key], '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
+        'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
       ])
       // Focus heatmap on selected species
-      map.setFilter('sighting-heat', ['==', ['get', 'speciesKey'], key])
+      map.setFilter('sighting-heat', matchExpr)
+
+      // Fly to the densest cluster for this species
+      const matching = sightingsRef.current.filter(s => {
+        const sci = (s.scientific || '').toLowerCase()
+        const bin = sci.split(/\s+/).slice(0, 2).join(' ')
+        return (isBinomial ? bin === key : sci === key) && s.lat != null && s.lng != null
+      })
+      if (matching.length > 0) {
+        const GRID = 5
+        const cells = {}
+        for (const s of matching) {
+          const ck = `${Math.round(s.lat / GRID)},${Math.round(s.lng / GRID)}`
+          if (!cells[ck]) cells[ck] = { sumLat: 0, sumLng: 0, count: 0 }
+          cells[ck].sumLat += s.lat
+          cells[ck].sumLng += s.lng
+          cells[ck].count++
+        }
+        const densest = Object.values(cells).sort((a, b) => b.count - a.count)[0]
+        const tLat = densest.sumLat / densest.count
+        const tLng = densest.sumLng / densest.count
+
+        const bounds = new mapboxgl.LngLatBounds()
+        for (const s of matching) bounds.extend([s.lng, s.lat])
+        const span = Math.max(bounds.getNorth() - bounds.getSouth(), bounds.getEast() - bounds.getWest())
+        const zoom = span > 100 ? 2.5 : span > 40 ? 3.5 : span > 15 ? 4.5 : span > 5 ? 6 : 8
+
+        markFlying(1800)
+        map.flyTo({ center: [tLng, tLat], zoom, duration: 1500, essential: true })
+      }
     }
   }, [activeSpecies])
 

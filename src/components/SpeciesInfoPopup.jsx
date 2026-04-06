@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
 const inatCache = {}
@@ -34,6 +35,7 @@ export default function SpeciesInfoPopup({ species, styles, openInfoKey, setOpen
   const popupRef = useRef(null)
   const btnRef = useRef(null)
   const [inatId, setInatId] = useState(null)
+  const [anchor, setAnchor] = useState(null)
 
   const infoKey = species.speciesKey || species.common
   const open = openInfoKey === infoKey
@@ -56,6 +58,10 @@ export default function SpeciesInfoPopup({ species, styles, openInfoKey, setOpen
   }, [infoKey, setOpenInfoKey])
 
   const toggle = useCallback(() => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setAnchor({ top: r.bottom + 8, left: r.left, btnTop: r.top })
+    }
     setOpenInfoKey?.(prev => prev === infoKey ? null : infoKey)
   }, [infoKey, setOpenInfoKey])
 
@@ -81,34 +87,89 @@ export default function SpeciesInfoPopup({ species, styles, openInfoKey, setOpen
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, close])
 
-  // Reposition if overflowing viewport
+  // Adjust popup position after render to keep it within the viewport
   useEffect(() => {
-    if (!open || !popupRef.current) return
+    if (!open || !popupRef.current || !anchor) return
     const el = popupRef.current
-    // Reset positioning before measuring
-    el.style.left = '-80px'
-    el.style.right = 'auto'
-    el.style.top = '100%'
-    el.style.bottom = 'auto'
-    el.style.marginTop = '8px'
-    el.style.marginBottom = '0'
-
     const rect = el.getBoundingClientRect()
-    if (rect.right > window.innerWidth - 12) {
-      el.style.left = 'auto'
-      el.style.right = '0'
+    let top = anchor.top
+    let left = anchor.left - 80
+
+    if (top + rect.height > window.innerHeight - 12) {
+      top = anchor.btnTop - rect.height - 8
     }
-    if (rect.bottom > window.innerHeight - 12) {
-      el.style.top = 'auto'
-      el.style.bottom = '100%'
-      el.style.marginTop = '0'
-      el.style.marginBottom = '8px'
+    if (left + rect.width > window.innerWidth - 12) {
+      left = window.innerWidth - rect.width - 12
     }
-  }, [open])
+    if (left < 12) left = 12
+
+    el.style.top = `${top}px`
+    el.style.left = `${left}px`
+  }, [open, anchor])
+
+  const popupContent = open && anchor && (
+    <div
+      ref={popupRef}
+      className={styles.infoPopup}
+      style={{
+        position: 'fixed',
+        top: anchor.top,
+        left: anchor.left - 80,
+        margin: 0,
+        zIndex: 10000,
+      }}
+      onClick={e => e.stopPropagation()}
+    >
+      {photo && (
+        <div className={styles.infoPopupPhoto}>
+          <img
+            src={photo}
+            alt={species.common}
+            onError={e => { e.target.parentElement.style.display = 'none' }}
+          />
+        </div>
+      )}
+      <div className={styles.infoPopupBody}>
+        <div className={styles.infoPopupName}>
+          {species.common}
+        </div>
+        {species.scientific && (
+          <div className={styles.infoPopupSci}>{species.scientific}</div>
+        )}
+        {iucnLabel && (
+          <span className={styles.infoPopupIucn} style={{ background: iucnColor }}>
+            {iucnLabel}
+          </span>
+        )}
+        {meta.lengthM && (
+          <div className={styles.infoPopupStat}>
+            Typical length: <strong>{meta.lengthM}m</strong>
+          </div>
+        )}
+        {species.count > 0 && (
+          <div className={styles.infoPopupStat}>
+            Sightings nearby: <strong>{species.count}</strong>
+            {species.lastSeen && <> · Last seen: <strong>{species.lastSeen}</strong></>}
+          </div>
+        )}
+        {meta.fact && (
+          <div className={styles.infoPopupFact}>{meta.fact}</div>
+        )}
+        {inatId && (
+          <Link
+            to={`/species/${inatId}-${toSlug(species.scientific)}`}
+            style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 600, color: '#3d5a3e' }}
+          >
+            View full profile →
+          </Link>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <span
-      style={{ position: 'relative', display: 'inline-flex', zIndex: open ? 60 : 1 }}
+      style={{ display: 'inline-flex' }}
       onClick={e => e.stopPropagation()}
     >
       <button
@@ -123,54 +184,7 @@ export default function SpeciesInfoPopup({ species, styles, openInfoKey, setOpen
           <circle cx="8" cy="5" r="0.75" fill="currentColor"/>
         </svg>
       </button>
-      {open && (
-        <div ref={popupRef} className={styles.infoPopup}>
-          {photo && (
-            <div className={styles.infoPopupPhoto}>
-              <img
-                src={photo}
-                alt={species.common}
-                onError={e => { e.target.parentElement.style.display = 'none' }}
-              />
-            </div>
-          )}
-          <div className={styles.infoPopupBody}>
-            <div className={styles.infoPopupName}>
-              {species.common}
-            </div>
-            {species.scientific && (
-              <div className={styles.infoPopupSci}>{species.scientific}</div>
-            )}
-            {iucnLabel && (
-              <span className={styles.infoPopupIucn} style={{ background: iucnColor }}>
-                {iucnLabel}
-              </span>
-            )}
-            {meta.lengthM && (
-              <div className={styles.infoPopupStat}>
-                Typical length: <strong>{meta.lengthM}m</strong>
-              </div>
-            )}
-            {species.count > 0 && (
-              <div className={styles.infoPopupStat}>
-                Sightings nearby: <strong>{species.count}</strong>
-                {species.lastSeen && <> · Last seen: <strong>{species.lastSeen}</strong></>}
-              </div>
-            )}
-            {meta.fact && (
-              <div className={styles.infoPopupFact}>{meta.fact}</div>
-            )}
-            {inatId && (
-              <Link
-                to={`/species/${inatId}-${toSlug(species.scientific)}`}
-                style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 600, color: '#3d5a3e' }}
-              >
-                View full profile →
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+      {popupContent && createPortal(popupContent, document.body)}
     </span>
   )
 }

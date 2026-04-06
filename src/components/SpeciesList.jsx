@@ -6,7 +6,8 @@ function aggregateBySpecies(observations) {
   const map = {}
   for (const obs of observations) {
     const taxon = obs.taxon
-    const key = taxon?.id || taxon?.name || obs.id
+    const sciName = taxon?.name?.toLowerCase() || ''
+    const key = sciName.split(/\s+/).slice(0, 2).join(' ') || taxon?.id || obs.id
     if (!map[key]) {
       map[key] = {
         taxon,
@@ -37,7 +38,7 @@ export default function SpeciesList({ observations, onSelect }) {
         const photo = sp.bestPhoto
 
         // Find first observation for this species to pass to onSelect
-        const firstObs = observations.find(o => (o.taxon?.id || o.taxon?.name) === (taxon?.id || taxon?.name))
+        const firstObs = observations.find(o => o.taxon?.name && taxon?.name && o.taxon.name.toLowerCase() === taxon.name.toLowerCase())
 
         return (
           <div

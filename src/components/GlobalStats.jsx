@@ -41,19 +41,21 @@ const COUNTER_INFO_ALL = {
   },
 }
 
-const ANIM_DURATION = 1200 // ms
+const ANIM_DURATION = 1500 // ms
 
 function AnimatedNumber({ value }) {
-  const [display, setDisplay] = useState(value)
-  const ref = useRef({ value, raf: null })
+  const spanRef = useRef(null)
+  const animRef = useRef({ value: null, raf: null })
 
-  useLayoutEffect(() => {
-    const from = ref.current.value
+  useEffect(() => {
+    const isFirst = animRef.current.value === null
+    // On first render, start from ~95% so only the last digits roll
+    const from = isFirst ? Math.round(value * 0.95) : animRef.current.value
     const to = value
-    ref.current.value = to
-    if (from === to) return
+    animRef.current.value = to
+    if (from === to) { return }
 
-    if (ref.current.raf) cancelAnimationFrame(ref.current.raf)
+    if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf)
 
     const start = performance.now()
     const diff = to - from
@@ -62,15 +64,20 @@ function AnimatedNumber({ value }) {
       const t = Math.min((now - start) / ANIM_DURATION, 1)
       // ease-out cubic
       const eased = 1 - Math.pow(1 - t, 3)
-      setDisplay(Math.round(from + diff * eased))
-      if (t < 1) ref.current.raf = requestAnimationFrame(tick)
+      const current = Math.round(from + diff * eased)
+      if (spanRef.current) {
+        spanRef.current.textContent = current.toLocaleString()
+      }
+      if (t < 1) {
+        animRef.current.raf = requestAnimationFrame(tick)
+      }
     }
 
-    ref.current.raf = requestAnimationFrame(tick)
-    return () => { if (ref.current.raf) cancelAnimationFrame(ref.current.raf) }
+    animRef.current.raf = requestAnimationFrame(tick)
+    return () => { if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf) }
   }, [value])
 
-  return display.toLocaleString()
+  return <span ref={spanRef}>{Math.round(value * 0.95).toLocaleString()}</span>
 }
 
 function InfoIcon({ statKey, activeInfo, setActiveInfo, counterInfo }) {

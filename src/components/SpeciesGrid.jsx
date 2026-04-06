@@ -6,7 +6,10 @@ function aggregateBySpecies(observations) {
   const map = {}
   for (const obs of observations) {
     const taxon = obs.taxon
-    const key = taxon?.id || taxon?.name || obs.id
+    // Group by species-level name (first two words) so subspecies and
+    // cross-source duplicates merge into one entry
+    const sciName = taxon?.name?.toLowerCase() || ''
+    const key = sciName.split(/\s+/).slice(0, 2).join(' ') || taxon?.id || obs.id
     if (!map[key]) {
       map[key] = {
         taxon,

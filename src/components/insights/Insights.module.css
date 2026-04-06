@@ -5,6 +5,13 @@
   gap: 24px;
   animation: fadeIn 0.4s ease-out;
 }
+.emptyMsg {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  padding: 48px 24px;
+}
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }

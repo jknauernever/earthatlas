@@ -29,6 +29,11 @@
   color: var(--muted);
   white-space: nowrap;
 }
+.optional {
+  opacity: 0.5;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
 .locDisplay {
   display: flex;
   align-items: center;

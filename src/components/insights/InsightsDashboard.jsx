@@ -28,7 +28,7 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
 
   // ─── Main fetch ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!coords) return
+    if (!coords && !selectedSpecies) return
     const id = ++fetchId.current
 
     setLoading(true)
@@ -45,9 +45,9 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
     const d2 = d1 ? new Date().toISOString().split('T')[0] : undefined
 
     const params = {
-      lat: coords.lat,
-      lng: coords.lng,
-      radiusKm,
+      lat: coords?.lat,
+      lng: coords?.lng,
+      radiusKm: coords ? radiusKm : undefined,
       d1,
       d2,
       // GBIF-specific
@@ -212,6 +212,16 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
     species: selectedYear
       ? `Species in ${selectedYear}`
       : 'Species Detected',
+  }
+
+  if (dataSource === 'eBird' && !coords) {
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.emptyMsg}>
+          eBird insights require a location. Use <strong>Locate Me</strong> or search for a place to see eBird data.
+        </div>
+      </div>
+    )
   }
 
   return (

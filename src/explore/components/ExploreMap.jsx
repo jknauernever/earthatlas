@@ -27,6 +27,34 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
+function formatTime(timeStr) {
+  if (!timeStr) return ''
+  try {
+    // eBird: "2024-01-15 08:30" (local time, no timezone)
+    if (timeStr.includes(' ') && !timeStr.includes('T')) {
+      const timePart = timeStr.split(' ')[1]
+      if (!timePart) return ''
+      const [h, m] = timePart.split(':')
+      const hr = parseInt(h, 10)
+      const ampm = hr >= 12 ? 'PM' : 'AM'
+      const hr12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr
+      return `${hr12}:${m} ${ampm}`
+    }
+    // iNaturalist: ISO 8601 with timezone offset e.g. "2024-01-15T08:30:00-05:00"
+    const d = new Date(timeStr)
+    if (isNaN(d)) return ''
+    // Extract the original timezone offset to display local observation time
+    const match = timeStr.match(/([+-]\d{2}):?(\d{2})$/)
+    if (match) {
+      const offsetMin = parseInt(match[1], 10) * 60 + (parseInt(match[1], 10) < 0 ? -1 : 1) * parseInt(match[2], 10)
+      const utcMs = d.getTime()
+      const local = new Date(utcMs + offsetMin * 60000 + d.getTimezoneOffset() * 60000)
+      return local.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    }
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  } catch { return '' }
+}
+
 // ─── Shared popup HTML builder ─────────────────────────────────────────────
 function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
@@ -96,7 +124,8 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
           display:flex;flex-direction:column;gap:3px;
         ">
           ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
-          ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}</div>` : ''}
+          ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}${formatTime(s.time) ? ` at ${formatTime(s.time)}` : ''}</div>` : ''}
+          ${s.observer ? `<div>\u{1F464} ${s.observer}</div>` : ''}
           <div style="
             margin-top:6px;
             font-size:10px;
@@ -489,8 +518,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     const map = mapRef.current
     if (!map || sightings.length === 0) return
 
-    if (radiusKm && center) {
-      // Homepage map with explicit radius — fit to radius circle
+    if (radiusKm && center && !initialFitDone.current) {
+      // Homepage map with explicit radius — fit to radius circle once per search
+      initialFitDone.current = true
       const earthRadius = 6371
       const dLat = (radiusKm / earthRadius) * (180 / Math.PI)
       const dLng = dLat / Math.cos(center.lat * Math.PI / 180)

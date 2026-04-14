@@ -387,8 +387,9 @@ export default function App() {
         lat,
         lng,
         date: obs.observed_on || null,
+        time: isEBird ? (obs._obsDt || null) : isGBIF ? null : (obs.time_observed_at || null),
         place: obs.place_guess || null,
-        observer: isEBird ? 'eBird' : isGBIF ? (obs.recordedBy || 'GBIF') : (obs.user?.login || 'iNaturalist'),
+        observer: isEBird ? null : isGBIF ? (obs.recordedBy || null) : (obs.user?.login || null),
         photos: obs.photos?.map(p => p.url?.replace('square', 'medium')).filter(Boolean) || [],
         source: isEBird ? 'eBird' : isGBIF ? 'GBIF' : 'iNaturalist',
       }

@@ -1,8 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /admin
+Disallow: /api/
 
-# Sitemaps
 Sitemap: https://earthatlas.org/sitemap.xml
-
-# Host
-Host: https://earthatlas.org

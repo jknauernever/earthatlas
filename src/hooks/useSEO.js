@@ -38,14 +38,20 @@ export function useSEO({ title, description, path, image }) {
     setMeta('og:title', fullTitle)
     if (description) setMeta('og:description', description)
     setMeta('og:type', 'website')
+    setMeta('og:site_name', 'EarthAtlas')
+    setMeta('og:locale', 'en_US')
     if (path) setMeta('og:url', `${BASE_URL}${path}`)
-    if (image) setMeta('og:image', `${BASE_URL}${image}`)
+    // Absolute URLs pass through untouched; relative paths get the base prepended
+    const absImage = image
+      ? (/^https?:\/\//i.test(image) ? image : `${BASE_URL}${image}`)
+      : null
+    if (absImage) setMeta('og:image', absImage)
 
     // Twitter card
     setMeta('twitter:card', 'summary_large_image')
     setMeta('twitter:title', fullTitle)
     if (description) setMeta('twitter:description', description)
-    if (image) setMeta('twitter:image', `${BASE_URL}${image}`)
+    if (absImage) setMeta('twitter:image', absImage)
 
     // Canonical
     if (path) {

@@ -4,6 +4,7 @@ import { fetchGlobalCounts, fetchTopSpecies, fetchTopCountries } from '../servic
 import { fetchGBIFGlobalStats } from '../services/gbif'
 import { fetchEBirdDashboardStats } from '../services/eBird'
 import { getTaxonMeta } from '../utils/taxon'
+import { track } from '../utils/analytics'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
 import preloaded from '../data/preloaded-stats.json'
@@ -301,7 +302,7 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
               <button
                 key={opt.key}
                 className={`${styles.timePill} ${speciesTime === opt.key ? styles.timePillActive : ''}`}
-                onClick={() => { setSpeciesTime(opt.key); posthog?.capture('species_time_changed', { time_filter: opt.key }) }}
+                onClick={() => { setSpeciesTime(opt.key); track(posthog, 'species_time_changed', { time_filter: opt.key }) }}
               >
                 {opt.label}
               </button>
@@ -322,7 +323,7 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
             const photo = t.default_photo?.square_url
 
             return (
-              <div key={t.id} className={styles.speciesCard} onClick={() => { setSelectedTaxon(t); posthog?.capture('species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) }} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') { setSelectedTaxon(t); posthog?.capture('species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) } }} style={{ cursor: 'pointer' }}>
+              <div key={t.id} className={styles.speciesCard} onClick={() => { setSelectedTaxon(t); track(posthog, 'species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) }} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') { setSelectedTaxon(t); track(posthog, 'species_card_clicked', { species: common, scientific_name: scientific, taxon: iconic, rank: i + 1 }) } }} style={{ cursor: 'pointer' }}>
                 <span className={styles.rank}>{i + 1}</span>
                 {photo
                   ? <img className={styles.speciesPhoto} src={photo} alt={scientific} loading="lazy" />
@@ -351,7 +352,7 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
               <button
                 key={opt.key}
                 className={`${styles.timePill} ${countriesTime === opt.key ? styles.timePillActive : ''}`}
-                onClick={() => { setCountriesTime(opt.key); posthog?.capture('countries_time_changed', { time_filter: opt.key }) }}
+                onClick={() => { setCountriesTime(opt.key); track(posthog, 'countries_time_changed', { time_filter: opt.key }) }}
               >
                 {opt.label}
               </button>

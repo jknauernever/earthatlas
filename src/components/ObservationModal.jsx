@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { getTaxonMeta, formatDate } from '../utils/taxon'
+import { track } from '../utils/analytics'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './ObservationModal.module.css'
 
@@ -20,7 +21,7 @@ export default function ObservationModal({ obs, onClose }) {
 
   useEffect(() => {
     if (!obs) return
-    posthog?.capture('observation_viewed', {
+    track(posthog, 'observation_viewed', {
       source: obs.source || 'iNaturalist',
       species: obs.taxon?.preferred_common_name || obs.taxon?.name,
       scientific_name: obs.taxon?.name,
@@ -129,7 +130,7 @@ export default function ObservationModal({ obs, onClose }) {
               </a>
             )}
             {!isEBird && !isGBIF && taxon?.id && (
-              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setShowSpeciesMap(true); posthog?.capture('species_map_opened', { species: common, scientific_name: scientific, source: 'observation_modal' }) }}>
+              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setShowSpeciesMap(true); track(posthog, 'species_map_opened', { species: common, scientific_name: scientific, source: 'observation_modal' }) }}>
                 Species Map
               </button>
             )}

@@ -36,26 +36,27 @@ const sortedKeys = [...speciesKeys].sort((a, b) => Number(a) - Number(b))
 // ─── Build sitemap XML ────────────────────────────────────────────────────────
 const urls = []
 
-function addUrl(path, priority, changefreq = 'weekly') {
+function addUrl(path) {
   urls.push(`  <url>
     <loc>${SITE}${path}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>${changefreq}</changefreq>
-    <priority>${priority}</priority>
   </url>`)
 }
 
 // Homepage
-addUrl('/', 1.0, 'daily')
+addUrl('/')
+
+// Live pages
+addUrl('/live')
 
 // Explore subsites
 for (const slug of slugs) {
-  addUrl(`/${slug}`, 0.9)
+  addUrl(`/${slug}`)
 }
 
 // Species pages
 for (const key of sortedKeys) {
-  addUrl(`/species/${key}`, 0.7)
+  addUrl(`/species/${key}`)
 }
 
 // ─── News article pages (if database is available) ────────────────────────────
@@ -67,7 +68,7 @@ if (dbUrl) {
     const sql = neon(dbUrl)
     const articles = await sql.query(`SELECT species_slug, slug FROM articles WHERE status = 'published' ORDER BY pub_date DESC LIMIT 5000`, [])
     for (const a of articles) {
-      addUrl(`/news/${a.species_slug}/${a.slug}`, 0.6, 'daily')
+      addUrl(`/news/${a.species_slug}/${a.slug}`)
     }
     newsCount = articles.length
   } catch (err) {

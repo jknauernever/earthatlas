@@ -8,6 +8,7 @@ import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
 import { resolveSpecies } from './services/taxonCrosswalk'
 import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
+import { track } from './utils/analytics'
 
 import Header           from './components/Header'
 import Controls         from './components/Controls'
@@ -162,7 +163,7 @@ export default function App() {
       updates.time = 'week'
     }
     setQP(updates)
-    posthog?.capture('source_changed', { source })
+    track(posthog, 'source_changed', { source })
   }, [dataSource, posthog, radius, timeWindow, setQP])
 
   // ─── Handle locate ─────────────────────────────────────────────
@@ -320,7 +321,7 @@ export default function App() {
       const urlParams = { radius, time: timeWindow, source: dataSource }
       if (coords) { urlParams.lat = coords.lat; urlParams.lng = coords.lng }
       setQP(urlParams)
-      posthog?.capture('search_performed', {
+      track(posthog, 'search_performed', {
         source: dataSource,
         location: locationName,
         radius_km: radius,
@@ -536,23 +537,23 @@ export default function App() {
             <div className="view-toggle">
               <button
                 className={`view-btn ${view === 'grid' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'grid' }); posthog?.capture('view_changed', { view: 'grid' }) }}
+                onClick={() => { setQP({ view: 'grid' }); track(posthog, 'view_changed', { view: 'grid' }) }}
                 title="Grid view"
               ><GridIcon /></button>
               <button
                 className={`view-btn ${view === 'list' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'list' }); posthog?.capture('view_changed', { view: 'list' }) }}
+                onClick={() => { setQP({ view: 'list' }); track(posthog, 'view_changed', { view: 'list' }) }}
                 title="List view"
               ><ListIcon /></button>
               <button
                 className={`view-btn ${view === 'map' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'map' }); posthog?.capture('view_changed', { view: 'map' }) }}
+                onClick={() => { setQP({ view: 'map' }); track(posthog, 'view_changed', { view: 'map' }) }}
                 title="Map view"
               ><MapIcon /></button>
               {totalResults !== null && (
                 <button
                   className={`view-btn ${view === 'insights' ? 'active' : ''}`}
-                  onClick={() => { setQP({ view: 'insights' }); posthog?.capture('view_changed', { view: 'insights' }) }}
+                  onClick={() => { setQP({ view: 'insights' }); track(posthog, 'view_changed', { view: 'insights' }) }}
                   title="Insights"
                 ><InsightsIcon /></button>
               )}

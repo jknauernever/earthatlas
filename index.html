@@ -13,23 +13,53 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Life on Earth, mapped. Explore wildlife sightings, seasonal patterns, and species data worldwide." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#3d5a3e" />
+    <link rel="canonical" href="https://earthatlas.org/" />
     <title>EarthAtlas — Life on Earth, mapped</title>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://earthatlas.org" />
+    <meta property="og:site_name" content="EarthAtlas" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://earthatlas.org/" />
     <meta property="og:title" content="EarthAtlas — Life on Earth, mapped" />
-    <meta property="og:description" content="Explore wildlife sightings, seasonal patterns, and species data worldwide — powered by GBIF and iNaturalist." />
+    <meta property="og:description" content="Explore wildlife sightings, seasonal patterns, and species data worldwide — powered by GBIF, iNaturalist, and eBird." />
     <meta property="og:image" content="https://earthatlas.org/earthatlas-social.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="EarthAtlas — Life on Earth, mapped" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="EarthAtlas — Life on Earth, mapped" />
     <meta name="twitter:description" content="Explore wildlife sightings, seasonal patterns, and species data worldwide." />
     <meta name="twitter:image" content="https://earthatlas.org/earthatlas-social.jpg" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://earthatlas.org/#organization",
+          "name": "EarthAtlas",
+          "url": "https://earthatlas.org/",
+          "logo": "https://earthatlas.org/favicon.svg",
+          "description": "EarthAtlas maps global biodiversity by aggregating species observations from GBIF, iNaturalist, and eBird."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://earthatlas.org/#website",
+          "url": "https://earthatlas.org/",
+          "name": "EarthAtlas",
+          "description": "Life on Earth, mapped.",
+          "publisher": { "@id": "https://earthatlas.org/#organization" }
+        }
+      ]
+    }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />

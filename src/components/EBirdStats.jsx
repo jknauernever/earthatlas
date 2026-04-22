@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePostHog } from 'posthog-js/react'
 import { fetchEBirdDashboardStats } from '../services/eBird'
+import { track } from '../utils/analytics'
 import styles from './EBirdStats.module.css'
 import preloaded from '../data/preloaded-stats.json'
 
@@ -140,7 +141,7 @@ export default function EBirdStats() {
               <button
                 key={opt.key}
                 className={`${styles.timePill} ${dateKey === opt.key ? styles.timePillActive : ''}`}
-                onClick={() => { setDateKey(opt.key); posthog?.capture('ebird_date_changed', { date_filter: opt.key }) }}
+                onClick={() => { setDateKey(opt.key); track(posthog, 'ebird_date_changed', { date_filter: opt.key }) }}
               >
                 {opt.label}
               </button>

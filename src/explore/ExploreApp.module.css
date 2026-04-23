@@ -537,7 +537,9 @@
 
 .mapWrap {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  overflow: hidden;
+  /* No overflow: hidden — popups need to overflow the wrapper. Canvas
+     clipping is handled by .mapboxgl-canvas-container inheriting this
+     border-radius (see index.css). */
   height: 570px;
   border: 1px solid var(--border);
   border-bottom: none;

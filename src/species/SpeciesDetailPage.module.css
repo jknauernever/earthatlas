@@ -372,7 +372,8 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 12px;
-  overflow: hidden;
+  /* No overflow: hidden — popups need to extend beyond the wrapper.
+     Canvas clipping handled by .mapboxgl-canvas-container (see index.css). */
   border: 1px solid var(--border);
 }
 .mapWrap :global(.mapboxgl-ctrl-logo) {

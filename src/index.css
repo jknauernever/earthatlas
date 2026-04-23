@@ -185,6 +185,16 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
 .mapboxgl-ctrl-attrib-button { display: none !important; }
 
 /* ─── Map popup overrides ─── */
+/* Let popups extend beyond the map's rounded-corner bounds. Mapbox's default
+   `.mapboxgl-map { overflow: hidden }` clips popups near the edges; we push
+   the clipping down to `.mapboxgl-canvas-container` (which already has
+   `overflow: hidden` for the tiles) and inherit the wrapper's border-radius
+   there, so canvas stays rounded but popups float free. Wrappers (.map-container,
+   .mapWrap, etc.) must keep their border-radius but drop overflow:hidden. */
+.mapboxgl-map { overflow: visible !important; border-radius: inherit; }
+.mapboxgl-canvas-container { border-radius: inherit; }
+.mapboxgl-popup { z-index: 5; }
+
 .mapboxgl-popup .mapboxgl-popup-content {
   background: transparent;
   padding: 0;

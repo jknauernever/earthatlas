@@ -136,7 +136,8 @@
   flex: 1 1 0;
   position: relative;
   min-height: 400px;
-  overflow: hidden;
+  /* No overflow: hidden — lets popups escape the map area. Outer .modal
+     still has overflow: hidden for the modal's own rounded corners. */
 }
 .map {
   width: 100%;

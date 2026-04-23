@@ -92,8 +92,10 @@
   flex: 1;
   min-width: 0;
   border-radius: 10px;
-  overflow: hidden;
   min-height: 420px;
+  /* Intentionally no overflow: hidden — popups need to extend beyond the map.
+     Canvas clipping is handled by .mapboxgl-canvas-container inheriting this
+     border-radius (see index.css). */
 }
 .species-sidebar {
   width: 320px;

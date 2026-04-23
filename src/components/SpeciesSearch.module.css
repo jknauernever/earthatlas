@@ -77,6 +77,24 @@
 .option + .option {
   border-top: 1px solid var(--border);
 }
+.sectionHeader {
+  padding: 6px 12px 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.sectionHeader + .option {
+  border-top: none;
+}
+.option + .sectionHeader {
+  border-top: 1px solid var(--border);
+}
 .thumb {
   width: 28px;
   height: 28px;

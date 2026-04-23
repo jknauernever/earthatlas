@@ -4,54 +4,125 @@ import { fetchEBirdTaxonomy, searchEBirdTaxa } from '../services/eBird'
 import { searchGBIFTaxa } from '../services/gbif'
 import styles from './SpeciesSearch.module.css'
 
-// Group taxa results by species-level binomial name, collapsing subspecies.
-// Preserves the original API relevance ordering.
-function groupBySpecies(results) {
-  const groups = new Map()
-  // Track insertion order — each entry is either a group key or a standalone taxon
-  const order = []
-  const seen = new Set()
+// Crude English stemmer — strips "s"/"es"/"ies" suffixes so "foxes"→"fox",
+// "lions"→"lion", "jellies"→"jelly". Good enough for common-name matching;
+// we don't need linguistic accuracy.
+function stem(word) {
+  if (word.length > 4 && word.endsWith('ies')) return word.slice(0, -3) + 'y'
+  if (word.length > 3 && word.endsWith('es')) return word.slice(0, -2)
+  if (word.length > 2 && word.endsWith('s')) return word.slice(0, -1)
+  return word
+}
+
+// Score how well a query matches a taxon's common/scientific name. Higher is
+// better. We use this to tier results *before* falling back to obs count —
+// otherwise iNat's substring-heavy relevance conflates "Lion" (Panthera leo)
+// with "dandelion", and "fox" with "foxglove". Last-word matches outrank
+// first-word matches so that "Typical Foxes" (Vulpes) beats "Fox Spiders"
+// (Alopecosa), and "Holarctic Bears" (Ursus) beats "Bear Spiders" — the
+// canonical taxon for a common noun is usually named in the plural where the
+// noun is the head word.
+function matchQuality(taxon, queryStem) {
+  const common = (taxon.name || '').toLowerCase()
+  const sci = (taxon.scientificName || '').toLowerCase()
+  const commonWords = common.split(/[^a-z]+/).filter(Boolean).map(stem)
+  const sciWords = sci.split(/[^a-z]+/).filter(Boolean).map(stem)
+
+  if (commonWords.length === 1 && commonWords[0] === queryStem) return 5
+  if (commonWords[commonWords.length - 1] === queryStem) return 4
+  if (commonWords[0] === queryStem) return 3
+  if (commonWords.includes(queryStem)) return 3
+  if (sciWords.includes(queryStem)) return 2
+  if (common.includes(queryStem) || sci.includes(queryStem)) return 1
+  return 0
+}
+
+// Ranks that count as "Groups" (broader than species) — genus + family-level
+// containers users commonly mean when they type "bear" or "shark".
+const GROUP_RANKS = new Set(['genus', 'subgenus', 'family', 'subfamily', 'tribe', 'subtribe', 'superfamily'])
+
+// Organize taxa results into two sections — Genera first, Species below —
+// with subspecies collapsed under their parent species. Within each section,
+// sort by (match quality DESC, observations DESC) so whole-word hits always
+// beat substring hits, then popularity breaks ties.
+//
+// Returns a flat list of entries: either { type: 'header', label } for
+// section dividers, or { type: 'taxon', ...taxonFields } for selectable rows.
+function groupAndSortResults(results, query = '') {
+  const queryStem = stem(query.toLowerCase().trim())
+  const sortByQualityThenObs = (a, b) => {
+    const qa = matchQuality(a, queryStem)
+    const qb = matchQuality(b, queryStem)
+    if (qa !== qb) return qb - qa
+    return (b.observationsCount || 0) - (a.observationsCount || 0)
+  }
+  const groups = [] // genus + family + subfamily + tribe + ...
+  const speciesMap = new Map() // binomial → { parent, subspecies[] }
+  const others = []
 
   for (const taxon of results) {
-    const sci = taxon.scientificName || ''
+    const sci = (taxon.scientificName || '')
     const parts = sci.split(/\s+/)
     const binomial = parts.length >= 2 ? `${parts[0]} ${parts[1]}`.toLowerCase() : null
-    const isSubspecies = binomial && !sci.includes('×') &&
-      (taxon.rank === 'subspecies' || taxon.rank === 'variety' || taxon.rank === 'form')
+    const isHybrid = sci.includes('×')
 
-    if (isSubspecies) {
-      if (!groups.has(binomial)) {
-        groups.set(binomial, { parent: null, subspecies: [] })
-        order.push({ type: 'group', key: binomial })
-      }
-      groups.get(binomial).subspecies.push(taxon)
-    } else if (binomial && taxon.rank === 'species') {
-      if (groups.has(binomial)) {
-        groups.get(binomial).parent = taxon
-      } else {
-        groups.set(binomial, { parent: taxon, subspecies: [] })
-        order.push({ type: 'group', key: binomial })
-      }
+    if (GROUP_RANKS.has(taxon.rank)) {
+      groups.push(taxon)
+    } else if (taxon.rank === 'species' && binomial && !isHybrid) {
+      const existing = speciesMap.get(binomial)
+      if (existing) existing.parent = taxon
+      else speciesMap.set(binomial, { parent: taxon, subspecies: [] })
+    } else if ((taxon.rank === 'subspecies' || taxon.rank === 'variety' || taxon.rank === 'form') && binomial) {
+      const existing = speciesMap.get(binomial)
+      if (existing) existing.subspecies.push(taxon)
+      else speciesMap.set(binomial, { parent: null, subspecies: [taxon] })
     } else {
-      order.push({ type: 'standalone', taxon: { ...taxon, subspeciesCount: 0 } })
+      others.push(taxon)
     }
   }
+
+  groups.sort(sortByQualityThenObs)
+
+  const species = []
+  for (const { parent, subspecies } of speciesMap.values()) {
+    if (parent) {
+      species.push({ ...parent, subspeciesCount: subspecies.length })
+    } else {
+      // Orphan subspecies (parent wasn't returned) — surface them individually
+      for (const sub of subspecies) species.push({ ...sub, subspeciesCount: 0 })
+    }
+  }
+  species.sort(sortByQualityThenObs)
 
   const output = []
-  for (const entry of order) {
-    if (entry.type === 'standalone') {
-      output.push(entry.taxon)
-    } else {
-      const { parent, subspecies } = groups.get(entry.key)
-      if (parent) {
-        output.push({ ...parent, subspeciesCount: subspecies.length })
-      } else {
-        for (const sub of subspecies) output.push({ ...sub, subspeciesCount: 0 })
-      }
-    }
+  const showHeaders = groups.length > 0 && species.length > 0
+  if (groups.length) {
+    if (showHeaders) output.push({ type: 'header', label: 'Groups' })
+    for (const g of groups) output.push({ type: 'taxon', ...g })
   }
-
+  if (species.length) {
+    if (showHeaders) output.push({ type: 'header', label: 'Species' })
+    for (const s of species) output.push({ type: 'taxon', ...s })
+  }
+  // Fallback: only higher ranks matched (rare) — show them ungrouped so the
+  // search doesn't look empty.
+  if (output.length === 0) {
+    for (const o of others) output.push({ type: 'taxon', ...o })
+  }
   return output
+}
+
+// Given a list with mixed header/taxon entries, find the next selectable
+// (non-header) index in `direction`, wrapping around.
+function nextSelectableIdx(entries, from, direction) {
+  const len = entries.length
+  if (!len) return -1
+  let i = from
+  for (let step = 0; step < len; step++) {
+    i = (i + direction + len) % len
+    if (entries[i]?.type === 'taxon') return i
+  }
+  return -1
 }
 
 export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSource }) {
@@ -88,19 +159,21 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
     if (dataSource === 'eBird') {
       // eBird: client-side filter of cached taxonomy (instant)
       timerRef.current = setTimeout(() => {
-        setResults(searchEBirdTaxa(val))
+        setResults(searchEBirdTaxa(val).map(t => ({ type: 'taxon', ...t })))
       }, 100)
     } else if (dataSource === 'GBIF') {
       // GBIF: species suggest API
       timerRef.current = setTimeout(async () => {
         const taxa = await searchGBIFTaxa(val)
-        setResults(taxa)
+        setResults(taxa.map(t => ({ type: 'taxon', ...t })))
       }, 300)
     } else {
-      // iNaturalist / All: taxa autocomplete API — group subspecies
+      // iNaturalist / All: taxa autocomplete API — split into Genera/Species
+      // sections, rank each by (match quality, observations), group
+      // subspecies under their parent.
       timerRef.current = setTimeout(async () => {
         const taxa = await searchTaxa(val)
-        setResults(groupBySpecies(taxa))
+        setResults(groupAndSortResults(taxa, val))
       }, 300)
     }
   }, [dataSource])
@@ -125,11 +198,11 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIdx(i => (i + 1) % results.length)
+      setActiveIdx(i => nextSelectableIdx(results, i, 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActiveIdx(i => (i - 1 + results.length) % results.length)
-    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      setActiveIdx(i => nextSelectableIdx(results, i < 0 ? 0 : i, -1))
+    } else if (e.key === 'Enter' && activeIdx >= 0 && results[activeIdx]?.type === 'taxon') {
       e.preventDefault()
       handleSelect(results[activeIdx])
     } else if (e.key === 'Escape') {
@@ -174,26 +247,35 @@ export default function SpeciesSearch({ selectedSpecies, onSpeciesSelect, dataSo
       </div>
       {open && results.length > 0 && (
         <div className={styles.dropdown}>
-          {results.map((taxon, i) => (
-            <button
-              key={taxon.id}
-              className={`${styles.option} ${i === activeIdx ? styles.active : ''}`}
-              onMouseDown={() => handleSelect(taxon)}
-            >
-              {taxon.photoUrl && (
-                <img className={styles.thumb} src={taxon.photoUrl} alt="" />
-              )}
-              <span className={styles.optionText}>
-                <span className={styles.commonName}>{taxon.name}</span>
-                <span className={styles.sciName}>
-                  {taxon.scientificName}
-                  {taxon.subspeciesCount > 0 && (
-                    <span className={styles.subHint}> · includes subspecies</span>
-                  )}
+          {results.map((entry, i) => {
+            if (entry.type === 'header') {
+              return (
+                <div key={`h-${i}`} className={styles.sectionHeader}>
+                  {entry.label}
+                </div>
+              )
+            }
+            return (
+              <button
+                key={entry.id}
+                className={`${styles.option} ${i === activeIdx ? styles.active : ''}`}
+                onMouseDown={() => handleSelect(entry)}
+              >
+                {entry.photoUrl && (
+                  <img className={styles.thumb} src={entry.photoUrl} alt="" />
+                )}
+                <span className={styles.optionText}>
+                  <span className={styles.commonName}>{entry.name}</span>
+                  <span className={styles.sciName}>
+                    {entry.scientificName}
+                    {entry.subspeciesCount > 0 && (
+                      <span className={styles.subHint}> · includes subspecies</span>
+                    )}
+                  </span>
                 </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

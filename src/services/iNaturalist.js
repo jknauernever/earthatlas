@@ -87,11 +87,32 @@ export async function fetchSpeciesCounts({ lat, lng, radiusKm, d1, d2, taxonId, 
 // ─── Taxon autocomplete ──────────────────────────────────────────
 export async function searchTaxa(query) {
   if (!query.trim()) return []
-  const params = new URLSearchParams({ q: query, per_page: 15 })
-  const res = await fetch(`${INAT_API}/taxa/autocomplete?${params}`)
-  if (!res.ok) return []
-  const data = await res.json()
-  return (data.results || []).map(t => ({
+  // iNat autocomplete ranks by its own relevance score (not observations) and
+  // caps per_page at 30. For queries like "fox", the mixed-rank endpoint
+  // never returns Vulpes — substring-matched genera (Setaria/foxtail,
+  // Digitalis/foxglove) and species (Sciurus niger/Fox Squirrel) crowd it
+  // out. A rank=genus-scoped query *does* return Vulpes (at ~#12), which our
+  // obs-count re-rank then promotes to the top. Fire both in parallel and
+  // dedupe so users see the taxon they almost certainly meant.
+  const qp = encodeURIComponent(query)
+  const [mixedRes, genusRes] = await Promise.all([
+    fetch(`${INAT_API}/taxa/autocomplete?q=${qp}&per_page=30`).catch(() => null),
+    fetch(`${INAT_API}/taxa/autocomplete?q=${qp}&per_page=30&rank=genus`).catch(() => null),
+  ])
+  const [mixedData, genusData] = await Promise.all([
+    mixedRes?.ok ? mixedRes.json() : { results: [] },
+    genusRes?.ok ? genusRes.json() : { results: [] },
+  ])
+
+  const seen = new Set()
+  const merged = []
+  for (const t of [...(mixedData.results || []), ...(genusData.results || [])]) {
+    if (seen.has(t.id)) continue
+    seen.add(t.id)
+    merged.push(t)
+  }
+
+  return merged.map(t => ({
     id: t.id,
     name: t.preferred_common_name || t.name,
     scientificName: t.name,
@@ -100,6 +121,7 @@ export async function searchTaxa(query) {
     parentId: t.parent_id,
     iconicTaxon: t.iconic_taxon_name,
     photoUrl: t.default_photo?.square_url || null,
+    observationsCount: t.observations_count || 0,
   }))
 }
 

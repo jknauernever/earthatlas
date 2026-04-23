@@ -105,8 +105,9 @@ export default function InsightsDashboard({ coords, radiusKm, timeWindow, active
       } else {
         setDatasetsLoading(false)
       }
-    }).catch(() => {
+    }).catch((err) => {
       if (id !== fetchId.current) return
+      console.error('[InsightsDashboard] fetch failed', err)
       setLoading(false)
       setSpeciesLoading(false)
       setClassesLoading(false)

@@ -39,9 +39,12 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     params.set('d2', d2 || new Date().toISOString().split('T')[0])
   }
 
-  // iNat caps at 200 per request — fetch multiple pages in parallel if needed
+  // iNat caps at 200 per request — fetch multiple pages in parallel if needed.
+  // perPage=0 is a valid "count only" request (used by the Insights dashboard)
+  // — iNat returns total_results with an empty results[] array, so we must
+  // take the single-fetch path rather than compute pages from 0.
   const pageSize = Math.min(perPage, 200)
-  const pages = Math.ceil(Math.min(perPage, 400) / pageSize)
+  const pages = pageSize <= 0 ? 1 : Math.ceil(Math.min(perPage, 400) / pageSize)
 
   if (pages <= 1) {
     const res = await fetch(`${INAT_API}/observations?${params}`)

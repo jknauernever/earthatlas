@@ -526,12 +526,20 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     // Skip if map is already at the target center (avoids stuck flyingRef on init)
     const mc = mapRef.current.getCenter()
     if (Math.abs(mc.lat - center.lat) < 0.001 && Math.abs(mc.lng - center.lng) < 0.001) return
+    // Parent-driven center change (e.g. Locate Me, manual location select)
+    // clears the pinned view — the user wants to re-fit to the new origin.
+    userCenterRef.current = null
+    initialFitDone.current = false
     markFlying(1500)
     mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
   }, [center?.lat, center?.lng])
 
   // ─── Reset fit flag when a new search starts ────────────────────────────
   useEffect(() => {
+    // Don't reset if the user has pinned a view (initialView from URL, or a
+    // prior pan recorded in userCenterRef). Auto-fitting over their chosen
+    // view would undo the whole point of a shareable map URL.
+    if (userCenterRef.current) return
     initialFitDone.current = false
   }, [searchId])
 

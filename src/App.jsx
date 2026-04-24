@@ -202,6 +202,34 @@ export default function App() {
     setQP({ species: enriched.id || null })
   }, [setQP])
 
+  // ─── Cold-load: hydrate selectedSpecies from ?species=<iNat-id> ────
+  // When a shared link has a species filter but the page reloads fresh,
+  // selectedSpecies starts null and the search never fires. Fetch the
+  // taxon from iNat, then route through handleSpeciesSelect so the
+  // crosswalk (gbifKey, speciesCode) populates for multi-source search.
+  const speciesColdLoaded = useRef(false)
+  useEffect(() => {
+    if (speciesColdLoaded.current) return
+    if (qp.species && !selectedSpecies) {
+      speciesColdLoaded.current = true
+      fetch(`https://api.inaturalist.org/v1/taxa/${qp.species}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const t = data?.results?.[0]
+          if (!t) return
+          handleSpeciesSelect({
+            id: t.id,
+            name: t.preferred_common_name || t.name,
+            scientificName: t.name,
+            rank: t.rank,
+            iconicTaxon: t.iconic_taxon_name,
+            photoUrl: t.default_photo?.square_url || null,
+          })
+        })
+        .catch(() => {})
+    }
+  }, [qp.species, selectedSpecies, handleSpeciesSelect])
+
   // ─── Search ────────────────────────────────────────────────────
   // GBIF dataset keys for deduplication (iNat and eBird both export to GBIF)
   const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'

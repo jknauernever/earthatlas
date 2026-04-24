@@ -321,8 +321,16 @@ export default function App() {
 
       setObservations(allResults)
       setTotalResults(totalCount)
-      // Ensure search params are reflected in URL for shareability
-      const urlParams = { radius, time: timeWindow, source: dataSource }
+      // Push the full search state into the URL every time a search completes,
+      // so shared links always reproduce the exact view. Passing null clears
+      // the param when the filter isn't active.
+      const urlParams = {
+        radius,
+        time: timeWindow,
+        source: dataSource,
+        species: selectedSpecies?.id || null,
+        taxon: activeTaxon !== 'all' ? activeTaxon : null,
+      }
       if (coords) { urlParams.lat = coords.lat; urlParams.lng = coords.lng }
       setQP(urlParams)
       track(posthog, 'search_performed', {

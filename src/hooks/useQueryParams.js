@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 /**
@@ -19,6 +19,15 @@ import { useSearchParams } from 'react-router-dom'
 export function useQueryParams(schema) {
   const [searchParams, setSearchParams] = useSearchParams()
 
+  // Always read the latest searchParams via a ref. react-router's internal
+  // setSearchParams captures `searchParams` by closure — if a caller holds a
+  // stale reference (e.g. from a useCallback whose deps list doesn't include
+  // setQP), its functional updater sees pre-update state and overwrites
+  // concurrently-written params. Reading from a ref and passing a concrete
+  // URLSearchParams (never a function) sidesteps that entirely.
+  const searchParamsRef = useRef(searchParams)
+  searchParamsRef.current = searchParams
+
   const params = useMemo(() => {
     const result = {}
     for (const [key, { type, default: def }] of Object.entries(schema)) {
@@ -38,22 +47,19 @@ export function useQueryParams(schema) {
   }, [searchParams, schema])
 
   const setQP = useCallback((updates) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      for (const [key, value] of Object.entries(updates)) {
-        const def = schema[key]?.default
-        if (value == null) {
-          next.delete(key)
-        } else {
-          // Round numbers to 4 decimal places for coordinates
-          const str = schema[key]?.type === 'number'
-            ? String(Math.round(value * 10000) / 10000)
-            : String(value)
-          next.set(key, str)
-        }
+    const next = new URLSearchParams(searchParamsRef.current)
+    for (const [key, value] of Object.entries(updates)) {
+      if (value == null) {
+        next.delete(key)
+      } else {
+        // Round numbers to 4 decimal places for coordinates
+        const str = schema[key]?.type === 'number'
+          ? String(Math.round(value * 10000) / 10000)
+          : String(value)
+        next.set(key, str)
       }
-      return next
-    }, { replace: true })
+    }
+    setSearchParams(next, { replace: true })
   }, [setSearchParams, schema])
 
   return [params, setQP]

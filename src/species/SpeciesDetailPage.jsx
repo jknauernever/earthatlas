@@ -2,6 +2,13 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import { useSEO } from '../hooks/useSEO.js'
+import { useQueryParams } from '../hooks/useQueryParams.js'
+
+const SPECIES_QP_SCHEMA = {
+  mode: { type: 'string', default: 'heatmap' }, // 'recent' | 'heatmap'
+  d1:   { type: 'string' },                     // YYYY-MM-DD, recent-mode start
+  d2:   { type: 'string' },                     // YYYY-MM-DD, recent-mode end
+}
 import {
   fetchTaxonDetail,
   fetchSeasonality,
@@ -53,12 +60,18 @@ export default function SpeciesDetailPage() {
   const [error, setError] = useState(null)
   const [lightboxIdx, setLightboxIdx] = useState(null)
   const [hoverMonth, setHoverMonth] = useState(null)
-  const [mapMode, setMapMode] = useState('heatmap') // 'recent' | 'heatmap'
-  const [mapDateRange, setMapDateRange] = useState(() => {
+  // Map mode + recent-mode date range live in the URL so specific filter
+  // views (e.g. "Red Fox, recent mode, last 7 days") can be shared as a link.
+  const [qp, setQP] = useQueryParams(SPECIES_QP_SCHEMA)
+  const mapMode = qp.mode
+  const setMapMode = useCallback((m) => setQP({ mode: m }), [setQP])
+  const mapDateRange = useMemo(() => {
+    if (qp.d1 && qp.d2) return { start: qp.d1, end: qp.d2 }
     const today = new Date().toISOString().split('T')[0]
     const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
     return { start: thirtyAgo, end: today }
-  })
+  }, [qp.d1, qp.d2])
+  const setMapDateRange = useCallback((r) => setQP({ d1: r?.start || null, d2: r?.end || null }), [setQP])
   const [mapZoom, setMapZoom] = useState(1.2)
   const [selectedObs, setSelectedObs] = useState(null)
 

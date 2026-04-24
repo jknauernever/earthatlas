@@ -63,6 +63,7 @@ const InsightsIcon = () => (
 const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
+  loc:     { type: 'string' },  // reverse-geocoded place name; shared links skip the re-geocode flicker
   source:  { type: 'string', default: 'All' },
   radius:  { type: 'number', default: 5 },
   time:    { type: 'string', default: 'week' },
@@ -93,7 +94,10 @@ export default function App() {
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
   const [manualCoords, setManualCoords] = useState(null)
-  const [locationName, setLocationName] = useState(null)
+  // locationName lives in the URL (loc=…) so a shared link renders the
+  // correct place label immediately without waiting on reverse-geocoding.
+  const locationName = qp.loc
+  const setLocationName = useCallback((name) => setQP({ loc: name }), [setQP])
 
   // URL coords take priority, then manual, then geo
   const urlCoords = useMemo(

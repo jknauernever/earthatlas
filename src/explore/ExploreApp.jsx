@@ -35,6 +35,7 @@ const QP_SCHEMA = {
   mode:    { type: 'string', default: 'now' },
   month:   { type: 'number' },
   species: { type: 'string' },
+  panel:   { type: 'string', default: 'latest' }, // 'species' | 'latest' — sidebar tab
 }
 
 export default function ExploreApp({ config }) {
@@ -85,7 +86,8 @@ export default function ExploreApp({ config }) {
   const [dataError, setDataError]         = useState(null)
   const [openInfoKey, setOpenInfoKey]     = useState(null)
   const [totalCount, setTotalCount]       = useState(0)
-  const [panelTab, setPanelTab]           = useState('latest') // 'species' | 'latest'
+  const panelTab = qp.panel
+  const setPanelTab = (tab) => setQP({ panel: tab })
   const [feedExpanded, setFeedExpanded]   = useState(false)
 
   // Interaction

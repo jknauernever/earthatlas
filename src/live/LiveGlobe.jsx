@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchAllRecent } from './liveService'
+import { useQueryParams } from '../hooks/useQueryParams'
 import styles from './LiveGlobe.module.css'
+
+// URL-shareable filters for /live. Source, basemap, and labels-on/off are
+// persisted so a specific view can be copy-pasted as a link.
+const LIVE_QP_SCHEMA = {
+  source:  { type: 'string', default: 'All' },
+  basemap: { type: 'string', default: 'NASA Blue Marble' },
+  labels:  { type: 'string', default: 'off' }, // 'on' | 'off'
+}
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
@@ -289,9 +298,13 @@ export default function LiveGlobe() {
   const lastViewRef = useRef(null)
 
   const [cameraMode, setCameraMode] = useState(CAMERA_ROTATE)
-  const [sourceFilter, setSourceFilter] = useState('All')
-  const [basemap, setBasemap] = useState('NASA Blue Marble')
-  const [showLabels, setShowLabels] = useState(false)
+  const [qp, setQP] = useQueryParams(LIVE_QP_SCHEMA)
+  const sourceFilter = qp.source
+  const setSourceFilter = (src) => setQP({ source: src })
+  const basemap = qp.basemap
+  const setBasemap = (b) => setQP({ basemap: b })
+  const showLabels = qp.labels === 'on'
+  const setShowLabels = (v) => setQP({ labels: v ? 'on' : 'off' })
   const [obsCount, setObsCount] = useState(0)
   const [speciesCount, setSpeciesCount] = useState(0)
   const [photoOverlays, setPhotoOverlays] = useState([]) // { id, x, y, opacity, obs }
@@ -907,7 +920,7 @@ export default function LiveGlobe() {
         </select>
         <button
           className={showLabels ? styles.labelsBtnActive : styles.labelsBtn}
-          onClick={() => setShowLabels(v => !v)}
+          onClick={() => setShowLabels(!showLabels)}
           title="Toggle place labels"
         >
           Labels

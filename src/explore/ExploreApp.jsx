@@ -36,6 +36,7 @@ const QP_SCHEMA = {
   month:   { type: 'number' },
   species: { type: 'string' },
   panel:   { type: 'string', default: 'latest' }, // 'species' | 'latest' — sidebar tab
+  z:       { type: 'number' }, // map zoom — lat/lng already track the map center
 }
 
 export default function ExploreApp({ config }) {
@@ -287,7 +288,7 @@ export default function ExploreApp({ config }) {
     const name = await reverseGeocode(lat, lng) || 'this area'
     const loc = { lat, lng, name }
     setLocalLocation(loc)
-    setQP({ lat, lng, name })
+    setQP({ lat, lng, name, z: zoom })
     loadData(loc, { bounds, silent: true })
   }, [loadData, setQP])
 
@@ -531,6 +532,7 @@ export default function ExploreApp({ config }) {
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
                 patternsMonth={mode === 'patterns' ? displayedMonth + 1 : null}
+                initialView={qp.z != null ? { zoom: qp.z } : null}
                 config={{
                   fallbackColor: config.fallback.color,
                   fallbackEmoji: config.fallback.emoji,

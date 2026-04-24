@@ -70,6 +70,11 @@ const QP_SCHEMA = {
   taxon:   { type: 'string', default: 'all' },
   species: { type: 'string' },
   view:    { type: 'string', default: 'map' },
+  // Map view — where the map is currently looking. Diverges from lat/lng
+  // (the search origin) when the user pans/zooms.
+  z:       { type: 'number' },
+  mlat:    { type: 'number' },
+  mlng:    { type: 'number' },
 }
 
 export default function App() {
@@ -394,6 +399,16 @@ export default function App() {
   const handleSearchRef = useRef(handleSearch)
   handleSearchRef.current = handleSearch
   const handleMapMove = useCallback((viewState) => {
+    // Record the map's new center/zoom in the URL so shared links
+    // reproduce the exact view. Fires on the debounced moveend from
+    // ExploreMap (already 600ms idle), so no additional throttling needed.
+    if (viewState.lat != null && viewState.lng != null && viewState.zoom != null) {
+      setQP({
+        mlat: viewState.lat,
+        mlng: viewState.lng,
+        z: viewState.zoom,
+      })
+    }
     if (!hasSearched.current) return
     clearTimeout(mapMoveTimer.current)
     mapMoveTimer.current = setTimeout(() => {
@@ -401,7 +416,7 @@ export default function App() {
         handleSearchRef.current(viewState.bounds)
       }
     }, 400)
-  }, [])
+  }, [setQP])
 
   // ─── Map species state ──────────────────────────────────────
   const [activeMapSpecies, setActiveMapSpecies] = useState(null)
@@ -638,6 +653,9 @@ export default function App() {
                 onCenterChange={handleMapMove}
                 radiusKm={isAnywhere ? undefined : radius}
                 searchId={searchId}
+                initialView={(qp.mlat != null && qp.mlng != null && qp.z != null)
+                  ? { center: { lat: qp.mlat, lng: qp.mlng }, zoom: qp.z }
+                  : null}
                 config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
               />
             </div>

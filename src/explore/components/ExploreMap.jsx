@@ -176,7 +176,7 @@ const XFADE_HI = 10  // heatmap gone, circles fully visible
  *   z 7–10  — smooth crossfade (heatmap fading out, circle dots fading in)
  *   z > 10  — circle dot layer with click-to-popup
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, searchId = 0, config = {} }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, searchId = 0, initialView = null, config = {} }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -186,7 +186,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
-  const [zoomLevel, setZoomLevel] = useState(center ? defaultZoom : 2)
+  const [zoomLevel, setZoomLevel] = useState(
+    initialView?.zoom != null ? initialView.zoom : (center ? defaultZoom : 2)
+  )
   const sightingsRef = useRef(sightings) // full sighting objects for popup lookup
   sightingsRef.current = sightings
   const activeSpeciesRef = useRef(activeSpecies)
@@ -211,16 +213,36 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
-    const initialZoom = center ? defaultZoom : 1.5
+    // initialView (from a shared URL) overrides defaults: pass center to
+    // place the map somewhere other than the search origin, pass zoom to
+    // override defaultZoom, or both. Either triggers auto-fit suppression
+    // so the map loads exactly where the link creator had it.
+    const ivCenter = (initialView?.center?.lat != null && initialView?.center?.lng != null)
+      ? initialView.center
+      : null
+    const ivZoom = initialView?.zoom != null ? initialView.zoom : null
+    const hasInitialView = !!(ivCenter || ivZoom != null)
+    const initialZoom = ivZoom != null ? ivZoom : (center ? defaultZoom : 1.5)
+    const initialCenter = ivCenter
+      ? [ivCenter.lng, ivCenter.lat]
+      : (center ? [center.lng, center.lat] : [0, 20])
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/outdoors-v12',
-      center: center ? [center.lng, center.lat] : [0, 20],
+      center: initialCenter,
       zoom: initialZoom,
       attributionControl: false,
       logoPosition: 'bottom-right',
     })
+
+    // Mark user-panned so the flyTo-on-center-change and auto-fit effects
+    // treat this as an intentional view and leave it alone.
+    if (hasInitialView) {
+      const refCenter = ivCenter || center
+      if (refCenter) userCenterRef.current = { lat: refCenter.lat, lng: refCenter.lng }
+      initialFitDone.current = true
+    }
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')

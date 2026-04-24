@@ -8,6 +8,9 @@ const SPECIES_QP_SCHEMA = {
   mode: { type: 'string', default: 'heatmap' }, // 'recent' | 'heatmap'
   d1:   { type: 'string' },                     // YYYY-MM-DD, recent-mode start
   d2:   { type: 'string' },                     // YYYY-MM-DD, recent-mode end
+  z:    { type: 'number' },                     // map zoom
+  mlat: { type: 'number' },                     // map center lat
+  mlng: { type: 'number' },                     // map center lng
 }
 import {
   fetchTaxonDetail,
@@ -249,17 +252,30 @@ export default function SpeciesDetailPage() {
     if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
 
     mapboxgl.accessToken = MAPBOX_TOKEN
+    // If the URL carries a shared view (z + mlat + mlng), start there and
+    // suppress the auto-fit so the link lands exactly where it was created.
+    const hasUrlView = qp.z != null && qp.mlat != null && qp.mlng != null
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/outdoors-v12',
-      center: [0, 20],
-      zoom: 1.2,
+      center: hasUrlView ? [qp.mlng, qp.mlat] : [0, 20],
+      zoom: hasUrlView ? qp.z : 1.2,
       attributionControl: false,
       logoPosition: 'bottom-right',
     })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.on('zoom', () => setMapZoom(map.getZoom()))
+
+    // Write the current view to the URL after the user stops panning/zooming.
+    let viewTimer = null
+    map.on('moveend', () => {
+      clearTimeout(viewTimer)
+      viewTimer = setTimeout(() => {
+        const c = map.getCenter()
+        setQP({ z: map.getZoom(), mlat: c.lat, mlng: c.lng })
+      }, 500)
+    })
 
     map.on('load', () => {
       // Match space color to page background so globe floats on parchment, not black
@@ -367,16 +383,19 @@ export default function SpeciesDetailPage() {
         map.on('mouseleave', 'occ-dots', () => { map.getCanvas().style.cursor = '' })
       }
 
-      // Spin the globe to the densest observation area
-      // For recent mode, use only 30-day points so the globe faces the recent data
-      if (mapMode === 'recent') {
-        const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
-        const recentPts = gbifPoints.filter(p => p.date && p.date >= thirtyAgo)
-        const center = findDenseCenter(recentPts.length ? recentPts : gbifPoints)
-        if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
-      } else {
-        const center = findDenseCenter(gbifPoints)
-        if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
+      // Spin the globe to the densest observation area — but only if the
+      // URL didn't already carry a view, otherwise the auto-fit would
+      // override the shared-link coordinates before the user can see them.
+      if (!hasUrlView) {
+        if (mapMode === 'recent') {
+          const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+          const recentPts = gbifPoints.filter(p => p.date && p.date >= thirtyAgo)
+          const center = findDenseCenter(recentPts.length ? recentPts : gbifPoints)
+          if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
+        } else {
+          const center = findDenseCenter(gbifPoints)
+          if (center) map.flyTo({ center, zoom: 1.5, duration: 2000, essential: true })
+        }
       }
     })
 

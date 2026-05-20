@@ -1,0 +1,502 @@
+.container {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #e5e7eb;
+}
+
+.mapWrap {
+  position: absolute;
+  inset: 0;
+}
+
+
+/* ─── Top-left branding ────────────────────────────────────────────────── */
+.branding {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  text-decoration: none;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  transition: background 0.15s ease;
+}
+.branding:hover { background: rgba(10, 14, 23, 0.95); }
+.wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
+.subBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+}
+
+/* ─── Mode toggle (top center) ─────────────────────────────────────────── */
+.modePanel {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.modeBtn, .modeBtnActive {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.modeBtn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+.modeBtnActive { background: #fbbf24; color: #0a0e17; font-weight: 600; }
+
+/* ─── Legend (bottom-left) ─────────────────────────────────────────────── */
+.legend {
+  position: absolute;
+  bottom: 36px;
+  left: 16px;
+  width: 280px;
+  padding: 12px 14px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.legendTitle {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.legendGradient {
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Filter section (label + presets group) ──────────────────────────── */
+.filterSection {
+  margin: 4px 0 12px;
+}
+.filterLabel {
+  margin-bottom: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ─── Range presets ────────────────────────────────────────────────────── */
+.presets {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0 10px;
+}
+.presetBtn, .presetBtnActive {
+  flex: 1;
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit;
+  font-size: 11px;
+  padding: 5px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.presetBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.presetBtnActive {
+  background: #fbbf24;
+  color: #0a0e17;
+  font-weight: 600;
+}
+
+/* ─── Date range slider ────────────────────────────────────────────────── */
+.sliderWrap {
+  margin: 4px 0 12px;
+  padding: 0 8px;  /* leave room for handle overflow at the ends */
+}
+.sliderTrack {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  touch-action: none;
+}
+.sliderActive {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #fbbf24;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.sliderHandle {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  background: #fff;
+  border: 2px solid #fbbf24;
+  border-radius: 50%;
+  padding: 0;
+  cursor: grab;
+  transform: translateY(-50%);
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  touch-action: none;
+}
+.sliderHandle:hover {
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.sliderHandle:active {
+  cursor: grabbing;
+  transform: translateY(-50%) scale(1.1);
+}
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+.legendScale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.legendBlurb {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.55);
+}
+.legendList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.legendList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Status badges (top center, below mode panel) ─────────────────────── */
+.statusBadge, .errorBadge {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 9;
+}
+.errorBadge { color: #fca5a5; border-color: rgba(220, 38, 38, 0.4); }
+
+/* ─── Help tip (bottom center) ─────────────────────────────────────────── */
+.tip {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+/* ─── Popup styles (used in setHTML strings) ───────────────────────────── */
+/* Mapbox's popup content is positioned over the map, so its background must
+   be opaque or text reads directly against satellite tiles. Force white +
+   matching tip color, and put padding on .popupBody so the popup content
+   itself can stay padding-0 (cleaner corners). */
+.popupBody {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #1f2937;
+  line-height: 1.5;
+  min-width: 220px;
+  max-width: 280px;
+  background: #fff;
+  border-radius: 8px;
+}
+.popupHeader {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #0a0e17;
+  font-size: 14px;
+}
+.popupPoi {
+  margin-bottom: 2px;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 500;
+}
+.popupLocation {
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-style: italic;
+}
+.popupMuted { margin-top: 8px; color: #6b7280; font-size: 12px; }
+.popupLandCover {
+  margin: 6px 0;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.popupLandCoverCropland {
+  margin: 6px 0;
+  padding: 6px 8px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.popupLandCoverSource {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 400;
+  color: #9ca3af;
+  font-style: italic;
+}
+.popupBurn {
+  margin: 6px 0;
+  padding: 6px 8px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.popupLoading {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #6b7280;
+  background: #fff;
+  border-radius: 8px;
+}
+.popupError {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fff;
+  border-radius: 8px;
+}
+.truncatedNote { color: #92400e; font-size: 11px; }
+
+.popupMethodology {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 0 0;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.popupMethodology:hover { color: #1d4ed8; text-decoration: underline; }
+
+/* ─── Methodology modal ────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal {
+  background: #0f1726;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px 36px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.modalClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.modalClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.modalTitle {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+}
+.modalSection {
+  margin-top: 22px;
+}
+.modalSection h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+.modalSection p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+.modalSection ul, .modalSection ol {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+.modalSection li { margin-bottom: 6px; }
+.modalSection a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+.modalSection a:hover { text-decoration: underline; color: #93c5fd; }
+.modalSection code {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fbbf24;
+}
+.modalSection strong { color: #fff; }
+
+.datasetList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px 0;
+}
+.datasetList dt {
+  font-weight: 600;
+  color: #fff;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.datasetList dt:first-child { margin-top: 0; }
+.datasetList dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.modalCloseBtn {
+  margin-top: 24px;
+  padding: 8px 20px;
+  border: 0;
+  background: #fbbf24;
+  color: #0a0e17;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.modalCloseBtn:hover { background: #f59e0b; }
+
+/* Override Mapbox's default popup chrome so it doesn't clash with the dark UI */
+:global(.mapboxgl-popup-content) {
+  padding: 0 !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
+}
+:global(.mapboxgl-popup-tip) {
+  border-top-color: #fff !important;
+  border-bottom-color: #fff !important;
+}
+:global(.mapboxgl-popup-close-button) {
+  font-size: 20px !important;
+  color: #6b7280 !important;
+  padding: 4px 10px !important;
+  right: 2px !important;
+  top: 2px !important;
+}
+:global(.mapboxgl-popup-close-button:hover) {
+  background: rgba(0,0,0,0.05) !important;
+  color: #1f2937 !important;
+}

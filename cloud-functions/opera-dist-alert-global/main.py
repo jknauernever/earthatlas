@@ -20,10 +20,11 @@ Three visualization modes (switched by `?mode=`):
 GET /                           → returns { tileUrl } for the default mode
 GET /?mode=<recency|status|severity>
                                 → returns { tileUrl } for that mode
-GET /?lat=<lat>&lng=<lng>       → returns alert info at the click point:
-    { date, status, statusCode, statusLabel, severity, acres,
-      pixelCount, truncated, patchGeometry }
+GET /?lat=<lat>&lng=<lng>       → returns OPERA core + land cover (fast)
+GET /?lat=<lat>&lng=<lng>&extras=1
+                                → returns patch outline, acres, MODIS burn (slow)
 """
+import math
 from datetime import date, timedelta, datetime
 
 import ee
@@ -51,30 +52,43 @@ SEVERITY_VIS = {
     'palette': ['fef3c7', 'fde68a', 'fbbf24', 'fb923c', 'ef4444', 'b91c1c'],
 }
 
-# VEG-DIST-STATUS values per OPERA L3 DIST-ALERT spec:
+# VEG-DIST-STATUS values per OPERA L3 DIST-ALERT spec (GLAD HLSDIST mirror):
 #   0 = no disturbance
-#   1 = provisional (anomaly), first detection
-#   2 = confirmed,  first detection
-#   3 = provisional, ongoing
-#   4 = confirmed,  ongoing
-#   5 = finished provisional
-#   6 = finished confirmed
-#   7 = no data
+#   1 = provisional alert (first detection)
+#   2 = recurrent provisional alert
+#   3 = confirmed alert
+#   4 = provisional alert, substantial (>50%) loss, first detection
+#   5 = recurrent provisional alert, substantial loss
+#   6 = confirmed alert, substantial loss
+#   7 = finished provisional alert (past event, no current change)
+#   8 = finished confirmed alert
+#   255 = no usable data
 STATUS_VIS = {
     'min': 1,
-    'max': 6,
-    'palette': ['fde68a', 'fb923c', 'fca5a5', 'ef4444', 'b91c1c', '7f1d1d'],
+    'max': 8,
+    'palette': [
+        'fde68a',  # 1: Provisional alert (light yellow)
+        'fcd34d',  # 2: Recurrent provisional (deeper yellow)
+        'f59e0b',  # 3: Confirmed alert (amber)
+        'fb923c',  # 4: Provisional · substantial loss (orange)
+        'ef4444',  # 5: Recurrent provisional · substantial loss (red)
+        'b91c1c',  # 6: Confirmed · substantial loss (deep red)
+        '92400e',  # 7: Finished provisional (muted brown)
+        '450a0a',  # 8: Finished confirmed (dark)
+    ],
 }
 
 CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
 
 STATUS_LABELS = {
     1: 'Provisional alert (first detection)',
-    2: 'Confirmed alert (first detection)',
-    3: 'Provisional alert (ongoing)',
-    4: 'Confirmed alert (ongoing)',
-    5: 'Provisional alert (resolved)',
-    6: 'Confirmed alert (resolved)',
+    2: 'Recurrent provisional alert',
+    3: 'Confirmed alert',
+    4: 'Provisional alert · substantial loss (first detection)',
+    5: 'Recurrent provisional alert · substantial loss',
+    6: 'Confirmed alert · substantial loss',
+    7: 'Finished provisional alert',
+    8: 'Finished confirmed alert',
 }
 
 DATE_EPOCH = date(2020, 12, 31)
@@ -395,6 +409,241 @@ def _sample_modis_burn(point: ee.Geometry, opera_date_str: str | None) -> dict |
         return None
 
 
+# ─── VIIRS / MODIS active fires (NASA FIRMS) ────────────────────────────────
+# Higher-sensitivity companion to MODIS burned-area. Catches small, fresh, or
+# brief fires that the monthly burned-area product misses.
+FIRMS_BUFFER_M = 3000
+FIRMS_WINDOW_DAYS = 60
+
+
+def _sample_active_fires(point: ee.Geometry, opera_date_str: str | None) -> dict | None:
+    """Count NASA FIRMS active-fire detections within ±60 days, 3 km buffer."""
+    if not opera_date_str:
+        return None
+    try:
+        opera_dt = date.fromisoformat(opera_date_str)
+        start_iso = (opera_dt - timedelta(days=FIRMS_WINDOW_DAYS)).isoformat()
+        end_iso = (opera_dt + timedelta(days=FIRMS_WINDOW_DAYS)).isoformat()
+        coll = (
+            ee.ImageCollection('FIRMS')
+            .filterDate(start_iso, end_iso)
+            .filterBounds(point.buffer(FIRMS_BUFFER_M))
+        )
+        count = int(coll.size().getInfo())
+        return {'count': count} if count > 0 else None
+    except Exception as e:
+        print(f'FIRMS sample failed: {e}', flush=True)
+        return None
+
+
+# ─── Sentinel-2 NBR delta (dNBR) ────────────────────────────────────────────
+# Normalized Burn Ratio = (NIR - SWIR2) / (NIR + SWIR2). dNBR is the pre/post
+# difference; high dNBR (>~0.27) indicates moderate-to-high severity burn per
+# the USGS classification, even when active-fire products miss the event.
+NBR_PRE_WINDOW_DAYS = (240, 60)   # 240-60 days before OPERA detection
+NBR_POST_WINDOW_DAYS = (0, 60)    # 0-60 days after OPERA detection
+
+
+def _sample_nbr_delta(point: ee.Geometry, opera_date_str: str | None) -> dict | None:
+    """Sample Sentinel-2 NBR before/after OPERA date. Returns dnbr or None."""
+    if not opera_date_str:
+        return None
+    try:
+        opera_dt = date.fromisoformat(opera_date_str)
+        pre_start = (opera_dt - timedelta(days=NBR_PRE_WINDOW_DAYS[0])).isoformat()
+        pre_end   = (opera_dt - timedelta(days=NBR_PRE_WINDOW_DAYS[1])).isoformat()
+        post_start = opera_dt.isoformat()
+        post_end   = (opera_dt + timedelta(days=NBR_POST_WINDOW_DAYS[1])).isoformat()
+
+        def to_nbr(img):
+            return img.normalizedDifference(['B8', 'B12']).rename('nbr')
+
+        s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+        pre = (s2.filterDate(pre_start, pre_end)
+                 .filterBounds(point)
+                 .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 40))
+                 .map(to_nbr).median().rename('nbr_pre'))
+        post = (s2.filterDate(post_start, post_end)
+                  .filterBounds(point)
+                  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 60))
+                  .map(to_nbr).median().rename('nbr_post'))
+
+        sampled = pre.addBands(post).reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=20,
+        ).getInfo()
+        nbr_pre = sampled.get('nbr_pre')
+        nbr_post = sampled.get('nbr_post')
+        if nbr_pre is None or nbr_post is None:
+            return None
+        dnbr = nbr_pre - nbr_post
+        return {
+            'pre': round(float(nbr_pre), 3),
+            'post': round(float(nbr_post), 3),
+            'dnbr': round(float(dnbr), 3),
+        }
+    except Exception as e:
+        print(f'NBR delta sample failed: {e}', flush=True)
+        return None
+
+
+# ─── Patch shape analysis ───────────────────────────────────────────────────
+# Pure-Python geometry math on the polygon we already vectorize. Compactness,
+# aspect ratio, and the fraction of perimeter aligned to cardinal directions
+# distinguish human-cut blocks from irregular natural patches.
+STRAIGHT_EDGE_TOLERANCE_DEG = 8
+
+
+def _analyze_patch_shape(geom: dict | None) -> dict | None:
+    """Return shape stats + categorical hint, or None for invalid input."""
+    if not geom or geom.get('type') != 'Polygon':
+        return None
+    rings = geom.get('coordinates', [])
+    if not rings:
+        return None
+    outer = rings[0]
+    if len(outer) < 4:
+        return None
+
+    # Equirectangular projection centered on the polygon — accurate enough
+    # for ratios. Avoids pulling in a real reprojection lib.
+    avg_lat = sum(p[1] for p in outer) / len(outer)
+    avg_lng = sum(p[0] for p in outer) / len(outer)
+    cos_lat = math.cos(math.radians(avg_lat))
+
+    def to_planar(p):
+        return (
+            (p[0] - avg_lng) * 111320 * cos_lat,
+            (p[1] - avg_lat) * 111320,
+        )
+
+    planar = [to_planar(p) for p in outer]
+    n = len(planar) - 1  # last point repeats the first
+
+    # Shoelace area
+    area_signed = 0.0
+    for i in range(n):
+        x1, y1 = planar[i]
+        x2, y2 = planar[i + 1]
+        area_signed += (x2 - x1) * (y2 + y1) / 2
+    area = abs(area_signed)
+    if area < 1:
+        return None
+
+    # Perimeter + per-edge alignment to N/S/E/W
+    perimeter = 0.0
+    aligned_length = 0.0
+    for i in range(n):
+        x1, y1 = planar[i]
+        x2, y2 = planar[i + 1]
+        length = math.hypot(x2 - x1, y2 - y1)
+        perimeter += length
+        if length < 0.5:
+            continue
+        # Fold orientation to 0-90° so N-S and E-W both count as "aligned"
+        angle = math.degrees(math.atan2(y2 - y1, x2 - x1)) % 90
+        if angle <= STRAIGHT_EDGE_TOLERANCE_DEG or angle >= 90 - STRAIGHT_EDGE_TOLERANCE_DEG:
+            aligned_length += length
+
+    compactness = (4 * math.pi * area) / (perimeter ** 2) if perimeter > 0 else 0
+    straight_ratio = aligned_length / perimeter if perimeter > 0 else 0
+
+    xs = [p[0] for p in planar]
+    ys = [p[1] for p in planar]
+    bbox_w = max(max(xs) - min(xs), 1)
+    bbox_h = max(max(ys) - min(ys), 1)
+    aspect = max(bbox_w, bbox_h) / min(bbox_w, bbox_h)
+
+    # Categorize. straight_edge_ratio is unreliable here — raster-derived
+    # polygons have axis-aligned pixel-grid edges by construction, so the
+    # metric is always near 1.0 regardless of underlying shape. We still
+    # compute it as raw stat (could be useful after polygon simplification
+    # in a later iteration), but only compactness + aspect drive the hint.
+    #
+    # Pixelated squares cap at ~0.6 compactness; truly irregular natural
+    # patches typically come in below 0.2. Mid-range is ambiguous.
+    if aspect > 4:
+        hint = 'linear'        # road / pipeline / transmission corridor
+    elif compactness > 0.45:
+        hint = 'blocky'        # likely human-cut field or clearcut
+    elif compactness < 0.18:
+        hint = 'irregular'     # likely natural (fire, blowdown)
+    else:
+        hint = 'ambiguous'
+
+    return {
+        'compactness': round(compactness, 3),
+        'aspect_ratio': round(aspect, 2),
+        'straight_edge_ratio': round(straight_ratio, 3),
+        'hint': hint,
+    }
+
+
+# ─── Likely-cause inference ─────────────────────────────────────────────────
+# Simple rule engine that weighs the signals we've gathered. Outputs a string
+# label plus the reasoning so users can audit how we arrived at it.
+
+
+def _infer_likely_cause(burn, fires, nbr, shape, land_cover) -> dict:
+    fire_score = 0
+    human_score = 0
+    natural_score = 0
+    ag_score = 0
+    reasons = []
+
+    if burn and burn.get('date'):
+        fire_score += 2
+        reasons.append('MODIS burn detected near OPERA date')
+    if fires and fires.get('count', 0) > 0:
+        c = fires['count']
+        fire_score += 2 if c >= 3 else 1
+        reasons.append(f"{c} VIIRS/MODIS hot-spot{'s' if c > 1 else ''} within 3 km / ±60 days")
+    if nbr and nbr.get('dnbr') is not None:
+        dnbr = nbr['dnbr']
+        if dnbr > 0.44:
+            fire_score += 2
+            reasons.append(f'dNBR {dnbr} indicates high-severity burn signature')
+        elif dnbr > 0.27:
+            fire_score += 1
+            reasons.append(f'dNBR {dnbr} indicates moderate burn signature')
+
+    if shape:
+        hint = shape.get('hint')
+        if hint == 'blocky':
+            human_score += 2
+            reasons.append(f'blocky shape (compactness {shape.get("compactness")})')
+        elif hint == 'linear':
+            human_score += 2
+            reasons.append(f'linear corridor shape (aspect {shape.get("aspect_ratio")}:1)')
+        elif hint == 'irregular':
+            natural_score += 1
+            reasons.append(f'irregular perimeter (compactness {shape.get("compactness")})')
+
+    lc_label = ((land_cover or {}).get('label') or '').lower()
+    ag_keywords = (
+        'crop', 'pasture', 'farming', 'agriculture', 'cotton', 'corn',
+        'soybean', 'wheat', 'rice', 'sugar', 'coffee',
+    )
+    if any(k in lc_label for k in ag_keywords):
+        ag_score += 1
+
+    # Decide. Fire wins outright if signal is strong; otherwise weigh human
+    # vs natural shape evidence, with ag context as a tiebreaker.
+    if fire_score >= 3:
+        label = 'Likely fire'
+    elif fire_score >= 2 and human_score == 0:
+        label = 'Possible fire'
+    elif human_score >= 2 and fire_score == 0:
+        label = 'Likely agricultural clearing' if ag_score > 0 else 'Likely mechanical clearing'
+    elif natural_score >= 1 and fire_score == 0 and human_score == 0:
+        label = 'Likely natural (irregular shape, no fire signal)'
+    elif ag_score > 0 and fire_score == 0:
+        label = 'Likely agricultural activity'
+    else:
+        label = 'Inconclusive'
+
+    return {'label': label, 'reasoning': '; '.join(reasons) if reasons else 'no strong signals'}
+
+
 def _resolve_landcover(sampled: dict) -> dict:
     """Pick the most-specific label available, in priority order."""
     v = sampled.get('cdl')
@@ -427,12 +676,6 @@ def _resolve_landcover(sampled: dict) -> dict:
         }
     return None
 
-# connectedPixelCount caps at 1024; at 30 m that's ~225 acres, enough to
-# capture all but the largest single events. We surface the cap to clients.
-PATCH_MAX_SIZE_PX = 1024
-
-# HLS pixels are 30 m × 30 m square in the native UTM projection at any latitude.
-HLS_PIXEL_AREA_SQM = 30 * 30
 
 _ee_initialized = False
 
@@ -524,14 +767,21 @@ def _handle_severity(start_days: int, end_days: int, landuse: str | None) -> tup
 def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple:
     img = _mosaic_band('VEG-DIST-STATUS')
     date_img = _mosaic_band('VEG-DIST-DATE')
-    img = img.updateMask(img.gte(1).And(img.lte(6)))
+    # Statuses 1-8 are all real alerts; only 0 (no disturbance) and 255 (no
+    # usable data) are excluded.
+    img = img.updateMask(img.gte(1).And(img.lte(8)))
     img = img.updateMask(date_img.gte(start_days).And(date_img.lte(end_days)))
     img = _maybe_apply_landuse(img, landuse)
     return (jsonify({'tileUrl': _tile_url(img, STATUS_VIS)}), 200, CORS_HEADERS)
 
 
-def _handle_point_request(lat: float, lng: float) -> tuple:
-    """Sample DIST-ALERT at a click point and return per-pixel info + patch outline."""
+def _handle_point_core(lat: float, lng: float) -> tuple:
+    """Fast path: OPERA core (date / status / severity) + tiered land cover.
+
+    One reduceRegion at scale=10. Returns in ~1 s; called on every click so
+    the popup can show meaningful data fast. Patch outline + MODIS burn live
+    on `_handle_point_extras` so the slow GEE work doesn't gate this response.
+    """
     point = ee.Geometry.Point([lng, lat])
 
     status_img = _mosaic_band('VEG-DIST-STATUS').rename('status')
@@ -540,8 +790,7 @@ def _handle_point_request(lat: float, lng: float) -> tuple:
     opera_stack = status_img.addBands(date_img).addBands(severity_img)
 
     # Stack OPERA + all 4 land-cover datasets in one reduceRegion call.
-    # If any asset is unavailable, this will raise and we fall back to OPERA
-    # alone (so a broken upstream dataset never breaks the popup entirely).
+    # If any land-cover asset is unavailable, fall back to OPERA-only.
     try:
         stack = _add_landcover_bands(opera_stack, point)
         sampled = stack.reduceRegion(
@@ -556,11 +805,17 @@ def _handle_point_request(lat: float, lng: float) -> tuple:
         land_cover = None
 
     status_code = sampled.get('status')
-    if not status_code:
+    status_code_int = int(status_code) if status_code is not None else 0
+
+    # OPERA STATUS values: 0 = no disturbance, 1-6 = real alerts (see
+    # STATUS_LABELS), 7 = no usable data (clouds / missing imagery / sensor
+    # issue), 8+ = other special states. Only 1-6 are real disturbances —
+    # render anything else as the "no disturbance recorded" popup.
+    if status_code_int not in STATUS_LABELS:
         return (
             jsonify({
                 'date': None,
-                'statusCode': 0,
+                'statusCode': status_code_int,
                 'statusLabel': None,
                 'landCover': land_cover,
             }),
@@ -568,7 +823,7 @@ def _handle_point_request(lat: float, lng: float) -> tuple:
             CORS_HEADERS,
         )
 
-    status_code = int(status_code)
+    status_code = status_code_int
     days_since_epoch = sampled.get('date')
     severity = sampled.get('severity')
 
@@ -577,58 +832,134 @@ def _handle_point_request(lat: float, lng: float) -> tuple:
         alert_date = DATE_EPOCH + timedelta(days=int(days_since_epoch))
         alert_date_str = alert_date.isoformat()
 
-    disturbed_mask = status_img.gte(1).And(status_img.lte(6)).selfMask()
-
-    connected = disturbed_mask.connectedPixelCount(
-        maxSize=PATCH_MAX_SIZE_PX, eightConnected=True
-    )
-    pixel_count = (
-        connected.reduceRegion(
-            reducer=ee.Reducer.first(), geometry=point, scale=30
-        ).getInfo().get('b1') or 0
-    )
-    acres = (pixel_count * HLS_PIXEL_AREA_SQM) / 4046.86
-    truncated = pixel_count >= PATCH_MAX_SIZE_PX
-
-    patch_geometry = None
-    try:
-        labels = disturbed_mask.connectedComponents(
-            connectedness=ee.Kernel.square(1), maxSize=PATCH_MAX_SIZE_PX
-        ).select('labels')
-        label_sample = labels.reduceRegion(
-            reducer=ee.Reducer.first(), geometry=point, scale=30
-        ).getInfo()
-        label = label_sample.get('labels')
-        if label is not None:
-            component_mask = labels.eq(label).selfMask()
-            vectors = component_mask.reduceToVectors(
-                geometry=point.buffer(2000),
-                scale=30,
-                geometryType='polygon',
-                eightConnected=True,
-                bestEffort=True,
-                maxPixels=int(1e9),
-            ).getInfo()
-            features = vectors.get('features', [])
-            if features:
-                patch_geometry = features[0].get('geometry')
-    except Exception:
-        patch_geometry = None
-
-    burn = _sample_modis_burn(point, alert_date_str)
-
     return (
         jsonify({
             'date': alert_date_str,
             'statusCode': status_code,
             'statusLabel': STATUS_LABELS.get(status_code, f'Status {status_code}'),
             'severity': round(float(severity), 1) if severity is not None else None,
-            'pixelCount': int(pixel_count),
-            'acres': round(acres, 2),
+            'landCover': land_cover,
+        }),
+        200,
+        CORS_HEADERS,
+    )
+
+
+def _handle_point_extras(lat: float, lng: float) -> tuple:
+    """Slow path: connected-component patch outline + MODIS burn check.
+
+    Fires in parallel with `_handle_point_core` from the frontend. Re-samples
+    the OPERA date band itself (cheap) so it doesn't need to wait on the core
+    response for the MODIS burn window. ~2-3 s on a typical disturbance click.
+    """
+    point = ee.Geometry.Point([lng, lat])
+
+    date_img = _mosaic_band('VEG-DIST-DATE')
+    status_img = _mosaic_band('VEG-DIST-STATUS')
+
+    # Re-sample OPERA date locally so we know the burn window without waiting
+    # on the core endpoint. If the pixel has no disturbance, skip all the
+    # heavy work below.
+    date_sampled = date_img.reduceRegion(
+        reducer=ee.Reducer.first(), geometry=point, scale=30
+    ).getInfo()
+    days_since_epoch = date_sampled.get('b1')
+    alert_date_str = None
+    if days_since_epoch is not None:
+        alert_date = DATE_EPOCH + timedelta(days=int(days_since_epoch))
+        alert_date_str = alert_date.isoformat()
+
+    if alert_date_str is None:
+        return (
+            jsonify({
+                'acres': None, 'truncated': False, 'patchGeometry': None,
+                'burn': None, 'fires': None, 'nbr': None,
+                'shape': None, 'likelyCause': None,
+            }),
+            200,
+            CORS_HEADERS,
+        )
+
+    # Statuses 1-8 are real alerts (any kind); 0 = no disturbance, 255 = no data.
+    disturbed_mask = status_img.gte(1).And(status_img.lte(8)).selfMask()
+
+    # Vectorize ALL disturbed regions inside a 5 km buffer, then pick the
+    # polygon that contains the click point. Skipping `connectedComponents`
+    # entirely (it has a per-component pixel cap) means we can measure
+    # arbitrarily large connected patches accurately, up to the search buffer.
+    # The 5 km radius covers ~19,000 acres of search space — bigger than all
+    # but the most extreme megafires.
+    SEARCH_RADIUS_M = 5000
+
+    patch_geometry = None
+    acres = None
+    truncated = False
+    try:
+        all_vectors = disturbed_mask.reduceToVectors(
+            geometry=point.buffer(SEARCH_RADIUS_M),
+            scale=30,
+            geometryType='polygon',
+            eightConnected=True,
+            bestEffort=True,
+            maxPixels=int(1e10),
+        )
+        # filterBounds(point) returns just the polygon enclosing the click.
+        containing = all_vectors.filterBounds(point)
+        features_info = containing.limit(1).getInfo().get('features', [])
+        if features_info:
+            patch_geometry = features_info[0].get('geometry')
+            # Pull area straight from the polygon — no pixel-count cap.
+            polygon = ee.Geometry(patch_geometry)
+            area_sqm = polygon.area(maxError=1).getInfo()
+            acres = round(area_sqm / 4046.86, 2)
+
+            # If the polygon's bbox reaches the search buffer edge, the patch
+            # likely extends beyond what we measured — flag as truncated.
+            bbox = polygon.bounds(maxError=1).coordinates().getInfo()[0]
+            xs = [c[0] for c in bbox]
+            ys = [c[1] for c in bbox]
+            search_bbox = point.buffer(SEARCH_RADIUS_M).bounds(maxError=1).coordinates().getInfo()[0]
+            search_xs = [c[0] for c in search_bbox]
+            search_ys = [c[1] for c in search_bbox]
+            # 0.001° tolerance (~100 m at the equator) — close enough = touching
+            tol = 0.001
+            if (min(xs) - min(search_xs) < tol or max(search_xs) - max(xs) < tol
+                or min(ys) - min(search_ys) < tol or max(search_ys) - max(ys) < tol):
+                truncated = True
+    except Exception as e:
+        print(f'patch geometry failed: {e}', flush=True)
+
+    # Cause-inference signals. Each call is independent; we accept the
+    # latency cost (~2s combined) for the diagnostic payoff.
+    burn = _sample_modis_burn(point, alert_date_str)
+    fires = _sample_active_fires(point, alert_date_str)
+    nbr = _sample_nbr_delta(point, alert_date_str)
+    shape = _analyze_patch_shape(patch_geometry)
+
+    # Land cover comes from the core endpoint, but we need it for inference.
+    # Re-sample inexpensively at scale=30 (faster than the tiered version).
+    try:
+        wc = ee.Image(WORLDCOVER_ASSET).select('Map')
+        wc_val = wc.reduceRegion(reducer=ee.Reducer.first(), geometry=point, scale=30).getInfo().get('Map')
+        land_cover_fallback = (
+            {'label': WORLDCOVER_LABELS.get(int(wc_val))}
+            if wc_val is not None else None
+        )
+    except Exception:
+        land_cover_fallback = None
+
+    likely_cause = _infer_likely_cause(burn, fires, nbr, shape, land_cover_fallback)
+
+    return (
+        jsonify({
+            'acres': acres,
             'truncated': truncated,
             'patchGeometry': patch_geometry,
-            'landCover': land_cover,
             'burn': burn,
+            'fires': fires,
+            'nbr': nbr,
+            'shape': shape,
+            'likelyCause': likely_cause,
         }),
         200,
         CORS_HEADERS,
@@ -651,7 +982,12 @@ def get_tiles(request):
         lat = request.args.get('lat')
         lng = request.args.get('lng')
         if lat is not None and lng is not None:
-            return _handle_point_request(float(lat), float(lng))
+            # `?extras=1` returns patch geometry + MODIS burn (slow ~2-3 s);
+            # the default fast path returns only OPERA core + land cover (~1 s).
+            # Frontend fires both in parallel and progressively renders.
+            if request.args.get('extras'):
+                return _handle_point_extras(float(lat), float(lng))
+            return _handle_point_core(float(lat), float(lng))
 
         start_days, end_days = _parse_date_range(request)
         landuse = request.args.get('landuse')

@@ -24,11 +24,13 @@ const SEVERITY_GRADIENT = 'linear-gradient(to right, #fef3c7, #fde68a, #fbbf24, 
 
 const STATUS_SWATCHES = [
   { color: '#fde68a', label: 'Provisional (first)' },
-  { color: '#fb923c', label: 'Confirmed (first)' },
-  { color: '#fca5a5', label: 'Provisional (ongoing)' },
-  { color: '#ef4444', label: 'Confirmed (ongoing)' },
-  { color: '#b91c1c', label: 'Provisional (resolved)' },
-  { color: '#7f1d1d', label: 'Confirmed (resolved)' },
+  { color: '#fcd34d', label: 'Provisional (recurrent)' },
+  { color: '#f59e0b', label: 'Confirmed' },
+  { color: '#fb923c', label: 'Provisional · high loss (first)' },
+  { color: '#ef4444', label: 'Provisional · high loss (recurrent)' },
+  { color: '#b91c1c', label: 'Confirmed · high loss' },
+  { color: '#92400e', label: 'Finished provisional' },
+  { color: '#450a0a', label: 'Finished confirmed' },
 ]
 
 // OPERA DIST-ALERT publishes from late 2022 onward; we treat 2023-01-01 as the
@@ -199,7 +201,7 @@ export default function ForestMonitor() {
     const map = mapRef.current
     if (!map) return
 
-    const handler = async (e) => {
+    const handler = (e) => {
       const { lng, lat } = e.lngLat
 
       if (popupRef.current) popupRef.current.remove()
@@ -207,50 +209,103 @@ export default function ForestMonitor() {
 
       const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '280px', offset: 12 })
         .setLngLat([lng, lat])
-        .setHTML('<div class="' + styles.popupLoading + '">Looking up disturbance…</div>')
+        .setHTML(`<div class="${styles.popupLoading}">Looking up disturbance…</div>`)
         .addTo(map)
       popupRef.current = popup
       popup.on('close', () => removePatchOutline(map))
 
-      // Four lookups in parallel — disturbance, admin region (Mapbox),
-      // protected areas (Mapbox tileset), named natural features (Google).
-      // Location info is nice-to-have; never block on it.
-      const [pointResult, adminResult, poiResult, naturalResult] = await Promise.allSettled([
-        fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`).then(async (r) => {
+      // Progressive rendering: fire all five lookups in parallel and repaint
+      // the popup whenever any of them resolves. Cloud-function endpoints
+      // are split — `core` returns date/status/severity/landCover in ~1 s,
+      // `extras` returns patch geometry + MODIS burn in ~2-3 s.
+      const state = {
+        point:   { status: 'pending', data: null, error: null },
+        extras:  { status: 'pending', data: null },
+        admin:   { status: 'pending', value: null },
+        protectedAreas:  { status: 'pending', value: [] },
+        naturalFeatures: { status: 'pending', value: [] },
+      }
+      const myPopup = popup
+      const stillCurrent = () => popupRef.current === myPopup
+
+      const render = () => {
+        if (!stillCurrent()) return
+
+        const pois = []
+        const seen = new Set()
+        for (const name of [...state.protectedAreas.value, ...state.naturalFeatures.value]) {
+          const k = name.toLowerCase()
+          if (!seen.has(k)) { seen.add(k); pois.push(name) }
+          if (pois.length >= 3) break
+        }
+
+        if (state.point.status === 'rejected') {
+          myPopup.setHTML(`<div class="${styles.popupError}">Couldn't load disturbance info for that spot.</div>`)
+          return
+        }
+
+        if (state.point.status === 'pending') {
+          myPopup.setHTML(renderLoadingPopupHTML(pois, state.admin.value))
+          return
+        }
+
+        const data = state.point.data
+        if (!data.date) {
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover))
+          return
+        }
+
+        // Merge in extras (patch outline + MODIS burn + acres) once they
+        // arrive. While extras are still pending, the popup renders the
+        // core info with a small "loading extras…" footer.
+        const extras = state.extras.status === 'fulfilled' ? state.extras.data : null
+        const merged = { ...data, ...(extras || {}) }
+        if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
+        myPopup.setHTML(renderPopupHTML(merged, pois, state.admin.value, state.extras.status === 'pending'))
+      }
+
+      // Each lookup updates its slice of state and rerenders independently.
+      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`)
+        .then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
           return r.json()
-        }),
-        reverseGeocode(lat, lng),
-        findProtectedAreas(lat, lng),
-        findNaturalFeatures(lat, lng),
-      ])
+        })
+        .then((data) => {
+          state.point = { status: 'fulfilled', data, error: null }
+          render()
+        })
+        .catch((err) => {
+          console.error('[ForestMonitor] point lookup failed', err)
+          state.point = { status: 'rejected', data: null, error: err }
+          render()
+        })
 
-      const admin = adminResult.status === 'fulfilled' ? adminResult.value : null
-      const protectedAreas = poiResult.status === 'fulfilled' ? poiResult.value : []
-      const naturalFeatures = naturalResult.status === 'fulfilled' ? naturalResult.value : []
-      // Merge, dedupe (case-insensitive), cap at 3 names so the popup stays compact.
-      const pois = []
-      const seen = new Set()
-      for (const name of [...protectedAreas, ...naturalFeatures]) {
-        const k = name.toLowerCase()
-        if (!seen.has(k)) { seen.add(k); pois.push(name) }
-        if (pois.length >= 3) break
-      }
+      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1`)
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
+        .then((data) => {
+          state.extras = { status: 'fulfilled', data }
+          render()
+        })
+        .catch((err) => {
+          console.warn('[ForestMonitor] extras lookup failed', err)
+          state.extras = { status: 'fulfilled', data: null }
+          render()
+        })
 
-      if (pointResult.status === 'rejected') {
-        console.error('[ForestMonitor] point lookup failed', pointResult.reason)
-        popup.setHTML(`<div class="${styles.popupError}">Couldn't load disturbance info for that spot.</div>`)
-        return
-      }
+      reverseGeocode(lat, lng)
+        .then((v) => { state.admin = { status: 'fulfilled', value: v }; render() })
+        .catch(() => { state.admin = { status: 'fulfilled', value: null }; render() })
 
-      const data = pointResult.value
-      if (!data.date) {
-        popup.setHTML(renderEmptyPopupHTML(pois, admin, data.landCover))
-        return
-      }
+      findProtectedAreas(lat, lng)
+        .then((v) => { state.protectedAreas = { status: 'fulfilled', value: v || [] }; render() })
+        .catch(() => { state.protectedAreas = { status: 'fulfilled', value: [] }; render() })
 
-      if (data.patchGeometry) addPatchOutline(map, data.patchGeometry)
-      popup.setHTML(renderPopupHTML(data, pois, admin))
+      findNaturalFeatures(lat, lng)
+        .then((v) => { state.naturalFeatures = { status: 'fulfilled', value: v || [] }; render() })
+        .catch(() => { state.naturalFeatures = { status: 'fulfilled', value: [] }; render() })
     }
 
     map.on('click', handler)
@@ -414,18 +469,50 @@ function MethodologyModal({ onClose }) {
 
         <section className={styles.modalSection}>
           <h3>When you click a pixel</h3>
-          <p>We fire up to seven parallel lookups so the popup tells you not just <em>that</em> something happened, but plausibly <em>why</em>:</p>
+          <p>
+            We fire multiple parallel lookups in two phases so the popup tells you not just <em>that</em> something happened,
+            but plausibly <em>why</em>. The fast core arrives in ~2 s; the slower cause-inference signals stream in 1–2 s after that.
+          </p>
+          <p><strong>Core (fast, ~2 s):</strong></p>
           <ol>
-            <li><strong>OPERA point sample</strong> — date, status code, severity %, connected-component patch outline.</li>
+            <li><strong>OPERA point sample</strong> — date, status code, severity %.</li>
             <li><strong>Reverse geocode (Mapbox v6)</strong> — town, county/district, state/region, country.</li>
             <li><strong>Protected areas (Mapbox Tilequery)</strong> — named national parks, forests, wilderness, monuments.</li>
             <li><strong>Natural features (Google Geocoding)</strong> — mountain ranges, named regions, watersheds where they exist.</li>
             <li>
               <strong>Land-cover (tiered)</strong> — most-specific available source: USDA CDL (US) → MapBiomas (Brazil) →
-              Dynamic World (global, near-real-time) → ESA WorldCover (global fallback). Lets you distinguish cropland harvest from real forest loss.
+              Dynamic World (global, near-real-time) → ESA WorldCover (global fallback).
             </li>
-            <li><strong>Burn check (MODIS MCD64A1)</strong> — fires detected within ±90 days of the OPERA date. A burn timed near the disturbance is strong evidence of fire cause.</li>
           </ol>
+          <p><strong>Extras (slower, ~1–2 s):</strong></p>
+          <ol start={6}>
+            <li><strong>Connected-component patch outline</strong> — vectorized 5 km around the click. Acres come from the polygon area, not a pixel-count cap.</li>
+            <li><strong>MODIS burned-area check (MCD64A1)</strong> — 500 m monthly. Detects burns within ±90 days of the OPERA date.</li>
+            <li><strong>Active-fire detections (NASA FIRMS)</strong> — counts hot-spots within 3 km of the click and ±60 days of the OPERA date. Higher resolution and sensitivity than the burned-area product; catches small or short-lived fires.</li>
+            <li><strong>Sentinel-2 NBR delta (dNBR)</strong> — Normalized Burn Ratio before vs after the OPERA date, sampled at 20 m. A dNBR above ~0.27 typically indicates a moderate-to-high severity burn (USGS classification).</li>
+            <li><strong>Patch shape analysis</strong> — compactness and aspect ratio of the polygon. Blocky shapes suggest human cuts; irregular shapes suggest natural events.</li>
+          </ol>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>How "Likely cause" is decided</h3>
+          <p>
+            The colored card in the popup is a simple weighted scoring rule, not a trained classifier. We tally signals into
+            four bins — <em>fire</em>, <em>human activity</em>, <em>natural</em>, <em>agricultural context</em> — and pick the
+            label that wins. The reasoning line under the label shows you exactly which signals fired.
+          </p>
+          <p>Roughly:</p>
+          <ul>
+            <li><strong>Fire</strong> wins when MODIS burned-area, VIIRS/MODIS active fires, or a substantial dNBR (&gt;0.27) line up near the OPERA date.</li>
+            <li><strong>Mechanical / agricultural clearing</strong> wins when the patch is blocky or linear AND no fire signal is present. The "agricultural" qualifier appears when the land-cover label is a crop or pasture class.</li>
+            <li><strong>Natural</strong> wins when the patch is highly irregular AND no fire or human-shape signals are present.</li>
+            <li><strong>Inconclusive</strong> when signals are absent or contradictory — we'd rather say nothing than misattribute.</li>
+          </ul>
+          <p>
+            The thresholds are heuristic. False positives and false negatives are expected, especially in mixed-use landscapes
+            (e.g. fire-managed cropland) or in areas where one of the underlying datasets is sparse. The reasoning line is
+            there so you can sanity-check each call.
+          </p>
         </section>
 
         <section className={styles.modalSection}>
@@ -474,6 +561,30 @@ function MethodologyModal({ onClose }) {
               <a href="https://lpdaac.usgs.gov/products/mcd64a1v061/" target="_blank" rel="noopener noreferrer">LP DAAC</a>
             </dd>
 
+            <dt>NASA FIRMS Active Fires</dt>
+            <dd>
+              MODIS + VIIRS hot-spot detections, daily, near-real-time, global · Used as a complementary fire signal to
+              MCD64A1: counts detections within a 3 km buffer / ±60 days of the OPERA date.{' '}
+              <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">FIRMS</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/FIRMS" target="_blank" rel="noopener noreferrer">EE catalog</a>
+            </dd>
+
+            <dt>Copernicus Sentinel-2 L2A (Harmonized)</dt>
+            <dd>
+              10–20 m, ~5-day revisit, global · Used to compute dNBR (Normalized Burn Ratio delta) — median NBR over the
+              60–240 days before the OPERA date vs the 0–60 days after, sampled at the click point. Quantifies burn severity
+              from spectral change even when active-fire products miss the event.{' '}
+              <a href="https://sentiwiki.copernicus.eu/web/sentinel-2" target="_blank" rel="noopener noreferrer">Sentinel-2 SentiWiki</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED" target="_blank" rel="noopener noreferrer">EE catalog</a>
+            </dd>
+
+            <dt>Patch shape analysis (derived)</dt>
+            <dd>
+              Pure-Python geometry stats over the OPERA-derived polygon — area, perimeter, compactness (4πA/P²), aspect
+              ratio of the bounding box. Drives the "blocky / linear / irregular" hint that feeds the cause inference.
+              No external dataset; the polygon comes from <code>ee.Image.reduceToVectors</code> on the OPERA disturbance mask.
+            </dd>
+
             <dt>Mapbox Geocoding API v6</dt>
             <dd>
               Admin region hierarchy (place, district, region, country) for the click point.{' '}
@@ -497,13 +608,16 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>Limitations we want you to know about</h3>
           <ul>
-            <li><strong>OPERA detects vegetation loss, not deforestation.</strong> Harvested cropland, prescribed burns, storm blowdown, mining, urban clearing all look similar in the signal. The land-cover line in the popup is your main disambiguation tool.</li>
+            <li><strong>OPERA detects vegetation loss, not deforestation.</strong> Harvested cropland, prescribed burns, storm blowdown, mining, urban clearing all look similar in the OPERA signal. The "Likely cause" line tries to disambiguate, but the underlying land-cover and fire context are the most reliable inputs.</li>
+            <li><strong>"Likely cause" is a heuristic, not a model.</strong> The label comes from a simple rule that weighs fire and shape signals against land-cover context. Expect occasional misses — particularly on small patches, in landscapes with ambiguous land use (e.g. fire-managed cropland), or when supporting data (Sentinel-2, MODIS, FIRMS) has gaps for the relevant window. The reasoning line under the label exposes the inputs so you can sanity-check.</li>
+            <li><strong>dNBR can be missing.</strong> If Sentinel-2 imagery in the pre- or post-window is too cloudy (or too sparse, especially in winter at high latitudes), the dNBR sample comes back null and the heuristic falls back on other signals.</li>
+            <li><strong>Patch shape uses raster-derived polygons.</strong> Every polygon edge is on the 30 m pixel grid, so we can't directly measure "straightness" of perimeter the way you'd want for a vector field boundary. The shape hint relies on compactness and aspect ratio, which still discriminate blocky vs irregular reliably for patches above ~10 acres.</li>
             <li><strong>Filter accuracy varies by region.</strong> The tiered classifier is most precise where CDL (US, 2024) or MapBiomas (Brazil, 2023) cover the click point. Elsewhere it falls back to Dynamic World (mode of recent ~90 days, global) and finally to WorldCover (2021). Deep-international clicks may misclassify land that was converted from forest after 2021 if Dynamic World hasn't caught up either.</li>
             <li><strong>Orchards and tree crops classify as Cropland, not Forest.</strong> Cherries, almonds, apples, citrus groves are tree-covered but managed agriculture. CDL's specific orchard codes (66–77, plus most 200-series) are mapped to Cropland in our filter — so a "Forest" filter won't show them.</li>
-            <li><strong>MODIS burned area is 500 m.</strong> Much coarser than 30 m OPERA. A pixel-perfect OPERA click can fall just outside the MODIS-detected burn boundary even when fire clearly drove the disturbance.</li>
+            <li><strong>MODIS burned area is 500 m.</strong> Much coarser than 30 m OPERA. A pixel-perfect OPERA click can fall just outside the MODIS-detected burn boundary even when fire clearly drove the disturbance. FIRMS active fires (375 m–1 km) help, but a strong fire signal sometimes only shows up in dNBR.</li>
             <li><strong>"Nearest place" in remote forest can be misleading.</strong> Mapbox returns the closest containing or nearest settlement — sometimes 50+ km away in the Amazon or Congo. We always include the larger admin region as a more honest anchor.</li>
-            <li><strong>Patch size capped at ~225 acres.</strong> The connected-component algorithm tops out at 1024 pixels. Very large patches read as "underestimated" — we flag this in the popup.</li>
-            <li><strong>Provisional vs Confirmed.</strong> A provisional alert is a single satellite-pass detection; confirmed requires multiple. Provisional alerts will sometimes be revoked when more data comes in.</li>
+            <li><strong>Patch size measured within a 5 km search radius.</strong> The acres number comes from polygon area, not pixel counts — so it's accurate for any patch that fits within 5 km of the click point (about 19,000 acres of search area). Megafires or very large clearcuts that extend beyond that radius are flagged "extends beyond 5 km search radius" in the popup; the reported area is the in-radius portion only.</li>
+            <li><strong>Provisional vs Confirmed.</strong> A provisional OPERA alert is a single satellite-pass detection; confirmed requires multiple. Provisional alerts will sometimes be revoked when more data comes in. "Finished" variants of either are real alerts whose current change activity has stopped.</li>
           </ul>
         </section>
 
@@ -718,29 +832,60 @@ function renderBurn(burn, operaDateStr) {
   return `<div class="${styles.popupBurn}">Fire detected ${prettyBurn}${delta} <span class="${styles.popupLandCoverSource}">MODIS MCD64A1</span></div>`
 }
 
-function renderPopupHTML(data, pois, admin) {
+function renderLikelyCause(cause) {
+  if (!cause || !cause.label) return ''
+  // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
+  const label = cause.label.toLowerCase()
+  let cls = styles.popupCauseNeutral
+  if (label.includes('fire')) cls = styles.popupCauseFire
+  else if (label.includes('clearing') || label.includes('agricultural activity')) cls = styles.popupCauseHuman
+  else if (label.includes('natural')) cls = styles.popupCauseNatural
+  const reasoning = cause.reasoning
+    ? `<div class="${styles.popupCauseReason}">${escapeHTML(cause.reasoning)}</div>`
+    : ''
+  return `
+    <div class="${cls}">
+      <div class="${styles.popupCauseLabel}">${escapeHTML(cause.label)}</div>
+      ${reasoning}
+    </div>
+  `
+}
+
+function renderPopupHTML(data, pois, admin, extrasPending = false) {
   const prettyDate = data.date
     ? new Date(data.date).toLocaleDateString(undefined, {
         year: 'numeric', month: 'long', day: 'numeric',
       })
     : null
   const severityStr = data.severity != null ? `${Math.round(data.severity)}% loss` : null
-  const acresStr = data.acres != null && data.acres >= 0.01
-    ? `${data.acres.toFixed(2)} acre${Math.abs(data.acres - 1) < 0.005 ? '' : 's'}`
-    : '< 0.01 acres'
-  const truncatedNote = data.truncated
-    ? '<span class="' + styles.truncatedNote + '">(very large patch — area underestimated)</span>'
-    : ''
+
+  // Patch size + burn live in the "extras" payload — render them as soon as
+  // they arrive, otherwise show a small placeholder.
+  let patchLine = ''
+  if (data.acres != null) {
+    const acresStr = data.acres >= 0.01
+      ? `${data.acres.toFixed(2)} acre${Math.abs(data.acres - 1) < 0.005 ? '' : 's'}`
+      : '< 0.01 acres'
+    // `truncated` now means the patch extends beyond our 5 km search radius,
+    // not that the count maxed out at 228 acres. Wording reflects that.
+    const truncatedNote = data.truncated
+      ? '<span class="' + styles.truncatedNote + '">(extends beyond 5 km search radius)</span>'
+      : ''
+    patchLine = `<div class="${styles.popupMuted}">${acresStr} in this connected patch ${truncatedNote}</div>`
+  } else if (extrasPending) {
+    patchLine = `<div class="${styles.popupMuted}"><span class="${styles.popupSpinner}"></span> Measuring patch…</div>`
+  }
 
   return `
     <div class="${styles.popupBody}">
       <div class="${styles.popupHeader}">Disturbance detected ${prettyDate}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
+      ${renderLikelyCause(data.likelyCause)}
       ${renderBurn(data.burn, data.date)}
       ${data.statusLabel ? `<div>${escapeHTML(data.statusLabel)}</div>` : ''}
       ${severityStr ? `<div>${severityStr}</div>` : ''}
-      <div class="${styles.popupMuted}">${acresStr} in this connected patch ${truncatedNote}</div>
+      ${patchLine}
       ${renderMethodologyLink()}
     </div>
   `
@@ -753,6 +898,22 @@ function renderEmptyPopupHTML(pois, admin, landCover) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
       <div class="${styles.popupMuted}">OPERA DIST-ALERT hasn't flagged this pixel since 2023.</div>
+      ${renderMethodologyLink()}
+    </div>
+  `
+}
+
+// Interim state shown while we wait for the slow OPERA cloud-function call.
+// Geocoders typically resolve first, so the location appears immediately and
+// only the disturbance line stays in the "looking up" state.
+function renderLoadingPopupHTML(pois, admin) {
+  const hasLocation = (pois && pois.length) || admin
+  return `
+    <div class="${styles.popupBody}">
+      <div class="${styles.popupLoadingHeader}">
+        <span class="${styles.popupSpinner}"></span>Looking up disturbance…
+      </div>
+      ${hasLocation ? renderLocationLines(pois, admin) : ''}
       ${renderMethodologyLink()}
     </div>
   `

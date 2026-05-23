@@ -5,11 +5,15 @@ import styles from './ForestMonitor.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
-// Default to the existing SJC-bounded endpoint until the global function is
-// deployed (blocked on billing quota). Swap to the global URL by setting
-// VITE_FOREST_TILES_API_BASE in .env.local / Vercel.
-const TILES_API_BASE = import.meta.env.VITE_FOREST_TILES_API_BASE
-  || 'https://us-west1-salish-sea-property-mapper.cloudfunctions.net/opera-dist-alert'
+// Cloud function endpoint. Configurable via VITE_FOREST_TILES_API_BASE in
+// .env.local / Vercel, with a hardcoded default to the global earthatlas
+// function so production never falls back to a dead URL. .trim() defends
+// against trailing newlines in env vars (vercel env pull has historically
+// inserted "\n" inside the value).
+const TILES_API_BASE = (
+  import.meta.env.VITE_FOREST_TILES_API_BASE
+  || 'https://us-west1-earthatlas.cloudfunctions.net/opera-dist-alert-global'
+).trim()
 
 const MODES = [
   { id: 'recency',  label: 'Recency',  blurb: 'Brighter = more recent disturbance.' },

@@ -1471,6 +1471,22 @@ NASS_API_URL = 'https://quickstats.nass.usda.gov/api/api_GET/'
 NASS_CACHE: dict = {}  # module-level; warm-instance reuse only
 NASS_CACHE_MAX = 256
 
+# State FIPS → two-letter postal code. TIGER counties only exposes STATEFP,
+# so we keep this lookup local instead of an extra round-trip.
+US_STATE_FIPS_TO_CODE = {
+    '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA',
+    '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC', '12': 'FL',
+    '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN',
+    '19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME',
+    '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS',
+    '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH',
+    '34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND',
+    '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI',
+    '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT',
+    '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI',
+    '56': 'WY', '60': 'AS', '66': 'GU', '69': 'MP', '72': 'PR', '78': 'VI',
+}
+
 
 def _resolve_us_county(lat: float, lng: float) -> dict | None:
     """Lat/lng → US county FIPS dict via EE TIGER counties. Returns None
@@ -1487,11 +1503,14 @@ def _resolve_us_county(lat: float, lng: float) -> dict | None:
             result = None
         else:
             props = feat_info[0].get('properties', {}) or {}
+            state_fips = props.get('STATEFP')
             result = {
-                'state_fips':  props.get('STATEFP'),
+                'state_fips':  state_fips,
                 'county_fips': props.get('COUNTYFP'),
                 'county_name': props.get('NAME'),
-                'state_code':  props.get('STUSPS'),
+                # TIGER/2018/Counties doesn't have a postal-code field —
+                # derive from STATEFP via our local lookup.
+                'state_code':  US_STATE_FIPS_TO_CODE.get(state_fips),
             }
     except Exception as e:
         print(f'_resolve_us_county failed: {e}', flush=True)
@@ -1536,35 +1555,15 @@ def _fetch_nass_tillage(county: dict) -> dict | None:
     for this county (small/non-farming counties)."""
     if not county or not county.get('state_fips') or not county.get('county_fips'):
         return None
-    # Pull all CROP TOTALS / PRACTICES rows for tillage in this county.
-    rows = _nass_get({
-        'source_desc': 'CENSUS',
-        'sector_desc': 'CROPS',
-        'group_desc':  'FIELD CROPS',
-        'commodity_desc': 'CROP TOTALS',
-        'statisticcat_desc': 'AREA',
-        'unit_desc': 'ACRES',
-        'short_desc': 'CROP TOTALS, INC TILLAGE PRACTICES - ACRES TILLED',
-        'state_fips_code': county['state_fips'],
-        'county_code': county['county_fips'],
-        'year__GE': '2017',
-    })
-    if not rows:
-        # Some counties only report the no-till short_desc; try that too.
-        rows = _nass_get({
-            'source_desc': 'CENSUS',
-            'sector_desc': 'CROPS',
-            'commodity_desc': 'CROP TOTALS',
-            'state_fips_code': county['state_fips'],
-            'county_code': county['county_fips'],
-            'year__GE': '2017',
-        })
-    if not rows:
-        return None
 
-    # Latest census year wins.
-    latest_year = max(int(r.get('year', 0) or 0) for r in rows)
-    rows = [r for r in rows if int(r.get('year', 0) or 0) == latest_year]
+    # NASS Quick Stats exposes Census tillage data under three specific
+    # short_desc values — querying each explicitly is the only reliable way.
+    # (Generic CROP TOTALS / FIELD CROPS queries don't return them.)
+    short_descs = {
+        'no_till':      'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, NO-TILL - ACRES',
+        'conservation': 'PRACTICES, LAND USE, CROPLAND, CONSERVATION TILLAGE, (EXCL NO-TILL) - ACRES',
+        'conventional': 'PRACTICES, LAND USE, CROPLAND, CONVENTIONAL TILLAGE - ACRES',
+    }
 
     def _to_int(s):
         try:
@@ -1572,29 +1571,37 @@ def _fetch_nass_tillage(county: dict) -> dict | None:
         except (ValueError, AttributeError):
             return None
 
-    buckets = {'conventional': 0, 'conservation': 0, 'no_till': 0, 'reduced': 0}
-    for r in rows:
-        sd = (r.get('short_desc') or '').upper()
-        val = _to_int(r.get('Value'))
-        if val is None:
+    buckets: dict = {}
+    years_seen: list = []
+    for bucket_key, sd in short_descs.items():
+        rows = _nass_get({
+            'source_desc': 'CENSUS',
+            'state_fips_code': county['state_fips'],
+            'county_code': county['county_fips'],
+            'short_desc': sd,
+            'year__GE': '2017',
+        })
+        if not rows:
             continue
-        if 'NO-TILL' in sd or 'NO TILL' in sd:
-            buckets['no_till'] += val
-        elif 'CONSERVATION' in sd:
-            buckets['conservation'] += val
-        elif 'REDUCED' in sd:
-            buckets['reduced'] += val
-        elif 'CONVENTIONAL' in sd or 'INTENSIVE' in sd:
-            buckets['conventional'] += val
+        # Latest year wins (Census runs every 5 years; 2022 is the most recent).
+        latest_year = max(int(r.get('year', 0) or 0) for r in rows)
+        latest_rows = [r for r in rows if int(r.get('year', 0) or 0) == latest_year]
+        total_for_bucket = 0
+        for r in latest_rows:
+            val = _to_int(r.get('Value'))
+            if val is not None:
+                total_for_bucket += val
+        if total_for_bucket > 0:
+            buckets[bucket_key] = total_for_bucket
+            years_seen.append(latest_year)
 
     total = sum(buckets.values())
-    if total <= 0:
+    if total <= 0 or not years_seen:
         return None
     shares = {k: round(v / total, 3) for k, v in buckets.items()}
-    # Pick the dominant practice (highest share). Tie-breaker by sort order.
     dominant = max(shares.items(), key=lambda kv: kv[1])
     return {
-        'year': latest_year,
+        'year': max(years_seen),
         'acres': buckets,
         'shares': shares,
         'dominant': dominant[0],

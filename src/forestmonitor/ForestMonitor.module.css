@@ -1082,8 +1082,13 @@
 }
 
 /* ─── News-correlation block ──────────────────────────────────────────── */
+/* Sits at the very bottom of the popup — visually separated from the fire-
+   diagnostic block above so it reads as supplementary, not as part of
+   the cause card. */
 .popupNewsSection {
-  margin: 10px 0 4px;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
 }
 .popupNewsButton {
   display: inline-flex;
@@ -1216,6 +1221,30 @@
   font-size: 10px;
   color: #9ca3af;
   text-align: right;
+}
+.popupNewsMore {
+  margin-top: 6px;
+}
+.popupNewsMore summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: #2563eb;
+  padding: 4px 0;
+  user-select: none;
+  list-style: none;
+}
+.popupNewsMore summary::-webkit-details-marker { display: none; }
+.popupNewsMore summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.popupNewsMore[open] summary::before {
+  transform: rotate(90deg);
+}
+.popupNewsMore summary:hover { color: #1d4ed8; }
+.popupNewsMore > a {
+  margin-top: 6px;
 }
 /* Loading skeleton */
 .popupNewsSkel {

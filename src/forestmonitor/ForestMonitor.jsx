@@ -1738,47 +1738,47 @@ function renderArticleList(payload, btnData) {
     return `
       <div class="${styles.popupNewsHeader}">${headerLine}</div>
       <div class="${styles.popupNewsEmpty}">
-        No matching news in this window. Try a wider date range or check
-        the OPERA date and location are correct.
+        No matching news in this window. The cause + location combination
+        may be too specific, or the search window (±14 days) too narrow.
       </div>
     `
   }
 
-  const cards = articles.map((a) => {
+  // Compact cards (no snippet by default — keeps each card to ~50px tall so
+  // 5 articles fit in roughly the height of the original cause card).
+  const cardHTML = (a) => {
     const date = a.published_date
       ? new Date(a.published_date).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric'})
       : ''
-    // Use the article image if present, else the favicon as a tiny badge
-    // on a soft gradient — looks intentional rather than broken.
     const thumb = a.image_url
       ? `<img src="${escapeHTML(a.image_url)}" alt="" class="${styles.popupNewsThumb}" loading="lazy" onerror="this.style.display='none'" />`
-      : `<div class="${styles.popupNewsThumbFallback}">
-           ${a.favicon_url ? `<img src="${escapeHTML(a.favicon_url)}" alt="" loading="lazy" />` : ''}
-         </div>`
+      : `<div class="${styles.popupNewsThumbFallback}">${
+          a.favicon_url ? `<img src="${escapeHTML(a.favicon_url)}" alt="" loading="lazy" />` : ''
+        }</div>`
     const meta = [a.source, date].filter(Boolean).map(escapeHTML).join(' · ')
-    const snippet = a.snippet
-      ? `<div class="${styles.popupNewsSnippet}">${escapeHTML(a.snippet)}</div>`
-      : ''
     return `
       <a href="${escapeHTML(a.url)}" target="_blank" rel="noopener noreferrer" class="${styles.popupNewsCard}">
         ${thumb}
         <div class="${styles.popupNewsBody}">
           <div class="${styles.popupNewsTitle}">${escapeHTML(a.title)}</div>
           <div class="${styles.popupNewsMeta}">${meta}</div>
-          ${snippet}
         </div>
       </a>
     `
-  }).join('')
+  }
 
-  const providerNote = payload.provider === 'gnews'
-    ? `<div class="${styles.popupNewsFooter}">Source: Google News · thumbnails unavailable</div>`
-    : `<div class="${styles.popupNewsFooter}">Source: ${escapeHTML(payload.provider)}</div>`
+  const visible = articles.slice(0, 5).map(cardHTML).join('')
+  const hidden = articles.length > 5
+    ? `<details class="${styles.popupNewsMore}">
+         <summary>Show ${articles.length - 5} more</summary>
+         ${articles.slice(5).map(cardHTML).join('')}
+       </details>`
+    : ''
 
   return `
     <div class="${styles.popupNewsHeader}">${headerLine}</div>
-    <div class="${styles.popupNewsList}">${cards}</div>
-    ${providerNote}
+    <div class="${styles.popupNewsList}">${visible}</div>
+    ${hidden}
   `
 }
 
@@ -1916,11 +1916,11 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderLandCover(data.landCover)}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
-      ${renderNewsBlock(data.likelyCause, data, admin)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
       ${statusLine}
       ${renderMethodologyLink()}
+      ${renderNewsBlock(data.likelyCause, data, admin)}
     </div>
   `
 }

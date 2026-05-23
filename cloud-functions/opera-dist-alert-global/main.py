@@ -252,6 +252,32 @@ CROP_PROFILE_LABELS = {
     'fallow':         'fallow cropland',
 }
 
+# ─── MapBiomas Brazil crop profiles ────────────────────────────────────────
+# Same shape as CDL_CROP_PROFILES. Harvest windows expressed in NH-equivalent
+# months — _flip_window_for_hemisphere shifts them back by 6 months for the
+# Brazilian (southern-hemisphere) clicks where this data applies.
+# Sources for harvest timing: Embrapa, USDA Foreign Agricultural Service
+# (FAS) commodity calendars, MAPA Brazil crop calendar publications.
+#
+# Real SH-actual harvest windows for reference:
+#   Pasture       → year-round; primary growth Nov–Apr (SH summer)
+#   Sugar Cane    → Apr–Nov (Centro-Sul, dominant region)
+#   Soybean       → Feb–May
+#   Rice          → Feb–May (irrigated Rio Grande do Sul)
+#   Coffee        → May–Sep (Minas Gerais arabica)
+#   Citrus        → Jun–Oct (São Paulo oranges)
+#   Cotton        → May–Sep
+MAPBIOMAS_CROP_PROFILES = {
+    15: {'profile': 'multicut',       'harvest_months': (5, 10),  'burn_practice': 'rare'},        # Pasture
+    20: {'profile': 'burn_prone',     'harvest_months': (10, 5),  'burn_practice': 'common'},      # Sugar Cane
+    63: {'profile': 'burn_prone',     'harvest_months': (10, 5),  'burn_practice': 'common'},      # Sugar Cane (alt code)
+    39: {'profile': 'annual_harvest', 'harvest_months': (8, 11),  'burn_practice': 'rare'},        # Soybean
+    40: {'profile': 'burn_prone',     'harvest_months': (8, 11),  'burn_practice': 'common'},      # Rice
+    46: {'profile': 'orchard',        'harvest_months': (11, 3),  'burn_practice': 'rare'},        # Coffee
+    47: {'profile': 'orchard',        'harvest_months': (12, 4),  'burn_practice': 'rare'},        # Citrus
+    62: {'profile': 'burn_prone',     'harvest_months': (11, 3),  'burn_practice': 'occasional'},  # Cotton
+}
+
 # MapBiomas Brazil — Collection 9, annual to 2023. Detailed national LULC.
 MAPBIOMAS_BR_ASSET = (
     'projects/mapbiomas-public/assets/brazil/lulc/collection9/'
@@ -605,6 +631,16 @@ NIFC_HISTORY_URL = (
     'InterAgencyFirePerimeterHistory_All_Years_View/FeatureServer/0/query'
 )
 
+# JRC GlobFire v2 — global MODIS-based fire perimeters, 2002-present, ~2 mo
+# lag. Fires are UNNAMED (just an ID + start/end dates + burned area). Used
+# for non-US clicks so the named-fire context isn't US-only. We display
+# these as "{acres}-acre fire ({date})" in the popup.
+GLOBFIRE_ASSET = 'JRC/GWIS/GlobFire/v2/FinalPerimeters'
+# Only show GlobFire perimeters at least this size — smaller fires create
+# popup noise and aren't useful "context for nearby disturbance" the way
+# named fires are.
+GLOBFIRE_MIN_ACRES = 500
+
 
 def _is_in_us(lat: float, lng: float) -> bool:
     """Loose bbox check to skip MTBS/NIFC calls for clearly non-US points."""
@@ -793,22 +829,45 @@ def _sample_nifc_wfigs_fires(lat: float, lng: float) -> list:
         return []
 
 
+def _sample_globfire_fires(point: ee.Geometry) -> list:
+    """Query JRC GlobFire v2 perimeters at a point.
+
+    KNOWN ISSUE — currently disabled: GlobFire v2's EE asset
+    (JRC/GWIS/GlobFire/v2/FinalPerimeters) has corrupted bbox/geometry
+    indexes for the perimeters that come back from filterBounds at any
+    point — every returned feature's geometry().area() resolves to
+    Infinity, meaning either the geometries themselves are degenerate
+    (self-intersecting/antimeridian-wrapping) or EE's area kernel is
+    failing on them. Result: filterBounds returns the same 44 features
+    everywhere on earth, and we can't distinguish real fires from
+    broken-bbox ghosts. Returns [] so the named-fire context falls back
+    cleanly to MTBS+NIFC (US-only).
+
+    Follow-up options to revisit:
+      1. JRC/GWIS/GlobFire/v2/DailyPerimeters (different indexing)
+      2. ESA Fire_cci v5.1 burn-pixel rasters → derived perimeters
+      3. FIRMS hot-spot clustering → ad-hoc perimeters
+      4. EFFIS for Europe (REST API, requires HTTP fetch like NIFC)
+    """
+    return []
+
+
 def _dedupe_and_sort_fires(fires: list) -> list:
     """Combine MTBS + NIFC results, dedupe across sources, and sort
     newest-first. Caps at 10 entries to keep popup payload small.
 
-    Dedupe key: (year, acres bucket). Same fire often appears in both MTBS
-    and NIFC with slightly different name formatting ("GUN 2" vs "Gun Ii")
-    and slightly different acres — bucketing acres to within ~10% catches
-    these as duplicates. MTBS is preferred when duplicates exist because
-    its perimeters are validated and include burn-severity data.
+    Dedupe key: (year, acres bucket). Same fire often appears across
+    sources (MTBS + NIFC + GlobFire) with slightly different acres and
+    name formatting. Bucketing acres to within ~10% catches these as
+    duplicates. Source priority for the winner: MTBS (validated US,
+    with severity) > NIFC (US, current) > GlobFire (global, unnamed).
     """
-    # Sort by (year desc, MTBS first) so MTBS entries claim duplicate keys.
+    source_priority = {'MTBS': 0, 'NIFC': 1, 'GlobFire': 2}
     sorted_fires = sorted(
         fires,
         key=lambda f: (
             -(f.get('year') or 0),
-            0 if f.get('source') == 'MTBS' else 1,
+            source_priority.get(f.get('source'), 3),
         ),
     )
     seen = set()
@@ -1223,13 +1282,13 @@ def _infer_likely_cause(
         elif moderate_fire and is_irregular:
             label = 'Possible wildfire'
         elif is_blocky:
-            label = 'Likely logging or clearcut'
+            label = 'Likely logging'
         elif is_linear:
-            label = 'Likely corridor clearing (road, pipeline, or transmission line)'
+            label = 'Likely road, pipeline, or transmission corridor'
         elif is_irregular and fire_count == 0:
-            label = 'Likely natural disturbance (storm, blowdown, drought, or insect)'
+            label = 'Likely natural cause (storm, drought, or insect damage)'
         elif has_dense_fires and not moderate_fire:
-            label = 'Inconclusive (active fires nearby but no burn-scar signature here)'
+            label = 'Inconclusive — nearby fires but no burn signature here'
         else:
             label = 'Inconclusive forest disturbance'
 
@@ -1238,16 +1297,16 @@ def _infer_likely_cause(
         if strong_fire:
             label = 'Possible structure fire or industrial incident'
         else:
-            label = 'Likely development, construction, or demolition'
+            label = 'Likely construction or demolition'
 
     elif is_grassy:
         # Grassland/shrubland — fires happen, but so does mowing/clearing.
         if strong_fire:
-            label = 'Likely grassland or shrubland fire'
+            label = 'Likely grassland fire'
         elif moderate_fire:
             label = 'Possible grassland fire'
         elif has_dense_fires and not dnbr_mod:
-            label = 'Inconclusive (active fires nearby — possibly industrial heat source)'
+            label = 'Inconclusive — possibly industrial heat source'
         elif is_blocky:
             label = 'Likely mechanical clearing'
         else:
@@ -1261,11 +1320,11 @@ def _infer_likely_cause(
         elif moderate_fire:
             label = 'Possible fire'
         elif has_dense_fires:
-            label = 'Inconclusive (active fires nearby — possibly industrial heat source)'
+            label = 'Inconclusive — possibly industrial heat source'
         elif is_blocky:
             label = 'Likely mechanical clearing'
         elif is_irregular:
-            label = 'Likely natural disturbance'
+            label = 'Likely natural cause'
         else:
             label = 'Inconclusive'
 
@@ -1392,25 +1451,35 @@ def _classify_crop(
 ) -> dict | None:
     """Look up the crop profile + harvest seasonality for this click.
 
-    Only fires for CDL-source land cover (US only) right now — that's where
-    we have per-species crop classes and reliable per-crop harvest windows.
-    Other sources fall through to the generic land-cover branch in
-    _infer_likely_cause.
+    Fires for CDL (US per-species crop classes) and MapBiomas Brazil
+    (per-species BR crop classes). Dynamic World and WorldCover only
+    expose generic categories ("Crops", "Cropland") with no harvest
+    timing — fall through to the generic land-cover branch for those.
 
     Returns:
-        None when no crop profile applies (non-CDL source, non-crop class).
+        None when no crop profile applies (no source-specific table for
+        this code, or non-crop class).
         Otherwise dict with:
           - profile: 'multicut'/'burn_prone'/'annual_harvest'/'orchard'/'fallow'
           - profile_label: friendly description (e.g. "multi-cut forage")
-          - crop_name: CDL species name (e.g. "Alfalfa")
+          - crop_name: source-specific species name (e.g. "Alfalfa", "Soybean")
           - burn_practice: 'rare'/'occasional'/'common'
           - in_harvest_season: bool — alert date is inside the typical window
           - harvest_window_str: human label for the window (e.g. "May–Oct")
     """
-    if not land_cover or land_cover.get('source_key') != 'cdl':
+    if not land_cover:
         return None
+    src = land_cover.get('source_key')
     code = land_cover.get('code')
-    profile = CDL_CROP_PROFILES.get(int(code)) if code is not None else None
+    if code is None:
+        return None
+    if src == 'cdl':
+        profile = CDL_CROP_PROFILES.get(int(code))
+    elif src == 'mapbiomas':
+        profile = MAPBIOMAS_CROP_PROFILES.get(int(code))
+    else:
+        # Dynamic World / WorldCover have no per-crop differentiation.
+        return None
     if not profile:
         return None
 
@@ -1855,17 +1924,21 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
         status_code is not None and int(status_code) in STATUS_LABELS
     )
 
-    # Named US fires are queried for ANY US click, regardless of whether
+    # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
     # back to status 0 once vegetation recovers, so older fire scars (like
     # the 2024 Park Fire two years on) wouldn't otherwise show their fire
-    # context. When there's no OPERA date, we use today as the upper bound.
+    # context.
+    #   * US clicks: MTBS + NIFC (named, validated, with severity)
+    #   * All clicks: GlobFire (global MODIS perimeters, unnamed)
+    # Dedupe merges the same fire across sources, preferring MTBS > NIFC.
     early_named_fires = []
     if _is_in_us(lat, lng):
         early_named_fires.extend(_sample_mtbs_fires(point))
         early_named_fires.extend(_sample_nifc_wfigs_fires(lat, lng))
         early_named_fires.extend(_sample_nifc_fires(lat, lng))
-        early_named_fires = _dedupe_and_sort_fires(early_named_fires)
+    early_named_fires.extend(_sample_globfire_fires(point))
+    early_named_fires = _dedupe_and_sort_fires(early_named_fires)
 
     if not status_valid or alert_date_str is None:
         return (

@@ -747,16 +747,17 @@ function MethodologyModal({ onClose }) {
               No external dataset; the polygon comes from <code>ee.Image.reduceToVectors</code> on the OPERA disturbance mask.
             </dd>
 
-            <dt>Crop management profiles (derived from CDL + agronomic references)</dt>
+            <dt>Crop management profiles (derived from CDL + MapBiomas + agronomic references)</dt>
             <dd>
-              Per-crop lookup table mapping each USDA CDL crop class to a management profile
-              (multi-cut forage / burn-prone / annual harvest / orchard / fallow), a typical
-              harvest month window, and a residue-burning practice rating (rare / occasional /
-              common). Used to refine the cause label for US cropland clicks — e.g. alfalfa
-              cuts vs sugarcane burns vs corn harvest. Northern-hemisphere windows are shifted
-              ~6 months for southern-latitude clicks. Profile assignments are based on USDA
-              crop-calendar references and standard regional agronomic practice; expect to
-              tune over time.
+              Per-crop lookup table mapping each USDA CDL class (US) and MapBiomas Brazil class
+              to a management profile (multi-cut forage / burn-prone / annual harvest / orchard /
+              fallow), a typical harvest month window, and a residue-burning practice rating
+              (rare / occasional / common). Used to refine the cause label for cropland clicks —
+              e.g. alfalfa cuts vs sugarcane burns vs corn harvest in the US; soybean vs
+              sugarcane vs coffee vs pasture in Brazil. Northern-hemisphere windows are shifted
+              ~6 months for southern-latitude clicks. Sources: USDA NASS crop calendars, USDA FAS
+              commodity calendars, Embrapa publications, MAPA Brazil crop-calendar data. Expect
+              to tune over time.
             </dd>
 
             <dt>USDA NASS Quick Stats — Census of Agriculture (optional)</dt>
@@ -785,6 +786,7 @@ function MethodologyModal({ onClose }) {
               <a href="https://data-nifc.opendata.arcgis.com/" target="_blank" rel="noopener noreferrer">data-nifc.opendata.arcgis.com</a>
             </dd>
 
+
             <dt>Mapbox Geocoding API v6</dt>
             <dd>
               Admin region hierarchy (place, district, region, country) for the click point.{' '}
@@ -810,7 +812,7 @@ function MethodologyModal({ onClose }) {
           <ul>
             <li><strong>OPERA detects vegetation loss, not deforestation.</strong> Harvested cropland, prescribed burns, storm blowdown, mining, urban clearing all look similar in the OPERA signal. The "Likely cause" line tries to disambiguate, but the underlying land-cover and fire context are the most reliable inputs.</li>
             <li><strong>"Likely cause" is a heuristic, not a model.</strong> The label comes from a simple rule that weighs fire and shape signals against land-cover context. Expect occasional misses — particularly on small patches, in landscapes with ambiguous land use (e.g. fire-managed cropland), or when supporting data (Sentinel-2, MODIS, FIRMS) has gaps for the relevant window. The reasoning line under the label exposes the inputs so you can sanity-check.</li>
-            <li><strong>Named-fire context is US-only.</strong> MTBS and NIFC cover the United States; international clicks won't get the fire-name treatment. Global named-fire coverage (e.g. GlobFire, EFFIS for Europe) is a planned follow-up.</li>
+            <li><strong>Named-fire context is currently US-only.</strong> MTBS and NIFC cover the United States; international clicks won't get the fire-name treatment yet. A global option (JRC GlobFire v2) was attempted but its EE asset has known geometry-index issues that prevent reliable spatial filtering. Tracked as follow-up work; alternatives include ESA Fire_cci, EFFIS (Europe), or FIRMS hot-spot clustering.</li>
             <li><strong>dNBR can be missing.</strong> If Sentinel-2 imagery in the pre- or post-window is too cloudy (or too sparse, especially in winter at high latitudes), the dNBR sample comes back null and the heuristic falls back on other signals.</li>
             <li><strong>Patch shape uses raster-derived polygons.</strong> Every polygon edge is on the 30 m pixel grid, so we can't directly measure "straightness" of perimeter the way you'd want for a vector field boundary. The shape hint relies on compactness and aspect ratio, which still discriminate blocky vs irregular reliably for patches above ~10 acres.</li>
             <li><strong>Filter accuracy varies by region.</strong> The tiered classifier is most precise where CDL (US, 2024) or MapBiomas (Brazil, 2023) cover the click point. Elsewhere it falls back to Dynamic World (mode of recent ~90 days, global) and finally to WorldCover (2021). Deep-international clicks may misclassify land that was converted from forest after 2021 if Dynamic World hasn't caught up either.</li>
@@ -1318,6 +1320,17 @@ function renderLandCover(lc) {
   return `<div class="${cls}">${escapeHTML(lc.label)}${hint}${sourceStr}</div>`
 }
 
+// Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
+// "Bear Gulch Fire"). GlobFire perimeters are unnamed — fall back to
+// "{acres}-acre fire" or just "Fire perimeter" if size is unknown.
+function fireDisplayName(f) {
+  if (f.name) return f.name
+  if (f.acres != null) {
+    return `${Math.round(Number(f.acres)).toLocaleString()}-acre fire`
+  }
+  return 'Fire perimeter'
+}
+
 function renderNamedFires(fires, operaDateStr) {
   if (!fires || fires.length === 0) return ''
 
@@ -1330,8 +1343,13 @@ function renderNamedFires(fires, operaDateStr) {
     : (first.year ? String(first.year) : null)
   const acres = first.acres != null ? `${Math.round(Number(first.acres)).toLocaleString()} acres` : null
   const contained = first.contained_pct != null ? `${Math.round(first.contained_pct)}% contained` : null
-  const parts = [dateLabel, acres, contained, first.incident_type, first.source]
-    .filter(Boolean).map(escapeHTML).join(' · ')
+  // For named MTBS/NIFC fires, the acres appear in the name line — don't
+  // duplicate in the meta line. For unnamed GlobFire entries, the name IS
+  // the acres, so the meta line keeps date + source.
+  const metaParts = first.name
+    ? [dateLabel, acres, contained, first.incident_type, first.source]
+    : [dateLabel, first.source]
+  const parts = metaParts.filter(Boolean).map(escapeHTML).join(' · ')
   const link = first.inciweb_url
     ? `<a href="${escapeHTML(first.inciweb_url)}" target="_blank" rel="noopener noreferrer" class="${styles.popupFireLink}">InciWeb ↗</a>`
     : ''
@@ -1345,7 +1363,7 @@ function renderNamedFires(fires, operaDateStr) {
   }
   const firstBlock = `
     <div class="${styles.popupFireItem}">
-      <div class="${styles.popupFireName}">🔥 ${escapeHTML(first.name)}</div>
+      <div class="${styles.popupFireName}">🔥 ${escapeHTML(fireDisplayName(first))}</div>
       <div class="${styles.popupFireMeta}">${parts}</div>
       ${delta}
       ${link}
@@ -1360,7 +1378,7 @@ function renderNamedFires(fires, operaDateStr) {
       return `
         <li class="${styles.popupFireHistRow}">
           <span class="${styles.popupFireHistYear}">${escapeHTML(String(yr))}</span>
-          <span class="${styles.popupFireHistName}">${escapeHTML(f.name)}</span>
+          <span class="${styles.popupFireHistName}">${escapeHTML(fireDisplayName(f))}</span>
           <span class="${styles.popupFireHistAcres}">${escapeHTML(ac)}</span>
         </li>
       `
@@ -1404,8 +1422,13 @@ function renderLikelyCause(cause) {
   // a crop name, because "fire" appears in the label.
   const label = cause.label.toLowerCase()
   let cls = styles.popupCauseNeutral
-  if (label.includes('fire') || label.includes('burn')) cls = styles.popupCauseFire
-  else if (
+  // "Inconclusive…" labels always stay neutral, even when the text mentions
+  // fire (e.g. "Inconclusive — nearby fires but no burn signature here").
+  if (label.startsWith('inconclusive')) {
+    cls = styles.popupCauseNeutral
+  } else if (label.includes('fire') || label.includes('burn')) {
+    cls = styles.popupCauseFire
+  } else if (
     label.includes('harvest') ||
     label.includes(' cut') ||
     label.includes('replanting') ||
@@ -1416,9 +1439,17 @@ function renderLikelyCause(cause) {
     label.includes('field activity') ||
     label.includes('field operations') ||
     label.includes('orchard') ||
-    label.includes('fallow')
-  ) cls = styles.popupCauseHuman
-  else if (label.includes('natural')) cls = styles.popupCauseNatural
+    label.includes('fallow') ||
+    label.includes('logging') ||
+    label.includes('corridor') ||
+    label.includes('construction') ||
+    label.includes('demolition') ||
+    label.includes('mechanical')
+  ) {
+    cls = styles.popupCauseHuman
+  } else if (label.includes('natural')) {
+    cls = styles.popupCauseNatural
+  }
 
   // Render plain-English bullets when the backend sends them; fall back to
   // the legacy semicolon-joined string during deploy windows.

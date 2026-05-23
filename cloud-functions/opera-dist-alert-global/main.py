@@ -24,8 +24,11 @@ GET /?lat=<lat>&lng=<lng>       → returns OPERA core + land cover (fast)
 GET /?lat=<lat>&lng=<lng>&extras=1
                                 → returns patch outline, acres, MODIS burn (slow)
 """
+import json
 import math
-from datetime import date, timedelta, datetime
+import urllib.parse
+import urllib.request
+from datetime import date, datetime, timedelta, timezone
 
 import ee
 import google.auth
@@ -145,6 +148,108 @@ CDL_LABELS = {
     244: 'Cauliflower', 245: 'Celery', 246: 'Radishes', 247: 'Turnips',
     248: 'Eggplants', 249: 'Gourds', 250: 'Cranberries',
     254: 'Dbl Crop Barley/Soybeans',
+}
+
+# ─── Crop-aware profiles for cause inference ────────────────────────────────
+# Each CDL crop falls into a profile that tells the cause heuristic how to
+# read a dNBR spike or fire signal:
+#
+#   multicut        Perennial multi-cut forages (alfalfa, hay, clover, sod,
+#                   switchgrass). Harvested 2–5× per growing season, so dNBR
+#                   spikes during the harvest window are routine cutting,
+#                   NOT burning. Field burning is very rare for these crops.
+#
+#   burn_prone      Crops where pre-harvest or post-harvest burning is a
+#                   standard agronomic practice in at least some regions:
+#                   sugarcane (pre-harvest leaf burn), rice (stubble burn),
+#                   cotton (boll/foliage management). Fire signal here is
+#                   credible.
+#
+#   annual_harvest  Single-harvest annuals (corn, soybeans, wheat, etc.).
+#                   Harvest produces a dNBR spike but residue burning is
+#                   uncommon in most US regions and increasingly regulated.
+#                   Default to "harvest" interpretation when no fire signal.
+#
+#   orchard         Perennial tree/vine crops (apples, citrus, almonds,
+#                   grapes). Tree removal / replanting happens but is rare.
+#                   Routine harvest produces minimal canopy disturbance.
+#
+#   fallow          Fallow / idle cropland — vegetation breaks are part of
+#                   the rotation cycle, not a disturbance event.
+#
+# Harvest months are northern-hemisphere defaults; _classify_crop flips for
+# southern-latitude clicks. Months are inclusive of typical start/end.
+CDL_CROP_PROFILES = {
+    # ── multicut perennial forages (the alfalfa case) ──
+    36: {'profile': 'multicut', 'harvest_months': (5, 10),  'burn_practice': 'rare'},        # Alfalfa
+    37: {'profile': 'multicut', 'harvest_months': (5, 10),  'burn_practice': 'rare'},        # Other Hay/Non Alfalfa
+    58: {'profile': 'multicut', 'harvest_months': (5, 10),  'burn_practice': 'rare'},        # Clover/Wildflowers
+    59: {'profile': 'multicut', 'harvest_months': (6, 9),   'burn_practice': 'rare'},        # Sod/Grass Seed
+    60: {'profile': 'multicut', 'harvest_months': (8, 10),  'burn_practice': 'occasional'},  # Switchgrass
+    176: {'profile': 'multicut','harvest_months': (5, 10),  'burn_practice': 'rare'},        # Grassland/Pasture
+
+    # ── burn-prone crops (pre-harvest field burning is standard practice) ──
+    3:  {'profile': 'burn_prone', 'harvest_months': (8, 11), 'burn_practice': 'common'},     # Rice (stubble burn after harvest)
+    45: {'profile': 'burn_prone', 'harvest_months': (10, 4), 'burn_practice': 'common'},     # Sugarcane (pre-harvest cane burn; wraps year-end)
+    2:  {'profile': 'burn_prone', 'harvest_months': (8, 12), 'burn_practice': 'occasional'}, # Cotton
+
+    # ── single-harvest annuals ──
+    1:  {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Corn
+    5:  {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Soybeans
+    4:  {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Sorghum
+    6:  {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Sunflower
+    21: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'occasional'}, # Barley
+    22: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Durum Wheat
+    23: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Spring Wheat
+    24: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'occasional'}, # Winter Wheat
+    25: {'profile': 'annual_harvest', 'harvest_months': (6, 9),  'burn_practice': 'occasional'}, # Other Small Grains
+    27: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Rye
+    28: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'occasional'}, # Oats
+    29: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Millet
+    10: {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Peanuts
+    11: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'occasional'}, # Tobacco
+    12: {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Sweet Corn
+    31: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Canola
+    41: {'profile': 'annual_harvest', 'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Sugarbeets
+    42: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Dry Beans
+    43: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Potatoes
+    51: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Chick Peas
+    52: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Lentils
+    53: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'rare'},        # Peas
+
+    # ── orchards / perennial tree & vine crops ──
+    66: {'profile': 'orchard', 'harvest_months': (6, 8),  'burn_practice': 'rare'},   # Cherries
+    67: {'profile': 'orchard', 'harvest_months': (6, 9),  'burn_practice': 'rare'},   # Peaches
+    68: {'profile': 'orchard', 'harvest_months': (8, 11), 'burn_practice': 'rare'},   # Apples
+    69: {'profile': 'orchard', 'harvest_months': (8, 10), 'burn_practice': 'rare'},   # Grapes
+    70: {'profile': 'orchard', 'harvest_months': (11, 12),'burn_practice': 'rare'},   # Christmas Trees
+    71: {'profile': 'orchard', 'harvest_months': (8, 11), 'burn_practice': 'rare'},   # Other Tree Crops
+    72: {'profile': 'orchard', 'harvest_months': (11, 4), 'burn_practice': 'rare'},   # Citrus (winter harvest, wraps)
+    74: {'profile': 'orchard', 'harvest_months': (9, 11), 'burn_practice': 'rare'},   # Pecans
+    75: {'profile': 'orchard', 'harvest_months': (8, 10), 'burn_practice': 'rare'},   # Almonds
+    76: {'profile': 'orchard', 'harvest_months': (9, 11), 'burn_practice': 'rare'},   # Walnuts
+    77: {'profile': 'orchard', 'harvest_months': (8, 10), 'burn_practice': 'rare'},   # Pears
+    204:{'profile': 'orchard', 'harvest_months': (9, 10), 'burn_practice': 'rare'},   # Pistachios
+    210:{'profile': 'orchard', 'harvest_months': (8, 10), 'burn_practice': 'rare'},   # Prunes
+    211:{'profile': 'orchard', 'harvest_months': (10, 1), 'burn_practice': 'rare'},   # Olives
+    212:{'profile': 'orchard', 'harvest_months': (11, 4), 'burn_practice': 'rare'},   # Oranges
+    215:{'profile': 'orchard', 'harvest_months': (2, 9),  'burn_practice': 'rare'},   # Avocados
+    217:{'profile': 'orchard', 'harvest_months': (9, 11), 'burn_practice': 'rare'},   # Pomegranates
+    218:{'profile': 'orchard', 'harvest_months': (7, 9),  'burn_practice': 'rare'},   # Nectarines
+    220:{'profile': 'orchard', 'harvest_months': (8, 10), 'burn_practice': 'rare'},   # Plums
+    223:{'profile': 'orchard', 'harvest_months': (5, 8),  'burn_practice': 'rare'},   # Apricots
+
+    # ── fallow ──
+    61: {'profile': 'fallow', 'harvest_months': None, 'burn_practice': 'rare'},  # Fallow/Idle Cropland
+}
+
+# Friendly common names for the profiles (used in popup reasoning).
+CROP_PROFILE_LABELS = {
+    'multicut':       'multi-cut forage',
+    'burn_prone':     'burn-managed crop',
+    'annual_harvest': 'annual harvested crop',
+    'orchard':        'perennial tree/vine crop',
+    'fallow':         'fallow cropland',
 }
 
 # MapBiomas Brazil — Collection 9, annual to 2023. Detailed national LULC.
@@ -411,29 +516,342 @@ def _sample_modis_burn(point: ee.Geometry, opera_date_str: str | None) -> dict |
 
 # ─── VIIRS / MODIS active fires (NASA FIRMS) ────────────────────────────────
 # Higher-sensitivity companion to MODIS burned-area. Catches small, fresh, or
-# brief fires that the monthly burned-area product misses.
-FIRMS_BUFFER_M = 3000
-FIRMS_WINDOW_DAYS = 60
+# brief fires that the monthly burned-area product misses. Tight spatial /
+# temporal window — wildfires happen on specific days near specific pixels,
+# not month-long across multi-km windows.
+FIRMS_BUFFER_M = 1500       # ~1.5 km radius around the click
+FIRMS_WINDOW_DAYS = 21      # ±3 weeks of the OPERA detection date
+FIRMS_CONFIDENCE_MIN = 70   # FIRMS confidence threshold (0-100)
 
 
 def _sample_active_fires(point: ee.Geometry, opera_date_str: str | None) -> dict | None:
-    """Count NASA FIRMS active-fire detections within ±60 days, 3 km buffer."""
+    """Count NASA FIRMS active-fire pixel-day detections within a tight
+    spatial/temporal window of the OPERA disturbance.
+
+    Bug fix: `coll.size()` returns the number of IMAGES in the collection
+    intersecting the buffer — which for a multi-day window is mostly empty
+    daily mosaics and runs ~70+ globally regardless of fire activity. We now
+    actually count detection pixels: sum the per-image fire-mask across the
+    time dimension and reduce across the buffer area.
+    """
     if not opera_date_str:
         return None
     try:
         opera_dt = date.fromisoformat(opera_date_str)
         start_iso = (opera_dt - timedelta(days=FIRMS_WINDOW_DAYS)).isoformat()
         end_iso = (opera_dt + timedelta(days=FIRMS_WINDOW_DAYS)).isoformat()
+        buffer_geom = point.buffer(FIRMS_BUFFER_M)
         coll = (
             ee.ImageCollection('FIRMS')
             .filterDate(start_iso, end_iso)
-            .filterBounds(point.buffer(FIRMS_BUFFER_M))
+            .filterBounds(buffer_geom)
         )
-        count = int(coll.size().getInfo())
+
+        # For each image, mark pixels where there was a high-confidence
+        # detection (confidence >= threshold AND brightness band T21 > 0;
+        # T21 is masked where no fire was detected). Sum across time →
+        # image whose pixel values = number of days that pixel was flagged.
+        def detect_mask(img):
+            return (
+                img.select('T21').gt(0)
+                .updateMask(img.select('confidence').gte(FIRMS_CONFIDENCE_MIN))
+            )
+
+        days_with_fire = coll.map(detect_mask).reduce(ee.Reducer.sum())
+
+        # Sum across the buffer area at FIRMS native resolution (~1 km) to
+        # get total "pixel-days of fire activity" in the window.
+        sampled = days_with_fire.reduceRegion(
+            reducer=ee.Reducer.sum(),
+            geometry=buffer_geom,
+            scale=1000,
+            maxPixels=int(1e9),
+        ).getInfo()
+        # `Reducer.sum()` on a band named "T21" produces "T21_sum"
+        count = int(sampled.get('T21_sum') or 0)
         return {'count': count} if count > 0 else None
     except Exception as e:
         print(f'FIRMS sample failed: {e}', flush=True)
         return None
+
+
+# ─── Named-fire context (MTBS + NIFC) ───────────────────────────────────────
+# Matches the click point against authoritative US fire perimeters so the
+# popup can name the fire (e.g. "Park Fire, 2024, 429,603 acres") instead
+# of just saying "fire detected nearby."
+#
+# Date filtering: a fire is only relevant if its ignition date is at or
+# before the OPERA detection date AND within a reasonable lookback window.
+# Cause must precede effect; arbitrarily-old fires that happen to coincide
+# spatially are not what we want to attribute to a 2026 OPERA detection.
+
+MTBS_ASSET = 'USFS/GTAC/MTBS/burned_area_boundaries/v1'
+MTBS_LOOKBACK_YEARS = 3      # MTBS lags ~1-2y; 3y window covers most relevant fires
+NIFC_LOOKBACK_DAYS = 547     # ~1.5 years for current/recent NIFC perimeters
+# NIFC WFIGS Interagency Perimeters — multi-year, includes active +
+# archived + recently-contained fires. Has perimeters that aren't yet in
+# the InterAgencyFirePerimeterHistory "all years" dataset (which lags by
+# 1-2 years). Sourced from the same WFIGS feed as the current/year-to-date
+# subsets but with the broadest temporal coverage — Bear Gulch 2025 is
+# here but missing from the history view.
+NIFC_WFIGS_URL = (
+    'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/'
+    'WFIGS_Interagency_Perimeters/FeatureServer/0/query'
+)
+# NIFC History view — covers older fires (pre-WFIGS feed) back to early
+# 1900s. Used as a fallback for fires before WFIGS coverage begins.
+NIFC_HISTORY_URL = (
+    'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/'
+    'InterAgencyFirePerimeterHistory_All_Years_View/FeatureServer/0/query'
+)
+
+
+def _is_in_us(lat: float, lng: float) -> bool:
+    """Loose bbox check to skip MTBS/NIFC calls for clearly non-US points."""
+    if 24.0 <= lat <= 49.5 and -125.0 <= lng <= -66.0:
+        return True
+    if 51.0 <= lat <= 72.0 and -180.0 <= lng <= -130.0:    # Alaska
+        return True
+    if 18.5 <= lat <= 22.5 and -161.0 <= lng <= -154.0:    # Hawaii
+        return True
+    return False
+
+
+def _sample_mtbs_fires(point: ee.Geometry) -> list:
+    """Return ALL MTBS fires whose perimeter contains the point — full
+    historical record back to 1984, no date filter. The caller filters to
+    recent fires for cause inference; the full list is exposed as the
+    "fire history at this location" in the popup.
+    """
+    try:
+        mtbs = ee.FeatureCollection(MTBS_ASSET).filterBounds(point)
+        # Sort by ignition date descending so newest fires come first.
+        result = mtbs.limit(15, 'Ig_Date', False).getInfo()
+        fires = []
+        for f in result.get('features', []):
+            p = f.get('properties', {})
+            ig_ms = p.get('Ig_Date')
+            ig_iso = None
+            year = None
+            if ig_ms is not None:
+                try:
+                    dt = datetime.fromtimestamp(int(ig_ms) / 1000, tz=timezone.utc)
+                    ig_iso = dt.date().isoformat()
+                    year = dt.year
+                except (TypeError, ValueError):
+                    pass
+            fires.append({
+                'name': p.get('Incid_Name') or p.get('Event_ID') or 'Unnamed fire',
+                'date': ig_iso,
+                'year': year,
+                'acres': p.get('BurnBndAc'),
+                'incident_type': p.get('Incid_Type'),
+                'source': 'MTBS',
+            })
+        return fires
+    except Exception as e:
+        print(f'MTBS sample failed: {e}', flush=True)
+        return []
+
+
+NIFC_MIN_YEAR = 1900  # Excludes paleofire / dendrochronology reconstructions
+
+
+def _sample_nifc_fires(lat: float, lng: float) -> list:
+    """Return NIFC fires whose perimeter contains the point. Filtered to
+    modern fires (FIRE_YEAR_INT >= 1900) — the all-years dataset includes
+    paleofire reconstructions from tree-ring records going back to the
+    1200s that would otherwise pollute the list. We also skip "UNNAMED"
+    entries which tend to be the paleofire records that slip through."""
+    try:
+        params = {
+            'geometry': f'{lng},{lat}',
+            'geometryType': 'esriGeometryPoint',
+            'inSR': '4326',
+            'spatialRel': 'esriSpatialRelIntersects',
+            'where': (
+                f'FIRE_YEAR_INT >= {NIFC_MIN_YEAR} '
+                "AND UPPER(INCIDENT) <> 'UNNAMED' "
+                "AND INCIDENT IS NOT NULL"
+            ),
+            'outFields': 'INCIDENT,FIRE_YEAR_INT,GIS_ACRES,DATE_CUR,IRWINID',
+            'returnGeometry': 'false',
+            'orderByFields': 'FIRE_YEAR_INT DESC',
+            'resultRecordCount': '15',
+            'f': 'json',
+        }
+        # Force %20 encoding for spaces (default `+` from urlencode breaks the
+        # ArcGIS REST WHERE parser).
+        url = NIFC_HISTORY_URL + '?' + urllib.parse.urlencode(
+            params, quote_via=urllib.parse.quote
+        )
+        req = urllib.request.Request(url, headers={'User-Agent': 'EarthAtlas/1.0'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+
+        fires = []
+        for f in (data.get('features') or [])[:3]:
+            attrs = f.get('attributes', {}) or {}
+            name = attrs.get('INCIDENT')
+            if not name:
+                continue
+            # DATE_CUR is a YYYYMMDD string. Convert to ISO when possible.
+            date_cur = attrs.get('DATE_CUR')
+            iso_date = None
+            if date_cur and len(str(date_cur)) >= 8:
+                s = str(date_cur)[:8]
+                try:
+                    iso_date = f'{s[:4]}-{s[4:6]}-{s[6:8]}'
+                except Exception:
+                    pass
+            # Year as fallback when DATE_CUR is malformed
+            year = attrs.get('FIRE_YEAR_INT')
+            irwin = attrs.get('IRWINID')
+            inciweb = (
+                f'https://inciweb.wildfire.gov/incident-information/{irwin}'
+                if irwin else None
+            )
+            fires.append({
+                'name': str(name).strip().title() if str(name).isupper() else str(name).strip(),
+                'date': iso_date,
+                'year': year,
+                'acres': attrs.get('GIS_ACRES'),
+                'inciweb_url': inciweb,
+                'source': 'NIFC',
+            })
+        return fires
+    except Exception as e:
+        print(f'NIFC sample failed: {e}', flush=True)
+        return []
+
+
+def _sample_nifc_wfigs_fires(lat: float, lng: float) -> list:
+    """Query NIFC WFIGS Interagency Perimeters (multi-year). Covers active
+    AND recently-contained AND archived fires from the WFIGS feed — this is
+    the dataset where 2024–2025 fires live before they make it into the
+    older InterAgencyFirePerimeterHistory archive."""
+    try:
+        params = {
+            'geometry': f'{lng},{lat}',
+            'geometryType': 'esriGeometryPoint',
+            'inSR': '4326',
+            'spatialRel': 'esriSpatialRelIntersects',
+            'where': '1=1',
+            'outFields': ','.join([
+                'attr_IncidentName', 'poly_IncidentName',
+                'attr_FireDiscoveryDateTime', 'attr_IncidentSize',
+                'attr_PercentContained', 'attr_IncidentTypeCategory',
+                'attr_IrwinID',
+            ]),
+            'returnGeometry': 'false',
+            'resultRecordCount': '8',
+            'f': 'json',
+        }
+        url = NIFC_WFIGS_URL + '?' + urllib.parse.urlencode(
+            params, quote_via=urllib.parse.quote,
+        )
+        req = urllib.request.Request(url, headers={'User-Agent': 'EarthAtlas/1.0'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+
+        fires = []
+        for f in (data.get('features') or [])[:8]:
+            attrs = f.get('attributes', {}) or {}
+            name = attrs.get('poly_IncidentName') or attrs.get('attr_IncidentName')
+            if not name:
+                continue
+            ms = attrs.get('attr_FireDiscoveryDateTime')
+            fire_date = None
+            year = None
+            if ms:
+                try:
+                    dt = datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc)
+                    fire_date = dt.date().isoformat()
+                    year = dt.year
+                except (TypeError, ValueError):
+                    pass
+            irwin = attrs.get('attr_IrwinID')
+            # IRWIN can be UUID with braces — strip for clean URL
+            clean_irwin = irwin.strip('{}') if irwin else None
+            inciweb = (
+                f'https://inciweb.wildfire.gov/incident-information/{clean_irwin}'
+                if clean_irwin else None
+            )
+            fires.append({
+                'name': str(name).strip(),
+                'date': fire_date,
+                'year': year,
+                'acres': attrs.get('attr_IncidentSize'),
+                'contained_pct': attrs.get('attr_PercentContained'),
+                'incident_type': attrs.get('attr_IncidentTypeCategory'),
+                'inciweb_url': inciweb,
+                'source': 'NIFC',
+            })
+        return fires
+    except Exception as e:
+        print(f'NIFC WFIGS sample failed: {e}', flush=True)
+        return []
+
+
+def _dedupe_and_sort_fires(fires: list) -> list:
+    """Combine MTBS + NIFC results, dedupe across sources, and sort
+    newest-first. Caps at 10 entries to keep popup payload small.
+
+    Dedupe key: (year, acres bucket). Same fire often appears in both MTBS
+    and NIFC with slightly different name formatting ("GUN 2" vs "Gun Ii")
+    and slightly different acres — bucketing acres to within ~10% catches
+    these as duplicates. MTBS is preferred when duplicates exist because
+    its perimeters are validated and include burn-severity data.
+    """
+    # Sort by (year desc, MTBS first) so MTBS entries claim duplicate keys.
+    sorted_fires = sorted(
+        fires,
+        key=lambda f: (
+            -(f.get('year') or 0),
+            0 if f.get('source') == 'MTBS' else 1,
+        ),
+    )
+    seen = set()
+    out = []
+    for f in sorted_fires:
+        year = f.get('year') or 0
+        acres = float(f.get('acres') or 0)
+        # Bucket acres to nearest 10% (with 1000-acre floor for small fires).
+        bucket = int(round(acres / max(1000.0, acres * 0.1))) if acres > 0 else 0
+        key = (year, bucket)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f)
+        if len(out) >= 10:
+            break
+    return out
+
+
+def _filter_fires_to_window(fires: list, opera_date_str: str | None) -> list:
+    """Subset of fires within the cause-inference window:
+    OPERA date − 3 years to OPERA date. Used only by the heuristic so old
+    fires (e.g. 1985) don't get attributed as the cause of a 2026 detection.
+    """
+    if not opera_date_str or not fires:
+        return []
+    try:
+        opera_dt = date.fromisoformat(opera_date_str)
+    except ValueError:
+        return []
+    cutoff = opera_dt - timedelta(days=int(MTBS_LOOKBACK_YEARS * 365.25))
+    out = []
+    for f in fires:
+        fd = f.get('date')
+        if not fd:
+            continue
+        try:
+            fire_dt = date.fromisoformat(fd)
+        except ValueError:
+            continue
+        if cutoff <= fire_dt <= opera_dt:
+            out.append(f)
+    return out
 
 
 # ─── Sentinel-2 NBR delta (dNBR) ────────────────────────────────────────────
@@ -583,74 +1001,329 @@ def _analyze_patch_shape(geom: dict | None) -> dict | None:
 # label plus the reasoning so users can audit how we arrived at it.
 
 
-def _infer_likely_cause(burn, fires, nbr, shape, land_cover) -> dict:
-    fire_score = 0
-    human_score = 0
-    natural_score = 0
-    ag_score = 0
-    reasons = []
+def _infer_likely_cause(
+    burn, fires, nbr, shape, land_cover, named_fires=None,
+    crop_profile=None, nass_context=None,
+) -> dict:
+    """Land-cover-aware cause inference.
 
-    if burn and burn.get('date'):
-        fire_score += 2
-        reasons.append('MODIS burn detected near OPERA date')
-    if fires and fires.get('count', 0) > 0:
-        c = fires['count']
-        fire_score += 2 if c >= 3 else 1
-        reasons.append(f"{c} VIIRS/MODIS hot-spot{'s' if c > 1 else ''} within 3 km / ±60 days")
-    if nbr and nbr.get('dnbr') is not None:
-        dnbr = nbr['dnbr']
-        if dnbr > 0.44:
-            fire_score += 2
-            reasons.append(f'dNBR {dnbr} indicates high-severity burn signature')
-        elif dnbr > 0.27:
-            fire_score += 1
-            reasons.append(f'dNBR {dnbr} indicates moderate burn signature')
+    The land cover at the click point is the most important context — a
+    fire signal on cropland is almost certainly intentional agricultural
+    burning (residue, orchard removal); the same signal in forest is more
+    likely a wildfire. We branch on land cover first and tune the cause
+    language to match.
 
-    if shape:
-        hint = shape.get('hint')
-        if hint == 'blocky':
-            human_score += 2
-            reasons.append(f'blocky shape (compactness {shape.get("compactness")})')
-        elif hint == 'linear':
-            human_score += 2
-            reasons.append(f'linear corridor shape (aspect {shape.get("aspect_ratio")}:1)')
-        elif hint == 'irregular':
-            natural_score += 1
-            reasons.append(f'irregular perimeter (compactness {shape.get("compactness")})')
+    Fire-signal rules:
+    - "Strong" fire = MODIS burn scar AND (high dNBR OR many active fires)
+    - "Moderate" fire = MODIS burn alone, OR (moderate dNBR AND many fires)
+    - FIRMS active fires alone are NOT sufficient — refinery flares,
+      industrial heat, and slash burning on adjacent parcels all register.
 
+    dNBR alone is also insufficient: it just confirms vegetation was lost,
+    which OPERA already told us. Real fire requires spatial + temporal
+    coincidence of multiple fire-specific signals.
+
+    Crop-aware refinements (when crop_profile is set):
+    - 'multicut' (alfalfa, hay, clover) — dNBR spikes during the cutting
+      window are routine harvest, not fire. Burn label requires very
+      strong fire evidence.
+    - 'burn_prone' (sugarcane, rice, cotton) — moderate fire signal is
+      credibly a managed pre/post-harvest burn.
+    - 'annual_harvest' (corn, soy, wheat) — in-season dNBR with no fire
+      signal reads as harvest, not disturbance.
+    - 'orchard' (apples, citrus) — blocky removal pattern signals tree
+      replacement.
+    - NASS county tillage data softens "burn" labels in no-till counties.
+    """
+    has_burn = bool(burn and burn.get('date'))
+    fire_count = (fires or {}).get('count', 0) or 0
+    dnbr = (nbr or {}).get('dnbr')
+    dnbr_high = dnbr is not None and dnbr > 0.44   # USGS high-severity
+    dnbr_mod  = dnbr is not None and dnbr > 0.27   # USGS moderate
+    named_fires = named_fires or []
+    has_named_fire = len(named_fires) > 0  # MTBS or NIFC perimeter contains the point
+
+    # Fire-signal tiers. `fire_count` is "pixel-days of confident FIRMS
+    # detections" within the tight 1.5 km / ±21 day window — any nonzero
+    # value is meaningful at this scale; >5 is a clear active-fire signal.
+    # A named fire perimeter (MTBS/NIFC) is the strongest possible evidence
+    # — those datasets are validated, named historical events. A high-
+    # severity dNBR (>0.44) is also definitive: the spectral burn-scar
+    # signature is hard to confuse with non-fire causes at that magnitude.
+    strong_fire = has_named_fire or dnbr_high or (has_burn and (dnbr_mod or fire_count >= 3))
+    moderate_fire = strong_fire or has_burn or dnbr_mod or fire_count >= 5
+    has_dense_fires = fire_count >= 10  # persistent local activity (often industrial)
+
+    # Shape hints
+    hint = (shape or {}).get('hint', 'ambiguous')
+    is_blocky = hint == 'blocky'
+    is_linear = hint == 'linear'
+    is_irregular = hint == 'irregular'
+
+    # Land-cover context
     lc_label = ((land_cover or {}).get('label') or '').lower()
     ag_keywords = (
         'crop', 'pasture', 'farming', 'agriculture', 'cotton', 'corn',
-        'soybean', 'wheat', 'rice', 'sugar', 'coffee',
+        'soybean', 'wheat', 'rice', 'sugar', 'coffee', 'apples', 'cherries',
+        'peaches', 'pears', 'almonds', 'walnuts', 'citrus', 'oranges',
+        'grapes', 'orchard', 'hay', 'alfalfa',
     )
-    if any(k in lc_label for k in ag_keywords):
-        ag_score += 1
+    forest_keywords = ('tree cover', 'forest', 'mangrove', 'savanna', 'wooded')
+    industrial_keywords = ('built', 'developed', 'urban', 'mining', 'industrial')
+    grassland_keywords = ('grass', 'shrub')
+    is_ag = any(k in lc_label for k in ag_keywords)
+    is_forest = any(k in lc_label for k in forest_keywords) and not is_ag
+    is_industrial = any(k in lc_label for k in industrial_keywords)
+    is_grassy = any(k in lc_label for k in grassland_keywords) and not is_ag
 
-    # Decide. Fire wins outright if signal is strong; otherwise weigh human
-    # vs natural shape evidence, with ag context as a tiebreaker.
-    if fire_score >= 3:
-        label = 'Likely fire'
-    elif fire_score >= 2 and human_score == 0:
-        label = 'Possible fire'
-    elif human_score >= 2 and fire_score == 0:
-        label = 'Likely agricultural clearing' if ag_score > 0 else 'Likely mechanical clearing'
-    elif natural_score >= 1 and fire_score == 0 and human_score == 0:
-        label = 'Likely natural (irregular shape, no fire signal)'
-    elif ag_score > 0 and fire_score == 0:
-        label = 'Likely agricultural activity'
+    # Build the reasoning trail
+    reasons = []
+    if has_named_fire:
+        top = named_fires[0]
+        nm = top.get('name')
+        dt = top.get('date')
+        ac = top.get('acres')
+        src = top.get('source')
+        bits = [f"inside {nm}"]
+        if dt: bits.append(f"({dt})")
+        if ac: bits.append(f"— {int(ac):,} acres")
+        if src: bits.append(f"[{src}]")
+        reasons.append(' '.join(bits))
+    if has_burn:
+        reasons.append('MODIS burn detected near OPERA date')
+    if fire_count > 0:
+        reasons.append(
+            f"{fire_count} FIRMS fire-pixel-day{'s' if fire_count > 1 else ''} "
+            f"within {int(FIRMS_BUFFER_M/1000)} km / ±{FIRMS_WINDOW_DAYS} days "
+            f"(confidence ≥{FIRMS_CONFIDENCE_MIN})"
+        )
+    if dnbr is not None:
+        if dnbr_high:
+            reasons.append(f'dNBR {dnbr} indicates high-severity burn signature')
+        elif dnbr_mod:
+            reasons.append(f'dNBR {dnbr} indicates moderate burn signature')
+        elif has_dense_fires:
+            reasons.append(f'dNBR {dnbr} shows no burn-scar signature despite hot-spots')
+    if shape:
+        if is_blocky:
+            reasons.append(f'blocky shape (compactness {shape.get("compactness")})')
+        elif is_linear:
+            reasons.append(f'linear corridor (aspect {shape.get("aspect_ratio")}:1)')
+        elif is_irregular:
+            reasons.append(f'irregular perimeter (compactness {shape.get("compactness")})')
+
+    # Crop-profile context (US only, when CDL was the source). Lets us
+    # distinguish, e.g., alfalfa harvest cuts from agricultural burns.
+    profile_kind = (crop_profile or {}).get('profile')
+    crop_name = (crop_profile or {}).get('crop_name')
+    in_season = bool((crop_profile or {}).get('in_harvest_season'))
+    burn_practice = (crop_profile or {}).get('burn_practice')
+    window_str = (crop_profile or {}).get('harvest_window_str')
+
+    # NASS county-level context (US only, when NASS_API_KEY is set).
+    county_name = (nass_context or {}).get('county_name')
+    state_code  = (nass_context or {}).get('state_code')
+    tillage     = (nass_context or {}).get('tillage')
+    nass_burn_hint = (nass_context or {}).get('burn_practice_hint')
+
+    # The NASS-aware burn hint overrides the raw profile hint when present.
+    effective_burn_practice = nass_burn_hint or burn_practice
+
+    if crop_profile:
+        bits = [f'{crop_name}']
+        if profile_kind in CROP_PROFILE_LABELS:
+            bits.append(f'({CROP_PROFILE_LABELS[profile_kind]})')
+        if window_str:
+            bits.append(f'harvest window {window_str}')
+            if in_season:
+                bits.append('— alert IS in harvest season')
+            else:
+                bits.append('— alert is OUTSIDE harvest season')
+        reasons.append(' '.join(bits))
+    if tillage and tillage.get('dominant'):
+        pct = int(round(tillage.get('dominant_share', 0) * 100))
+        loc = f'{county_name} Co., {state_code}' if county_name and state_code else 'county'
+        reasons.append(
+            f'{loc} is {pct}% {tillage["dominant"].replace("_", "-")} '
+            f'(USDA NASS Census of Ag {tillage.get("year")})'
+        )
+
+    # ─── Decision tree, branched by land cover ─────────────────────────────
+    label = None
+
+    if is_ag:
+        # Crops, pasture, orchards. Fire here is almost always intentional —
+        # but the specific crop profile drastically changes the interpretation.
+
+        if profile_kind == 'multicut':
+            # Alfalfa / hay / clover. Routine cutting produces dNBR spikes
+            # multiple times per season. Real fires are rare for these crops.
+            if has_named_fire or (strong_fire and effective_burn_practice == 'common'):
+                label = f'Possible fire on {crop_name.lower()} field (uncommon — multi-cut forages rarely burn)'
+            elif in_season:
+                label = f'Likely {crop_name.lower()} harvest cut (multi-cut crop, dNBR spikes during cutting are routine)'
+            elif moderate_fire and effective_burn_practice in ('common', 'occasional'):
+                label = f'Possible {crop_name.lower()} field burn'
+            else:
+                label = f'Likely {crop_name.lower()} field activity (cutting or grazing rotation)'
+
+        elif profile_kind == 'burn_prone':
+            # Sugarcane / rice / cotton. Pre- or post-harvest burning is a
+            # standard agronomic practice. Trust the fire signal more here.
+            if strong_fire:
+                label = f'Likely {crop_name.lower()} field burn (standard pre/post-harvest practice)'
+            elif moderate_fire:
+                label = f'Likely managed {crop_name.lower()} burn'
+            elif in_season:
+                label = f'Likely {crop_name.lower()} harvest (residue burning common in season)'
+            else:
+                label = f'Likely {crop_name.lower()} field management'
+
+        elif profile_kind == 'annual_harvest':
+            # Corn / soy / wheat etc. Harvest produces dNBR but residue
+            # burning is uncommon (and often regulated) in most US regions.
+            if strong_fire and effective_burn_practice == 'common':
+                label = f'Likely {crop_name.lower()} residue burn'
+            elif strong_fire:
+                label = f'Possible {crop_name.lower()} residue burn (uncommon practice in this area)'
+            elif in_season and not moderate_fire:
+                label = f'Likely {crop_name.lower()} harvest'
+            elif moderate_fire and effective_burn_practice == 'rare':
+                # Burn signal + rare-burn crop + maybe no-till county = re-route.
+                label = f'Possible {crop_name.lower()} harvest with stubble heat signature'
+            elif moderate_fire:
+                label = f'Possible {crop_name.lower()} residue burn'
+            elif is_blocky:
+                label = f'Likely {crop_name.lower()} field operations (harvest, plowing, or tillage)'
+            else:
+                label = f'Likely {crop_name.lower()} field activity'
+
+        elif profile_kind == 'orchard':
+            # Apples / citrus / almonds / grapes. Routine harvest doesn't
+            # disturb the canopy. dNBR + blocky → tree removal / replanting.
+            if strong_fire:
+                label = f'Possible {crop_name.lower()} orchard burn (rare — possibly removal/clearing)'
+            elif is_blocky:
+                label = f'Likely {crop_name.lower()} orchard removal or replanting'
+            elif moderate_fire:
+                label = f'Possible {crop_name.lower()} orchard clearing'
+            else:
+                label = f'Likely {crop_name.lower()} orchard management'
+
+        elif profile_kind == 'fallow':
+            label = 'Likely fallow-field disturbance (rotation, cover crop, or weed control)'
+
+        # Generic-ag fallback (non-US, MapBiomas/DW/WorldCover crops, or CDL
+        # codes we haven't profiled).
+        elif strong_fire:
+            label = 'Likely agricultural burn (crop residue, orchard removal, or land clearing)'
+        elif moderate_fire:
+            label = 'Possible agricultural burn'
+        elif has_dense_fires:
+            label = 'Likely agricultural activity (active fires elsewhere in area)'
+        elif is_blocky:
+            label = 'Likely agricultural clearing (harvest, plowing, or mechanical removal)'
+        else:
+            label = 'Likely agricultural activity'
+
+    elif is_forest:
+        # Forest land — distinguish wildfire from logging from natural causes.
+        if strong_fire:
+            label = 'Likely wildfire'
+        elif moderate_fire and is_irregular:
+            label = 'Possible wildfire'
+        elif is_blocky:
+            label = 'Likely logging or clearcut'
+        elif is_linear:
+            label = 'Likely corridor clearing (road, pipeline, or transmission line)'
+        elif is_irregular and fire_count == 0:
+            label = 'Likely natural disturbance (storm, blowdown, drought, or insect)'
+        elif has_dense_fires and not moderate_fire:
+            label = 'Inconclusive (active fires nearby but no burn-scar signature here)'
+        else:
+            label = 'Inconclusive forest disturbance'
+
+    elif is_industrial:
+        # Built-up or developed land.
+        if strong_fire:
+            label = 'Possible structure fire or industrial incident'
+        else:
+            label = 'Likely development, construction, or demolition'
+
+    elif is_grassy:
+        # Grassland/shrubland — fires happen, but so does mowing/clearing.
+        if strong_fire:
+            label = 'Likely grassland or shrubland fire'
+        elif moderate_fire:
+            label = 'Possible grassland fire'
+        elif has_dense_fires and not dnbr_mod:
+            label = 'Inconclusive (active fires nearby — possibly industrial heat source)'
+        elif is_blocky:
+            label = 'Likely mechanical clearing'
+        else:
+            label = 'Likely grassland disturbance'
+
     else:
-        label = 'Inconclusive'
+        # Land cover unknown or doesn't fit a clean category (bare, water,
+        # wetland, etc.). Fall back on a generic decision.
+        if strong_fire:
+            label = 'Likely fire'
+        elif moderate_fire:
+            label = 'Possible fire'
+        elif has_dense_fires:
+            label = 'Inconclusive (active fires nearby — possibly industrial heat source)'
+        elif is_blocky:
+            label = 'Likely mechanical clearing'
+        elif is_irregular:
+            label = 'Likely natural disturbance'
+        else:
+            label = 'Inconclusive'
 
     return {'label': label, 'reasoning': '; '.join(reasons) if reasons else 'no strong signals'}
 
 
+def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:
+    """Sample the tiered land-cover classifier (CDL > MapBiomas > Dynamic
+    World > WorldCover) at a single point. Returns the same shape as the
+    popup uses. Standalone variant of `_add_landcover_bands` + sampling
+    that doesn't need an OPERA stack to attach to."""
+    try:
+        cdl = (ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}')
+               .select('cropland').rename('cdl'))
+        mb = (ee.Image(MAPBIOMAS_BR_ASSET)
+              .select(f'classification_{MAPBIOMAS_BR_LATEST_YEAR}')
+              .rename('mapbiomas'))
+        today = date.today()
+        dw_start = (today - timedelta(days=DYNAMIC_WORLD_LOOKBACK_DAYS)).isoformat()
+        dw = (ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+              .filterBounds(point)
+              .filterDate(dw_start, today.isoformat())
+              .select('label').mode().rename('dynworld'))
+        wc = ee.Image(WORLDCOVER_ASSET).select('Map').rename('worldcover')
+        stack = cdl.addBands(mb).addBands(dw).addBands(wc)
+        sampled = stack.reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=10,
+        ).getInfo()
+        return _resolve_landcover(sampled)
+    except Exception as e:
+        print(f'_sample_tiered_landcover failed: {e}', flush=True)
+        return None
+
+
 def _resolve_landcover(sampled: dict) -> dict:
-    """Pick the most-specific label available, in priority order."""
+    """Pick the most-specific label available, in priority order.
+
+    Also returns the raw class code + source key so downstream consumers
+    (e.g. the crop-aware cause inference) can look up the specific crop
+    profile without re-parsing the human label.
+    """
     v = sampled.get('cdl')
     if v and int(v) > 0 and CDL_LABELS.get(int(v)):
         return {
             'label': CDL_LABELS[int(v)],
             'source': 'USDA Cropland Data Layer',
+            'source_key': 'cdl',
+            'code': int(v),
             'year': CDL_LATEST_YEAR,
         }
     v = sampled.get('mapbiomas')
@@ -658,6 +1331,8 @@ def _resolve_landcover(sampled: dict) -> dict:
         return {
             'label': MAPBIOMAS_LABELS[int(v)],
             'source': 'MapBiomas Brazil',
+            'source_key': 'mapbiomas',
+            'code': int(v),
             'year': MAPBIOMAS_BR_LATEST_YEAR,
         }
     v = sampled.get('dynworld')
@@ -665,6 +1340,8 @@ def _resolve_landcover(sampled: dict) -> dict:
         return {
             'label': DYNAMIC_WORLD_LABELS[int(v)],
             'source': 'Dynamic World',
+            'source_key': 'dynworld',
+            'code': int(v),
             'year': None,
         }
     v = sampled.get('worldcover')
@@ -672,9 +1349,301 @@ def _resolve_landcover(sampled: dict) -> dict:
         return {
             'label': WORLDCOVER_LABELS[int(v)],
             'source': 'ESA WorldCover',
+            'source_key': 'worldcover',
+            'code': int(v),
             'year': 2021,
         }
     return None
+
+
+# ─── Crop-aware seasonality + harvest classification ───────────────────────
+# Given a tiered land-cover result, an OPERA detection date, and the click
+# latitude, decide what kind of cropland we're looking at and whether the
+# alert falls inside the typical harvest window for the crop. Used by
+# _infer_likely_cause to tell "Likely alfalfa harvest cut" from "Likely
+# agricultural burn" when both could fit the same raw signal mix.
+
+
+def _month_in_window(month: int, window: tuple) -> bool:
+    """Inclusive month check. `window` is (start_month, end_month). If end <
+    start, the window wraps the year-end (e.g. citrus: (11, 4) covers
+    Nov–Dec–Jan–Feb–Mar–Apr)."""
+    if not window:
+        return False
+    start, end = window
+    if start <= end:
+        return start <= month <= end
+    return month >= start or month <= end
+
+
+def _flip_window_for_hemisphere(window: tuple, lat: float) -> tuple:
+    """For southern-hemisphere clicks, shift the harvest window by ~6 months.
+    Done by adding 6 to each bound and wrapping mod-12. This is a heuristic
+    — actual harvest in equatorial/tropical regions doesn't flip cleanly —
+    but for mid-latitude S.H. cropland it's a much better default than the
+    raw N.H. window."""
+    if not window or lat is None or lat >= 0:
+        return window
+    start, end = window
+    return (((start - 1 + 6) % 12) + 1, ((end - 1 + 6) % 12) + 1)
+
+
+def _classify_crop(
+    land_cover: dict | None,
+    opera_date_str: str | None,
+    lat: float | None,
+) -> dict | None:
+    """Look up the crop profile + harvest seasonality for this click.
+
+    Only fires for CDL-source land cover (US only) right now — that's where
+    we have per-species crop classes and reliable per-crop harvest windows.
+    Other sources fall through to the generic land-cover branch in
+    _infer_likely_cause.
+
+    Returns:
+        None when no crop profile applies (non-CDL source, non-crop class).
+        Otherwise dict with:
+          - profile: 'multicut'/'burn_prone'/'annual_harvest'/'orchard'/'fallow'
+          - profile_label: friendly description (e.g. "multi-cut forage")
+          - crop_name: CDL species name (e.g. "Alfalfa")
+          - burn_practice: 'rare'/'occasional'/'common'
+          - in_harvest_season: bool — alert date is inside the typical window
+          - harvest_window_str: human label for the window (e.g. "May–Oct")
+    """
+    if not land_cover or land_cover.get('source_key') != 'cdl':
+        return None
+    code = land_cover.get('code')
+    profile = CDL_CROP_PROFILES.get(int(code)) if code is not None else None
+    if not profile:
+        return None
+
+    window = profile.get('harvest_months')
+    window_shifted = _flip_window_for_hemisphere(window, lat)
+
+    in_season = False
+    if opera_date_str and window_shifted:
+        try:
+            opera_dt = date.fromisoformat(opera_date_str)
+            in_season = _month_in_window(opera_dt.month, window_shifted)
+        except ValueError:
+            pass
+
+    month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    window_str = None
+    if window_shifted:
+        s, e = window_shifted
+        window_str = f'{month_names[s-1]}–{month_names[e-1]}'
+
+    return {
+        'profile':         profile['profile'],
+        'profile_label':   CROP_PROFILE_LABELS.get(profile['profile'], profile['profile']),
+        'crop_name':       land_cover.get('label'),
+        'crop_code':       int(code),
+        'burn_practice':   profile['burn_practice'],
+        'in_harvest_season': in_season,
+        'harvest_window_str': window_str,
+    }
+
+
+# ─── USDA NASS Quick Stats county-practice lookup ──────────────────────────
+# Free API; requires registration at https://quickstats.nass.usda.gov/api.
+# We pull two pieces of context for US clicks:
+#   1. Tillage practice mix at county level (Census of Agriculture, every 5y) —
+#      tells us whether the county is conventional-till vs no-till dominant.
+#      No-till counties shouldn't be producing residue-burn signals.
+#   2. Top crops by acreage at county level — confirms the CDL pixel label
+#      against the county's actual mix (and helps detect mis-classified
+#      pixels at field edges).
+#
+# Both calls graceful-fall-back to None when the key is missing or the
+# upstream API errors out. The cause heuristic uses NASS context only as a
+# tiebreaker, never as the sole signal — so missing data degrades the label
+# specificity but doesn't break the popup.
+#
+# County resolution: we use EE's TIGER/2018/Counties FeatureCollection to
+# spatial-join the click point → STATEFP + COUNTYFP. Keeps the dependency
+# inside EE rather than adding another external API.
+
+import os as _os
+NASS_API_KEY = _os.environ.get('NASS_API_KEY')
+NASS_API_URL = 'https://quickstats.nass.usda.gov/api/api_GET/'
+NASS_CACHE: dict = {}  # module-level; warm-instance reuse only
+NASS_CACHE_MAX = 256
+
+
+def _resolve_us_county(lat: float, lng: float) -> dict | None:
+    """Lat/lng → US county FIPS dict via EE TIGER counties. Returns None
+    outside the US. Cached per (rounded) coordinate to avoid re-querying
+    repeated clicks in the same area within a warm instance."""
+    key = ('county', round(lat, 3), round(lng, 3))
+    if key in NASS_CACHE:
+        return NASS_CACHE[key]
+    try:
+        point = ee.Geometry.Point([lng, lat])
+        fc = ee.FeatureCollection('TIGER/2018/Counties').filterBounds(point)
+        feat_info = fc.limit(1).getInfo().get('features', [])
+        if not feat_info:
+            result = None
+        else:
+            props = feat_info[0].get('properties', {}) or {}
+            result = {
+                'state_fips':  props.get('STATEFP'),
+                'county_fips': props.get('COUNTYFP'),
+                'county_name': props.get('NAME'),
+                'state_code':  props.get('STUSPS'),
+            }
+    except Exception as e:
+        print(f'_resolve_us_county failed: {e}', flush=True)
+        result = None
+    if len(NASS_CACHE) >= NASS_CACHE_MAX:
+        NASS_CACHE.pop(next(iter(NASS_CACHE)))
+    NASS_CACHE[key] = result
+    return result
+
+
+def _nass_get(params: dict, timeout: int = 12) -> list | None:
+    """Thin Quick Stats GET wrapper. Returns the `data` array or None on any
+    failure (no key, HTTP error, JSON shape mismatch). Caches by query."""
+    if not NASS_API_KEY:
+        return None
+    cache_key = ('nass', tuple(sorted(params.items())))
+    if cache_key in NASS_CACHE:
+        return NASS_CACHE[cache_key]
+    qp = {**params, 'key': NASS_API_KEY, 'format': 'JSON'}
+    url = NASS_API_URL + '?' + urllib.parse.urlencode(
+        qp, quote_via=urllib.parse.quote,
+    )
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'EarthAtlas/1.0'})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read())
+        data = payload.get('data') if isinstance(payload, dict) else None
+    except Exception as e:
+        print(f'NASS query failed ({params.get("commodity_desc")}/'
+              f'{params.get("statisticcat_desc")}): {e}', flush=True)
+        data = None
+    if len(NASS_CACHE) >= NASS_CACHE_MAX:
+        NASS_CACHE.pop(next(iter(NASS_CACHE)))
+    NASS_CACHE[cache_key] = data
+    return data
+
+
+def _fetch_nass_tillage(county: dict) -> dict | None:
+    """County-level tillage practice mix from the most recent Census of
+    Agriculture (typically 2022). Returns acres + share for conventional,
+    conservation, and no-till. Returns None if the data isn't published
+    for this county (small/non-farming counties)."""
+    if not county or not county.get('state_fips') or not county.get('county_fips'):
+        return None
+    # Pull all CROP TOTALS / PRACTICES rows for tillage in this county.
+    rows = _nass_get({
+        'source_desc': 'CENSUS',
+        'sector_desc': 'CROPS',
+        'group_desc':  'FIELD CROPS',
+        'commodity_desc': 'CROP TOTALS',
+        'statisticcat_desc': 'AREA',
+        'unit_desc': 'ACRES',
+        'short_desc': 'CROP TOTALS, INC TILLAGE PRACTICES - ACRES TILLED',
+        'state_fips_code': county['state_fips'],
+        'county_code': county['county_fips'],
+        'year__GE': '2017',
+    })
+    if not rows:
+        # Some counties only report the no-till short_desc; try that too.
+        rows = _nass_get({
+            'source_desc': 'CENSUS',
+            'sector_desc': 'CROPS',
+            'commodity_desc': 'CROP TOTALS',
+            'state_fips_code': county['state_fips'],
+            'county_code': county['county_fips'],
+            'year__GE': '2017',
+        })
+    if not rows:
+        return None
+
+    # Latest census year wins.
+    latest_year = max(int(r.get('year', 0) or 0) for r in rows)
+    rows = [r for r in rows if int(r.get('year', 0) or 0) == latest_year]
+
+    def _to_int(s):
+        try:
+            return int((s or '').replace(',', ''))
+        except (ValueError, AttributeError):
+            return None
+
+    buckets = {'conventional': 0, 'conservation': 0, 'no_till': 0, 'reduced': 0}
+    for r in rows:
+        sd = (r.get('short_desc') or '').upper()
+        val = _to_int(r.get('Value'))
+        if val is None:
+            continue
+        if 'NO-TILL' in sd or 'NO TILL' in sd:
+            buckets['no_till'] += val
+        elif 'CONSERVATION' in sd:
+            buckets['conservation'] += val
+        elif 'REDUCED' in sd:
+            buckets['reduced'] += val
+        elif 'CONVENTIONAL' in sd or 'INTENSIVE' in sd:
+            buckets['conventional'] += val
+
+    total = sum(buckets.values())
+    if total <= 0:
+        return None
+    shares = {k: round(v / total, 3) for k, v in buckets.items()}
+    # Pick the dominant practice (highest share). Tie-breaker by sort order.
+    dominant = max(shares.items(), key=lambda kv: kv[1])
+    return {
+        'year': latest_year,
+        'acres': buckets,
+        'shares': shares,
+        'dominant': dominant[0],
+        'dominant_share': dominant[1],
+    }
+
+
+def _fetch_nass_county_practices(
+    lat: float,
+    lng: float,
+    crop_profile: dict | None,
+) -> dict | None:
+    """Top-level NASS lookup for cause inference. Returns a context dict the
+    heuristic can use, or None when nothing useful is available.
+
+    The shape we return is intentionally small:
+      {
+        'county_name': 'Woodford',
+        'state_code': 'IL',
+        'tillage': {'dominant': 'no_till', 'dominant_share': 0.62, ...} | None,
+        'burn_practice_hint': 'rare' | 'occasional' | 'common' | None,
+      }
+
+    `burn_practice_hint` is currently driven by the crop profile (since NASS
+    doesn't expose a clean per-county residue-burn statistic). The tillage
+    field, however, is real county data — and is the strongest tiebreaker
+    we have for the alfalfa/no-till case.
+    """
+    if not NASS_API_KEY:
+        return None
+    # Don't waste an EE call (TIGER county join) on non-US clicks.
+    if not _is_in_us(lat, lng):
+        return None
+    county = _resolve_us_county(lat, lng)
+    if not county:
+        return None
+    tillage = _fetch_nass_tillage(county)
+    burn_hint = crop_profile.get('burn_practice') if crop_profile else None
+    # If the county is no-till dominant (>50%), downgrade burn likelihood
+    # — residue burning is incompatible with no-till management.
+    if tillage and tillage.get('dominant') == 'no_till' and tillage.get('dominant_share', 0) >= 0.5:
+        if burn_hint == 'occasional':
+            burn_hint = 'rare'
+    return {
+        'county_name': county.get('county_name'),
+        'state_code':  county.get('state_code'),
+        'tillage':     tillage,
+        'burn_practice_hint': burn_hint,
+    }
 
 
 _ee_initialized = False
@@ -857,24 +1826,49 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
     date_img = _mosaic_band('VEG-DIST-DATE')
     status_img = _mosaic_band('VEG-DIST-STATUS')
 
-    # Re-sample OPERA date locally so we know the burn window without waiting
-    # on the core endpoint. If the pixel has no disturbance, skip all the
-    # heavy work below.
-    date_sampled = date_img.reduceRegion(
-        reducer=ee.Reducer.first(), geometry=point, scale=30
-    ).getInfo()
-    days_since_epoch = date_sampled.get('b1')
+    # Sample BOTH status and date in one reduceRegion. We need status to gate
+    # the heavy work — OPERA's date band can carry leftover values even where
+    # status is 0 (no current disturbance), and we don't want to compute fires
+    # / dNBR / cause inference for non-disturbance pixels.
+    sampled = (
+        status_img.rename('status')
+        .addBands(date_img.rename('date'))
+        .reduceRegion(reducer=ee.Reducer.first(), geometry=point, scale=30)
+        .getInfo()
+    )
+    status_code = sampled.get('status')
+    days_since_epoch = sampled.get('date')
+
     alert_date_str = None
-    if days_since_epoch is not None:
+    # OPERA's date band stores 0 for "no disturbance recorded" — not None.
+    # Treating 0 as a real date would give 2020-12-31 (the epoch + 0 days),
+    # which silently breaks downstream date filters.
+    if days_since_epoch is not None and int(days_since_epoch) > 0:
         alert_date = DATE_EPOCH + timedelta(days=int(days_since_epoch))
         alert_date_str = alert_date.isoformat()
 
-    if alert_date_str is None:
+    status_valid = (
+        status_code is not None and int(status_code) in STATUS_LABELS
+    )
+
+    # Named US fires are queried for ANY US click, regardless of whether
+    # OPERA currently flags the pixel. OPERA transitions finished alerts
+    # back to status 0 once vegetation recovers, so older fire scars (like
+    # the 2024 Park Fire two years on) wouldn't otherwise show their fire
+    # context. When there's no OPERA date, we use today as the upper bound.
+    early_named_fires = []
+    if _is_in_us(lat, lng):
+        early_named_fires.extend(_sample_mtbs_fires(point))
+        early_named_fires.extend(_sample_nifc_wfigs_fires(lat, lng))
+        early_named_fires.extend(_sample_nifc_fires(lat, lng))
+        early_named_fires = _dedupe_and_sort_fires(early_named_fires)
+
+    if not status_valid or alert_date_str is None:
         return (
             jsonify({
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
-                'shape': None, 'likelyCause': None,
+                'shape': None, 'namedFires': early_named_fires, 'likelyCause': None,
             }),
             200,
             CORS_HEADERS,
@@ -903,8 +1897,11 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
             bestEffort=True,
             maxPixels=int(1e10),
         )
-        # filterBounds(point) returns just the polygon enclosing the click.
-        containing = all_vectors.filterBounds(point)
+        # filterBounds with a small buffer catches polygons that mathematically
+        # exclude the click point due to pixel-boundary effects (the vectorizer
+        # sometimes produces polygons whose edges sit microscopically inside
+        # the pixel they came from).
+        containing = all_vectors.filterBounds(point.buffer(45))
         features_info = containing.limit(1).getInfo().get('features', [])
         if features_info:
             patch_geometry = features_info[0].get('geometry')
@@ -930,25 +1927,38 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
         print(f'patch geometry failed: {e}', flush=True)
 
     # Cause-inference signals. Each call is independent; we accept the
-    # latency cost (~2s combined) for the diagnostic payoff.
+    # latency cost (~2-3 s combined) for the diagnostic payoff.
     burn = _sample_modis_burn(point, alert_date_str)
     fires = _sample_active_fires(point, alert_date_str)
     nbr = _sample_nbr_delta(point, alert_date_str)
     shape = _analyze_patch_shape(patch_geometry)
 
-    # Land cover comes from the core endpoint, but we need it for inference.
-    # Re-sample inexpensively at scale=30 (faster than the tiered version).
-    try:
-        wc = ee.Image(WORLDCOVER_ASSET).select('Map')
-        wc_val = wc.reduceRegion(reducer=ee.Reducer.first(), geometry=point, scale=30).getInfo().get('Map')
-        land_cover_fallback = (
-            {'label': WORLDCOVER_LABELS.get(int(wc_val))}
-            if wc_val is not None else None
-        )
-    except Exception:
-        land_cover_fallback = None
+    # Named US fires (reuse the early query — already done above). The
+    # full list is the "fire history" the popup shows; the cause heuristic
+    # uses only the recent subset within the OPERA-relevant window.
+    named_fires = early_named_fires
+    recent_fires_for_cause = _filter_fires_to_window(named_fires, alert_date_str)
 
-    likely_cause = _infer_likely_cause(burn, fires, nbr, shape, land_cover_fallback)
+    # Tiered land cover (CDL > MapBiomas > Dynamic World > WorldCover) so
+    # the cause heuristic sees the same specific label as the popup's land-
+    # cover line. WorldCover alone misses critical context — apple orchards
+    # become "Cropland" (not "Apples"), Brazilian pasture becomes "Grassland"
+    # (not "Pasture") — both of which steered the inference wrong.
+    land_cover = _sample_tiered_landcover(point)
+
+    # Crop profile (US only, CDL source) + seasonal context. Tells us that
+    # an alfalfa pixel hit in July is almost certainly a hay cut, not a burn.
+    crop_profile = _classify_crop(land_cover, alert_date_str, lat)
+
+    # NASS Quick Stats county-level practice data (US only, optional). Adds
+    # county tillage mix so we can soften "burn" labels in no-till counties.
+    # Silently returns None when NASS_API_KEY isn't set, so OK to call always.
+    nass_context = _fetch_nass_county_practices(lat, lng, crop_profile) if crop_profile else None
+
+    likely_cause = _infer_likely_cause(
+        burn, fires, nbr, shape, land_cover, recent_fires_for_cause,
+        crop_profile=crop_profile, nass_context=nass_context,
+    )
 
     return (
         jsonify({
@@ -959,7 +1969,13 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
             'fires': fires,
             'nbr': nbr,
             'shape': shape,
+            'namedFires': named_fires,
             'likelyCause': likely_cause,
+            # Debug fields — lets us see exactly which land-cover label and
+            # crop profile drove the cause inference (helps auditing).
+            'landCoverContext': land_cover,
+            'cropProfile': crop_profile,
+            'nassContext': nass_context,
         }),
         200,
         CORS_HEADERS,

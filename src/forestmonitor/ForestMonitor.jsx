@@ -44,6 +44,19 @@ const todayUtcMs = () => {
 const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10)
 const fmtMonthDay = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
+// Curated basemap options. Picked specifically for alert-color readability:
+// the dark/light/gray options eliminate the satellite-vs-recency color
+// conflict that hits in arid regions (Sahara, Outback, the desert SW).
+const BASEMAPS = [
+  { id: 'satellite', label: 'Satellite',  style: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  { id: 'dark',      label: 'Dark',       style: 'mapbox://styles/mapbox/dark-v11' },
+  { id: 'light',     label: 'Light',      style: 'mapbox://styles/mapbox/light-v11' },
+  { id: 'outdoors',  label: 'Terrain',    style: 'mapbox://styles/mapbox/outdoors-v12' },
+  { id: 'streets',   label: 'Streets',    style: 'mapbox://styles/mapbox/streets-v12' },
+]
+const DEFAULT_BASEMAP_ID = 'satellite'
+const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
+
 // Slider quick-pick presets. `days: null` means "all available data".
 const RANGE_PRESETS = [
   { label: '24h',   days: 1 },
@@ -84,6 +97,19 @@ export default function ForestMonitor() {
   // catch clicks via document-level delegation (popups are setHTML strings,
   // can't directly attach React handlers).
   const [showMethodology, setShowMethodology] = useState(false)
+  // Selected basemap id (see BASEMAPS above). Default = satellite.
+  const [basemap, setBasemap] = useState(DEFAULT_BASEMAP_ID)
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  const basemapMenuRef = useRef(null)
+  // Opacity of the OPERA disturbance raster overlay (0–1). Default 0.85.
+  const [opacity, setOpacity] = useState(0.85)
+  // Ref-mirror so applyTileLayer reads the latest value without re-running
+  // the tile-fetch effect on opacity changes.
+  const opacityRef = useRef(0.85)
+  useEffect(() => { opacityRef.current = opacity }, [opacity])
+  // Most-recent OPERA tile URL — cached so we can immediately re-apply it
+  // after a basemap switch without round-tripping the cloud function again.
+  const lastTileUrlRef = useRef(null)
 
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -92,7 +118,7 @@ export default function ForestMonitor() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: basemapStyleFor(DEFAULT_BASEMAP_ID),
       center: [0, 20],
       zoom: 1.6,
       projection: 'mercator',
@@ -182,7 +208,8 @@ export default function ForestMonitor() {
         .then((data) => {
           if (cancelled || reqId !== lastTileUrlReqRef.current) return
           if (!data.tileUrl) throw new Error('Empty tileUrl in response')
-          applyTileLayer(map, data.tileUrl)
+          applyTileLayer(map, data.tileUrl, opacityRef.current)
+          lastTileUrlRef.current = data.tileUrl
           setTileLoading(false)
         })
         .catch((err) => {
@@ -251,7 +278,11 @@ export default function ForestMonitor() {
 
         const data = state.point.data
         if (!data.date) {
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover))
+          // Use extras' namedFires if they've arrived (US clicks always get them)
+          const extrasNamedFires = state.extras.status === 'fulfilled'
+            ? (state.extras.data?.namedFires || [])
+            : []
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires))
           return
         }
 
@@ -312,6 +343,57 @@ export default function ForestMonitor() {
     return () => map.off('click', handler)
   }, [])
 
+  // ─── Basemap change ──────────────────────────────────────────────────────
+  // setStyle() blows away all custom sources/layers (OPERA raster + any
+  // patch outline), so we listen for the new style's `style.load` and
+  // re-apply the cached tile URL immediately. The first render is skipped —
+  // the map was already initialized with the chosen style.
+  const basemapMountRef = useRef(true)
+  useEffect(() => {
+    if (basemapMountRef.current) { basemapMountRef.current = false; return }
+    const map = mapRef.current
+    if (!map) return
+
+    map.once('style.load', () => {
+      // Re-apply the most recent OPERA tile URL — skips a GEE roundtrip,
+      // makes basemap switching feel instant.
+      if (lastTileUrlRef.current) {
+        applyTileLayer(map, lastTileUrlRef.current, opacityRef.current)
+      }
+      // Patch outline is per-popup; it'll redraw on next click.
+    })
+    map.setStyle(basemapStyleFor(basemap))
+  }, [basemap])
+
+  // ─── OPERA layer opacity (live update via setPaintProperty) ─────────────
+  // Avoids re-adding the layer on every opacity change — much smoother than
+  // tearing it down. Layer might not exist yet if tiles haven't loaded; the
+  // try/catch covers that.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    try {
+      if (map.getLayer(RASTER_LAYER_ID)) {
+        map.setPaintProperty(RASTER_LAYER_ID, 'raster-opacity', opacity)
+      }
+    } catch {}
+  }, [opacity, mapReady])
+
+  // ─── Basemap menu: close on outside click / Esc ──────────────────────────
+  useEffect(() => {
+    if (!basemapMenuOpen) return
+    const onClick = (e) => {
+      if (!basemapMenuRef.current?.contains(e.target)) setBasemapMenuOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setBasemapMenuOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [basemapMenuOpen])
+
   // ─── Methodology modal click delegation ──────────────────────────────────
   // Popup HTML is plain strings, so we can't attach React onClick. Instead
   // intercept any click on an element with data-action="show-methodology".
@@ -335,6 +417,51 @@ export default function ForestMonitor() {
         <span className={styles.subBadge}>Forest Monitor</span>
       </a>
 
+      <SearchBox map={mapRef.current} />
+
+      <div className={styles.basemapMenu} ref={basemapMenuRef}>
+        <button
+          type="button"
+          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
+          onClick={() => setBasemapMenuOpen((o) => !o)}
+          aria-label="Change basemap"
+          aria-expanded={basemapMenuOpen}
+          title={`Basemap: ${BASEMAPS.find((b) => b.id === basemap)?.label || ''}`}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+            <polyline points="2 17 12 22 22 17" />
+            <polyline points="2 12 12 17 22 12" />
+          </svg>
+        </button>
+        {basemapMenuOpen && (
+          <div className={styles.basemapMenuPanel} role="menu">
+            <div className={styles.basemapMenuTitle}>Basemap</div>
+            {BASEMAPS.map((b) => {
+              const active = basemap === b.id
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={active ? styles.basemapMenuItemActive : styles.basemapMenuItem}
+                  onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}
+                >
+                  <span className={`${styles.basemapSwatch} ${styles[`basemapSwatch_${b.id}`]}`} />
+                  <span className={styles.basemapMenuItemLabel}>{b.label}</span>
+                  {active && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={styles.basemapMenuCheck}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       <div className={styles.modePanel}>
         {MODES.map((m) => (
           <button
@@ -353,6 +480,23 @@ export default function ForestMonitor() {
           {mode === 'recency' && 'Forest disturbance recency'}
           {mode === 'status' && 'Alert status'}
           {mode === 'severity' && 'Vegetation loss'}
+        </div>
+
+        <div className={styles.opacityControl}>
+          <div className={styles.opacityHeader}>
+            <span className={styles.opacityLabel}>Layer opacity</span>
+            <span className={styles.opacityValue}>{Math.round(opacity * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={Math.round(opacity * 100)}
+            onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+            className={styles.opacitySlider}
+            aria-label="Disturbance layer opacity"
+          />
         </div>
 
         <RangePresets dateRange={dateRange} onPick={setDateRange} />
@@ -389,7 +533,7 @@ export default function ForestMonitor() {
               <span>Today</span>
             </div>
             <div className={styles.legendBlurb}>
-              Pixels brighten as the disturbance gets more recent. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
+              <strong>Dark red</strong> = oldest disturbance, <strong>bright yellow</strong> = most recent. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
             </div>
           </>
         )}
@@ -491,6 +635,9 @@ function MethodologyModal({ onClose }) {
             <li><strong>Active-fire detections (NASA FIRMS)</strong> — counts hot-spots within 3 km of the click and ±60 days of the OPERA date. Higher resolution and sensitivity than the burned-area product; catches small or short-lived fires.</li>
             <li><strong>Sentinel-2 NBR delta (dNBR)</strong> — Normalized Burn Ratio before vs after the OPERA date, sampled at 20 m. A dNBR above ~0.27 typically indicates a moderate-to-high severity burn (USGS classification).</li>
             <li><strong>Patch shape analysis</strong> — compactness and aspect ratio of the polygon. Blocky shapes suggest human cuts; irregular shapes suggest natural events.</li>
+            <li>
+              <strong>Named US fires (MTBS + NIFC)</strong> — for clicks inside the United States, we check whether the point falls inside a known historical (MTBS, ≤3 yr lookback) or current (NIFC WFIGS, ≤1.5 yr lookback) fire perimeter. Filtered so the fire's ignition date must precede the OPERA detection — cause must precede effect. When a match exists, the fire's name, ignition date, acres, and (for active fires) containment status appear at the top of the popup with an InciWeb link.
+            </li>
           </ol>
         </section>
 
@@ -507,6 +654,17 @@ function MethodologyModal({ onClose }) {
             <li><strong>Mechanical / agricultural clearing</strong> wins when the patch is blocky or linear AND no fire signal is present. The "agricultural" qualifier appears when the land-cover label is a crop or pasture class.</li>
             <li><strong>Natural</strong> wins when the patch is highly irregular AND no fire or human-shape signals are present.</li>
             <li><strong>Inconclusive</strong> when signals are absent or contradictory — we'd rather say nothing than misattribute.</li>
+          </ul>
+          <p>
+            <strong>Crop-aware refinements (US, CDL pixels):</strong> When the click lands on a known crop, we look up the crop's
+            management profile and seasonal harvest window before assigning a label.
+          </p>
+          <ul>
+            <li><strong>Multi-cut forages</strong> (alfalfa, hay, clover, sod, switchgrass) get cut 2–5× per season. A dNBR spike during their cutting window is almost always a routine hay cut, not a burn — these crops are very rarely burned. The label says "Likely alfalfa harvest cut" instead of "Possible agricultural burn".</li>
+            <li><strong>Burn-managed crops</strong> (sugarcane, rice, cotton) routinely use pre- or post-harvest field burning. The fire signal is interpreted as a managed burn rather than a wildfire here.</li>
+            <li><strong>Annual harvest crops</strong> (corn, soybeans, wheat, etc.) produce dNBR spikes at harvest. In-season harvest reads as harvest; out-of-season fire signal is more suspicious.</li>
+            <li><strong>Orchards</strong> (apples, citrus, almonds, grapes) don't disturb the canopy during routine harvest — a blocky dNBR signal usually means tree removal or replanting.</li>
+            <li><strong>USDA NASS Census of Agriculture</strong> tillage data, when available, softens burn-related labels in counties where no-till management is dominant (residue burning is incompatible with no-till).</li>
           </ul>
           <p>
             The thresholds are heuristic. False positives and false negatives are expected, especially in mixed-use landscapes
@@ -585,6 +743,44 @@ function MethodologyModal({ onClose }) {
               No external dataset; the polygon comes from <code>ee.Image.reduceToVectors</code> on the OPERA disturbance mask.
             </dd>
 
+            <dt>Crop management profiles (derived from CDL + agronomic references)</dt>
+            <dd>
+              Per-crop lookup table mapping each USDA CDL crop class to a management profile
+              (multi-cut forage / burn-prone / annual harvest / orchard / fallow), a typical
+              harvest month window, and a residue-burning practice rating (rare / occasional /
+              common). Used to refine the cause label for US cropland clicks — e.g. alfalfa
+              cuts vs sugarcane burns vs corn harvest. Northern-hemisphere windows are shifted
+              ~6 months for southern-latitude clicks. Profile assignments are based on USDA
+              crop-calendar references and standard regional agronomic practice; expect to
+              tune over time.
+            </dd>
+
+            <dt>USDA NASS Quick Stats — Census of Agriculture (optional)</dt>
+            <dd>
+              County-level tillage practice data (conventional / conservation / reduced / no-till
+              share by acreage) from the most recent Census of Ag (typically 2022). Used as a
+              tiebreaker for ambiguous "burn vs harvest" calls — a no-till-dominant county is
+              very unlikely to be producing residue-burn signals. Activated when{' '}
+              <code>NASS_API_KEY</code> is set on the cloud function; degrades gracefully
+              (cause label still works, just without county-level refinement) when absent.{' '}
+              <a href="https://quickstats.nass.usda.gov/api" target="_blank" rel="noopener noreferrer">Quick Stats API</a>
+            </dd>
+
+            <dt>MTBS — Monitoring Trends in Burn Severity (US)</dt>
+            <dd>
+              Authoritative US named-fire perimeters since 1984 (fires ≥1000 acres in the West, ≥500 acres in the East).
+              Each fire has name, ignition date, acres, severity classification. ~1–2 year lag in latest available year.{' '}
+              <a href="https://www.mtbs.gov/" target="_blank" rel="noopener noreferrer">mtbs.gov</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/USFS_GTAC_MTBS_burned_area_boundaries_v1" target="_blank" rel="noopener noreferrer">EE catalog</a>
+            </dd>
+
+            <dt>NIFC WFIGS — Wildland Fire Interagency Geospatial Services (US)</dt>
+            <dd>
+              Current US fire perimeters, updated daily during fire season. Each fire has name, IRWIN ID, acres,
+              containment %, cause, location. Used at click-time via ArcGIS REST.{' '}
+              <a href="https://data-nifc.opendata.arcgis.com/" target="_blank" rel="noopener noreferrer">data-nifc.opendata.arcgis.com</a>
+            </dd>
+
             <dt>Mapbox Geocoding API v6</dt>
             <dd>
               Admin region hierarchy (place, district, region, country) for the click point.{' '}
@@ -610,6 +806,7 @@ function MethodologyModal({ onClose }) {
           <ul>
             <li><strong>OPERA detects vegetation loss, not deforestation.</strong> Harvested cropland, prescribed burns, storm blowdown, mining, urban clearing all look similar in the OPERA signal. The "Likely cause" line tries to disambiguate, but the underlying land-cover and fire context are the most reliable inputs.</li>
             <li><strong>"Likely cause" is a heuristic, not a model.</strong> The label comes from a simple rule that weighs fire and shape signals against land-cover context. Expect occasional misses — particularly on small patches, in landscapes with ambiguous land use (e.g. fire-managed cropland), or when supporting data (Sentinel-2, MODIS, FIRMS) has gaps for the relevant window. The reasoning line under the label exposes the inputs so you can sanity-check.</li>
+            <li><strong>Named-fire context is US-only.</strong> MTBS and NIFC cover the United States; international clicks won't get the fire-name treatment. Global named-fire coverage (e.g. GlobFire, EFFIS for Europe) is a planned follow-up.</li>
             <li><strong>dNBR can be missing.</strong> If Sentinel-2 imagery in the pre- or post-window is too cloudy (or too sparse, especially in winter at high latitudes), the dNBR sample comes back null and the heuristic falls back on other signals.</li>
             <li><strong>Patch shape uses raster-derived polygons.</strong> Every polygon edge is on the 30 m pixel grid, so we can't directly measure "straightness" of perimeter the way you'd want for a vector field boundary. The shape hint relies on compactness and aspect ratio, which still discriminate blocky vs irregular reliably for patches above ~10 acres.</li>
             <li><strong>Filter accuracy varies by region.</strong> The tiered classifier is most precise where CDL (US, 2024) or MapBiomas (Brazil, 2023) cover the click point. Elsewhere it falls back to Dynamic World (mode of recent ~90 days, global) and finally to WorldCover (2021). Deep-international clicks may misclassify land that was converted from forest after 2021 if Dynamic World hasn't caught up either.</li>
@@ -634,6 +831,310 @@ function MethodologyModal({ onClose }) {
       </div>
     </div>
   )
+}
+
+// ─── Search box (Mapbox Search Box API) ────────────────────────────────────
+// Autocomplete over addresses, places, POIs (incl. national parks / protected
+// areas), neighborhoods, regions, countries. On select → flyTo on the map.
+
+// Zoom level per Mapbox feature type. Smaller value = wider view.
+const SEARCH_ZOOM_BY_TYPE = {
+  country:      4,
+  region:       6,
+  district:     8,
+  postcode:    11,
+  place:       10,
+  locality:    12,
+  neighborhood: 14,
+  street:      15,
+  address:     16,
+  poi:         13,
+}
+
+// Human-readable category label for each Mapbox feature_type, shown inline
+// in the result meta line so users know what kind of thing they're picking.
+const SEARCH_TYPE_LABELS = {
+  country:      'Country',
+  region:       'State / Region',
+  district:     'District / County',
+  postcode:     'ZIP / Postcode',
+  place:        'City',
+  locality:     'Town',
+  neighborhood: 'Neighborhood',
+  street:       'Street',
+  address:      'Address',
+  poi:          'Place',
+}
+
+// Categorize each result into a small icon set. POIs further split by
+// poi_category (parks → nature glyph; rest → pin glyph).
+function searchCategoryOf(s) {
+  const t = s.feature_type
+  if (t === 'poi') {
+    const cats = (s.poi_category || []).map((c) => c.toLowerCase())
+    if (cats.some((c) => /park|forest|nature|reserve|wilderness|garden|mountain|peak|trail/.test(c))) {
+      return 'nature'
+    }
+    return 'poi'
+  }
+  if (t === 'country' || t === 'region' || t === 'district' || t === 'postcode') return 'region'
+  if (t === 'place' || t === 'locality' || t === 'neighborhood') return 'city'
+  if (t === 'address' || t === 'street') return 'address'
+  return 'pin'
+}
+
+// SVG glyphs per category — small, theme-appropriate, no emoji.
+const SEARCH_ICON_PATHS = {
+  nature: 'M12 2C8.13 2 5 5.13 5 9c0 5 7 13 7 13s7-8 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z M12 14l-2 3h4l-2-3z',
+  poi:    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z',
+  region: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+  city:   'M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z',
+  address:'M12 2c-4.2 0-8 3.22-8 8.2 0 3.32 2.67 7.25 8 11.8 5.33-4.55 8-8.48 8-11.8C20 5.22 16.2 2 12 2zm0 10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
+  pin:    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z',
+}
+
+// Wrap matching substrings of `query` inside `text` with a <mark> tag so we
+// can style them. Case-insensitive substring match — Mapbox's matches are
+// fuzzy so this won't always cover everything, but it covers the common case.
+function highlightMatch(text, query) {
+  if (!text || !query) return escapeHTML(text || '')
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return escapeHTML(text)
+  return (
+    escapeHTML(text.slice(0, idx)) +
+    '<mark>' + escapeHTML(text.slice(idx, idx + query.length)) + '</mark>' +
+    escapeHTML(text.slice(idx + query.length))
+  )
+}
+
+function SearchBox({ map }) {
+  const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const sessionTokenRef = useRef(null)
+  const debounceRef = useRef(null)
+  const inputRef = useRef(null)
+  const containerRef = useRef(null)
+
+  // Lazy-init session token. Mapbox Search Box groups suggest+retrieve calls
+  // under one session token for billing; reset after each retrieve.
+  if (sessionTokenRef.current == null) {
+    sessionTokenRef.current = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random())
+  }
+
+  // Debounced suggest. Bias results toward what's currently on screen via
+  // the `proximity` param — searching "Springfield" from a Brazil viewport
+  // surfaces nearby places before US matches.
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    const q = query.trim()
+    if (q.length < 2) {
+      setSuggestions([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    debounceRef.current = setTimeout(async () => {
+      const token = import.meta.env.VITE_MAPBOX_TOKEN
+      if (!token) { setLoading(false); return }
+      const params = new URLSearchParams({
+        q,
+        access_token: token,
+        session_token: sessionTokenRef.current,
+        limit: '8',
+        types: 'country,region,district,postcode,place,locality,neighborhood,street,address,poi',
+      })
+      // Proximity bias from current map center
+      if (map) {
+        try {
+          const c = map.getCenter()
+          params.set('proximity', `${c.lng},${c.lat}`)
+        } catch {}
+      }
+      try {
+        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`)
+        const data = await res.json()
+        setSuggestions(data.suggestions || [])
+        setOpen(true)
+        setActiveIdx(-1)
+      } catch (err) {
+        console.error('[SearchBox] suggest failed', err)
+        setSuggestions([])
+      } finally {
+        setLoading(false)
+      }
+    }, 220)
+    return () => clearTimeout(debounceRef.current)
+  }, [query, map])
+
+  // Close on click outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (!containerRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSelect = async (suggestion) => {
+    if (!map) return
+    const token = import.meta.env.VITE_MAPBOX_TOKEN
+    const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}` +
+      `?access_token=${token}&session_token=${sessionTokenRef.current}`
+    try {
+      const res = await fetch(url)
+      const data = await res.json()
+      const feature = data.features?.[0]
+      if (!feature) return
+      const [lng, lat] = feature.geometry.coordinates
+      const zoom = SEARCH_ZOOM_BY_TYPE[suggestion.feature_type] ?? 10
+
+      // Use bbox if Mapbox provided one — better than centroid + zoom guess
+      // for things like national parks or large regions.
+      const bbox = feature.properties?.bbox
+      if (bbox && bbox.length === 4) {
+        map.fitBounds(
+          [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+          { padding: 80, duration: 1400, maxZoom: 14 }
+        )
+      } else {
+        map.flyTo({ center: [lng, lat], zoom, duration: 1400, essential: true })
+      }
+
+      setQuery(suggestion.name)
+      setOpen(false)
+      setSuggestions([])
+      // New session token — Mapbox docs: one session per "search transaction"
+      sessionTokenRef.current = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random())
+      inputRef.current?.blur()
+    } catch (err) {
+      console.error('[SearchBox] retrieve failed', err)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (!open || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const idx = activeIdx >= 0 ? activeIdx : 0
+      if (suggestions[idx]) handleSelect(suggestions[idx])
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      inputRef.current?.blur()
+    }
+  }
+
+  return (
+    <div className={styles.searchBox} ref={containerRef}>
+      <div className={styles.searchInputWrap}>
+        <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="search"
+          // Non-standard name so Chrome's autofill heuristics don't latch
+          // onto this as an address/email/name field and paint it tinted.
+          name="fm-search-q"
+          className={styles.searchInput}
+          // Inline style wins over any UA / global / extension CSS that
+          // might paint the input white on load. Belt-and-braces — the CSS
+          // module class also sets these, but inline guarantees it applies
+          // before any cascade games or autofill tinting kick in.
+          style={{
+            backgroundColor: '#0f1726',
+            color: '#fff',
+            WebkitTextFillColor: '#fff',
+          }}
+          placeholder="Search a place, address, park, or feature…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+        />
+        {query && (
+          <button
+            type="button"
+            className={styles.searchClear}
+            onClick={() => { setQuery(''); setSuggestions([]); setOpen(false); inputRef.current?.focus() }}
+            aria-label="Clear"
+          >×</button>
+        )}
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul className={styles.searchResults} role="listbox">
+          {suggestions.map((s, i) => {
+            const cat = searchCategoryOf(s)
+            const typeLabel = s.feature_type === 'poi' && s.poi_category?.length
+              ? toTitleCase(s.poi_category[0])
+              : SEARCH_TYPE_LABELS[s.feature_type] || 'Place'
+            return (
+              <li
+                key={s.mapbox_id}
+                role="option"
+                aria-selected={i === activeIdx}
+                className={i === activeIdx ? styles.searchResultActive : styles.searchResult}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(s) }}
+                onMouseEnter={() => setActiveIdx(i)}
+              >
+                <div className={`${styles.searchResultIcon} ${styles[`searchIcon_${cat}`]}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d={SEARCH_ICON_PATHS[cat]} />
+                  </svg>
+                </div>
+                <div className={styles.searchResultText}>
+                  <div
+                    className={styles.searchResultName}
+                    dangerouslySetInnerHTML={{ __html: highlightMatch(s.name, query) }}
+                  />
+                  <div className={styles.searchResultMeta}>
+                    <span className={styles.searchResultType}>{typeLabel}</span>
+                    {searchResultMeta(s) && (
+                      <>
+                        <span className={styles.searchResultSep}>·</span>
+                        <span className={styles.searchResultContext}>{searchResultMeta(s)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {open && loading && suggestions.length === 0 && (
+        <div className={styles.searchEmpty}>
+          <span className={styles.searchSpinner}></span> Searching…
+        </div>
+      )}
+      {open && !loading && query.trim().length >= 2 && suggestions.length === 0 && (
+        <div className={styles.searchEmpty}>No results found</div>
+      )}
+    </div>
+  )
+}
+
+function searchResultMeta(s) {
+  // Geographic context only (e.g. "California, United States") — feature
+  // type is already shown separately as a badge.
+  return s.place_formatted || s.full_address || ''
+}
+
+function toTitleCase(s) {
+  return String(s).replace(/(^|[\s_-])(\w)/g, (_, sep, c) => sep + c.toUpperCase())
 }
 
 // ─── Range presets ──────────────────────────────────────────────────────────
@@ -738,7 +1239,7 @@ function DateRangeSlider({ minMs, maxMs, startMs, endMs, onChange }) {
 const RASTER_SOURCE_ID = 'opera-dist-alert'
 const RASTER_LAYER_ID = 'opera-dist-alert-layer'
 
-function applyTileLayer(map, tileUrl) {
+function applyTileLayer(map, tileUrl, opacity = 0.85) {
   // Replacing the source's tiles requires removing and re-adding it in
   // Mapbox GL — there's no setTiles() method.
   if (map.getLayer(RASTER_LAYER_ID)) map.removeLayer(RASTER_LAYER_ID)
@@ -753,7 +1254,7 @@ function applyTileLayer(map, tileUrl) {
     id: RASTER_LAYER_ID,
     type: 'raster',
     source: RASTER_SOURCE_ID,
-    paint: { 'raster-opacity': 0.88 },
+    paint: { 'raster-opacity': opacity },
   })
 }
 
@@ -813,6 +1314,64 @@ function renderLandCover(lc) {
   return `<div class="${cls}">${escapeHTML(lc.label)}${hint}${sourceStr}</div>`
 }
 
+function renderNamedFires(fires, operaDateStr) {
+  if (!fires || fires.length === 0) return ''
+
+  // First fire shows full detail (most recent — likely most relevant to
+  // current OPERA detection). Remaining fires render as a compact list
+  // under the heading "Other historic fires at this location."
+  const [first, ...rest] = fires
+  const dateLabel = first.date
+    ? new Date(first.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    : (first.year ? String(first.year) : null)
+  const acres = first.acres != null ? `${Math.round(Number(first.acres)).toLocaleString()} acres` : null
+  const contained = first.contained_pct != null ? `${Math.round(first.contained_pct)}% contained` : null
+  const parts = [dateLabel, acres, contained, first.incident_type, first.source]
+    .filter(Boolean).map(escapeHTML).join(' · ')
+  const link = first.inciweb_url
+    ? `<a href="${escapeHTML(first.inciweb_url)}" target="_blank" rel="noopener noreferrer" class="${styles.popupFireLink}">InciWeb ↗</a>`
+    : ''
+  let delta = ''
+  if (operaDateStr && first.date) {
+    const days = Math.round((new Date(operaDateStr) - new Date(first.date)) / 86_400_000)
+    if (days >= 0) {
+      const yrs = days >= 365 ? `${(days / 365).toFixed(1)} yr` : `${days} day${days === 1 ? '' : 's'}`
+      delta = `<div class="${styles.popupFireDelta}">${yrs} before OPERA detection</div>`
+    }
+  }
+  const firstBlock = `
+    <div class="${styles.popupFireItem}">
+      <div class="${styles.popupFireName}">🔥 ${escapeHTML(first.name)}</div>
+      <div class="${styles.popupFireMeta}">${parts}</div>
+      ${delta}
+      ${link}
+    </div>
+  `
+
+  let historyBlock = ''
+  if (rest.length > 0) {
+    const rows = rest.map((f) => {
+      const yr = f.year || (f.date ? new Date(f.date).getFullYear() : '—')
+      const ac = f.acres != null ? `${Math.round(Number(f.acres)).toLocaleString()} ac` : ''
+      return `
+        <li class="${styles.popupFireHistRow}">
+          <span class="${styles.popupFireHistYear}">${escapeHTML(String(yr))}</span>
+          <span class="${styles.popupFireHistName}">${escapeHTML(f.name)}</span>
+          <span class="${styles.popupFireHistAcres}">${escapeHTML(ac)}</span>
+        </li>
+      `
+    }).join('')
+    historyBlock = `
+      <div class="${styles.popupFireHistTitle}">
+        Other historic fires at this location (${rest.length})
+      </div>
+      <ul class="${styles.popupFireHistList}">${rows}</ul>
+    `
+  }
+
+  return `<div class="${styles.popupNamedFires}">${firstBlock}${historyBlock}</div>`
+}
+
 function renderBurn(burn, operaDateStr) {
   if (!burn || !burn.date) return ''
   const burnDate = new Date(burn.date)
@@ -835,10 +1394,26 @@ function renderBurn(burn, operaDateStr) {
 function renderLikelyCause(cause) {
   if (!cause || !cause.label) return ''
   // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
+  // Crop-aware additions: "harvest" / "cut" / "replanting" / "orchard
+  // management" all read as routine agricultural activity (human, amber).
+  // A standalone "Possible fire" still wins fire-red even if it mentions
+  // a crop name, because "fire" appears in the label.
   const label = cause.label.toLowerCase()
   let cls = styles.popupCauseNeutral
-  if (label.includes('fire')) cls = styles.popupCauseFire
-  else if (label.includes('clearing') || label.includes('agricultural activity')) cls = styles.popupCauseHuman
+  if (label.includes('fire') || label.includes('burn')) cls = styles.popupCauseFire
+  else if (
+    label.includes('harvest') ||
+    label.includes(' cut') ||
+    label.includes('replanting') ||
+    label.includes('removal') ||
+    label.includes('management') ||
+    label.includes('clearing') ||
+    label.includes('agricultural activity') ||
+    label.includes('field activity') ||
+    label.includes('field operations') ||
+    label.includes('orchard') ||
+    label.includes('fallow')
+  ) cls = styles.popupCauseHuman
   else if (label.includes('natural')) cls = styles.popupCauseNatural
   const reasoning = cause.reasoning
     ? `<div class="${styles.popupCauseReason}">${escapeHTML(cause.reasoning)}</div>`
@@ -873,7 +1448,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       : ''
     patchLine = `<div class="${styles.popupMuted}">${acresStr} in this connected patch ${truncatedNote}</div>`
   } else if (extrasPending) {
-    patchLine = `<div class="${styles.popupMuted}"><span class="${styles.popupSpinner}"></span> Measuring patch…</div>`
+    patchLine = `<div class="${styles.popupMuted}"><span class="${styles.popupSpinner}"></span> Asking NASA, USDA, and a few satellites about this spot…</div>`
   }
 
   return `
@@ -881,6 +1456,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       <div class="${styles.popupHeader}">Disturbance detected ${prettyDate}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
+      ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
       ${renderBurn(data.burn, data.date)}
       ${data.statusLabel ? `<div>${escapeHTML(data.statusLabel)}</div>` : ''}
@@ -891,13 +1467,17 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires) {
+  const fireBlock = renderNamedFires(namedFires, null)
+  const blurb = (namedFires && namedFires.length)
+    ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
+    : `<div class="${styles.popupMuted}">OPERA DIST-ALERT hasn't flagged this pixel since 2023.</div>`
   return `
     <div class="${styles.popupBody}">
-      <div class="${styles.popupHeader}">No disturbance recorded here</div>
+      <div class="${styles.popupHeader}">No current disturbance here</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
-      <div class="${styles.popupMuted}">OPERA DIST-ALERT hasn't flagged this pixel since 2023.</div>
+      ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
       ${renderMethodologyLink()}
     </div>
   `

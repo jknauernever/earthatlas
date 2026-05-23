@@ -1987,29 +1987,22 @@ async function reverseGeocode(lat, lng) {
 }
 
 // Google Geocoding API — pulls named "natural features" (mountain ranges,
-// regions, watersheds) that Mapbox's tilesets generally don't have. We filter
-// to result_type=natural_feature on the server side so the response stays
-// small. Returns up to 2 unique names. Falls back to empty list silently.
+// regions, watersheds) that Mapbox's tilesets generally don't have.
+//
+// Proxied through the cloud function (?natfeat=1) so the key lives entirely
+// server-side. Two wins from the proxy: (1) the key can't be lifted from
+// the bundle, (2) the Google Geocoding REST API refuses HTTP-referrer-
+// restricted keys, so a browser-side call requires a key with weaker
+// restrictions — server-to-server has no referrer at all.
 async function findNaturalFeatures(lat, lng) {
-  const key = import.meta.env.VITE_GOOGLE_GEOCODING_KEY
-  if (!key) return []
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}` +
-    `&result_type=natural_feature&key=${key}`
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const data = await res.json()
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    console.warn('[ForestMonitor] Google geocode status:', data.status, data.error_message)
+  try {
+    const res = await fetch(`${TILES_API_BASE}?natfeat=1&lat=${lat}&lng=${lng}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.features || []
+  } catch (e) {
     return []
   }
-  const names = []
-  for (const r of data.results || []) {
-    // Each result's first address component is the feature's own name.
-    const name = r.address_components?.[0]?.long_name
-    if (name && !names.includes(name)) names.push(name)
-    if (names.length >= 2) break
-  }
-  return names
 }
 
 // Mapbox Tilequery against streets-v8 — finds named protected areas (national

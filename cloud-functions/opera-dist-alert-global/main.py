@@ -2259,6 +2259,74 @@ def _fetch_nass_county_practices(
     }
 
 
+# ─── Google Geocoding proxy (natural features) ─────────────────────────────
+# The Geocoding REST API refuses HTTP-referrer-restricted keys, so calling
+# it from the browser requires an unrestricted (or weakly restricted) key —
+# which then leaks into the bundle. Proxying server-side keeps the key
+# completely off the wire to the client and removes the referrer issue
+# (server-to-server has no Referer header).
+#
+# This endpoint backs the popup's "Natural features" enrichment — mountain
+# ranges, large regions, watersheds that Mapbox tilesets don't carry.
+# Returns at most 2 unique names. Cached 24h per rounded coordinate.
+
+GOOGLE_GEOCODING_KEY = _os.environ.get('GOOGLE_GEOCODING_KEY')
+GOOGLE_GEOCODING_URL = 'https://maps.googleapis.com/maps/api/geocode/json'
+_NATFEAT_CACHE: dict = {}
+_NATFEAT_CACHE_MAX = 512
+_NATFEAT_TTL_SEC = 24 * 3600
+
+
+def _handle_natural_features(lat: float, lng: float) -> tuple:
+    """Server-side proxy for Google Geocoding API natural-feature lookup.
+    Always returns 200 with a (possibly empty) features array — the popup
+    treats absence as graceful degradation, not as an error."""
+    if not GOOGLE_GEOCODING_KEY:
+        return (jsonify({'features': [], 'error': 'no_key'}), 200, CORS_HEADERS)
+
+    cache_key = (round(lat, 3), round(lng, 3))
+    cached = _NATFEAT_CACHE.get(cache_key)
+    if cached:
+        age = (datetime.now(tz=timezone.utc) - cached['t']).total_seconds()
+        if age < _NATFEAT_TTL_SEC:
+            return (jsonify({'features': cached['data'], 'cached': True}), 200, CORS_HEADERS)
+
+    params = {
+        'latlng': f'{lat},{lng}',
+        'result_type': 'natural_feature',
+        'key': GOOGLE_GEOCODING_KEY,
+    }
+    url = f'{GOOGLE_GEOCODING_URL}?{urllib.parse.urlencode(params)}'
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'EarthAtlas/1.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read())
+    except Exception as e:
+        print(f'natfeat fetch failed: {e}', flush=True)
+        return (jsonify({'features': [], 'error': 'fetch'}), 200, CORS_HEADERS)
+
+    status = data.get('status', '')
+    if status not in ('OK', 'ZERO_RESULTS'):
+        print(f'natfeat Google status: {status} — {data.get("error_message", "")}', flush=True)
+        return (jsonify({'features': [], 'error': status}), 200, CORS_HEADERS)
+
+    names = []
+    for r in data.get('results', []):
+        comps = r.get('address_components') or []
+        if not comps:
+            continue
+        name = comps[0].get('long_name')
+        if name and name not in names:
+            names.append(name)
+        if len(names) >= 2:
+            break
+
+    if len(_NATFEAT_CACHE) >= _NATFEAT_CACHE_MAX:
+        _NATFEAT_CACHE.pop(next(iter(_NATFEAT_CACHE)))
+    _NATFEAT_CACHE[cache_key] = {'data': names, 't': datetime.now(tz=timezone.utc)}
+    return (jsonify({'features': names}), 200, CORS_HEADERS)
+
+
 _ee_initialized = False
 
 
@@ -2626,6 +2694,19 @@ def get_tiles(request):
                 window_days=max(1, min(window, 60)),
             )
             return (jsonify(payload), 200, CORS_HEADERS)
+
+        # `?natfeat=1&lat=…&lng=…` — Google Geocoding proxy for natural-
+        # feature enrichment (mountain ranges, regions). Server-side so
+        # the key isn't exposed in the bundle.
+        if request.args.get('natfeat'):
+            lat_p = request.args.get('lat')
+            lng_p = request.args.get('lng')
+            if lat_p is None or lng_p is None:
+                return (jsonify({'features': [], 'error': 'missing_coords'}), 400, CORS_HEADERS)
+            try:
+                return _handle_natural_features(float(lat_p), float(lng_p))
+            except ValueError:
+                return (jsonify({'features': [], 'error': 'bad_coords'}), 400, CORS_HEADERS)
 
         _ensure_ee()
 

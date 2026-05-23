@@ -391,6 +391,106 @@ MAPBIOMAS_BR_ASSET = (
     'mapbiomas_collection90_integration_v1'
 )
 MAPBIOMAS_BR_LATEST_YEAR = 2023
+
+# MapBiomas regional collections beyond Brazil. All share the same legend
+# (MAPBIOMAS_LABELS + MAPBIOMAS_CATEGORY_MAP + MAPBIOMAS_CROP_PROFILES),
+# so once a pixel resolves to a MapBiomas code we treat it uniformly.
+# Listed in priority order — country-specific collections beat multi-country
+# biome collections, which beat the pan-Amazonian one. All of these use
+# either:
+#   type='image' — single ee.Image with bands named `classification_YYYY`
+#   type='collection' — ee.ImageCollection with year property + single
+#                       'classification' band per image
+MAPBIOMAS_REGIONAL_SOURCES = [
+    {
+        'source_key':  'mb_bolivia',
+        'name':        'MapBiomas Bolivia',
+        'asset':       'projects/mapbiomas-public/assets/bolivia/lulc/v1',
+        'type':        'collection',
+        'latest_year': 2024,
+        'region':      'Bolivia',
+    },
+    {
+        'source_key':  'mb_ecuador',
+        'name':        'MapBiomas Ecuador',
+        'asset':       'projects/mapbiomas-public/assets/ecuador/lulc/v1',
+        'type':        'collection',
+        'latest_year': 2024,
+        'region':      'Ecuador',
+    },
+    {
+        'source_key':  'mb_peru',
+        'name':        'MapBiomas Peru (Collection 3)',
+        'asset':       'projects/mapbiomas-public/assets/peru/collection3/mapbiomas_peru_collection3_integration_v1',
+        'type':        'image',
+        'latest_year': 2023,
+        'region':      'Peru',
+    },
+    {
+        'source_key':  'mb_chaco',
+        'name':        'MapBiomas Chaco (Collection 5)',
+        'asset':       'projects/mapbiomas-public/assets/chaco/lulc/collection5/mapbiomas_chaco_collection5_integration_v2',
+        'type':        'image',
+        'latest_year': 2022,
+        'region':      'Argentina / Paraguay / Bolivia (Gran Chaco biome)',
+    },
+    {
+        'source_key':  'mb_pampa',
+        'name':        'MapBiomas Pampa (Collection 4)',
+        'asset':       'projects/mapbiomas-public/assets/pampa/collection4/mapbiomas_pampa_collection4_integration_v1',
+        'type':        'image',
+        'latest_year': 2023,
+        'region':      'Argentina / Uruguay (Pampa biome)',
+    },
+    {
+        'source_key':  'mb_amazon',
+        'name':        'MapBiomas Amazon (RAISG, Collection 3)',
+        'asset':       'projects/mapbiomas-raisg/public/collection3/mapbiomas_raisg_panamazonia_collection3_integration_v2',
+        'type':        'image',
+        'latest_year': 2022,
+        'region':      'Pan-Amazonia (Bolivia, Colombia, Ecuador, Guyana, French Guiana, Peru, Suriname, Venezuela, Brazil)',
+    },
+]
+
+
+def _mapbiomas_regional_image(src: dict) -> 'ee.Image':
+    """Build a single ee.Image (renamed to src['source_key']) for one of
+    the regional MapBiomas sources, handling both Image and ImageCollection
+    formats. Reduces duplication across _add_landcover_bands /
+    _sample_tiered_landcover / _build_unified_classifier.
+
+    For Image-format sources, dynamically picks the latest classification_*
+    band that actually exists on the asset — collections may publish
+    different year ranges (e.g. Chaco C5 maxes out at 2020 even though
+    other collections go through 2023+), so hardcoding `latest_year`
+    leads to "band not found" errors that fail the whole stack sample.
+    The dynamic pick falls back to 1985 if no classification band exists
+    (effectively no-op masking, but the addBands still succeeds).
+    """
+    if src['type'] == 'collection':
+        # ImageCollection: pick most recent image; falls back gracefully
+        # if `latest_year` isn't published yet for this region.
+        return (ee.ImageCollection(src['asset'])
+                .sort('year', False)
+                .first()
+                .select('classification')
+                .rename(src['source_key']))
+    # Image format: server-side, scan band names, take the highest-year
+    # classification_YYYY band that exists.
+    img = ee.Image(src['asset'])
+    band_names = img.bandNames()
+    classif_bands = band_names.filter(
+        ee.Filter.stringStartsWith(leftField='item', rightValue='classification_')
+    ).sort()
+    n = classif_bands.size()
+    # Default to 'classification_1985' if list ends up empty (shouldn't
+    # happen for any real MapBiomas asset but guards against schema changes).
+    chosen = ee.String(ee.Algorithms.If(
+        n.gt(0),
+        classif_bands.get(n.subtract(1)),
+        ee.String('classification_1985'),
+    ))
+    return img.select([chosen]).rename(src['source_key'])
 MAPBIOMAS_LABELS = {
     1: 'Forest', 3: 'Forest Formation', 4: 'Savanna Formation',
     5: 'Mangrove', 6: 'Floodable Forest', 9: 'Forest Plantation',
@@ -701,12 +801,34 @@ def _build_unified_classifier() -> ee.Image:
     cdl = ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}').select('cropland')
     cdl_cat = categorize(cdl, CDL_CATEGORY_MAP)
 
+    # Regional MapBiomas — Bolivia/Ecuador/Peru/Chaco/Pampa/Amazon, all use
+    # the same legend as Brazil so they go through MAPBIOMAS_CATEGORY_MAP.
+    # Each one is wrapped in try/except inside the lazy graph by skipping
+    # the source if .map() fails at eval time — but for the static
+    # classifier we just stack them all and let unreachable regions stay
+    # masked.
+    regional_mb_cats = []
+    for src in MAPBIOMAS_REGIONAL_SOURCES:
+        try:
+            img = _mapbiomas_regional_image(src)
+            regional_mb_cats.append((src['source_key'], categorize(img, MAPBIOMAS_CATEGORY_MAP)))
+        except Exception as e:
+            # Lazy construction shouldn't actually raise here — but defensive.
+            print(f'_build_unified_classifier: failed to build {src["source_key"]}: {e}', flush=True)
+
     # Layer least → most specific. .where() overwrites where the higher
-    # priority dataset is unmasked (i.e. has a value).
+    # priority dataset is unmasked (i.e. has a value). Regional MapBiomas
+    # collections layer between the Amazon biome (lowest specificity within
+    # MapBiomas) and CDL (highest). Brazil C9 wins over RAISG Amazon for
+    # the Brazilian Amazon; country-specific V1 wins over biome-wide.
     unified = wc_cat
     unified = unified.where(dw_cat.mask(), dw_cat)
     unified = unified.where(wco_cat.mask(), wco_cat)
     unified = unified.where(eu_cat.mask(), eu_cat)
+    # Apply regional MapBiomas in REVERSE order of MAPBIOMAS_REGIONAL_SOURCES
+    # so the highest-priority (country-specific) source ends up on top.
+    for src_key, cat in reversed(regional_mb_cats):
+        unified = unified.where(cat.mask(), cat)
     unified = unified.where(mb_cat.mask(), mb_cat)
     unified = unified.where(aafc_cat.mask(), aafc_cat)
     unified = unified.where(cdl_cat.mask(), cdl_cat)
@@ -756,6 +878,14 @@ def _add_landcover_bands(stack: ee.Image, point: ee.Geometry) -> ee.Image:
     wc = ee.Image(WORLDCOVER_ASSET).select('Map').rename('worldcover')
     out = (stack.addBands(cdl).addBands(aafc).addBands(mb).addBands(eu)
                 .addBands(dw).addBands(wc))
+    # Regional MapBiomas (Bolivia/Ecuador/Peru/Chaco/Pampa/Amazon). Each
+    # adds one band named after its source_key, all sharing the MapBiomas
+    # legend (MAPBIOMAS_LABELS).
+    for src in MAPBIOMAS_REGIONAL_SOURCES:
+        try:
+            out = out.addBands(_mapbiomas_regional_image(src))
+        except Exception as e:
+            print(f'_add_landcover_bands: skip {src["source_key"]}: {e}', flush=True)
     # WorldCereal per-product binary bands. Each is 0/100 with no-data masked.
     wco_coll = ee.ImageCollection(WORLDCEREAL_ASSET).filterBounds(point)
     for product in WORLDCEREAL_PRODUCTS:
@@ -1650,6 +1780,12 @@ def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:
         wc = ee.Image(WORLDCOVER_ASSET).select('Map').rename('worldcover')
         stack = (cdl.addBands(aafc).addBands(mb).addBands(eu)
                     .addBands(dw).addBands(wc))
+        # Regional MapBiomas (Bolivia/Ecuador/Peru/Chaco/Pampa/Amazon).
+        for src in MAPBIOMAS_REGIONAL_SOURCES:
+            try:
+                stack = stack.addBands(_mapbiomas_regional_image(src))
+            except Exception as e:
+                print(f'_sample_tiered_landcover: skip {src["source_key"]}: {e}', flush=True)
         # WorldCereal per-product binary bands.
         wco_coll = ee.ImageCollection(WORLDCEREAL_ASSET).filterBounds(point)
         for product in WORLDCEREAL_PRODUCTS:
@@ -1672,11 +1808,13 @@ def _resolve_landcover(sampled: dict) -> dict:
     Priority chain (most → least specific):
       1. CDL (US 2024) — per-species crop classes
       2. AAFC (Canada 2024) — per-species crop classes
-      3. MapBiomas (Brazil 2023) — per-species crop classes
-      4. EUCROPMAP (EU 2022) — per-species crop classes
-      5. WorldCereal (global 2021) — 3 specific cereals
-      6. Dynamic World (global, 90-day mode) — generic categories
-      7. WorldCover (global 2021) — final fallback
+      3. MapBiomas Brazil (2023) — per-species crop classes
+      4. MapBiomas regional (Bolivia / Ecuador / Peru / Chaco / Pampa /
+         Amazon RAISG) — same legend as Brazil, covers all of South America
+      5. EUCROPMAP (EU 2022) — per-species crop classes
+      6. WorldCereal (global 2021) — 3 specific cereals
+      7. Dynamic World (global, 90-day mode) — generic categories
+      8. WorldCover (global 2021) — final fallback
 
     Also returns the raw class code + source key so downstream consumers
     (e.g. the crop-aware cause inference) can look up the specific crop
@@ -1709,6 +1847,19 @@ def _resolve_landcover(sampled: dict) -> dict:
             'code': int(v),
             'year': MAPBIOMAS_BR_LATEST_YEAR,
         }
+    # Regional MapBiomas — Bolivia/Ecuador/Peru/Chaco/Pampa/Amazon, in the
+    # priority order defined by MAPBIOMAS_REGIONAL_SOURCES. All share the
+    # Brazil legend, so MAPBIOMAS_LABELS resolves the code uniformly.
+    for src in MAPBIOMAS_REGIONAL_SOURCES:
+        v = sampled.get(src['source_key'])
+        if v and int(v) in MAPBIOMAS_LABELS:
+            return {
+                'label': MAPBIOMAS_LABELS[int(v)],
+                'source': src['name'],
+                'source_key': src['source_key'],
+                'code': int(v),
+                'year': src['latest_year'],
+            }
     v = sampled.get('eucropmap')
     if v and int(v) in EUCROPMAP_LABELS:
         return {
@@ -1818,7 +1969,9 @@ def _classify_crop(
         profile = CDL_CROP_PROFILES.get(int(code))
     elif src == 'aafc':
         profile = AAFC_CROP_PROFILES.get(int(code))
-    elif src == 'mapbiomas':
+    elif src == 'mapbiomas' or (src and src.startswith('mb_')):
+        # Regional MapBiomas collections (mb_bolivia, mb_peru, mb_chaco etc.)
+        # all share the Brazil legend → same crop-profile table.
         profile = MAPBIOMAS_CROP_PROFILES.get(int(code))
     elif src == 'eucropmap':
         profile = EUCROPMAP_CROP_PROFILES.get(int(code))

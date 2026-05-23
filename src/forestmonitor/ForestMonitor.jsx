@@ -906,23 +906,30 @@ function MethodologyModal({ onClose }) {
               <a href="https://brasil.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">MapBiomas Brasil</a>
             </dd>
 
-            <dt>MapBiomas regional collections (Bolivia, Ecuador, Peru, Chaco, Pampa, Amazon)</dt>
+            <dt>MapBiomas regional collections (eleven, all verified in EE)</dt>
             <dd>
-              Six additional 30 m annual MapBiomas products that extend coverage across South America beyond Brazil:
-              MapBiomas <strong>Bolivia V1</strong> (1985–2024), <strong>Ecuador V1</strong> (1985–2024),
-              <strong>Peru</strong> Collection 3 (1985–2023), <strong>Chaco</strong> Collection 5 (Argentina /
-              Paraguay / Bolivia, 1985–~2020), <strong>Pampa</strong> Collection 4 (Argentina / Uruguay, 1985–2023),
-              and the pan-Amazonia <strong>RAISG</strong> Collection 3 (1985–~2020, covering Brazil, Bolivia, Peru,
-              Ecuador, Colombia, Venezuela, Guyana, Suriname, French Guiana). All share the MapBiomas legend — the
-              same per-species classes (Pasture, Soybean, Sugar Cane, Coffee, Citrus, Cotton, Rice, etc.) work
-              uniformly across all six. Priority: country-specific collections win over multi-country biome
-              collections; biome collections win over pan-Amazon.{' '}
-              <a href="https://amazonia.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Amazonia</a>{' · '}
-              <a href="https://chaco.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Chaco</a>{' · '}
-              <a href="https://pampa.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Pampa</a>{' · '}
-              <a href="https://bolivia.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Bolivia</a>{' · '}
-              <a href="https://peru.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Peru</a>{' · '}
-              <a href="https://ecuador.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">Ecuador</a>
+              Eleven additional 30 m annual MapBiomas products that extend the per-species crop legend across
+              South America + Indonesia. Each asset path was directly verified via{' '}
+              <code>earthengine asset info</code>:
+              <ul>
+                <li><strong>Bolivia V1</strong> (1985–2024)</li>
+                <li><strong>Ecuador V1</strong> (1985–2024)</li>
+                <li><strong>Peru</strong> Collection 3 (1985–2023)</li>
+                <li><strong>Colombia</strong> Collection 2 (1985–2023)</li>
+                <li><strong>Indonesia</strong> Collection 2 (2000–2022)</li>
+                <li><strong>Argentina</strong> Collection 1 (1998–2022)</li>
+                <li><strong>Paraguay</strong> Collection 1 (1985–2022)</li>
+                <li><strong>Venezuela</strong> Collection 1 (1985–2022)</li>
+                <li><strong>Chaco</strong> Collection 5 (Argentina / Paraguay / Bolivia biome, 1985–2020)</li>
+                <li><strong>Pampa</strong> Collection 4 (Argentina / Uruguay biome, 1985–2023)</li>
+                <li><strong>Amazon RAISG</strong> Collection 5 (pan-Amazonia, 1985–2022)</li>
+              </ul>
+              All share the MapBiomas legend — the same per-species classes (Pasture, Soybean, Sugar Cane, Coffee,
+              Citrus, Cotton, Rice, etc.) work uniformly across all eleven. Priority: country-specific collections
+              win over multi-country biome collections; biome collections win over pan-Amazonia. The Google EE
+              Data Catalog page only documents three (Brazil V1, Bolivia V1, Ecuador V1) — the rest are public
+              MapBiomas-published assets accessible by full path but not curated in the catalog.{' '}
+              <a href="https://mapbiomas.org/en" target="_blank" rel="noopener noreferrer">mapbiomas.org</a>
             </dd>
 
             <dt>EUCROPMAP (JRC, EU)</dt>
@@ -1058,7 +1065,7 @@ function MethodologyModal({ onClose }) {
             <li><strong>Named-fire context is currently US-only.</strong> MTBS and NIFC cover the United States; international clicks won't get the fire-name treatment yet. A global option (JRC GlobFire v2) was attempted but its EE asset has known geometry-index issues that prevent reliable spatial filtering. Tracked as follow-up work; alternatives include ESA Fire_cci, EFFIS (Europe), or FIRMS hot-spot clustering.</li>
             <li><strong>dNBR can be missing.</strong> If Sentinel-2 imagery in the pre- or post-window is too cloudy (or too sparse, especially in winter at high latitudes), the dNBR sample comes back null and the heuristic falls back on other signals.</li>
             <li><strong>Patch shape uses raster-derived polygons.</strong> Every polygon edge is on the 30 m pixel grid, so we can't directly measure "straightness" of perimeter the way you'd want for a vector field boundary. The shape hint relies on compactness and aspect ratio, which still discriminate blocky vs irregular reliably for patches above ~10 acres.</li>
-            <li><strong>Crop specificity varies by region.</strong> Per-species crop classes are available from national/regional maps where they exist: CDL (US 2024), AAFC ACI (Canada 2024), MapBiomas (Brazil 2023 + Bolivia / Ecuador / Peru / Chaco / Pampa / Amazon collections covering all of South America), EUCROPMAP (EU + UK 2022). ESA WorldCereal adds maize, winter cereals, and spring cereals globally. Outside those, the popup falls back to Dynamic World's generic categories (Crops, Trees, etc.) and finally to WorldCover 2021. Major gaps that we'd love to fill: Australia (CLUM is not in EE), China (recent crop maps published as research datasets), India (ICRISAT data not in EE), Russia, Sub-Saharan Africa beyond cereal crops, Southeast Asia outside the cereal belt. Documented as follow-up work.</li>
+            <li><strong>Crop specificity varies by region.</strong> Per-species crop classes are available from national/regional maps where they exist: CDL (US 2024), AAFC ACI (Canada 2024), MapBiomas (Brazil C9 2023 + 10 other regional collections covering Bolivia, Ecuador, Peru, Colombia, Argentina, Paraguay, Venezuela, Indonesia, plus the Chaco / Pampa / pan-Amazonia biomes), EUCROPMAP (EU + UK 2022). ESA WorldCereal adds maize, winter cereals, and spring cereals globally. Outside those, the popup falls back to Dynamic World's generic categories (Crops, Trees, etc.) and finally to WorldCover 2021. Major gaps remaining: Australia (CLUM is not in EE), China (recent crop maps published only as research datasets), India (ICRISAT/MARS data not in EE), Russia, Sub-Saharan Africa beyond cereal crops, Mexico, most of mainland Southeast Asia outside the cereal belt. All would require custom EE ingestion. Tracked as follow-up work.</li>
             <li><strong>Orchards and tree crops classify as Cropland, not Forest.</strong> Cherries, almonds, apples, citrus groves are tree-covered but managed agriculture. CDL's specific orchard codes (66–77, plus most 200-series) are mapped to Cropland in our filter — so a "Forest" filter won't show them.</li>
             <li><strong>MODIS burned area is 500 m.</strong> Much coarser than 30 m OPERA. A pixel-perfect OPERA click can fall just outside the MODIS-detected burn boundary even when fire clearly drove the disturbance. FIRMS active fires (375 m–1 km) help, but a strong fire signal sometimes only shows up in dNBR.</li>
             <li><strong>"Nearest place" in remote forest can be misleading.</strong> Mapbox returns the closest containing or nearest settlement — sometimes 50+ km away in the Amazon or Congo. We always include the larger admin region as a more honest anchor.</li>

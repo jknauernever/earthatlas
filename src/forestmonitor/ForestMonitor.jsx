@@ -884,23 +884,52 @@ function MethodologyModal({ onClose }) {
 
             <dt>USDA Cropland Data Layer (CDL)</dt>
             <dd>
-              30 m, annual, US only · USDA NASS, latest year used: 2024 · Used for both popup labels (specific crop species)
-              and as the highest-priority tier in the land-use filter classifier.{' '}
+              30 m, annual, US only · USDA NASS, latest year used: 2024 · ~80 per-species crop classes plus
+              forest / grassland / built. Highest-priority tier in the popup labels and the land-use filter.{' '}
               <a href="https://nassgeodata.gmu.edu/CropScape/" target="_blank" rel="noopener noreferrer">CropScape</a>{' · '}
               <a href="https://developers.google.com/earth-engine/datasets/catalog/USDA_NASS_CDL" target="_blank" rel="noopener noreferrer">EE catalog</a>
+            </dd>
+
+            <dt>AAFC Annual Crop Inventory (Canada)</dt>
+            <dd>
+              30 m, annual, Canada only · Agriculture and Agri-Food Canada, latest year used: 2024 ·
+              Per-species crop classes (wheat, canola, soybeans, corn, barley, etc.) with the same structure
+              as CDL — used as the highest-priority tier for Canadian clicks.{' '}
+              <a href="https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9" target="_blank" rel="noopener noreferrer">AAFC data</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/AAFC_ACI" target="_blank" rel="noopener noreferrer">EE catalog</a>
             </dd>
 
             <dt>MapBiomas Brazil — Collection 9</dt>
             <dd>
               30 m, annual, Brazil · Latest year: 2023. Detailed national LULC including pasture, soybean, sugarcane, mining ·
-              Used for popup labels and as the second tier in the land-use filter classifier.{' '}
+              Used for popup labels and as a tier in the land-use filter classifier.{' '}
               <a href="https://brasil.mapbiomas.org/en/" target="_blank" rel="noopener noreferrer">MapBiomas</a>
+            </dd>
+
+            <dt>EUCROPMAP (JRC, EU)</dt>
+            <dd>
+              10 m, EU + UK, 2018 and 2022 (we use 2022) · European Commission Joint Research Centre.
+              18 specific crop classes: common wheat, durum wheat, barley, rye, oats, maize, rice, triticale,
+              potatoes, sugar beet, sunflower, rapeseed, soya, dry pulses, fodder, plus woodland and grassland fallbacks.{' '}
+              <a href="https://data.jrc.ec.europa.eu/dataset/15f86c84-eb6e-4914-9e84-eaeb5d0fdc3c" target="_blank" rel="noopener noreferrer">JRC catalog</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/JRC_D5_EUCROPMAP_V1" target="_blank" rel="noopener noreferrer">EE catalog</a>
+            </dd>
+
+            <dt>ESA WorldCereal v1 (global cereals)</dt>
+            <dd>
+              10 m, global, 2021 · European Space Agency. Binary per-crop masks for three specific products —
+              maize, winter cereals, spring cereals — covering 106 agro-ecological zones globally. Slotted between
+              the national crop maps and Dynamic World so cereal pixels worldwide get a species label even when
+              no national source covers the region.{' '}
+              <a href="https://esa-worldcereal.org/" target="_blank" rel="noopener noreferrer">esa-worldcereal.org</a>{' · '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCereal_2021_MODELS_v100" target="_blank" rel="noopener noreferrer">EE catalog</a>
             </dd>
 
             <dt>Google Dynamic World V1</dt>
             <dd>
               10 m, near-real-time, global · Per-Sentinel-2-scene classifications. We sample the mode label over the most recent 90 days ·
-              Used for popup labels and as the third tier in the filter classifier (the global near-real-time backstop).{' '}
+              Generic categories (Crops, Trees, Grass, Built, Water, etc.) — used as the global near-real-time
+              backstop when none of the per-species maps cover the click.{' '}
               <a href="https://dynamicworld.app/" target="_blank" rel="noopener noreferrer">Dynamic World</a>{' · '}
               <a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1" target="_blank" rel="noopener noreferrer">EE catalog</a>
             </dd>
@@ -908,7 +937,7 @@ function MethodologyModal({ onClose }) {
             <dt>ESA WorldCover 2021 (v200)</dt>
             <dd>
               10 m, single 2021 snapshot, global · Bottom-tier fallback for both popup labels and the land-use filter classifier —
-              used wherever CDL, MapBiomas, and Dynamic World all have no data.{' '}
+              used wherever the higher-priority maps all have no data (e.g. far-northern tundra, deep ocean clips).{' '}
               <a href="https://esa-worldcover.org/" target="_blank" rel="noopener noreferrer">esa-worldcover.org</a>
             </dd>
 
@@ -1010,7 +1039,7 @@ function MethodologyModal({ onClose }) {
             <li><strong>Named-fire context is currently US-only.</strong> MTBS and NIFC cover the United States; international clicks won't get the fire-name treatment yet. A global option (JRC GlobFire v2) was attempted but its EE asset has known geometry-index issues that prevent reliable spatial filtering. Tracked as follow-up work; alternatives include ESA Fire_cci, EFFIS (Europe), or FIRMS hot-spot clustering.</li>
             <li><strong>dNBR can be missing.</strong> If Sentinel-2 imagery in the pre- or post-window is too cloudy (or too sparse, especially in winter at high latitudes), the dNBR sample comes back null and the heuristic falls back on other signals.</li>
             <li><strong>Patch shape uses raster-derived polygons.</strong> Every polygon edge is on the 30 m pixel grid, so we can't directly measure "straightness" of perimeter the way you'd want for a vector field boundary. The shape hint relies on compactness and aspect ratio, which still discriminate blocky vs irregular reliably for patches above ~10 acres.</li>
-            <li><strong>Filter accuracy varies by region.</strong> The tiered classifier is most precise where CDL (US, 2024) or MapBiomas (Brazil, 2023) cover the click point. Elsewhere it falls back to Dynamic World (mode of recent ~90 days, global) and finally to WorldCover (2021). Deep-international clicks may misclassify land that was converted from forest after 2021 if Dynamic World hasn't caught up either.</li>
+            <li><strong>Crop specificity varies by region.</strong> Per-species crop classes are available from national/regional maps where they exist: CDL (US 2024), AAFC ACI (Canada 2024), MapBiomas (Brazil 2023), EUCROPMAP (EU + UK 2022). ESA WorldCereal adds maize, winter cereals, and spring cereals globally. Outside those, the popup falls back to Dynamic World's generic categories (Crops, Trees, etc.) and finally to WorldCover 2021. Areas without national crop maps don't get per-species labels — but the cause inference still works using land-cover categories.</li>
             <li><strong>Orchards and tree crops classify as Cropland, not Forest.</strong> Cherries, almonds, apples, citrus groves are tree-covered but managed agriculture. CDL's specific orchard codes (66–77, plus most 200-series) are mapped to Cropland in our filter — so a "Forest" filter won't show them.</li>
             <li><strong>MODIS burned area is 500 m.</strong> Much coarser than 30 m OPERA. A pixel-perfect OPERA click can fall just outside the MODIS-detected burn boundary even when fire clearly drove the disturbance. FIRMS active fires (375 m–1 km) help, but a strong fire signal sometimes only shows up in dNBR.</li>
             <li><strong>"Nearest place" in remote forest can be misleading.</strong> Mapbox returns the closest containing or nearest settlement — sometimes 50+ km away in the Amazon or Congo. We always include the larger admin region as a more honest anchor.</li>

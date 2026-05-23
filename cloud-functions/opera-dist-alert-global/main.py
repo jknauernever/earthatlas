@@ -278,6 +278,113 @@ MAPBIOMAS_CROP_PROFILES = {
     62: {'profile': 'burn_prone',     'harvest_months': (11, 3),  'burn_practice': 'occasional'},  # Cotton
 }
 
+# ─── AAFC Canada crop profiles ─────────────────────────────────────────────
+# Northern-hemisphere windows (Canada is firmly NH). Sources: AAFC crop
+# calendars, Statistics Canada Field Crops Survey.
+AAFC_CROP_PROFILES = {
+    # Multicut perennial forages
+    122: {'profile': 'multicut',       'harvest_months': (6, 10), 'burn_practice': 'rare'},        # Pasture and Forages
+    141: {'profile': 'multicut',       'harvest_months': (8, 10), 'burn_practice': 'occasional'}, # Switchgrass
+    198: {'profile': 'multicut',       'harvest_months': (5, 10), 'burn_practice': 'rare'},        # Vetch (forage)
+    # Cereals (annual harvest)
+    132: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Cereals (generic)
+    133: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Barley
+    134: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Other Grains
+    135: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Millet
+    136: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Oats
+    137: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Rye
+    138: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Spelt
+    139: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Triticale
+    140: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'occasional'}, # Wheat (generic)
+    142: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Sorghum
+    143: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Quinoa
+    145: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Winter Wheat
+    146: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'occasional'}, # Spring Wheat
+    147: {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Corn for Grain
+    195: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Buckwheat
+    196: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Canaryseed
+    197: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Hemp
+    # Oilseeds (mostly annual)
+    150: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Oilseeds (generic)
+    151: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'rare'},        # Borage
+    152: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'rare'},        # Camelina
+    153: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Canola and Rapeseed
+    154: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Flaxseed
+    155: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Mustard
+    156: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Safflower
+    157: {'profile': 'annual_harvest', 'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Sunflower
+    158: {'profile': 'annual_harvest', 'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Soybeans
+    159: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Other Oilseeds
+    # Pulses
+    160: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Pulses (generic)
+    161: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Other Pulses
+    162: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'rare'},        # Peas
+    163: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Chickpeas
+    167: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Beans
+    168: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Fababeans
+    174: {'profile': 'annual_harvest', 'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Lentils
+    # Vegetables
+    175: {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Vegetables
+    176: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Tomatoes
+    177: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Potatoes
+    178: {'profile': 'annual_harvest', 'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Sugarbeets
+    179: {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Other Vegetables
+    # Orchards / perennial fruits
+    180: {'profile': 'orchard',        'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Fruits
+    181: {'profile': 'orchard',        'harvest_months': (6, 9),  'burn_practice': 'rare'},        # Berries
+    182: {'profile': 'orchard',        'harvest_months': (7, 8),  'burn_practice': 'rare'},        # Blueberry
+    183: {'profile': 'orchard',        'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Cranberry
+    185: {'profile': 'orchard',        'harvest_months': (6, 9),  'burn_practice': 'rare'},        # Other Berries
+    188: {'profile': 'orchard',        'harvest_months': (8, 11), 'burn_practice': 'rare'},        # Orchards
+    189: {'profile': 'orchard',        'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Other Fruits
+    190: {'profile': 'orchard',        'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Vineyards
+    191: {'profile': 'orchard',        'harvest_months': (8, 9),  'burn_practice': 'rare'},        # Hops
+    192: {'profile': 'multicut',       'harvest_months': (5, 10), 'burn_practice': 'rare'},        # Sod
+    193: {'profile': 'annual_harvest', 'harvest_months': (6, 9),  'burn_practice': 'rare'},        # Herbs
+    194: {'profile': 'orchard',        'harvest_months': (5, 10), 'burn_practice': 'rare'},        # Nursery
+    148: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'occasional'}, # Tobacco
+    149: {'profile': 'orchard',        'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Ginseng (perennial root)
+    199: {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Other Crops
+    # Fallow
+    131: {'profile': 'fallow',         'harvest_months': None,    'burn_practice': 'rare'},        # Fallow
+}
+
+# ─── EUCROPMAP profiles ────────────────────────────────────────────────────
+# Northern-hemisphere windows for the EU. Sources: USDA FAS commodity
+# calendars, Eurostat agricultural calendars.
+EUCROPMAP_CROP_PROFILES = {
+    211: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Common wheat
+    212: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Durum wheat
+    213: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'occasional'}, # Barley
+    214: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Rye
+    215: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Oats
+    216: {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Maize
+    217: {'profile': 'burn_prone',     'harvest_months': (9, 10), 'burn_practice': 'common'},      # Rice (Spain/Italy)
+    218: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'occasional'}, # Triticale
+    219: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'occasional'}, # Other cereals
+    221: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Potatoes
+    222: {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Sugar beet
+    223: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Other root crops
+    230: {'profile': 'annual_harvest', 'harvest_months': (7, 10), 'burn_practice': 'rare'},        # Other non-permanent industrial crops
+    231: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'rare'},        # Sunflower
+    232: {'profile': 'annual_harvest', 'harvest_months': (7, 8),  'burn_practice': 'rare'},        # Rapeseed
+    233: {'profile': 'annual_harvest', 'harvest_months': (9, 10), 'burn_practice': 'rare'},        # Soya
+    240: {'profile': 'annual_harvest', 'harvest_months': (7, 9),  'burn_practice': 'rare'},        # Dry pulses
+    250: {'profile': 'multicut',       'harvest_months': (5, 10), 'burn_practice': 'rare'},        # Fodder crops
+    290: {'profile': 'fallow',         'harvest_months': None,    'burn_practice': 'rare'},        # Bare arable land
+}
+
+# ─── WorldCereal profiles (global, 3 cereals only) ─────────────────────────
+# All annual_harvest. Harvest windows use NH defaults; _classify_crop's
+# hemisphere flip handles SH crops correctly. Burn practice rare for maize
+# (modern global practice), occasional for cereals where stubble burning
+# still happens (e.g. parts of South Asia).
+WORLDCEREAL_CROP_PROFILES = {
+    1: {'profile': 'annual_harvest', 'harvest_months': (9, 11), 'burn_practice': 'rare'},        # Maize
+    2: {'profile': 'annual_harvest', 'harvest_months': (6, 8),  'burn_practice': 'occasional'}, # Winter cereals
+    3: {'profile': 'annual_harvest', 'harvest_months': (8, 10), 'burn_practice': 'occasional'}, # Spring cereals
+}
+
 # MapBiomas Brazil — Collection 9, annual to 2023. Detailed national LULC.
 MAPBIOMAS_BR_ASSET = (
     'projects/mapbiomas-public/assets/brazil/lulc/collection9/'
@@ -316,6 +423,69 @@ WORLDCOVER_LABELS = {
     50:  'Built-up', 60:  'Bare / sparse vegetation', 70:  'Snow and ice',
     80:  'Permanent water', 90:  'Herbaceous wetland', 95:  'Mangroves',
     100: 'Moss and lichen',
+}
+
+# AAFC ACI (Annual Crop Inventory) — Canada-wide, 30 m, annual since 2009.
+# Same general shape as CDL — per-species crop classes plus forest/grass/built.
+AAFC_LATEST_YEAR = 2024
+AAFC_LABELS = {
+    10: 'Cloud', 20: 'Water', 30: 'Exposed Land and Barren',
+    34: 'Urban and Developed', 35: 'Greenhouses', 50: 'Shrubland',
+    60: 'Forest Fire and Burnt Area', 80: 'Wetland', 85: 'Peatland',
+    110: 'Grassland', 120: 'Agriculture (undifferentiated)',
+    121: 'Cropland', 122: 'Pasture and Forages',
+    130: 'Too Wet to be Seeded', 131: 'Fallow', 132: 'Cereals',
+    133: 'Barley', 134: 'Other Grains', 135: 'Millet', 136: 'Oats',
+    137: 'Rye', 138: 'Spelt', 139: 'Triticale', 140: 'Wheat',
+    141: 'Switchgrass', 142: 'Sorghum', 143: 'Quinoa',
+    145: 'Winter Wheat', 146: 'Spring Wheat', 147: 'Corn for Grain',
+    148: 'Tobacco', 149: 'Ginseng', 150: 'Oilseeds', 151: 'Borage',
+    152: 'Camelina', 153: 'Canola and Rapeseed', 154: 'Flaxseed',
+    155: 'Mustard', 156: 'Safflower', 157: 'Sunflower', 158: 'Soybeans',
+    159: 'Other Oilseeds', 160: 'Pulses', 161: 'Other Pulses',
+    162: 'Peas', 163: 'Chickpeas', 167: 'Beans', 168: 'Fababeans',
+    174: 'Lentils', 175: 'Vegetables', 176: 'Tomatoes', 177: 'Potatoes',
+    178: 'Sugarbeets', 179: 'Other Vegetables', 180: 'Fruits',
+    181: 'Berries', 182: 'Blueberry', 183: 'Cranberry',
+    185: 'Other Berries', 188: 'Orchards', 189: 'Other Fruits',
+    190: 'Vineyards', 191: 'Hops', 192: 'Sod', 193: 'Herbs',
+    194: 'Nursery', 195: 'Buckwheat', 196: 'Canaryseed', 197: 'Hemp',
+    198: 'Vetch', 199: 'Other Crops', 200: 'Forest (undifferentiated)',
+    210: 'Coniferous', 220: 'Broadleaf', 230: 'Mixedwood',
+}
+
+# EUCROPMAP (JRC) — EU + UK, 10 m, 2018 + 2022. Per-crop labels for the major
+# European crops, with generic woodland / grassland / artificial fallbacks.
+EUCROPMAP_ASSET = 'JRC/D5/EUCROPMAP/V1'
+EUCROPMAP_LATEST_YEAR = 2022
+EUCROPMAP_LABELS = {
+    100: 'Artificial', 211: 'Common wheat', 212: 'Durum wheat',
+    213: 'Barley', 214: 'Rye', 215: 'Oats', 216: 'Maize',
+    217: 'Rice', 218: 'Triticale', 219: 'Other cereals',
+    221: 'Potatoes', 222: 'Sugar beet', 223: 'Other root crops',
+    230: 'Other non-permanent industrial crops', 231: 'Sunflower',
+    232: 'Rapeseed and turnip rapeseed', 233: 'Soya',
+    240: 'Dry pulses',
+    250: 'Fodder crops (cereals and leguminous)',
+    290: 'Bare arable land',
+    300: 'Woodland and Shrubland (incl. permanent crops)',
+    500: 'Grasslands', 600: 'Bare land/lichens moss',
+    700: 'Water', 800: 'Wetlands',
+}
+
+# ESA WorldCereal — global 10 m, 2021. Binary per-crop masks, organized as an
+# ImageCollection of AEZ × product × season tiles. We extract only the three
+# specific-crop products (maize / wintercereals / springcereals) — the
+# "temporarycrops" product is redundant with WorldCover Cropland for our
+# purposes, and "irrigation" is a management attribute, not a crop type.
+WORLDCEREAL_ASSET = 'ESA/WorldCereal/2021/MODELS/v100'
+WORLDCEREAL_PRODUCTS = ('maize', 'wintercereals', 'springcereals')
+WORLDCEREAL_LABELS = {
+    1: 'Maize', 2: 'Winter cereals', 3: 'Spring cereals',
+}
+# Maps the product string → numeric code used in the popup data flow.
+WORLDCEREAL_PRODUCT_CODES = {
+    'maize': 1, 'wintercereals': 2, 'springcereals': 3,
 }
 
 # ─── Universal land-use categories ──────────────────────────────────────────
@@ -418,12 +588,71 @@ WORLDCOVER_CATEGORY_MAP = {
     # OTHER: 70 (Snow), 80 (Water), 90 (Wetland), 100 (Moss/lichen)
 }
 
+AAFC_CATEGORY_MAP = {
+    # FOREST (natural)
+    200: CATEGORY_FOREST, 210: CATEGORY_FOREST, 220: CATEGORY_FOREST, 230: CATEGORY_FOREST,
+    # CROPLAND — everything in 120-199 that's farmland (including orchards
+    # and vineyards, which are managed agriculture even when tree-covered)
+    120: CATEGORY_CROPLAND, 121: CATEGORY_CROPLAND, 122: CATEGORY_CROPLAND,
+    130: CATEGORY_CROPLAND, 131: CATEGORY_CROPLAND, 132: CATEGORY_CROPLAND,
+    133: CATEGORY_CROPLAND, 134: CATEGORY_CROPLAND, 135: CATEGORY_CROPLAND,
+    136: CATEGORY_CROPLAND, 137: CATEGORY_CROPLAND, 138: CATEGORY_CROPLAND,
+    139: CATEGORY_CROPLAND, 140: CATEGORY_CROPLAND, 142: CATEGORY_CROPLAND,
+    143: CATEGORY_CROPLAND, 145: CATEGORY_CROPLAND, 146: CATEGORY_CROPLAND,
+    147: CATEGORY_CROPLAND, 148: CATEGORY_CROPLAND, 149: CATEGORY_CROPLAND,
+    150: CATEGORY_CROPLAND, 151: CATEGORY_CROPLAND, 152: CATEGORY_CROPLAND,
+    153: CATEGORY_CROPLAND, 154: CATEGORY_CROPLAND, 155: CATEGORY_CROPLAND,
+    156: CATEGORY_CROPLAND, 157: CATEGORY_CROPLAND, 158: CATEGORY_CROPLAND,
+    159: CATEGORY_CROPLAND, 160: CATEGORY_CROPLAND, 161: CATEGORY_CROPLAND,
+    162: CATEGORY_CROPLAND, 163: CATEGORY_CROPLAND, 167: CATEGORY_CROPLAND,
+    168: CATEGORY_CROPLAND, 174: CATEGORY_CROPLAND, 175: CATEGORY_CROPLAND,
+    176: CATEGORY_CROPLAND, 177: CATEGORY_CROPLAND, 178: CATEGORY_CROPLAND,
+    179: CATEGORY_CROPLAND, 180: CATEGORY_CROPLAND, 181: CATEGORY_CROPLAND,
+    182: CATEGORY_CROPLAND, 183: CATEGORY_CROPLAND, 185: CATEGORY_CROPLAND,
+    188: CATEGORY_CROPLAND, 189: CATEGORY_CROPLAND, 190: CATEGORY_CROPLAND,
+    191: CATEGORY_CROPLAND, 193: CATEGORY_CROPLAND, 194: CATEGORY_CROPLAND,
+    195: CATEGORY_CROPLAND, 196: CATEGORY_CROPLAND, 197: CATEGORY_CROPLAND,
+    198: CATEGORY_CROPLAND, 199: CATEGORY_CROPLAND,
+    # GRASSLAND — pasture, shrubland, sod, switchgrass
+    50: CATEGORY_GRASSLAND, 110: CATEGORY_GRASSLAND,
+    141: CATEGORY_GRASSLAND, 192: CATEGORY_GRASSLAND,
+    # BUILT — developed + barren + greenhouses
+    30: CATEGORY_BUILT, 34: CATEGORY_BUILT, 35: CATEGORY_BUILT,
+    # OTHER (no category): 10 (Cloud), 20 (Water), 60 (Burnt — historical),
+    # 80 (Wetland), 85 (Peatland)
+}
+
+EUCROPMAP_CATEGORY_MAP = {
+    # FOREST (woodland & shrubland incl. permanent crops)
+    300: CATEGORY_FOREST,
+    # CROPLAND — every per-crop class + bare arable land (rotation fallow)
+    211: CATEGORY_CROPLAND, 212: CATEGORY_CROPLAND, 213: CATEGORY_CROPLAND,
+    214: CATEGORY_CROPLAND, 215: CATEGORY_CROPLAND, 216: CATEGORY_CROPLAND,
+    217: CATEGORY_CROPLAND, 218: CATEGORY_CROPLAND, 219: CATEGORY_CROPLAND,
+    221: CATEGORY_CROPLAND, 222: CATEGORY_CROPLAND, 223: CATEGORY_CROPLAND,
+    230: CATEGORY_CROPLAND, 231: CATEGORY_CROPLAND, 232: CATEGORY_CROPLAND,
+    233: CATEGORY_CROPLAND, 240: CATEGORY_CROPLAND, 250: CATEGORY_CROPLAND,
+    290: CATEGORY_CROPLAND,
+    # GRASSLAND
+    500: CATEGORY_GRASSLAND,
+    # BUILT
+    100: CATEGORY_BUILT, 600: CATEGORY_BUILT,
+    # OTHER: 700 (Water), 800 (Wetlands)
+}
+
+# WorldCereal is per-product binary masks; everything that flags positive
+# IS cropland by definition. We handle the categorization inline rather
+# than as a per-code dict.
+
 
 def _build_unified_classifier() -> ee.Image:
     """Single global classification image. Each pixel = universal category code
     (1=forest, 2=cropland, 3=grassland, 4=built); masked elsewhere. Uses
-    newest-data-wins priority: CDL (US 2024) > MapBiomas Brazil (2023) >
-    Dynamic World (90-day mode) > WorldCover (2021)."""
+    newest-data-wins priority:
+        CDL (US 2024) > AAFC (Canada 2024) > MapBiomas Brazil (2023) >
+        EUCROPMAP (EU 2022) > WorldCereal (global 2021, cropland-only) >
+        Dynamic World (90-day mode) > WorldCover (2021).
+    """
 
     def categorize(img, mapping):
         # ee.Image.remap converts class codes to category codes. Unmapped
@@ -443,9 +672,31 @@ def _build_unified_classifier() -> ee.Image:
           .mode())
     dw_cat = categorize(dw, DYNAMIC_WORLD_CATEGORY_MAP)
 
+    # WorldCereal — flag any of the 3 specific crop products as CROPLAND.
+    # Mosaic each product across AEZs, then OR them together.
+    wco_coll = ee.ImageCollection(WORLDCEREAL_ASSET)
+    wco_any = ee.Image(0)
+    for product in WORLDCEREAL_PRODUCTS:
+        prod_img = (wco_coll.filter(ee.Filter.eq('product', product))
+                            .select('classification').mosaic())
+        wco_any = wco_any.max(prod_img.gte(100).unmask(0))
+    wco_cat = wco_any.gt(0).selfMask().multiply(CATEGORY_CROPLAND).toInt()
+
+    eu = (ee.ImageCollection(EUCROPMAP_ASSET)
+          .filter(ee.Filter.calendarRange(EUCROPMAP_LATEST_YEAR, EUCROPMAP_LATEST_YEAR, 'year'))
+          .select('classification')
+          .mosaic())
+    eu_cat = categorize(eu, EUCROPMAP_CATEGORY_MAP)
+
     mb = (ee.Image(MAPBIOMAS_BR_ASSET)
           .select(f'classification_{MAPBIOMAS_BR_LATEST_YEAR}'))
     mb_cat = categorize(mb, MAPBIOMAS_CATEGORY_MAP)
+
+    aafc = (ee.ImageCollection('AAFC/ACI')
+            .filter(ee.Filter.calendarRange(AAFC_LATEST_YEAR, AAFC_LATEST_YEAR, 'year'))
+            .select('landcover')
+            .mosaic())
+    aafc_cat = categorize(aafc, AAFC_CATEGORY_MAP)
 
     cdl = ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}').select('cropland')
     cdl_cat = categorize(cdl, CDL_CATEGORY_MAP)
@@ -454,7 +705,10 @@ def _build_unified_classifier() -> ee.Image:
     # priority dataset is unmasked (i.e. has a value).
     unified = wc_cat
     unified = unified.where(dw_cat.mask(), dw_cat)
+    unified = unified.where(wco_cat.mask(), wco_cat)
+    unified = unified.where(eu_cat.mask(), eu_cat)
     unified = unified.where(mb_cat.mask(), mb_cat)
+    unified = unified.where(aafc_cat.mask(), aafc_cat)
     unified = unified.where(cdl_cat.mask(), cdl_cat)
     return unified.rename('landuse_category')
 
@@ -471,12 +725,26 @@ def _landuse_mask(filter_id):
 
 
 def _add_landcover_bands(stack: ee.Image, point: ee.Geometry) -> ee.Image:
-    """Add CDL, MapBiomas, Dynamic World, and WorldCover bands to a stack."""
+    """Add CDL, AAFC, MapBiomas, EUCROPMAP, WorldCereal (per-product),
+    Dynamic World, and WorldCover bands to a stack. Each band uses the
+    source's class codes; resolution is whatever the source provides."""
     cdl = (ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}')
            .select('cropland').rename('cdl'))
+    aafc = (ee.ImageCollection('AAFC/ACI')
+            .filter(ee.Filter.calendarRange(AAFC_LATEST_YEAR, AAFC_LATEST_YEAR, 'year'))
+            .filterBounds(point)
+            .select('landcover')
+            .mosaic()
+            .rename('aafc'))
     mb = (ee.Image(MAPBIOMAS_BR_ASSET)
           .select(f'classification_{MAPBIOMAS_BR_LATEST_YEAR}')
           .rename('mapbiomas'))
+    eu = (ee.ImageCollection(EUCROPMAP_ASSET)
+          .filter(ee.Filter.calendarRange(EUCROPMAP_LATEST_YEAR, EUCROPMAP_LATEST_YEAR, 'year'))
+          .filterBounds(point)
+          .select('classification')
+          .mosaic()
+          .rename('eucropmap'))
     today = date.today()
     dw_start = (today - timedelta(days=DYNAMIC_WORLD_LOOKBACK_DAYS)).isoformat()
     dw = (ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
@@ -486,7 +754,16 @@ def _add_landcover_bands(stack: ee.Image, point: ee.Geometry) -> ee.Image:
           .mode()
           .rename('dynworld'))
     wc = ee.Image(WORLDCOVER_ASSET).select('Map').rename('worldcover')
-    return stack.addBands(cdl).addBands(mb).addBands(dw).addBands(wc)
+    out = (stack.addBands(cdl).addBands(aafc).addBands(mb).addBands(eu)
+                .addBands(dw).addBands(wc))
+    # WorldCereal per-product binary bands. Each is 0/100 with no-data masked.
+    wco_coll = ee.ImageCollection(WORLDCEREAL_ASSET).filterBounds(point)
+    for product in WORLDCEREAL_PRODUCTS:
+        prod_img = (wco_coll.filter(ee.Filter.eq('product', product))
+                            .select('classification').mosaic()
+                            .rename(f'wc_{product}'))
+        out = out.addBands(prod_img)
+    return out
 
 
 # ─── MODIS Burned Area ──────────────────────────────────────────────────────
@@ -1119,7 +1396,13 @@ def _infer_likely_cause(
     is_linear = hint == 'linear'
     is_irregular = hint == 'irregular'
 
-    # Land-cover context
+    # Land-cover context. If `crop_profile` is set (CDL / AAFC / MapBiomas /
+    # EUCROPMAP / WorldCereal), we KNOW the click is on a crop — the keyword
+    # list below was authored when CDL was the only crop source and doesn't
+    # cover every label from the newer per-region maps (e.g. "Maize",
+    # "Spring Wheat", "Winter cereals"). Treating profile-presence as
+    # definitive ag-evidence fixes that gap without expanding the keyword
+    # list to track every dataset's vocabulary.
     lc_label = ((land_cover or {}).get('label') or '').lower()
     ag_keywords = (
         'crop', 'pasture', 'farming', 'agriculture', 'cotton', 'corn',
@@ -1128,9 +1411,9 @@ def _infer_likely_cause(
         'grapes', 'orchard', 'hay', 'alfalfa',
     )
     forest_keywords = ('tree cover', 'forest', 'mangrove', 'savanna', 'wooded')
-    industrial_keywords = ('built', 'developed', 'urban', 'mining', 'industrial')
+    industrial_keywords = ('built', 'developed', 'urban', 'mining', 'industrial', 'artificial')
     grassland_keywords = ('grass', 'shrub')
-    is_ag = any(k in lc_label for k in ag_keywords)
+    is_ag = bool(crop_profile) or any(k in lc_label for k in ag_keywords)
     is_forest = any(k in lc_label for k in forest_keywords) and not is_ag
     is_industrial = any(k in lc_label for k in industrial_keywords)
     is_grassy = any(k in lc_label for k in grassland_keywords) and not is_ag
@@ -1339,16 +1622,25 @@ def _infer_likely_cause(
 
 
 def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:
-    """Sample the tiered land-cover classifier (CDL > MapBiomas > Dynamic
-    World > WorldCover) at a single point. Returns the same shape as the
-    popup uses. Standalone variant of `_add_landcover_bands` + sampling
-    that doesn't need an OPERA stack to attach to."""
+    """Sample the tiered land-cover classifier at a single point.
+    Priority: CDL (US) > AAFC (Canada) > MapBiomas (Brazil) >
+    EUCROPMAP (EU) > WorldCereal (global, cereals only) > Dynamic World
+    (90-day mode) > WorldCover (2021 global). Standalone variant of
+    `_add_landcover_bands` + sampling that doesn't need an OPERA stack."""
     try:
         cdl = (ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}')
                .select('cropland').rename('cdl'))
+        aafc = (ee.ImageCollection('AAFC/ACI')
+                .filter(ee.Filter.calendarRange(AAFC_LATEST_YEAR, AAFC_LATEST_YEAR, 'year'))
+                .filterBounds(point)
+                .select('landcover').mosaic().rename('aafc'))
         mb = (ee.Image(MAPBIOMAS_BR_ASSET)
               .select(f'classification_{MAPBIOMAS_BR_LATEST_YEAR}')
               .rename('mapbiomas'))
+        eu = (ee.ImageCollection(EUCROPMAP_ASSET)
+              .filter(ee.Filter.calendarRange(EUCROPMAP_LATEST_YEAR, EUCROPMAP_LATEST_YEAR, 'year'))
+              .filterBounds(point)
+              .select('classification').mosaic().rename('eucropmap'))
         today = date.today()
         dw_start = (today - timedelta(days=DYNAMIC_WORLD_LOOKBACK_DAYS)).isoformat()
         dw = (ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
@@ -1356,7 +1648,15 @@ def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:
               .filterDate(dw_start, today.isoformat())
               .select('label').mode().rename('dynworld'))
         wc = ee.Image(WORLDCOVER_ASSET).select('Map').rename('worldcover')
-        stack = cdl.addBands(mb).addBands(dw).addBands(wc)
+        stack = (cdl.addBands(aafc).addBands(mb).addBands(eu)
+                    .addBands(dw).addBands(wc))
+        # WorldCereal per-product binary bands.
+        wco_coll = ee.ImageCollection(WORLDCEREAL_ASSET).filterBounds(point)
+        for product in WORLDCEREAL_PRODUCTS:
+            prod_img = (wco_coll.filter(ee.Filter.eq('product', product))
+                                .select('classification').mosaic()
+                                .rename(f'wc_{product}'))
+            stack = stack.addBands(prod_img)
         sampled = stack.reduceRegion(
             reducer=ee.Reducer.first(), geometry=point, scale=10,
         ).getInfo()
@@ -1368,6 +1668,15 @@ def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:
 
 def _resolve_landcover(sampled: dict) -> dict:
     """Pick the most-specific label available, in priority order.
+
+    Priority chain (most → least specific):
+      1. CDL (US 2024) — per-species crop classes
+      2. AAFC (Canada 2024) — per-species crop classes
+      3. MapBiomas (Brazil 2023) — per-species crop classes
+      4. EUCROPMAP (EU 2022) — per-species crop classes
+      5. WorldCereal (global 2021) — 3 specific cereals
+      6. Dynamic World (global, 90-day mode) — generic categories
+      7. WorldCover (global 2021) — final fallback
 
     Also returns the raw class code + source key so downstream consumers
     (e.g. the crop-aware cause inference) can look up the specific crop
@@ -1382,6 +1691,15 @@ def _resolve_landcover(sampled: dict) -> dict:
             'code': int(v),
             'year': CDL_LATEST_YEAR,
         }
+    v = sampled.get('aafc')
+    if v and int(v) > 0 and AAFC_LABELS.get(int(v)):
+        return {
+            'label': AAFC_LABELS[int(v)],
+            'source': 'AAFC Annual Crop Inventory (Canada)',
+            'source_key': 'aafc',
+            'code': int(v),
+            'year': AAFC_LATEST_YEAR,
+        }
     v = sampled.get('mapbiomas')
     if v and int(v) in MAPBIOMAS_LABELS:
         return {
@@ -1391,6 +1709,29 @@ def _resolve_landcover(sampled: dict) -> dict:
             'code': int(v),
             'year': MAPBIOMAS_BR_LATEST_YEAR,
         }
+    v = sampled.get('eucropmap')
+    if v and int(v) in EUCROPMAP_LABELS:
+        return {
+            'label': EUCROPMAP_LABELS[int(v)],
+            'source': 'EUCROPMAP (JRC, EU)',
+            'source_key': 'eucropmap',
+            'code': int(v),
+            'year': EUCROPMAP_LATEST_YEAR,
+        }
+    # WorldCereal — pick the most-specific product that flagged positive.
+    # Each product's binary mask is 100 if the pixel is in that crop, 0/null
+    # otherwise. Priority order matches WORLDCEREAL_PRODUCTS tuple.
+    for product in WORLDCEREAL_PRODUCTS:
+        v = sampled.get(f'wc_{product}')
+        if v is not None and int(v) >= 100:
+            code = WORLDCEREAL_PRODUCT_CODES[product]
+            return {
+                'label': WORLDCEREAL_LABELS[code],
+                'source': 'ESA WorldCereal (global)',
+                'source_key': 'worldcereal',
+                'code': code,
+                'year': 2021,
+            }
     v = sampled.get('dynworld')
     if v is not None and int(v) in DYNAMIC_WORLD_LABELS:
         return {
@@ -1475,8 +1816,14 @@ def _classify_crop(
         return None
     if src == 'cdl':
         profile = CDL_CROP_PROFILES.get(int(code))
+    elif src == 'aafc':
+        profile = AAFC_CROP_PROFILES.get(int(code))
     elif src == 'mapbiomas':
         profile = MAPBIOMAS_CROP_PROFILES.get(int(code))
+    elif src == 'eucropmap':
+        profile = EUCROPMAP_CROP_PROFILES.get(int(code))
+    elif src == 'worldcereal':
+        profile = WORLDCEREAL_CROP_PROFILES.get(int(code))
     else:
         # Dynamic World / WorldCover have no per-crop differentiation.
         return None

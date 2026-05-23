@@ -669,7 +669,21 @@
   max-width: 280px;
   background: #fff;
   border-radius: 8px;
+  /* Cap height to viewport so the popup never grows off-screen — internal
+     scrollbar appears for tall popups (e.g. when the News block is
+     expanded). The Mapbox close-X lives on .mapboxgl-popup-content
+     outside this scroller, so it stays visible at the top regardless. */
+  max-height: 70vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
+/* Sleeker scrollbar so it doesn't dominate the narrow popup */
+.popupBody::-webkit-scrollbar { width: 6px; }
+.popupBody::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 3px;
+}
+.popupBody::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
 .popupHeader {
   font-weight: 600;
   margin-bottom: 4px;

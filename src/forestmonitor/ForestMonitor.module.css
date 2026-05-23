@@ -669,15 +669,15 @@
   max-width: 280px;
   background: #fff;
   border-radius: 8px;
-  /* Cap height to viewport so the popup never grows off-screen — internal
-     scrollbar appears for tall popups (e.g. when the News block is
-     expanded). The Mapbox close-X lives on .mapboxgl-popup-content
-     outside this scroller, so it stays visible at the top regardless. */
-  max-height: 70vh;
-  overflow-y: auto;
+  /* Scroll inside the body so the popup never grows past 70vh. Mapbox's
+     close-X lives on .mapboxgl-popup-content (the parent), so it stays
+     anchored at the top while this body scrolls underneath. !important
+     defends against Mapbox's own popup-sizing rules at higher specificity. */
+  max-height: 70vh !important;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
+  display: block;
 }
-/* Sleeker scrollbar so it doesn't dominate the narrow popup */
 .popupBody::-webkit-scrollbar { width: 6px; }
 .popupBody::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.15);
@@ -1144,6 +1144,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Cap the news section itself so the popup stays manageable even if
+     the outer .popupBody max-height doesn't apply for some reason. */
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.popupNewsList::-webkit-scrollbar { width: 5px; }
+.popupNewsList::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 3px;
 }
 .popupNewsCard {
   display: flex;

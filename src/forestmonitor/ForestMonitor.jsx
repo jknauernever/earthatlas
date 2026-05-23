@@ -382,14 +382,16 @@ export default function ForestMonitor() {
     const t = setTimeout(() => {
       fetch(`${TILES_API_BASE}?${params}`)
         .then(async (r) => {
-          // 503 = our cloud function reporting that the GLAD HLSDIST asset
-          // is temporarily empty (they periodically re-ingest, which leaves
-          // the collection empty for some hours). Show a friendly notice
-          // instead of "HTTP 503".
+          // 503 = cloud function reporting upstream data unavailable.
+          // Pull the structured title + body so the badge shows the
+          // user-facing copy (no acronyms) instead of "HTTP 503".
           if (r.status === 503) {
             const body = await r.json().catch(() => ({}))
-            const e = new Error(body.message || 'OPERA data temporarily unavailable')
-            e._isDataUnavailable = true
+            const e = new Error(body.message || 'Data temporarily unavailable')
+            e._badge = {
+              title: body.title || 'Disturbance overlay offline',
+              body: body.message || 'Data is temporarily unavailable. Try again later.',
+            }
             throw e
           }
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -404,13 +406,17 @@ export default function ForestMonitor() {
         })
         .catch((err) => {
           if (cancelled) return
-          if (err._isDataUnavailable) {
-            // Soft warn — this is a transient upstream condition, not a bug.
+          if (err._badge) {
+            // Soft warn — transient upstream condition, not a bug here.
             console.warn('[ForestMonitor]', err.message)
+            setTileError(err._badge)
           } else {
             console.error('[ForestMonitor] tile URL fetch failed', err)
+            setTileError({
+              title: "Couldn't load disturbance tiles",
+              body: err.message || 'Please try again in a moment.',
+            })
           }
-          setTileError(err.message || 'Failed to load disturbance tiles')
           setTileLoading(false)
         })
     }, 250)
@@ -831,7 +837,11 @@ export default function ForestMonitor() {
       {tileLoading && <div className={styles.statusBadge}>Loading tiles…</div>}
       {tileError && (
         <div className={styles.errorBadge}>
-          Tile load failed: {tileError}
+          <div className={styles.errorBadgeTitle}>
+            <span className={styles.errorBadgeIcon}>⚠️</span>
+            {tileError.title}
+          </div>
+          <div className={styles.errorBadgeBody}>{tileError.body}</div>
         </div>
       )}
 

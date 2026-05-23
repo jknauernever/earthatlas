@@ -2410,9 +2410,13 @@ _OPERA_UNAVAILABLE = (
     jsonify({
         'tileUrl': None,
         'error': 'data_unavailable',
+        # Two-part user-facing message — title + body for the badge UI.
+        # Avoids jargon (OPERA / GLAD / HLSDIST) since most users won't
+        # recognize those acronyms.
+        'title': 'Disturbance overlay offline',
         'message': (
-            'OPERA tiles are temporarily unavailable while GLAD refreshes their '
-            'HLSDIST collection. Usually resolves within a few hours.'
+            "NASA's data provider is refreshing the source. Usually back "
+            'within a few hours — no action needed on your end.'
         ),
     }),
     503,

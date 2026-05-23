@@ -568,6 +568,18 @@ export default function ForestMonitor() {
             </div>
           </>
         )}
+
+        <div className={styles.legendFooter}>
+          EarthAtlas is built by{' '}
+          <a
+            href="https://knauernever.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.legendFooterLink}
+          >
+            KnauerNever.com
+          </a>
+        </div>
       </div>
 
       {tileLoading && <div className={styles.statusBadge}>Loading tiles…</div>}

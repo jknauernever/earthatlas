@@ -583,6 +583,24 @@
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.55);
 }
+.legendFooter {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.01em;
+}
+.legendFooterLink {
+  color: rgba(120, 200, 255, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+.legendFooterLink:hover {
+  color: rgba(160, 220, 255, 1);
+}
 .legendList {
   list-style: none;
   padding: 0;

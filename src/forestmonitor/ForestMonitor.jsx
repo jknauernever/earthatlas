@@ -416,10 +416,17 @@ export default function ForestMonitor() {
     <div className={styles.container}>
       <div ref={containerRef} className={styles.mapWrap} />
 
-      <a href="/" className={styles.branding}>
-        <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        <span className={styles.subBadge}>Forest Monitor</span>
-      </a>
+      {/* Branding lockup: two independent links so "Forest Monitor" reliably
+          re-opens this view (clears query state, closes modal, etc.) while
+          "EarthAtlas" still goes home. */}
+      <div className={styles.branding}>
+        <a href="/" className={styles.brandingLink}>
+          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
+        </a>
+        <a href="/forestmonitor" className={styles.brandingLink}>
+          <span className={styles.subBadge}>Forest Monitor</span>
+        </a>
+      </div>
 
       <SearchBox map={mapRef.current} />
 

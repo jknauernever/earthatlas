@@ -24,13 +24,20 @@
   background: rgba(10, 14, 23, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  text-decoration: none;
   color: #fff;
   backdrop-filter: blur(8px);
   z-index: 10;
   transition: background 0.15s ease;
 }
 .branding:hover { background: rgba(10, 14, 23, 0.95); }
+.brandingLink {
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.15s ease;
+}
+.brandingLink:hover { opacity: 0.8; }
 .wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
 .subBadge {

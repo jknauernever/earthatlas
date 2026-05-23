@@ -2392,7 +2392,37 @@ def _maybe_apply_landuse(img: ee.Image, landuse: str | None) -> ee.Image:
     return img.updateMask(lc_mask) if lc_mask is not None else img
 
 
+def _opera_band_ready(band: str) -> bool:
+    """Check whether a GLAD HLSDIST sub-collection has any images. GLAD
+    periodically re-ingests these and the collection goes momentarily
+    empty — calling .lte() on an empty mosaic raises 'Image.lte: If one
+    image has no bands, the other must also have no bands. Got 0 and 1.'
+    which surfaces as an HTTP 500. Detect the empty state up-front and
+    return a friendly 'data_unavailable' response instead."""
+    try:
+        return ee.ImageCollection(f'{FOLDER}/{band}').size().getInfo() > 0
+    except Exception as e:
+        print(f'_opera_band_ready({band}) failed: {e}', flush=True)
+        return False
+
+
+_OPERA_UNAVAILABLE = (
+    jsonify({
+        'tileUrl': None,
+        'error': 'data_unavailable',
+        'message': (
+            'OPERA tiles are temporarily unavailable while GLAD refreshes their '
+            'HLSDIST collection. Usually resolves within a few hours.'
+        ),
+    }),
+    503,
+    CORS_HEADERS,
+)
+
+
 def _handle_recency(start_days: int, end_days: int, landuse: str | None) -> tuple:
+    if not _opera_band_ready('VEG-DIST-DATE'):
+        return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-DIST-DATE')
     img = img.updateMask(img.gte(start_days).And(img.lte(end_days)))
     img = _maybe_apply_landuse(img, landuse)
@@ -2406,6 +2436,8 @@ def _handle_recency(start_days: int, end_days: int, landuse: str | None) -> tupl
 
 
 def _handle_severity(start_days: int, end_days: int, landuse: str | None) -> tuple:
+    if not _opera_band_ready('VEG-ANOM-MAX') or not _opera_band_ready('VEG-DIST-DATE'):
+        return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-ANOM-MAX')
     date_img = _mosaic_band('VEG-DIST-DATE')
     img = img.updateMask(img.gt(0))
@@ -2415,6 +2447,8 @@ def _handle_severity(start_days: int, end_days: int, landuse: str | None) -> tup
 
 
 def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple:
+    if not _opera_band_ready('VEG-DIST-STATUS') or not _opera_band_ready('VEG-DIST-DATE'):
+        return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-DIST-STATUS')
     date_img = _mosaic_band('VEG-DIST-DATE')
     # Statuses 1-8 are all real alerts; only 0 (no disturbance) and 255 (no

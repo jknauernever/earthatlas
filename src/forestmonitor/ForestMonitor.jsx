@@ -381,7 +381,17 @@ export default function ForestMonitor() {
 
     const t = setTimeout(() => {
       fetch(`${TILES_API_BASE}?${params}`)
-        .then((r) => {
+        .then(async (r) => {
+          // 503 = our cloud function reporting that the GLAD HLSDIST asset
+          // is temporarily empty (they periodically re-ingest, which leaves
+          // the collection empty for some hours). Show a friendly notice
+          // instead of "HTTP 503".
+          if (r.status === 503) {
+            const body = await r.json().catch(() => ({}))
+            const e = new Error(body.message || 'OPERA data temporarily unavailable')
+            e._isDataUnavailable = true
+            throw e
+          }
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
           return r.json()
         })
@@ -394,7 +404,12 @@ export default function ForestMonitor() {
         })
         .catch((err) => {
           if (cancelled) return
-          console.error('[ForestMonitor] tile URL fetch failed', err)
+          if (err._isDataUnavailable) {
+            // Soft warn — this is a transient upstream condition, not a bug.
+            console.warn('[ForestMonitor]', err.message)
+          } else {
+            console.error('[ForestMonitor] tile URL fetch failed', err)
+          }
           setTileError(err.message || 'Failed to load disturbance tiles')
           setTileLoading(false)
         })

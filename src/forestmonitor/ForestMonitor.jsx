@@ -588,6 +588,54 @@ export default function ForestMonitor() {
     return () => document.removeEventListener('click', docHandler)
   }, [])
 
+  // ─── News lookup click delegation ───────────────────────────────────────
+  // Same plain-HTML popup constraint. The "📰 News from this time and
+  // place" button carries the diagnosis (cause, location, named-fire,
+  // OPERA date) as data-* attributes; we fire a /news request to the
+  // cloud function and replace the button with the results in place.
+  useEffect(() => {
+    const handler = async (e) => {
+      const btn = e.target.closest('[data-action="load-news"]')
+      if (!btn) return
+      e.preventDefault()
+      const targetId = btn.dataset.targetId
+      const container = document.getElementById(targetId)
+      if (!container) return
+      // Loading skeleton — 3 placeholder cards.
+      container.innerHTML = `
+        <div class="${styles.popupNewsHeader}">Searching for related news…</div>
+        ${[0, 1, 2].map(() => `
+          <div class="${styles.popupNewsSkel}">
+            <div class="${styles.popupNewsSkelImg}"></div>
+            <div class="${styles.popupNewsSkelText}">
+              <div class="${styles.popupNewsSkelLine}"></div>
+              <div class="${styles.popupNewsSkelLine} ${styles.popupNewsSkelShort}"></div>
+            </div>
+          </div>
+        `).join('')}
+      `
+      const params = new URLSearchParams({
+        news: '1',
+        cause: btn.dataset.cause || '',
+        location: btn.dataset.location || '',
+        named: btn.dataset.named || '',
+        date: btn.dataset.date || '',
+      })
+      try {
+        const res = await fetch(`${TILES_API_BASE}?${params}`)
+        const data = await res.json()
+        container.innerHTML = renderArticleList(data, btn.dataset)
+      } catch (err) {
+        container.innerHTML = `
+          <div class="${styles.popupNewsHeader}">Couldn't load news</div>
+          <div class="${styles.popupNewsEmpty}">${escapeHTML(String(err))}</div>
+        `
+      }
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [])
+
   return (
     <div className={styles.container}>
       <div ref={containerRef} className={styles.mapWrap} />
@@ -1663,6 +1711,105 @@ function renderBurn(burn, operaDateStr) {
   return `<div class="${styles.popupBurn}">Fire detected ${prettyBurn}${delta} <span class="${styles.popupLandCoverSource}">MODIS MCD64A1</span></div>`
 }
 
+// Compact 8-char random ID for tagging per-popup DOM nodes (so the
+// document-level event delegation can find the right news container
+// when the user clicks "Related news" on a popup that might co-exist
+// with another popup or be re-rendered as extras arrive).
+function newsContainerId() {
+  return 'fm-news-' + Math.random().toString(36).slice(2, 10)
+}
+
+// Render the article-list response from the /news endpoint. Replaces the
+// "📰 News from this time and place" button in-place. Each article is a
+// compact card: thumbnail (or favicon fallback) + title + source/date +
+// snippet, whole card clickable, opens in new tab.
+function renderArticleList(payload, btnData) {
+  const articles = (payload && payload.articles) || []
+  const window = payload && payload.window
+  const headerLoc = (btnData && btnData.location) || ''
+  const dateRange = window
+    ? `${new Date(window.start).toLocaleDateString(undefined, {month:'short',day:'numeric'})} – ${new Date(window.end).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric'})}`
+    : ''
+  const headerLine = headerLoc
+    ? `News for <strong>${escapeHTML(headerLoc.split(',')[0])}</strong> · ${escapeHTML(dateRange)}`
+    : `News · ${escapeHTML(dateRange)}`
+
+  if (articles.length === 0) {
+    return `
+      <div class="${styles.popupNewsHeader}">${headerLine}</div>
+      <div class="${styles.popupNewsEmpty}">
+        No matching news in this window. Try a wider date range or check
+        the OPERA date and location are correct.
+      </div>
+    `
+  }
+
+  const cards = articles.map((a) => {
+    const date = a.published_date
+      ? new Date(a.published_date).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric'})
+      : ''
+    // Use the article image if present, else the favicon as a tiny badge
+    // on a soft gradient — looks intentional rather than broken.
+    const thumb = a.image_url
+      ? `<img src="${escapeHTML(a.image_url)}" alt="" class="${styles.popupNewsThumb}" loading="lazy" onerror="this.style.display='none'" />`
+      : `<div class="${styles.popupNewsThumbFallback}">
+           ${a.favicon_url ? `<img src="${escapeHTML(a.favicon_url)}" alt="" loading="lazy" />` : ''}
+         </div>`
+    const meta = [a.source, date].filter(Boolean).map(escapeHTML).join(' · ')
+    const snippet = a.snippet
+      ? `<div class="${styles.popupNewsSnippet}">${escapeHTML(a.snippet)}</div>`
+      : ''
+    return `
+      <a href="${escapeHTML(a.url)}" target="_blank" rel="noopener noreferrer" class="${styles.popupNewsCard}">
+        ${thumb}
+        <div class="${styles.popupNewsBody}">
+          <div class="${styles.popupNewsTitle}">${escapeHTML(a.title)}</div>
+          <div class="${styles.popupNewsMeta}">${meta}</div>
+          ${snippet}
+        </div>
+      </a>
+    `
+  }).join('')
+
+  const providerNote = payload.provider === 'gnews'
+    ? `<div class="${styles.popupNewsFooter}">Source: Google News · thumbnails unavailable</div>`
+    : `<div class="${styles.popupNewsFooter}">Source: ${escapeHTML(payload.provider)}</div>`
+
+  return `
+    <div class="${styles.popupNewsHeader}">${headerLine}</div>
+    <div class="${styles.popupNewsList}">${cards}</div>
+    ${providerNote}
+  `
+}
+
+// "📰 Related news" button + empty container. The container is replaced
+// in-place by the fetch handler with a loading skeleton and then the
+// article list.
+function renderNewsBlock(cause, data, admin) {
+  if (!cause || !cause.label) return ''
+  const id = newsContainerId()
+  // Pull the first named fire (if any) — strongest possible search anchor.
+  const firstFire = (data.namedFires && data.namedFires[0]) || null
+  const named = (firstFire && firstFire.name) ? firstFire.name : ''
+  return `
+    <div id="${id}" class="${styles.popupNewsSection}">
+      <button
+        type="button"
+        class="${styles.popupNewsButton}"
+        data-action="load-news"
+        data-cause="${escapeHTML(cause.label)}"
+        data-location="${escapeHTML(admin || '')}"
+        data-named="${escapeHTML(named)}"
+        data-date="${escapeHTML(data.date || '')}"
+        data-target-id="${id}"
+      >
+        <span class="${styles.popupNewsButtonIcon}">📰</span>
+        <span>News from this time and place</span>
+      </button>
+    </div>
+  `
+}
+
 function renderLikelyCause(cause) {
   if (!cause || !cause.label) return ''
   // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
@@ -1769,6 +1916,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderLandCover(data.landCover)}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
+      ${renderNewsBlock(data.likelyCause, data, admin)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
       ${statusLine}

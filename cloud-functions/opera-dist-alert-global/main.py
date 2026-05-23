@@ -2610,6 +2610,23 @@ def get_tiles(request):
         })
 
     try:
+        # `?news=1&...` — lazy news lookup, doesn't need EE. Routed before
+        # _ensure_ee() so missing EE creds don't block news searches.
+        if request.args.get('news'):
+            from news import fetch_news
+            try:
+                window = int(request.args.get('window') or '14')
+            except ValueError:
+                window = 14
+            payload = fetch_news(
+                cause=request.args.get('cause'),
+                location=request.args.get('location'),
+                named_fire=request.args.get('named'),
+                opera_date=request.args.get('date'),
+                window_days=max(1, min(window, 60)),
+            )
+            return (jsonify(payload), 200, CORS_HEADERS)
+
         _ensure_ee()
 
         lat = request.args.get('lat')

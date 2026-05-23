@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/forestmonitor", "destination": "/forestmonitor.html" },
     { "source": "/((?!api/|@)[^.]*)", "destination": "/index.html" }
   ],
   "crons": [

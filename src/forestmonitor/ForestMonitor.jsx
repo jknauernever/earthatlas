@@ -81,32 +81,141 @@ const LANDUSE_PRESETS = [
   { id: 'built',     label: 'Built' },
 ]
 
+// ─── URL state encoding ────────────────────────────────────────────────────
+// Every view of the map is fully described by its URL query string, so
+// any view can be copy/pasted to share. Parameters use short keys to keep
+// URLs compact; defaults are omitted so a clean homepage URL stays clean.
+//
+//   m=recency|status|severity       (default: recency)
+//   start=YYYY-MM-DD                (default: 2023-01-01)
+//   end=YYYY-MM-DD                  (default: today)
+//   lu=forest|cropland|grassland|built  (default: 'all', omitted)
+//   bm=satellite|dark|light|outdoors|streets  (default: satellite)
+//   op=0-100                        (default: 85, layer opacity %)
+//   lat=NN.NNN  lng=NN.NNN  z=Z.Z   (map view; default: world view)
+
+function _readUrlState() {
+  if (typeof window === 'undefined') return {}
+  const sp = new URLSearchParams(window.location.search)
+  const num = (k) => {
+    const v = sp.get(k)
+    if (v == null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  return {
+    mode:    sp.get('m'),
+    start:   sp.get('start'),
+    end:     sp.get('end'),
+    landuse: sp.get('lu'),
+    basemap: sp.get('bm'),
+    opacity: num('op'),
+    lat:     num('lat'),
+    lng:     num('lng'),
+    zoom:    num('z'),
+  }
+}
+
+// Serialize the current view state to a query string. Defaults are omitted
+// to keep the canonical "no params" URL clean.
+function _viewStateToQuery({ mode, start, end, landuse, basemap, opacity, lat, lng, zoom }) {
+  const sp = new URLSearchParams()
+  if (mode && mode !== 'recency') sp.set('m', mode)
+  if (start) sp.set('start', start)
+  if (end) sp.set('end', end)
+  if (landuse && landuse !== 'all') sp.set('lu', landuse)
+  if (basemap && basemap !== DEFAULT_BASEMAP_ID) sp.set('bm', basemap)
+  if (opacity != null && Math.abs(opacity - 0.85) > 0.005) {
+    sp.set('op', String(Math.round(opacity * 100)))
+  }
+  if (lat != null && lng != null && zoom != null) {
+    sp.set('lat', lat.toFixed(3))
+    sp.set('lng', lng.toFixed(3))
+    sp.set('z', zoom.toFixed(1))
+  }
+  return sp.toString()
+}
+
+// Apply the query string back to the address bar without adding a history
+// entry. Pass an empty string to clear all params.
+function _writeUrlQuery(qs) {
+  if (typeof window === 'undefined') return
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+  if (url === window.location.pathname + window.location.search + window.location.hash) return
+  window.history.replaceState(window.history.state, '', url)
+}
+
+// Hydrate the date range from URL params, falling back to "all available
+// data" when either bound is missing or unparseable.
+function _initialDateRange() {
+  const { start, end } = _readUrlState()
+  let s = DATA_START_MS
+  let e = todayUtcMs()
+  if (start) {
+    const ms = Date.parse(start + 'T00:00:00Z')
+    if (Number.isFinite(ms)) s = Math.max(ms, DATA_START_MS)
+  }
+  if (end) {
+    const ms = Date.parse(end + 'T00:00:00Z')
+    if (Number.isFinite(ms)) e = ms
+  }
+  if (e <= s) e = todayUtcMs()
+  return [s, e]
+}
+
+const VALID_MODES = ['recency', 'status', 'severity']
+const VALID_LANDUSE = ['all', 'forest', 'cropland', 'grassland', 'built']
+
 export default function ForestMonitor() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const popupRef = useRef(null)
   const lastTileUrlReqRef = useRef(0)
 
-  const [mode, setMode] = useState('recency')
+  // Hydrate state from URL on first mount so shared links recreate the view.
+  // Each useState initializer reads the URL once. Defaults are applied when
+  // the param is missing or invalid; out-of-range values are clamped.
+  const _initial = (typeof window !== 'undefined') ? _readUrlState() : {}
+
+  const [mode, setMode] = useState(
+    VALID_MODES.includes(_initial.mode) ? _initial.mode : 'recency'
+  )
   const [tileLoading, setTileLoading] = useState(true)
   const [tileError, setTileError] = useState(null)
   // Flips true on `map.on('load')`. Gates tile-source adds so we don't race
   // the style finishing — addLayer() before the style is ready silently no-ops.
   const [mapReady, setMapReady] = useState(false)
   // [startMs, endMs] in UTC epoch ms. Default = full available window.
-  const [dateRange, setDateRange] = useState(() => [DATA_START_MS, todayUtcMs()])
+  const [dateRange, setDateRange] = useState(_initialDateRange)
   // WorldCover-derived land use filter. 'all' = no filter applied.
-  const [landuse, setLanduse] = useState('all')
+  const [landuse, setLanduse] = useState(
+    VALID_LANDUSE.includes(_initial.landuse) ? _initial.landuse : 'all'
+  )
   // Methodology modal — opened from a button rendered inside popups, so we
   // catch clicks via document-level delegation (popups are setHTML strings,
   // can't directly attach React handlers).
   const [showMethodology, setShowMethodology] = useState(false)
   // Selected basemap id (see BASEMAPS above). Default = satellite.
-  const [basemap, setBasemap] = useState(DEFAULT_BASEMAP_ID)
+  const [basemap, setBasemap] = useState(
+    BASEMAPS.some((b) => b.id === _initial.basemap) ? _initial.basemap : DEFAULT_BASEMAP_ID
+  )
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
   // Opacity of the OPERA disturbance raster overlay (0–1). Default 0.85.
-  const [opacity, setOpacity] = useState(0.85)
+  const [opacity, setOpacity] = useState(
+    _initial.opacity != null
+      ? Math.max(0, Math.min(1, _initial.opacity / 100))
+      : 0.85
+  )
+  // Map view (lat/lng/zoom). Tracked in state so we can write it back to the
+  // URL on moveend; the map itself remains the source of truth.
+  const [mapView, setMapView] = useState(() => {
+    const { lat, lng, zoom } = _initial
+    if (lat != null && lng != null && zoom != null) {
+      return { lat, lng, zoom }
+    }
+    return null
+  })
   // Ref-mirror so applyTileLayer reads the latest value without re-running
   // the tile-fetch effect on opacity changes.
   const opacityRef = useRef(0.85)
@@ -120,11 +229,13 @@ export default function ForestMonitor() {
     if (!containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
+    // Initial view from URL if present, otherwise the default world view.
+    const initView = mapView
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: basemapStyleFor(DEFAULT_BASEMAP_ID),
-      center: [0, 20],
-      zoom: 1.6,
+      style: basemapStyleFor(basemap),
+      center: initView ? [initView.lng, initView.lat] : [0, 20],
+      zoom: initView ? initView.zoom : 1.6,
       projection: 'mercator',
       attributionControl: false,
     })
@@ -171,18 +282,83 @@ export default function ForestMonitor() {
       'top-right'
     )
 
+    // Persist the map view (lat/lng/zoom) to React state on moveend so the
+    // URL-sync effect picks it up. `moveend` fires once after each pan/zoom
+    // settles, so this naturally debounces against the per-frame view changes.
+    const onMoveEnd = () => {
+      const c = map.getCenter()
+      setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
+    }
+    map.on('moveend', onMoveEnd)
+
     mapRef.current = map
     return () => {
       cancelAnimationFrame(kickRAF)
       clearTimeout(kickT1)
       clearTimeout(kickT2)
       ro.disconnect()
+      map.off('moveend', onMoveEnd)
       if (popupRef.current) popupRef.current.remove()
       map.remove()
       mapRef.current = null
       setMapReady(false)
     }
   }, [])
+
+  // ─── Per-route document title & meta tags ────────────────────────────────
+  // The pre-built /forestmonitor.html (served via Vercel rewrite) sets these
+  // on initial page load for SEO crawlers. This effect covers users who land
+  // on / first and then React-Router-navigate to /forestmonitor.
+  useEffect(() => {
+    const prevTitle = document.title
+    document.title = 'Forest Monitor — Near-real-time global forest disturbance · EarthAtlas'
+
+    const setMeta = (selector, attr, value) => {
+      let el = document.head.querySelector(selector)
+      if (!el) {
+        el = document.createElement('meta')
+        const [k, v] = selector.replace(/[\[\]"]/g, '').split('=')
+        el.setAttribute(k, v)
+        document.head.appendChild(el)
+      }
+      const prev = el.getAttribute(attr)
+      el.setAttribute(attr, value)
+      return prev
+    }
+    const desc = 'Track forest loss anywhere on Earth, updated every 12 hours. 30-meter NASA OPERA DIST-ALERT data with crop-aware cause inference, named-fire context, and per-pixel diagnostics.'
+    const prevDesc = setMeta('meta[name="description"]', 'content', desc)
+    const prevOgTitle = setMeta('meta[property="og:title"]', 'content', document.title)
+    const prevOgDesc = setMeta('meta[property="og:description"]', 'content', desc)
+    const prevOgUrl = setMeta('meta[property="og:url"]', 'content', 'https://earthatlas.org/forestmonitor')
+
+    return () => {
+      document.title = prevTitle
+      if (prevDesc != null) setMeta('meta[name="description"]', 'content', prevDesc)
+      if (prevOgTitle != null) setMeta('meta[property="og:title"]', 'content', prevOgTitle)
+      if (prevOgDesc != null) setMeta('meta[property="og:description"]', 'content', prevOgDesc)
+      if (prevOgUrl != null) setMeta('meta[property="og:url"]', 'content', prevOgUrl)
+    }
+  }, [])
+
+  // ─── Persist view state to URL ────────────────────────────────────────────
+  // Whenever any user-visible state changes, rewrite the address bar so the
+  // current view is always shareable. Uses replaceState (no history entry per
+  // pan/click) and skips defaults (so the bare URL stays clean for a fresh
+  // visit). The dependency array covers everything _viewStateToQuery reads.
+  useEffect(() => {
+    const qs = _viewStateToQuery({
+      mode,
+      start: isoDay(dateRange[0]),
+      end:   isoDay(dateRange[1]),
+      landuse,
+      basemap,
+      opacity,
+      lat:  mapView ? mapView.lat  : null,
+      lng:  mapView ? mapView.lng  : null,
+      zoom: mapView ? mapView.zoom : null,
+    })
+    _writeUrlQuery(qs)
+  }, [mode, dateRange, landuse, basemap, opacity, mapView])
 
   // ─── Fetch tile URL whenever mode or date range changes ──────────────────
   // Debounced 250 ms so dragging the slider doesn't hammer the cloud function.

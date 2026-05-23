@@ -49,6 +49,9 @@ addUrl('/')
 // Live pages
 addUrl('/live')
 
+// Forest Monitor
+addUrl('/forestmonitor')
+
 // Explore subsites
 for (const slug of slugs) {
   addUrl(`/${slug}`)

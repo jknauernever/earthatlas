@@ -84,14 +84,14 @@ STATUS_VIS = {
 CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
 
 STATUS_LABELS = {
-    1: 'Provisional alert (first detection)',
-    2: 'Recurrent provisional alert',
-    3: 'Confirmed alert',
-    4: 'Provisional alert · substantial loss (first detection)',
-    5: 'Recurrent provisional alert · substantial loss',
-    6: 'Confirmed alert · substantial loss',
-    7: 'Finished provisional alert',
-    8: 'Finished confirmed alert',
+    1: 'Awaiting confirmation (first detection)',
+    2: 'Awaiting confirmation (recurring)',
+    3: 'Confirmed',
+    4: 'Awaiting confirmation · severe loss (first detection)',
+    5: 'Awaiting confirmation · severe loss (recurring)',
+    6: 'Confirmed · severe loss',
+    7: 'No longer active (was unconfirmed)',
+    8: 'No longer active (was confirmed)',
 }
 
 DATE_EPOCH = date(2020, 12, 31)
@@ -1076,41 +1076,38 @@ def _infer_likely_cause(
     is_industrial = any(k in lc_label for k in industrial_keywords)
     is_grassy = any(k in lc_label for k in grassland_keywords) and not is_ag
 
-    # Build the reasoning trail
+    # Build the reasoning trail. Each entry is short, jargon-free text that
+    # a non-specialist can scan in one second. Technical specifics (FIRMS
+    # buffer width, dNBR thresholds, shape compactness) live in the
+    # methodology modal — not in every popup.
     reasons = []
     if has_named_fire:
         top = named_fires[0]
         nm = top.get('name')
-        dt = top.get('date')
+        yr = top.get('year') or (top.get('date') or '')[:4]
         ac = top.get('acres')
-        src = top.get('source')
-        bits = [f"inside {nm}"]
-        if dt: bits.append(f"({dt})")
-        if ac: bits.append(f"— {int(ac):,} acres")
-        if src: bits.append(f"[{src}]")
-        reasons.append(' '.join(bits))
+        bit = f'Inside the {nm} fire'
+        if yr: bit += f' ({yr})'
+        if ac: bit += f', {int(ac):,} acres'
+        reasons.append(bit)
     if has_burn:
-        reasons.append('MODIS burn detected near OPERA date')
+        reasons.append('Recent burn detected in MODIS satellite data')
     if fire_count > 0:
-        reasons.append(
-            f"{fire_count} FIRMS fire-pixel-day{'s' if fire_count > 1 else ''} "
-            f"within {int(FIRMS_BUFFER_M/1000)} km / ±{FIRMS_WINDOW_DAYS} days "
-            f"(confidence ≥{FIRMS_CONFIDENCE_MIN})"
-        )
+        reasons.append('Active fires detected nearby (NASA FIRMS)')
     if dnbr is not None:
         if dnbr_high:
-            reasons.append(f'dNBR {dnbr} indicates high-severity burn signature')
+            reasons.append('Strong burn signature in Sentinel-2 imagery')
         elif dnbr_mod:
-            reasons.append(f'dNBR {dnbr} indicates moderate burn signature')
+            reasons.append('Moderate burn signature in Sentinel-2 imagery')
         elif has_dense_fires:
-            reasons.append(f'dNBR {dnbr} shows no burn-scar signature despite hot-spots')
+            reasons.append('No burn signature despite nearby fires (likely industrial heat)')
     if shape:
         if is_blocky:
-            reasons.append(f'blocky shape (compactness {shape.get("compactness")})')
+            reasons.append('Blocky, straight-edged patch — typical of human cutting')
         elif is_linear:
-            reasons.append(f'linear corridor (aspect {shape.get("aspect_ratio")}:1)')
+            reasons.append('Long, narrow corridor — typical of roads or pipelines')
         elif is_irregular:
-            reasons.append(f'irregular perimeter (compactness {shape.get("compactness")})')
+            reasons.append('Irregular patch shape — typical of fires or natural events')
 
     # Crop-profile context (US only, when CDL was the source). Lets us
     # distinguish, e.g., alfalfa harvest cuts from agricultural burns.
@@ -1130,23 +1127,16 @@ def _infer_likely_cause(
     effective_burn_practice = nass_burn_hint or burn_practice
 
     if crop_profile:
-        bits = [f'{crop_name}']
-        if profile_kind in CROP_PROFILE_LABELS:
-            bits.append(f'({CROP_PROFILE_LABELS[profile_kind]})')
-        if window_str:
-            bits.append(f'harvest window {window_str}')
-            if in_season:
-                bits.append('— alert IS in harvest season')
-            else:
-                bits.append('— alert is OUTSIDE harvest season')
-        reasons.append(' '.join(bits))
+        if window_str and in_season:
+            reasons.append(f'In {crop_name.lower()} harvest season ({window_str})')
+        elif window_str:
+            reasons.append(f'Outside {crop_name.lower()} harvest season (typically {window_str})')
     if tillage and tillage.get('dominant'):
         pct = int(round(tillage.get('dominant_share', 0) * 100))
-        loc = f'{county_name} Co., {state_code}' if county_name and state_code else 'county'
-        reasons.append(
-            f'{loc} is {pct}% {tillage["dominant"].replace("_", "-")} '
-            f'(USDA NASS Census of Ag {tillage.get("year")})'
-        )
+        loc = f'{county_name} Co., {state_code}' if county_name and state_code else 'this county'
+        # "no_till" → "no-till"; "conventional"/"conservation" pass through.
+        practice = tillage['dominant'].replace('_', '-')
+        reasons.append(f'{loc} is {pct}% {practice}-till (2022 USDA Census of Ag)')
 
     # ─── Decision tree, branched by land cover ─────────────────────────────
     label = None
@@ -1279,7 +1269,14 @@ def _infer_likely_cause(
         else:
             label = 'Inconclusive'
 
-    return {'label': label, 'reasoning': '; '.join(reasons) if reasons else 'no strong signals'}
+    return {
+        'label': label,
+        # Plain-English bullets, rendered as a UL in the popup. Replaces the
+        # legacy semicolon-joined `reasoning` string.
+        'reasoning_bullets': reasons,
+        # Kept for backward compat during deploys; frontend prefers bullets.
+        'reasoning': '; '.join(reasons) if reasons else 'no strong signals',
+    }
 
 
 def _sample_tiered_landcover(point: ee.Geometry) -> dict | None:

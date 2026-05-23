@@ -796,6 +796,28 @@
   opacity: 0.85;
   font-weight: 400;
 }
+.popupCauseReasonHeader {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+  letter-spacing: 0.01em;
+}
+.popupCauseReasonList {
+  margin: 3px 0 0 0;
+  padding: 0 0 0 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 400;
+  opacity: 0.92;
+}
+.popupCauseReasonList li {
+  margin: 1px 0;
+  padding-left: 2px;
+}
+.popupCauseReasonList li::marker {
+  font-size: 10px;
+}
 .popupCauseFire {
   margin: 8px 0;
   padding: 8px 10px;

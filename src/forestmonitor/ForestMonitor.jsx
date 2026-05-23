@@ -1419,13 +1419,25 @@ function renderLikelyCause(cause) {
     label.includes('fallow')
   ) cls = styles.popupCauseHuman
   else if (label.includes('natural')) cls = styles.popupCauseNatural
-  const reasoning = cause.reasoning
-    ? `<div class="${styles.popupCauseReason}">${escapeHTML(cause.reasoning)}</div>`
-    : ''
+
+  // Render plain-English bullets when the backend sends them; fall back to
+  // the legacy semicolon-joined string during deploy windows.
+  const bullets = Array.isArray(cause.reasoning_bullets) ? cause.reasoning_bullets : null
+  let reasoningBlock = ''
+  if (bullets && bullets.length) {
+    const lis = bullets.map((b) => `<li>${escapeHTML(b)}</li>`).join('')
+    reasoningBlock = `
+      <div class="${styles.popupCauseReasonHeader}">Why we think so:</div>
+      <ul class="${styles.popupCauseReasonList}">${lis}</ul>
+    `
+  } else if (cause.reasoning) {
+    reasoningBlock = `<div class="${styles.popupCauseReason}">${escapeHTML(cause.reasoning)}</div>`
+  }
+
   return `
     <div class="${cls}">
       <div class="${styles.popupCauseLabel}">${escapeHTML(cause.label)}</div>
-      ${reasoning}
+      ${reasoningBlock}
     </div>
   `
 }
@@ -1436,24 +1448,38 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
         year: 'numeric', month: 'long', day: 'numeric',
       })
     : null
-  const severityStr = data.severity != null ? `${Math.round(data.severity)}% loss` : null
+  const severityStr = data.severity != null
+    ? `${Math.round(data.severity)}% vegetation loss`
+    : null
 
   // Patch size + burn live in the "extras" payload — render them as soon as
-  // they arrive, otherwise show a small placeholder.
+  // they arrive, otherwise show a small placeholder. Round acres generously
+  // (whole-number with thousands separators) — sub-acre precision is noise
+  // given the 30 m OPERA pixel grid.
   let patchLine = ''
   if (data.acres != null) {
-    const acresStr = data.acres >= 0.01
-      ? `${data.acres.toFixed(2)} acre${Math.abs(data.acres - 1) < 0.005 ? '' : 's'}`
-      : '< 0.01 acres'
+    let acresStr
+    if (data.acres < 0.01) acresStr = '< 0.01 acres'
+    else if (data.acres < 10) acresStr = `${data.acres.toFixed(1)} acres`
+    else acresStr = `${Math.round(data.acres).toLocaleString()} acres`
     // `truncated` now means the patch extends beyond our 5 km search radius,
     // not that the count maxed out at 228 acres. Wording reflects that.
     const truncatedNote = data.truncated
       ? '<span class="' + styles.truncatedNote + '">(extends beyond 5 km search radius)</span>'
       : ''
-    patchLine = `<div class="${styles.popupMuted}">${acresStr} in this connected patch ${truncatedNote}</div>`
+    patchLine = `<div class="${styles.popupMuted}">${acresStr} in this patch ${truncatedNote}</div>`
   } else if (extrasPending) {
     patchLine = `<div class="${styles.popupMuted}"><span class="${styles.popupSpinner}"></span> Asking NASA, USDA, and a few satellites about this spot…</div>`
   }
+
+  // Combine the status + severity into one compact line for the popup
+  // footer — they're closely related and don't need their own paragraphs.
+  const statusBits = []
+  if (data.statusLabel) statusBits.push(escapeHTML(data.statusLabel))
+  if (severityStr) statusBits.push(severityStr)
+  const statusLine = statusBits.length
+    ? `<div class="${styles.popupMuted}">${statusBits.join(' · ')}</div>`
+    : ''
 
   return `
     <div class="${styles.popupBody}">
@@ -1463,9 +1489,8 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
       ${renderBurn(data.burn, data.date)}
-      ${data.statusLabel ? `<div>${escapeHTML(data.statusLabel)}</div>` : ''}
-      ${severityStr ? `<div>${severityStr}</div>` : ''}
       ${patchLine}
+      ${statusLine}
       ${renderMethodologyLink()}
     </div>
   `

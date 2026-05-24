@@ -1,0 +1,9 @@
+# Files that should never be uploaded to Vercel's build context.
+# (Vercel already has secrets as proper env vars — uploading dotenv files
+# risks leaking them in build logs or overriding dashboard settings.)
+
+.env
+.env.*
+.claude/
+__pycache__/
+*.pyc

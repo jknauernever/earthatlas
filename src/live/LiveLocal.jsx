@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchRecentINat, fetchRecentEBird } from './liveService'
-import { searchPlaces } from '../services/mapbox'
+import GeoSearch from '../components/GeoSearch.jsx'
 import styles from './LiveGlobe.module.css'
 import localStyles from './LiveLocal.module.css'
 
@@ -108,73 +108,26 @@ function formatTimeAgo(ts) {
 }
 
 // ─── Location search overlay ────────────────────────────────────────────
+// Wraps the canonical GeoSearch in the existing dark search card. If Mapbox
+// doesn't supply a bbox (e.g. for a POI), fabricate a ~0.18° box so the
+// downstream "fit to area" code still has something to work with.
 function PlaceSearch({ onSelect }) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [activeIdx, setActiveIdx] = useState(-1)
-  const timerRef = useRef(null)
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-    return () => clearTimeout(timerRef.current)
-  }, [])
-
-  const handleChange = useCallback((e) => {
-    const val = e.target.value
-    setQuery(val)
-    setActiveIdx(-1)
-    clearTimeout(timerRef.current)
-    if (!val.trim()) { setResults([]); return }
-    timerRef.current = setTimeout(async () => {
-      const places = await searchPlaces(val)
-      setResults(places)
-    }, 300)
-  }, [])
-
-  const handleSelect = useCallback((place) => {
-    if (!place.bbox) {
-      const R = 0.18
-      place = { ...place, bbox: [place.lng - R, place.lat - R, place.lng + R, place.lat + R] }
-    }
-    onSelect(place)
-  }, [onSelect])
-
-  const handleKeyDown = useCallback((e) => {
-    if (!results.length) return
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => (i + 1) % results.length) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => (i - 1 + results.length) % results.length) }
-    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); handleSelect(results[activeIdx]) }
-  }, [results, activeIdx, handleSelect])
-
   return (
     <div className={localStyles.searchOverlay}>
       <div className={localStyles.searchCard}>
         <div className={localStyles.searchWordmark}>Earth<em>Atlas</em></div>
         <div className={localStyles.searchSubtitle}>Live observations in your area</div>
         <div className={localStyles.searchBox}>
-          <input
-            ref={inputRef}
-            className={localStyles.searchInput}
-            type="text"
-            value={query}
-            placeholder="Search a city, region, or country\u2026"
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
+          <GeoSearch
+            autoFocus
+            placeholder="Search a city, region, park, or country..."
+            onSelect={(r) => {
+              const bbox = (r.bbox && r.bbox.length === 4)
+                ? r.bbox
+                : [r.lng - 0.18, r.lat - 0.18, r.lng + 0.18, r.lat + 0.18]
+              onSelect({ name: r.name, lat: r.lat, lng: r.lng, bbox })
+            }}
           />
-          {results.length > 0 && (
-            <div className={localStyles.dropdown}>
-              {results.map((place, i) => (
-                <button
-                  key={i}
-                  className={`${localStyles.dropdownItem} ${i === activeIdx ? localStyles.dropdownItemActive : ''}`}
-                  onMouseDown={() => handleSelect(place)}
-                >
-                  {place.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

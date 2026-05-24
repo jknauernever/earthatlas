@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import GeoSearch from '../components/GeoSearch.jsx'
 import styles from './ForestMonitor.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -673,7 +674,27 @@ export default function ForestMonitor() {
         </a>
       </div>
 
-      <SearchBox map={mapRef.current} />
+      <div className={styles.searchBox}>
+        <GeoSearch
+          proximity={() => {
+            const m = mapRef.current
+            if (!m) return undefined
+            try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined }
+          }}
+          onSelect={(r) => {
+            const m = mapRef.current
+            if (!m) return
+            if (r.bbox && r.bbox.length === 4) {
+              m.fitBounds(
+                [[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]],
+                { padding: 80, duration: 1400, maxZoom: 14 },
+              )
+            } else if (Number.isFinite(r.lng) && Number.isFinite(r.lat)) {
+              m.flyTo({ center: [r.lng, r.lat], zoom: r.zoom, duration: 1400, essential: true })
+            }
+          }}
+        />
+      </div>
 
       <div className={styles.basemapMenu} ref={basemapMenuRef}>
         <button
@@ -1160,310 +1181,6 @@ function MethodologyModal({ onClose }) {
       </div>
     </div>
   )
-}
-
-// ─── Search box (Mapbox Search Box API) ────────────────────────────────────
-// Autocomplete over addresses, places, POIs (incl. national parks / protected
-// areas), neighborhoods, regions, countries. On select → flyTo on the map.
-
-// Zoom level per Mapbox feature type. Smaller value = wider view.
-const SEARCH_ZOOM_BY_TYPE = {
-  country:      4,
-  region:       6,
-  district:     8,
-  postcode:    11,
-  place:       10,
-  locality:    12,
-  neighborhood: 14,
-  street:      15,
-  address:     16,
-  poi:         13,
-}
-
-// Human-readable category label for each Mapbox feature_type, shown inline
-// in the result meta line so users know what kind of thing they're picking.
-const SEARCH_TYPE_LABELS = {
-  country:      'Country',
-  region:       'State / Region',
-  district:     'District / County',
-  postcode:     'ZIP / Postcode',
-  place:        'City',
-  locality:     'Town',
-  neighborhood: 'Neighborhood',
-  street:       'Street',
-  address:      'Address',
-  poi:          'Place',
-}
-
-// Categorize each result into a small icon set. POIs further split by
-// poi_category (parks → nature glyph; rest → pin glyph).
-function searchCategoryOf(s) {
-  const t = s.feature_type
-  if (t === 'poi') {
-    const cats = (s.poi_category || []).map((c) => c.toLowerCase())
-    if (cats.some((c) => /park|forest|nature|reserve|wilderness|garden|mountain|peak|trail/.test(c))) {
-      return 'nature'
-    }
-    return 'poi'
-  }
-  if (t === 'country' || t === 'region' || t === 'district' || t === 'postcode') return 'region'
-  if (t === 'place' || t === 'locality' || t === 'neighborhood') return 'city'
-  if (t === 'address' || t === 'street') return 'address'
-  return 'pin'
-}
-
-// SVG glyphs per category — small, theme-appropriate, no emoji.
-const SEARCH_ICON_PATHS = {
-  nature: 'M12 2C8.13 2 5 5.13 5 9c0 5 7 13 7 13s7-8 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z M12 14l-2 3h4l-2-3z',
-  poi:    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z',
-  region: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
-  city:   'M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z',
-  address:'M12 2c-4.2 0-8 3.22-8 8.2 0 3.32 2.67 7.25 8 11.8 5.33-4.55 8-8.48 8-11.8C20 5.22 16.2 2 12 2zm0 10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
-  pin:    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z',
-}
-
-// Wrap matching substrings of `query` inside `text` with a <mark> tag so we
-// can style them. Case-insensitive substring match — Mapbox's matches are
-// fuzzy so this won't always cover everything, but it covers the common case.
-function highlightMatch(text, query) {
-  if (!text || !query) return escapeHTML(text || '')
-  const idx = text.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) return escapeHTML(text)
-  return (
-    escapeHTML(text.slice(0, idx)) +
-    '<mark>' + escapeHTML(text.slice(idx, idx + query.length)) + '</mark>' +
-    escapeHTML(text.slice(idx + query.length))
-  )
-}
-
-function SearchBox({ map }) {
-  const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [activeIdx, setActiveIdx] = useState(-1)
-  const sessionTokenRef = useRef(null)
-  const debounceRef = useRef(null)
-  const inputRef = useRef(null)
-  const containerRef = useRef(null)
-
-  // Lazy-init session token. Mapbox Search Box groups suggest+retrieve calls
-  // under one session token for billing; reset after each retrieve.
-  if (sessionTokenRef.current == null) {
-    sessionTokenRef.current = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random())
-  }
-
-  // Debounced suggest. Bias results toward what's currently on screen via
-  // the `proximity` param — searching "Springfield" from a Brazil viewport
-  // surfaces nearby places before US matches.
-  useEffect(() => {
-    clearTimeout(debounceRef.current)
-    const q = query.trim()
-    if (q.length < 2) {
-      setSuggestions([])
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    debounceRef.current = setTimeout(async () => {
-      const token = import.meta.env.VITE_MAPBOX_TOKEN
-      if (!token) { setLoading(false); return }
-      const params = new URLSearchParams({
-        q,
-        access_token: token,
-        session_token: sessionTokenRef.current,
-        limit: '8',
-        types: 'country,region,district,postcode,place,locality,neighborhood,street,address,poi',
-      })
-      // Proximity bias from current map center
-      if (map) {
-        try {
-          const c = map.getCenter()
-          params.set('proximity', `${c.lng},${c.lat}`)
-        } catch {}
-      }
-      try {
-        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`)
-        const data = await res.json()
-        setSuggestions(data.suggestions || [])
-        setOpen(true)
-        setActiveIdx(-1)
-      } catch (err) {
-        console.error('[SearchBox] suggest failed', err)
-        setSuggestions([])
-      } finally {
-        setLoading(false)
-      }
-    }, 220)
-    return () => clearTimeout(debounceRef.current)
-  }, [query, map])
-
-  // Close on click outside
-  useEffect(() => {
-    const handler = (e) => {
-      if (!containerRef.current?.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  const handleSelect = async (suggestion) => {
-    if (!map) return
-    const token = import.meta.env.VITE_MAPBOX_TOKEN
-    const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}` +
-      `?access_token=${token}&session_token=${sessionTokenRef.current}`
-    try {
-      const res = await fetch(url)
-      const data = await res.json()
-      const feature = data.features?.[0]
-      if (!feature) return
-      const [lng, lat] = feature.geometry.coordinates
-      const zoom = SEARCH_ZOOM_BY_TYPE[suggestion.feature_type] ?? 10
-
-      // Use bbox if Mapbox provided one — better than centroid + zoom guess
-      // for things like national parks or large regions.
-      const bbox = feature.properties?.bbox
-      if (bbox && bbox.length === 4) {
-        map.fitBounds(
-          [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
-          { padding: 80, duration: 1400, maxZoom: 14 }
-        )
-      } else {
-        map.flyTo({ center: [lng, lat], zoom, duration: 1400, essential: true })
-      }
-
-      setQuery(suggestion.name)
-      setOpen(false)
-      setSuggestions([])
-      // New session token — Mapbox docs: one session per "search transaction"
-      sessionTokenRef.current = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random())
-      inputRef.current?.blur()
-    } catch (err) {
-      console.error('[SearchBox] retrieve failed', err)
-    }
-  }
-
-  const handleKeyDown = (e) => {
-    if (!open || suggestions.length === 0) return
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIdx((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const idx = activeIdx >= 0 ? activeIdx : 0
-      if (suggestions[idx]) handleSelect(suggestions[idx])
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-      inputRef.current?.blur()
-    }
-  }
-
-  return (
-    <div className={styles.searchBox} ref={containerRef}>
-      <div className={styles.searchInputWrap}>
-        <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          ref={inputRef}
-          type="search"
-          // Non-standard name so Chrome's autofill heuristics don't latch
-          // onto this as an address/email/name field and paint it tinted.
-          name="fm-search-q"
-          className={styles.searchInput}
-          // Inline style wins over any UA / global / extension CSS that
-          // might paint the input white on load. Belt-and-braces — the CSS
-          // module class also sets these, but inline guarantees it applies
-          // before any cascade games or autofill tinting kick in.
-          style={{
-            backgroundColor: '#0f1726',
-            color: '#fff',
-            WebkitTextFillColor: '#fff',
-          }}
-          placeholder="Search a place, address, park, or feature…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          onKeyDown={handleKeyDown}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck="false"
-        />
-        {query && (
-          <button
-            type="button"
-            className={styles.searchClear}
-            onClick={() => { setQuery(''); setSuggestions([]); setOpen(false); inputRef.current?.focus() }}
-            aria-label="Clear"
-          >×</button>
-        )}
-      </div>
-      {open && suggestions.length > 0 && (
-        <ul className={styles.searchResults} role="listbox">
-          {suggestions.map((s, i) => {
-            const cat = searchCategoryOf(s)
-            const typeLabel = s.feature_type === 'poi' && s.poi_category?.length
-              ? toTitleCase(s.poi_category[0])
-              : SEARCH_TYPE_LABELS[s.feature_type] || 'Place'
-            return (
-              <li
-                key={s.mapbox_id}
-                role="option"
-                aria-selected={i === activeIdx}
-                className={i === activeIdx ? styles.searchResultActive : styles.searchResult}
-                onMouseDown={(e) => { e.preventDefault(); handleSelect(s) }}
-                onMouseEnter={() => setActiveIdx(i)}
-              >
-                <div className={`${styles.searchResultIcon} ${styles[`searchIcon_${cat}`]}`}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d={SEARCH_ICON_PATHS[cat]} />
-                  </svg>
-                </div>
-                <div className={styles.searchResultText}>
-                  <div
-                    className={styles.searchResultName}
-                    dangerouslySetInnerHTML={{ __html: highlightMatch(s.name, query) }}
-                  />
-                  <div className={styles.searchResultMeta}>
-                    <span className={styles.searchResultType}>{typeLabel}</span>
-                    {searchResultMeta(s) && (
-                      <>
-                        <span className={styles.searchResultSep}>·</span>
-                        <span className={styles.searchResultContext}>{searchResultMeta(s)}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {open && loading && suggestions.length === 0 && (
-        <div className={styles.searchEmpty}>
-          <span className={styles.searchSpinner}></span> Searching…
-        </div>
-      )}
-      {open && !loading && query.trim().length >= 2 && suggestions.length === 0 && (
-        <div className={styles.searchEmpty}>No results found</div>
-      )}
-    </div>
-  )
-}
-
-function searchResultMeta(s) {
-  // Geographic context only (e.g. "California, United States") — feature
-  // type is already shown separately as a badge.
-  return s.place_formatted || s.full_address || ''
-}
-
-function toTitleCase(s) {
-  return String(s).replace(/(^|[\s_-])(\w)/g, (_, sep, c) => sep + c.toUpperCase())
 }
 
 // ─── Range presets ──────────────────────────────────────────────────────────

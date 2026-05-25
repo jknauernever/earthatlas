@@ -51,6 +51,10 @@ if (sentryDsn && import.meta.env.PROD) {
       'Non-Error promise rejection captured',
     ],
   })
+  // Expose the SDK on window for prod smoke-testing from devtools console
+  // (window.Sentry.captureMessage("…"), captureException(new Error(…)), etc.).
+  // Only the public API surface — nothing secret here.
+  window.Sentry = Sentry
 }
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY

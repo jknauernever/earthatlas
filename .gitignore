@@ -4,9 +4,13 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.vercel
+.env.vercel-prod
 *.log
 .vercel
 public/gbif-tile-test.html
+public/sitemap.xml
 src/data/preloaded-stats.json
 src/data/species/
 .env*.local

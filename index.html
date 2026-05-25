@@ -62,6 +62,14 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- DNS/TCP warm-up for the biodiversity data APIs the app hits on first interaction.
+         Shaves ~100-300ms off the first observation query on cold visits. -->
+    <link rel="dns-prefetch" href="https://api.inaturalist.org" />
+    <link rel="dns-prefetch" href="https://api.ebird.org" />
+    <link rel="dns-prefetch" href="https://api.gbif.org" />
+    <link rel="dns-prefetch" href="https://api.mapbox.com" />
+    <link rel="dns-prefetch" href="https://events.mapbox.com" />
+    <link rel="preconnect" href="https://api.mapbox.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   </head>
   <body>

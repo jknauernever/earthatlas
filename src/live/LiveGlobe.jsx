@@ -828,7 +828,9 @@ export default function LiveGlobe() {
           lastFetchPosRef.current = { lat: view.center.lat, lng: view.center.lng, zoom: view.zoom }
         }
         lastFetchTimeRef.current = Date.now()
-        console.log(`[LiveGlobe] Fetch (${replace ? 'replace' : 'inc'}): ${filtered.length} total, ${observationsRef.current.length} on globe`)
+        if (import.meta.env.DEV) {
+          console.log(`[LiveGlobe] Fetch (${replace ? 'replace' : 'inc'}): ${filtered.length} total, ${observationsRef.current.length} on globe`)
+        }
       } catch (err) {
         console.error('[LiveGlobe] Fetch error:', err)
       } finally {

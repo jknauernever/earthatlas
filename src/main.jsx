@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import * as Sentry from '@sentry/react'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
@@ -27,6 +28,30 @@ import LiveGlobe from './live/LiveGlobe.jsx'
 import LiveLocal from './live/LiveLocal.jsx'
 import ForestMonitor from './forestmonitor/ForestMonitor.jsx'
 import './index.css'
+
+// Sentry: only initialize in production builds AND when a DSN is configured.
+// Dev still gets noisy errors in the console; prod gets structured capture +
+// session replay on errors. Set VITE_SENTRY_DSN in Vercel to enable.
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN
+if (sentryDsn && import.meta.env.PROD) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0,        // no idle session replays
+    replaysOnErrorSampleRate: 1.0,      // capture replay only when an error fires
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+    ],
+    // Drop low-signal noise (browser extensions, third-party script errors).
+    ignoreErrors: [
+      'ResizeObserver loop limit exceeded',
+      'ResizeObserver loop completed with undelivered notifications',
+      'Non-Error promise rejection captured',
+    ],
+  })
+}
 
 const phKey = import.meta.env.VITE_POSTHOG_KEY
 if (phKey) {

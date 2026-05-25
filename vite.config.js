@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -252,7 +253,32 @@ function inatProxyPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), newsProxyPlugin(), inatProxyPlugin()],
+  plugins: [
+    react(),
+    newsProxyPlugin(),
+    inatProxyPlugin(),
+    // Upload source maps to Sentry during production builds so stack traces
+    // show real function names instead of minified gibberish. No-ops in dev
+    // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is
+    // server-only (never bundled into the client).
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      telemetry: false,
+      sourcemaps: {
+        // After upload, delete the .map files so they're never served to
+        // users — Sentry has them, no one else needs them.
+        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+      },
+    }),
+  ],
+  build: {
+    // Required for source-map upload. Vite generates .map files alongside
+    // bundles; the Sentry plugin uploads then deletes them per above.
+    sourcemap: true,
+  },
   server: {
     port: 5173,
     open: true,

@@ -2,9 +2,17 @@ import LocationSearch from './LocationSearch'
 import SpeciesSearch from './SpeciesSearch'
 import styles from './Controls.module.css'
 
-const RADIUS_OPTIONS_FULL  = [1, 5, 10, 25, 50, 100, 'any']
-const RADIUS_OPTIONS_EBIRD = [1, 5, 10, 25, 50] // eBird max 50km
-const RADIUS_OPTIONS_GBIF  = [1, 5, 10, 25, 50, 100, 'any']
+// Search-area dropdown options. The 'narrow' choices stay capped at 50 km
+// regardless of source so eBird (max 50) is always representable.
+const AREA_OPTIONS = [
+  { value: 'map',         label: 'Visible map area' },
+  { value: 'narrow:1',    label: 'Within 1 km of center' },
+  { value: 'narrow:5',    label: 'Within 5 km of center' },
+  { value: 'narrow:10',   label: 'Within 10 km of center' },
+  { value: 'narrow:25',   label: 'Within 25 km of center' },
+  { value: 'narrow:50',   label: 'Within 50 km of center' },
+  { value: 'worldwide',   label: 'Worldwide' },
+]
 
 const TIME_OPTIONS_FULL = [
   { value: 'hour',  label: 'Past hour'  },
@@ -50,7 +58,7 @@ const PinIcon = () => (
 export default function Controls({
   locationName, geoStatus, onLocate, onLocationSelect,
   selectedSpecies, onSpeciesSelect,
-  radius, onRadiusChange,
+  area, radius, onAreaSelect,
   timeWindow, onTimeChange,
   canSearch, onSearch,
   dataSource,
@@ -58,11 +66,19 @@ export default function Controls({
   const locating = geoStatus === 'loading'
   const isEBird = dataSource === 'eBird'
   const isGBIF  = dataSource === 'GBIF'
-  const radiusOptions = isEBird ? RADIUS_OPTIONS_EBIRD : isGBIF ? RADIUS_OPTIONS_GBIF : RADIUS_OPTIONS_FULL
   const timeOptions   = isEBird ? TIME_OPTIONS_EBIRD   : isGBIF ? TIME_OPTIONS_GBIF   : TIME_OPTIONS_FULL
 
-  // Clamp radius if switching to eBird with radius > 50
-  const effectiveRadius = isEBird && radius > 50 ? 50 : radius
+  // Current dropdown value: 'map' / 'worldwide' / 'narrow:<km>'
+  const areaValue = area === 'narrow' ? `narrow:${radius}` : (area || 'map')
+
+  const handleAreaChange = (e) => {
+    const v = e.target.value
+    if (v === 'map' || v === 'worldwide') {
+      onAreaSelect({ area: v })
+    } else if (v.startsWith('narrow:')) {
+      onAreaSelect({ area: 'narrow', radius: parseInt(v.split(':')[1], 10) })
+    }
+  }
 
   const hasLocation = !!locationName || geoStatus === 'loading'
 
@@ -101,13 +117,16 @@ export default function Controls({
           </button>
         </div>
 
-        {/* Radius — only show when a location is set */}
+        {/* Search area — visible map by default; user can narrow to a fixed
+            radius around the search center, or open up to a worldwide query.
+            Only shown once a location is set (worldwide doesn't need one but
+            the bbox/narrow modes do). */}
         {hasLocation && (
           <div className={styles.group}>
-            <label className={styles.label}>Radius</label>
-            <select value={effectiveRadius} onChange={e => onRadiusChange(Number(e.target.value))}>
-              {radiusOptions.filter(r => r !== 'any').map(r => (
-                <option key={r} value={r}>{`${r} km`}</option>
+            <label className={styles.label}>Search area</label>
+            <select value={areaValue} onChange={handleAreaChange}>
+              {AREA_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>

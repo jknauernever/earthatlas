@@ -210,8 +210,9 @@ async function fetchOgImage(url, timeoutMs = 4000) {
 // same in `npm run dev` as in `vercel dev` and prod.
 function inatProxyPlugin() {
   const ALLOWED = new Set([
-    'per_page', 'order', 'order_by', 'captive', 'photos',
-    'swlat', 'nelat', 'swlng', 'nelng', 'taxon_id', 'iconic_taxa',
+    'per_page', 'page', 'order', 'order_by', 'captive', 'photos', 'quality_grade',
+    'swlat', 'nelat', 'swlng', 'nelng', 'lat', 'lng', 'radius',
+    'taxon_id', 'iconic_taxa', 'd1', 'd2',
   ])
   return {
     name: 'inat-proxy',

@@ -65,7 +65,11 @@ const QP_SCHEMA = {
   lng:     { type: 'number' },
   loc:     { type: 'string' },  // reverse-geocoded place name; shared links skip the re-geocode flicker
   source:  { type: 'string', default: 'All' },
-  radius:  { type: 'number', default: 5 },
+  // Search area mode. 'map' (default) queries the visible map bounding box;
+  // 'narrow' constrains to a fixed-km radius around lat/lng (using `radius`);
+  // 'worldwide' drops the geographic filter entirely.
+  area:    { type: 'string', default: 'map' },
+  radius:  { type: 'number', default: 10 },  // only used when area === 'narrow'
   time:    { type: 'string', default: 'week' },
   taxon:   { type: 'string', default: 'all' },
   species: { type: 'string' },
@@ -94,7 +98,26 @@ export default function App() {
   const timeWindow = qp.time
   const activeTaxon = qp.taxon
   const view       = qp.view
-  const isAnywhere = radius === 0
+  // Backward compat: legacy URLs with `radius=0` (no `area` param) meant
+  // worldwide. Treat them as such; new URLs use `area=worldwide` explicitly.
+  const area       = qp.area === 'map' && qp.radius === 0 ? 'worldwide' : qp.area
+  const isAnywhere = area === 'worldwide'
+
+  // Approximate viewport bbox from the URL's map center + zoom. Used when
+  // area='map' so the query follows what the user is actually looking at,
+  // not the radius circle around the original search origin.
+  const urlMapBounds = useMemo(() => {
+    if (area !== 'map') return null
+    if (qp.mlat == null || qp.mlng == null || qp.z == null) return null
+    const latSpan = 180 / Math.pow(2, qp.z)
+    const lngSpan = 360 / Math.pow(2, qp.z)
+    return {
+      minLat: qp.mlat - latSpan,
+      maxLat: qp.mlat + latSpan,
+      minLng: qp.mlng - lngSpan,
+      maxLng: qp.mlng + lngSpan,
+    }
+  }, [area, qp.mlat, qp.mlng, qp.z])
 
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
@@ -241,6 +264,18 @@ export default function App() {
   const GBIF_EBIRD_DATASET = '4fa7b334-ce0d-4e88-aaae-2e0c138d049e'
 
   const handleSearch = useCallback(async (searchBounds) => {
+    // Guard: some callers (notably the Search button's onClick) pass a click
+    // event as the first arg. Coerce anything that's not a properly-shaped
+    // bounds object to null so the radius path is used instead.
+    if (searchBounds && (
+      typeof searchBounds !== 'object'
+      || typeof searchBounds.minLat !== 'number'
+      || typeof searchBounds.maxLat !== 'number'
+      || typeof searchBounds.minLng !== 'number'
+      || typeof searchBounds.maxLng !== 'number'
+    )) {
+      searchBounds = null
+    }
     // No location and no species — nothing to search
     if (!coords && !selectedSpecies) return
     // Treat as worldwide when no location is set and no bounds provided
@@ -266,7 +301,9 @@ export default function App() {
 
       if (dataSource === 'All') {
         const hasSpeciesFilter = !!selectedSpecies
-        const canFilterEBird = !effectiveAnywhere && !!coords && !searchBounds
+        // eBird needs either a search center (lat/lng) or map bounds. The
+        // service now accepts both — bbox is preferred when present.
+        const canFilterEBird = (!effectiveAnywhere && (!!coords || !!searchBounds))
           && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
           && (!iconicFilter || iconicFilter === 'Aves')
         const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
@@ -281,7 +318,8 @@ export default function App() {
 
           canFilterEBird
             ? fetchEBirdObservations({
-                lat: coords.lat, lng: coords.lng,
+                lat: coords?.lat, lng: coords?.lng,
+                bounds: searchBounds,
                 radiusKm: Math.min(radius, 50),
                 timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
                 perPage,
@@ -323,7 +361,9 @@ export default function App() {
           totalCount = 0
         } else {
           const data = await fetchEBirdObservations({
-            lat: coords.lat, lng: coords.lng, radiusKm: radius,
+            lat: coords?.lat, lng: coords?.lng,
+            bounds: searchBounds,
+            radiusKm: radius,
             timeWindow, perPage,
             speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
           })
@@ -391,8 +431,12 @@ export default function App() {
     // Allow immediate search if URL had coords (cold load) or manual/geo set or species selected
     if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere && !selectedSpecies) return
     hasSearched.current = true
-    handleSearch()
-  }, [handleSearch])
+    // Prefer the URL-derived viewport bbox over a radius circle: the user's
+    // map view is what they're looking at, even if it differs from the
+    // original search center. This also fixes the initial load case where
+    // the map hasn't yet fired moveend.
+    handleSearch(urlMapBounds)
+  }, [handleSearch, urlMapBounds])
 
   // ─── Re-fetch when map view changes ─────────────────────────
   const mapMoveTimer = useRef(null)
@@ -517,7 +561,11 @@ export default function App() {
     : totalResults !== null
     ? (isAnywhere || !coords)
       ? `${totalResults.toLocaleString()} total observations worldwide — ${TIME_LABELS[timeWindow]}. Displaying the most recent. Zoom in to see individual observations.`
-      : `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
+      : urlMapBounds
+      ? `${totalResults.toLocaleString()} total observations in the visible map area near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
+      : area === 'narrow'
+      ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
+      : `${totalResults.toLocaleString()} total observations near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
     : error
     ? `Error: ${error}`
     : coords
@@ -568,10 +616,10 @@ export default function App() {
         onLocationSelect={handleLocationSelect}
         selectedSpecies={selectedSpecies}
         onSpeciesSelect={handleSpeciesSelect}
-        radius={radius}           onRadiusChange={(r) => setQP({ radius: r })}
+        area={area}               radius={radius}           onAreaSelect={({ area: a, radius: r }) => setQP({ area: a, ...(r != null ? { radius: r } : {}) })}
         timeWindow={timeWindow}   onTimeChange={(t) => setQP({ time: t })}
         canSearch={canSearch}
-        onSearch={handleSearch}
+        onSearch={() => handleSearch(urlMapBounds)}
         dataSource={dataSource}
       />
 

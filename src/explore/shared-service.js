@@ -5,6 +5,8 @@
  * butterflies, etc.) that wraps GBIF and iNaturalist API calls.
  */
 
+import { fetchEBirdRecentRaw } from '../services/eBird'
+
 const GBIF_API = 'https://api.gbif.org/v1'
 const INAT_API = 'https://api.inaturalist.org/v1'
 const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
@@ -333,7 +335,6 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
   // ─── eBird fetch ─────────────────────────────────────────────────────────────
 
-  const EBIRD_API = 'https://api.ebird.org/v2'
   const EBIRD_KEY = typeof import.meta !== 'undefined' ? import.meta.env.VITE_EBIRD_API_KEY : null
 
   function normalizeEBirdObs(obs) {
@@ -363,33 +364,14 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   async function fetchEBirdSightings({ lat, lng, bounds, days = 90, signal }) {
     if (!useEBird || !EBIRD_KEY) return []
     try {
-      const centerLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : lat
-      const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : lng
-      const viewportKm = bounds
-        ? ((bounds.maxLat - bounds.minLat) * 111)
-        : 100
-
-      // eBird max radius is 50km — skip if viewport is way larger (would only cover a tiny fraction)
-      if (viewportKm > 200) return []
-
-      const dist = Math.min(50, Math.max(5, Math.round(viewportKm / 2)))
-      const back = Math.min(days, 30)  // eBird max lookback is 30 days
-
-      const params = new URLSearchParams({
-        lat: centerLat.toFixed(4),
-        lng: centerLng.toFixed(4),
-        dist,
-        back,
-        maxResults: 10000,
-        includeProvisional: true,
+      // Bridge the explore subsite's `days` → the eBird service's
+      // `timeWindow` vocabulary. fetchEBirdRecentRaw expects 'day' / 'week' /
+      // 'month' and translates them into a daily fetch range.
+      const timeWindow = days <= 1 ? 'day' : days <= 7 ? 'week' : 'month'
+      const rawResults = await fetchEBirdRecentRaw({
+        lat, lng, bounds, timeWindow,
       })
-
-      const res = await fetch(`${EBIRD_API}/data/obs/geo/recent?${params}`, {
-        headers: { 'x-ebirdapitoken': EBIRD_KEY },
-        signal,
-      })
-      if (!res.ok) return []
-      const rawResults = await res.json()
+      if (signal?.aborted) return []
       return rawResults.map(normalizeEBirdObs).filter(Boolean)
     } catch {
       return []

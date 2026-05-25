@@ -19,17 +19,21 @@ export const config = { runtime: 'edge' }
 
 const INAT_BASE = 'https://api.inaturalist.org/v1/observations'
 
-// Whitelist of query params the /live globe actually uses. Anything else gets
-// dropped to keep this proxy from becoming an open relay.
+// Whitelist of query params our app actually uses against /observations.
+// Anything else gets dropped to keep this proxy from becoming an open relay.
 const ALLOWED_PARAMS = new Set([
   'per_page',
+  'page',
   'order',
   'order_by',
   'captive',
   'photos',
+  'quality_grade',
   'swlat', 'nelat', 'swlng', 'nelng',
+  'lat', 'lng', 'radius',
   'taxon_id',
   'iconic_taxa',
+  'd1', 'd2',
 ])
 
 function corsHeaders() {

@@ -9,6 +9,11 @@
 import { cached } from '../utils/cache'
 
 const INAT_API = 'https://api.inaturalist.org/v1'
+// Route /observations through our same-origin proxy. iNat throttles client IPs
+// and 429s us without CORS headers — browsers surface those as "CORS errors"
+// even though the upstream is just rate-limiting. Server-side proxying makes
+// those failures clean HTTP responses (and lets the edge cache absorb load).
+const INAT_OBS_PROXY = '/api/inat-proxy'
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
 // ─── Observations ────────────────────────────────────────────────
@@ -47,16 +52,18 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
   const pages = pageSize <= 0 ? 1 : Math.ceil(Math.min(perPage, 400) / pageSize)
 
   if (pages <= 1) {
-    const res = await fetch(`${INAT_API}/observations?${params}`)
+    const res = await fetch(`${INAT_OBS_PROXY}?${params}`)
     if (!res.ok) throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`)
-    return res.json()
+    const data = await res.json()
+    if (data._upstream_status) return { results: [], total_results: 0 }
+    return data
   }
 
   const fetches = []
   for (let page = 1; page <= pages; page++) {
     const p = new URLSearchParams(params)
     p.set('page', page)
-    fetches.push(fetch(`${INAT_API}/observations?${p}`).then(r => r.ok ? r.json() : { results: [], total_results: 0 }))
+    fetches.push(fetch(`${INAT_OBS_PROXY}?${p}`).then(r => r.ok ? r.json() : { results: [], total_results: 0 }))
   }
   const results = await Promise.all(fetches)
   return {

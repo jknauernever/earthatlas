@@ -7,6 +7,32 @@
   font-family: 'DM Sans', system-ui, sans-serif;
 }
 
+/* The global rule in index.css hides .mapboxgl-ctrl-attrib-button to declutter
+   other maps. On /live we want the (i) toggle visible so users can see required
+   tile-provider attribution (NASA, Esri, Stadia, Mapbox, etc). Styled as a
+   barely-there subtle blue chip so it doesn't compete with the globe; full
+   contrast restored on hover so the credit text stays readable. */
+.container :global(.mapboxgl-ctrl-attrib-button) {
+  display: block !important;
+  background-color: rgba(120, 160, 220, 0.18) !important;
+}
+
+.container :global(.mapboxgl-ctrl-attrib.mapboxgl-compact) {
+  background-color: rgba(120, 160, 220, 0.06) !important;
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.container :global(.mapboxgl-ctrl-attrib.mapboxgl-compact:hover) {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.container :global(.mapboxgl-ctrl-attrib.mapboxgl-compact.mapboxgl-compact-show) {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
 .mapWrap {
   position: absolute;
   inset: 0;
@@ -75,7 +101,7 @@
 .stats {
   position: absolute;
   top: 28px;
-  right: 28px;
+  right: 124px;
   z-index: 10;
   font-size: 12px;
   font-weight: 500;
@@ -89,33 +115,219 @@
   letter-spacing: 0.02em;
 }
 
-/* ─── Controls (bottom-right) ──────────────────────────────────────────── */
-.controls {
+/* ─── Play / Pause (rotation) ──────────────────────────────────────────── */
+/* Sits between the stats ticker and the gear; subtler than the gear so it
+   doesn't compete for attention. Hover bumps it to the same emphasis level. */
+.playPauseBtn {
   position: absolute;
-  bottom: 28px;
-  right: 28px;
-  z-index: 10;
+  top: 24px;
+  right: 72px;
+  z-index: 11;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playPauseBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.playPauseBtn[aria-pressed="true"] {
+  color: #4ecdc4;
+  border-color: rgba(78, 205, 196, 0.2);
+}
+
+/* ─── Settings (gear, top-right corner) ────────────────────────────────── */
+.settingsWrap {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  z-index: 11;
+}
+
+.settingsBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding: 4px;
-  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.settingsBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.settingsBtnActive {
+  composes: settingsBtn;
+  color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.12);
+  border-color: rgba(78, 205, 196, 0.25);
+}
+
+.settingsPanel {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 300px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  background: rgba(20, 24, 36, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsRowStacked {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.settingsDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 2px 0;
+}
+
+.settingsLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settingsActionBtn {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.settingsActionBtn:hover {
+  background: rgba(255, 106, 0, 0.18);
+  border-color: rgba(255, 106, 0, 0.4);
+  color: #fff;
+}
+
+.speedControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.speedBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speedBtn:hover:not(:disabled) {
+  background: rgba(78, 205, 196, 0.18);
+  color: #4ecdc4;
+}
+
+.speedBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.speedValue {
+  min-width: 36px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4ecdc4;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Camera controls (inside settings panel) ──────────────────────────── */
+.controls {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px;
+  border-radius: 8px;
 }
 
 .controlBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -132,28 +344,22 @@
   box-shadow: 0 0 12px rgba(78, 205, 196, 0.15);
 }
 
-/* ─── Source filter (bottom-left) ──────────────────────────────────────── */
+/* ─── Source filter (inside settings panel) ────────────────────────────── */
 .sourceFilter {
-  position: absolute;
-  bottom: 28px;
-  left: 28px;
-  z-index: 10;
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
+  gap: 2px;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 4px;
-  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px;
+  border-radius: 8px;
 }
 
 .sourceBtn {
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 5px 9px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   color: rgba(255, 255, 255, 0.45);
@@ -173,13 +379,8 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ─── Basemap selector (bottom-center) ─────────────────────────────────── */
+/* ─── Basemap selector (inside settings panel) ─────────────────────────── */
 .basemapSelector {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
   display: flex;
   gap: 6px;
   align-items: center;
@@ -189,16 +390,15 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 500;
-  padding: 7px 12px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .labelsBtn:hover {
@@ -217,19 +417,19 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 500;
-  padding: 7px 28px 7px 12px;
-  border-radius: 12px;
+  padding: 6px 26px 6px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.5)' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 8px center;
   letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
 }
 
 .basemapSelect:hover {
@@ -256,18 +456,26 @@
 
   .stats {
     top: 16px;
-    right: 16px;
+    right: 100px;
     font-size: 10px;
     padding: 5px 10px;
   }
 
-  .controls {
-    bottom: 16px;
+  .playPauseBtn {
+    top: 12px;
+    right: 60px;
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  .settingsWrap {
+    top: 12px;
     right: 16px;
   }
 
-  .sourceFilter {
-    bottom: 16px;
-    left: 16px;
+  .settingsPanel {
+    width: calc(100vw - 32px);
+    max-width: 300px;
   }
 }

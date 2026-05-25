@@ -205,8 +205,53 @@ async function fetchOgImage(url, timeoutMs = 4000) {
   }
 }
 
+// Dev middleware: serve /api/inat-proxy by forwarding to iNaturalist server-side.
+// Mirrors the production Edge function at api/inat-proxy.js so /live works the
+// same in `npm run dev` as in `vercel dev` and prod.
+function inatProxyPlugin() {
+  const ALLOWED = new Set([
+    'per_page', 'order', 'order_by', 'captive', 'photos',
+    'swlat', 'nelat', 'swlng', 'nelng', 'taxon_id', 'iconic_taxa',
+  ])
+  return {
+    name: 'inat-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/inat-proxy', async (req, res) => {
+        const url = new URL(req.url, 'http://localhost')
+        const upstream = new URLSearchParams()
+        for (const [k, v] of url.searchParams) {
+          if (ALLOWED.has(k)) upstream.set(k, v)
+        }
+        // Always reply 200 so Chrome doesn't auto-log failed sub-requests for
+        // every throttled point — signal upstream failures via the body.
+        try {
+          const r = await fetch(`https://api.inaturalist.org/v1/observations?${upstream}`, {
+            headers: { accept: 'application/json' },
+          })
+          if (r.ok) {
+            const body = await r.text()
+            res.statusCode = 200
+            res.setHeader('content-type', r.headers.get('content-type') || 'application/json')
+            res.setHeader('cache-control', 'public, max-age=60')
+            res.end(body)
+            return
+          }
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ results: [], total_results: 0, _upstream_status: r.status }))
+        } catch (err) {
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.end(JSON.stringify({ results: [], total_results: 0, _upstream_status: 0, _upstream_error: String(err) }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), newsProxyPlugin()],
+  plugins: [react(), newsProxyPlugin(), inatProxyPlugin()],
   server: {
     port: 5173,
     open: true,

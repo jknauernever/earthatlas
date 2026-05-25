@@ -7,7 +7,12 @@
 
 import { cached } from '../utils/cache'
 
-const INAT_API = 'https://api.inaturalist.org/v1'
+// Route iNat observations through our own /api/inat-proxy edge function.
+// Server-to-server has no CORS layer (so iNat throttling stops showing up as
+// scary "blocked by CORS policy" client-side errors), and the proxy caches
+// responses at the edge for 60s, sharply reducing upstream pressure when
+// many users have /live open.
+const INAT_PROXY = '/api/inat-proxy'
 const EBIRD_API = 'https://api.ebird.org/v2'
 const MACAULAY_API = 'https://search.macaulaylibrary.org/api/v1/search'
 const MACAULAY_CDN = 'https://cdn.download.ams.birds.cornell.edu/api/v1/asset'
@@ -76,6 +81,51 @@ const LAND_POINTS = [
   { lat: -18, lng: 178 },  // Fiji
 ]
 
+// ─── Per-land-point cache ─────────────────────────────────────────────────
+// The /live globe refetches whenever the view shifts ≥10°, but most visible
+// land points overlap between consecutive fetches. Caching per-point results
+// for ~90s means a rotating globe only hits the API for the few NEW points
+// that just rolled into view — the rest come from cache. Total API pressure
+// stays similar to the old fixed-interval polling.
+//
+// We also negative-cache failures with a shorter TTL: if iNat 429-throttles us
+// for a region, we MUST stop retrying it every tick — otherwise the storm of
+// failed CORS-blocked requests floods the console and prolongs the throttle.
+// And we limit cold-start concurrency so a 24-point first load doesn't fire
+// 24 simultaneous requests.
+const POINT_CACHE_TTL_MS = 90 * 1000
+// Failed points are held out from re-fetch for several minutes. iNat (and to a
+// lesser extent eBird) throttle by IP, and their 429 responses omit CORS
+// headers — so the browser surfaces them as scary "CORS errors". If we retry
+// the same point every 30s while throttled, we both spam the console AND
+// prolong the throttle. A long fail-TTL breaks that loop.
+const POINT_FAIL_TTL_MS = 5 * 60 * 1000
+const FETCH_CONCURRENCY = 2
+const FETCH_JITTER_MS = 120
+const inatPointCache = new Map()  // key: "lat,lng" → { obs, expires }
+const ebirdPointCache = new Map() // key: "lat,lng" → { obs, expires }
+function pointKey(pt) { return `${pt.lat},${pt.lng}` }
+
+// Run tasks with a concurrency limit; returns results in original order. Each
+// worker waits a small jitter before starting so concurrent fetches don't all
+// hit the server in the same millisecond (helps avoid burst-rate-limits).
+async function limitedAll(tasks, limit = FETCH_CONCURRENCY) {
+  const results = new Array(tasks.length)
+  let i = 0
+  async function worker(startDelay) {
+    if (startDelay) await new Promise(r => setTimeout(r, startDelay))
+    while (i < tasks.length) {
+      const idx = i++
+      results[idx] = await tasks[idx]()
+    }
+  }
+  const workers = []
+  const n = Math.min(limit, tasks.length)
+  for (let w = 0; w < n; w++) workers.push(worker(w * (FETCH_JITTER_MS / n)))
+  await Promise.all(workers)
+  return results
+}
+
 // ─── Macaulay Library species photo cache ─────────────────────────────────
 const macaulayCache = new Map()
 
@@ -130,7 +180,10 @@ function mapINatResult(o) {
     lat: o.geojson.coordinates[1],
     lng: o.geojson.coordinates[0],
     location: o.place_guess || '',
-    observedAt: o.observed_on || o.created_at || '',
+    // `time_observed_at` is ISO 8601 with the observation's timezone offset
+    // — best for converting to the user's local time. Fall back to date-only
+    // `observed_on`, then to UTC `created_at`.
+    observedAt: o.time_observed_at || o.observed_on || o.created_at || '',
     iconicTaxon: o.taxon?.iconic_taxon_name || 'Unknown',
   }
 }
@@ -144,9 +197,10 @@ export async function fetchRecentINat(mapView) {
   const bounds = mapView?.bounds
 
   if (!center) {
-    const res = await fetch(`${INAT_API}/observations?per_page=200&order=desc&order_by=created_at&captive=false&photos=true`)
+    const res = await fetch(`${INAT_PROXY}?per_page=200&order=desc&order_by=created_at&captive=false&photos=true`)
     if (!res.ok) throw new Error(`iNaturalist error: ${res.status}`)
     const data = await res.json()
+    if (data._upstream_status) return []
     return (data.results || []).filter(o => o.geojson?.coordinates).map(mapINatResult)
   }
 
@@ -163,19 +217,26 @@ export async function fetchRecentINat(mapView) {
       swlng: bounds.swlng,
       nelng: bounds.nelng,
     })
-    const res = await fetch(`${INAT_API}/observations?${params}`)
+    const res = await fetch(`${INAT_PROXY}?${params}`)
     if (!res.ok) return []
     const data = await res.json()
+    if (data._upstream_status) return []
     return (data.results || []).filter(o => o.geojson?.coordinates).map(mapINatResult)
   }
 
   // Zoomed out (globe view): scatter across visible land points
   const points = visibleLandPoints(center)
   const boxR = 5
+  const now = Date.now()
+  const perPage = Math.ceil(200 / Math.max(points.length, 1))
 
-  const promises = points.map(pt => {
+  const tasks = points.map(pt => async () => {
+    const key = pointKey(pt)
+    const cached = inatPointCache.get(key)
+    if (cached && cached.expires > now) return cached.obs
+
     const params = new URLSearchParams({
-      per_page: Math.ceil(200 / Math.max(points.length, 1)),
+      per_page: perPage,
       order: 'desc',
       order_by: 'created_at',
       captive: 'false',
@@ -185,13 +246,26 @@ export async function fetchRecentINat(mapView) {
       swlng: wrapLng(pt.lng - boxR),
       nelng: wrapLng(pt.lng + boxR),
     })
-    return fetch(`${INAT_API}/observations?${params}`)
-      .then(r => r.ok ? r.json() : { results: [] })
-      .then(d => (d.results || []).filter(o => o.geojson?.coordinates).map(mapINatResult))
-      .catch(() => [])
+    try {
+      const r = await fetch(`${INAT_PROXY}?${params}`)
+      const d = r.ok ? await r.json() : null
+      // The proxy returns 200 even on upstream errors (so Chrome doesn't
+      // auto-log "Failed to load resource"); upstream failure is signalled
+      // via `_upstream_status` in the body. Treat that as a fetch failure.
+      if (!d || d._upstream_status) {
+        inatPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS })
+        return []
+      }
+      const obs = (d.results || []).filter(o => o.geojson?.coordinates).map(mapINatResult)
+      inatPointCache.set(key, { obs, expires: now + POINT_CACHE_TTL_MS })
+      return obs
+    } catch {
+      inatPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS })
+      return []
+    }
   })
 
-  const results = await Promise.all(promises)
+  const results = await limitedAll(tasks)
   const seen = new Set()
   return results.flat().filter(o => {
     if (seen.has(o.id)) return false
@@ -231,23 +305,31 @@ export async function fetchRecentEBird(mapView) {
   }
 
   const allObs = []
+  const now = Date.now()
 
-  await Promise.all(points.map(async (pt) => {
+  const tasks = points.map(pt => async () => {
+    const key = pointKey(pt)
+    const cached = ebirdPointCache.get(key)
+    if (cached && cached.expires > now) {
+      allObs.push(...cached.obs)
+      return
+    }
     try {
       const res = await fetch(
         `${EBIRD_API}/data/obs/geo/recent/notable?lat=${pt.lat}&lng=${pt.lng}&dist=50&back=3&maxResults=30`,
         { headers: { 'x-ebirdapitoken': EBIRD_KEY } }
       )
-      if (!res.ok) return
+      if (!res.ok) { ebirdPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS }); return }
       const data = await res.json()
-      if (!Array.isArray(data)) return
+      if (!Array.isArray(data)) { ebirdPointCache.set(key, { obs: [], expires: now + POINT_CACHE_TTL_MS }); return }
 
       const uniqueCodes = [...new Set(data.map(o => o.speciesCode).filter(Boolean))]
       await Promise.all(uniqueCodes.map(code => fetchMacaulayPhoto(code)))
 
+      const pointObs = []
       for (const o of data) {
         if (o.lat == null || o.lng == null) continue
-        allObs.push({
+        pointObs.push({
           id: `ebird-${o.subId}-${o.speciesCode}`,
           source: 'eBird',
           commonName: o.comName || 'Unknown',
@@ -262,10 +344,14 @@ export async function fetchRecentEBird(mapView) {
           howMany: o.howMany || null,
         })
       }
+      ebirdPointCache.set(key, { obs: pointObs, expires: now + POINT_CACHE_TTL_MS })
+      allObs.push(...pointObs)
     } catch {
-      // Skip failed points silently
+      ebirdPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS })
     }
-  }))
+  })
+
+  await limitedAll(tasks)
 
   // Deduplicate
   const seen = new Set()

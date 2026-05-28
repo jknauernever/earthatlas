@@ -776,7 +776,7 @@ export default function ForestMonitor() {
 
       <div className={styles.legend}>
         <div className={styles.legendTitle}>
-          {mode === 'recency' && 'Forest disturbance recency'}
+          {mode === 'recency' && 'Vegetation disturbance recency'}
           {mode === 'status' && 'Alert status'}
           {mode === 'severity' && 'Vegetation loss'}
         </div>
@@ -863,6 +863,14 @@ export default function ForestMonitor() {
             </div>
           </>
         )}
+
+        <button
+          type="button"
+          onClick={() => setShowMethodology(true)}
+          className={styles.legendMethodology}
+        >
+          ⓘ How this is sourced
+        </button>
 
         <div className={styles.legendFooter}>
           EarthAtlas is built by{' '}

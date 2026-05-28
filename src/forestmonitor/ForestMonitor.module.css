@@ -590,8 +590,28 @@
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.55);
 }
+.legendMethodology {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(96, 165, 250, 0.95);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.legendMethodology:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
 .legendFooter {
-  margin-top: 14px;
+  margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 10.5px;

@@ -2493,18 +2493,18 @@ AEF_LATEST_YEAR = 2025  # bump when Google publishes the next annual mosaic
 AEF_DIM = 64
 AEF_BAND_NAMES = tuple(f'A{i:02d}' for i in range(AEF_DIM))
 
-# Item 1 — nearest-class library
-AEF_REF_BUFFER_M = 200_000          # 200 km regional sampling buffer
-AEF_REF_NUM_POINTS_PER_CLASS = 25   # stratifiedSample budget
-AEF_REF_SCALE_M = 100               # downsample for speed (AEF is composable)
+# Item 1 — nearest-class library. Sized for ~3-5 s of EE work.
+AEF_REF_BUFFER_M = 80_000           # 80 km regional sampling buffer
+AEF_REF_NUM_POINTS_PER_CLASS = 8    # stratifiedSample budget
+AEF_REF_SCALE_M = 150               # downsample for speed (AEF is composable)
 AEF_REF_MIN_SUPPORT = 3             # require >= N samples for a class to count
 AEF_REF_TOP_K = 3
 
-# Item 4 — similar disturbances
-AEF_SIMILAR_RADIUS_M = 30_000       # 30 km from click
-AEF_SIMILAR_NUM_PIXELS = 120        # candidate pool
+# Item 4 — similar disturbances. Sized for ~3-5 s of EE work.
+AEF_SIMILAR_RADIUS_M = 12_000       # 12 km from click
+AEF_SIMILAR_NUM_PIXELS = 20         # candidate pool
 AEF_SIMILAR_TOP_K = 5
-AEF_SIMILAR_SCALE_M = 90            # downsample for speed
+AEF_SIMILAR_SCALE_M = 180           # downsample for speed
 
 
 def _aef_image_for_year(year: int) -> 'ee.Image':
@@ -2714,6 +2714,14 @@ def _aef_nearest_class(lat: float, lng: float, opera_year: int) -> dict | None:
         features = samples.get('features', [])
         if not features:
             return None
+        # Drop Dynamic World class 8 (Snow & ice) from the candidate pool
+        # when we're below 60° latitude. DW frequently mislabels bright
+        # tropical cloud edges as snow; including class 8 here propagates
+        # that artifact into the AEF-weighted nearest-class result (we saw
+        # "Snow & ice" appear as the #2 match in equatorial Borneo and
+        # Bahia, both clearly not glaciated). At |lat|>=60° we keep it
+        # since real snow/ice cover starts mattering there.
+        drop_snow_ice = abs(lat) < 60.0
         sums = {}
         counts = {}
         for f in features:
@@ -2721,10 +2729,12 @@ def _aef_nearest_class(lat: float, lng: float, opera_year: int) -> dict | None:
             label = p.get('dw_label')
             if label is None:
                 continue
+            label = int(label)
+            if drop_snow_ice and label == 8:
+                continue
             vec = [p.get(b) for b in AEF_BAND_NAMES]
             if any(v is None for v in vec):
                 continue
-            label = int(label)
             if label not in sums:
                 sums[label] = [0.0] * AEF_DIM
                 counts[label] = 0
@@ -2830,8 +2840,14 @@ def _aef_similar_disturbances(lat: float, lng: float, opera_year: int) -> dict |
 
 
 def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | None:
-    """Bundle all five AEF signals into one popup block. Each call is
-    isolated so one failure doesn't take out the others.
+    """Bundle all five AEF signals into one popup block.
+
+    The five helpers each make 1-2 EE getInfo() round trips, which dominate
+    wall-clock time. Running them serially adds ~20 s locally; running them
+    in parallel with a ThreadPoolExecutor brings it down to roughly the
+    slowest single helper (~5 s) because `getInfo()` releases the GIL while
+    blocked on HTTP. Each call is wrapped so one failure doesn't take out
+    the others.
     """
     if not opera_date_str:
         return None
@@ -2840,6 +2856,8 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
     except (ValueError, IndexError, AttributeError):
         return None
 
+    from concurrent.futures import ThreadPoolExecutor
+
     def _safe(fn):
         try:
             return fn(lat, lng, opera_year)
@@ -2847,15 +2865,24 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
             print(f'AEF helper {fn.__name__} crashed: {e}', flush=True)
             return None
 
+    helpers = {
+        'nearestClass':        _aef_nearest_class,
+        'changeMagnitude':     _aef_change_magnitude,
+        'trajectory':          _aef_trajectory,
+        'stability':           _aef_stability,
+        'similarDisturbances': _aef_similar_disturbances,
+    }
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(helpers)) as ex:
+        futures = {key: ex.submit(_safe, fn) for key, fn in helpers.items()}
+        for key, fut in futures.items():
+            results[key] = fut.result()
+
     return {
         'operaYear': opera_year,
         'dataset': 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL',
         'latestYear': AEF_LATEST_YEAR,
-        'nearestClass':        _safe(_aef_nearest_class),
-        'changeMagnitude':     _safe(_aef_change_magnitude),
-        'trajectory':          _safe(_aef_trajectory),
-        'stability':           _safe(_aef_stability),
-        'similarDisturbances': _safe(_aef_similar_disturbances),
+        **results,
     }
 
 
@@ -2970,6 +2997,20 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         status_code is not None and int(status_code) in STATUS_LABELS
     )
 
+    # AEF runs in parallel with everything else from this point onward
+    # (named-fires, patch geometry, burn, dNBR, land-cover, cause). On
+    # no-disturbance clicks, we still want AEF "current-state" context, so
+    # anchor on AEF_LATEST_YEAR when alert_date_str is missing. The
+    # internal _aef_context call uses its own thread pool to fan out the
+    # five helpers, so the future here resolves in roughly the time of
+    # the slowest single helper.
+    aef_future = None
+    if include_aef:
+        from concurrent.futures import ThreadPoolExecutor
+        _aef_pool = ThreadPoolExecutor(max_workers=1)
+        anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
+        aef_future = _aef_pool.submit(_aef_context, lat, lng, anchor)
+
     # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
     # back to status 0 once vegetation recovers, so older fire scars (like
@@ -2987,12 +3028,16 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     early_named_fires = _dedupe_and_sort_fires(early_named_fires)
 
     if not status_valid or alert_date_str is None:
+        # No current OPERA disturbance — collect the AEF future if we
+        # kicked it off, then return early. AEF ran in parallel with
+        # named-fires above so total time ≈ max(named-fires, AEF helpers).
+        aef_empty = aef_future.result() if aef_future is not None else None
         return (
             jsonify({
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
                 'shape': None, 'namedFires': early_named_fires, 'likelyCause': None,
-                'aef': None,
+                'aef': aef_empty,
             }),
             200,
             CORS_HEADERS,
@@ -3084,11 +3129,10 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         crop_profile=crop_profile, nass_context=nass_context,
     )
 
-    # AlphaEarth Foundations context — opt-in via `?aef=1`. Five derived
-    # signals (nearest class, change magnitude, trajectory, similar
-    # disturbances, stability). Adds ~1-3 s of GEE work; whole block is
-    # None on failure so the popup just skips the section.
-    aef = _aef_context(lat, lng, alert_date_str) if include_aef else None
+    # AEF future was kicked off earlier to run in parallel with the rest
+    # of the extras work; collect its result now. ~0 ms wait if the
+    # extras helpers were the long pole, ~3-5 s if AEF was longer.
+    aef = aef_future.result() if aef_future is not None else None
 
     return (
         jsonify({

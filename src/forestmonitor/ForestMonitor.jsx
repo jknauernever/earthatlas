@@ -484,7 +484,10 @@ export default function ForestMonitor() {
           const extrasNamedFires = state.extras.status === 'fulfilled'
             ? (state.extras.data?.namedFires || [])
             : []
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires))
+          const extrasAef = state.extras.status === 'fulfilled'
+            ? (state.extras.data?.aef || null)
+            : null
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef))
           return
         }
 
@@ -950,6 +953,15 @@ function MethodologyModal({ onClose }) {
             <li>
               <strong>Named US fires (MTBS + NIFC)</strong> — for clicks inside the United States, we check whether the point falls inside a known historical (MTBS, ≤3 yr lookback) or current (NIFC WFIGS, ≤1.5 yr lookback) fire perimeter. Filtered so the fire's ignition date must precede the OPERA detection — cause must precede effect. When a match exists, the fire's name, ignition date, acres, and (for active fires) containment status appear at the top of the popup with an InciWeb link.
             </li>
+            <li>
+              <strong>AlphaEarth Foundations context</strong> — five derived signals from
+              Google DeepMind's annual 10 m embedding dataset (nearest land-use class, pre/post
+              change magnitude, multi-year trajectory sparkline, similar-disturbance kNN, and
+              pre-disturbance stability). All five are computed in parallel with the extras
+              above, so they don't extend the popup wait time. Renders in a purple "AlphaEarth
+              context" block at the bottom of the popup on both disturbance and stable clicks.
+              Detailed in its own section below.
+            </li>
           </ol>
         </section>
 
@@ -986,8 +998,80 @@ function MethodologyModal({ onClose }) {
         </section>
 
         <section className={styles.modalSection}>
+          <h3>AlphaEarth context (purple box in the popup)</h3>
+          <p>
+            Google DeepMind's <strong>AlphaEarth Foundations</strong> model summarizes each 10 m
+            patch of Earth, every year since 2017, into a 64-dimensional fingerprint built from
+            Landsat, Sentinel-1, Sentinel-2, LiDAR, and other inputs. The numbers aren't
+            individually meaningful — but two fingerprints can be <em>compared</em> (cosine
+            similarity) to ask "how similar are these places, or this place across time?"
+          </p>
+          <p>The popup surfaces five derived signals on every disturbance click — and on stable clicks too, so you can fingerprint your own land:</p>
+          <ol>
+            <li>
+              <strong>Most resembles</strong> — for the click point, we sample Dynamic World
+              class labels for ~25 points per class within an 80 km buffer, average each class's
+              AEF embedding, and report the top three classes by cosine similarity to the click's
+              own embedding. This benefits from AEF's multi-sensor + multi-year representation
+              rather than a single Dynamic World classification, and surfaces ranked confidence.
+              <em>Below ±60° latitude we suppress the "Snow &amp; ice" class since Dynamic World
+              tends to mislabel bright tropical cloud edges as snow.</em>
+            </li>
+            <li>
+              <strong>Land-use shift</strong> — cosine distance between the pre-disturbance
+              year (OPERA year − 1) and the post-disturbance year (OPERA year + 1) AEF
+              embeddings. Bucketed into <em>unchanged / subtle / substantial / major</em>.
+              When OPERA year + 1 hasn't been published yet (AEF is annual, ~Q4 lag), this
+              row is hidden rather than showing a misleading "no change" reading.
+            </li>
+            <li>
+              <strong>Multi-year trajectory</strong> — annual cosine distance of the click's
+              AEF embedding from its 2017 baseline. The sparkline shows the year-by-year drift;
+              a vertical red dashed line marks the OPERA-detection year on disturbance clicks.
+              A flat curve that suddenly jumps tells a different story than a slow upward drift
+              that finally crosses an OPERA threshold.
+            </li>
+            <li>
+              <strong>Land-use stability</strong> — median pairwise cosine similarity across
+              the three years preceding the click. High similarity (&gt;0.95) =
+              previously-stable land; lower values flag already-volatile pixels (shifting
+              cultivation, frontier conversion, etc.). On a disturbance click, this answers
+              "was this intact land that got cut, or was it already-changing land that crossed
+              the OPERA threshold?"
+            </li>
+            <li>
+              <strong>Similar disturbances within 12 km</strong> — we sample up to 20 nearby
+              OPERA-flagged pixels, score each by cosine similarity to the click's
+              pre-disturbance embedding, and surface the top five. Each row is clickable —
+              tapping it pans the map there so you can compare diagnoses. Same-day clusters
+              with high similarity often mean the same operation or weather event.
+            </li>
+          </ol>
+          <p>
+            AEF gives the popup context that the existing land-cover / fire stack can't:
+            land-use <em>change</em> independent of fire, multi-year <em>history</em>,
+            and a notion of "this place looks like other places in this region." Failure
+            modes: it inherits Dynamic World's regional vocabulary, so "Most resembles" is
+            most useful as a confidence/ranking signal — for richer class labels (oil palm,
+            rubber, cabruca, mining), a pre-staged labeled reference library per region is
+            the planned next step.
+          </p>
+        </section>
+
+        <section className={styles.modalSection}>
           <h3>Datasets</h3>
           <dl className={styles.datasetList}>
+            <dt>AlphaEarth Foundations Satellite Embedding V1 (annual)</dt>
+            <dd>
+              64-D unit-length embedding per 10 m pixel per year (2017–2025), produced by Google DeepMind's
+              AlphaEarth Foundations model from Landsat + Sentinel-1 + Sentinel-2 + LiDAR + other sources.
+              Used in the popup's purple "AlphaEarth context" block for nearest-class matching, pre/post
+              change magnitude, multi-year trajectory, similar-disturbance kNN, and pre-disturbance
+              stability score.{' '}
+              <a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL" target="_blank" rel="noopener noreferrer">EE catalog</a>{' · '}
+              <a href="https://deepmind.google/blog/alphaearth-foundations-helps-map-our-planet-in-unprecedented-detail/" target="_blank" rel="noopener noreferrer">DeepMind announcement</a>
+            </dd>
+
             <dt>NASA OPERA L3 DIST-ALERT HLS V1</dt>
             <dd>
               30 m, near-real-time, global · NASA via GLAD's GEE mirror <code>projects/glad/HLSDIST/current</code>.{' '}
@@ -1184,6 +1268,9 @@ function MethodologyModal({ onClose }) {
             <li><strong>"Nearest place" in remote forest can be misleading.</strong> Mapbox returns the closest containing or nearest settlement — sometimes 50+ km away in the Amazon or Congo. We always include the larger admin region as a more honest anchor.</li>
             <li><strong>Patch size measured within a 5 km search radius.</strong> The acres number comes from polygon area, not pixel counts — so it's accurate for any patch that fits within 5 km of the click point (about 19,000 acres of search area). Megafires or very large clearcuts that extend beyond that radius are flagged "extends beyond 5 km search radius" in the popup; the reported area is the in-radius portion only.</li>
             <li><strong>Provisional vs Confirmed.</strong> A provisional OPERA alert is a single satellite-pass detection; confirmed requires multiple. Provisional alerts will sometimes be revoked when more data comes in. "Finished" variants of either are real alerts whose current change activity has stopped.</li>
+            <li><strong>AlphaEarth is annual, not real-time.</strong> The Satellite Embedding dataset publishes one mosaic per calendar year, typically released in Q4 of the following year. For a 2026 OPERA alert, the "pre" embedding is 2025 and the "post" embedding doesn't exist yet — so the "Land-use shift" row is suppressed until next year's publication. The other AEF signals (trajectory, stability, nearest-class, similar-disturbances) work fine in the meantime.</li>
+            <li><strong>AlphaEarth "Most resembles" uses Dynamic World's vocabulary.</strong> Top match is one of the 9 generic Dynamic World classes (Trees / Crops / Built area / etc.), not a specific land-use like "cabruca," "oil palm," or "selective logging scar." AEF makes the ranking more stable than a raw Dynamic World classification (multi-sensor + multi-year representation, AEF-weighted neighbors), but it can't invent class labels we never trained against. Loading a region-specific labeled reference set is the planned next step for gap regions (Bahia cabruca, Indonesian oil palm, etc.).</li>
+            <li><strong>Similar-disturbances list is regional, not global.</strong> The "Similar disturbances within 12 km" block samples OPERA-flagged pixels within a 12 km radius of the click. It surfaces same-event clusters and local patterns well, but won't find a similar disturbance on the other side of the world. A global vector-search backend (BigQuery + AEF embeddings) is the way to extend this — that's tracked as a follow-up.</li>
           </ul>
         </section>
 
@@ -1673,8 +1760,10 @@ function renderAef(aef) {
   }
 
   // Item 2 — Change magnitude. Color the badge by magnitude tier.
+  // Skip entirely on the no-disturbance path (cm.magnitude === 'awaiting_post')
+  // since there's no event to compare pre/post against — would just confuse.
   const cm = aef.changeMagnitude
-  if (cm) {
+  if (cm && cm.magnitude !== 'awaiting_post') {
     const tier = cm.magnitude || 'unchanged'
     const tierClass = ({
       unchanged:    styles.popupAefMagUnchanged,
@@ -1701,17 +1790,23 @@ function renderAef(aef) {
   }
 
   // Item 3 — Trajectory sparkline. Cosine distance from baseline year.
+  // On no-disturbance clicks (where cm.magnitude is the 'awaiting_post'
+  // sentinel) we don't have a real OPERA year to mark, so suppress the
+  // vertical guide and the matching subtitle.
   const traj = aef.trajectory
   if (Array.isArray(traj) && traj.length >= 2) {
-    const svg = renderAefSparkline(traj, aef.operaYear)
+    const hasDisturbance = !!(cm && cm.magnitude !== 'awaiting_post')
+    const operaMarkerYear = hasDisturbance ? aef.operaYear : null
+    const svg = renderAefSparkline(traj, operaMarkerYear)
     if (svg) {
+      const subtitle = hasDisturbance
+        ? `Cosine distance vs ${traj[0].year} baseline; vertical line = OPERA year`
+        : `Cosine distance vs ${traj[0].year} baseline`
       sections.push(`
         <div class="${styles.popupAefRow}">
           <div class="${styles.popupAefRowLabel}">Multi-year trajectory</div>
           ${svg}
-          <div class="${styles.popupAefMuted}">
-            Cosine distance vs ${traj[0].year} baseline; vertical line = OPERA year
-          </div>
+          <div class="${styles.popupAefMuted}">${subtitle}</div>
         </div>
       `)
     }
@@ -1728,7 +1823,7 @@ function renderAef(aef) {
     })[stab.label] || styles.popupAefStableMixed
     sections.push(`
       <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Pre-disturbance state</div>
+        <div class="${styles.popupAefRowLabel}">Land-use stability</div>
         <div class="${stabClass}">
           ${escapeHTML(stab.description)}
           <span class="${styles.popupAefSim}">sim ${stab.medianSimilarity.toFixed(2)}</span>
@@ -1867,7 +1962,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -1878,6 +1973,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
       ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
+      ${renderAef(aef)}
       ${renderMethodologyLink()}
     </div>
   `

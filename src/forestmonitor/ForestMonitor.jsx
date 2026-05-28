@@ -436,7 +436,7 @@ export default function ForestMonitor() {
       if (popupRef.current) popupRef.current.remove()
       removePatchOutline(map)
 
-      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '280px', offset: 12 })
+      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '360px', offset: 12 })
         .setLngLat([lng, lat])
         .setHTML(`<div class="${styles.popupLoading}">Looking up disturbance…</div>`)
         .addTo(map)
@@ -1879,7 +1879,9 @@ function renderAef(aef) {
 // Y-axis = cosine distance from baseline (0 to ymax, capped at 1.0).
 // X-axis = year. Vertical guide marks the OPERA-detection year.
 function renderAefSparkline(series, operaYear) {
-  const W = 220, H = 44, PAD_L = 4, PAD_R = 4, PAD_T = 6, PAD_B = 14
+  // Padding generous enough that edge-anchored tick text doesn't clip.
+  // Year labels are 4 chars at 10px ~= 28px wide, anchored start/end at edges.
+  const W = 320, H = 52, PAD_L = 8, PAD_R = 8, PAD_T = 8, PAD_B = 16
   const valid = series.filter(p => p.distance != null && Number.isFinite(p.distance))
   if (valid.length < 2) return ''
   const years = valid.map(p => p.year)
@@ -1894,17 +1896,21 @@ function renderAefSparkline(series, operaYear) {
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.year).toFixed(1)} ${y(p.distance).toFixed(1)}`)
     .join(' ')
   const dots = valid
-    .map(p => `<circle cx="${x(p.year).toFixed(1)}" cy="${y(p.distance).toFixed(1)}" r="2" fill="#7c3aed" />`)
+    .map(p => `<circle cx="${x(p.year).toFixed(1)}" cy="${y(p.distance).toFixed(1)}" r="2.2" fill="#7c3aed" />`)
     .join('')
   const operaLine = (operaYear && operaYear >= minY && operaYear <= maxY)
     ? `<line x1="${x(operaYear).toFixed(1)}" y1="${PAD_T}" x2="${x(operaYear).toFixed(1)}" y2="${H - PAD_B}" stroke="#dc2626" stroke-width="1" stroke-dasharray="2,2" />`
     : ''
   const xAxis = `<line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" stroke="#d1d5db" stroke-width="0.5" />`
-  // Year tick labels at ends + midpoint
-  const ticks = [minY, Math.round((minY + maxY) / 2), maxY]
-  const tickLabels = ticks
-    .map(t => `<text x="${x(t).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#6b7280" font-family="sans-serif">${t}</text>`)
-    .join('')
+  // Year tick labels at ends + midpoint. Edge ticks anchor start/end so
+  // their text stays inside the SVG; midpoint stays centered.
+  const mid = Math.round((minY + maxY) / 2)
+  const labelStyle = 'font-size="10" fill="#6b7280" font-family="sans-serif"'
+  const tickLabels = [
+    `<text x="${x(minY).toFixed(1)}" y="${H - 3}" text-anchor="start" ${labelStyle}>${minY}</text>`,
+    `<text x="${x(mid).toFixed(1)}" y="${H - 3}" text-anchor="middle" ${labelStyle}>${mid}</text>`,
+    `<text x="${x(maxY).toFixed(1)}" y="${H - 3}" text-anchor="end" ${labelStyle}>${maxY}</text>`,
+  ].join('')
   return `
     <svg class="${styles.popupAefSparkline}" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
       ${xAxis}${operaLine}

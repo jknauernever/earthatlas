@@ -1335,3 +1335,178 @@
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ─── AlphaEarth Foundations context block ─────────────────────────────── */
+.popupAef {
+  margin: 10px 0 6px;
+  padding: 8px 10px;
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-left: 3px solid #7c3aed;
+  border-radius: 4px;
+}
+.popupAefTitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b21a8;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.popupAefRow { margin-top: 6px; }
+.popupAefRow:first-of-type { margin-top: 0; }
+.popupAefRowLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.popupAefMuted {
+  font-size: 10px;
+  color: #9ca3af;
+  font-style: italic;
+  margin-top: 2px;
+}
+.popupAefSim {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  background: #ede9fe;
+  color: #6b21a8;
+  border-radius: 3px;
+}
+.popupAefMatch {
+  font-size: 12px;
+  color: #1f2937;
+  line-height: 1.4;
+}
+.popupAefAltList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+.popupAefAltList li { padding: 1px 0; }
+
+/* Change-magnitude tiers — color signals severity of the pre/post shift. */
+.popupAefMagUnchanged {
+  font-size: 12px;
+  color: #4b5563;
+  background: #f3f4f6;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.popupAefMagSubtle {
+  font-size: 12px;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.popupAefMagSubstantial {
+  font-size: 12px;
+  color: #9a3412;
+  background: #fed7aa;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.popupAefMagMajor {
+  font-size: 12px;
+  color: #7f1d1d;
+  background: #fecaca;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.popupAefMagPending {
+  font-size: 12px;
+  color: #6b7280;
+  background: #f9fafb;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-style: italic;
+}
+
+/* Stability tiers — same idea, calmer palette. */
+.popupAefStableStable {
+  font-size: 12px;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.popupAefStableMostly {
+  font-size: 12px;
+  color: #166534;
+  background: #dcfce7;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.popupAefStableMixed {
+  font-size: 12px;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.popupAefStableVolatile {
+  font-size: 12px;
+  color: #7f1d1d;
+  background: #fecaca;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+
+.popupAefSparkline {
+  display: block;
+  margin: 4px 0;
+  background: #fff;
+  border: 1px solid #e9d5ff;
+  border-radius: 3px;
+}
+
+/* Similar disturbances — click rows fly the map to lat/lng. */
+.popupAefSimilarList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.popupAefSimilarRow { margin: 0; }
+.popupAefSimilarBtn {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: #1f2937;
+  font-size: 11px;
+  line-height: 1.4;
+  transition: background 0.1s ease;
+}
+.popupAefSimilarBtn:hover { background: #f3e8ff; }
+.popupAefSimilarDate {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: #6b21a8;
+  min-width: 70px;
+}
+.popupAefSimilarCoord {
+  flex: 1;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

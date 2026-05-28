@@ -513,7 +513,7 @@ export default function ForestMonitor() {
           render()
         })
 
-      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1`)
+      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1&aef=1`)
         .then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
           return r.json()
@@ -608,6 +608,25 @@ export default function ForestMonitor() {
     }
     document.addEventListener('click', docHandler)
     return () => document.removeEventListener('click', docHandler)
+  }, [])
+
+  // ─── AEF "similar disturbance" fly-to delegation ─────────────────────────
+  // Buttons inside the AlphaEarth context block carry lat/lng for a similar
+  // OPERA-disturbed pixel within 30 km. Clicking flies the map there so the
+  // user can compare the popup-clicked spot against its lookalikes.
+  useEffect(() => {
+    const handler = (e) => {
+      const btn = e.target.closest('[data-action="aef-fly"]')
+      if (!btn) return
+      e.preventDefault()
+      const lat = parseFloat(btn.dataset.lat)
+      const lng = parseFloat(btn.dataset.lng)
+      const m = mapRef.current
+      if (!m || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+      m.flyTo({ center: [lng, lat], zoom: Math.max(m.getZoom(), 13), essential: true })
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
   }, [])
 
   // ─── News lookup click delegation ───────────────────────────────────────
@@ -1612,6 +1631,186 @@ function renderLikelyCause(cause) {
   `
 }
 
+// ─── AlphaEarth Foundations (AEF) popup block ───────────────────────────────
+// Renders five derived signals from Google's Satellite Embedding dataset:
+//   1. Nearest-class match    — kNN against region-bootstrapped class means
+//   2. Change magnitude       — pre/post cosine distance
+//   3. Trajectory             — multi-year sparkline vs 2017 baseline
+//   4. Similar disturbances   — top-K lookalike OPERA pixels (clickable)
+//   5. Stability score        — pre-disturbance similarity median
+//
+// Whole block is gated on `aef` being a truthy object; each subsection
+// degrades to a skip if its data is missing. AEF is computed on the
+// `?extras=1&aef=1` cloud-function call.
+function renderAef(aef) {
+  if (!aef || typeof aef !== 'object') return ''
+  const sections = []
+
+  // Item 1 — Nearest-class match (top-3 cosine-similar Dynamic World classes
+  // within a 200 km buffer, with class-mean AEF embeddings).
+  const nc = aef.nearestClass
+  if (nc && Array.isArray(nc.matches) && nc.matches.length) {
+    const top = nc.matches[0]
+    const altList = nc.matches.slice(1, 3)
+      .map(m => `<li>${escapeHTML(m.label)} <span class="${styles.popupAefSim}">${m.similarity.toFixed(2)}</span></li>`)
+      .join('')
+    const alts = altList
+      ? `<ul class="${styles.popupAefAltList}">${altList}</ul>`
+      : ''
+    sections.push(`
+      <div class="${styles.popupAefRow}">
+        <div class="${styles.popupAefRowLabel}">Most resembles</div>
+        <div class="${styles.popupAefMatch}">
+          <strong>${escapeHTML(top.label)}</strong>
+          <span class="${styles.popupAefSim}">cos ${top.similarity.toFixed(2)}</span>
+        </div>
+        ${alts}
+        <div class="${styles.popupAefMuted}">
+          Closest match against Dynamic World classes within ${nc.bufferKm} km, AEF-weighted
+        </div>
+      </div>
+    `)
+  }
+
+  // Item 2 — Change magnitude. Color the badge by magnitude tier.
+  const cm = aef.changeMagnitude
+  if (cm) {
+    const tier = cm.magnitude || 'unchanged'
+    const tierClass = ({
+      unchanged:    styles.popupAefMagUnchanged,
+      subtle:       styles.popupAefMagSubtle,
+      substantial:  styles.popupAefMagSubstantial,
+      major:        styles.popupAefMagMajor,
+      awaiting_post:styles.popupAefMagPending,
+    })[tier] || styles.popupAefMagSubtle
+    const distLine = cm.distance != null
+      ? `<span class="${styles.popupAefSim}">cos-dist ${cm.distance.toFixed(2)}</span>`
+      : ''
+    const yearLine = cm.preYear && cm.postYear
+      ? `<div class="${styles.popupAefMuted}">${cm.preYear} → ${cm.postYear} AEF embedding</div>`
+      : (cm.preYear ? `<div class="${styles.popupAefMuted}">From ${cm.preYear} baseline</div>` : '')
+    sections.push(`
+      <div class="${styles.popupAefRow}">
+        <div class="${styles.popupAefRowLabel}">Land-use shift</div>
+        <div class="${tierClass}">
+          ${escapeHTML(cm.interpretation)} ${distLine}
+        </div>
+        ${yearLine}
+      </div>
+    `)
+  }
+
+  // Item 3 — Trajectory sparkline. Cosine distance from baseline year.
+  const traj = aef.trajectory
+  if (Array.isArray(traj) && traj.length >= 2) {
+    const svg = renderAefSparkline(traj, aef.operaYear)
+    if (svg) {
+      sections.push(`
+        <div class="${styles.popupAefRow}">
+          <div class="${styles.popupAefRowLabel}">Multi-year trajectory</div>
+          ${svg}
+          <div class="${styles.popupAefMuted}">
+            Cosine distance vs ${traj[0].year} baseline; vertical line = OPERA year
+          </div>
+        </div>
+      `)
+    }
+  }
+
+  // Item 5 — Pre-disturbance stability tag.
+  const stab = aef.stability
+  if (stab) {
+    const stabClass = ({
+      stable:        styles.popupAefStableStable,
+      mostly_stable: styles.popupAefStableMostly,
+      mixed:         styles.popupAefStableMixed,
+      volatile:      styles.popupAefStableVolatile,
+    })[stab.label] || styles.popupAefStableMixed
+    sections.push(`
+      <div class="${styles.popupAefRow}">
+        <div class="${styles.popupAefRowLabel}">Pre-disturbance state</div>
+        <div class="${stabClass}">
+          ${escapeHTML(stab.description)}
+          <span class="${styles.popupAefSim}">sim ${stab.medianSimilarity.toFixed(2)}</span>
+        </div>
+      </div>
+    `)
+  }
+
+  // Item 4 — Similar disturbances list. Clickable; map flies to the location.
+  const sim = aef.similarDisturbances
+  if (sim && Array.isArray(sim.matches) && sim.matches.length) {
+    const rows = sim.matches.map(m => {
+      const dateStr = m.operaDate
+        ? new Date(m.operaDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+        : '—'
+      return `
+        <li class="${styles.popupAefSimilarRow}">
+          <button type="button" class="${styles.popupAefSimilarBtn}"
+                  data-action="aef-fly" data-lat="${m.lat}" data-lng="${m.lng}">
+            <span class="${styles.popupAefSimilarDate}">${escapeHTML(dateStr)}</span>
+            <span class="${styles.popupAefSimilarCoord}">${m.lat.toFixed(3)}, ${m.lng.toFixed(3)}</span>
+            <span class="${styles.popupAefSim}">cos ${m.similarity.toFixed(2)}</span>
+          </button>
+        </li>
+      `
+    }).join('')
+    sections.push(`
+      <div class="${styles.popupAefRow}">
+        <div class="${styles.popupAefRowLabel}">Similar disturbances within ${sim.radiusKm} km</div>
+        <ul class="${styles.popupAefSimilarList}">${rows}</ul>
+      </div>
+    `)
+  }
+
+  if (!sections.length) return ''
+  return `
+    <div class="${styles.popupAef}">
+      <div class="${styles.popupAefTitle}">AlphaEarth context</div>
+      ${sections.join('')}
+    </div>
+  `
+}
+
+// Tiny inline SVG sparkline for the AEF trajectory. No new dependency.
+// Y-axis = cosine distance from baseline (0 to ymax, capped at 1.0).
+// X-axis = year. Vertical guide marks the OPERA-detection year.
+function renderAefSparkline(series, operaYear) {
+  const W = 220, H = 44, PAD_L = 4, PAD_R = 4, PAD_T = 6, PAD_B = 14
+  const valid = series.filter(p => p.distance != null && Number.isFinite(p.distance))
+  if (valid.length < 2) return ''
+  const years = valid.map(p => p.year)
+  const minY = Math.min(...years), maxY = Math.max(...years)
+  const yearRange = Math.max(1, maxY - minY)
+  // Cap Y at a sensible upper bound so a single outlier doesn't squash the rest.
+  const maxDist = Math.max(0.2, ...valid.map(p => p.distance))
+  const x = (yr) => PAD_L + ((yr - minY) / yearRange) * (W - PAD_L - PAD_R)
+  const y = (d) => PAD_T + (1 - Math.min(d, maxDist) / maxDist) * (H - PAD_T - PAD_B)
+
+  const linePath = valid
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.year).toFixed(1)} ${y(p.distance).toFixed(1)}`)
+    .join(' ')
+  const dots = valid
+    .map(p => `<circle cx="${x(p.year).toFixed(1)}" cy="${y(p.distance).toFixed(1)}" r="2" fill="#7c3aed" />`)
+    .join('')
+  const operaLine = (operaYear && operaYear >= minY && operaYear <= maxY)
+    ? `<line x1="${x(operaYear).toFixed(1)}" y1="${PAD_T}" x2="${x(operaYear).toFixed(1)}" y2="${H - PAD_B}" stroke="#dc2626" stroke-width="1" stroke-dasharray="2,2" />`
+    : ''
+  const xAxis = `<line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" stroke="#d1d5db" stroke-width="0.5" />`
+  // Year tick labels at ends + midpoint
+  const ticks = [minY, Math.round((minY + maxY) / 2), maxY]
+  const tickLabels = ticks
+    .map(t => `<text x="${x(t).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#6b7280" font-family="sans-serif">${t}</text>`)
+    .join('')
+  return `
+    <svg class="${styles.popupAefSparkline}" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
+      ${xAxis}${operaLine}
+      <path d="${linePath}" fill="none" stroke="#7c3aed" stroke-width="1.5" />
+      ${dots}${tickLabels}
+    </svg>
+  `
+}
+
 function renderPopupHTML(data, pois, admin, extrasPending = false) {
   const prettyDate = data.date
     ? new Date(data.date).toLocaleDateString(undefined, {
@@ -1661,6 +1860,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
       ${statusLine}
+      ${renderAef(data.aef)}
       ${renderMethodologyLink()}
       ${renderNewsBlock(data.likelyCause, data, admin)}
     </div>

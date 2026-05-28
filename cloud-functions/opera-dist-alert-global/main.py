@@ -1,3 +1,8 @@
+# Defer evaluation of type annotations so the module can be imported under
+# Python 3.9 (the dict|None union syntax is 3.10+). Deployment runs under
+# python312 so this is a no-op there; it just enables local smoke testing.
+from __future__ import annotations
+
 """
 Cloud Function: OPERA DIST-ALERT (forest disturbance, near-real-time).
 
@@ -2463,6 +2468,397 @@ def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple
     return (jsonify({'tileUrl': _tile_url(img, STATUS_VIS)}), 200, CORS_HEADERS)
 
 
+# ─── AlphaEarth Foundations (AEF) — semantic embedding context ────────────
+# Google DeepMind's AEF model emits a 64-D unit-length embedding per 10 m
+# pixel per year (2017–present), summarizing multi-sensor + multi-year
+# satellite signals (Landsat / Sentinel-1 / Sentinel-2 / LiDAR / other).
+# Vectors are unit-length so dot product = cosine similarity directly, and
+# embeddings are "linearly composable" — averaging across pixels preserves
+# semantic meaning at coarser scales.
+#
+# Dataset: GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL
+#   https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL
+#
+# We surface five derived signals on the popup. Each is computed in a
+# separate try/except so one failure doesn't poison the others, and the
+# whole AEF block degrades to None if the dataset is unreachable.
+#   1. Nearest-class match    — kNN against region-bootstrapped class means
+#   2. Change magnitude       — cosine distance, pre vs post AEF year
+#   3. Trajectory             — annual cosine distance from baseline year
+#   4. Similar disturbances   — top-K lookalike OPERA pixels within 30 km
+#   5. Stability score        — pre-disturbance pairwise similarity median
+AEF_ASSET = 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL'
+AEF_FIRST_YEAR = 2017
+AEF_LATEST_YEAR = 2025  # bump when Google publishes the next annual mosaic
+AEF_DIM = 64
+AEF_BAND_NAMES = tuple(f'A{i:02d}' for i in range(AEF_DIM))
+
+# Item 1 — nearest-class library
+AEF_REF_BUFFER_M = 200_000          # 200 km regional sampling buffer
+AEF_REF_NUM_POINTS_PER_CLASS = 25   # stratifiedSample budget
+AEF_REF_SCALE_M = 100               # downsample for speed (AEF is composable)
+AEF_REF_MIN_SUPPORT = 3             # require >= N samples for a class to count
+AEF_REF_TOP_K = 3
+
+# Item 4 — similar disturbances
+AEF_SIMILAR_RADIUS_M = 30_000       # 30 km from click
+AEF_SIMILAR_NUM_PIXELS = 120        # candidate pool
+AEF_SIMILAR_TOP_K = 5
+AEF_SIMILAR_SCALE_M = 90            # downsample for speed
+
+
+def _aef_image_for_year(year: int) -> 'ee.Image':
+    """Return the AEF mosaic for `year`, clamped to coverage window."""
+    year = max(AEF_FIRST_YEAR, min(int(year), AEF_LATEST_YEAR))
+    start = ee.Date.fromYMD(year, 1, 1)
+    end = ee.Date.fromYMD(year + 1, 1, 1)
+    return ee.ImageCollection(AEF_ASSET).filterDate(start, end).mosaic()
+
+
+def _aef_sample_point(lat: float, lng: float, year: int) -> list | None:
+    """Sample the 64-D AEF embedding at a single point. None on failure."""
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        img = _aef_image_for_year(year)
+        sampled = img.reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=10
+        ).getInfo()
+        if not sampled:
+            return None
+        vec = []
+        for b in AEF_BAND_NAMES:
+            v = sampled.get(b)
+            if v is None:
+                return None
+            vec.append(float(v))
+        return vec
+    except Exception as e:
+        print(f'AEF sample failed ({lat},{lng},{year}): {e}', flush=True)
+        return None
+
+
+def _aef_dot(a, b):
+    """Dot product. AEF vectors are unit-length so this equals cosine sim."""
+    return sum(x * y for x, y in zip(a, b))
+
+
+def _aef_change_magnitude(lat: float, lng: float, opera_year: int) -> dict | None:
+    """Item 2 — cosine distance between pre- and post-disturbance AEF years.
+
+    Returns { distance, magnitude, interpretation, preYear, postYear }. If
+    the post-year hasn't been published yet (post_year would exceed
+    AEF_LATEST_YEAR), returns a sentinel with magnitude='awaiting_post'.
+    """
+    pre_year = max(AEF_FIRST_YEAR, opera_year - 1)
+    post_year = opera_year + 1
+    if post_year > AEF_LATEST_YEAR:
+        return {
+            'distance': None, 'magnitude': 'awaiting_post',
+            'interpretation': 'Awaiting post-disturbance AEF (published annually)',
+            'preYear': pre_year, 'postYear': None,
+        }
+    pre_vec = _aef_sample_point(lat, lng, pre_year)
+    post_vec = _aef_sample_point(lat, lng, post_year)
+    if not pre_vec or not post_vec:
+        return None
+    dist = 1.0 - _aef_dot(pre_vec, post_vec)
+    # Thresholds based on Google's docs about typical inter-year distances;
+    # tune as we accumulate validation clicks.
+    if dist < 0.05:
+        mag, interp = 'unchanged', 'Land-use fingerprint essentially unchanged'
+    elif dist < 0.15:
+        mag, interp = 'subtle', 'Subtle shift in land-use fingerprint'
+    elif dist < 0.30:
+        mag, interp = 'substantial', 'Substantial shift in land-use fingerprint'
+    else:
+        mag, interp = 'major', 'Major shift — strongly suggests land-use conversion'
+    return {
+        'distance': round(dist, 3), 'magnitude': mag,
+        'interpretation': interp,
+        'preYear': pre_year, 'postYear': post_year,
+    }
+
+
+def _aef_trajectory(lat: float, lng: float, opera_year: int) -> list | None:
+    """Item 3 — annual cosine distance from baseline (AEF_FIRST_YEAR).
+
+    Batched into one reduceRegion: per-year dot products vs baseline are
+    computed server-side, so the whole sparkline comes back in one call.
+    Returns [{ year, distance }] ordered by year, or None on failure.
+    """
+    point = ee.Geometry.Point([lng, lat])
+    years = list(range(AEF_FIRST_YEAR, AEF_LATEST_YEAR + 1))
+    try:
+        baseline_img = _aef_image_for_year(AEF_FIRST_YEAR)
+        dot_bands = []
+        for y in years:
+            year_img = _aef_image_for_year(y)
+            dot = (year_img.multiply(baseline_img)
+                   .reduce(ee.Reducer.sum())
+                   .rename(f'd{y}'))
+            dot_bands.append(dot)
+        stacked = ee.Image.cat(dot_bands)
+        sampled = stacked.reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=10
+        ).getInfo()
+        series = []
+        for y in years:
+            v = sampled.get(f'd{y}')
+            if v is None:
+                series.append({'year': y, 'distance': None})
+            else:
+                series.append({'year': y, 'distance': round(1.0 - float(v), 3)})
+        # Verify we got at least baseline + 1 valid point; else not useful.
+        valid = sum(1 for p in series if p['distance'] is not None)
+        if valid < 2:
+            return None
+        return series
+    except Exception as e:
+        print(f'AEF trajectory failed: {e}', flush=True)
+        return None
+
+
+def _aef_stability(lat: float, lng: float, opera_year: int) -> dict | None:
+    """Item 5 — median pairwise cosine similarity across 3 pre-disturbance years.
+
+    Higher median = more stable land. Batched into one reduceRegion.
+    """
+    candidate_years = [opera_year - o for o in (1, 2, 3)]
+    years = [y for y in candidate_years if AEF_FIRST_YEAR <= y <= AEF_LATEST_YEAR]
+    if len(years) < 2:
+        return None
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        bands = []
+        for y in years:
+            renamed = [f'y{y}_{b}' for b in AEF_BAND_NAMES]
+            img = _aef_image_for_year(y).rename(renamed)
+            bands.append(img)
+        stacked = ee.Image.cat(bands)
+        sampled = stacked.reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=10
+        ).getInfo()
+        vecs = []
+        for y in years:
+            vec = [sampled.get(f'y{y}_{b}') for b in AEF_BAND_NAMES]
+            if any(v is None for v in vec):
+                continue
+            vecs.append([float(v) for v in vec])
+        if len(vecs) < 2:
+            return None
+        sims = []
+        for i in range(len(vecs)):
+            for j in range(i + 1, len(vecs)):
+                sims.append(_aef_dot(vecs[i], vecs[j]))
+        sims.sort()
+        mid = len(sims) // 2
+        median_sim = sims[mid] if len(sims) % 2 else (sims[mid - 1] + sims[mid]) / 2.0
+        if median_sim > 0.95:
+            label, descr = 'stable', 'Previously stable land for 3+ years'
+        elif median_sim > 0.85:
+            label, descr = 'mostly_stable', 'Largely stable land before disturbance'
+        elif median_sim > 0.70:
+            label, descr = 'mixed', 'Mixed / changing land-use signature before disturbance'
+        else:
+            label, descr = 'volatile', 'Already-volatile land (active change before disturbance)'
+        return {
+            'medianSimilarity': round(float(median_sim), 3),
+            'label': label, 'description': descr,
+            'years': years,
+        }
+    except Exception as e:
+        print(f'AEF stability failed: {e}', flush=True)
+        return None
+
+
+def _aef_nearest_class(lat: float, lng: float, opera_year: int) -> dict | None:
+    """Item 1 — kNN against region-bootstrapped class means.
+
+    v1 uses Dynamic World as the universal label source: stratifiedSample
+    within a 200 km buffer of the click, build class-mean AEF embeddings,
+    return top-K most-similar classes for the click's pre-disturbance
+    embedding. Same vocabulary the popup already uses, but the result
+    accounts for AEF's multi-sensor + multi-year representation rather than
+    a single DW classification — and surfaces confidence/ranking.
+
+    Future enhancement (noted in handover): pre-stage richer reference
+    embeddings (oil palm, rubber, coffee, mining) from MapBiomas regions so
+    gap-region clicks resolve to specific land uses, not just "Crops".
+    """
+    pre_year = max(AEF_FIRST_YEAR, min(opera_year - 1, AEF_LATEST_YEAR))
+    click_vec = _aef_sample_point(lat, lng, pre_year)
+    if not click_vec:
+        return None
+    point = ee.Geometry.Point([lng, lat])
+    region = point.buffer(AEF_REF_BUFFER_M)
+    try:
+        dw_start = ee.Date.fromYMD(pre_year, 1, 1)
+        dw_end = ee.Date.fromYMD(pre_year + 1, 1, 1)
+        dw = (ee.ImageCollection('GOOGLE/DYNAMICWORLD/V1')
+              .filterDate(dw_start, dw_end)
+              .filterBounds(region)
+              .select('label')
+              .mode()
+              .rename('dw_label')
+              .toInt())
+        aef_img = _aef_image_for_year(pre_year)
+        stacked = aef_img.addBands(dw)
+        samples = stacked.stratifiedSample(
+            numPoints=AEF_REF_NUM_POINTS_PER_CLASS,
+            classBand='dw_label',
+            region=region,
+            scale=AEF_REF_SCALE_M,
+            geometries=False,
+            seed=42,
+        ).getInfo()
+        features = samples.get('features', [])
+        if not features:
+            return None
+        sums = {}
+        counts = {}
+        for f in features:
+            p = f.get('properties', {})
+            label = p.get('dw_label')
+            if label is None:
+                continue
+            vec = [p.get(b) for b in AEF_BAND_NAMES]
+            if any(v is None for v in vec):
+                continue
+            label = int(label)
+            if label not in sums:
+                sums[label] = [0.0] * AEF_DIM
+                counts[label] = 0
+            for i, v in enumerate(vec):
+                sums[label][i] += float(v)
+            counts[label] += 1
+        scored = []
+        for label, cnt in counts.items():
+            if cnt < AEF_REF_MIN_SUPPORT:
+                continue
+            mean_vec = [s / cnt for s in sums[label]]
+            # Re-normalize the mean to unit length so the dot with the
+            # (unit-length) click vec is a proper cosine.
+            norm = math.sqrt(sum(v * v for v in mean_vec))
+            if norm < 1e-9:
+                continue
+            unit_mean = [v / norm for v in mean_vec]
+            sim = _aef_dot(click_vec, unit_mean)
+            scored.append({
+                'classCode': label,
+                'label': DYNAMIC_WORLD_LABELS.get(label, f'Class {label}'),
+                'similarity': round(float(sim), 3),
+                'support': cnt,
+            })
+        if not scored:
+            return None
+        scored.sort(key=lambda x: -x['similarity'])
+        return {
+            'source': 'Dynamic World labels, AEF-weighted',
+            'bufferKm': AEF_REF_BUFFER_M // 1000,
+            'pre_year': pre_year,
+            'matches': scored[:AEF_REF_TOP_K],
+        }
+    except Exception as e:
+        print(f'AEF nearest-class failed: {e}', flush=True)
+        return None
+
+
+def _aef_similar_disturbances(lat: float, lng: float, opera_year: int) -> dict | None:
+    """Item 4 — find OPERA-flagged pixels nearby whose pre-disturbance AEF
+    embedding is most similar to the click's pre-disturbance embedding.
+
+    Scope: 30 km radius (a regional pattern, not global). The click pixel
+    itself is filtered out by a small lat/lng tolerance.
+    """
+    pre_year = max(AEF_FIRST_YEAR, min(opera_year - 1, AEF_LATEST_YEAR))
+    click_vec = _aef_sample_point(lat, lng, pre_year)
+    if not click_vec:
+        return None
+    point = ee.Geometry.Point([lng, lat])
+    region = point.buffer(AEF_SIMILAR_RADIUS_M)
+    try:
+        status_img = _mosaic_band('VEG-DIST-STATUS')
+        date_img = _mosaic_band('VEG-DIST-DATE')
+        disturbed_mask = status_img.gte(1).And(status_img.lte(8))
+        aef_img = _aef_image_for_year(pre_year).updateMask(disturbed_mask)
+        stack = aef_img.addBands(date_img.rename('opera_date'))
+        samples = stack.sample(
+            region=region,
+            scale=AEF_SIMILAR_SCALE_M,
+            numPixels=AEF_SIMILAR_NUM_PIXELS,
+            geometries=True,
+            seed=42,
+        ).getInfo()
+        features = samples.get('features', [])
+        if not features:
+            return None
+        scored = []
+        for f in features:
+            p = f.get('properties', {})
+            vec = [p.get(b) for b in AEF_BAND_NAMES]
+            if any(v is None for v in vec):
+                continue
+            coords = (f.get('geometry') or {}).get('coordinates') or [None, None]
+            other_lng, other_lat = coords[0], coords[1]
+            if other_lat is None or other_lng is None:
+                continue
+            # Skip the click pixel itself (within ~200 m at the equator)
+            if abs(other_lat - lat) < 0.002 and abs(other_lng - lng) < 0.002:
+                continue
+            opera_days = p.get('opera_date')
+            opera_date_str = None
+            if opera_days is not None and int(opera_days) > 0:
+                opera_date_str = (DATE_EPOCH + timedelta(days=int(opera_days))).isoformat()
+            sim = _aef_dot(click_vec, [float(v) for v in vec])
+            scored.append({
+                'lat': round(float(other_lat), 5),
+                'lng': round(float(other_lng), 5),
+                'similarity': round(float(sim), 3),
+                'operaDate': opera_date_str,
+            })
+        if not scored:
+            return None
+        scored.sort(key=lambda x: -x['similarity'])
+        return {
+            'radiusKm': AEF_SIMILAR_RADIUS_M // 1000,
+            'sampled': len(features),
+            'matches': scored[:AEF_SIMILAR_TOP_K],
+        }
+    except Exception as e:
+        print(f'AEF similar-disturbances failed: {e}', flush=True)
+        return None
+
+
+def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | None:
+    """Bundle all five AEF signals into one popup block. Each call is
+    isolated so one failure doesn't take out the others.
+    """
+    if not opera_date_str:
+        return None
+    try:
+        opera_year = int(opera_date_str.split('-')[0])
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+    def _safe(fn):
+        try:
+            return fn(lat, lng, opera_year)
+        except Exception as e:
+            print(f'AEF helper {fn.__name__} crashed: {e}', flush=True)
+            return None
+
+    return {
+        'operaYear': opera_year,
+        'dataset': 'GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL',
+        'latestYear': AEF_LATEST_YEAR,
+        'nearestClass':        _safe(_aef_nearest_class),
+        'changeMagnitude':     _safe(_aef_change_magnitude),
+        'trajectory':          _safe(_aef_trajectory),
+        'stability':           _safe(_aef_stability),
+        'similarDisturbances': _safe(_aef_similar_disturbances),
+    }
+
+
 def _handle_point_core(lat: float, lng: float) -> tuple:
     """Fast path: OPERA core (date / status / severity) + tiered land cover.
 
@@ -2533,12 +2929,16 @@ def _handle_point_core(lat: float, lng: float) -> tuple:
     )
 
 
-def _handle_point_extras(lat: float, lng: float) -> tuple:
+def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> tuple:
     """Slow path: connected-component patch outline + MODIS burn check.
 
     Fires in parallel with `_handle_point_core` from the frontend. Re-samples
     the OPERA date band itself (cheap) so it doesn't need to wait on the core
     response for the MODIS burn window. ~2-3 s on a typical disturbance click.
+
+    `include_aef=True` (set by `?aef=1`) tacks on AlphaEarth Foundations
+    semantic context (nearest-class, change magnitude, trajectory, similar
+    disturbances, stability) — adds ~1-3 s, degrades silently on failure.
     """
     point = ee.Geometry.Point([lng, lat])
 
@@ -2592,6 +2992,7 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
                 'shape': None, 'namedFires': early_named_fires, 'likelyCause': None,
+                'aef': None,
             }),
             200,
             CORS_HEADERS,
@@ -2683,6 +3084,12 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
         crop_profile=crop_profile, nass_context=nass_context,
     )
 
+    # AlphaEarth Foundations context — opt-in via `?aef=1`. Five derived
+    # signals (nearest class, change magnitude, trajectory, similar
+    # disturbances, stability). Adds ~1-3 s of GEE work; whole block is
+    # None on failure so the popup just skips the section.
+    aef = _aef_context(lat, lng, alert_date_str) if include_aef else None
+
     return (
         jsonify({
             'acres': acres,
@@ -2699,6 +3106,7 @@ def _handle_point_extras(lat: float, lng: float) -> tuple:
             'landCoverContext': land_cover,
             'cropProfile': crop_profile,
             'nassContext': nass_context,
+            'aef': aef,
         }),
         200,
         CORS_HEADERS,
@@ -2755,7 +3163,8 @@ def get_tiles(request):
             # the default fast path returns only OPERA core + land cover (~1 s).
             # Frontend fires both in parallel and progressively renders.
             if request.args.get('extras'):
-                return _handle_point_extras(float(lat), float(lng))
+                include_aef = bool(request.args.get('aef'))
+                return _handle_point_extras(float(lat), float(lng), include_aef=include_aef)
             return _handle_point_core(float(lat), float(lng))
 
         start_days, end_days = _parse_date_range(request)

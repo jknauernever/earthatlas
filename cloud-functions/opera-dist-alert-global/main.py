@@ -2554,7 +2554,7 @@ def _aef_change_magnitude(lat: float, lng: float, opera_year: int) -> dict | Non
     if post_year > AEF_LATEST_YEAR:
         return {
             'distance': None, 'magnitude': 'awaiting_post',
-            'interpretation': 'Awaiting post-disturbance AEF (published annually)',
+            'interpretation': "Can't measure yet — next year's data hasn't been published",
             'preYear': pre_year, 'postYear': None,
         }
     pre_vec = _aef_sample_point(lat, lng, pre_year)
@@ -2562,16 +2562,17 @@ def _aef_change_magnitude(lat: float, lng: float, opera_year: int) -> dict | Non
     if not pre_vec or not post_vec:
         return None
     dist = 1.0 - _aef_dot(pre_vec, post_vec)
+    # Plain-English interpretation tiers (6th-grade reading level).
     # Thresholds based on Google's docs about typical inter-year distances;
     # tune as we accumulate validation clicks.
     if dist < 0.05:
-        mag, interp = 'unchanged', 'Land-use fingerprint essentially unchanged'
+        mag, interp = 'unchanged', 'Almost no change — this land looks the same as before'
     elif dist < 0.15:
-        mag, interp = 'subtle', 'Subtle shift in land-use fingerprint'
+        mag, interp = 'subtle', 'Small change — this land looks slightly different now'
     elif dist < 0.30:
-        mag, interp = 'substantial', 'Substantial shift in land-use fingerprint'
+        mag, interp = 'substantial', 'Big change — this land looks noticeably different now'
     else:
-        mag, interp = 'major', 'Major shift — strongly suggests land-use conversion'
+        mag, interp = 'major', 'Major change — this land was likely converted to something else'
     return {
         'distance': round(dist, 3), 'magnitude': mag,
         'interpretation': interp,
@@ -2653,14 +2654,15 @@ def _aef_stability(lat: float, lng: float, opera_year: int) -> dict | None:
         sims.sort()
         mid = len(sims) // 2
         median_sim = sims[mid] if len(sims) % 2 else (sims[mid - 1] + sims[mid]) / 2.0
+        # Plain-English descriptions (6th-grade reading level).
         if median_sim > 0.95:
-            label, descr = 'stable', 'Previously stable land for 3+ years'
+            label, descr = 'stable', 'Steady — this land had not changed in 3+ years'
         elif median_sim > 0.85:
-            label, descr = 'mostly_stable', 'Largely stable land before disturbance'
+            label, descr = 'mostly_stable', 'Mostly steady — only small year-to-year drift'
         elif median_sim > 0.70:
-            label, descr = 'mixed', 'Mixed / changing land-use signature before disturbance'
+            label, descr = 'mixed', 'Changing — this land was already shifting year to year'
         else:
-            label, descr = 'volatile', 'Already-volatile land (active change before disturbance)'
+            label, descr = 'volatile', 'Active change — this land was already in transition'
         return {
             'medianSimilarity': round(float(median_sim), 3),
             'label': label, 'description': descr,

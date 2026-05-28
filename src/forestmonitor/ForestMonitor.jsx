@@ -1740,36 +1740,43 @@ function renderLikelyCause(cause) {
 function renderAef(aef) {
   if (!aef || typeof aef !== 'object') return ''
   const sections = []
+  // Translate AEF cosine similarity (0..1) into a friendly percentage
+  // string. AEF embeddings are unit-length so 1.0 = identical, 0.0 = no
+  // similarity at all — clamping any negatives just keeps the display
+  // honest if the backend ever returns slightly < 0.
+  const pct = (x) => `${Math.max(0, Math.round(x * 100))}%`
 
-  // Item 1 — Nearest-class match (top-3 cosine-similar Dynamic World classes
-  // within a 200 km buffer, with class-mean AEF embeddings).
+  // Section 1 — "Most resembles" → "What this land looks like"
+  // Top-3 nearest Dynamic World classes by AEF-weighted similarity. Plain
+  // wording: "Most like: Trees (83% match)" instead of "Trees · cos 0.83".
   const nc = aef.nearestClass
   if (nc && Array.isArray(nc.matches) && nc.matches.length) {
     const top = nc.matches[0]
     const altList = nc.matches.slice(1, 3)
-      .map(m => `<li>${escapeHTML(m.label)} <span class="${styles.popupAefSim}">${m.similarity.toFixed(2)}</span></li>`)
+      .map(m => `<li>${escapeHTML(m.label)} <span class="${styles.popupAefSim}">${pct(m.similarity)} match</span></li>`)
       .join('')
     const alts = altList
       ? `<ul class="${styles.popupAefAltList}">${altList}</ul>`
       : ''
     sections.push(`
       <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Most resembles</div>
+        <div class="${styles.popupAefRowLabel}">What this land looks like</div>
         <div class="${styles.popupAefMatch}">
-          <strong>${escapeHTML(top.label)}</strong>
-          <span class="${styles.popupAefSim}">cos ${top.similarity.toFixed(2)}</span>
+          Most like: <strong>${escapeHTML(top.label)}</strong>
+          <span class="${styles.popupAefSim}">${pct(top.similarity)} match</span>
         </div>
         ${alts}
         <div class="${styles.popupAefMuted}">
-          Closest match against Dynamic World classes within ${nc.bufferKm} km, AEF-weighted
+          AI compared this spot to thousands of nearby places within ${nc.bufferKm} km.
         </div>
       </div>
     `)
   }
 
-  // Item 2 — Change magnitude. Color the badge by magnitude tier.
-  // Skip entirely on the no-disturbance path (cm.magnitude === 'awaiting_post')
-  // since there's no event to compare pre/post against — would just confuse.
+  // Section 2 — "Land-use shift" → "How much this place changed"
+  // Skip on no-disturbance clicks (awaiting_post sentinel) — there's no
+  // event to compare around. Plain backend interpretation already; we
+  // just relabel the section + tighten the year-range subtitle.
   const cm = aef.changeMagnitude
   if (cm && cm.magnitude !== 'awaiting_post') {
     const tier = cm.magnitude || 'unchanged'
@@ -1780,39 +1787,35 @@ function renderAef(aef) {
       major:        styles.popupAefMagMajor,
       awaiting_post:styles.popupAefMagPending,
     })[tier] || styles.popupAefMagSubtle
-    const distLine = cm.distance != null
-      ? `<span class="${styles.popupAefSim}">cos-dist ${cm.distance.toFixed(2)}</span>`
-      : ''
     const yearLine = cm.preYear && cm.postYear
-      ? `<div class="${styles.popupAefMuted}">${cm.preYear} → ${cm.postYear} AEF embedding</div>`
-      : (cm.preYear ? `<div class="${styles.popupAefMuted}">From ${cm.preYear} baseline</div>` : '')
+      ? `<div class="${styles.popupAefMuted}">Comparing ${cm.preYear} (before) to ${cm.postYear} (after).</div>`
+      : ''
     sections.push(`
       <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Land-use shift</div>
-        <div class="${tierClass}">
-          ${escapeHTML(cm.interpretation)} ${distLine}
-        </div>
+        <div class="${styles.popupAefRowLabel}">How much this place changed</div>
+        <div class="${tierClass}">${escapeHTML(cm.interpretation)}</div>
         ${yearLine}
       </div>
     `)
   }
 
-  // Item 3 — Trajectory sparkline. Cosine distance from baseline year.
-  // On no-disturbance clicks (where cm.magnitude is the 'awaiting_post'
-  // sentinel) we don't have a real OPERA year to mark, so suppress the
-  // vertical guide and the matching subtitle.
+  // Section 3 — "Multi-year trajectory" → "How this land has changed since {baseline year}"
+  // Sparkline + plain-English explainer. On stable clicks (no disturbance),
+  // we omit the red dashed line + its mention so the chart doesn't promise
+  // something it doesn't show.
   const traj = aef.trajectory
   if (Array.isArray(traj) && traj.length >= 2) {
     const hasDisturbance = !!(cm && cm.magnitude !== 'awaiting_post')
     const operaMarkerYear = hasDisturbance ? aef.operaYear : null
     const svg = renderAefSparkline(traj, operaMarkerYear)
     if (svg) {
+      const baselineYear = traj[0].year
       const subtitle = hasDisturbance
-        ? `Cosine distance vs ${traj[0].year} baseline; vertical line = OPERA year`
-        : `Cosine distance vs ${traj[0].year} baseline`
+        ? `Higher line = this place looks more different from how it looked in ${baselineYear}. Flat = same place, year after year. Red dashed line = year of detected disturbance.`
+        : `Higher line = this place looks more different from how it looked in ${baselineYear}. Flat = same place, year after year.`
       sections.push(`
         <div class="${styles.popupAefRow}">
-          <div class="${styles.popupAefRowLabel}">Multi-year trajectory</div>
+          <div class="${styles.popupAefRowLabel}">How this land has changed since ${baselineYear}</div>
           ${svg}
           <div class="${styles.popupAefMuted}">${subtitle}</div>
         </div>
@@ -1820,7 +1823,9 @@ function renderAef(aef) {
     }
   }
 
-  // Item 5 — Pre-disturbance stability tag.
+  // Section 5 — "Land-use stability" → "Was this place steady before?"
+  // Backend description string is now plain-English; the popup just
+  // adds a percentage gloss and a one-line subtitle.
   const stab = aef.stability
   if (stab) {
     const stabClass = ({
@@ -1829,21 +1834,24 @@ function renderAef(aef) {
       mixed:         styles.popupAefStableMixed,
       volatile:      styles.popupAefStableVolatile,
     })[stab.label] || styles.popupAefStableMixed
+    const yearCount = Array.isArray(stab.years) ? stab.years.length : 3
     sections.push(`
       <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Land-use stability</div>
+        <div class="${styles.popupAefRowLabel}">Was this place steady before?</div>
         <div class="${stabClass}">
           ${escapeHTML(stab.description)}
-          <span class="${styles.popupAefSim}">sim ${stab.medianSimilarity.toFixed(2)}</span>
+          <span class="${styles.popupAefSim}">${pct(stab.medianSimilarity)} similar</span>
+        </div>
+        <div class="${styles.popupAefMuted}">
+          Looking at how this place compared to itself over the ${yearCount} years before.
         </div>
       </div>
     `)
   }
 
-  // Item 4 — Similar disturbances list. Show top 2 always, fold the rest
-  // into a "+ N more" <details> expander so a 5-row block doesn't dominate
-  // the popup's vertical real estate. Each row is clickable; map flies to
-  // the location via the data-action="aef-fly" delegation handler.
+  // Section 4 — "Similar disturbances" → "Other nearby spots that look like this"
+  // Top-2 inline, rest in "+ N more" <details>. Each row is clickable;
+  // click delegates to the aef-fly handler which pans the map.
   const sim = aef.similarDisturbances
   if (sim && Array.isArray(sim.matches) && sim.matches.length) {
     const renderSimRow = (m) => {
@@ -1856,7 +1864,7 @@ function renderAef(aef) {
                   data-action="aef-fly" data-lat="${m.lat}" data-lng="${m.lng}">
             <span class="${styles.popupAefSimilarDate}">${escapeHTML(dateStr)}</span>
             <span class="${styles.popupAefSimilarCoord}">${m.lat.toFixed(3)}, ${m.lng.toFixed(3)}</span>
-            <span class="${styles.popupAefSim}">cos ${m.similarity.toFixed(2)}</span>
+            <span class="${styles.popupAefSim}">${pct(m.similarity)} match</span>
           </button>
         </li>
       `
@@ -1874,20 +1882,22 @@ function renderAef(aef) {
       : ''
     sections.push(`
       <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Similar disturbances within ${sim.radiusKm} km</div>
+        <div class="${styles.popupAefRowLabel}">Other nearby spots that look like this</div>
         <ul class="${styles.popupAefSimilarList}">${top}</ul>
         ${expander}
+        <div class="${styles.popupAefMuted}">
+          Within ${sim.radiusKm} km · click any row to fly the map there.
+        </div>
       </div>
     `)
   }
 
   if (!sections.length) return ''
-  // Wrap the whole AEF block in <details open>. Defaults expanded so the
-  // user sees the new signals on first view; collapsing lets them scan
-  // multiple popups without scrolling. Custom chevron via CSS ::before.
+  // Section title in plain English. Methodology modal explains the AI
+  // (Google's AlphaEarth Foundations) for users who want details.
   return `
     <details class="${styles.popupAef}" open>
-      <summary class="${styles.popupAefTitle}">AlphaEarth context</summary>
+      <summary class="${styles.popupAefTitle}">AI analysis of this place</summary>
       ${sections.join('')}
     </details>
   `

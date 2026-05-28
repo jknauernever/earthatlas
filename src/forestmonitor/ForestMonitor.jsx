@@ -436,7 +436,7 @@ export default function ForestMonitor() {
       if (popupRef.current) popupRef.current.remove()
       removePatchOutline(map)
 
-      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '360px', offset: 12 })
+      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '380px', offset: 12 })
         .setLngLat([lng, lat])
         .setHTML(`<div class="${styles.popupLoading}">Looking up disturbance…</div>`)
         .addTo(map)

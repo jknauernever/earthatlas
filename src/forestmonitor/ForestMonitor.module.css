@@ -710,8 +710,8 @@
   font-size: 13px;
   color: #1f2937;
   line-height: 1.5;
-  min-width: 220px;
-  max-width: 280px;
+  min-width: 340px;
+  max-width: 380px;
   background: #fff;
   border-radius: 8px;
   /* Scroll inside the body so the popup never grows past 70vh. Mapbox's

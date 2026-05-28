@@ -1,0 +1,20 @@
+# Files NOT to upload during `gcloud functions deploy`. Without this,
+# gcloud falls back to .gitignore, which doesn't list .venv (173 MB).
+
+# Local venv used for functions-framework smoke testing.
+.venv/
+
+# Python cache.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dev-only smoke test — not used at runtime.
+_smoketest_aef.py
+
+# Docs / dotfiles.
+DEPLOY.md
+.DS_Store
+.gcloudignore
+.gitignore

@@ -1365,6 +1365,7 @@
   border-left: 3px solid #7c3aed;
   border-radius: 4px;
 }
+/* <summary> double-duties as the section title + collapse toggle. */
 .popupAefTitle {
   font-size: 10px;
   text-transform: uppercase;
@@ -1372,6 +1373,26 @@
   color: #6b21a8;
   font-weight: 700;
   margin-bottom: 6px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.popupAefTitle::-webkit-details-marker { display: none; }
+.popupAefTitle::before {
+  content: '▾';
+  font-size: 10px;
+  color: #7c3aed;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.popupAef:not([open]) > .popupAefTitle::before {
+  transform: rotate(-90deg);
+}
+.popupAef:not([open]) > .popupAefTitle {
+  margin-bottom: 0;
 }
 .popupAefRow { margin-top: 6px; }
 .popupAefRow:first-of-type { margin-top: 0; }
@@ -1529,4 +1550,28 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* "+ N more" expander for the similar-disturbances list. Inline-styled
+   <details> so it sits flush with the top-N items above it. */
+.popupAefSimilarMore {
+  margin-top: 2px;
+}
+.popupAefSimilarMore summary {
+  font-size: 11px;
+  color: #6b21a8;
+  cursor: pointer;
+  padding: 3px 6px;
+  list-style: none;
+  user-select: none;
+  border-radius: 3px;
+  transition: background 0.1s ease;
+}
+.popupAefSimilarMore summary::-webkit-details-marker { display: none; }
+.popupAefSimilarMore summary:hover {
+  background: #f3e8ff;
+  text-decoration: underline;
+}
+.popupAefSimilarMore[open] summary {
+  margin-bottom: 2px;
 }

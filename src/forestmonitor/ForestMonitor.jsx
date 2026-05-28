@@ -1840,10 +1840,13 @@ function renderAef(aef) {
     `)
   }
 
-  // Item 4 — Similar disturbances list. Clickable; map flies to the location.
+  // Item 4 — Similar disturbances list. Show top 2 always, fold the rest
+  // into a "+ N more" <details> expander so a 5-row block doesn't dominate
+  // the popup's vertical real estate. Each row is clickable; map flies to
+  // the location via the data-action="aef-fly" delegation handler.
   const sim = aef.similarDisturbances
   if (sim && Array.isArray(sim.matches) && sim.matches.length) {
-    const rows = sim.matches.map(m => {
+    const renderSimRow = (m) => {
       const dateStr = m.operaDate
         ? new Date(m.operaDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
         : '—'
@@ -1857,21 +1860,36 @@ function renderAef(aef) {
           </button>
         </li>
       `
-    }).join('')
+    }
+    const VISIBLE = 2
+    const top = sim.matches.slice(0, VISIBLE).map(renderSimRow).join('')
+    const hidden = sim.matches.slice(VISIBLE)
+    const expander = hidden.length
+      ? `
+        <details class="${styles.popupAefSimilarMore}">
+          <summary>+ ${hidden.length} more</summary>
+          <ul class="${styles.popupAefSimilarList}">${hidden.map(renderSimRow).join('')}</ul>
+        </details>
+      `
+      : ''
     sections.push(`
       <div class="${styles.popupAefRow}">
         <div class="${styles.popupAefRowLabel}">Similar disturbances within ${sim.radiusKm} km</div>
-        <ul class="${styles.popupAefSimilarList}">${rows}</ul>
+        <ul class="${styles.popupAefSimilarList}">${top}</ul>
+        ${expander}
       </div>
     `)
   }
 
   if (!sections.length) return ''
+  // Wrap the whole AEF block in <details open>. Defaults expanded so the
+  // user sees the new signals on first view; collapsing lets them scan
+  // multiple popups without scrolling. Custom chevron via CSS ::before.
   return `
-    <div class="${styles.popupAef}">
-      <div class="${styles.popupAefTitle}">AlphaEarth context</div>
+    <details class="${styles.popupAef}" open>
+      <summary class="${styles.popupAefTitle}">AlphaEarth context</summary>
       ${sections.join('')}
-    </div>
+    </details>
   `
 }
 

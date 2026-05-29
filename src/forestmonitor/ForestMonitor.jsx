@@ -16,6 +16,23 @@ const TILES_API_BASE = (
   || 'https://us-west1-earthatlas.cloudfunctions.net/opera-dist-alert-global'
 ).trim()
 
+// fetch + parse JSON with a hard client-side timeout. The cloud function has
+// a 60 s server timeout, and the `extras` path can occasionally still chew
+// through it; without an AbortController the popup spinner would hang the full
+// minute on a slow/stuck request. Aborting early lets the caller's .catch fall
+// back to a degraded popup instead. Throws on timeout, network error, or !ok.
+const fetchJSON = async (url, timeoutMs) => {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const r = await fetch(url, { signal: ctrl.signal })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return await r.json()
+  } finally {
+    clearTimeout(t)
+  }
+}
+
 const MODES = [
   { id: 'recency',  label: 'Recency',  blurb: 'Brighter = more recent disturbance.' },
   { id: 'status',   label: 'Status',   blurb: 'Provisional vs. confirmed; first vs. ongoing.' },
@@ -501,11 +518,11 @@ export default function ForestMonitor() {
       }
 
       // Each lookup updates its slice of state and rerenders independently.
-      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`)
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json()
-        })
+      // Timeouts are client-side backstops above the server's own budgets so
+      // a slow/stuck request degrades the popup instead of spinning forever:
+      // core is fast (~1 s warm, ~7 s cold) → 15 s; extras has a 15 s server
+      // deadline → 20 s here so the server's graceful partial result wins.
+      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`, 15000)
         .then((data) => {
           state.point = { status: 'fulfilled', data, error: null }
           render()
@@ -516,11 +533,7 @@ export default function ForestMonitor() {
           render()
         })
 
-      fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1&aef=1`)
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json()
-        })
+      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1&aef=1`, 20000)
         .then((data) => {
           state.extras = { status: 'fulfilled', data }
           render()

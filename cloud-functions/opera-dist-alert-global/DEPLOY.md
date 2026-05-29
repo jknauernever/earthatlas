@@ -42,9 +42,17 @@ $GCLOUD functions deploy opera-dist-alert-global \
   --entry-point=get_tiles \
   --trigger-http \
   --allow-unauthenticated \
-  --memory=512MB \
+  --memory=1Gi \
+  --cpu=1 \
   --timeout=60s
 ```
+
+`--cpu=1`/`--memory=1Gi` matter: the `extras` path fans ~10 Earth Engine
+samplers out across a thread pool, and the AlphaEarth block runs a 5-way
+sub-fan-out on top. At the old `512MB` (which pins gen2 to ~0.33 vCPU) the
+thread scheduling + JSON parsing were throttled and the path routinely tripped
+the 60 s timeout (→ 504). Don't drop below 1 vCPU / 1 GiB without re-checking
+click latency.
 
 The deploy prints a URL like
 `https://us-west1-earthatlas.cloudfunctions.net/opera-dist-alert-global`.
@@ -67,7 +75,8 @@ $GCLOUD functions deploy opera-dist-alert-global \
   --entry-point=get_tiles \
   --trigger-http \
   --allow-unauthenticated \
-  --memory=512MB \
+  --memory=1Gi \
+  --cpu=1 \
   --timeout=60s \
   --set-env-vars=NASS_API_KEY=YOUR_KEY_HERE
 ```

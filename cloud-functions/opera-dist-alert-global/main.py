@@ -2858,7 +2858,18 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
     except (ValueError, IndexError, AttributeError):
         return None
 
-    from concurrent.futures import ThreadPoolExecutor
+    import time
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
+
+    # Per-helper budget. The similar-disturbances kNN samples a masked 64-band
+    # embedding image and can run far longer than the other four signals.
+    # Collecting each helper under its own deadline (rather than blocking on
+    # `with ... as ex` / bare `.result()`) lets that one slow helper degrade to
+    # None on its own — the four fast signals always survive. Previously a
+    # single slow helper blocked the whole block until the parent extras
+    # deadline dropped ALL five.
+    _budget = 6.0
+    _deadline = time.monotonic() + _budget
 
     def _safe(fn):
         try:
@@ -2867,6 +2878,8 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
             print(f'AEF helper {fn.__name__} crashed: {e}', flush=True)
             return None
 
+    # Order matters: the four fast signals are collected first so they bank
+    # their results before the slow kNN consumes the remaining budget.
     helpers = {
         'nearestClass':        _aef_nearest_class,
         'changeMagnitude':     _aef_change_magnitude,
@@ -2874,11 +2887,19 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
         'stability':           _aef_stability,
         'similarDisturbances': _aef_similar_disturbances,
     }
+    pool = ThreadPoolExecutor(max_workers=len(helpers))
+    futures = {key: pool.submit(_safe, fn) for key, fn in helpers.items()}
     results = {}
-    with ThreadPoolExecutor(max_workers=len(helpers)) as ex:
-        futures = {key: ex.submit(_safe, fn) for key, fn in helpers.items()}
-        for key, fut in futures.items():
-            results[key] = fut.result()
+    for key, fut in futures.items():
+        try:
+            results[key] = fut.result(timeout=max(0.05, _deadline - time.monotonic()))
+        except _FutTimeout:
+            print(f'AEF helper {key} exceeded {_budget}s budget, degrading', flush=True)
+            results[key] = None
+        except Exception as e:
+            print(f'AEF helper {key} failed: {e}', flush=True)
+            results[key] = None
+    pool.shutdown(wait=False)
 
     return {
         'operaYear': opera_year,
@@ -2999,19 +3020,40 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         status_code is not None and int(status_code) in STATUS_LABELS
     )
 
-    # AEF runs in parallel with everything else from this point onward
-    # (named-fires, patch geometry, burn, dNBR, land-cover, cause). On
-    # no-disturbance clicks, we still want AEF "current-state" context, so
-    # anchor on AEF_LATEST_YEAR when alert_date_str is missing. The
-    # internal _aef_context call uses its own thread pool to fan out the
-    # five helpers, so the future here resolves in roughly the time of
-    # the slowest single helper.
+    # ── Parallel fan-out. These EE / REST samplers are mutually independent;
+    # running them serially was 30-60 s and routinely tripped the 60 s
+    # function timeout (→ 504, leaving the popup spinner hung the full
+    # minute). getInfo() releases the GIL while blocked on HTTP, so a thread
+    # pool collapses the wall-clock to roughly the slowest single call. An
+    # overall deadline caps the spinner: anything still outstanding past the
+    # budget degrades to its empty default rather than blocking the response
+    # (the frontend already renders the core popup without these extras). ──
+    import time
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout
+
+    _budget = 15.0  # seconds; well under the function's 60 s hard timeout
+    _deadline = time.monotonic() + _budget
+    _pool = ThreadPoolExecutor(max_workers=10)
+
+    def _collect(fut, default, label):
+        if fut is None:
+            return default
+        try:
+            return fut.result(timeout=max(0.05, _deadline - time.monotonic()))
+        except _FutTimeout:
+            print(f'extras: {label} exceeded {_budget}s budget, degrading', flush=True)
+            return default
+        except Exception as e:
+            print(f'extras: {label} failed: {e}', flush=True)
+            return default
+
+    # AEF (its own nested pool over five helpers) — submitted first so it
+    # overlaps everything below. On no-disturbance clicks we still want
+    # current-state AEF, so anchor on AEF_LATEST_YEAR when no alert date.
     aef_future = None
     if include_aef:
-        from concurrent.futures import ThreadPoolExecutor
-        _aef_pool = ThreadPoolExecutor(max_workers=1)
         anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
-        aef_future = _aef_pool.submit(_aef_context, lat, lng, anchor)
+        aef_future = _pool.submit(_aef_context, lat, lng, anchor)
 
     # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
@@ -3020,25 +3062,33 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     # context.
     #   * US clicks: MTBS + NIFC (named, validated, with severity)
     #   * All clicks: GlobFire (global MODIS perimeters, unnamed)
-    # Dedupe merges the same fire across sources, preferring MTBS > NIFC.
-    early_named_fires = []
+    # The sources are independent — fan them out rather than chaining.
+    _named_futs = []
     if _is_in_us(lat, lng):
-        early_named_fires.extend(_sample_mtbs_fires(point))
-        early_named_fires.extend(_sample_nifc_wfigs_fires(lat, lng))
-        early_named_fires.extend(_sample_nifc_fires(lat, lng))
-    early_named_fires.extend(_sample_globfire_fires(point))
-    early_named_fires = _dedupe_and_sort_fires(early_named_fires)
+        _named_futs.append(_pool.submit(_sample_mtbs_fires, point))
+        _named_futs.append(_pool.submit(_sample_nifc_wfigs_fires, lat, lng))
+        _named_futs.append(_pool.submit(_sample_nifc_fires, lat, lng))
+    _named_futs.append(_pool.submit(_sample_globfire_fires, point))
+
+    def _named_fires():
+        # Dedupe merges the same fire across sources, preferring MTBS > NIFC.
+        out = []
+        for f in _named_futs:
+            out.extend(_collect(f, [], 'named-fires'))
+        return _dedupe_and_sort_fires(out)
 
     if not status_valid or alert_date_str is None:
-        # No current OPERA disturbance — collect the AEF future if we
-        # kicked it off, then return early. AEF ran in parallel with
-        # named-fires above so total time ≈ max(named-fires, AEF helpers).
-        aef_empty = aef_future.result() if aef_future is not None else None
+        # No current OPERA disturbance — collect named-fires + AEF (both ran
+        # in parallel above) under the deadline and return early. Total time
+        # ≈ max(named-fires, AEF helpers).
+        named_fires = _named_fires()
+        aef_empty = _collect(aef_future, None, 'aef')
+        _pool.shutdown(wait=False)
         return (
             jsonify({
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
-                'shape': None, 'namedFires': early_named_fires, 'likelyCause': None,
+                'shape': None, 'namedFires': named_fires, 'likelyCause': None,
                 'aef': aef_empty,
             }),
             200,
@@ -3048,93 +3098,94 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     # Statuses 1-8 are real alerts (any kind); 0 = no disturbance, 255 = no data.
     disturbed_mask = status_img.gte(1).And(status_img.lte(8)).selfMask()
 
-    # Vectorize ALL disturbed regions inside a 5 km buffer, then pick the
-    # polygon that contains the click point. Skipping `connectedComponents`
-    # entirely (it has a per-component pixel cap) means we can measure
-    # arbitrarily large connected patches accurately, up to the search buffer.
-    # The 5 km radius covers ~19,000 acres of search space — bigger than all
-    # but the most extreme megafires.
-    SEARCH_RADIUS_M = 5000
+    def _compute_patch():
+        # Vectorize ALL disturbed regions inside a 5 km buffer, then pick the
+        # polygon that contains the click point. Skipping `connectedComponents`
+        # entirely (it has a per-component pixel cap) means we can measure
+        # arbitrarily large connected patches accurately, up to the search
+        # buffer. The 5 km radius covers ~19,000 acres of search space — bigger
+        # than all but the most extreme megafires. This is the heaviest single
+        # call in the extras path, which is why it runs in its own worker.
+        SEARCH_RADIUS_M = 5000
+        patch_geometry = None
+        acres = None
+        truncated = False
+        try:
+            all_vectors = disturbed_mask.reduceToVectors(
+                geometry=point.buffer(SEARCH_RADIUS_M),
+                scale=30,
+                geometryType='polygon',
+                eightConnected=True,
+                bestEffort=True,
+                maxPixels=int(1e10),
+            )
+            # filterBounds with a small buffer catches polygons that
+            # mathematically exclude the click point due to pixel-boundary
+            # effects (the vectorizer sometimes produces polygons whose edges
+            # sit microscopically inside the pixel they came from).
+            containing = all_vectors.filterBounds(point.buffer(45))
+            features_info = containing.limit(1).getInfo().get('features', [])
+            if features_info:
+                patch_geometry = features_info[0].get('geometry')
+                # Pull area straight from the polygon — no pixel-count cap.
+                polygon = ee.Geometry(patch_geometry)
+                area_sqm = polygon.area(maxError=1).getInfo()
+                acres = round(area_sqm / 4046.86, 2)
 
-    patch_geometry = None
-    acres = None
-    truncated = False
-    try:
-        all_vectors = disturbed_mask.reduceToVectors(
-            geometry=point.buffer(SEARCH_RADIUS_M),
-            scale=30,
-            geometryType='polygon',
-            eightConnected=True,
-            bestEffort=True,
-            maxPixels=int(1e10),
-        )
-        # filterBounds with a small buffer catches polygons that mathematically
-        # exclude the click point due to pixel-boundary effects (the vectorizer
-        # sometimes produces polygons whose edges sit microscopically inside
-        # the pixel they came from).
-        containing = all_vectors.filterBounds(point.buffer(45))
-        features_info = containing.limit(1).getInfo().get('features', [])
-        if features_info:
-            patch_geometry = features_info[0].get('geometry')
-            # Pull area straight from the polygon — no pixel-count cap.
-            polygon = ee.Geometry(patch_geometry)
-            area_sqm = polygon.area(maxError=1).getInfo()
-            acres = round(area_sqm / 4046.86, 2)
+                # If the polygon's bbox reaches the search buffer edge, the
+                # patch likely extends beyond what we measured — flag truncated.
+                bbox = polygon.bounds(maxError=1).coordinates().getInfo()[0]
+                xs = [c[0] for c in bbox]
+                ys = [c[1] for c in bbox]
+                search_bbox = point.buffer(SEARCH_RADIUS_M).bounds(maxError=1).coordinates().getInfo()[0]
+                search_xs = [c[0] for c in search_bbox]
+                search_ys = [c[1] for c in search_bbox]
+                # 0.001° tolerance (~100 m at the equator) — close enough = touching
+                tol = 0.001
+                if (min(xs) - min(search_xs) < tol or max(search_xs) - max(xs) < tol
+                    or min(ys) - min(search_ys) < tol or max(search_ys) - max(ys) < tol):
+                    truncated = True
+        except Exception as e:
+            print(f'patch geometry failed: {e}', flush=True)
+        return patch_geometry, acres, truncated
 
-            # If the polygon's bbox reaches the search buffer edge, the patch
-            # likely extends beyond what we measured — flag as truncated.
-            bbox = polygon.bounds(maxError=1).coordinates().getInfo()[0]
-            xs = [c[0] for c in bbox]
-            ys = [c[1] for c in bbox]
-            search_bbox = point.buffer(SEARCH_RADIUS_M).bounds(maxError=1).coordinates().getInfo()[0]
-            search_xs = [c[0] for c in search_bbox]
-            search_ys = [c[1] for c in search_bbox]
-            # 0.001° tolerance (~100 m at the equator) — close enough = touching
-            tol = 0.001
-            if (min(xs) - min(search_xs) < tol or max(search_xs) - max(xs) < tol
-                or min(ys) - min(search_ys) < tol or max(search_ys) - max(ys) < tol):
-                truncated = True
-    except Exception as e:
-        print(f'patch geometry failed: {e}', flush=True)
+    def _landcover_chain():
+        # Tiered land cover (CDL > MapBiomas > Dynamic World > WorldCover) so
+        # the cause heuristic sees the same specific label as the popup's land-
+        # cover line. WorldCover alone misses critical context — apple orchards
+        # become "Cropland" (not "Apples"), Brazilian pasture becomes
+        # "Grassland" (not "Pasture") — both of which steered inference wrong.
+        # Crop profile (US/CDL + BR/MapBiomas) and NASS county practices chain
+        # off the land-cover result, so they run together in one worker.
+        lc = _sample_tiered_landcover(point)
+        crop = _classify_crop(lc, alert_date_str, lat)
+        nass = _fetch_nass_county_practices(lat, lng, crop) if crop else None
+        return lc, crop, nass
 
-    # Cause-inference signals. Each call is independent; we accept the
-    # latency cost (~2-3 s combined) for the diagnostic payoff.
-    burn = _sample_modis_burn(point, alert_date_str)
-    fires = _sample_active_fires(point, alert_date_str)
-    nbr = _sample_nbr_delta(point, alert_date_str)
+    # Fan out the heavy independent samplers, then collect under the deadline.
+    f_patch = _pool.submit(_compute_patch)
+    f_burn = _pool.submit(_sample_modis_burn, point, alert_date_str)
+    f_fires = _pool.submit(_sample_active_fires, point, alert_date_str)
+    f_nbr = _pool.submit(_sample_nbr_delta, point, alert_date_str)
+    f_lc = _pool.submit(_landcover_chain)
+
+    named_fires = _named_fires()
+    patch_geometry, acres, truncated = _collect(f_patch, (None, None, False), 'patch')
+    burn = _collect(f_burn, None, 'burn')
+    fires = _collect(f_fires, None, 'active-fires')
+    nbr = _collect(f_nbr, None, 'nbr')
+    land_cover, crop_profile, nass_context = _collect(f_lc, (None, None, None), 'land-cover')
+    aef = _collect(aef_future, None, 'aef')
+    _pool.shutdown(wait=False)
+
+    # Local, cheap derivations from the sampled data. The cause heuristic uses
+    # only the recent subset of fires within the OPERA-relevant window.
     shape = _analyze_patch_shape(patch_geometry)
-
-    # Named US fires (reuse the early query — already done above). The
-    # full list is the "fire history" the popup shows; the cause heuristic
-    # uses only the recent subset within the OPERA-relevant window.
-    named_fires = early_named_fires
     recent_fires_for_cause = _filter_fires_to_window(named_fires, alert_date_str)
-
-    # Tiered land cover (CDL > MapBiomas > Dynamic World > WorldCover) so
-    # the cause heuristic sees the same specific label as the popup's land-
-    # cover line. WorldCover alone misses critical context — apple orchards
-    # become "Cropland" (not "Apples"), Brazilian pasture becomes "Grassland"
-    # (not "Pasture") — both of which steered the inference wrong.
-    land_cover = _sample_tiered_landcover(point)
-
-    # Crop profile (US only, CDL source) + seasonal context. Tells us that
-    # an alfalfa pixel hit in July is almost certainly a hay cut, not a burn.
-    crop_profile = _classify_crop(land_cover, alert_date_str, lat)
-
-    # NASS Quick Stats county-level practice data (US only, optional). Adds
-    # county tillage mix so we can soften "burn" labels in no-till counties.
-    # Silently returns None when NASS_API_KEY isn't set, so OK to call always.
-    nass_context = _fetch_nass_county_practices(lat, lng, crop_profile) if crop_profile else None
-
     likely_cause = _infer_likely_cause(
         burn, fires, nbr, shape, land_cover, recent_fires_for_cause,
         crop_profile=crop_profile, nass_context=nass_context,
     )
-
-    # AEF future was kicked off earlier to run in parallel with the rest
-    # of the extras work; collect its result now. ~0 ms wait if the
-    # extras helpers were the long pole, ~3-5 s if AEF was longer.
-    aef = aef_future.result() if aef_future is not None else None
 
     return (
         jsonify({

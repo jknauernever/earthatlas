@@ -504,7 +504,10 @@ export default function ForestMonitor() {
           const extrasAef = state.extras.status === 'fulfilled'
             ? (state.extras.data?.aef || null)
             : null
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef))
+          const extrasCommodity = state.extras.status === 'fulfilled'
+            ? (state.extras.data?.commodityCrop || null)
+            : null
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, extrasCommodity))
           return
         }
 
@@ -1487,6 +1490,32 @@ function renderLandCover(lc) {
   return `<div class="${cls}">${escapeHTML(lc.label)}${hint}${sourceStr}</div>`
 }
 
+// ─── Commodity tree-crop block (Forest Data Partnership) ───────────────────
+// Surfaces the likely commodity driver of a clearing: when a disturbed patch
+// is now (very) likely oil palm / rubber / cocoa / coffee. The backend ships a
+// ready-made plain-English summary ("Very likely cocoa (88% confidence)") so
+// users never see a bare decimal. Gated on a positive hit (≥50%); absent
+// entirely outside the pan-tropical coverage. CC BY 4.0 attribution required.
+const COMMODITY_EMOJI = {
+  'oil palm': '🌴',
+  rubber: '🌳',
+  cocoa: '🍫',
+  coffee: '☕',
+}
+function renderCommodity(commodity) {
+  if (!commodity || !commodity.top || !commodity.summary) return ''
+  const { top, summary, year, attribution } = commodity
+  const emoji = COMMODITY_EMOJI[top.crop] || '🌱'
+  const yearStr = year ? ` · ${year} map` : ''
+  return `
+    <div class="${styles.popupCommodity}">
+      <div class="${styles.popupCommodityLabel}">${emoji} ${escapeHTML(summary)}</div>
+      <div class="${styles.popupCommodityNote}">A possible commodity driver of this clearing. This is a probability, not a certainty — it can over-read regrowth and shade-grown farms.</div>
+      <div class="${styles.popupCommoditySource}">${escapeHTML(attribution)}${yearStr}</div>
+    </div>
+  `
+}
+
 // Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
 // "Bear Gulch Fire"). GlobFire perimeters are unnamed — fall back to
 // "{acres}-acre fire" or just "Fire perimeter" if size is unknown.
@@ -2007,6 +2036,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderLandCover(data.landCover)}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
+      ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
       ${statusLine}
@@ -2017,7 +2047,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -2027,6 +2057,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef) {
       <div class="${styles.popupHeader}">No current disturbance here</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
+      ${renderCommodity(commodity)}
       ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
       ${renderAef(aef)}
       ${renderMethodologyLink()}

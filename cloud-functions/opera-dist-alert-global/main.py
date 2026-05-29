@@ -2493,6 +2493,29 @@ AEF_LATEST_YEAR = 2025  # bump when Google publishes the next annual mosaic
 AEF_DIM = 64
 AEF_BAND_NAMES = tuple(f'A{i:02d}' for i in range(AEF_DIM))
 
+# ── Forest Data Partnership commodity probability maps (2025b) ──────────────
+# Per-pixel probability (0-1) that a 10 m pixel contains the given tree crop,
+# built on the same AlphaEarth Foundations embeddings the AEF block above uses.
+# This is the deforestation-driver signal: when forest is cleared and replaced
+# by one of these crops, the disturbance has a likely commodity cause.
+#
+# Pan-tropical extent only — there is NO temperate coverage, so the majority
+# of global clicks fall outside it and the popup line is simply omitted.
+# Available map years vary per crop (palm: 2020-2025; cocoa/coffee/rubber:
+# 2020 & 2024); we sample whichever year is nearest the disturbance.
+# Probability, not classification: Google notes overestimation in regrowth /
+# agroforestry and publishes no accuracy figures, so we lead with a plain-
+# English confidence band, not a hard claim. CC BY 4.0 — attribution required.
+COMMODITY_ASSETS = {
+    'oil palm': 'projects/forestdatapartnership/assets/palm/model_2025b',
+    'rubber':   'projects/forestdatapartnership/assets/rubber/model_2025b',
+    'cocoa':    'projects/forestdatapartnership/assets/cocoa/model_2025b',
+    'coffee':   'projects/forestdatapartnership/assets/coffee/model_2025b',
+}
+COMMODITY_VERSION = '2025b'
+COMMODITY_ATTRIBUTION = 'Produced by Google for the Forest Data Partnership'
+COMMODITY_MIN_PROB = 0.50   # Google's default display floor (catalog min: 0.5)
+
 # Item 1 — nearest-class library. Sized for ~3-5 s of EE work.
 AEF_REF_BUFFER_M = 80_000           # 80 km regional sampling buffer
 AEF_REF_NUM_POINTS_PER_CLASS = 8    # stratifiedSample budget
@@ -2909,6 +2932,98 @@ def _aef_context(lat: float, lng: float, opera_date_str: str | None) -> dict | N
     }
 
 
+def _commodity_confidence(prob: float) -> str:
+    """Plain-English confidence band for a 0-1 commodity probability.
+
+    Bands chosen with Josh so the popup reads like "Very likely oil palm
+    (82% confidence)" rather than a bare decimal users misread as % of area.
+    """
+    if prob >= 0.80:
+        return 'very likely'
+    if prob >= 0.65:
+        return 'likely'
+    return 'possibly'   # 0.50-0.65 (anything below the floor is dropped)
+
+
+def _sample_commodity_crops(lat: float, lng: float, anchor_year: int) -> dict | None:
+    """Forest Data Partnership tree-crop probability at a single point.
+
+    Samples all four commodity maps (oil palm, rubber, cocoa, coffee) in ONE
+    server-side round trip, picking each map's year nearest the disturbance,
+    and returns the strongest crop above the display floor. Returns None when
+    the click is outside the pan-tropical coverage (the common case — oceans,
+    temperate forest) or when no crop clears the floor.
+    """
+    point = ee.Geometry.Point([lng, lat])
+
+    def _nearest_year_record(asset):
+        coll = ee.ImageCollection(asset).filterBounds(point)
+        # Outside coverage `coll.first()` is null, which makes `.select` /
+        # `.reduceRegion` throw. Substitute a masked sentinel so the whole
+        # batch resolves cleanly; the `n` (collection size) marks the gap.
+        empty = (ee.Image().rename('probability')
+                 .set('system:time_start', ee.Date.fromYMD(1970, 1, 1).millis()))
+        scored = coll.map(lambda img: img.set(
+            '_yd', ee.Date(img.get('system:time_start')).get('year')
+                     .subtract(anchor_year).abs()))
+        nearest = ee.Image(ee.Algorithms.If(
+            coll.size().gt(0), scored.sort('_yd').first(), empty))
+        prob = (nearest.select('probability')
+                .reduceRegion(ee.Reducer.first(), point, 10).get('probability'))
+        return ee.Dictionary({
+            'prob': prob,
+            'year': ee.Date(nearest.get('system:time_start')).get('year'),
+            'n': coll.size(),
+        })
+
+    try:
+        batch = ee.Dictionary({
+            name: _nearest_year_record(asset)
+            for name, asset in COMMODITY_ASSETS.items()
+        }).getInfo()
+    except Exception as e:
+        print(f'commodity sample failed ({lat},{lng}): {e}', flush=True)
+        return None
+
+    # No coverage anywhere → outside the pan-tropical extent; show nothing.
+    if all((batch.get(name) or {}).get('n', 0) == 0 for name in COMMODITY_ASSETS):
+        return None
+
+    ranked = []
+    for name in COMMODITY_ASSETS:
+        rec = batch.get(name) or {}
+        prob = rec.get('prob')
+        if prob is None:
+            continue
+        prob = float(prob)
+        ranked.append({
+            'crop': name,
+            'probability': round(prob, 3),
+            'percent': round(prob * 100),
+            'year': int(rec['year']) if rec.get('year') else None,
+        })
+    ranked.sort(key=lambda r: r['probability'], reverse=True)
+
+    # Inside coverage but nothing clears the floor. For a deforestation tool
+    # this is itself informative (rules out a commodity driver), but Phase 1
+    # stays quiet to avoid clutter and only surfaces positive hits.
+    if not ranked or ranked[0]['probability'] < COMMODITY_MIN_PROB:
+        return None
+
+    top = ranked[0]
+    conf = _commodity_confidence(top['probability'])
+    return {
+        'version': COMMODITY_VERSION,
+        'attribution': COMMODITY_ATTRIBUTION,
+        'year': top['year'],
+        'top': {**top, 'confidence': conf},
+        # Pre-built plain-English line so the frontend just renders it, the
+        # same way the AEF block ships ready-made interpretation strings.
+        'summary': f"{conf.capitalize()} {top['crop']} ({top['percent']}% confidence)",
+        'all': ranked,   # retained for auditing / a possible future overlay
+    }
+
+
 def _handle_point_core(lat: float, lng: float) -> tuple:
     """Fast path: OPERA core (date / status / severity) + tiered land cover.
 
@@ -3055,6 +3170,14 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
         aef_future = _pool.submit(_aef_context, lat, lng, anchor)
 
+    # Commodity tree-crop probability (Forest Data Partnership). Cheap (~0.3 s,
+    # one round trip) and runs for every click. We anchor on the LATEST map
+    # year, not the disturbance year: a clearing's replacement crop only shows
+    # up in maps published after the event, so "what is growing here now" is
+    # the driver signal we want — anchoring on the disturbance year would miss
+    # the very conversion we're trying to flag.
+    f_commodity = _pool.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
+
     # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
     # back to status 0 once vegetation recovers, so older fire scars (like
@@ -3083,13 +3206,14 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         # ≈ max(named-fires, AEF helpers).
         named_fires = _named_fires()
         aef_empty = _collect(aef_future, None, 'aef')
+        commodity = _collect(f_commodity, None, 'commodity')
         _pool.shutdown(wait=False)
         return (
             jsonify({
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
                 'shape': None, 'namedFires': named_fires, 'likelyCause': None,
-                'aef': aef_empty,
+                'aef': aef_empty, 'commodityCrop': commodity,
             }),
             200,
             CORS_HEADERS,
@@ -3176,6 +3300,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     nbr = _collect(f_nbr, None, 'nbr')
     land_cover, crop_profile, nass_context = _collect(f_lc, (None, None, None), 'land-cover')
     aef = _collect(aef_future, None, 'aef')
+    commodity = _collect(f_commodity, None, 'commodity')
     _pool.shutdown(wait=False)
 
     # Local, cheap derivations from the sampled data. The cause heuristic uses
@@ -3204,6 +3329,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
             'cropProfile': crop_profile,
             'nassContext': nass_context,
             'aef': aef,
+            'commodityCrop': commodity,
         }),
         200,
         CORS_HEADERS,

@@ -535,26 +535,34 @@ export default function ForestMonitor() {
         }
 
         const data = state.point.data
+        const extras = state.extras.status === 'fulfilled' ? state.extras.data : null
+        // Mirror the visible layers (read live via refs). Commodity context
+        // only shows when the Crops layer is on; disturbance framing only when
+        // the Vegetation disturbance layer is on.
+        const showOpera = operaVisibleRef.current
+        const showCommodity = commodityVisibleRef.current
+        const commodity = showCommodity ? (extras?.commodityCrop || null) : null
+
+        // Disturbance layer off → don't frame the popup around disturbance.
+        // Show a neutral location card (plus commodity, if that layer is on).
+        if (!showOpera) {
+          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity))
+          return
+        }
+
         if (!data.date) {
           // Use extras' namedFires if they've arrived (US clicks always get them)
-          const extrasNamedFires = state.extras.status === 'fulfilled'
-            ? (state.extras.data?.namedFires || [])
-            : []
-          const extrasAef = state.extras.status === 'fulfilled'
-            ? (state.extras.data?.aef || null)
-            : null
-          const extrasCommodity = state.extras.status === 'fulfilled'
-            ? (state.extras.data?.commodityCrop || null)
-            : null
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, extrasCommodity))
+          const extrasNamedFires = extras ? (extras.namedFires || []) : []
+          const extrasAef = extras ? (extras.aef || null) : null
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity))
           return
         }
 
         // Merge in extras (patch outline + MODIS burn + acres) once they
         // arrive. While extras are still pending, the popup renders the
-        // core info with a small "loading extras…" footer.
-        const extras = state.extras.status === 'fulfilled' ? state.extras.data : null
-        const merged = { ...data, ...(extras || {}) }
+        // core info with a small "loading extras…" footer. `commodityCrop` is
+        // gated to the Crops layer so the popup matches what's on the map.
+        const merged = { ...data, ...(extras || {}), commodityCrop: commodity }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(merged, pois, state.admin.value, state.extras.status === 'pending'))
       }
@@ -1725,15 +1733,21 @@ const COMMODITY_EMOJI = {
   cocoa: '🍫',
   coffee: '☕',
 }
-function renderCommodity(commodity) {
+// `driverContext` true in the disturbance popup (the crop is a possible cause
+// of the clearing); false in the location / no-disturbance popups, where the
+// framing is simply "what's growing here" with no clearing implied.
+function renderCommodity(commodity, driverContext = true) {
   if (!commodity || !commodity.top || !commodity.summary) return ''
   const { top, summary, year, attribution } = commodity
   const emoji = COMMODITY_EMOJI[top.crop] || '🌱'
   const yearStr = year ? ` · ${year} map` : ''
+  const lead = driverContext
+    ? 'A possible commodity driver of this clearing.'
+    : "What the model reads as growing here."
   return `
     <div class="${styles.popupCommodity}">
       <div class="${styles.popupCommodityLabel}">${emoji} ${escapeHTML(summary)}</div>
-      <div class="${styles.popupCommodityNote}">A possible commodity driver of this clearing. This is a probability, not a certainty — it can over-read regrowth and shade-grown farms.</div>
+      <div class="${styles.popupCommodityNote}">${lead} This is a probability, not a certainty — it can over-read regrowth and shade-grown farms.</div>
       <div class="${styles.popupCommoditySource}">${escapeHTML(attribution)}${yearStr}</div>
     </div>
   `
@@ -2270,6 +2284,23 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
   `
 }
 
+// Neutral "what's at this point" card shown when the Vegetation disturbance
+// layer is OFF — so the popup mirrors the map instead of always leading with
+// disturbance framing. Carries location + land cover, plus the commodity block
+// when the Crops layer is on. If neither layer adds context it's just location.
+function renderLocationPopupHTML(pois, admin, landCover, commodity) {
+  const heading = commodity ? 'What grows here' : 'This location'
+  return `
+    <div class="${styles.popupBody}">
+      <div class="${styles.popupHeader}">${heading}</div>
+      ${renderLocationLines(pois, admin)}
+      ${renderLandCover(landCover)}
+      ${renderCommodity(commodity, false)}
+      ${renderMethodologyLink()}
+    </div>
+  `
+}
+
 function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
@@ -2280,7 +2311,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       <div class="${styles.popupHeader}">No current disturbance here</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
-      ${renderCommodity(commodity)}
+      ${renderCommodity(commodity, false)}
       ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
       ${renderAef(aef)}
       ${renderMethodologyLink()}

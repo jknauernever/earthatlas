@@ -3297,6 +3297,53 @@ def _handle_point_core(lat: float, lng: float) -> tuple:
     )
 
 
+def _handle_point_context(lat: float, lng: float) -> tuple:
+    """Fast context stream: commodity-crop probability + RADD/Hansen/TMF.
+
+    All cheap point samples (~0.5-1 s) split out of the heavy extras handler so
+    the frontend can render them almost immediately rather than waiting on the
+    slow patch-geometry + cause work. Commodity and forest run in parallel.
+    """
+    _ensure_ee()
+    from concurrent.futures import ThreadPoolExecutor
+    point = ee.Geometry.Point([lng, lat])  # noqa: F841 (parity w/ other handlers)
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_comm = ex.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
+        f_forest = ex.submit(_sample_forest_context, lat, lng)
+        commodity = f_comm.result()
+        forest = f_forest.result() or {}
+    return (
+        jsonify({
+            'commodityCrop': commodity,
+            'radd': forest.get('radd'),
+            'hansen': forest.get('hansen'),
+            'tmf': forest.get('tmf'),
+        }),
+        200,
+        CORS_HEADERS,
+    )
+
+
+def _handle_point_aef(lat: float, lng: float) -> tuple:
+    """AlphaEarth stream: the 5-signal AEF block on its own endpoint (~3-6 s),
+    so it no longer waits behind the patch/cause work. Samples the OPERA date
+    to anchor the pre/post comparison; falls back to the latest AEF year."""
+    _ensure_ee()
+    point = ee.Geometry.Point([lng, lat])
+    alert_date_str = None
+    try:
+        sampled = _mosaic_band('VEG-DIST-DATE').rename('date').reduceRegion(
+            reducer=ee.Reducer.first(), geometry=point, scale=30).getInfo()
+        days = sampled.get('date')
+        if days is not None and int(days) > 0:
+            alert_date_str = (DATE_EPOCH + timedelta(days=int(days))).isoformat()
+    except Exception as e:
+        print(f'aef date sample failed: {e}', flush=True)
+    anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
+    aef = _aef_context(lat, lng, anchor)
+    return (jsonify({'aef': aef}), 200, CORS_HEADERS)
+
+
 def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> tuple:
     """Slow path: connected-component patch outline + MODIS burn check.
 
@@ -3365,24 +3412,11 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
             print(f'extras: {label} failed: {e}', flush=True)
             return default
 
-    # AEF (its own nested pool over five helpers) — submitted first so it
-    # overlaps everything below. On no-disturbance clicks we still want
-    # current-state AEF, so anchor on AEF_LATEST_YEAR when no alert date.
-    aef_future = None
-    if include_aef:
-        anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
-        aef_future = _pool.submit(_aef_context, lat, lng, anchor)
-
-    # Commodity tree-crop probability (Forest Data Partnership). Cheap (~0.3 s,
-    # one round trip) and runs for every click. We anchor on the LATEST map
-    # year, not the disturbance year: a clearing's replacement crop only shows
-    # up in maps published after the event, so "what is growing here now" is
-    # the driver signal we want — anchoring on the disturbance year would miss
-    # the very conversion we're trying to flag.
-    f_commodity = _pool.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
-
-    # RADD / Hansen / JRC TMF context for every click (2 cheap round trips).
-    f_forest = _pool.submit(_sample_forest_context, lat, lng)
+    # NOTE: AlphaEarth (aef), commodity, and RADD/Hansen/TMF (forest) used to be
+    # computed here. They now have their own fast endpoints (?aefonly=1,
+    # ?context=1) so the frontend can stream them in independently — the slow
+    # patch-geometry + cause work below no longer holds the quick samples
+    # hostage. This handler is now the "heavy disturbance details" stream.
 
     # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
@@ -3407,21 +3441,15 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         return _dedupe_and_sort_fires(out)
 
     if not status_valid or alert_date_str is None:
-        # No current OPERA disturbance — collect named-fires + AEF (both ran
-        # in parallel above) under the deadline and return early. Total time
-        # ≈ max(named-fires, AEF helpers).
+        # No current OPERA disturbance — just named-fires (AEF / commodity /
+        # forest now stream from their own endpoints).
         named_fires = _named_fires()
-        aef_empty = _collect(aef_future, None, 'aef')
-        commodity = _collect(f_commodity, None, 'commodity')
-        forest = _collect(f_forest, {}, 'forest') or {}
         _pool.shutdown(wait=False)
         return (
             jsonify({
                 'acres': None, 'truncated': False, 'patchGeometry': None,
                 'burn': None, 'fires': None, 'nbr': None,
                 'shape': None, 'namedFires': named_fires, 'likelyCause': None,
-                'aef': aef_empty, 'commodityCrop': commodity,
-                'radd': forest.get('radd'), 'hansen': forest.get('hansen'), 'tmf': forest.get('tmf'),
             }),
             200,
             CORS_HEADERS,
@@ -3507,9 +3535,6 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     fires = _collect(f_fires, None, 'active-fires')
     nbr = _collect(f_nbr, None, 'nbr')
     land_cover, crop_profile, nass_context = _collect(f_lc, (None, None, None), 'land-cover')
-    aef = _collect(aef_future, None, 'aef')
-    commodity = _collect(f_commodity, None, 'commodity')
-    forest = _collect(f_forest, {}, 'forest') or {}
     _pool.shutdown(wait=False)
 
     # Local, cheap derivations from the sampled data. The cause heuristic uses
@@ -3537,9 +3562,6 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
             'landCoverContext': land_cover,
             'cropProfile': crop_profile,
             'nassContext': nass_context,
-            'aef': aef,
-            'commodityCrop': commodity,
-            'radd': forest.get('radd'), 'hansen': forest.get('hansen'), 'tmf': forest.get('tmf'),
         }),
         200,
         CORS_HEADERS,
@@ -3592,12 +3614,18 @@ def get_tiles(request):
         lat = request.args.get('lat')
         lng = request.args.get('lng')
         if lat is not None and lng is not None:
-            # `?extras=1` returns patch geometry + MODIS burn (slow ~2-3 s);
-            # the default fast path returns only OPERA core + land cover (~1 s).
-            # Frontend fires both in parallel and progressively renders.
+            # The click fans out into independent streams so each renders as
+            # soon as it's ready (fastest-first), instead of one slow blob:
+            #   (default)   OPERA core + land cover            ~1 s
+            #   ?context=1  commodity + RADD/Hansen/TMF        ~0.5-1 s
+            #   ?aefonly=1  AlphaEarth 5-signal block          ~3-6 s
+            #   ?extras=1   patch geometry + cause + fires     ~5-15 s (slow tail)
+            if request.args.get('context'):
+                return _handle_point_context(float(lat), float(lng))
+            if request.args.get('aefonly'):
+                return _handle_point_aef(float(lat), float(lng))
             if request.args.get('extras'):
-                include_aef = bool(request.args.get('aef'))
-                return _handle_point_extras(float(lat), float(lng), include_aef=include_aef)
+                return _handle_point_extras(float(lat), float(lng))
             return _handle_point_core(float(lat), float(lng))
 
         # `?commodity=<palm|rubber|cocoa|coffee>` — Forest Data Partnership

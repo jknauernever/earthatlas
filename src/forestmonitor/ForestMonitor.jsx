@@ -546,13 +546,18 @@ export default function ForestMonitor() {
       popupRef.current = popup
       popup.on('close', () => removePatchOutline(map))
 
-      // Progressive rendering: fire all five lookups in parallel and repaint
-      // the popup whenever any of them resolves. Cloud-function endpoints
-      // are split — `core` returns date/status/severity/landCover in ~1 s,
-      // `extras` returns patch geometry + MODIS burn in ~2-3 s.
+      // Progressive rendering: fire every lookup in parallel and repaint the
+      // popup whenever any resolves, so each section streams in as soon as it's
+      // ready (fastest-first). Cloud-function streams:
+      //   point   — date/status/severity/landCover     ~1 s
+      //   context — commodity + RADD/Hansen/TMF         ~0.5-1 s
+      //   aef     — AlphaEarth 5-signal block           ~3-6 s
+      //   extras  — patch geometry + cause + fires      ~5-15 s (slow tail)
       const state = {
         point:   { status: 'pending', data: null, error: null },
         extras:  { status: 'pending', data: null },
+        context: { status: 'pending', data: null },
+        aef:     { status: 'pending', data: null },
         admin:   { status: 'pending', value: null },
         protectedAreas:  { status: 'pending', value: [] },
         naturalFeatures: { status: 'pending', value: [] },
@@ -582,50 +587,62 @@ export default function ForestMonitor() {
         }
 
         const data = state.point.data
-        const extras = state.extras.status === 'fulfilled' ? state.extras.data : null
-        // Mirror the visible layers (read live via refs). Commodity context
-        // only shows when the Crops layer is on; disturbance framing only when
-        // the Vegetation disturbance layer is on.
+        // Three independent streams now back the popup.
+        const extras  = state.extras.status === 'fulfilled' ? state.extras.data : null
+        const context = state.context.status === 'fulfilled' ? state.context.data : null
+        const aefData = state.aef.status === 'fulfilled' ? (state.aef.data?.aef || null) : null
+        const extrasPending  = state.extras.status === 'pending'
+        const contextPending = state.context.status === 'pending'
+        const aefPending     = state.aef.status === 'pending'
+
+        // Mirror the visible layers (read live via refs). Commodity/forest come
+        // from the fast `context` stream; each shows only when its layer is on.
         const showOpera = operaVisibleRef.current
         const showCommodity = commodityVisibleRef.current
-        const commodity = showCommodity ? (extras?.commodityCrop || null) : null
-        // RADD / Hansen / TMF: each shown only when its layer is on (mirrors
-        // the map), populated once extras arrive.
+        const commodity = showCommodity ? (context?.commodityCrop || null) : null
         const ev = extraVisibleRef.current
         const forest = {
-          radd: ev.radd ? (extras?.radd || null) : null,
-          hansen: ev.hansen ? (extras?.hansen || null) : null,
-          tmf: ev.tmf ? (extras?.tmf || null) : null,
+          radd: ev.radd ? (context?.radd || null) : null,
+          hansen: ev.hansen ? (context?.hansen || null) : null,
+          tmf: ev.tmf ? (context?.tmf || null) : null,
         }
-        const extrasPending = state.extras.status === 'pending'
+        // Build the "still gathering" list from only the streams that (a) are
+        // still pending and (b) will actually produce visible content here.
+        const layerContextOn = showCommodity || ev.radd || ev.hansen || ev.tmf
+        const pendingItems = (extra) => {
+          const items = [...extra]
+          if (aefPending) items.push('AlphaEarth context')
+          if (contextPending && layerContextOn) items.push('commodity & forest-change context')
+          return items.join(' · ')
+        }
 
-        // Disturbance layer off → don't frame the popup around disturbance.
-        // Show a neutral location card (plus whatever other layers are on). Only
-        // promise "still gathering" if a layer that draws from extras is on.
+        // Disturbance layer off → neutral location card (no disturbance framing).
         if (!showOpera) {
-          const expectExtras = showCommodity || ev.radd || ev.hansen || ev.tmf
-          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity, forest, extrasPending && expectExtras))
+          myPopup.setHTML(renderLocationPopupHTML(
+            pois, state.admin.value, data.landCover, commodity, forest,
+            contextPending && layerContextOn ? 'commodity & forest-change context' : ''))
           return
         }
 
         if (!data.date) {
-          // Use extras' namedFires if they've arrived (US clicks always get them)
           const extrasNamedFires = extras ? (extras.namedFires || []) : []
-          const extrasAef = extras ? (extras.aef || null) : null
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity, forest, extrasPending))
+          myPopup.setHTML(renderEmptyPopupHTML(
+            pois, state.admin.value, data.landCover, extrasNamedFires, aefData, commodity, forest,
+            pendingItems(extrasPending ? ['fire history'] : [])))
           return
         }
 
-        // Merge in extras (patch outline + MODIS burn + acres) once they
-        // arrive. While extras are still pending, the popup renders the
-        // core info with a small "loading extras…" footer. Layer-context fields
-        // are gated to their toggles so the popup matches what's on the map.
+        // Disturbance popup. Patch/cause/fires come from `extras`; AEF + commodity
+        // + forest from their own streams. Each section appears as it lands; the
+        // pending block lists only what's still in flight.
         const merged = {
-          ...data, ...(extras || {}),
+          ...data, ...(extras || {}), aef: aefData,
           commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
         }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
-        myPopup.setHTML(renderPopupHTML(merged, pois, state.admin.value, state.extras.status === 'pending'))
+        myPopup.setHTML(renderPopupHTML(
+          merged, pois, state.admin.value,
+          pendingItems(extrasPending ? ['patch size', 'likely cause', 'fire history'] : [])))
       }
 
       // Each lookup updates its slice of state and rerenders independently.
@@ -644,7 +661,24 @@ export default function ForestMonitor() {
           render()
         })
 
-      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1&aef=1`, 20000)
+      // Fast context (commodity + RADD/Hansen/TMF) — streams in ~1 s.
+      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&context=1`, 15000)
+        .then((data) => { state.context = { status: 'fulfilled', data }; render() })
+        .catch((err) => {
+          console.warn('[ForestMonitor] context lookup failed', err)
+          state.context = { status: 'fulfilled', data: null }; render()
+        })
+
+      // AlphaEarth block — its own stream so it doesn't wait on the slow extras.
+      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&aefonly=1`, 20000)
+        .then((data) => { state.aef = { status: 'fulfilled', data }; render() })
+        .catch((err) => {
+          console.warn('[ForestMonitor] aef lookup failed', err)
+          state.aef = { status: 'fulfilled', data: null }; render()
+        })
+
+      // Heavy disturbance details (patch geometry + cause + fires) — slow tail.
+      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1`, 20000)
         .then((data) => {
           state.extras = { status: 'fulfilled', data }
           render()
@@ -2444,7 +2478,7 @@ function renderAefSparkline(series, operaYear) {
   `
 }
 
-function renderPopupHTML(data, pois, admin, extrasPending = false) {
+function renderPopupHTML(data, pois, admin, pendingItems = '') {
   const prettyDate = data.date
     ? new Date(data.date).toLocaleDateString(undefined, {
         year: 'numeric', month: 'long', day: 'numeric',
@@ -2489,7 +2523,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
       ${statusLine}
-      ${extrasPending ? renderExtrasPending('patch size · likely cause · fire history · forest change · AlphaEarth context') : ''}
+      ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
       ${renderForestLayers(data)}
@@ -2507,15 +2541,15 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
 // layer is OFF — so the popup mirrors the map instead of always leading with
 // disturbance framing. Carries location + land cover, plus the commodity block
 // when the Crops layer is on. If neither layer adds context it's just location.
-function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, extrasPending = false) {
+function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, pendingItems = '') {
   const hasForest = forest && (forest.radd || forest.hansen || forest.tmf)
-  const heading = (commodity || hasForest || extrasPending) ? 'What grows here' : 'This location'
+  const heading = (commodity || hasForest || pendingItems) ? 'What grows here' : 'This location'
   return `
     <div class="${styles.popupBody}">
       <div class="${styles.popupHeader}">${heading}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
-      ${extrasPending ? renderExtrasPending('forest change · commodity-crop context') : ''}
+      ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${renderMethodologyLink()}
@@ -2523,7 +2557,7 @@ function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, extr
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest, extrasPending = false) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest, pendingItems = '') {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -2534,7 +2568,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
       ${blurb}
-      ${extrasPending ? renderExtrasPending('fire history · forest change · AlphaEarth context') : ''}
+      ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${(namedFires && namedFires.length) ? fireBlock : ''}

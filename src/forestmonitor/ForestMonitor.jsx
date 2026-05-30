@@ -597,11 +597,14 @@ export default function ForestMonitor() {
           hansen: ev.hansen ? (extras?.hansen || null) : null,
           tmf: ev.tmf ? (extras?.tmf || null) : null,
         }
+        const extrasPending = state.extras.status === 'pending'
 
         // Disturbance layer off → don't frame the popup around disturbance.
-        // Show a neutral location card (plus whatever other layers are on).
+        // Show a neutral location card (plus whatever other layers are on). Only
+        // promise "still gathering" if a layer that draws from extras is on.
         if (!showOpera) {
-          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity, forest))
+          const expectExtras = showCommodity || ev.radd || ev.hansen || ev.tmf
+          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity, forest, extrasPending && expectExtras))
           return
         }
 
@@ -609,7 +612,7 @@ export default function ForestMonitor() {
           // Use extras' namedFires if they've arrived (US clicks always get them)
           const extrasNamedFires = extras ? (extras.namedFires || []) : []
           const extrasAef = extras ? (extras.aef || null) : null
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity, forest))
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity, forest, extrasPending))
           return
         }
 
@@ -2455,24 +2458,24 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
   // they arrive, otherwise show a small placeholder. Round acres generously
   // (whole-number with thousands separators) — sub-acre precision is noise
   // given the 30 m OPERA pixel grid.
+  // Patch size arrives in the `extras` payload. Round acres generously
+  // (whole-number with thousands separators) — sub-acre precision is noise
+  // given the 30 m OPERA pixel grid. The "still loading" affordance is handled
+  // by one clear pending block below, not a spinner buried on this line.
   let patchLine = ''
   if (data.acres != null) {
     let acresStr
     if (data.acres < 0.01) acresStr = '< 0.01 acres'
     else if (data.acres < 10) acresStr = `${data.acres.toFixed(1)} acres`
     else acresStr = `${Math.round(data.acres).toLocaleString()} acres`
-    // `truncated` now means the patch extends beyond our 5 km search radius,
-    // not that the count maxed out at 228 acres. Wording reflects that.
     const truncatedNote = data.truncated
       ? '<span class="' + styles.truncatedNote + '">(extends beyond 5 km search radius)</span>'
       : ''
     patchLine = `<div class="${styles.popupMuted}">${acresStr} in this patch ${truncatedNote}</div>`
-  } else if (extrasPending) {
-    patchLine = `<div class="${styles.popupMuted}"><span class="${styles.popupSpinner}"></span> Asking NASA, USDA, and a few satellites about this spot…</div>`
   }
 
-  // Combine the status + severity into one compact line for the popup
-  // footer — they're closely related and don't need their own paragraphs.
+  // Combine the status + severity into one compact line. Both are core fields
+  // (arrive with the first response), so this shows immediately.
   const statusBits = []
   if (data.statusLabel) statusBits.push(escapeHTML(data.statusLabel))
   if (severityStr) statusBits.push(severityStr)
@@ -2485,13 +2488,14 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       <div class="${styles.popupHeader}">Disturbance detected ${prettyDate}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
+      ${statusLine}
+      ${extrasPending ? renderExtrasPending('patch size · likely cause · fire history · forest change · AlphaEarth context') : ''}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
       ${renderForestLayers(data)}
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
-      ${statusLine}
       ${renderAef(data.aef)}
       ${renderMethodologyLink()}
       ${renderNewsBlock(data.likelyCause, data, admin)}
@@ -2503,14 +2507,15 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
 // layer is OFF — so the popup mirrors the map instead of always leading with
 // disturbance framing. Carries location + land cover, plus the commodity block
 // when the Crops layer is on. If neither layer adds context it's just location.
-function renderLocationPopupHTML(pois, admin, landCover, commodity, forest) {
+function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, extrasPending = false) {
   const hasForest = forest && (forest.radd || forest.hansen || forest.tmf)
-  const heading = (commodity || hasForest) ? 'What grows here' : 'This location'
+  const heading = (commodity || hasForest || extrasPending) ? 'What grows here' : 'This location'
   return `
     <div class="${styles.popupBody}">
       <div class="${styles.popupHeader}">${heading}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
+      ${extrasPending ? renderExtrasPending('forest change · commodity-crop context') : ''}
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${renderMethodologyLink()}
@@ -2518,7 +2523,7 @@ function renderLocationPopupHTML(pois, admin, landCover, commodity, forest) {
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest, extrasPending = false) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -2528,9 +2533,11 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       <div class="${styles.popupHeader}">No current disturbance here</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
+      ${blurb}
+      ${extrasPending ? renderExtrasPending('fire history · forest change · AlphaEarth context') : ''}
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
-      ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
+      ${(namedFires && namedFires.length) ? fireBlock : ''}
       ${renderAef(aef)}
       ${renderMethodologyLink()}
     </div>
@@ -2555,6 +2562,21 @@ function renderLoadingPopupHTML(pois, admin) {
 
 function renderMethodologyLink() {
   return `<button type="button" class="${styles.popupMethodology}" data-action="show-methodology">ⓘ How this is sourced</button>`
+}
+
+// "Still gathering" block shown while the slow `extras` payload is in flight.
+// `items` is a short, comma-free list of what's still loading so the user knows
+// more is coming below (and isn't surprised when it pops in).
+function renderExtrasPending(items) {
+  return `
+    <div class="${styles.popupPending}">
+      <span class="${styles.popupSpinner}"></span>
+      <span class="${styles.popupPendingText}">
+        <strong>Still gathering details…</strong>
+        <span class="${styles.popupPendingItems}">${escapeHTML(items)}</span>
+      </span>
+    </div>
+  `
 }
 
 // Mapbox Geocoding v6 — hierarchical reverse lookup. Includes `district`

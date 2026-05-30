@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -37,6 +37,16 @@ const MODES = [
   { id: 'recency',  label: 'Recency',  blurb: 'Brighter = more recent disturbance.' },
   { id: 'status',   label: 'Status',   blurb: 'Provisional vs. confirmed; first vs. ongoing.' },
   { id: 'severity', label: 'Severity', blurb: 'Percent vegetation loss in the disturbed pixel.' },
+]
+
+// Forest Data Partnership commodity overlay layers. `key` is the cloud-function
+// `?commodity=` param; `color` is the bold end of that crop's gradient palette
+// (mirrors COMMODITY_TILE_PALETTES in main.py) and doubles as the legend swatch.
+const COMMODITY_LAYERS = [
+  { key: 'palm',   label: 'Oil palm', color: '#fb923c' },
+  { key: 'rubber', label: 'Rubber',   color: '#2dd4bf' },
+  { key: 'cocoa',  label: 'Cocoa',    color: '#a855f7' },
+  { key: 'coffee', label: 'Coffee',   color: '#a16207' },
 ]
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
@@ -242,6 +252,32 @@ export default function ForestMonitor() {
   // after a basemap switch without round-tripping the cloud function again.
   const lastTileUrlRef = useRef(null)
 
+  // ─── Layer panel state ───────────────────────────────────────────────────
+  // The OPERA disturbance overlay is now layer #1 of a growing stack; each
+  // layer has its own on/off + opacity. Commodity crops are layer #2 (a group
+  // of four per-crop rasters under one parent toggle/opacity).
+  const [operaVisible, setOperaVisible] = useState(true)
+  const [operaExpanded, setOperaExpanded] = useState(true)
+  const operaVisibleRef = useRef(true)
+  useEffect(() => { operaVisibleRef.current = operaVisible }, [operaVisible])
+
+  const [commodityVisible, setCommodityVisible] = useState(false)
+  const [commodityExpanded, setCommodityExpanded] = useState(false)
+  const [commodityOpacity, setCommodityOpacity] = useState(0.8)
+  const commodityOpacityRef = useRef(0.8)
+  useEffect(() => { commodityOpacityRef.current = commodityOpacity }, [commodityOpacity])
+  // Per-crop on/off within the commodity group. All on by default.
+  const [commodityCrops, setCommodityCrops] = useState(
+    () => Object.fromEntries(COMMODITY_LAYERS.map((c) => [c.key, true]))
+  )
+  // Cache of fetched commodity tile URLs (one per crop) — these don't depend on
+  // date/mode, so we fetch each once and reuse across toggles + basemap swaps.
+  const commodityUrlRef = useRef({})
+  // Ref-mirrors so the (stable) reconcile fn and style.load handler read the
+  // latest visibility without being torn down/recreated.
+  const commodityVisibleRef = useRef(false)
+  const commodityCropsRef = useRef(commodityCrops)
+
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -419,6 +455,9 @@ export default function ForestMonitor() {
           if (cancelled || reqId !== lastTileUrlReqRef.current) return
           if (!data.tileUrl) throw new Error('Empty tileUrl in response')
           applyTileLayer(map, data.tileUrl, opacityRef.current)
+          if (!operaVisibleRef.current && map.getLayer(RASTER_LAYER_ID)) {
+            map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', 'none')
+          }
           lastTileUrlRef.current = data.tileUrl
           setTileLoading(false)
         })
@@ -564,6 +603,40 @@ export default function ForestMonitor() {
     return () => map.off('click', handler)
   }, [])
 
+  // ─── Commodity overlay: reconcile which crop rasters are on the map ──────
+  // Stable (reads refs) so the basemap-reload handler can call it too. For each
+  // crop: show it (fetching + caching its tile URL on first use) when the group
+  // is on AND that crop is checked; otherwise remove it. Inserted beneath the
+  // OPERA layer so disturbance alerts stay on top. Declared above the basemap
+  // effect because that effect lists it as a dependency (avoids a TDZ crash).
+  const reconcileCommodity = useCallback((map) => {
+    if (!map) return
+    COMMODITY_LAYERS.forEach(async ({ key }) => {
+      const sId = commoditySourceId(key)
+      const lId = commodityLayerId(key)
+      const want = () => commodityVisibleRef.current && !!commodityCropsRef.current[key]
+      if (!want()) { removeRasterLayer(map, sId, lId); return }
+      let url = commodityUrlRef.current[key]
+      if (!url) {
+        try {
+          const r = await fetch(`${TILES_API_BASE}?commodity=${key}`)
+          const d = await r.json()
+          url = d.tileUrl
+          if (url) commodityUrlRef.current[key] = url
+        } catch (err) {
+          console.error(`[ForestMonitor] commodity tile fetch failed (${key})`, err)
+          return
+        }
+      }
+      // Re-check: the user may have toggled the crop off during the fetch.
+      if (url && want()) {
+        applyRasterLayer(map, sId, lId, url, commodityOpacityRef.current, RASTER_LAYER_ID)
+      } else {
+        removeRasterLayer(map, sId, lId)
+      }
+    })
+  }, [])
+
   // ─── Basemap change ──────────────────────────────────────────────────────
   // setStyle() blows away all custom sources/layers (OPERA raster + any
   // patch outline), so we listen for the new style's `style.load` and
@@ -580,11 +653,16 @@ export default function ForestMonitor() {
       // makes basemap switching feel instant.
       if (lastTileUrlRef.current) {
         applyTileLayer(map, lastTileUrlRef.current, opacityRef.current)
+        if (!operaVisibleRef.current && map.getLayer(RASTER_LAYER_ID)) {
+          map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', 'none')
+        }
       }
+      // Commodity rasters were wiped by setStyle — re-add from cache.
+      reconcileCommodity(map)
       // Patch outline is per-popup; it'll redraw on next click.
     })
     map.setStyle(basemapStyleFor(basemap))
-  }, [basemap])
+  }, [basemap, reconcileCommodity])
 
   // ─── OPERA layer opacity (live update via setPaintProperty) ─────────────
   // Avoids re-adding the layer on every opacity change — much smoother than
@@ -599,6 +677,37 @@ export default function ForestMonitor() {
       }
     } catch {}
   }, [opacity, mapReady])
+
+  // ─── OPERA layer on/off ──────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    try {
+      if (map.getLayer(RASTER_LAYER_ID)) {
+        map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', operaVisible ? 'visible' : 'none')
+      }
+    } catch {}
+  }, [operaVisible, mapReady])
+
+  useEffect(() => {
+    commodityVisibleRef.current = commodityVisible
+    commodityCropsRef.current = commodityCrops
+    const map = mapRef.current
+    if (map && mapReady) reconcileCommodity(map)
+  }, [commodityVisible, commodityCrops, mapReady, reconcileCommodity])
+
+  // ─── Commodity group opacity (live update across all crop rasters) ───────
+  useEffect(() => {
+    commodityOpacityRef.current = commodityOpacity
+    const map = mapRef.current
+    if (!map) return
+    COMMODITY_LAYERS.forEach(({ key }) => {
+      const lId = commodityLayerId(key)
+      try {
+        if (map.getLayer(lId)) map.setPaintProperty(lId, 'raster-opacity', commodityOpacity)
+      } catch {}
+    })
+  }, [commodityOpacity, mapReady])
 
   // ─── Basemap menu: close on outside click / Esc ──────────────────────────
   useEffect(() => {
@@ -777,108 +886,197 @@ export default function ForestMonitor() {
         )}
       </div>
 
-      <div className={styles.modePanel}>
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            className={mode === m.id ? styles.modeBtnActive : styles.modeBtn}
-            onClick={() => setMode(m.id)}
-            title={m.blurb}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      <aside className={styles.layerPanel} aria-label="Map layers">
+        <div className={styles.layerPanelTitle}>Layers</div>
 
-      <div className={styles.legend}>
-        <div className={styles.legendTitle}>
-          {mode === 'recency' && 'Vegetation disturbance recency'}
-          {mode === 'status' && 'Alert status'}
-          {mode === 'severity' && 'Vegetation loss'}
-        </div>
-
-        <div className={styles.opacityControl}>
-          <div className={styles.opacityHeader}>
-            <span className={styles.opacityLabel}>Layer opacity</span>
-            <span className={styles.opacityValue}>{Math.round(opacity * 100)}%</span>
+        {/* ── Layer 1: NASA OPERA vegetation disturbance ───────────────── */}
+        <div className={styles.layerRow}>
+          <div className={styles.layerHeader}>
+            <button
+              type="button"
+              className={styles.layerCaret}
+              onClick={() => setOperaExpanded((v) => !v)}
+              aria-expanded={operaExpanded}
+              aria-label={operaExpanded ? 'Collapse layer' : 'Expand layer'}
+            >
+              <span className={operaExpanded ? styles.caretOpen : styles.caretClosed}>▸</span>
+            </button>
+            <span className={styles.layerName}>Vegetation disturbance</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={operaVisible}
+              className={operaVisible ? styles.switchOn : styles.switchOff}
+              onClick={() => setOperaVisible((v) => !v)}
+              aria-label="Toggle vegetation disturbance layer"
+            >
+              <span className={styles.switchKnob} />
+            </button>
           </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            value={Math.round(opacity * 100)}
-            onChange={(e) => setOpacity(Number(e.target.value) / 100)}
-            className={styles.opacitySlider}
-            aria-label="Disturbance layer opacity"
-          />
+
+          {operaExpanded && (
+            <div className={`${styles.layerBody} ${operaVisible ? '' : styles.layerBodyMuted}`}>
+              <div className={styles.opacityControl}>
+                <div className={styles.opacityHeader}>
+                  <span className={styles.opacityLabel}>Opacity</span>
+                  <span className={styles.opacityValue}>{Math.round(opacity * 100)}%</span>
+                </div>
+                <input
+                  type="range" min="0" max="100" step="1"
+                  value={Math.round(opacity * 100)}
+                  onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+                  className={styles.opacitySlider}
+                  aria-label="Disturbance layer opacity"
+                />
+              </div>
+
+              <div className={styles.subLabel}>View</div>
+              <div className={styles.modeRow}>
+                {MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    className={mode === m.id ? styles.modeBtnActive : styles.modeBtn}
+                    onClick={() => setMode(m.id)}
+                    title={m.blurb}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              <RangePresets dateRange={dateRange} onPick={setDateRange} />
+
+              <DateRangeSlider
+                minMs={DATA_START_MS}
+                maxMs={todayUtcMs()}
+                startMs={dateRange[0]}
+                endMs={dateRange[1]}
+                onChange={(s, e) => setDateRange([s, e])}
+              />
+
+              <div className={styles.filterSection}>
+                <div className={styles.filterLabel}>Land use</div>
+                <div className={styles.presets}>
+                  {LANDUSE_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={landuse === p.id ? styles.presetBtnActive : styles.presetBtn}
+                      onClick={() => setLanduse(p.id)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {mode === 'recency' && (
+                <>
+                  <div className={styles.legendGradient} style={{ background: RECENCY_GRADIENT }} />
+                  <div className={styles.legendScale}>
+                    <span>Jan 2023</span>
+                    <span>Today</span>
+                  </div>
+                  <div className={styles.legendBlurb}>
+                    <strong>Dark red</strong> = oldest disturbance, <strong>bright yellow</strong> = most recent. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
+                  </div>
+                </>
+              )}
+              {mode === 'severity' && (
+                <>
+                  <div className={styles.legendGradient} style={{ background: SEVERITY_GRADIENT }} />
+                  <div className={styles.legendScale}>
+                    <span>0%</span>
+                    <span>100%</span>
+                  </div>
+                  <div className={styles.legendBlurb}>
+                    Percent of the pixel's vegetation that's been lost.
+                  </div>
+                </>
+              )}
+              {mode === 'status' && (
+                <>
+                  <ul className={styles.legendList}>
+                    {STATUS_SWATCHES.map((s) => (
+                      <li key={s.label}>
+                        <span className={styles.swatch} style={{ background: s.color }} />
+                        {s.label}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className={styles.legendBlurb}>
+                    Provisional = single-detection; confirmed = multi-detection.
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        <RangePresets dateRange={dateRange} onPick={setDateRange} />
-
-        <DateRangeSlider
-          minMs={DATA_START_MS}
-          maxMs={todayUtcMs()}
-          startMs={dateRange[0]}
-          endMs={dateRange[1]}
-          onChange={(s, e) => setDateRange([s, e])}
-        />
-
-        <div className={styles.filterSection}>
-          <div className={styles.filterLabel}>Land use</div>
-          <div className={styles.presets}>
-            {LANDUSE_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={landuse === p.id ? styles.presetBtnActive : styles.presetBtn}
-                onClick={() => setLanduse(p.id)}
-              >
-                {p.label}
-              </button>
-            ))}
+        {/* ── Layer 2: Forest Data Partnership commodity crops ─────────── */}
+        <div className={styles.layerRow}>
+          <div className={styles.layerHeader}>
+            <button
+              type="button"
+              className={styles.layerCaret}
+              onClick={() => setCommodityExpanded((v) => !v)}
+              aria-expanded={commodityExpanded}
+              aria-label={commodityExpanded ? 'Collapse layer' : 'Expand layer'}
+            >
+              <span className={commodityExpanded ? styles.caretOpen : styles.caretClosed}>▸</span>
+            </button>
+            <span className={styles.layerName}>Commodity crops</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={commodityVisible}
+              className={commodityVisible ? styles.switchOn : styles.switchOff}
+              onClick={() => setCommodityVisible((v) => !v)}
+              aria-label="Toggle commodity crops layer"
+            >
+              <span className={styles.switchKnob} />
+            </button>
           </div>
-        </div>
 
-        {mode === 'recency' && (
-          <>
-            <div className={styles.legendGradient} style={{ background: RECENCY_GRADIENT }} />
-            <div className={styles.legendScale}>
-              <span>Jan 2023</span>
-              <span>Today</span>
+          {commodityExpanded && (
+            <div className={`${styles.layerBody} ${commodityVisible ? '' : styles.layerBodyMuted}`}>
+              <div className={styles.opacityControl}>
+                <div className={styles.opacityHeader}>
+                  <span className={styles.opacityLabel}>Opacity</span>
+                  <span className={styles.opacityValue}>{Math.round(commodityOpacity * 100)}%</span>
+                </div>
+                <input
+                  type="range" min="0" max="100" step="1"
+                  value={Math.round(commodityOpacity * 100)}
+                  onChange={(e) => setCommodityOpacity(Number(e.target.value) / 100)}
+                  className={styles.opacitySlider}
+                  aria-label="Commodity layer opacity"
+                />
+              </div>
+
+              <div className={styles.subLabel}>Crops</div>
+              <ul className={styles.cropList}>
+                {COMMODITY_LAYERS.map((c) => (
+                  <li key={c.key}>
+                    <label className={styles.cropRow}>
+                      <input
+                        type="checkbox"
+                        checked={!!commodityCrops[c.key]}
+                        onChange={() => setCommodityCrops((prev) => ({ ...prev, [c.key]: !prev[c.key] }))}
+                      />
+                      <span className={styles.cropSwatch} style={{ background: c.color }} />
+                      {c.label}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+
+              <div className={styles.legendBlurb}>
+                Faint → bold = 50% → 100% model confidence that the spot is that crop. Pan-tropical only (no temperate coverage). Source: Forest Data Partnership (Google), 10 m.
+              </div>
             </div>
-            <div className={styles.legendBlurb}>
-              <strong>Dark red</strong> = oldest disturbance, <strong>bright yellow</strong> = most recent. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
-            </div>
-          </>
-        )}
-        {mode === 'severity' && (
-          <>
-            <div className={styles.legendGradient} style={{ background: SEVERITY_GRADIENT }} />
-            <div className={styles.legendScale}>
-              <span>0%</span>
-              <span>100%</span>
-            </div>
-            <div className={styles.legendBlurb}>
-              Percent of the pixel's vegetation that's been lost.
-            </div>
-          </>
-        )}
-        {mode === 'status' && (
-          <>
-            <ul className={styles.legendList}>
-              {STATUS_SWATCHES.map((s) => (
-                <li key={s.label}>
-                  <span className={styles.swatch} style={{ background: s.color }} />
-                  {s.label}
-                </li>
-              ))}
-            </ul>
-            <div className={styles.legendBlurb}>
-              Provisional = single-detection; confirmed = multi-detection.
-            </div>
-          </>
-        )}
+          )}
+        </div>
 
         <button
           type="button"
@@ -899,7 +1097,7 @@ export default function ForestMonitor() {
             KnauerNever.com
           </a>
         </div>
-      </div>
+      </aside>
 
       {tileLoading && <div className={styles.statusBadge}>Loading tiles…</div>}
       {tileError && (
@@ -1432,6 +1630,31 @@ function applyTileLayer(map, tileUrl, opacity = 0.85) {
     source: RASTER_SOURCE_ID,
     paint: { 'raster-opacity': opacity },
   })
+}
+
+// ─── Generic raster overlay helpers (commodity crops + future layers) ───────
+const commoditySourceId = (key) => `commodity-${key}`
+const commodityLayerId = (key) => `commodity-${key}-layer`
+
+// Add/replace a raster overlay. `beforeId` keeps it under another layer (we
+// slot commodity crops beneath the OPERA alerts so disturbances stay on top).
+function applyRasterLayer(map, sourceId, layerId, tileUrl, opacity, beforeId) {
+  if (map.getLayer(layerId)) map.removeLayer(layerId)
+  if (map.getSource(sourceId)) map.removeSource(sourceId)
+  map.addSource(sourceId, {
+    type: 'raster',
+    tiles: [tileUrl],
+    tileSize: 256,
+    attribution: 'Forest Data Partnership (Google)',
+  })
+  const layer = { id: layerId, type: 'raster', source: sourceId, paint: { 'raster-opacity': opacity } }
+  if (beforeId && map.getLayer(beforeId)) map.addLayer(layer, beforeId)
+  else map.addLayer(layer)
+}
+
+function removeRasterLayer(map, sourceId, layerId) {
+  if (map.getLayer(layerId)) map.removeLayer(layerId)
+  if (map.getSource(sourceId)) map.removeSource(sourceId)
 }
 
 const PATCH_SOURCE_ID = 'opera-patch'
@@ -2156,3 +2379,4 @@ function escapeHTML(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c])
 }
+

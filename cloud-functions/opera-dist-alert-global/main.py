@@ -2468,6 +2468,32 @@ def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple
     return (jsonify({'tileUrl': _tile_url(img, STATUS_VIS)}), 200, CORS_HEADERS)
 
 
+def _handle_commodity_tile(crop: str) -> tuple:
+    """Tile layer for one Forest Data Partnership commodity probability map.
+
+    Latest available year for the crop, masked to >= COMMODITY_MIN_PROB, painted
+    as a per-crop confidence gradient (faint at the 0.5 floor → bold at 1.0).
+    Pan-tropical only; outside that extent the masked image is simply empty.
+    """
+    asset = COMMODITY_ASSET_BY_KEY.get(crop)
+    palette = COMMODITY_TILE_PALETTES.get(crop)
+    if not asset or not palette:
+        return (jsonify({'tileUrl': None, 'error': 'unknown_commodity'}),
+                400, CORS_HEADERS)
+    coll = ee.ImageCollection(asset)
+    # These collections hold thousands of tiled COGs (one footprint per tile per
+    # year), so a global overlay must MOSAIC the latest year — `.first()` would
+    # return a single COG footprint. Anchor on the latest published year (the
+    # current-state map, same as the popup).
+    latest_year = ee.Number(ee.Date(coll.aggregate_max('system:time_start')).get('year'))
+    start = ee.Date.fromYMD(latest_year, 1, 1)
+    end = ee.Date.fromYMD(latest_year.add(1), 1, 1)
+    mosaic = coll.filterDate(start, end).select('probability').mosaic()
+    masked = mosaic.updateMask(mosaic.gte(COMMODITY_MIN_PROB))
+    vis = {'min': COMMODITY_MIN_PROB, 'max': 1.0, 'palette': palette}
+    return (jsonify({'tileUrl': _tile_url(masked, vis)}), 200, CORS_HEADERS)
+
+
 # ─── AlphaEarth Foundations (AEF) — semantic embedding context ────────────
 # Google DeepMind's AEF model emits a 64-D unit-length embedding per 10 m
 # pixel per year (2017–present), summarizing multi-sensor + multi-year
@@ -2515,6 +2541,25 @@ COMMODITY_ASSETS = {
 COMMODITY_VERSION = '2025b'
 COMMODITY_ATTRIBUTION = 'Produced by Google for the Forest Data Partnership'
 COMMODITY_MIN_PROB = 0.50   # Google's default display floor (catalog min: 0.5)
+
+# Short URL keys (?commodity=palm) → asset. The asset path already uses these
+# keys, so this doubles as the canonical key list for the tile overlay.
+COMMODITY_ASSET_BY_KEY = {
+    'palm':   'projects/forestdatapartnership/assets/palm/model_2025b',
+    'rubber': 'projects/forestdatapartnership/assets/rubber/model_2025b',
+    'cocoa':  'projects/forestdatapartnership/assets/cocoa/model_2025b',
+    'coffee': 'projects/forestdatapartnership/assets/coffee/model_2025b',
+}
+# Per-crop confidence-gradient palettes for the tile overlay: faint at the 0.5
+# floor → bold at 1.0. Four clearly distinct hues so the crops stay legible
+# when shown together, and distinct from OPERA's red/orange recency ramp.
+#   palm = orange · rubber = teal · cocoa = violet · coffee = brown
+COMMODITY_TILE_PALETTES = {
+    'palm':   ['fed7aa', 'fb923c', 'c2410c'],
+    'rubber': ['99f6e4', '2dd4bf', '0f766e'],
+    'cocoa':  ['e9d5ff', 'a855f7', '6b21a8'],
+    'coffee': ['ddbf9a', 'a16207', '713f12'],
+}
 
 # Item 1 — nearest-class library. Sized for ~3-5 s of EE work.
 AEF_REF_BUFFER_M = 80_000           # 80 km regional sampling buffer
@@ -3389,6 +3434,12 @@ def get_tiles(request):
                 include_aef = bool(request.args.get('aef'))
                 return _handle_point_extras(float(lat), float(lng), include_aef=include_aef)
             return _handle_point_core(float(lat), float(lng))
+
+        # `?commodity=<palm|rubber|cocoa|coffee>` — Forest Data Partnership
+        # commodity probability overlay (one raster layer per crop).
+        commodity = request.args.get('commodity')
+        if commodity:
+            return _handle_commodity_tile(commodity.lower())
 
         start_days, end_days = _parse_date_range(request)
         landuse = request.args.get('landuse')

@@ -803,6 +803,20 @@
   color: #6b9080;
   font-style: italic;
 }
+
+/* ─── RADD / Hansen / TMF compact popup rows ─────────────────────────────── */
+.popupForestRow {
+  margin: 5px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1f2937;
+}
+.popupForestSource {
+  font-size: 10px;
+  font-weight: 400;
+  color: #9ca3af;
+  font-style: italic;
+}
 .popupBurn {
   margin: 6px 0;
   padding: 6px 8px;

@@ -2494,6 +2494,71 @@ def _handle_commodity_tile(crop: str) -> tuple:
     return (jsonify({'tileUrl': _tile_url(masked, vis)}), 200, CORS_HEADERS)
 
 
+# ─── Additional forest layers: RADD · Hansen GFC · JRC TMF ──────────────────
+# Complementary signals to OPERA, exposed as toggleable overlays + popup context.
+#   RADD   — Sentinel-1 RADAR deforestation alerts (humid tropics, near-real-time).
+#            Cloud-penetrating, so it catches clearings OPERA's optical sensors
+#            miss under cloud. Cumulative weekly; `Alert` 2=unconfirmed/3=confirmed,
+#            `Date` encoded YYDDD (26125 = 2026 day-of-year 125). `layer='alerts'`.
+#   Hansen — UMD/GLAD validated annual tree-cover LOSS, 30 m, global, 2001–2025.
+#            `lossyear` 1–25 → 2001–2025; `treecover2000` %; `gain` 2000–2012.
+#   TMF    — JRC Tropical Moist Forest: distinguishes degradation vs deforestation
+#            vs regrowth. AnnualChanges latest band class 1–6; Deforestation/
+#            DegradationYear give the year (0 = none).
+RADD_ASSET = 'projects/radar-wur/raddalert/v1'
+HANSEN_ASSET = 'UMD/hansen/global_forest_change_2025_v1_13'
+TMF_BASE = 'projects/JRC/TMF/v1_2023'
+TMF_LATEST_BAND = 'Dec2023'   # newest annual-change band in the v1_2023 release
+
+# RADD Date is YYDDD; ~2020-01 through current. Recency ramp (dark→bright) over
+# that span, in magenta/pink to stay distinct from OPERA's red→yellow.
+RADD_VIS = {'min': 20001, 'max': 26200, 'palette': ['3b0764', 'a21caf', 'e879f9', 'fbcfe8']}
+# Hansen lossyear 1–25 → 2001–2025; yellow (old) → dark red (recent).
+HANSEN_VIS = {'min': 1, 'max': 25, 'palette': ['fde68a', 'fb923c', 'dc2626', '7f1d1d']}
+# TMF annual class 1–6: undisturbed=dark green, degraded=amber, deforested=red,
+# regrowth=light green, water=blue, other=grey.
+TMF_VIS = {'min': 1, 'max': 6, 'palette': ['0d4d0d', 'f59e0b', 'b91c1c', '86efac', '3b82f6', '9ca3af']}
+TMF_CLASS_LABELS = {
+    1: 'Undisturbed moist forest', 2: 'Degraded moist forest', 3: 'Deforested',
+    4: 'Moist-forest regrowth', 5: 'Water', 6: 'Other land cover',
+}
+
+
+def _radd_alert_mosaic() -> ee.Image:
+    """Latest cumulative RADD alert mosaic (all geographies). Sorting ascending
+    by version_date puts the newest cumulative weekly image on top."""
+    return (ee.ImageCollection(RADD_ASSET)
+            .filterMetadata('layer', 'equals', 'alerts')
+            .sort('version_date').mosaic())
+
+
+def _handle_radd_tile() -> tuple:
+    img = _radd_alert_mosaic()
+    # Show confirmed + unconfirmed alerts, colored by detection recency (Date).
+    painted = img.select('Date').updateMask(img.select('Alert').gte(2))
+    return (jsonify({'tileUrl': _tile_url(painted, RADD_VIS)}), 200, CORS_HEADERS)
+
+
+def _handle_hansen_tile() -> tuple:
+    ly = ee.Image(HANSEN_ASSET).select('lossyear')
+    painted = ly.updateMask(ly.gt(0))   # only pixels with recorded loss
+    return (jsonify({'tileUrl': _tile_url(painted, HANSEN_VIS)}), 200, CORS_HEADERS)
+
+
+def _handle_tmf_tile() -> tuple:
+    ac = ee.ImageCollection(f'{TMF_BASE}/AnnualChanges').mosaic().select(TMF_LATEST_BAND)
+    painted = ac.updateMask(ac.gte(1).And(ac.lte(6)))
+    return (jsonify({'tileUrl': _tile_url(painted, TMF_VIS)}), 200, CORS_HEADERS)
+
+
+# Dispatch table for the simple single-raster overlays (?layer=<id>).
+_LAYER_TILE_HANDLERS = {
+    'radd': _handle_radd_tile,
+    'hansen': _handle_hansen_tile,
+    'tmf': _handle_tmf_tile,
+}
+
+
 # ─── AlphaEarth Foundations (AEF) — semantic embedding context ────────────
 # Google DeepMind's AEF model emits a 64-D unit-length embedding per 10 m
 # pixel per year (2017–present), summarizing multi-sensor + multi-year
@@ -3078,6 +3143,90 @@ def _sample_commodity_crops(lat: float, lng: float, anchor_year: int) -> dict | 
     }
 
 
+def _decode_radd(d: dict) -> dict | None:
+    """RADD point sample → {status, date} or None. Date is YYDDD-encoded."""
+    a, dt = d.get('Alert'), d.get('Date')
+    if not a or not dt:
+        return None
+    a, dt = int(a), int(dt)
+    yr = 2000 + dt // 1000
+    doy = dt % 1000
+    try:
+        when = (date(yr, 1, 1) + timedelta(days=max(0, doy - 1))).isoformat()
+    except (ValueError, OverflowError):
+        when = None
+    return {'status': 'confirmed' if a >= 3 else 'unconfirmed', 'date': when}
+
+
+def _decode_hansen(d: dict) -> dict | None:
+    """Hansen GFC point sample → tree cover + loss year. Global, ~always present."""
+    ly = d.get('lossyear')
+    tc = d.get('treecover2000')
+    if ly is None and tc is None:
+        return None
+    ly = int(ly) if ly is not None else 0
+    return {
+        'treeCover2000': int(tc) if tc is not None else None,
+        'lossYear': (2000 + ly) if ly > 0 else None,
+        'gain': bool(d.get('gain')),
+    }
+
+
+def _decode_tmf(d: dict) -> dict | None:
+    """JRC TMF point sample → class label + deforestation/degradation year.
+    None outside the tropical-moist-forest domain (pan-tropical only)."""
+    c = d.get('tmf_annual')
+    if c is None:
+        return None
+    c = int(c)
+    defy, degy = d.get('tmf_defyr'), d.get('tmf_degyr')
+    return {
+        'class': c,
+        'label': TMF_CLASS_LABELS.get(c),
+        'deforestationYear': int(defy) if defy else None,
+        'degradationYear': int(degy) if degy else None,
+    }
+
+
+def _sample_forest_context(lat: float, lng: float) -> dict:
+    """Sample RADD + Hansen + JRC TMF at a point for the popup. Two EE round
+    trips: one for the global Hansen+TMF stack, one (guarded) for RADD which is
+    tropics-only. Each decoder degrades to None on missing data."""
+    point = ee.Geometry.Point([lng, lat])
+    out = {'radd': None, 'hansen': None, 'tmf': None}
+
+    # Hansen (global) + TMF (pan-tropical) — both safe to stack and sample once.
+    try:
+        hansen = ee.Image(HANSEN_ASSET).select(['lossyear', 'treecover2000', 'gain'])
+        tmf_ac = (ee.ImageCollection(f'{TMF_BASE}/AnnualChanges').mosaic()
+                  .select([TMF_LATEST_BAND]).rename('tmf_annual'))
+        tmf_def = ee.ImageCollection(f'{TMF_BASE}/DeforestationYear').mosaic().rename('tmf_defyr')
+        tmf_deg = ee.ImageCollection(f'{TMF_BASE}/DegradationYear').mosaic().rename('tmf_degyr')
+        stack = hansen.addBands([tmf_ac, tmf_def, tmf_deg])
+        d = stack.reduceRegion(ee.Reducer.first(), point, 30).getInfo()
+        out['hansen'] = _decode_hansen(d)
+        out['tmf'] = _decode_tmf(d)
+    except Exception as e:
+        print(f'hansen/tmf sample failed ({lat},{lng}): {e}', flush=True)
+
+    # RADD — tropics only; guard the empty-coverage case so the sample never
+    # throws on a null mosaic (same pattern as commodity).
+    try:
+        coll = (ee.ImageCollection(RADD_ASSET)
+                .filterMetadata('layer', 'equals', 'alerts').filterBounds(point))
+        empty = (ee.Image.constant(0).rename('Alert')
+                 .addBands(ee.Image.constant(0).rename('Date')).selfMask())
+        mosaic = ee.Image(ee.Algorithms.If(
+            coll.size().gt(0), coll.sort('version_date').mosaic(), empty))
+        d = mosaic.select(['Alert', 'Date']).reduceRegion(
+            ee.Reducer.first(), point, 30).getInfo()
+        out['radd'] = _decode_radd(d)
+    except Exception as e:
+        print(f'radd sample failed ({lat},{lng}): {e}', flush=True)
+
+    return out
+
+
 def _handle_point_core(lat: float, lng: float) -> tuple:
     """Fast path: OPERA core (date / status / severity) + tiered land cover.
 
@@ -3232,6 +3381,9 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     # the very conversion we're trying to flag.
     f_commodity = _pool.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
 
+    # RADD / Hansen / JRC TMF context for every click (2 cheap round trips).
+    f_forest = _pool.submit(_sample_forest_context, lat, lng)
+
     # Named-fire context is queried for ANY click, regardless of whether
     # OPERA currently flags the pixel. OPERA transitions finished alerts
     # back to status 0 once vegetation recovers, so older fire scars (like
@@ -3261,6 +3413,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
         named_fires = _named_fires()
         aef_empty = _collect(aef_future, None, 'aef')
         commodity = _collect(f_commodity, None, 'commodity')
+        forest = _collect(f_forest, {}, 'forest') or {}
         _pool.shutdown(wait=False)
         return (
             jsonify({
@@ -3268,6 +3421,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
                 'burn': None, 'fires': None, 'nbr': None,
                 'shape': None, 'namedFires': named_fires, 'likelyCause': None,
                 'aef': aef_empty, 'commodityCrop': commodity,
+                'radd': forest.get('radd'), 'hansen': forest.get('hansen'), 'tmf': forest.get('tmf'),
             }),
             200,
             CORS_HEADERS,
@@ -3355,6 +3509,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
     land_cover, crop_profile, nass_context = _collect(f_lc, (None, None, None), 'land-cover')
     aef = _collect(aef_future, None, 'aef')
     commodity = _collect(f_commodity, None, 'commodity')
+    forest = _collect(f_forest, {}, 'forest') or {}
     _pool.shutdown(wait=False)
 
     # Local, cheap derivations from the sampled data. The cause heuristic uses
@@ -3384,6 +3539,7 @@ def _handle_point_extras(lat: float, lng: float, include_aef: bool = False) -> t
             'nassContext': nass_context,
             'aef': aef,
             'commodityCrop': commodity,
+            'radd': forest.get('radd'), 'hansen': forest.get('hansen'), 'tmf': forest.get('tmf'),
         }),
         200,
         CORS_HEADERS,
@@ -3449,6 +3605,14 @@ def get_tiles(request):
         commodity = request.args.get('commodity')
         if commodity:
             return _handle_commodity_tile(commodity.lower())
+
+        # `?layer=<radd|hansen|tmf>` — additional forest overlays.
+        layer = request.args.get('layer')
+        if layer:
+            handler = _LAYER_TILE_HANDLERS.get(layer.lower())
+            if handler is None:
+                return (jsonify({'tileUrl': None, 'error': 'unknown_layer'}), 400, CORS_HEADERS)
+            return handler()
 
         start_days, end_days = _parse_date_range(request)
         landuse = request.args.get('landuse')

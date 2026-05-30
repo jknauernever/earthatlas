@@ -49,6 +49,39 @@ const COMMODITY_LAYERS = [
   { key: 'coffee', label: 'Coffee',   color: '#a16207' },
 ]
 
+// Additional single-raster overlays (?layer=<id>), each its own panel row with
+// on/off + opacity. `legend.gradient` renders a color ramp; `legend.swatches`
+// renders a categorical key. Palettes mirror RADD_VIS / HANSEN_VIS / TMF_VIS in
+// main.py. `defaultOpacity` is the row's starting opacity.
+const EXTRA_LAYERS = [
+  {
+    id: 'radd', label: 'RADD radar alerts', defaultOpacity: 0.9,
+    legend: {
+      gradient: 'linear-gradient(to right, #3b0764, #a21caf, #e879f9, #fbcfe8)',
+      left: 'older', right: 'recent',
+      blurb: 'Sentinel-1 radar deforestation alerts — cloud-penetrating and near-real-time, so they catch clearings the optical disturbance layer misses under cloud. Humid tropics only. Source: WUR RADD, 10 m.',
+    },
+  },
+  {
+    id: 'hansen', label: 'Forest loss (Hansen)', defaultOpacity: 0.85,
+    legend: {
+      gradient: 'linear-gradient(to right, #fde68a, #fb923c, #dc2626, #7f1d1d)',
+      left: '2001', right: '2025',
+      blurb: 'Validated annual tree-cover loss, 30 m, global (2001–2025). The trusted long-term loss record. Source: Hansen / UMD-GLAD.',
+    },
+  },
+  {
+    id: 'tmf', label: 'Moist-forest change (TMF)', defaultOpacity: 0.75,
+    legend: {
+      swatches: [
+        { c: '#0d4d0d', l: 'Undisturbed' }, { c: '#f59e0b', l: 'Degraded' },
+        { c: '#b91c1c', l: 'Deforested' }, { c: '#86efac', l: 'Regrowth' },
+      ],
+      blurb: 'JRC Tropical Moist Forest — distinguishes degradation vs. deforestation vs. regrowth (latest year). Pan-tropical, 30 m.',
+    },
+  },
+]
+
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
 // STATUS_VIS, SEVERITY_VIS in main.py).
 const RECENCY_GRADIENT = 'linear-gradient(to right, #450a0a, #7f1d1d, #b91c1c, #dc2626, #ef4444, #fb923c, #fbbf24)'
@@ -277,6 +310,20 @@ export default function ForestMonitor() {
   // latest visibility without being torn down/recreated.
   const commodityVisibleRef = useRef(false)
   const commodityCropsRef = useRef(commodityCrops)
+
+  // Extra single-raster overlays (RADD / Hansen / TMF) — keyed by layer id.
+  const [extraVisible, setExtraVisible] = useState(
+    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, false]))
+  )
+  const [extraExpanded, setExtraExpanded] = useState(
+    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, false]))
+  )
+  const [extraOpacity, setExtraOpacity] = useState(
+    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, l.defaultOpacity]))
+  )
+  const extraVisibleRef = useRef(extraVisible)
+  const extraOpacityRef = useRef(extraOpacity)
+  const extraUrlRef = useRef({})   // cached tile URLs per layer id
 
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -542,11 +589,19 @@ export default function ForestMonitor() {
         const showOpera = operaVisibleRef.current
         const showCommodity = commodityVisibleRef.current
         const commodity = showCommodity ? (extras?.commodityCrop || null) : null
+        // RADD / Hansen / TMF: each shown only when its layer is on (mirrors
+        // the map), populated once extras arrive.
+        const ev = extraVisibleRef.current
+        const forest = {
+          radd: ev.radd ? (extras?.radd || null) : null,
+          hansen: ev.hansen ? (extras?.hansen || null) : null,
+          tmf: ev.tmf ? (extras?.tmf || null) : null,
+        }
 
         // Disturbance layer off → don't frame the popup around disturbance.
-        // Show a neutral location card (plus commodity, if that layer is on).
+        // Show a neutral location card (plus whatever other layers are on).
         if (!showOpera) {
-          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity))
+          myPopup.setHTML(renderLocationPopupHTML(pois, state.admin.value, data.landCover, commodity, forest))
           return
         }
 
@@ -554,15 +609,18 @@ export default function ForestMonitor() {
           // Use extras' namedFires if they've arrived (US clicks always get them)
           const extrasNamedFires = extras ? (extras.namedFires || []) : []
           const extrasAef = extras ? (extras.aef || null) : null
-          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity))
+          myPopup.setHTML(renderEmptyPopupHTML(pois, state.admin.value, data.landCover, extrasNamedFires, extrasAef, commodity, forest))
           return
         }
 
         // Merge in extras (patch outline + MODIS burn + acres) once they
         // arrive. While extras are still pending, the popup renders the
-        // core info with a small "loading extras…" footer. `commodityCrop` is
-        // gated to the Crops layer so the popup matches what's on the map.
-        const merged = { ...data, ...(extras || {}), commodityCrop: commodity }
+        // core info with a small "loading extras…" footer. Layer-context fields
+        // are gated to their toggles so the popup matches what's on the map.
+        const merged = {
+          ...data, ...(extras || {}),
+          commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
+        }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(merged, pois, state.admin.value, state.extras.status === 'pending'))
       }
@@ -645,6 +703,36 @@ export default function ForestMonitor() {
     })
   }, [])
 
+  // Reconcile the extra single-raster overlays (RADD / Hansen / TMF). Same
+  // pattern as commodity: stable, reads refs, fetches+caches each tile URL on
+  // first show, slots beneath the OPERA layer. Declared above the basemap
+  // effect that depends on it.
+  const reconcileExtra = useCallback((map) => {
+    if (!map) return
+    EXTRA_LAYERS.forEach(async ({ id }) => {
+      const sId = `extra-${id}`
+      const lId = `extra-${id}-layer`
+      if (!extraVisibleRef.current[id]) { removeRasterLayer(map, sId, lId); return }
+      let url = extraUrlRef.current[id]
+      if (!url) {
+        try {
+          const r = await fetch(`${TILES_API_BASE}?layer=${id}`)
+          const d = await r.json()
+          url = d.tileUrl
+          if (url) extraUrlRef.current[id] = url
+        } catch (err) {
+          console.error(`[ForestMonitor] ${id} tile fetch failed`, err)
+          return
+        }
+      }
+      if (url && extraVisibleRef.current[id]) {
+        applyRasterLayer(map, sId, lId, url, extraOpacityRef.current[id] ?? 0.8, RASTER_LAYER_ID)
+      } else {
+        removeRasterLayer(map, sId, lId)
+      }
+    })
+  }, [])
+
   // ─── Basemap change ──────────────────────────────────────────────────────
   // setStyle() blows away all custom sources/layers (OPERA raster + any
   // patch outline), so we listen for the new style's `style.load` and
@@ -665,12 +753,13 @@ export default function ForestMonitor() {
           map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', 'none')
         }
       }
-      // Commodity rasters were wiped by setStyle — re-add from cache.
+      // Commodity + extra rasters were wiped by setStyle — re-add from cache.
       reconcileCommodity(map)
+      reconcileExtra(map)
       // Patch outline is per-popup; it'll redraw on next click.
     })
     map.setStyle(basemapStyleFor(basemap))
-  }, [basemap, reconcileCommodity])
+  }, [basemap, reconcileCommodity, reconcileExtra])
 
   // ─── OPERA layer opacity (live update via setPaintProperty) ─────────────
   // Avoids re-adding the layer on every opacity change — much smoother than
@@ -716,6 +805,25 @@ export default function ForestMonitor() {
       } catch {}
     })
   }, [commodityOpacity, mapReady])
+
+  // ─── Extra overlays (RADD / Hansen / TMF): reconcile + opacity ───────────
+  useEffect(() => {
+    extraVisibleRef.current = extraVisible
+    const map = mapRef.current
+    if (map && mapReady) reconcileExtra(map)
+  }, [extraVisible, mapReady, reconcileExtra])
+
+  useEffect(() => {
+    extraOpacityRef.current = extraOpacity
+    const map = mapRef.current
+    if (!map) return
+    EXTRA_LAYERS.forEach(({ id }) => {
+      const lId = `extra-${id}-layer`
+      try {
+        if (map.getLayer(lId)) map.setPaintProperty(lId, 'raster-opacity', extraOpacity[id])
+      } catch {}
+    })
+  }, [extraOpacity, mapReady])
 
   // ─── Basemap menu: close on outside click / Esc ──────────────────────────
   useEffect(() => {
@@ -1085,6 +1193,73 @@ export default function ForestMonitor() {
             </div>
           )}
         </div>
+
+        {/* ── Extra single-raster overlays: RADD / Hansen / TMF ─────────── */}
+        {EXTRA_LAYERS.map((layer) => (
+          <div key={layer.id} className={styles.layerRow}>
+            <div className={styles.layerHeader}>
+              <button
+                type="button"
+                className={styles.layerCaret}
+                onClick={() => setExtraExpanded((p) => ({ ...p, [layer.id]: !p[layer.id] }))}
+                aria-expanded={!!extraExpanded[layer.id]}
+                aria-label={extraExpanded[layer.id] ? 'Collapse layer' : 'Expand layer'}
+              >
+                <span className={extraExpanded[layer.id] ? styles.caretOpen : styles.caretClosed}>▸</span>
+              </button>
+              <span className={styles.layerName}>{layer.label}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!extraVisible[layer.id]}
+                className={extraVisible[layer.id] ? styles.switchOn : styles.switchOff}
+                onClick={() => setExtraVisible((p) => ({ ...p, [layer.id]: !p[layer.id] }))}
+                aria-label={`Toggle ${layer.label} layer`}
+              >
+                <span className={styles.switchKnob} />
+              </button>
+            </div>
+
+            {extraExpanded[layer.id] && (
+              <div className={`${styles.layerBody} ${extraVisible[layer.id] ? '' : styles.layerBodyMuted}`}>
+                <div className={styles.opacityControl}>
+                  <div className={styles.opacityHeader}>
+                    <span className={styles.opacityLabel}>Opacity</span>
+                    <span className={styles.opacityValue}>{Math.round((extraOpacity[layer.id] ?? 0) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="100" step="1"
+                    value={Math.round((extraOpacity[layer.id] ?? 0) * 100)}
+                    onChange={(e) => setExtraOpacity((p) => ({ ...p, [layer.id]: Number(e.target.value) / 100 }))}
+                    className={styles.opacitySlider}
+                    aria-label={`${layer.label} opacity`}
+                  />
+                </div>
+
+                {layer.legend.gradient && (
+                  <>
+                    <div className={styles.legendGradient} style={{ background: layer.legend.gradient }} />
+                    <div className={styles.legendScale}>
+                      <span>{layer.legend.left}</span>
+                      <span>{layer.legend.right}</span>
+                    </div>
+                  </>
+                )}
+                {layer.legend.swatches && (
+                  <ul className={styles.legendList}>
+                    {layer.legend.swatches.map((s) => (
+                      <li key={s.l}>
+                        <span className={styles.swatch} style={{ background: s.c }} />
+                        {s.l}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className={styles.legendBlurb}>{layer.legend.blurb}</div>
+              </div>
+            )}
+          </div>
+        ))}
 
         <button
           type="button"
@@ -1753,6 +1928,45 @@ function renderCommodity(commodity, driverContext = true) {
   `
 }
 
+// ─── RADD / Hansen / TMF popup rows ─────────────────────────────────────────
+// Each renders only when its layer is on (the click handler gates the data) AND
+// there's something to say at the clicked pixel. One compact row apiece.
+function _forestRow(icon, html, source) {
+  return `<div class="${styles.popupForestRow}">${icon} ${html} <span class="${styles.popupForestSource}">${escapeHTML(source)}</span></div>`
+}
+
+function renderRadd(r) {
+  if (!r || !r.date) return ''
+  const when = new Date(r.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  const conf = r.status === 'confirmed' ? 'confirmed' : 'unconfirmed'
+  return _forestRow('📡', `<strong>Radar deforestation alert</strong> — ${conf}, ${escapeHTML(when)}`, 'WUR RADD · Sentinel-1')
+}
+
+function renderHansen(h) {
+  if (!h) return ''
+  const loss = h.lossYear
+    ? `Forest loss in <strong>${h.lossYear}</strong>`
+    : 'No tree-cover loss recorded since 2001'
+  const tc = (h.treeCover2000 != null) ? ` · ${h.treeCover2000}% tree cover in 2000` : ''
+  const gain = h.gain ? ' · regrowth 2000–2012' : ''
+  return _forestRow('🌲', `${loss}${tc}${gain}`, 'Hansen / UMD-GLAD, 30 m')
+}
+
+function renderTmf(t) {
+  if (!t || !t.label) return ''
+  let yr = ''
+  if (t.deforestationYear) yr = ` (${t.deforestationYear})`
+  else if (t.degradationYear) yr = ` (${t.degradationYear})`
+  return _forestRow('🌴', `Tropical moist forest: <strong>${escapeHTML(t.label)}</strong>${yr}`, 'JRC TMF')
+}
+
+// Bundle the three rows for a popup. `d` carries the (already layer-gated)
+// radd / hansen / tmf fields.
+function renderForestLayers(d) {
+  if (!d) return ''
+  return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf)
+}
+
 // Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
 // "Bear Gulch Fire"). GlobFire perimeters are unnamed — fall back to
 // "{acres}-acre fire" or just "Fire perimeter" if size is unknown.
@@ -2273,6 +2487,7 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
       ${renderLandCover(data.landCover)}
       ${renderNamedFires(data.namedFires, data.date)}
       ${renderLikelyCause(data.likelyCause)}
+      ${renderForestLayers(data)}
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
@@ -2288,20 +2503,22 @@ function renderPopupHTML(data, pois, admin, extrasPending = false) {
 // layer is OFF — so the popup mirrors the map instead of always leading with
 // disturbance framing. Carries location + land cover, plus the commodity block
 // when the Crops layer is on. If neither layer adds context it's just location.
-function renderLocationPopupHTML(pois, admin, landCover, commodity) {
-  const heading = commodity ? 'What grows here' : 'This location'
+function renderLocationPopupHTML(pois, admin, landCover, commodity, forest) {
+  const hasForest = forest && (forest.radd || forest.hansen || forest.tmf)
+  const heading = (commodity || hasForest) ? 'What grows here' : 'This location'
   return `
     <div class="${styles.popupBody}">
       <div class="${styles.popupHeader}">${heading}</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
+      ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${renderMethodologyLink()}
     </div>
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity) {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -2311,6 +2528,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       <div class="${styles.popupHeader}">No current disturbance here</div>
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(landCover)}
+      ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${(namedFires && namedFires.length) ? blurb + fireBlock : blurb}
       ${renderAef(aef)}

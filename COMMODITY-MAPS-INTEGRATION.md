@@ -151,10 +151,35 @@ The frontend degrades cleanly (`renderCommodity` returns `''` on null), so
 nothing breaks live — but the popup line won't appear until the cloud function
 is redeployed. See `cloud-functions/opera-dist-alert-global/DEPLOY.md`.
 
-## Future (Phase 2 candidates)
+## Phase 2 — layer panel + commodity overlay (shipped)
 
-- Toggle-able commodity-probability tile overlay (a visualization mode like
-  the OPERA modes), masked at the display floor.
+The single OPERA overlay became a **layer system**: a left-hand panel where
+each dataset is a row with its own on/off toggle + opacity slider, built to
+grow as more layers are added.
+
+- **Vegetation disturbance** (OPERA) is layer #1; its mode / date / land-use
+  controls + legend live in its expandable row.
+- **Commodity crops** is layer #2: a group on/off + opacity, expandable to
+  per-crop checkboxes (oil palm / rubber / cocoa / coffee), each painted as a
+  confidence gradient (faint at 0.5 → bold at 1.0) in its own hue
+  (`COMMODITY_TILE_PALETTES` in main.py ↔ `COMMODITY_LAYERS` colors in the JSX).
+
+Backend: `?commodity=<crop>` (`_handle_commodity_tile`) mosaics the latest-year
+probability map, masks to ≥ `COMMODITY_MIN_PROB`, and visualizes the per-crop
+gradient. **Mosaic, not `.first()`** — these collections hold thousands of
+tiled COGs, so a single image would render an almost-empty tile.
+
+Frontend: generic `applyRasterLayer` / `removeRasterLayer` drive N independent
+overlays. Commodity tile URLs are fetched once and cached (`commodityUrlRef`);
+a stable `reconcileCommodity(map)` adds/removes each crop raster from the group
++ per-crop toggles, re-runs on a basemap (style) reload, and slots crops
+*beneath* the OPERA layer (`beforeId`) so alerts stay on top. The reconcile
+callback is declared above the basemap effect that depends on it (else a
+temporal-dead-zone crash at render).
+
+## Future candidates
+
+- Encode layer state in the URL (toggles, opacity, crops) for shareable views.
 - Surface "covered, no commodity detected" to actively rule out a commodity
   driver.
-- Multi-crop disclosure (the full ranked `all[]` is already in the payload).
+- Multi-crop disclosure in the popup (the full ranked `all[]` is in the payload).

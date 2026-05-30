@@ -1033,7 +1033,7 @@ export default function ForestMonitor() {
             >
               <span className={commodityExpanded ? styles.caretOpen : styles.caretClosed}>▸</span>
             </button>
-            <span className={styles.layerName}>Commodity crops</span>
+            <span className={styles.layerName}>Tropical commodity crops</span>
             <button
               type="button"
               role="switch"

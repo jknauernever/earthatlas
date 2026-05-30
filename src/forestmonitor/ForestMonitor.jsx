@@ -1080,7 +1080,7 @@ export default function ForestMonitor() {
               </ul>
 
               <div className={styles.legendBlurb}>
-                Faint → bold = 50% → 100% model confidence that the spot is that crop. Pan-tropical only (no temperate coverage). Source: Forest Data Partnership (Google), 10 m.
+                Faint → bold = lower → higher model confidence. These models under-detect smallholder & shade-grown crops (e.g. Colombian coffee), so treat faint areas as "possible," not absent. Pan-tropical only. Source: Forest Data Partnership (Google), 10 m.
               </div>
             </div>
           )}

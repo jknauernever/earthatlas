@@ -2489,8 +2489,8 @@ def _handle_commodity_tile(crop: str) -> tuple:
     start = ee.Date.fromYMD(latest_year, 1, 1)
     end = ee.Date.fromYMD(latest_year.add(1), 1, 1)
     mosaic = coll.filterDate(start, end).select('probability').mosaic()
-    masked = mosaic.updateMask(mosaic.gte(COMMODITY_MIN_PROB))
-    vis = {'min': COMMODITY_MIN_PROB, 'max': 1.0, 'palette': palette}
+    masked = mosaic.updateMask(mosaic.gte(COMMODITY_TILE_MIN_PROB))
+    vis = {'min': COMMODITY_TILE_MIN_PROB, 'max': 1.0, 'palette': palette}
     return (jsonify({'tileUrl': _tile_url(masked, vis)}), 200, CORS_HEADERS)
 
 
@@ -2540,7 +2540,16 @@ COMMODITY_ASSETS = {
 }
 COMMODITY_VERSION = '2025b'
 COMMODITY_ATTRIBUTION = 'Produced by Google for the Forest Data Partnership'
-COMMODITY_MIN_PROB = 0.50   # Google's default display floor (catalog min: 0.5)
+COMMODITY_MIN_PROB = 0.50   # popup "Very likely/…" claim floor (Google's catalog default)
+# The map overlay uses a LOWER floor than the popup. These models are
+# deliberately conservative for smallholder / shade-grown / intercropped crops
+# (coffee, cocoa) — in the heart of Colombia's coffee belt only ~3% of pixels
+# clear 0.5, but ~17% clear 0.25 and ~34% clear 0.1. Masking the overlay at 0.5
+# made the coffee capital of the world look nearly empty. We paint from 0.2 up
+# as a confidence gradient (faint→bold), so the broad low-confidence extent
+# shows faintly while confident cores stay bold. The popup keeps the stricter
+# 0.5 claim floor so its "Very likely cocoa" text never overclaims.
+COMMODITY_TILE_MIN_PROB = 0.20
 
 # Short URL keys (?commodity=palm) → asset. The asset path already uses these
 # keys, so this doubles as the canonical key list for the tile overlay.

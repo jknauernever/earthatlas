@@ -2534,9 +2534,17 @@ def _radd_alert_mosaic() -> ee.Image:
 
 def _handle_radd_tile() -> tuple:
     img = _radd_alert_mosaic()
-    # Show confirmed + unconfirmed alerts, colored by detection recency (Date).
-    painted = img.select('Date').updateMask(img.select('Alert').gte(2))
-    return (jsonify({'tileUrl': _tile_url(painted, RADD_VIS)}), 200, CORS_HEADERS)
+    # Mask to plausible YYDDD dates only: drop pre-2020 garbage and the rare
+    # future-dated bad pixels (which would otherwise clamp to the brightest
+    # "most recent" color). Anchor the recency ramp's bright end to today so
+    # genuinely-recent alerts pop, instead of a hardcoded future ceiling.
+    today = date.today()
+    cap = (today.year - 2000) * 1000 + today.timetuple().tm_yday + 1
+    d = img.select('Date')
+    valid = img.select('Alert').gte(2).And(d.gte(20001)).And(d.lte(cap))
+    painted = d.updateMask(valid)
+    vis = {'min': 20001, 'max': cap, 'palette': RADD_VIS['palette']}
+    return (jsonify({'tileUrl': _tile_url(painted, vis)}), 200, CORS_HEADERS)
 
 
 def _handle_hansen_tile() -> tuple:
@@ -3144,18 +3152,30 @@ def _sample_commodity_crops(lat: float, lng: float, anchor_year: int) -> dict | 
 
 
 def _decode_radd(d: dict) -> dict | None:
-    """RADD point sample → {status, date} or None. Date is YYDDD-encoded."""
+    """RADD point sample → {status, date} or None. Date is YYDDD-encoded.
+
+    RADD has rare anomalous pixels whose Date decodes to an impossible future
+    day (e.g. 27172 → June 2027). A radar alert can't be from the future, so we
+    reject anything dated after today or with an out-of-range day-of-year —
+    otherwise a single bad pixel surfaces a nonsense "alert" in the popup.
+    """
     a, dt = d.get('Alert'), d.get('Date')
     if not a or not dt:
         return None
     a, dt = int(a), int(dt)
     yr = 2000 + dt // 1000
     doy = dt % 1000
+    if not (1 <= doy <= 366):
+        return None
     try:
-        when = (date(yr, 1, 1) + timedelta(days=max(0, doy - 1))).isoformat()
+        when = date(yr, 1, 1) + timedelta(days=doy - 1)
     except (ValueError, OverflowError):
-        when = None
-    return {'status': 'confirmed' if a >= 3 else 'unconfirmed', 'date': when}
+        return None
+    # +1 day grace for timezone edges; reject genuine future dates.
+    if when > date.today() + timedelta(days=1):
+        print(f'RADD rejected future-dated pixel: raw={dt} -> {when}', flush=True)
+        return None
+    return {'status': 'confirmed' if a >= 3 else 'unconfirmed', 'date': when.isoformat()}
 
 
 def _decode_hansen(d: dict) -> dict | None:

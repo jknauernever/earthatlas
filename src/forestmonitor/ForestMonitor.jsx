@@ -2329,54 +2329,49 @@ function renderAef(aef) {
     `)
   }
 
-  // Section 3 — "Multi-year trajectory" → "How this land has changed since {baseline year}"
-  // Sparkline + plain-English explainer. On stable clicks (no disturbance),
-  // we omit the red dashed line + its mention so the chart doesn't promise
-  // something it doesn't show.
+  // Section 3 + 5 merged — "How this place has changed". One plain verdict
+  // sentence + year-by-year change bars (tall bar = the land looked very
+  // different from the year before). Replaces the old "distance from 2017"
+  // line and the separate "steady before? / 95% similar" badge, which split
+  // one story into two abstract numbers anchored on a baseline year nobody
+  // can hold in their head.
   const traj = aef.trajectory
   if (Array.isArray(traj) && traj.length >= 2) {
-    const hasDisturbance = !!(cm && cm.magnitude !== 'awaiting_post')
-    const operaMarkerYear = hasDisturbance ? aef.operaYear : null
-    const svg = renderAefSparkline(traj, operaMarkerYear)
-    if (svg) {
-      const baselineYear = traj[0].year
-      const subtitle = hasDisturbance
-        ? `Higher line = this place looks more different from how it looked in ${baselineYear}. Flat = same place, year after year. Red dashed line = year of detected disturbance.`
-        : `Higher line = this place looks more different from how it looked in ${baselineYear}. Flat = same place, year after year.`
+    const pts = traj.filter(p => p.distance != null && Number.isFinite(p.distance))
+    if (pts.length >= 2) {
+      const hasDisturbance = !!(cm && cm.magnitude !== 'awaiting_post')
+      const operaMarkerYear = hasDisturbance ? aef.operaYear : null
+      const baselineYear = pts[0].year
+      // Year-over-year change = how much the place moved from the prior year.
+      const bars = pts.map((p, i) => ({
+        year: p.year,
+        change: i === 0 ? 0 : Math.abs(p.distance - pts[i - 1].distance),
+      }))
+      const maxBar = bars.reduce((a, b) => (b.change > a.change ? b : a), bars[0])
+      const NOTABLE = 0.06   // cosine-distance step that reads as a real change
+      let verdict
+      if (hasDisturbance && operaMarkerYear) {
+        verdict = `Looked steady for years, then changed around ${operaMarkerYear} — when the disturbance was detected.`
+      } else if (maxBar.change < NOTABLE) {
+        verdict = `This spot has looked about the same every year since ${baselineYear}.`
+      } else {
+        const notable = bars.filter(b => b.change >= Math.max(NOTABLE, maxBar.change * 0.6))
+        verdict = notable.length <= 1
+          ? `Mostly steady, with one clear change around ${maxBar.year}.`
+          : `Changed more than once — the biggest shift was around ${maxBar.year}.`
+      }
+      const highlightYear = hasDisturbance
+        ? operaMarkerYear
+        : (maxBar.change >= NOTABLE ? maxBar.year : null)
       sections.push(`
         <div class="${styles.popupAefRow}">
-          <div class="${styles.popupAefRowLabel}">How this land has changed since ${baselineYear}</div>
-          ${svg}
-          <div class="${styles.popupAefMuted}">${subtitle}</div>
+          <div class="${styles.popupAefRowLabel}">How this place has changed</div>
+          <div class="${styles.popupAefVerdict}">${escapeHTML(verdict)}</div>
+          ${renderAefChangeBars(pts, highlightYear)}
+          <div class="${styles.popupAefMuted}">Each bar is one year. A tall bar means the land looked very different from the year before — often a sign it was cleared, burned, or planted.</div>
         </div>
       `)
     }
-  }
-
-  // Section 5 — "Land-use stability" → "Was this place steady before?"
-  // Backend description string is now plain-English; the popup just
-  // adds a percentage gloss and a one-line subtitle.
-  const stab = aef.stability
-  if (stab) {
-    const stabClass = ({
-      stable:        styles.popupAefStableStable,
-      mostly_stable: styles.popupAefStableMostly,
-      mixed:         styles.popupAefStableMixed,
-      volatile:      styles.popupAefStableVolatile,
-    })[stab.label] || styles.popupAefStableMixed
-    const yearCount = Array.isArray(stab.years) ? stab.years.length : 3
-    sections.push(`
-      <div class="${styles.popupAefRow}">
-        <div class="${styles.popupAefRowLabel}">Was this place steady before?</div>
-        <div class="${stabClass}">
-          ${escapeHTML(stab.description)}
-          <span class="${styles.popupAefSim}">${pct(stab.medianSimilarity)} similar</span>
-        </div>
-        <div class="${styles.popupAefMuted}">
-          Looking at how this place compared to itself over the ${yearCount} years before.
-        </div>
-      </div>
-    `)
   }
 
   // Section 4 — "Similar disturbances" → "Other nearby spots that look like this"
@@ -2433,47 +2428,44 @@ function renderAef(aef) {
   `
 }
 
-// Tiny inline SVG sparkline for the AEF trajectory. No new dependency.
-// Y-axis = cosine distance from baseline (0 to ymax, capped at 1.0).
-// X-axis = year. Vertical guide marks the OPERA-detection year.
-function renderAefSparkline(series, operaYear) {
-  // Padding generous enough that edge-anchored tick text doesn't clip.
-  // Year labels are 4 chars at 10px ~= 28px wide, anchored start/end at edges.
-  const W = 320, H = 52, PAD_L = 8, PAD_R = 8, PAD_T = 8, PAD_B = 16
-  const valid = series.filter(p => p.distance != null && Number.isFinite(p.distance))
-  if (valid.length < 2) return ''
-  const years = valid.map(p => p.year)
-  const minY = Math.min(...years), maxY = Math.max(...years)
-  const yearRange = Math.max(1, maxY - minY)
-  // Cap Y at a sensible upper bound so a single outlier doesn't squash the rest.
-  const maxDist = Math.max(0.2, ...valid.map(p => p.distance))
-  const x = (yr) => PAD_L + ((yr - minY) / yearRange) * (W - PAD_L - PAD_R)
-  const y = (d) => PAD_T + (1 - Math.min(d, maxDist) / maxDist) * (H - PAD_T - PAD_B)
-
-  const linePath = valid
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.year).toFixed(1)} ${y(p.distance).toFixed(1)}`)
-    .join(' ')
-  const dots = valid
-    .map(p => `<circle cx="${x(p.year).toFixed(1)}" cy="${y(p.distance).toFixed(1)}" r="2.2" fill="#7c3aed" />`)
-    .join('')
-  const operaLine = (operaYear && operaYear >= minY && operaYear <= maxY)
-    ? `<line x1="${x(operaYear).toFixed(1)}" y1="${PAD_T}" x2="${x(operaYear).toFixed(1)}" y2="${H - PAD_B}" stroke="#dc2626" stroke-width="1" stroke-dasharray="2,2" />`
-    : ''
-  const xAxis = `<line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" stroke="#d1d5db" stroke-width="0.5" />`
-  // Year tick labels at ends + midpoint. Edge ticks anchor start/end so
-  // their text stays inside the SVG; midpoint stays centered.
-  const mid = Math.round((minY + maxY) / 2)
+// Year-by-year "change bars" for the AEF trajectory. One bar per year; bar
+// height = how much the place changed from the year before (the absolute step
+// in cosine-distance-from-baseline). A tall bar marks the year something
+// happened. `highlightYear` (disturbance year or biggest-change year) is drawn
+// red so it stands out. No new dependency — inline SVG.
+function renderAefChangeBars(series, highlightYear) {
+  const pts = series.filter(p => p.distance != null && Number.isFinite(p.distance))
+  if (pts.length < 2) return ''
+  const bars = pts.map((p, i) => ({
+    year: p.year,
+    change: i === 0 ? 0 : Math.abs(p.distance - pts[i - 1].distance),
+  }))
+  // Floor the scale so a genuinely-flat history shows tiny bars, not noise
+  // amplified to full height.
+  const maxChange = Math.max(0.05, ...bars.map(b => b.change))
+  const W = 320, H = 56, PAD_L = 6, PAD_R = 6, PAD_T = 6, PAD_B = 16, GAP = 3
+  const n = bars.length
+  const slot = (W - PAD_L - PAD_R) / n
+  const bw = Math.max(5, slot - GAP)
+  const chartH = H - PAD_T - PAD_B
+  const cx = (i) => PAD_L + i * slot + slot / 2
+  const rects = bars.map((b, i) => {
+    const h = b.change > 0 ? Math.max(2, (b.change / maxChange) * chartH) : 1.5
+    const x = cx(i) - bw / 2
+    const yTop = PAD_T + (chartH - h)
+    const fill = (highlightYear && b.year === highlightYear) ? '#dc2626' : '#c4b5fd'
+    return `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="${fill}" />`
+  }).join('')
+  const baseline = `<line x1="${PAD_L}" y1="${(H - PAD_B).toFixed(1)}" x2="${(W - PAD_R).toFixed(1)}" y2="${(H - PAD_B).toFixed(1)}" stroke="#e5e7eb" stroke-width="0.5" />`
   const labelStyle = 'font-size="10" fill="#6b7280" font-family="sans-serif"'
-  const tickLabels = [
-    `<text x="${x(minY).toFixed(1)}" y="${H - 3}" text-anchor="start" ${labelStyle}>${minY}</text>`,
-    `<text x="${x(mid).toFixed(1)}" y="${H - 3}" text-anchor="middle" ${labelStyle}>${mid}</text>`,
-    `<text x="${x(maxY).toFixed(1)}" y="${H - 3}" text-anchor="end" ${labelStyle}>${maxY}</text>`,
+  const labels = [
+    `<text x="${cx(0).toFixed(1)}" y="${H - 3}" text-anchor="middle" ${labelStyle}>${bars[0].year}</text>`,
+    `<text x="${cx(n - 1).toFixed(1)}" y="${H - 3}" text-anchor="middle" ${labelStyle}>${bars[n - 1].year}</text>`,
+    highlightYear ? `<text x="${cx(bars.findIndex(b => b.year === highlightYear)).toFixed(1)}" y="${H - 3}" text-anchor="middle" font-size="10" fill="#dc2626" font-family="sans-serif">${highlightYear}</text>` : '',
   ].join('')
   return `
     <svg class="${styles.popupAefSparkline}" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
-      ${xAxis}${operaLine}
-      <path d="${linePath}" fill="none" stroke="#7c3aed" stroke-width="1.5" />
-      ${dots}${tickLabels}
+      ${baseline}${rects}${labels}
     </svg>
   `
 }

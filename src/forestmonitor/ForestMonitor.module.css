@@ -1483,6 +1483,14 @@
   font-style: italic;
   margin-top: 2px;
 }
+/* Plain-English headline verdict above the change bars. */
+.popupAefVerdict {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.35;
+  margin: 2px 0 4px;
+}
 .popupAefSim {
   display: inline-block;
   margin-left: 6px;

@@ -1080,6 +1080,66 @@
 }
 .popupDeepen:hover { background: #e0e7ff; border-color: #a5b4fc; }
 
+/* ─── Click-gated AI summary ───────────────────────────────────────────────
+   Idle is a single full-width button; once clicked it becomes a tinted card
+   holding the spinner, the paragraph, or an error + retry. */
+.popupAiBtn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #ddd6fe;
+  border-radius: 6px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.popupAiBtn:hover { background: #ede9fe; border-color: #c4b5fd; }
+.popupAi {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #faf5ff;
+  border: 1px solid #ede9fe;
+  border-radius: 8px;
+}
+.popupAiLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.popupAiLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin-bottom: 5px;
+}
+.popupAiText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2937;
+  white-space: pre-wrap;
+}
+.popupAiFoot {
+  margin-top: 7px;
+  font-size: 10px;
+  color: #9ca3af;
+}
+.popupAiErr {
+  font-size: 12px;
+  color: #b45309;
+  margin-bottom: 8px;
+}
+.popupAi .popupAiBtn { margin-top: 0; }
+
 /* ─── Methodology modal ────────────────────────────────────────────────── */
 .modalBackdrop {
   position: fixed;

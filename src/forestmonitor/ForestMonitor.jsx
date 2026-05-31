@@ -566,13 +566,15 @@ export default function ForestMonitor() {
         // analysis when the user clicks "Deeper analysis"; deepFired guards the
         // one-time launch of the slow streams.
         anyLayerOn: false, deep: false, deepFired: false,
+        // Click-gated plain-language AI summary (idle → loading → done | error).
+        ai: { status: 'idle', text: null },
       }
       const myPopup = popup
       const stillCurrent = () => popupRef.current === myPopup
 
-      const render = () => {
-        if (!stillCurrent()) return
-
+      // Dedup protected-area + natural-feature names into one ordered list,
+      // capped at 3. Shared by render() and the AI-summary fact assembler.
+      const getPois = () => {
         const pois = []
         const seen = new Set()
         for (const name of [...state.protectedAreas.value, ...state.naturalFeatures.value]) {
@@ -580,6 +582,13 @@ export default function ForestMonitor() {
           if (!seen.has(k)) { seen.add(k); pois.push(name) }
           if (pois.length >= 3) break
         }
+        return pois
+      }
+
+      const render = () => {
+        if (!stillCurrent()) return
+
+        const pois = getPois()
 
         if (state.point.status === 'rejected') {
           myPopup.setHTML(`<div class="${styles.popupError}">Couldn't load disturbance info for that spot.</div>`)
@@ -622,7 +631,7 @@ export default function ForestMonitor() {
             const nf = extras ? (extras.namedFires || []) : []
             myPopup.setHTML(renderEmptyPopupHTML(
               pois, state.admin.value, data.landCover, nf, aefData, commodity, forest,
-              items(extrasPending ? ['fire history'] : [])))
+              items(extrasPending ? ['fire history'] : []), state.ai))
             return
           }
           const mergedAll = {
@@ -632,7 +641,7 @@ export default function ForestMonitor() {
           if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
           myPopup.setHTML(renderPopupHTML(
             mergedAll, pois, state.admin.value,
-            items(extrasPending ? ['patch size', 'likely cause', 'fire history'] : [])))
+            items(extrasPending ? ['patch size', 'likely cause', 'fire history'] : []), state.ai))
           return
         }
 
@@ -660,7 +669,7 @@ export default function ForestMonitor() {
         if (!showOpera) {
           myPopup.setHTML(renderLocationPopupHTML(
             pois, state.admin.value, data.landCover, commodity, forest,
-            contextPending && layerContextOn ? 'commodity & forest-change context' : ''))
+            contextPending && layerContextOn ? 'commodity & forest-change context' : '', state.ai))
           return
         }
 
@@ -668,7 +677,7 @@ export default function ForestMonitor() {
           const extrasNamedFires = extras ? (extras.namedFires || []) : []
           myPopup.setHTML(renderEmptyPopupHTML(
             pois, state.admin.value, data.landCover, extrasNamedFires, aefData, commodity, forest,
-            pendingItems(extrasPending ? ['fire history'] : [])))
+            pendingItems(extrasPending ? ['fire history'] : []), state.ai))
           return
         }
 
@@ -679,7 +688,7 @@ export default function ForestMonitor() {
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(
           merged, pois, state.admin.value,
-          pendingItems(extrasPending ? ['patch size', 'likely cause', 'fire history'] : [])))
+          pendingItems(extrasPending ? ['patch size', 'likely cause', 'fire history'] : []), state.ai))
       }
 
       // Fix the popup mode at click time: are any datasets selected?
@@ -701,6 +710,46 @@ export default function ForestMonitor() {
           .catch((err) => { console.warn('[ForestMonitor] extras lookup failed', err); state.extras = { status: 'fulfilled', data: null }; render() })
       }
       deepenRef.current = () => { if (!stillCurrent()) return; state.deep = true; fireDeep(); render() }
+
+      // Click-gated AI summary. Assembles the plain-English facts we've already
+      // computed for this point and POSTs them to /api/ai-analysis (Claude
+      // Haiku), then renders the returned paragraph in place. Only runs on the
+      // user's click, so it costs nothing unless asked for.
+      aiSummaryRef.current = () => {
+        if (!stillCurrent() || state.ai.status === 'loading') return
+        const facts = assembleAiFacts({
+          data: state.point.data,
+          context: state.context.status === 'fulfilled' ? state.context.data : null,
+          extras: state.extras.status === 'fulfilled' ? state.extras.data : null,
+          aef: state.aef.status === 'fulfilled' ? (state.aef.data?.aef || null) : null,
+          pois: getPois(),
+          admin: state.admin.value,
+        })
+        state.ai = { status: 'loading', text: null }
+        render()
+        fetch('/api/ai-analysis', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(facts),
+        })
+          .then(async (res) => {
+            const d = await res.json().catch(() => ({}))
+            if (!stillCurrent()) return
+            if (res.ok && d.text) {
+              state.ai = { status: 'done', text: d.text }
+            } else if (res.status === 503 || d.error === 'not_configured') {
+              state.ai = { status: 'error', text: 'Plain-language summaries aren’t switched on yet.' }
+            } else {
+              state.ai = { status: 'error', text: 'Couldn’t write a summary just now. Try again.' }
+            }
+            render()
+          })
+          .catch(() => {
+            if (!stillCurrent()) return
+            state.ai = { status: 'error', text: 'Couldn’t reach the summary service. Try again.' }
+            render()
+          })
+      }
 
       // Core (date / status / severity / land cover) — always, fast (~1 s).
       fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`, 15000)
@@ -958,6 +1007,20 @@ export default function ForestMonitor() {
       if (!e.target.closest('[data-action="deepen"]')) return
       e.preventDefault()
       deepenRef.current?.()
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [])
+
+  // ─── "✨ Plain-language summary" delegation ──────────────────────────────
+  // The AI-summary button (and its retry) live in the popup HTML; the per-click
+  // handler stores the trigger on aiSummaryRef, which this listener invokes.
+  const aiSummaryRef = useRef(null)
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.target.closest('[data-action="ai-summary"]')) return
+      e.preventDefault()
+      aiSummaryRef.current?.()
     }
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
@@ -2538,7 +2601,121 @@ function renderAefChangeBars(steps, highlightYear) {
   `
 }
 
-function renderPopupHTML(data, pois, admin, pendingItems = '') {
+// Assemble the compact, already-plain-English facts the AI summary endpoint
+// synthesizes. Pulls from the raw streams (not the layer-gated locals) so the
+// summary reflects everything we know regardless of which layers are toggled,
+// and mirrors the popup's own phrasing — including the protected-area reframe
+// of a guessed human cause — so the AI never contradicts what's on screen.
+function assembleAiFacts({ data, context, extras, aef, pois, admin }) {
+  const f = {}
+  const ctx = context || {}
+  const ex = extras || {}
+  const d = data || {}
+
+  // Location + protection. The protected-area line is the key reasoning hook:
+  // it lets the model discount a guessed logging cause inside a no-cut area.
+  if (admin) f.location = admin
+  else if (pois && pois.length) f.location = pois[0]
+  const protectedName = (pois || []).find((p) => NO_LOGGING_RE.test(p))
+  if (protectedName) f.protectedArea = `${protectedName} — logging is not allowed here`
+
+  // Land cover.
+  const lc = d.landCover
+  if (lc && lc.label) {
+    const ag = AG_KEYWORDS.test(lc.label) ? ' (likely agricultural land, not forest)' : ''
+    const src = lc.source ? ` [${lc.source}${lc.year ? ' ' + lc.year : ''}]` : ''
+    f.landCover = `${lc.label}${ag}${src}`
+  }
+
+  // OPERA near-real-time disturbance.
+  if (d.date) {
+    const when = new Date(d.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    const bits = [`detected ${when}`]
+    if (d.statusLabel) bits.push(d.statusLabel)
+    if (d.severity != null) bits.push(`${Math.round(d.severity)}% vegetation loss`)
+    f.opera = bits.join('; ')
+  } else if (data) {
+    f.opera = 'No active disturbance alert here'
+  }
+
+  // Our patch-shape cause guess — reframed to "likely natural" inside a
+  // protected area, exactly as the popup shows it.
+  const cause = ex.likelyCause || d.likelyCause
+  if (cause && cause.label) {
+    const lower = cause.label.toLowerCase()
+    const humanCut = /harvest| cut|replanting|removal|management|clearing|agricultural activity|field activity|field operations|orchard|fallow|logging|corridor|construction|demolition|mechanical/.test(lower)
+    f.causeGuess = (humanCut && protectedName)
+      ? 'Likely natural disturbance (a human-cut cause is unlikely inside a protected area)'
+      : cause.label
+  }
+
+  // Annual / radar / commodity context.
+  const h = ctx.hansen || d.hansen
+  if (h) {
+    const loss = h.lossYear ? `forest loss in ${h.lossYear}` : 'no tree-cover loss recorded since 2001'
+    const tc = (h.treeCover2000 != null) ? `; ${h.treeCover2000}% tree cover in 2000` : ''
+    const gain = h.gain ? '; regrowth seen 2000-2012' : ''
+    f.hansen = `${loss}${tc}${gain}`
+  }
+  const t = ctx.tmf || d.tmf
+  if (t && t.label) {
+    const yr = t.deforestationYear ? ` (${t.deforestationYear})` : (t.degradationYear ? ` (${t.degradationYear})` : '')
+    f.tmf = `${t.label}${yr}`
+  }
+  const r = ctx.radd || d.radd
+  if (r && r.date) {
+    const when = new Date(r.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    f.radd = `${r.status === 'confirmed' ? 'confirmed' : 'unconfirmed'} radar alert, ${when}`
+  }
+  const com = ctx.commodityCrop || d.commodityCrop
+  if (com && com.summary) f.commodity = com.summary
+
+  // Greenery trend — same biggest-year-change verdict the diverging bars use.
+  const grn = Array.isArray(aef && aef.greenness)
+    ? aef.greenness.filter((p) => p && p.ndvi != null && Number.isFinite(p.ndvi))
+    : null
+  if (grn && grn.length >= 2) {
+    const steps = grn.slice(1).map((p, i) => ({ year: p.year, delta: p.ndvi - grn[i].ndvi }))
+    const big = steps.reduce((a, b) => (Math.abs(b.delta) > Math.abs(a.delta) ? b : a), steps[0])
+    f.greenness = (Math.abs(big.delta) < 0.05)
+      ? `greenery has stayed about the same since ${grn[0].year}`
+      : `biggest change around ${big.year}: ${big.delta > 0 ? 'got greener (likely regrowth or new planting)' : 'lost greenery (likely cleared, burned, or harvested)'}`
+  }
+
+  return f
+}
+
+// Click-gated AI summary block: idle → a button, loading → spinner, done → the
+// plain-language paragraph, error → a short message + retry. The button/retry
+// carry data-action hooks wired by a document-level delegation listener (popup
+// HTML is plain strings, so there's no React onClick to attach).
+function renderAiSection(ai) {
+  const a = ai || { status: 'idle' }
+  if (a.status === 'loading') {
+    return `
+      <div class="${styles.popupAi}">
+        <div class="${styles.popupAiLoading}"><span class="${styles.popupSpinner}"></span>Writing a plain-language summary…</div>
+      </div>`
+  }
+  if (a.status === 'done' && a.text) {
+    return `
+      <div class="${styles.popupAi}">
+        <div class="${styles.popupAiLabel}">✨ Plain-language summary</div>
+        <div class="${styles.popupAiText}">${escapeHTML(a.text)}</div>
+        <div class="${styles.popupAiFoot}">Written by AI (Claude) from the data above — double-check anything important.</div>
+      </div>`
+  }
+  if (a.status === 'error') {
+    return `
+      <div class="${styles.popupAi}">
+        <div class="${styles.popupAiErr}">${escapeHTML(a.text || 'Couldn’t write a summary just now.')}</div>
+        <button type="button" class="${styles.popupAiBtn}" data-action="ai-summary">Try again</button>
+      </div>`
+  }
+  return `<button type="button" class="${styles.popupAiBtn}" data-action="ai-summary">✨ Explain this spot in plain language</button>`
+}
+
+function renderPopupHTML(data, pois, admin, pendingItems = '', ai = null) {
   const prettyDate = data.date
     ? new Date(data.date).toLocaleDateString(undefined, {
         year: 'numeric', month: 'long', day: 'numeric',
@@ -2591,6 +2768,7 @@ function renderPopupHTML(data, pois, admin, pendingItems = '') {
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
       ${renderAef(data.aef)}
+      ${renderAiSection(ai)}
       ${renderMethodologyLink()}
       ${renderNewsBlock(data.likelyCause, data, admin)}
     </div>
@@ -2626,7 +2804,7 @@ function renderOverviewPopupHTML(pois, admin, data, context, contextPending) {
 // layer is OFF — so the popup mirrors the map instead of always leading with
 // disturbance framing. Carries location + land cover, plus the commodity block
 // when the Crops layer is on. If neither layer adds context it's just location.
-function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, pendingItems = '') {
+function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, pendingItems = '', ai = null) {
   const hasForest = forest && (forest.radd || forest.hansen || forest.tmf)
   const heading = (commodity || hasForest || pendingItems) ? 'What grows here' : 'This location'
   return `
@@ -2637,12 +2815,13 @@ function renderLocationPopupHTML(pois, admin, landCover, commodity, forest, pend
       ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
+      ${renderAiSection(ai)}
       ${renderMethodologyLink()}
     </div>
   `
 }
 
-function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest, pendingItems = '') {
+function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity, forest, pendingItems = '', ai = null) {
   const fireBlock = renderNamedFires(namedFires, null)
   const blurb = (namedFires && namedFires.length)
     ? `<div class="${styles.popupMuted}">OPERA isn't currently flagging change here, but this area is inside a known fire perimeter:</div>`
@@ -2658,6 +2837,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       ${renderCommodity(commodity, false)}
       ${(namedFires && namedFires.length) ? fireBlock : ''}
       ${renderAef(aef)}
+      ${renderAiSection(ai)}
       ${renderMethodologyLink()}
     </div>
   `

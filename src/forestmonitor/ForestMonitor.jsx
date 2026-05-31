@@ -34,7 +34,7 @@ const fetchJSON = async (url, timeoutMs) => {
 }
 
 const MODES = [
-  { id: 'recency',  label: 'Recency',  blurb: 'Brighter = more recent disturbance.' },
+  { id: 'recency',  label: 'Recency',  blurb: 'Redder = more recent disturbance.' },
   { id: 'status',   label: 'Status',   blurb: 'Provisional vs. confirmed; first vs. ongoing.' },
   { id: 'severity', label: 'Severity', blurb: 'Percent vegetation loss in the disturbed pixel.' },
 ]
@@ -84,7 +84,7 @@ const EXTRA_LAYERS = [
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
 // STATUS_VIS, SEVERITY_VIS in main.py).
-const RECENCY_GRADIENT = 'linear-gradient(to right, #450a0a, #7f1d1d, #b91c1c, #dc2626, #ef4444, #fb923c, #fbbf24)'
+const RECENCY_GRADIENT = 'linear-gradient(to right, #fde68a, #fbbf24, #fb923c, #ef4444, #dc2626, #b91c1c, #7f1d1d)'
 const SEVERITY_GRADIENT = 'linear-gradient(to right, #fef3c7, #fde68a, #fbbf24, #fb923c, #ef4444, #b91c1c)'
 
 const STATUS_SWATCHES = [
@@ -1247,7 +1247,7 @@ export default function ForestMonitor() {
                     <span>Today</span>
                   </div>
                   <div className={styles.legendBlurb}>
-                    <strong>Dark red</strong> = oldest disturbance, <strong>bright yellow</strong> = most recent. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
+                    <strong>Pale yellow</strong> = oldest disturbance, <strong>deep red</strong> = most recent — same as the forest-loss (Hansen) layer. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
                   </div>
                 </>
               )}
@@ -1474,7 +1474,9 @@ function MethodologyModal({ onClose }) {
             Colored pixels are forest-disturbance alerts from <strong>NASA OPERA L3 DIST-ALERT</strong> (Vegetation Disturbance Alert),
             derived from harmonized Landsat-8 and Sentinel-2 imagery at 30 m resolution. New alerts typically appear within ~5 days
             of the most recent satellite pass. Color encodes <em>recency</em> (default), <em>status</em>, or <em>severity</em>;
-            switch modes at the top of the screen. The date slider in the legend masks which alerts are shown but does not change colors.
+            switch modes at the top of the screen. In recency view the ramp runs from pale yellow (older alerts) to deep red (most
+            recent) — the same direction as the Hansen forest-loss layer, so the freshest disturbance reads as urgent red. The
+            date slider in the legend masks which alerts are shown but does not change colors.
           </p>
           <p>
             The <strong>Land use filter chips</strong> in the legend (Forest / Cropland / Grassland / Built) run the same tiered land-cover

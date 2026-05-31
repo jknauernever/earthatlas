@@ -15,8 +15,9 @@ Source: GLAD's GEE mirror of NASA OPERA L3 DIST-ALERT HLS V1, published as
 a folder of per-band ImageCollections under projects/glad/HLSDIST/current/.
 
 Three visualization modes (switched by `?mode=`):
-  - recency  (default): bright-red recent → dark-red older, based on
-                        VEG-DIST-DATE (days since 2020-12-31)
+  - recency  (default): pale-yellow older → deep-red recent, based on
+                        VEG-DIST-DATE (days since 2020-12-31). Matches the
+                        Hansen forest-loss ramp (recent loss = red).
   - status            : categorical palette over VEG-DIST-STATUS
                         (1–4 = provisional/confirmed, first/recurrent)
   - severity          : yellow → orange → red ramp over VEG-ANOM-MAX
@@ -44,14 +45,16 @@ FOLDER = 'projects/glad/HLSDIST/current'
 PROJECT = 'earthatlas'
 
 # OPERA encodes dates as days since 2020-12-31. Recency window we paint:
-# anything from day 730 (2023-01-01) onward; brighter = more recent.
+# anything from day 730 (2023-01-01) onward; redder = more recent.
 DATE_MIN = 730    # ~2023-01-01
 DATE_MAX = 2200   # ~2027 — auto-comfortable headroom
 
+# Pale yellow (oldest) → deep red (most recent), so recent disturbance reads as
+# urgent red — matching the Hansen forest-loss ramp (recent loss = red).
 RECENCY_VIS = {
     'min': DATE_MIN,
     'max': DATE_MAX,
-    'palette': ['450a0a', '7f1d1d', 'b91c1c', 'dc2626', 'ef4444', 'fb923c', 'fbbf24'],
+    'palette': ['fde68a', 'fbbf24', 'fb923c', 'ef4444', 'dc2626', 'b91c1c', '7f1d1d'],
 }
 
 SEVERITY_VIS = {

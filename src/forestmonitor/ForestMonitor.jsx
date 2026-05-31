@@ -2405,7 +2405,32 @@ function renderLikelyCause(cause, protectedName = null) {
 // Whole block is gated on `aef` being a truthy object; each subsection
 // degrades to a skip if its data is missing. AEF is computed on the
 // `?extras=1&aef=1` cloud-function call.
-function renderAef(aef) {
+// Plain verdict for the yearly-greenery (NDVI) series. NDVI shows DIRECTION but
+// can't prove a CAUSE, so we only call a loss "cleared/burned/harvested" when
+// something corroborates it. When a dip isn't corroborated — the spot is inside
+// legally-protected no-logging land, or OPERA flagged no disturbance here — we
+// frame it as likely natural variation (drought, snow, a hard season) instead.
+// Mirrors the protected-area reframe the likely-cause block applies, so the
+// greenery line stops contradicting the disturbance layers and the AI summary.
+function greennessVerdictText(big, startYear, { protectedName = null, operaDetected = false } = {}) {
+  const NOTABLE = 0.05
+  if (!big || Math.abs(big.delta) < NOTABLE) {
+    return `Greenery here has stayed about the same since ${startYear}.`
+  }
+  if (big.delta > 0) {
+    return `Biggest change around ${big.year}: got greener — likely regrowth or new planting.`
+  }
+  const noCutZone = protectedName && NO_LOGGING_RE.test(protectedName)
+  if (noCutZone) {
+    return `Biggest change around ${big.year}: greenery dipped — likely natural (drought, snow, or a hard season). This is protected land and no clearing was detected.`
+  }
+  if (!operaDetected) {
+    return `Biggest change around ${big.year}: greenery dipped — likely a dry or hard season; no clearing was detected here.`
+  }
+  return `Biggest change around ${big.year}: lost greenery — likely cleared, burned, or harvested.`
+}
+
+function renderAef(aef, opts = {}) {
   if (!aef || typeof aef !== 'object') return ''
   const sections = []
   // Translate AEF cosine similarity (0..1) into a friendly percentage
@@ -2484,15 +2509,7 @@ function renderAef(aef) {
     const steps = grn.slice(1).map((p, i) => ({ year: p.year, delta: p.ndvi - grn[i].ndvi }))
     const big = steps.reduce((a, b) => (Math.abs(b.delta) > Math.abs(a.delta) ? b : a), steps[0])
     const NOTABLE = 0.05   // NDVI step that reads as a real greenness change
-    let verdict
-    if (Math.abs(big.delta) < NOTABLE) {
-      verdict = `Greenery here has stayed about the same since ${grn[0].year}.`
-    } else {
-      const dir = big.delta > 0
-        ? 'got greener — likely regrowth or new planting'
-        : 'lost greenery — likely cleared, burned, or harvested'
-      verdict = `Biggest change around ${big.year}: ${dir}.`
-    }
+    const verdict = greennessVerdictText(big, grn[0].year, opts)
     const highlightYear = (operaMarkerYear && steps.some(s => s.year === operaMarkerYear))
       ? operaMarkerYear
       : (Math.abs(big.delta) >= NOTABLE ? big.year : null)
@@ -2501,7 +2518,7 @@ function renderAef(aef) {
         <div class="${styles.popupAefRowLabel}">How this place has changed</div>
         <div class="${styles.popupAefVerdict}">${escapeHTML(verdict)}</div>
         ${renderAefChangeBars(steps, highlightYear)}
-        <div class="${styles.popupAefMuted}">Each bar is one year. <span style="color:#15803d">Up = greener (growth)</span>, <span style="color:#b45309">down = lost greenery (clearing, fire, harvest)</span>. Taller = bigger change. From yearly Sentinel-2 greenness (NDVI).</div>
+        <div class="${styles.popupAefMuted}">Each bar is one year. <span style="color:#15803d">Up = greener (growth)</span>, <span style="color:#b45309">down = lost greenery (clearing, fire, drought, or a hard season)</span>. Taller = bigger change. From yearly Sentinel-2 greenness (NDVI).</div>
       </div>
     `)
   }
@@ -2679,9 +2696,9 @@ function assembleAiFacts({ data, context, extras, aef, pois, admin }) {
   if (grn && grn.length >= 2) {
     const steps = grn.slice(1).map((p, i) => ({ year: p.year, delta: p.ndvi - grn[i].ndvi }))
     const big = steps.reduce((a, b) => (Math.abs(b.delta) > Math.abs(a.delta) ? b : a), steps[0])
-    f.greenness = (Math.abs(big.delta) < 0.05)
-      ? `greenery has stayed about the same since ${grn[0].year}`
-      : `biggest change around ${big.year}: ${big.delta > 0 ? 'got greener (likely regrowth or new planting)' : 'lost greenery (likely cleared, burned, or harvested)'}`
+    // Same verdict the popup shows — including the protected-area / no-OPERA
+    // reframe — so the AI never gets a fact that contradicts the bars on screen.
+    f.greenness = greennessVerdictText(big, grn[0].year, { protectedName, operaDetected: !!d.date })
   }
 
   return f
@@ -2769,7 +2786,7 @@ function renderPopupHTML(data, pois, admin, pendingItems = '', ai = null) {
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
       ${patchLine}
-      ${renderAef(data.aef)}
+      ${renderAef(data.aef, { protectedName: (pois || []).find(p => NO_LOGGING_RE.test(p)) || null, operaDetected: !!data.date })}
       ${renderAiSection(ai)}
       ${renderMethodologyLink()}
       ${renderNewsBlock(data.likelyCause, data, admin)}
@@ -2838,7 +2855,7 @@ function renderEmptyPopupHTML(pois, admin, landCover, namedFires, aef, commodity
       ${renderForestLayers(forest)}
       ${renderCommodity(commodity, false)}
       ${(namedFires && namedFires.length) ? fireBlock : ''}
-      ${renderAef(aef)}
+      ${renderAef(aef, { protectedName: (pois || []).find(p => NO_LOGGING_RE.test(p)) || null, operaDetected: false })}
       ${renderAiSection(ai)}
       ${renderMethodologyLink()}
     </div>

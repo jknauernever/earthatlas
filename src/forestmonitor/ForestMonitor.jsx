@@ -561,6 +561,11 @@ export default function ForestMonitor() {
         admin:   { status: 'pending', value: null },
         protectedAreas:  { status: 'pending', value: [] },
         naturalFeatures: { status: 'pending', value: [] },
+        // Two-step "analyze this spot" tool, used when no datasets are selected:
+        // anyLayerOn fixes the mode at click time; deep flips to the full
+        // analysis when the user clicks "Deeper analysis"; deepFired guards the
+        // one-time launch of the slow streams.
+        anyLayerOn: false, deep: false, deepFired: false,
       }
       const myPopup = popup
       const stillCurrent = () => popupRef.current === myPopup
@@ -587,7 +592,7 @@ export default function ForestMonitor() {
         }
 
         const data = state.point.data
-        // Three independent streams now back the popup.
+        // Independent streams behind the popup.
         const extras  = state.extras.status === 'fulfilled' ? state.extras.data : null
         const context = state.context.status === 'fulfilled' ? state.context.data : null
         const aefData = state.aef.status === 'fulfilled' ? (state.aef.data?.aef || null) : null
@@ -595,8 +600,43 @@ export default function ForestMonitor() {
         const contextPending = state.context.status === 'pending'
         const aefPending     = state.aef.status === 'pending'
 
-        // Mirror the visible layers (read live via refs). Commodity/forest come
-        // from the fast `context` stream; each shows only when its layer is on.
+        // ── No datasets selected → two-step "analyze this spot" tool ────────
+        if (!state.anyLayerOn) {
+          if (!state.deep) {
+            // Step 1: fast cross-dataset overview (core + context) + a button
+            // that launches the deep analysis.
+            myPopup.setHTML(renderOverviewPopupHTML(
+              pois, state.admin.value, data, context, contextPending))
+            return
+          }
+          // Step 2: full analysis, every dataset shown (ungated).
+          const commodity = context?.commodityCrop || null
+          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null }
+          const items = (extra) => {
+            const a = [...extra]
+            if (aefPending) a.push('AlphaEarth + greenness')
+            if (contextPending) a.push('commodity & forest context')
+            return a.join(' · ')
+          }
+          if (!data.date) {
+            const nf = extras ? (extras.namedFires || []) : []
+            myPopup.setHTML(renderEmptyPopupHTML(
+              pois, state.admin.value, data.landCover, nf, aefData, commodity, forest,
+              items(extrasPending ? ['fire history'] : [])))
+            return
+          }
+          const mergedAll = {
+            ...data, ...(extras || {}), aef: aefData,
+            commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
+          }
+          if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
+          myPopup.setHTML(renderPopupHTML(
+            mergedAll, pois, state.admin.value,
+            items(extrasPending ? ['patch size', 'likely cause', 'fire history'] : [])))
+          return
+        }
+
+        // ── Datasets selected → mirror the visible layers (read live via refs).
         const showOpera = operaVisibleRef.current
         const showCommodity = commodityVisibleRef.current
         const commodity = showCommodity ? (context?.commodityCrop || null) : null
@@ -632,9 +672,6 @@ export default function ForestMonitor() {
           return
         }
 
-        // Disturbance popup. Patch/cause/fires come from `extras`; AEF + commodity
-        // + forest from their own streams. Each section appears as it lands; the
-        // pending block lists only what's still in flight.
         const merged = {
           ...data, ...(extras || {}), aef: aefData,
           commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
@@ -645,11 +682,27 @@ export default function ForestMonitor() {
           pendingItems(extrasPending ? ['patch size', 'likely cause', 'fire history'] : [])))
       }
 
-      // Each lookup updates its slice of state and rerenders independently.
-      // Timeouts are client-side backstops above the server's own budgets so
-      // a slow/stuck request degrades the popup instead of spinning forever:
-      // core is fast (~1 s warm, ~7 s cold) → 15 s; extras has a 15 s server
-      // deadline → 20 s here so the server's graceful partial result wins.
+      // Fix the popup mode at click time: are any datasets selected?
+      state.anyLayerOn = operaVisibleRef.current || commodityVisibleRef.current
+        || extraVisibleRef.current.radd || extraVisibleRef.current.hansen || extraVisibleRef.current.tmf
+
+      // Slow streams: AlphaEarth + greenness, and patch geometry + cause + fires.
+      // Launched immediately when the disturbance layer is on (its popup needs
+      // them); otherwise deferred until the user clicks "Deeper analysis".
+      // Timeouts are client-side backstops above the server's own budgets.
+      const fireDeep = () => {
+        if (state.deepFired) return
+        state.deepFired = true
+        fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&aefonly=1`, 20000)
+          .then((d) => { state.aef = { status: 'fulfilled', data: d }; render() })
+          .catch((err) => { console.warn('[ForestMonitor] aef lookup failed', err); state.aef = { status: 'fulfilled', data: null }; render() })
+        fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1`, 20000)
+          .then((d) => { state.extras = { status: 'fulfilled', data: d }; render() })
+          .catch((err) => { console.warn('[ForestMonitor] extras lookup failed', err); state.extras = { status: 'fulfilled', data: null }; render() })
+      }
+      deepenRef.current = () => { if (!stillCurrent()) return; state.deep = true; fireDeep(); render() }
+
+      // Core (date / status / severity / land cover) — always, fast (~1 s).
       fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}`, 15000)
         .then((data) => {
           state.point = { status: 'fulfilled', data, error: null }
@@ -661,7 +714,8 @@ export default function ForestMonitor() {
           render()
         })
 
-      // Fast context (commodity + RADD/Hansen/TMF) — streams in ~1 s.
+      // Fast context (commodity + RADD/Hansen/TMF) — always, ~1 s. Powers both
+      // the no-selection overview and the mirrored commodity/forest popups.
       fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&context=1`, 15000)
         .then((data) => { state.context = { status: 'fulfilled', data }; render() })
         .catch((err) => {
@@ -669,25 +723,9 @@ export default function ForestMonitor() {
           state.context = { status: 'fulfilled', data: null }; render()
         })
 
-      // AlphaEarth block — its own stream so it doesn't wait on the slow extras.
-      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&aefonly=1`, 20000)
-        .then((data) => { state.aef = { status: 'fulfilled', data }; render() })
-        .catch((err) => {
-          console.warn('[ForestMonitor] aef lookup failed', err)
-          state.aef = { status: 'fulfilled', data: null }; render()
-        })
-
-      // Heavy disturbance details (patch geometry + cause + fires) — slow tail.
-      fetchJSON(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&extras=1`, 20000)
-        .then((data) => {
-          state.extras = { status: 'fulfilled', data }
-          render()
-        })
-        .catch((err) => {
-          console.warn('[ForestMonitor] extras lookup failed', err)
-          state.extras = { status: 'fulfilled', data: null }
-          render()
-        })
+      // Disturbance analysis needs the deep streams up front; commodity/forest-
+      // only popups don't, and no-selection defers them to "Deeper analysis".
+      if (operaVisibleRef.current) fireDeep()
 
       reverseGeocode(lat, lng)
         .then((v) => { state.admin = { status: 'fulfilled', value: v }; render() })
@@ -905,6 +943,21 @@ export default function ForestMonitor() {
       const m = mapRef.current
       if (!m || !Number.isFinite(lat) || !Number.isFinite(lng)) return
       m.flyTo({ center: [lng, lat], zoom: Math.max(m.getZoom(), 13), essential: true })
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [])
+
+  // ─── "Deeper analysis" delegation ────────────────────────────────────────
+  // The overview popup (shown when no datasets are selected) carries a button
+  // that launches the full cross-dataset analysis. The per-click handler stores
+  // its trigger on deepenRef; this global listener just invokes it.
+  const deepenRef = useRef(null)
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.target.closest('[data-action="deepen"]')) return
+      e.preventDefault()
+      deepenRef.current?.()
     }
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
@@ -2520,6 +2573,31 @@ function renderPopupHTML(data, pois, admin, pendingItems = '') {
       ${renderAef(data.aef)}
       ${renderMethodologyLink()}
       ${renderNewsBlock(data.likelyCause, data, admin)}
+    </div>
+  `
+}
+
+// Step 1 of the "analyze this spot" tool (shown when NO datasets are selected):
+// a fast cross-dataset snapshot from the core + context streams — location,
+// current disturbance status, land cover, forest-change (RADD/Hansen/TMF), and
+// commodity — plus a button that launches the deeper analysis (AlphaEarth
+// greenness bars, fire history, likely cause, patch size, lookalikes).
+function renderOverviewPopupHTML(pois, admin, data, context, contextPending) {
+  const c = context || {}
+  const distLine = data.date
+    ? `<div class="${styles.popupMuted}">⚠️ Disturbance detected ${new Date(data.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</div>`
+    : `<div class="${styles.popupMuted}">No active disturbance alert flagged here.</div>`
+  return `
+    <div class="${styles.popupBody}">
+      <div class="${styles.popupHeader}">Quick look</div>
+      ${renderLocationLines(pois, admin)}
+      ${renderLandCover(data.landCover)}
+      ${distLine}
+      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf })}
+      ${renderCommodity(c.commodityCrop || null, false)}
+      ${contextPending ? renderExtrasPending('forest-change & commodity context') : ''}
+      <button type="button" class="${styles.popupDeepen}" data-action="deepen">🔍 Deeper analysis — all datasets</button>
+      ${renderMethodologyLink()}
     </div>
   `
 }

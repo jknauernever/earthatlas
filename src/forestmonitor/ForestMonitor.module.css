@@ -1061,6 +1061,25 @@
 }
 .popupMethodology:hover { color: #1d4ed8; text-decoration: underline; }
 
+/* "Deeper analysis" CTA in the no-selection overview popup. */
+.popupDeepen {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #4338ca;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.popupDeepen:hover { background: #e0e7ff; border-color: #a5b4fc; }
+
 /* ─── Methodology modal ────────────────────────────────────────────────── */
 .modalBackdrop {
   position: fixed;

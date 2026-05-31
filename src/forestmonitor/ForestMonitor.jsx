@@ -2702,7 +2702,7 @@ function renderAiSection(ai) {
       <div class="${styles.popupAi}">
         <div class="${styles.popupAiLabel}">✨ Plain-language summary</div>
         <div class="${styles.popupAiText}">${escapeHTML(a.text)}</div>
-        <div class="${styles.popupAiFoot}">Written by AI (Claude) from the data above — double-check anything important.</div>
+        <div class="${styles.popupAiFoot}">Auto-generated from the data above - double-check anything important</div>
       </div>`
   }
   if (a.status === 'error') {

@@ -2249,7 +2249,12 @@ function renderNewsBlock(cause, data, admin) {
   `
 }
 
-function renderLikelyCause(cause) {
+// Designations where commercial logging is legally prohibited — so a "logging"
+// guess from patch shape is almost certainly wrong. (National/State *Forests*
+// are NOT here: logging is permitted there.)
+const NO_LOGGING_RE = /\b(wilderness|national park|national monument|wildlife refuge|nature (reserve|preserve)|national preserve)\b/i
+
+function renderLikelyCause(cause, protectedName = null) {
   if (!cause || !cause.label) return ''
   // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
   // Crop-aware additions: "harvest" / "cut" / "replanting" / "orchard
@@ -2287,11 +2292,26 @@ function renderLikelyCause(cause) {
     cls = styles.popupCauseNatural
   }
 
+  // If the guess is a human-cutting cause (logging/clearing/etc.) but the click
+  // is inside a no-logging protected area, that guess is almost certainly
+  // wrong — reframe it as a likely natural disturbance and explain why. The
+  // patch-shape heuristic doesn't know protection status; this layers it on.
+  const isHumanCut = cls === styles.popupCauseHuman
+  const protectedOverride = isHumanCut && protectedName && NO_LOGGING_RE.test(protectedName)
+  let displayLabel = cause.label
+  if (protectedOverride) {
+    cls = styles.popupCauseNatural
+    displayLabel = 'Likely natural disturbance'
+  }
+
   // Render plain-English bullets when the backend sends them; fall back to
   // the legacy semicolon-joined string during deploy windows.
-  const bullets = Array.isArray(cause.reasoning_bullets) ? cause.reasoning_bullets : null
+  const bullets = Array.isArray(cause.reasoning_bullets) ? [...cause.reasoning_bullets] : []
+  if (protectedOverride) {
+    bullets.unshift(`Inside ${protectedName}, where logging isn't allowed — so a blocky patch is more likely blowdown, beetle-kill, avalanche, or fire.`)
+  }
   let reasoningBlock = ''
-  if (bullets && bullets.length) {
+  if (bullets.length) {
     const lis = bullets.map((b) => `<li>${escapeHTML(b)}</li>`).join('')
     reasoningBlock = `
       <div class="${styles.popupCauseReasonHeader}">Why we think so:</div>
@@ -2303,7 +2323,7 @@ function renderLikelyCause(cause) {
 
   return `
     <div class="${cls}">
-      <div class="${styles.popupCauseLabel}">${escapeHTML(cause.label)}</div>
+      <div class="${styles.popupCauseLabel}">${escapeHTML(displayLabel)}</div>
       ${reasoningBlock}
     </div>
   `
@@ -2565,7 +2585,7 @@ function renderPopupHTML(data, pois, admin, pendingItems = '') {
       ${statusLine}
       ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderNamedFires(data.namedFires, data.date)}
-      ${renderLikelyCause(data.likelyCause)}
+      ${renderLikelyCause(data.likelyCause, (pois || []).find(p => NO_LOGGING_RE.test(p)) || null)}
       ${renderForestLayers(data)}
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}

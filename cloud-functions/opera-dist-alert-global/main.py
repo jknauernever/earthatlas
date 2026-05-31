@@ -3344,10 +3344,50 @@ def _handle_point_context(lat: float, lng: float) -> tuple:
     )
 
 
+def _mask_s2_clouds(img: 'ee.Image') -> 'ee.Image':
+    """Drop cloud / shadow / cirrus / snow pixels using the Sentinel-2 Scene
+    Classification band, so the annual NDVI median reflects real ground."""
+    scl = img.select('SCL')
+    good = (scl.neq(3)   # cloud shadow
+            .And(scl.neq(8)).And(scl.neq(9)).And(scl.neq(10))  # cloud med/high/cirrus
+            .And(scl.neq(11)))  # snow/ice
+    return img.updateMask(good)
+
+
+def _greenness_series(lat: float, lng: float, y0: int, y1: int) -> list | None:
+    """Annual Sentinel-2 NDVI at a point, y0..y1. Drives the signed change bars:
+    a rise = the land got greener (growth / regrowth), a fall = it lost greenery
+    (clearing, fire, harvest). S2 runs to the present, so this catches change
+    more recently than the annual AlphaEarth embedding. One round trip (per-year
+    cloud-masked medians stacked, sampled once). None on failure."""
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED').filterBounds(point)
+        bands = []
+        for y in range(y0, y1 + 1):
+            yearly = (s2.filterDate(f'{y}-01-01', f'{y + 1}-01-01').map(_mask_s2_clouds)
+                      .median().normalizedDifference(['B8', 'B4']).rename(f'n{y}'))
+            bands.append(yearly)
+        sampled = ee.Image.cat(bands).reduceRegion(
+            ee.Reducer.first(), point, 10).getInfo()
+        out = []
+        for y in range(y0, y1 + 1):
+            v = sampled.get(f'n{y}')
+            out.append({'year': y, 'ndvi': round(float(v), 3) if v is not None else None})
+        # Useful only if at least two years have data.
+        if sum(1 for p in out if p['ndvi'] is not None) < 2:
+            return None
+        return out
+    except Exception as e:
+        print(f'greenness series failed ({lat},{lng}): {e}', flush=True)
+        return None
+
+
 def _handle_point_aef(lat: float, lng: float) -> tuple:
-    """AlphaEarth stream: the 5-signal AEF block on its own endpoint (~3-6 s),
-    so it no longer waits behind the patch/cause work. Samples the OPERA date
-    to anchor the pre/post comparison; falls back to the latest AEF year."""
+    """AlphaEarth stream: the 5-signal AEF block + a signed greenness (NDVI)
+    series for the change bars, on its own endpoint (~6-8 s) so it doesn't wait
+    behind the patch/cause work. Samples the OPERA date to anchor AEF's pre/post
+    comparison; falls back to the latest AEF year."""
     _ensure_ee()
     point = ee.Geometry.Point([lng, lat])
     alert_date_str = None
@@ -3360,7 +3400,19 @@ def _handle_point_aef(lat: float, lng: float) -> tuple:
     except Exception as e:
         print(f'aef date sample failed: {e}', flush=True)
     anchor = alert_date_str or f'{AEF_LATEST_YEAR}-12-31'
-    aef = _aef_context(lat, lng, anchor)
+
+    # AEF context + greenness series run in parallel (both ~6 s, mostly EE wait).
+    from concurrent.futures import ThreadPoolExecutor
+    this_year = date.today().year
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_aef = ex.submit(_aef_context, lat, lng, anchor)
+        f_grn = ex.submit(_greenness_series, lat, lng, AEF_FIRST_YEAR, this_year)
+        aef = f_aef.result()
+        greenness = f_grn.result()
+    if aef is None and greenness:
+        aef = {}   # still ship greenness even if the AEF helpers all failed
+    if aef is not None and greenness:
+        aef['greenness'] = greenness
     return (jsonify({'aef': aef}), 200, CORS_HEADERS)
 
 

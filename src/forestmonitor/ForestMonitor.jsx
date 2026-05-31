@@ -2584,8 +2584,14 @@ function renderAef(aef, opts = {}) {
 function renderAefChangeBars(steps, highlightYear) {
   const bars = (steps || []).filter(s => s && Number.isFinite(s.delta))
   if (bars.length < 1) return ''
-  // Floor the scale so a flat history shows small bars, not amplified noise.
-  const maxAbs = Math.max(0.05, ...bars.map(b => Math.abs(b.delta)))
+  // Fixed reference scale: measure every chart against the same ~0.2 NDVI
+  // "meaningful change" yardstick, so normal year-to-year wiggle reads as small
+  // and consistent from spot to spot (instead of each chart auto-filling to its
+  // own biggest bar, which amplified trivial noise). The scale still EXPANDS
+  // past the floor for a genuinely large disturbance, so a real clearing never
+  // clips — it just dominates the chart as it should.
+  const SCALE_FLOOR = 0.2
+  const maxAbs = Math.max(SCALE_FLOOR, ...bars.map(b => Math.abs(b.delta)))
   const W = 320, H = 64, PAD_L = 6, PAD_R = 6, PAD_T = 8, PAD_B = 16, GAP = 3
   const n = bars.length
   const slot = (W - PAD_L - PAD_R) / n

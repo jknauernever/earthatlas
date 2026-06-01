@@ -104,6 +104,16 @@ const EXTRA_LAYERS = [
       blurb: 'Where annual field crops (maize, wheat and other cereals, etc.) were actively grown in 2021 — so a clearing on cropland reads as planting/harvest, not deforestation. Complements the tropical tree-crop layer. 10 m. Source: ESA WorldCereal — global crop maps for the 2021 season. A single-year snapshot (not updated yearly), covering agricultural regions.',
     },
   },
+  {
+    id: 'efda', label: 'Forest disturbance + cause (Europe)', defaultOpacity: 0.85,
+    legend: {
+      swatches: [
+        { c: '#8b5cf6', l: 'Wind / bark beetle' }, { c: '#dc2626', l: 'Fire' },
+        { c: '#f59e0b', l: 'Harvest' }, { c: '#9ca3af', l: 'Mixed' },
+      ],
+      blurb: 'Where European forest was disturbed (1985–2023) AND the likely cause — wind/bark beetle, fire, harvest, or mixed. The cause attribution lets a clearing read as a beetle die-off or windthrow instead of logging. 30 m, 35 countries. Source: European Forest Disturbance Atlas (Viana-Soto & Senf 2025).',
+    },
+  },
 ]
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
@@ -726,7 +736,7 @@ export default function ForestMonitor() {
           }
           // Step 2: full analysis, every dataset shown (ungated).
           const commodity = context?.commodityCrop || null
-          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null, forestType: context?.forestType || null, canopy: context?.canopy || null, cropland: context?.cropland || null }
+          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null, forestType: context?.forestType || null, canopy: context?.canopy || null, cropland: context?.cropland || null, efda: context?.efda || null }
           const items = (extra) => {
             const a = [...extra]
             if (aefPending) a.push('AlphaEarth + greenness')
@@ -743,7 +753,7 @@ export default function ForestMonitor() {
           const mergedAll = {
             ...data, ...(extras || {}), aef: aefData,
             commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
-            forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland,
+            forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland, efda: forest.efda,
           }
           if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
           myPopup.setHTML(renderPopupHTML(
@@ -764,11 +774,12 @@ export default function ForestMonitor() {
           forestType: ev.foresttype ? (context?.forestType || null) : null,
           canopy: ev.canopy ? (context?.canopy || null) : null,
           cropland: ev.cropland ? (context?.cropland || null) : null,
+          efda: ev.efda ? (context?.efda || null) : null,
         }
         // Build the "still gathering" list from only the streams that (a) are
         // still pending and (b) will actually produce visible content here.
         const layerContextOn = showCommodity || ev.radd || ev.hansen || ev.tmf || ev.foresttype
-          || ev.canopy || ev.cropland
+          || ev.canopy || ev.cropland || ev.efda
         const pendingItems = (extra) => {
           const items = [...extra]
           if (aefPending) items.push('AlphaEarth context')
@@ -795,7 +806,7 @@ export default function ForestMonitor() {
         const merged = {
           ...data, ...(extras || {}), aef: aefData,
           commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
-          forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland,
+          forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland, efda: forest.efda,
         }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(
@@ -1639,8 +1650,12 @@ function MethodologyModal({ onClose }) {
               no-selection deep analysis), each click also samples RADD radar alerts, Hansen annual
               loss, JRC TMF, natural-vs-planted forest (Cheng et al. 2024), <strong>canopy height</strong>
               (ETH / Lang 2020, 10 m — a forest-maturity stand-in; over-reads in open or farmed land,
-              so it's shown beside land cover), and <strong>active cropland</strong> (ESA WorldCereal
-              2021, 10 m — annual field crops, which read as agriculture rather than deforestation).
+              so it's shown beside land cover), <strong>active cropland</strong> (ESA WorldCereal
+              2021, 10 m — annual field crops, which read as agriculture rather than deforestation),
+              and — for European clicks — the <strong>European Forest Disturbance Atlas</strong>
+              (Viana-Soto &amp; Senf 2025, 30 m, 1985–2023): when it was last disturbed, how many times,
+              and the attributed <em>cause</em> (wind/bark beetle, fire, or harvest). The cause feeds the
+              likely-cause card, so a beetle die-off or windthrow isn't mistaken for logging.
             </li>
           </ol>
         </section>
@@ -2274,12 +2289,26 @@ function renderCropland(wc) {
   return _forestRow('🌾', bits.join(' — '), 'ESA WorldCereal, 2021')
 }
 
+// European Forest Disturbance Atlas — disturbance history + attributed cause.
+// The agent (wind/bark beetle, fire, harvest) is the key signal: it tells a
+// natural die-off / blowdown apart from logging, which patch shape can't.
+const EFDA_AGENT_ICON = { 1: '🐛', 2: '🔥', 3: '🪓', 4: '🔁' }
+function renderEfda(e) {
+  if (!e || !e.year) return ''
+  const icon = EFDA_AGENT_ICON[e.agent] || '🛰️'
+  const bits = [`last disturbed <strong>${e.year}</strong>`]
+  if (e.count) bits.push(`${e.count} event${e.count > 1 ? 's' : ''} since 1985`)
+  if (e.agentLabel) bits.push(`cause: ${escapeHTML(e.agentLabel)}`)
+  return _forestRow(icon, `Forest disturbance history (Europe) — ${bits.join(' · ')}`, 'EU Forest Disturbance Atlas')
+}
+
 // Bundle the context rows for a popup. `d` carries the (already layer-gated)
-// radd / hansen / tmf / forestType / canopy / cropland fields.
+// radd / hansen / tmf / forestType / canopy / cropland / efda fields.
 function renderForestLayers(d) {
   if (!d) return ''
   return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf)
     + renderForestType(d.forestType) + renderCanopy(d.canopy) + renderCropland(d.cropland)
+    + renderEfda(d.efda)
 }
 
 // Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
@@ -2479,7 +2508,7 @@ function renderNewsBlock(cause, data, admin) {
 // are NOT here: logging is permitted there.)
 const NO_LOGGING_RE = /\b(wilderness|national park|national monument|wildlife refuge|nature (reserve|preserve)|national preserve)\b/i
 
-function renderLikelyCause(cause, protectedName = null, forestType = null) {
+function renderLikelyCause(cause, protectedName = null, forestType = null, efda = null) {
   if (!cause || !cause.label) return ''
   // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
   // Crop-aware additions: "harvest" / "cut" / "replanting" / "orchard
@@ -2523,26 +2552,41 @@ function renderLikelyCause(cause, protectedName = null, forestType = null) {
   // patch-shape heuristic doesn't know protection status; this layers it on.
   const isHumanCut = cls === styles.popupCauseHuman
   const protectedOverride = isHumanCut && protectedName && NO_LOGGING_RE.test(protectedName)
+
+  // European Forest Disturbance Atlas attributed a NATURAL agent (wind or bark
+  // beetle) to disturbance at this spot — strong, validated evidence that a
+  // guessed "human cut" is really a blowdown or beetle die-off. Defers to the
+  // protected-area override (which also lands on "natural").
+  const efdaNature = efda && efda.nature
+  const efdaNaturalReframe = isHumanCut && !protectedOverride && efdaNature === 'natural'
+
+  // Planted-forest reframe: a human-cut clearing inside a planted/managed forest
+  // (tree farm, plantation) is almost certainly a routine timber harvest, not
+  // deforestation. Defers to the protected-area + EFDA-natural overrides above.
+  const plantedHarvest = isHumanCut && !protectedOverride && !efdaNaturalReframe
+    && !!(forestType && forestType.planted)
+
   let displayLabel = cause.label
   if (protectedOverride) {
     cls = styles.popupCauseNatural
     displayLabel = 'Likely natural disturbance'
+  } else if (efdaNaturalReframe) {
+    cls = styles.popupCauseNatural
+    displayLabel = 'Likely natural — windthrow or bark-beetle dieback'
   }
-
-  // Planted-forest reframe: a human-cut clearing inside a planted/managed forest
-  // (tree farm, plantation) is almost certainly a routine timber harvest, not
-  // deforestation. Defers to the protected-area override above — a designated
-  // Wilderness is treated as natural even if the map labels it planted (the
-  // dataset over-labels disturbance-prone natural forest as planted).
-  const plantedHarvest = isHumanCut && !protectedOverride && !!(forestType && forestType.planted)
 
   // Render plain-English bullets when the backend sends them; fall back to
   // the legacy semicolon-joined string during deploy windows.
   const bullets = Array.isArray(cause.reasoning_bullets) ? [...cause.reasoning_bullets] : []
   if (protectedOverride) {
     bullets.unshift(`Inside ${protectedName}, where logging isn't allowed — so a blocky patch is more likely blowdown, beetle-kill, avalanche, or fire.`)
+  } else if (efdaNaturalReframe) {
+    bullets.unshift(`Europe's Forest Disturbance Atlas attributes disturbance here to wind or bark beetle — so this is most likely a natural blowdown or die-off, not logging.`)
   } else if (plantedHarvest) {
     bullets.unshift(`This is a planted/managed forest (a tree farm), so a clearing here is most likely a routine timber harvest or replanting cycle — not deforestation.`)
+  } else if (efda && efda.agentLabel) {
+    // Not a reframe, just corroborating context (harvest / fire / mixed).
+    bullets.push(`European Forest Disturbance Atlas: disturbance here (1985–2023) was attributed to ${efda.agentLabel}.`)
   }
   let reasoningBlock = ''
   if (bullets.length) {
@@ -2889,6 +2933,14 @@ function assembleAiFacts({ data, context, extras, aef, pois, admin }) {
     f.cropland = `Active annual cropland${t}${crop.irrigated ? ', irrigated' : ''} — so a clearing here is likely planting/harvest, not deforestation`
   }
 
+  // European Forest Disturbance Atlas — disturbance history + attributed cause.
+  const efda = ctx.efda || d.efda
+  if (efda && efda.year) {
+    const c = efda.count ? `, ${efda.count} event(s) since 1985` : ''
+    const cause = efda.agentLabel ? `, attributed to ${efda.agentLabel}` : ''
+    f.disturbanceHistory = `European Forest Disturbance Atlas: last disturbed ${efda.year}${c}${cause}`
+  }
+
   // Greenery trend — same biggest-year-change verdict the diverging bars use.
   const grn = Array.isArray(aef && aef.greenness)
     ? aef.greenness.filter((p) => p && p.ndvi != null && Number.isFinite(p.ndvi))
@@ -2981,7 +3033,7 @@ function renderPopupHTML(data, pois, admin, pendingItems = '', ai = null) {
       ${statusLine}
       ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderNamedFires(data.namedFires, data.date)}
-      ${renderLikelyCause(data.likelyCause, (pois || []).find(p => NO_LOGGING_RE.test(p)) || null, data.forestType)}
+      ${renderLikelyCause(data.likelyCause, (pois || []).find(p => NO_LOGGING_RE.test(p)) || null, data.forestType, data.efda)}
       ${renderForestLayers(data)}
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
@@ -3010,7 +3062,7 @@ function renderOverviewPopupHTML(pois, admin, data, context, contextPending) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
       ${distLine}
-      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf, forestType: c.forestType, canopy: c.canopy, cropland: c.cropland })}
+      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf, forestType: c.forestType, canopy: c.canopy, cropland: c.cropland, efda: c.efda })}
       ${renderCommodity(c.commodityCrop || null, false)}
       ${contextPending ? renderExtrasPending('forest-change & commodity context') : ''}
       <button type="button" class="${styles.popupDeepen}" data-action="deepen">🔍 Deeper analysis — all datasets</button>

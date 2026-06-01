@@ -52,6 +52,7 @@ const FACT_FIELDS = [
   ['forestType', 'Natural vs. planted forest (Cheng et al. 2024)'],
   ['canopy', 'Canopy height (ETH 2020)'],
   ['cropland', 'Active cropland (ESA WorldCereal 2021)'],
+  ['disturbanceHistory', 'Forest disturbance history + cause, Europe (EFDA 1985–2023)'],
   ['greenness', 'Greenery trend (Sentinel-2 NDVI)'],
 ]
 

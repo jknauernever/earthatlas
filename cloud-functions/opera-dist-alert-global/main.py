@@ -2677,6 +2677,35 @@ def _handle_cropland_tile() -> tuple:
     return (jsonify({'tileUrl': _tile_url(_worldcereal_cropland(), CROPLAND_VIS)}), 200, CORS_HEADERS)
 
 
+# ─── European Forest Disturbance Atlas (Viana-Soto & Senf 2025) ──────────────
+# Landsat-based annual forest disturbance for 35 European countries, 1985–2023,
+# 30 m (EPSG:3035). Three summary layers (verified live): year of latest
+# disturbance, number of disturbances, and the disturbance AGENT. Agent codes
+# confirmed against the paper (which groups wind + bark beetle into one class)
+# and ground-truth histograms — Swedish clear-cut forest = 98% class 3
+# (harvest); Bavarian Forest = class 1 (wind/beetle); Pedrógão 2017 burn =
+# class 2 (fire):
+#   1 = wind or bark beetle (natural)   2 = fire   3 = harvest (human)
+#   4 = multiple agents over time (mixed)
+# This is a community/personal-project asset, so EVERY access is wrapped in
+# try/except and degrades to None — a missing asset must never break a click.
+EFDA_LATEST = 'projects/ee-albaviana/assets/latest_disturbance_v211'
+EFDA_NUMBER = 'projects/ee-albaviana/assets/number_disturbances_v211'
+EFDA_AGENT = 'projects/ee-albaviana/assets/disturbance_agent_v211'
+EFDA_AGENT_LABELS = {1: 'wind or bark beetle', 2: 'fire', 3: 'harvest', 4: 'multiple causes over time'}
+EFDA_AGENT_NATURE = {1: 'natural', 2: 'fire', 3: 'human', 4: 'mixed'}
+# wind/beetle=purple, fire=red, harvest=amber, mixed=grey
+EFDA_VIS = {'min': 1, 'max': 4, 'palette': ['8b5cf6', 'dc2626', 'f59e0b', '9ca3af']}
+
+
+def _handle_efda_tile() -> tuple:
+    # Agent-colored. It's a baked user asset (overview blooms like Hansen) and
+    # categorical, so render it density-graded with mode color.
+    agent = ee.Image(EFDA_AGENT).select('b1').rename('agent')
+    painted = agent.updateMask(agent.gte(1).And(agent.lte(4)))
+    return (jsonify({'tileUrl': _density_tile_url(painted, EFDA_VIS, categorical=True)}), 200, CORS_HEADERS)
+
+
 # Dispatch table for the simple single-raster overlays (?layer=<id>).
 _LAYER_TILE_HANDLERS = {
     'radd': _handle_radd_tile,
@@ -2685,6 +2714,7 @@ _LAYER_TILE_HANDLERS = {
     'foresttype': _handle_foresttype_tile,
     'canopy': _handle_canopy_tile,
     'cropland': _handle_cropland_tile,
+    'efda': _handle_efda_tile,
 }
 
 
@@ -3408,6 +3438,43 @@ def _sample_worldcereal(lat: float, lng: float) -> dict | None:
         return None
 
 
+def _decode_efda(d: dict) -> dict | None:
+    """European Forest Disturbance Atlas point sample → last-disturbance year +
+    count + agent. None outside the forest/coverage mask (Europe only)."""
+    yr = d.get('efda_year')
+    if yr is None:
+        return None
+    yr = int(yr)
+    if yr < 1985 or yr > 2023:
+        return None
+    num = d.get('efda_num')
+    ag = d.get('efda_agent')
+    ag = int(ag) if ag is not None else None
+    return {
+        'year': yr,
+        'count': int(num) if num is not None else None,
+        'agent': ag,
+        'agentLabel': EFDA_AGENT_LABELS.get(ag),
+        'nature': EFDA_AGENT_NATURE.get(ag),
+    }
+
+
+def _sample_efda(lat: float, lng: float) -> dict | None:
+    """Sample the European Forest Disturbance Atlas (Europe only). Fully guarded:
+    a personal-project asset that's missing, or a point outside Europe, must just
+    return None — never break the click."""
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        stack = (ee.Image(EFDA_LATEST).select('b1').rename('efda_year')
+                 .addBands(ee.Image(EFDA_NUMBER).select('b1').rename('efda_num'))
+                 .addBands(ee.Image(EFDA_AGENT).select('b1').rename('efda_agent')))
+        d = stack.reduceRegion(ee.Reducer.first(), point, 30).getInfo()
+        return _decode_efda(d)
+    except Exception as e:
+        print(f'efda sample failed ({lat},{lng}): {e}', flush=True)
+        return None
+
+
 def _sample_forest_context(lat: float, lng: float) -> dict:
     """Sample RADD + Hansen + JRC TMF + natural/planted forest + canopy height at
     a point for the popup. Two EE round trips: one for the global
@@ -3534,13 +3601,15 @@ def _handle_point_context(lat: float, lng: float) -> tuple:
     _ensure_ee()
     from concurrent.futures import ThreadPoolExecutor
     point = ee.Geometry.Point([lng, lat])  # noqa: F841 (parity w/ other handlers)
-    with ThreadPoolExecutor(max_workers=3) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         f_comm = ex.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
         f_forest = ex.submit(_sample_forest_context, lat, lng)
         f_crop = ex.submit(_sample_worldcereal, lat, lng)
+        f_efda = ex.submit(_sample_efda, lat, lng)
         commodity = f_comm.result()
         forest = f_forest.result() or {}
         cropland = f_crop.result()
+        efda = f_efda.result()
     return (
         jsonify({
             'commodityCrop': commodity,
@@ -3550,6 +3619,7 @@ def _handle_point_context(lat: float, lng: float) -> tuple:
             'forestType': forest.get('forestType'),
             'canopy': forest.get('canopy'),
             'cropland': cropland,
+            'efda': efda,
         }),
         200,
         CORS_HEADERS,

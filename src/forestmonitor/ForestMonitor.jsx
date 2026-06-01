@@ -101,7 +101,7 @@ const EXTRA_LAYERS = [
     id: 'cropland', label: 'Active cropland (WorldCereal)', defaultOpacity: 0.7,
     legend: {
       swatches: [{ c: '#ca8a04', l: 'Active cropland (2021)' }],
-      blurb: 'Where annual field crops (maize, wheat and other cereals, etc.) were actively grown in 2021 — so a clearing on cropland reads as planting/harvest, not deforestation. Complements the tropical tree-crop layer. 10 m. Source: ESA WorldCereal. Single-year demo; cropland regions only.',
+      blurb: 'Where annual field crops (maize, wheat and other cereals, etc.) were actively grown in 2021 — so a clearing on cropland reads as planting/harvest, not deforestation. Complements the tropical tree-crop layer. 10 m. Source: ESA WorldCereal — global crop maps for the 2021 season. A single-year snapshot (not updated yearly), covering agricultural regions.',
     },
   },
 ]

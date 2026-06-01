@@ -161,8 +161,28 @@ const LANDUSE_PRESETS = [
 //   end=YYYY-MM-DD                  (default: today)
 //   lu=forest|cropland|grassland|built  (default: 'all', omitted)
 //   bm=satellite|dark|light|outdoors|streets  (default: satellite)
-//   op=0-100                        (default: 85, layer opacity %)
+//   op=0-100                        (default: 85, OPERA layer opacity %)
+//   layers=opera,commodity,radd,hansen,tmf,foresttype  (which datasets are ON;
+//                                    omitted when only OPERA is on = the default)
+//   crops=palm,rubber,cocoa,coffee  (commodity sub-crops; omitted when all 4 on)
+//   lop=hansen:60,commodity:50      (per-layer opacity %, only non-default ones)
 //   lat=NN.NNN  lng=NN.NNN  z=Z.Z   (map view; default: world view)
+
+// Canonical layer ids for the ?layers= share param: the OPERA overlay, the
+// commodity-crop group, then each EXTRA_LAYERS overlay — in display order.
+const LAYER_IDS = ['opera', 'commodity', ...EXTRA_LAYERS.map((l) => l.id)]
+
+// Parse "id:pct,id:pct" → { id: 0..1 }. Tolerant of junk: skips bad pairs.
+function _parseLop(s) {
+  const out = {}
+  if (!s) return out
+  for (const pair of s.split(',')) {
+    const [id, pct] = pair.split(':')
+    const n = Number(pct)
+    if (id && Number.isFinite(n)) out[id.trim()] = Math.max(0, Math.min(1, n / 100))
+  }
+  return out
+}
 
 function _readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -180,6 +200,10 @@ function _readUrlState() {
     landuse: sp.get('lu'),
     basemap: sp.get('bm'),
     opacity: num('op'),
+    // null = param absent (use defaults); '' = present-but-empty (all off / none).
+    layers:  sp.get('layers'),
+    crops:   sp.get('crops'),
+    lop:     sp.get('lop'),
     lat:     num('lat'),
     lng:     num('lng'),
     zoom:    num('z'),
@@ -188,7 +212,10 @@ function _readUrlState() {
 
 // Serialize the current view state to a query string. Defaults are omitted
 // to keep the canonical "no params" URL clean.
-function _viewStateToQuery({ mode, start, end, landuse, basemap, opacity, lat, lng, zoom }) {
+function _viewStateToQuery({
+  mode, start, end, landuse, basemap, opacity, lat, lng, zoom,
+  operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity,
+}) {
   const sp = new URLSearchParams()
   if (mode && mode !== 'recency') sp.set('m', mode)
   if (start) sp.set('start', start)
@@ -198,6 +225,41 @@ function _viewStateToQuery({ mode, start, end, landuse, basemap, opacity, lat, l
   if (opacity != null && Math.abs(opacity - 0.85) > 0.005) {
     sp.set('op', String(Math.round(opacity * 100)))
   }
+
+  // Which datasets are ON. Default is OPERA-only, so we omit the param then to
+  // keep the bare URL clean; any other combination (including all-off) is
+  // written explicitly so it round-trips.
+  if (extraVisible) {
+    const on = []
+    if (operaVisible) on.push('opera')
+    if (commodityVisible) on.push('commodity')
+    for (const l of EXTRA_LAYERS) if (extraVisible[l.id]) on.push(l.id)
+    const isDefault = on.length === 1 && on[0] === 'opera'
+    if (!isDefault) sp.set('layers', on.join(','))
+  }
+
+  // Commodity sub-crops — only when the group is on and not all four selected.
+  if (commodityVisible && commodityCrops) {
+    const onCrops = COMMODITY_LAYERS.filter((c) => commodityCrops[c.key]).map((c) => c.key)
+    if (onCrops.length !== COMMODITY_LAYERS.length) sp.set('crops', onCrops.join(','))
+  }
+
+  // Per-layer opacity for the commodity + extra overlays — only for layers that
+  // are ON and differ from their default (OPERA opacity stays in `op`).
+  if (extraVisible) {
+    const lop = []
+    if (commodityVisible && commodityOpacity != null && Math.abs(commodityOpacity - 0.8) > 0.005) {
+      lop.push(`commodity:${Math.round(commodityOpacity * 100)}`)
+    }
+    for (const l of EXTRA_LAYERS) {
+      const o = extraOpacity?.[l.id]
+      if (extraVisible[l.id] && o != null && Math.abs(o - l.defaultOpacity) > 0.005) {
+        lop.push(`${l.id}:${Math.round(o * 100)}`)
+      }
+    }
+    if (lop.length) sp.set('lop', lop.join(','))
+  }
+
   if (lat != null && lng != null && zoom != null) {
     sp.set('lat', lat.toFixed(3))
     sp.set('lng', lng.toFixed(3))
@@ -246,6 +308,17 @@ export default function ForestMonitor() {
   // Each useState initializer reads the URL once. Defaults are applied when
   // the param is missing or invalid; out-of-range values are clamped.
   const _initial = (typeof window !== 'undefined') ? _readUrlState() : {}
+
+  // Parse the layer-related share params once. `_layerSet` is null when the
+  // `layers` param is absent (→ use defaults: OPERA on, rest off); a Set
+  // otherwise (including the empty set = everything off). `_cropSet` likewise.
+  const _layerSet = _initial.layers != null
+    ? new Set(_initial.layers.split(',').map((s) => s.trim()).filter(Boolean))
+    : null
+  const _cropSet = _initial.crops != null
+    ? new Set(_initial.crops.split(',').map((s) => s.trim()).filter(Boolean))
+    : null
+  const _lop = _parseLop(_initial.lop)
 
   const [mode, setMode] = useState(
     VALID_MODES.includes(_initial.mode) ? _initial.mode : 'recency'
@@ -298,37 +371,39 @@ export default function ForestMonitor() {
   // The OPERA disturbance overlay is now layer #1 of a growing stack; each
   // layer has its own on/off + opacity. Commodity crops are layer #2 (a group
   // of four per-crop rasters under one parent toggle/opacity).
-  const [operaVisible, setOperaVisible] = useState(true)
+  const [operaVisible, setOperaVisible] = useState(_layerSet ? _layerSet.has('opera') : true)
   const [operaExpanded, setOperaExpanded] = useState(true)
-  const operaVisibleRef = useRef(true)
+  const operaVisibleRef = useRef(operaVisible)
   useEffect(() => { operaVisibleRef.current = operaVisible }, [operaVisible])
 
-  const [commodityVisible, setCommodityVisible] = useState(false)
+  const [commodityVisible, setCommodityVisible] = useState(_layerSet ? _layerSet.has('commodity') : false)
   const [commodityExpanded, setCommodityExpanded] = useState(false)
-  const [commodityOpacity, setCommodityOpacity] = useState(0.8)
-  const commodityOpacityRef = useRef(0.8)
+  const [commodityOpacity, setCommodityOpacity] = useState(_lop.commodity != null ? _lop.commodity : 0.8)
+  const commodityOpacityRef = useRef(commodityOpacity)
   useEffect(() => { commodityOpacityRef.current = commodityOpacity }, [commodityOpacity])
-  // Per-crop on/off within the commodity group. All on by default.
+  // Per-crop on/off within the commodity group. All on by default; a `crops=`
+  // share param narrows it to a subset.
   const [commodityCrops, setCommodityCrops] = useState(
-    () => Object.fromEntries(COMMODITY_LAYERS.map((c) => [c.key, true]))
+    () => Object.fromEntries(COMMODITY_LAYERS.map((c) => [c.key, _cropSet ? _cropSet.has(c.key) : true]))
   )
   // Cache of fetched commodity tile URLs (one per crop) — these don't depend on
   // date/mode, so we fetch each once and reuse across toggles + basemap swaps.
   const commodityUrlRef = useRef({})
   // Ref-mirrors so the (stable) reconcile fn and style.load handler read the
   // latest visibility without being torn down/recreated.
-  const commodityVisibleRef = useRef(false)
+  const commodityVisibleRef = useRef(commodityVisible)
   const commodityCropsRef = useRef(commodityCrops)
 
-  // Extra single-raster overlays (RADD / Hansen / TMF) — keyed by layer id.
+  // Extra single-raster overlays (RADD / Hansen / TMF / forest-type) — keyed by
+  // layer id, hydrated from the `layers=` / `lop=` share params.
   const [extraVisible, setExtraVisible] = useState(
-    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, false]))
+    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, _layerSet ? _layerSet.has(l.id) : false]))
   )
   const [extraExpanded, setExtraExpanded] = useState(
     () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, false]))
   )
   const [extraOpacity, setExtraOpacity] = useState(
-    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, l.defaultOpacity]))
+    () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, _lop[l.id] != null ? _lop[l.id] : l.defaultOpacity]))
   )
   const extraVisibleRef = useRef(extraVisible)
   const extraOpacityRef = useRef(extraOpacity)
@@ -463,12 +538,19 @@ export default function ForestMonitor() {
       landuse,
       basemap,
       opacity,
+      operaVisible,
+      commodityVisible,
+      extraVisible,
+      commodityCrops,
+      commodityOpacity,
+      extraOpacity,
       lat:  mapView ? mapView.lat  : null,
       lng:  mapView ? mapView.lng  : null,
       zoom: mapView ? mapView.zoom : null,
     })
     _writeUrlQuery(qs)
-  }, [mode, dateRange, landuse, basemap, opacity, mapView])
+  }, [mode, dateRange, landuse, basemap, opacity, mapView,
+      operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity])
 
   // ─── Fetch tile URL whenever mode or date range changes ──────────────────
   // Debounced 250 ms so dragging the slider doesn't hammer the cloud function.

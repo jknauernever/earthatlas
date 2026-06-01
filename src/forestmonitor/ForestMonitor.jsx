@@ -67,7 +67,7 @@ const EXTRA_LAYERS = [
     legend: {
       gradient: 'linear-gradient(to right, #fde68a, #fb923c, #dc2626, #7f1d1d)',
       left: '2001', right: '2025',
-      blurb: 'Validated annual tree-cover loss, 30 m, global (2001–2025). The trusted long-term loss record. Source: Hansen / UMD-GLAD.',
+      blurb: 'Validated annual tree-cover loss, 30 m, global (2001–2025). The trusted long-term loss record. Color = year of loss; when zoomed out, fainter areas had less loss and solid areas had more, so scattered loss no longer looks like a solid blanket. Source: Hansen / UMD-GLAD.',
     },
   },
   {

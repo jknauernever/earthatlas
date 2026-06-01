@@ -2394,6 +2394,32 @@ def _tile_url(image: ee.Image, vis: dict) -> str:
     return map_id['tile_fetcher'].url_format
 
 
+def _density_tile_url(value_img: ee.Image, vis: dict, categorical: bool = False,
+                      max_pixels: int = 128) -> str:
+    """Render a sparse 30 m layer so each display pixel's OPACITY ≈ the fraction
+    of it that's actually the feature (loss/disturbance) — faint where sparse,
+    solid where dense — at every zoom.
+
+    Why this exists: a baked asset like Hansen ships a zoomed-out overview whose
+    mask = "any loss in this cell", so scattered loss BLOOMS into a near-solid
+    blanket (paints ~84% of a view where ~9% is real). We instead aggregate each
+    display pixel from its 30 m children with reduceResolution and drive the
+    pixel's alpha by the mean of the data mask = the local feature fraction.
+    `bestEffort=True` is essential: without it, low-zoom tiles (millions of 30 m
+    children per pixel) exceed the pixel budget and 400; with it, EE coarsens the
+    aggregation so continental tiles still render. `value_img` must already be
+    masked to the feature. `categorical` colors by the dominant class (mode),
+    since averaging class codes is meaningless.
+    """
+    reducer = ee.Reducer.mode() if categorical else ee.Reducer.mean()
+    density = value_img.mask().reduceResolution(
+        ee.Reducer.mean(), maxPixels=max_pixels, bestEffort=True)
+    value = value_img.reduceResolution(
+        reducer, maxPixels=max_pixels, bestEffort=True)
+    rgb = value.visualize(**vis).updateMask(density)
+    return rgb.getMapId()['tile_fetcher'].url_format
+
+
 def _maybe_apply_landuse(img: ee.Image, landuse: str | None) -> ee.Image:
     """AND in a WorldCover-derived land-use mask when the filter is set."""
     lc_mask = _landuse_mask(landuse)
@@ -2581,7 +2607,9 @@ def _handle_radd_tile() -> tuple:
 def _handle_hansen_tile() -> tuple:
     ly = ee.Image(HANSEN_ASSET).select('lossyear')
     painted = ly.updateMask(ly.gt(0))   # only pixels with recorded loss
-    return (jsonify({'tileUrl': _tile_url(painted, HANSEN_VIS)}), 200, CORS_HEADERS)
+    # Density-graded so scattered loss doesn't bloom into a solid blanket at low
+    # zoom (Hansen's baked overview otherwise paints ~84% where ~9% is real).
+    return (jsonify({'tileUrl': _density_tile_url(painted, HANSEN_VIS)}), 200, CORS_HEADERS)
 
 
 def _handle_tmf_tile() -> tuple:

@@ -110,8 +110,11 @@ DATE_EPOCH = date(2020, 12, 31)
 # MapBiomas does the same level of detail for Brazil, Dynamic World gives
 # near-real-time global state, and WorldCover is the global fallback.
 
-# CDL (US only) — annual, 30 m, identifies specific crop species.
-CDL_LATEST_YEAR = 2024  # bump when USDA releases the next year
+# CDL (US only) — annual, identifies specific crop species. USDA increased CDL
+# resolution from 30 m to 10 m beginning with 2024; GEE serves 2024+ at 10 m, so
+# we sample it at scale=10. The popup source label ("USDA Cropland Data Layer
+# <year>") is built from this constant, so bumping the year updates it too.
+CDL_LATEST_YEAR = 2025  # bump when USDA releases the next year (2025 released Feb 2026)
 CDL_LABELS = {
     1: 'Corn', 2: 'Cotton', 3: 'Rice', 4: 'Sorghum', 5: 'Soybeans',
     6: 'Sunflower', 10: 'Peanuts', 11: 'Tobacco', 12: 'Sweet Corn',

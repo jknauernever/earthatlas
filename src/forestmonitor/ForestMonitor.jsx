@@ -80,6 +80,15 @@ const EXTRA_LAYERS = [
       blurb: 'JRC Tropical Moist Forest — distinguishes degradation vs. deforestation vs. regrowth (latest year). Pan-tropical, 30 m.',
     },
   },
+  {
+    id: 'foresttype', label: 'Natural vs. planted forest', defaultOpacity: 0.75,
+    legend: {
+      swatches: [
+        { c: '#16a34a', l: 'Natural forest' }, { c: '#f59e0b', l: 'Planted / managed' },
+      ],
+      blurb: 'Tells natural forest apart from planted/managed forest (tree farms, plantations) — so a clearing in a plantation reads as a routine harvest, not deforestation. Global, 30 m, 2021. Source: Cheng et al. 2024. Note: fire- or beetle-prone natural forest is sometimes mislabeled planted.',
+    },
+  },
 ]
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
@@ -620,7 +629,7 @@ export default function ForestMonitor() {
           }
           // Step 2: full analysis, every dataset shown (ungated).
           const commodity = context?.commodityCrop || null
-          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null }
+          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null, forestType: context?.forestType || null }
           const items = (extra) => {
             const a = [...extra]
             if (aefPending) a.push('AlphaEarth + greenness')
@@ -637,6 +646,7 @@ export default function ForestMonitor() {
           const mergedAll = {
             ...data, ...(extras || {}), aef: aefData,
             commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
+            forestType: forest.forestType,
           }
           if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
           myPopup.setHTML(renderPopupHTML(
@@ -654,10 +664,11 @@ export default function ForestMonitor() {
           radd: ev.radd ? (context?.radd || null) : null,
           hansen: ev.hansen ? (context?.hansen || null) : null,
           tmf: ev.tmf ? (context?.tmf || null) : null,
+          forestType: ev.foresttype ? (context?.forestType || null) : null,
         }
         // Build the "still gathering" list from only the streams that (a) are
         // still pending and (b) will actually produce visible content here.
-        const layerContextOn = showCommodity || ev.radd || ev.hansen || ev.tmf
+        const layerContextOn = showCommodity || ev.radd || ev.hansen || ev.tmf || ev.foresttype
         const pendingItems = (extra) => {
           const items = [...extra]
           if (aefPending) items.push('AlphaEarth context')
@@ -684,6 +695,7 @@ export default function ForestMonitor() {
         const merged = {
           ...data, ...(extras || {}), aef: aefData,
           commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
+          forestType: forest.forestType,
         }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(
@@ -693,7 +705,7 @@ export default function ForestMonitor() {
 
       // Fix the popup mode at click time: are any datasets selected?
       state.anyLayerOn = operaVisibleRef.current || commodityVisibleRef.current
-        || extraVisibleRef.current.radd || extraVisibleRef.current.hansen || extraVisibleRef.current.tmf
+        || EXTRA_LAYERS.some((l) => extraVisibleRef.current[l.id])
 
       // Slow streams: AlphaEarth + greenness, and patch geometry + cause + fires.
       // Launched immediately when the disturbance layer is on (its popup needs
@@ -1551,6 +1563,15 @@ function MethodologyModal({ onClose }) {
             <li><strong>USDA NASS Census of Agriculture</strong> tillage data, when available, softens burn-related labels in counties where no-till management is dominant (residue burning is incompatible with no-till).</li>
           </ul>
           <p>
+            <strong>Context reframes.</strong> Patch shape can't see land status, so two layers correct it. If a "human cut"
+            guess lands inside a legally <strong>no-logging protected area</strong> (wilderness, national park, monument, refuge),
+            we reframe it as a likely natural disturbance. And if it lands in a <strong>planted / managed forest</strong> —
+            from the global natural-vs-planted map (Cheng et al. 2024, 30 m, 2021) — we note the clearing is most likely a
+            routine timber harvest or replanting cycle, not deforestation. Protection takes precedence: that map infers
+            "planted" from disturbance frequency, so it can mislabel fire- or beetle-prone natural forest, and we don't let
+            that override a designated wilderness.
+          </p>
+          <p>
             The thresholds are heuristic. False positives and false negatives are expected, especially in mixed-use landscapes
             (e.g. fire-managed cropland) or in areas where one of the underlying datasets is sparse. The reasoning line is
             there so you can sanity-check each call.
@@ -2115,11 +2136,22 @@ function renderTmf(t) {
   return _forestRow('🌴', `Tropical moist forest: <strong>${escapeHTML(t.label)}</strong>${yr}`, 'JRC TMF')
 }
 
-// Bundle the three rows for a popup. `d` carries the (already layer-gated)
-// radd / hansen / tmf fields.
+// Natural vs. planted forest. Planted reads as a tree farm / plantation, so a
+// clearing there is usually a routine harvest rather than deforestation — the
+// cause block makes that explicit. Only shown when the pixel is forest at all.
+function renderForestType(ft) {
+  if (!ft || !ft.label) return ''
+  if (ft.planted) {
+    return _forestRow('🪵', `<strong>Planted / managed forest</strong> — a tree farm or plantation`, 'Cheng et al. 2024, 30 m')
+  }
+  return _forestRow('🌲', `<strong>Natural forest</strong> — not a plantation`, 'Cheng et al. 2024, 30 m')
+}
+
+// Bundle the forest-context rows for a popup. `d` carries the (already
+// layer-gated) radd / hansen / tmf / forestType fields.
 function renderForestLayers(d) {
   if (!d) return ''
-  return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf)
+  return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf) + renderForestType(d.forestType)
 }
 
 // Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
@@ -2319,7 +2351,7 @@ function renderNewsBlock(cause, data, admin) {
 // are NOT here: logging is permitted there.)
 const NO_LOGGING_RE = /\b(wilderness|national park|national monument|wildlife refuge|nature (reserve|preserve)|national preserve)\b/i
 
-function renderLikelyCause(cause, protectedName = null) {
+function renderLikelyCause(cause, protectedName = null, forestType = null) {
   if (!cause || !cause.label) return ''
   // Color by cause family for at-a-glance scanning. Inconclusive stays neutral.
   // Crop-aware additions: "harvest" / "cut" / "replanting" / "orchard
@@ -2369,11 +2401,20 @@ function renderLikelyCause(cause, protectedName = null) {
     displayLabel = 'Likely natural disturbance'
   }
 
+  // Planted-forest reframe: a human-cut clearing inside a planted/managed forest
+  // (tree farm, plantation) is almost certainly a routine timber harvest, not
+  // deforestation. Defers to the protected-area override above — a designated
+  // Wilderness is treated as natural even if the map labels it planted (the
+  // dataset over-labels disturbance-prone natural forest as planted).
+  const plantedHarvest = isHumanCut && !protectedOverride && !!(forestType && forestType.planted)
+
   // Render plain-English bullets when the backend sends them; fall back to
   // the legacy semicolon-joined string during deploy windows.
   const bullets = Array.isArray(cause.reasoning_bullets) ? [...cause.reasoning_bullets] : []
   if (protectedOverride) {
     bullets.unshift(`Inside ${protectedName}, where logging isn't allowed — so a blocky patch is more likely blowdown, beetle-kill, avalanche, or fire.`)
+  } else if (plantedHarvest) {
+    bullets.unshift(`This is a planted/managed forest (a tree farm), so a clearing here is most likely a routine timber harvest or replanting cycle — not deforestation.`)
   }
   let reasoningBlock = ''
   if (bullets.length) {
@@ -2663,15 +2704,30 @@ function assembleAiFacts({ data, context, extras, aef, pois, admin }) {
     f.opera = 'No active disturbance alert here'
   }
 
-  // Our patch-shape cause guess — reframed to "likely natural" inside a
-  // protected area, exactly as the popup shows it.
+  // Natural vs. planted forest — drives the cause reframe below and is its own
+  // fact for the AI to weigh.
+  const ft = ctx.forestType || d.forestType
+  const planted = !!(ft && ft.planted)
+  if (ft && ft.label) {
+    f.forestType = planted
+      ? 'Planted / managed forest (a tree farm or plantation)'
+      : 'Natural forest (not a plantation)'
+  }
+
+  // Our patch-shape cause guess — reframed exactly as the popup shows it:
+  // "likely natural" inside a protected area (takes precedence), otherwise a
+  // "likely routine harvest" when the spot is a planted/managed forest.
   const cause = ex.likelyCause || d.likelyCause
   if (cause && cause.label) {
     const lower = cause.label.toLowerCase()
     const humanCut = /harvest| cut|replanting|removal|management|clearing|agricultural activity|field activity|field operations|orchard|fallow|logging|corridor|construction|demolition|mechanical/.test(lower)
-    f.causeGuess = (humanCut && protectedName)
-      ? 'Likely natural disturbance (a human-cut cause is unlikely inside a protected area)'
-      : cause.label
+    if (humanCut && protectedName) {
+      f.causeGuess = 'Likely natural disturbance (a human-cut cause is unlikely inside a protected area)'
+    } else if (humanCut && planted) {
+      f.causeGuess = `${cause.label} — but this is a planted/managed forest, so most likely a routine timber harvest, not deforestation`
+    } else {
+      f.causeGuess = cause.label
+    }
   }
 
   // Annual / radar / commodity context.
@@ -2787,7 +2843,7 @@ function renderPopupHTML(data, pois, admin, pendingItems = '', ai = null) {
       ${statusLine}
       ${pendingItems ? renderExtrasPending(pendingItems) : ''}
       ${renderNamedFires(data.namedFires, data.date)}
-      ${renderLikelyCause(data.likelyCause, (pois || []).find(p => NO_LOGGING_RE.test(p)) || null)}
+      ${renderLikelyCause(data.likelyCause, (pois || []).find(p => NO_LOGGING_RE.test(p)) || null, data.forestType)}
       ${renderForestLayers(data)}
       ${renderCommodity(data.commodityCrop)}
       ${renderBurn(data.burn, data.date)}
@@ -2816,7 +2872,7 @@ function renderOverviewPopupHTML(pois, admin, data, context, contextPending) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
       ${distLine}
-      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf })}
+      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf, forestType: c.forestType })}
       ${renderCommodity(c.commodityCrop || null, false)}
       ${contextPending ? renderExtrasPending('forest-change & commodity context') : ''}
       <button type="button" class="${styles.popupDeepen}" data-action="deepen">🔍 Deeper analysis — all datasets</button>

@@ -2526,6 +2526,34 @@ TMF_CLASS_LABELS = {
     4: 'Moist-forest regrowth', 5: 'Water', 6: 'Other land cover',
 }
 
+# ─── Global Natural vs Planted Forests (Cheng et al. 2024, 30 m, 2021) ───────
+# Distributed as a pre-rendered RGB ImageCollection (verified live against the
+# asset): bands b1/b2/b3 = R/G/B with values in {0, 127}.
+#   green  (0,127,0)     = natural forest
+#   yellow (127,127,0)   = planted / managed forest
+#   white  (127,127,127) = non-forest / background
+# We classify off blue (forest when B is off) and red (planted when R is on),
+# then recolor to our own palette. CAVEAT: the method infers "planted" from
+# Landsat disturbance frequency (1985–2021), so fire/beetle/blowdown-prone
+# NATURAL montane forest is over-labeled planted (commission error). The cause
+# hook treats "planted" as a possibility, and defers to the protected-area
+# reframe — a designated Wilderness is natural even if the map says planted.
+NPF_ASSET = 'projects/sat-io/open-datasets/GLOBAL-NATURAL-PLANTED-FORESTS'
+NPF_VIS = {'min': 1, 'max': 2, 'palette': ['16a34a', 'f59e0b']}  # 1 natural=green, 2 planted=amber
+NPF_CLASS_LABELS = {1: 'Natural forest', 2: 'Planted (managed) forest'}
+
+
+def _npf_class_image() -> ee.Image:
+    """Classified natural/planted forest: 1 = natural, 2 = planted, masked
+    elsewhere (non-forest / no coverage). Built straight off the RGB mosaic so
+    it stays in the asset's native 30 m projection for both tiles and sampling."""
+    m = ee.ImageCollection(NPF_ASSET).mosaic()
+    r, b = m.select('b1'), m.select('b3')
+    forest = b.lt(64)                 # blue off → a forest pixel (green or yellow)
+    planted = r.gte(64)               # red on within forest → yellow → planted
+    cls = forest.multiply(planted.add(1)).rename('forest_type')  # 0 nonF, 1 nat, 2 plant
+    return cls.selfMask().toByte()
+
 
 def _radd_alert_mosaic() -> ee.Image:
     """Latest cumulative RADD alert mosaic (all geographies). Sorting ascending
@@ -2562,11 +2590,16 @@ def _handle_tmf_tile() -> tuple:
     return (jsonify({'tileUrl': _tile_url(painted, TMF_VIS)}), 200, CORS_HEADERS)
 
 
+def _handle_foresttype_tile() -> tuple:
+    return (jsonify({'tileUrl': _tile_url(_npf_class_image(), NPF_VIS)}), 200, CORS_HEADERS)
+
+
 # Dispatch table for the simple single-raster overlays (?layer=<id>).
 _LAYER_TILE_HANDLERS = {
     'radd': _handle_radd_tile,
     'hansen': _handle_hansen_tile,
     'tmf': _handle_tmf_tile,
+    'foresttype': _handle_foresttype_tile,
 }
 
 
@@ -3211,26 +3244,43 @@ def _decode_tmf(d: dict) -> dict | None:
     }
 
 
-def _sample_forest_context(lat: float, lng: float) -> dict:
-    """Sample RADD + Hansen + JRC TMF at a point for the popup. Two EE round
-    trips: one for the global Hansen+TMF stack, one (guarded) for RADD which is
-    tropics-only. Each decoder degrades to None on missing data."""
-    point = ee.Geometry.Point([lng, lat])
-    out = {'radd': None, 'hansen': None, 'tmf': None}
+def _decode_npf(d: dict) -> dict | None:
+    """Natural/planted forest point sample → label. None when the pixel is
+    non-forest or outside the map's coverage (the classified band is masked
+    there, so reduceRegion omits it)."""
+    c = d.get('forest_type')
+    if c is None:
+        return None
+    c = int(c)
+    if c not in (1, 2):
+        return None
+    return {'class': c, 'planted': c == 2, 'label': NPF_CLASS_LABELS.get(c)}
 
-    # Hansen (global) + TMF (pan-tropical) — both safe to stack and sample once.
+
+def _sample_forest_context(lat: float, lng: float) -> dict:
+    """Sample RADD + Hansen + JRC TMF + natural/planted forest at a point for
+    the popup. Two EE round trips: one for the global Hansen+TMF+forest-type
+    stack, one (guarded) for RADD which is tropics-only. Each decoder degrades
+    to None on missing data."""
+    point = ee.Geometry.Point([lng, lat])
+    out = {'radd': None, 'hansen': None, 'tmf': None, 'forestType': None}
+
+    # Hansen (global) + TMF (pan-tropical) + natural/planted (global) — all
+    # 30 m and safe to stack and sample in one reduceRegion.
     try:
         hansen = ee.Image(HANSEN_ASSET).select(['lossyear', 'treecover2000', 'gain'])
         tmf_ac = (ee.ImageCollection(f'{TMF_BASE}/AnnualChanges').mosaic()
                   .select([TMF_LATEST_BAND]).rename('tmf_annual'))
         tmf_def = ee.ImageCollection(f'{TMF_BASE}/DeforestationYear').mosaic().rename('tmf_defyr')
         tmf_deg = ee.ImageCollection(f'{TMF_BASE}/DegradationYear').mosaic().rename('tmf_degyr')
-        stack = hansen.addBands([tmf_ac, tmf_def, tmf_deg])
+        npf = _npf_class_image()  # band 'forest_type'
+        stack = hansen.addBands([tmf_ac, tmf_def, tmf_deg, npf])
         d = stack.reduceRegion(ee.Reducer.first(), point, 30).getInfo()
         out['hansen'] = _decode_hansen(d)
         out['tmf'] = _decode_tmf(d)
+        out['forestType'] = _decode_npf(d)
     except Exception as e:
-        print(f'hansen/tmf sample failed ({lat},{lng}): {e}', flush=True)
+        print(f'hansen/tmf/foresttype sample failed ({lat},{lng}): {e}', flush=True)
 
     # RADD — tropics only; guard the empty-coverage case so the sample never
     # throws on a null mosaic (same pattern as commodity).
@@ -3341,6 +3391,7 @@ def _handle_point_context(lat: float, lng: float) -> tuple:
             'radd': forest.get('radd'),
             'hansen': forest.get('hansen'),
             'tmf': forest.get('tmf'),
+            'forestType': forest.get('forestType'),
         }),
         200,
         CORS_HEADERS,

@@ -49,6 +49,7 @@ const FACT_FIELDS = [
   ['tmf', 'Tropical moist forest (JRC TMF)'],
   ['radd', 'Radar deforestation alert (RADD)'],
   ['commodity', 'Commodity crop (Forest Data Partnership)'],
+  ['forestType', 'Natural vs. planted forest (Cheng et al. 2024)'],
   ['greenness', 'Greenery trend (Sentinel-2 NDVI)'],
 ]
 

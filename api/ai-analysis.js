@@ -50,6 +50,8 @@ const FACT_FIELDS = [
   ['radd', 'Radar deforestation alert (RADD)'],
   ['commodity', 'Commodity crop (Forest Data Partnership)'],
   ['forestType', 'Natural vs. planted forest (Cheng et al. 2024)'],
+  ['canopy', 'Canopy height (ETH 2020)'],
+  ['cropland', 'Active cropland (ESA WorldCereal 2021)'],
   ['greenness', 'Greenery trend (Sentinel-2 NDVI)'],
 ]
 

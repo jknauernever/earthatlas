@@ -2622,12 +2622,66 @@ def _handle_foresttype_tile() -> tuple:
     return (jsonify({'tileUrl': _tile_url(_npf_class_image(), NPF_VIS)}), 200, CORS_HEADERS)
 
 
+# ─── Canopy height (ETH Lang 2020, 10 m, global) ────────────────────────────
+# Single global image; band b1 = canopy height in metres (GEDI × Sentinel-2 deep
+# model). Truly wall-to-wall including boreal (Potapov GLAD is masked above
+# ~52°N, which would blank Canada/Russia). Adds a "how mature is this forest"
+# dimension: tall closed canopy vs. scrub/young regrowth, and a sense of what a
+# clearing actually removed. CAVEAT: ETH over-reads in open/agricultural land,
+# so the popup pairs it with land cover and uses neutral height buckets.
+CANOPY_ASSET = 'users/nlang/ETH_GlobalCanopyHeight_2020_10m_v1'
+CANOPY_VIS = {'min': 0, 'max': 40,
+              'palette': ['ffffcc', 'c2e699', '78c679', '31a354', '006837']}  # short→tall
+
+
+def _canopy_image() -> ee.Image:
+    """Canopy height in metres, masked to a plausible 1–60 m range (drops bare
+    ground and any fill value)."""
+    h = ee.Image(CANOPY_ASSET).select('b1').rename('canopy_h')
+    return h.updateMask(h.gte(1).And(h.lte(60)))
+
+
+def _handle_canopy_tile() -> tuple:
+    # Wall-to-wall continuous raster — no density treatment needed (it isn't a
+    # sparse-event layer; EE's mean overview is the right low-zoom behavior).
+    return (jsonify({'tileUrl': _tile_url(_canopy_image(), CANOPY_VIS)}), 200, CORS_HEADERS)
+
+
+# ─── ESA WorldCereal 2021 (10 m) — active cropland + crop type ───────────────
+# ImageCollection of agro-ecological-zone × season tiles. product
+# 'temporarycrops' season 'tc-annual', classification == 100 = active cropland;
+# crop-type products (maize / wintercereals / springcereals) and 'irrigation'
+# add detail. Single-year (2021) demo product. Complements the tropical tree-crop
+# maps with annual FIELD crops, strengthening the "agriculture, not
+# deforestation" read where it has coverage (cropland regions only).
+WORLDCEREAL_ASSET = 'ESA/WorldCereal/2021/MODELS/v100'
+CROPLAND_VIS = {'min': 0, 'max': 100, 'palette': ['ca8a04']}  # gold where cropland
+
+
+def _worldcereal_cropland() -> ee.Image:
+    """Global active-cropland mask (classification == 100), the annual
+    temporary-crops product."""
+    tc = (ee.ImageCollection(WORLDCEREAL_ASSET)
+          .filterMetadata('product', 'equals', 'temporarycrops')
+          .filterMetadata('season', 'equals', 'tc-annual')
+          .select('classification').mosaic())
+    return tc.updateMask(tc.eq(100))
+
+
+def _handle_cropland_tile() -> tuple:
+    # A classification map (cropland regions are legitimately dense) — like TMF /
+    # forest-type, high coverage is correct, so no density treatment.
+    return (jsonify({'tileUrl': _tile_url(_worldcereal_cropland(), CROPLAND_VIS)}), 200, CORS_HEADERS)
+
+
 # Dispatch table for the simple single-raster overlays (?layer=<id>).
 _LAYER_TILE_HANDLERS = {
     'radd': _handle_radd_tile,
     'hansen': _handle_hansen_tile,
     'tmf': _handle_tmf_tile,
     'foresttype': _handle_foresttype_tile,
+    'canopy': _handle_canopy_tile,
+    'cropland': _handle_cropland_tile,
 }
 
 
@@ -3285,16 +3339,82 @@ def _decode_npf(d: dict) -> dict | None:
     return {'class': c, 'planted': c == 2, 'label': NPF_CLASS_LABELS.get(c)}
 
 
-def _sample_forest_context(lat: float, lng: float) -> dict:
-    """Sample RADD + Hansen + JRC TMF + natural/planted forest at a point for
-    the popup. Two EE round trips: one for the global Hansen+TMF+forest-type
-    stack, one (guarded) for RADD which is tropics-only. Each decoder degrades
-    to None on missing data."""
-    point = ee.Geometry.Point([lng, lat])
-    out = {'radd': None, 'hansen': None, 'tmf': None, 'forestType': None}
+def _decode_canopy(d: dict) -> dict | None:
+    """Canopy-height point sample → height + a neutral plain-English bucket.
+    None below 1 m (open ground). Phrasing stays neutral because ETH over-reads
+    in farmland — the popup shows it alongside land cover so the reader can
+    judge."""
+    h = d.get('canopy_h')
+    if h is None:
+        return None
+    h = round(float(h))
+    if h < 1:
+        return None
+    if h >= 25:
+        label = f'Tall canopy (~{h} m) — mature, closed-canopy forest'
+    elif h >= 10:
+        label = f'Medium canopy (~{h} m) — woodland or established forest'
+    elif h >= 3:
+        label = f'Low canopy (~{h} m) — shrubland, young regrowth, or orchard'
+    else:
+        label = f'Very low canopy (~{h} m) — mostly open, sparse tree cover'
+    return {'height': h, 'label': label}
 
-    # Hansen (global) + TMF (pan-tropical) + natural/planted (global) — all
-    # 30 m and safe to stack and sample in one reduceRegion.
+
+def _decode_worldcereal(d: dict) -> dict | None:
+    """WorldCereal point sample → active cropland + crop type + irrigation.
+    None when the pixel isn't active cropland (or outside coverage)."""
+    tc = d.get('tc')
+    if tc is None or int(tc) != 100:
+        return None
+    types = []
+    if d.get('mz') == 100:
+        types.append('maize')
+    if d.get('wc') == 100:
+        types.append('winter cereals')
+    if d.get('sc') == 100:
+        types.append('spring cereals')
+    return {'cropland': True, 'cropTypes': types, 'irrigated': d.get('ir') == 100}
+
+
+def _sample_worldcereal(lat: float, lng: float) -> dict | None:
+    """Sample ESA WorldCereal at a point: active cropland + crop type + irrigation.
+    Guarded against the no-coverage case (the product is tiled by agro-ecological
+    zone, so many regions have no tiles)."""
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        coll = ee.ImageCollection(WORLDCEREAL_ASSET).filterBounds(point)
+        if coll.size().getInfo() == 0:
+            return None
+
+        def band(prod, season=None):
+            c = coll.filterMetadata('product', 'equals', prod).select('classification')
+            if season:
+                c = c.filterMetadata('season', 'equals', season)
+            return ee.Image(ee.Algorithms.If(c.size().gt(0), c.mosaic(), ee.Image.constant(0)))
+
+        stack = (band('temporarycrops', 'tc-annual').rename('tc')
+                 .addBands(band('maize').rename('mz'))
+                 .addBands(band('wintercereals').rename('wc'))
+                 .addBands(band('springcereals').rename('sc'))
+                 .addBands(band('irrigation').rename('ir')))
+        d = stack.reduceRegion(ee.Reducer.first(), point, 10).getInfo()
+        return _decode_worldcereal(d)
+    except Exception as e:
+        print(f'worldcereal sample failed ({lat},{lng}): {e}', flush=True)
+        return None
+
+
+def _sample_forest_context(lat: float, lng: float) -> dict:
+    """Sample RADD + Hansen + JRC TMF + natural/planted forest + canopy height at
+    a point for the popup. Two EE round trips: one for the global
+    Hansen+TMF+forest-type+canopy stack, one (guarded) for RADD which is
+    tropics-only. Each decoder degrades to None on missing data."""
+    point = ee.Geometry.Point([lng, lat])
+    out = {'radd': None, 'hansen': None, 'tmf': None, 'forestType': None, 'canopy': None}
+
+    # Hansen (global) + TMF (pan-tropical) + natural/planted (global) + canopy
+    # (global) — all safe to stack and sample in one reduceRegion.
     try:
         hansen = ee.Image(HANSEN_ASSET).select(['lossyear', 'treecover2000', 'gain'])
         tmf_ac = (ee.ImageCollection(f'{TMF_BASE}/AnnualChanges').mosaic()
@@ -3302,13 +3422,15 @@ def _sample_forest_context(lat: float, lng: float) -> dict:
         tmf_def = ee.ImageCollection(f'{TMF_BASE}/DeforestationYear').mosaic().rename('tmf_defyr')
         tmf_deg = ee.ImageCollection(f'{TMF_BASE}/DegradationYear').mosaic().rename('tmf_degyr')
         npf = _npf_class_image()  # band 'forest_type'
-        stack = hansen.addBands([tmf_ac, tmf_def, tmf_deg, npf])
+        canopy = _canopy_image()  # band 'canopy_h'
+        stack = hansen.addBands([tmf_ac, tmf_def, tmf_deg, npf, canopy])
         d = stack.reduceRegion(ee.Reducer.first(), point, 30).getInfo()
         out['hansen'] = _decode_hansen(d)
         out['tmf'] = _decode_tmf(d)
         out['forestType'] = _decode_npf(d)
+        out['canopy'] = _decode_canopy(d)
     except Exception as e:
-        print(f'hansen/tmf/foresttype sample failed ({lat},{lng}): {e}', flush=True)
+        print(f'hansen/tmf/foresttype/canopy sample failed ({lat},{lng}): {e}', flush=True)
 
     # RADD — tropics only; guard the empty-coverage case so the sample never
     # throws on a null mosaic (same pattern as commodity).
@@ -3399,20 +3521,23 @@ def _handle_point_core(lat: float, lng: float) -> tuple:
 
 
 def _handle_point_context(lat: float, lng: float) -> tuple:
-    """Fast context stream: commodity-crop probability + RADD/Hansen/TMF.
+    """Fast context stream: commodity-crop probability + RADD/Hansen/TMF +
+    natural/planted + canopy height + WorldCereal cropland.
 
     All cheap point samples (~0.5-1 s) split out of the heavy extras handler so
     the frontend can render them almost immediately rather than waiting on the
-    slow patch-geometry + cause work. Commodity and forest run in parallel.
+    slow patch-geometry + cause work. The three sampler groups run in parallel.
     """
     _ensure_ee()
     from concurrent.futures import ThreadPoolExecutor
     point = ee.Geometry.Point([lng, lat])  # noqa: F841 (parity w/ other handlers)
-    with ThreadPoolExecutor(max_workers=2) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         f_comm = ex.submit(_sample_commodity_crops, lat, lng, AEF_LATEST_YEAR)
         f_forest = ex.submit(_sample_forest_context, lat, lng)
+        f_crop = ex.submit(_sample_worldcereal, lat, lng)
         commodity = f_comm.result()
         forest = f_forest.result() or {}
+        cropland = f_crop.result()
     return (
         jsonify({
             'commodityCrop': commodity,
@@ -3420,6 +3545,8 @@ def _handle_point_context(lat: float, lng: float) -> tuple:
             'hansen': forest.get('hansen'),
             'tmf': forest.get('tmf'),
             'forestType': forest.get('forestType'),
+            'canopy': forest.get('canopy'),
+            'cropland': cropland,
         }),
         200,
         CORS_HEADERS,

@@ -89,6 +89,21 @@ const EXTRA_LAYERS = [
       blurb: 'Tells natural forest apart from planted/managed forest (tree farms, plantations) — so a clearing in a plantation reads as a routine harvest, not deforestation. Global, 30 m, 2021. Source: Cheng et al. 2024. Note: fire- or beetle-prone natural forest is sometimes mislabeled planted.',
     },
   },
+  {
+    id: 'canopy', label: 'Canopy height', defaultOpacity: 0.8,
+    legend: {
+      gradient: 'linear-gradient(to right, #ffffcc, #c2e699, #78c679, #31a354, #006837)',
+      left: 'short', right: 'tall (40m+)',
+      blurb: 'How tall the tree canopy is — a stand-in for forest maturity (tall = mature, closed-canopy; short = scrub or young regrowth) and for what a clearing actually removed. Global, 10 m, 2020. Source: ETH / Lang et al. Note: tends to over-read in open or farmed land.',
+    },
+  },
+  {
+    id: 'cropland', label: 'Active cropland (WorldCereal)', defaultOpacity: 0.7,
+    legend: {
+      swatches: [{ c: '#ca8a04', l: 'Active cropland (2021)' }],
+      blurb: 'Where annual field crops (maize, wheat and other cereals, etc.) were actively grown in 2021 — so a clearing on cropland reads as planting/harvest, not deforestation. Complements the tropical tree-crop layer. 10 m. Source: ESA WorldCereal. Single-year demo; cropland regions only.',
+    },
+  },
 ]
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
@@ -711,7 +726,7 @@ export default function ForestMonitor() {
           }
           // Step 2: full analysis, every dataset shown (ungated).
           const commodity = context?.commodityCrop || null
-          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null, forestType: context?.forestType || null }
+          const forest = { radd: context?.radd || null, hansen: context?.hansen || null, tmf: context?.tmf || null, forestType: context?.forestType || null, canopy: context?.canopy || null, cropland: context?.cropland || null }
           const items = (extra) => {
             const a = [...extra]
             if (aefPending) a.push('AlphaEarth + greenness')
@@ -728,7 +743,7 @@ export default function ForestMonitor() {
           const mergedAll = {
             ...data, ...(extras || {}), aef: aefData,
             commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
-            forestType: forest.forestType,
+            forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland,
           }
           if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
           myPopup.setHTML(renderPopupHTML(
@@ -747,10 +762,13 @@ export default function ForestMonitor() {
           hansen: ev.hansen ? (context?.hansen || null) : null,
           tmf: ev.tmf ? (context?.tmf || null) : null,
           forestType: ev.foresttype ? (context?.forestType || null) : null,
+          canopy: ev.canopy ? (context?.canopy || null) : null,
+          cropland: ev.cropland ? (context?.cropland || null) : null,
         }
         // Build the "still gathering" list from only the streams that (a) are
         // still pending and (b) will actually produce visible content here.
         const layerContextOn = showCommodity || ev.radd || ev.hansen || ev.tmf || ev.foresttype
+          || ev.canopy || ev.cropland
         const pendingItems = (extra) => {
           const items = [...extra]
           if (aefPending) items.push('AlphaEarth context')
@@ -777,7 +795,7 @@ export default function ForestMonitor() {
         const merged = {
           ...data, ...(extras || {}), aef: aefData,
           commodityCrop: commodity, radd: forest.radd, hansen: forest.hansen, tmf: forest.tmf,
-          forestType: forest.forestType,
+          forestType: forest.forestType, canopy: forest.canopy, cropland: forest.cropland,
         }
         if (extras && extras.patchGeometry) addPatchOutline(map, extras.patchGeometry)
         myPopup.setHTML(renderPopupHTML(
@@ -1616,6 +1634,14 @@ function MethodologyModal({ onClose }) {
               context" block at the bottom of the popup on both disturbance and stable clicks.
               Detailed in its own section below.
             </li>
+            <li>
+              <strong>Forest-change &amp; land context</strong> — when their layers are on (or in the
+              no-selection deep analysis), each click also samples RADD radar alerts, Hansen annual
+              loss, JRC TMF, natural-vs-planted forest (Cheng et al. 2024), <strong>canopy height</strong>
+              (ETH / Lang 2020, 10 m — a forest-maturity stand-in; over-reads in open or farmed land,
+              so it's shown beside land cover), and <strong>active cropland</strong> (ESA WorldCereal
+              2021, 10 m — annual field crops, which read as agriculture rather than deforestation).
+            </li>
           </ol>
         </section>
 
@@ -2229,11 +2255,31 @@ function renderForestType(ft) {
   return _forestRow('🌲', `<strong>Natural forest</strong> — not a plantation`, 'Cheng et al. 2024, 30 m')
 }
 
-// Bundle the forest-context rows for a popup. `d` carries the (already
-// layer-gated) radd / hansen / tmf / forestType fields.
+// Canopy height — a "how mature is this forest / what would a clearing remove"
+// signal. Neutral height buckets (the backend phrases it); shown beside land
+// cover because the source over-reads in open/farmed land.
+function renderCanopy(c) {
+  if (!c || !c.label) return ''
+  const icon = c.height >= 25 ? '🌲' : (c.height >= 10 ? '🌳' : '🌿')
+  return _forestRow(icon, `${escapeHTML(c.label)}`, 'ETH canopy height, 10 m')
+}
+
+// Active cropland (WorldCereal) — strengthens the "agriculture, not
+// deforestation" read. Adds crop type + irrigation when classified.
+function renderCropland(wc) {
+  if (!wc || !wc.cropland) return ''
+  const bits = ['<strong>Active cropland</strong>']
+  if (wc.cropTypes && wc.cropTypes.length) bits.push(escapeHTML(wc.cropTypes.join(' / ')))
+  if (wc.irrigated) bits.push('irrigated')
+  return _forestRow('🌾', bits.join(' — '), 'ESA WorldCereal, 2021')
+}
+
+// Bundle the context rows for a popup. `d` carries the (already layer-gated)
+// radd / hansen / tmf / forestType / canopy / cropland fields.
 function renderForestLayers(d) {
   if (!d) return ''
-  return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf) + renderForestType(d.forestType)
+  return renderRadd(d.radd) + renderHansen(d.hansen) + renderTmf(d.tmf)
+    + renderForestType(d.forestType) + renderCanopy(d.canopy) + renderCropland(d.cropland)
 }
 
 // Format a fire's display name. MTBS/NIFC fires have a real name (e.g.
@@ -2833,6 +2879,16 @@ function assembleAiFacts({ data, context, extras, aef, pois, admin }) {
   const com = ctx.commodityCrop || d.commodityCrop
   if (com && com.summary) f.commodity = com.summary
 
+  // Canopy height (forest maturity / what a clearing would remove).
+  const can = ctx.canopy || d.canopy
+  if (can && can.label) f.canopy = can.label
+  // Active cropland (strengthens the agriculture-not-deforestation read).
+  const crop = ctx.cropland || d.cropland
+  if (crop && crop.cropland) {
+    const t = (crop.cropTypes && crop.cropTypes.length) ? ` (${crop.cropTypes.join(', ')})` : ''
+    f.cropland = `Active annual cropland${t}${crop.irrigated ? ', irrigated' : ''} — so a clearing here is likely planting/harvest, not deforestation`
+  }
+
   // Greenery trend — same biggest-year-change verdict the diverging bars use.
   const grn = Array.isArray(aef && aef.greenness)
     ? aef.greenness.filter((p) => p && p.ndvi != null && Number.isFinite(p.ndvi))
@@ -2954,7 +3010,7 @@ function renderOverviewPopupHTML(pois, admin, data, context, contextPending) {
       ${renderLocationLines(pois, admin)}
       ${renderLandCover(data.landCover)}
       ${distLine}
-      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf, forestType: c.forestType })}
+      ${renderForestLayers({ radd: c.radd, hansen: c.hansen, tmf: c.tmf, forestType: c.forestType, canopy: c.canopy, cropland: c.cropland })}
       ${renderCommodity(c.commodityCrop || null, false)}
       ${contextPending ? renderExtrasPending('forest-change & commodity context') : ''}
       <button type="button" class="${styles.popupDeepen}" data-action="deepen">🔍 Deeper analysis — all datasets</button>

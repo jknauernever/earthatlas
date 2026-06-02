@@ -14,3 +14,10 @@ public/sitemap.xml
 src/data/preloaded-stats.json
 src/data/species/
 .env*.local
+
+# Python bytecode cache (cloud functions)
+__pycache__/
+*.pyc
+
+# Claude Code local config (machine-specific)
+.claude/

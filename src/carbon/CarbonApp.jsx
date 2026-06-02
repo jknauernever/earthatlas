@@ -519,7 +519,8 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>Where the data comes from</h3>
           <ul>
-            <li><strong>Biomass carbon — NASA/ORNL Global Above- &amp; Below-ground Biomass Carbon Density</strong> (Spawn et al. 2020), 300 m, base year 2010. Measured carbon-density rasters (Mg C/ha) with published uncertainty bands.</li>
+            <li><strong>Above-ground biomass — ESA CCI Biomass v6.0</strong> (100 m, 2022): measured oven-dry woody biomass with a per-pixel uncertainty band, converted to carbon using the IPCC 0.47 carbon fraction.</li>
+            <li><strong>Below-ground biomass</strong> is modeled from above-ground using an IPCC root-to-shoot ratio (0.24) — there is no fine-resolution global measured root-carbon product.</li>
             <li><strong>Soil organic carbon — OpenLandMap</strong> soil organic carbon content (g/kg) combined with bulk density, integrated over the top 0–30 cm to a stock in t C/ha (250 m).</li>
             <li><strong>Land cover — ESA WorldCover</strong> (10 m) describes the make-up of the parcel.</li>
             <li><strong>Vegetation — Copernicus Sentinel-2</strong> median NDVI (last 12 months) as a greenness indicator.</li>
@@ -538,7 +539,7 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>Limitations</h3>
           <p>
-            These are <strong>global</strong> datasets at 250–300 m resolution with a ~2010 biomass base year,
+            These are <strong>global</strong> datasets (100 m biomass, 250 m soil) at a 2022 biomass epoch,
             so they capture landscape-level stocks, not recent change or fine detail. Results are an educational
             estimate — for carbon credits or transactions, commission ground-truthed measurement to a recognized
             registry standard. This tool is not a substitute for that.

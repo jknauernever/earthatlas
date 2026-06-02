@@ -425,6 +425,13 @@ export default function CarbonApp() {
                   <PoolRow label="Soil organic carbon" co2e={result.co2e_tonnes.soil_organic} density={result.density_t_c_per_ha.soil_organic} color="#c084fc" />
                 </div>
 
+                {result.biomass_source && (
+                  <p className={styles.sourceNote}>
+                    Above-ground from <strong>{result.biomass_source.above_ground}</strong>
+                    {result.biomass_source.used_gedi ? ` · ${result.biomass_source.gedi_footprints} GEDI footprints in parcel` : ' (GEDI too sparse here)'}
+                  </p>
+                )}
+
                 {/* Land cover */}
                 {result.land_cover?.length > 0 && (
                   <div className={styles.field}>
@@ -519,7 +526,7 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>Where the data comes from</h3>
           <ul>
-            <li><strong>Above-ground biomass — ESA CCI Biomass v6.0</strong> (100 m, 2022): measured oven-dry woody biomass with a per-pixel uncertainty band, converted to carbon using the IPCC 0.47 carbon fraction.</li>
+            <li><strong>Above-ground biomass — NASA GEDI L4A</strong> spaceborne-lidar footprints (25 m AGBD) sampled inside your parcel when enough quality footprints fall within it; otherwise <strong>ESA CCI Biomass v6.0</strong> (100 m, 2022). GEDI only covers ±51.6° latitude and is sparse, so small or out-of-range parcels use ESA CCI. Both are oven-dry biomass, converted to carbon with the IPCC 0.47 fraction. The panel shows which source was used.</li>
             <li><strong>Below-ground biomass</strong> is modeled from above-ground using an IPCC root-to-shoot ratio (0.24) — there is no fine-resolution global measured root-carbon product.</li>
             <li><strong>Soil organic carbon — OpenLandMap</strong> soil organic carbon content (g/kg) combined with bulk density, integrated over the top 0–30 cm to a stock in t C/ha (250 m).</li>
             <li><strong>Land cover — ESA WorldCover</strong> (10 m) describes the make-up of the parcel.</li>
@@ -539,8 +546,9 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>Limitations</h3>
           <p>
-            These are <strong>global</strong> datasets (100 m biomass, 250 m soil) at a 2022 biomass epoch,
-            so they capture landscape-level stocks, not recent change or fine detail. Results are an educational
+            These are <strong>global</strong> datasets (GEDI lidar at 25 m where it covers your parcel, else
+            100 m ESA CCI biomass; 250 m soil), so they capture landscape-level stocks, not recent change or
+            fine detail. Results are an educational
             estimate — for carbon credits or transactions, commission ground-truthed measurement to a recognized
             registry standard. This tool is not a substitute for that.
           </p>

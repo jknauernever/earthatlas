@@ -58,6 +58,50 @@
 .view-btn.active { background: var(--moss); border-color: var(--moss); color: white; }
 .view-btn:not(.active):hover { border-color: var(--sage-dk); }
 
+/* ─── Refresh indicator ─── */
+.refresh-bar {
+  position: relative;
+  height: 2px;
+  margin: -20px 0 18px;
+  background: transparent;
+  border-radius: 1px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+.refresh-bar.active { opacity: 1; }
+.refresh-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -40%;
+  width: 40%;
+  background: linear-gradient(90deg,
+    rgba(230, 126, 34, 0) 0%,
+    rgba(230, 126, 34, 0.95) 50%,
+    rgba(230, 126, 34, 0) 100%);
+  animation: refresh-bar-slide 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes refresh-bar-slide {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+.status-updating {
+  margin-left: 4px;
+  color: var(--moss, #6b8e4e);
+  font-variant-numeric: tabular-nums;
+  animation: status-updating-pulse 1.4s ease-in-out infinite;
+}
+@keyframes status-updating-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refresh-bar::before { animation: none; left: 0; width: 100%; opacity: 0.7; }
+  .status-updating { animation: none; opacity: 0.8; }
+}
+
 /* ─── Error banner ─── */
 .error-bar {
   background: #fff3f0; border: 1px solid #f5c2b8;

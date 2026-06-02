@@ -142,6 +142,7 @@ export default function App() {
   const [observations, setObservations] = useState([])
   const [totalResults, setTotalResults] = useState(null)
   const [loading,      setLoading]      = useState(false)
+  const [refreshing,   setRefreshing]   = useState(false)
   const [error,        setError]        = useState(null)
   const [mapBounds,    setMapBounds]    = useState(null)
   const [searchId,     setSearchId]     = useState(0)
@@ -285,6 +286,7 @@ export default function App() {
       setLoading(true)
       setSearchId(id => id + 1)
     }
+    setRefreshing(true)
     setError(null)
 
     try {
@@ -421,6 +423,7 @@ export default function App() {
       setTotalResults(null)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource, isAnywhere])
 
@@ -556,16 +559,23 @@ export default function App() {
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
   const sourceName = dataSource === 'All' ? 'iNaturalist, eBird & GBIF' : dataSource === 'eBird' ? 'eBird' : dataSource === 'GBIF' ? 'GBIF' : 'iNaturalist'
+  const displayedCount = observations.length
+  const isSampled = totalResults !== null && displayedCount > 0 && displayedCount < totalResults
+  const countPhrase = totalResults !== null
+    ? (isSampled
+        ? `Showing the ${displayedCount.toLocaleString()} most recent of ${totalResults.toLocaleString()} total observations`
+        : `${totalResults.toLocaleString()} total observation${totalResults !== 1 ? 's' : ''}`)
+    : ''
   const statusText = loading
     ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
     ? (isAnywhere || !coords)
-      ? `${totalResults.toLocaleString()} total observations worldwide — ${TIME_LABELS[timeWindow]}. Displaying the most recent. Zoom in to see individual observations.`
+      ? `${countPhrase} worldwide — ${TIME_LABELS[timeWindow]}. Zoom in to see individual observations.`
       : urlMapBounds
-      ? `${totalResults.toLocaleString()} total observations in the visible map area near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
+      ? `${countPhrase} in the visible map area near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
       : area === 'narrow'
-      ? `${totalResults.toLocaleString()} total observations within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
-      : `${totalResults.toLocaleString()} total observations near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}. Displaying the most recent.`
+      ? `${countPhrase} within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
+      : `${countPhrase} near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
     ? `Error: ${error}`
     : coords
@@ -630,13 +640,13 @@ export default function App() {
       <main className="main">
         {/* Status bar */}
         <div className="status-bar">
-          <span className="status-text">{statusText}</span>
-          <div className="status-right">
-            {totalResults !== null && (
-              <span className="result-count">
-                {totalResults.toLocaleString()} observation{totalResults !== 1 ? 's' : ''}
-              </span>
+          <span className="status-text">
+            {statusText}
+            {refreshing && totalResults !== null && (
+              <span className="status-updating" aria-hidden="true"> · Updating…</span>
             )}
+          </span>
+          <div className="status-right">
             <div className="view-toggle">
               <button
                 className={`view-btn ${view === 'grid' ? 'active' : ''}`}
@@ -663,6 +673,14 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Indeterminate progress bar — visible whenever observations are being fetched */}
+        <div
+          className={`refresh-bar ${refreshing ? 'active' : ''}`}
+          role="status"
+          aria-live="polite"
+          aria-label={refreshing ? 'Updating observations' : ''}
+        />
 
         {/* Error banner */}
         {error && !loading && (

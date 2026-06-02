@@ -2706,6 +2706,34 @@ def _handle_efda_tile() -> tuple:
     return (jsonify({'tileUrl': _density_tile_url(painted, EFDA_VIS, categorical=True)}), 200, CORS_HEADERS)
 
 
+# ─── Sentinel-2 NDVI (recent greenness / fuel state) ─────────────────────────
+# Global, cloud-masked median NDVI over the last ~12 months — the same S2 NDVI
+# the popup greenness series is built on, exposed as a wall-to-wall tile layer
+# for the FireApp's vegetation/fuel overlay. Dry/browned vegetation reads as
+# drier (more flammable) fuel; deep green is moist and less ignitable. Replaces
+# the US-only, seasonal NAIP NDVI the FireApp shipped with. Negatives (open
+# water / non-vegetation) are masked so the ramp reads as a clean fuel map.
+NDVI_WINDOW_DAYS = 365
+NDVI_VIS = {'min': 0.0, 'max': 0.8,
+            'palette': ['d9bf8f', 'e8e08a', 'b6d957', '5cb85c', '15803d']}  # dry→lush
+
+
+def _s2_ndvi_image() -> ee.Image:
+    """Recent (last ~12 mo) cloud-masked Sentinel-2 NDVI median, global."""
+    today = date.today()
+    start = (today - timedelta(days=NDVI_WINDOW_DAYS)).isoformat()
+    s2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+          .filterDate(start, today.isoformat()).map(_mask_s2_clouds))
+    ndvi = s2.median().normalizedDifference(['B8', 'B4']).rename('NDVI')
+    return ndvi.updateMask(ndvi.gte(0))
+
+
+def _handle_ndvi_tile() -> tuple:
+    # Continuous wall-to-wall raster (like canopy) — EE's overview is the right
+    # low-zoom behavior, so no density treatment.
+    return (jsonify({'tileUrl': _tile_url(_s2_ndvi_image(), NDVI_VIS)}), 200, CORS_HEADERS)
+
+
 # Dispatch table for the simple single-raster overlays (?layer=<id>).
 _LAYER_TILE_HANDLERS = {
     'radd': _handle_radd_tile,
@@ -2715,6 +2743,7 @@ _LAYER_TILE_HANDLERS = {
     'canopy': _handle_canopy_tile,
     'cropland': _handle_cropland_tile,
     'efda': _handle_efda_tile,
+    'ndvi': _handle_ndvi_tile,
 }
 
 
@@ -3665,6 +3694,26 @@ def _greenness_series(lat: float, lng: float, y0: int, y1: int) -> list | None:
         return None
 
 
+def _handle_point_greenness(lat: float, lng: float) -> tuple:
+    """Current Sentinel-2 NDVI at a point — recent (last ~12 mo) cloud-masked
+    median, one round trip (~1-2 s). Powers the FireApp veg/fuel popup row; far
+    lighter than ?aefonly=1, and global (unlike the old NAIP NDVI)."""
+    _ensure_ee()
+    point = ee.Geometry.Point([lng, lat])
+    today = date.today()
+    start = (today - timedelta(days=NDVI_WINDOW_DAYS)).isoformat()
+    try:
+        s2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+              .filterBounds(point).filterDate(start, today.isoformat()).map(_mask_s2_clouds))
+        ndvi = s2.median().normalizedDifference(['B8', 'B4']).rename('NDVI')
+        sampled = ndvi.reduceRegion(ee.Reducer.first(), point, 10).getInfo()
+        v = sampled.get('NDVI')
+        return (jsonify({'ndvi': round(float(v), 3) if v is not None else None}), 200, CORS_HEADERS)
+    except Exception as e:
+        print(f'point greenness failed ({lat},{lng}): {e}', flush=True)
+        return (jsonify({'ndvi': None}), 200, CORS_HEADERS)
+
+
 def _handle_point_aef(lat: float, lng: float) -> tuple:
     """AlphaEarth stream: the 5-signal AEF block + a signed greenness (NDVI)
     series for the change bars, on its own endpoint (~6-8 s) so it doesn't wait
@@ -3971,9 +4020,12 @@ def get_tiles(request):
             # The click fans out into independent streams so each renders as
             # soon as it's ready (fastest-first), instead of one slow blob:
             #   (default)   OPERA core + land cover            ~1 s
+            #   ?greenonly=1 current Sentinel-2 NDVI (FireApp)  ~1-2 s
             #   ?context=1  commodity + RADD/Hansen/TMF        ~0.5-1 s
             #   ?aefonly=1  AlphaEarth 5-signal block          ~3-6 s
             #   ?extras=1   patch geometry + cause + fires     ~5-15 s (slow tail)
+            if request.args.get('greenonly'):
+                return _handle_point_greenness(float(lat), float(lng))
             if request.args.get('context'):
                 return _handle_point_context(float(lat), float(lng))
             if request.args.get('aefonly'):

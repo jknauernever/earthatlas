@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/forestmonitor", "destination": "/forestmonitor.html" },
+    { "source": "/fire", "destination": "/fire.html" },
     { "source": "/((?!api/|@)[^.]*)", "destination": "/index.html" }
   ],
   "headers": [

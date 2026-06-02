@@ -27,6 +27,19 @@ const ROUTES = [
     keywords:
       'forest disturbance, deforestation map, NASA OPERA, DIST-ALERT, near-real-time forest monitoring, satellite forest loss, MTBS, NIFC fire perimeters, USDA Cropland Data Layer, MapBiomas',
   },
+  {
+    out: 'fire.html',
+    url: 'https://earthatlas.org/fire',
+    title: 'FireApp — Wildfire risk & fuels · EarthAtlas',
+    description:
+      'Explore wildfire hazard potential, vegetation fuel state, and land cover across the United States and beyond. An EarthAtlas tool.',
+    // TODO: replace with a dedicated fire-social.png once designed; the generic
+    // EarthAtlas card is the stopgap so the OG tags aren't broken at launch.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas FireApp — wildfire hazard potential, fuels, and land cover',
+    keywords:
+      'wildfire risk map, wildfire hazard potential, WHP, fire fuels, NAIP NDVI vegetation, land cover, wildland urban interface, USDA Forest Service, fire risk United States',
+  },
 ]
 
 function patchHead(html, r) {

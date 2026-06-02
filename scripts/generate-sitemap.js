@@ -52,6 +52,9 @@ addUrl('/live')
 // Forest Monitor
 addUrl('/forestmonitor')
 
+// FireApp
+addUrl('/fire')
+
 // Explore subsites
 for (const slug of slugs) {
   addUrl(`/${slug}`)

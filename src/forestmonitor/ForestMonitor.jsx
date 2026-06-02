@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import styles from './ForestMonitor.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -1200,6 +1201,7 @@ export default function ForestMonitor() {
   return (
     <div className={styles.container}>
       <div ref={containerRef} className={styles.mapWrap} />
+      {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       {/* Branding lockup: two independent links so "Forest Monitor" reliably
           re-opens this view (clears query state, closes modal, etc.) while

@@ -1,0 +1,32 @@
+/* ZoomIndicator — shared across EarthAtlas map tools. Dark-glass pill in the
+   top-right, just below the Mapbox NavigationControl (zoom +/- ≈ 68px tall
+   from a 10px top margin). pointer-events:none so it never intercepts a map
+   drag or click that lands in its little corner. */
+.badge {
+  position: absolute;
+  top: 80px;
+  right: 9px;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 3px 7px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+.label {
+  font-weight: 700;
+  opacity: 0.5;
+  margin-right: 0.5px;
+}

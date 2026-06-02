@@ -15,11 +15,10 @@ const FEED_BASE = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary'
 // Magnitude-band feeds for the past month. "all" is everything (can be large,
 // a few MB / ~10k+ events); the higher bands are smaller and load faster.
 export const FEEDS = [
-  { id: 'all', label: 'All magnitudes', file: 'all_month.geojson' },
+  { id: 'all', label: 'All', file: 'all_month.geojson' },
   { id: '1.0', label: 'M1.0+', file: '1.0_month.geojson' },
   { id: '2.5', label: 'M2.5+', file: '2.5_month.geojson' },
   { id: '4.5', label: 'M4.5+', file: '4.5_month.geojson' },
-  { id: 'significant', label: 'Significant', file: 'significant_month.geojson' },
 ]
 
 const EARTH_RADIUS_MILES = 3959

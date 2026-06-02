@@ -4,7 +4,7 @@
  * A native EarthAtlas port of the standalone "seismic-data" project: the same
  * features (global + location/radius earthquake map, magnitude-colored
  * circles, age fade, time-range filtering with presets, magnitude & daily
- * charts, summary stats, printable report) rebuilt in the EarthAtlas idiom —
+ * charts, summary stats) rebuilt in the EarthAtlas idiom —
  * full-bleed Mapbox map, dark glass panels, the shared GeoSearch box, the
  * VITE_MAPBOX_TOKEN convention, CSS modules. No Supabase, no API keys beyond
  * Mapbox: earthquake data comes straight from the public USGS GeoJSON feeds.
@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import {
   FEEDS,
   fetchQuakes,
@@ -33,7 +34,7 @@ import styles from './QuakesApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
-const DEFAULT_VIEW = { center: [10, 25], zoom: 1.3 }
+const DEFAULT_VIEW = { center: [-101.672, 31.245], zoom: 2.4 }
 const RADIUS_OPTIONS = [25, 50, 100, 250, 500, 1000]
 const DEFAULT_RADIUS = 250
 
@@ -92,6 +93,21 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
+// Evenly sample up to `max` items from a (time-sorted) array, so a scatter
+// spreads across the whole window instead of bunching on the densest end — a
+// plain slice(0, max) of newest-first data would pile every dot on the right.
+function sampleEvenly(arr, max) {
+  if (arr.length <= max) return arr
+  const step = arr.length / max
+  const out = []
+  for (let i = 0; i < max; i++) out.push(arr[Math.floor(i * step)])
+  return out
+}
+
+// Count histograms use a single neutral hue (sky blue, matching the radius
+// circle) so they never read as magnitude — that's what the warm ramp is for.
+const COUNT_BAR_COLOR = '#38bdf8'
+
 // ─── Lightweight inline SVG charts (no chart library) ───────────────────────
 function ScatterChart({ events, range }) {
   const W = 280, H = 110, padL = 22, padB = 16, padT = 6, padR = 6
@@ -130,7 +146,7 @@ function DailyChart({ events }) {
         const h = (d.count / maxCount) * (H - padT - padB)
         return (
           <rect key={d.key} x={padL + i * bw + 0.5} y={H - padB - h} width={Math.max(1, bw - 1)} height={h}
-            fill={magColor(d.maxMag)} fillOpacity="0.85" rx="0.5" />
+            fill={COUNT_BAR_COLOR} fillOpacity="0.85" rx="0.5" />
         )
       })}
       {days.length > 1 && (
@@ -147,27 +163,86 @@ function DailyChart({ events }) {
   )
 }
 
+// ─── Shareable URL state ────────────────────────────────────────────────────
+// Every EarthAtlas map tool round-trips its full view into the query string so
+// a copied link reproduces exactly what the user sees. This is a required
+// convention — see docs/MAP_TOOL_CONVENTIONS.md. Params (each omitted at its
+// default, to keep links clean):
+//   mag                magnitude band (feed id; default 'all')
+//   clat,clng,cname    selected location center + label (absent = worldwide)
+//   r                  radius in miles (default 250; only meaningful with a location)
+//   t                  time preset id (default 'month'); t=custom also writes ts,te
+//   ts,te              custom window start/end (epoch ms)
+//   bm                 basemap id (default 'satellite')
+//   lat,lng,z          map camera (omitted at the default world view)
+function readUrlState() {
+  if (typeof window === 'undefined') return {}
+  const sp = new URLSearchParams(window.location.search)
+  const num = (k) => {
+    const v = sp.get(k)
+    if (v == null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  return {
+    mag: sp.get('mag'),
+    clat: num('clat'), clng: num('clng'), cname: sp.get('cname'),
+    r: num('r'),
+    t: sp.get('t'), ts: num('ts'), te: num('te'),
+    bm: sp.get('bm'),
+    lat: num('lat'), lng: num('lng'), z: num('z'),
+  }
+}
+
+function writeUrlQuery(qs) {
+  if (typeof window === 'undefined') return
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+  if (url === window.location.pathname + window.location.search + window.location.hash) return
+  // replaceState (not push) — no history entry per pan/zoom, just a live,
+  // copy-pasteable URL.
+  window.history.replaceState(window.history.state, '', url)
+}
+
 export default function QuakesApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
 
+  // Hydrate the full view from the URL once on mount so shared links recreate it.
+  const initial = (typeof window !== 'undefined') ? readUrlState() : {}
+  const initialCenter = (Number.isFinite(initial.clat) && Number.isFinite(initial.clng))
+    ? { lat: initial.clat, lng: initial.clng, name: initial.cname || 'Shared location' }
+    : null
+  const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
+    ? { lat: initial.lat, lng: initial.lng, zoom: initial.z }
+    : null
+
   // Data
-  const [feed, setFeed] = useState('all')
+  const [feed, setFeed] = useState(() => (initial.mag && FEEDS.some((f) => f.id === initial.mag) ? initial.mag : 'all'))
   const [allEvents, setAllEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   // View
-  const [center, setCenter] = useState(null) // { lat, lng, name } | null (=global)
-  const [radius, setRadius] = useState(DEFAULT_RADIUS)
-  const [range, setRange] = useState(null) // [startMs, endMs] | null (=full)
-  const [activePreset, setActivePreset] = useState('month')
-  const [basemap, setBasemap] = useState('dark')
+  const [center, setCenter] = useState(initialCenter) // { lat, lng, name } | null (=global)
+  const [radius, setRadius] = useState(() => (Number.isFinite(initial.r) && initial.r > 0 ? initial.r : DEFAULT_RADIUS))
+  const [range, setRange] = useState(() => (
+    initial.t === 'custom' && Number.isFinite(initial.ts) && Number.isFinite(initial.te) ? [initial.ts, initial.te] : null
+  )) // [startMs, endMs] | null (=derived from preset)
+  const [activePreset, setActivePreset] = useState(() => (
+    initial.t && (initial.t === 'custom' || TIME_PRESETS.some((p) => p.id === initial.t)) ? initial.t : 'month'
+  ))
+  const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  const [showMethodology, setShowMethodology] = useState(false)
+  // Live map camera (lat/lng/zoom), tracked on moveend for the shareable URL.
+  const [mapView, setMapView] = useState(initialCamera)
+  // Skip the first auto-flyTo when we hydrated a camera/location from the URL —
+  // the map is already initialized at the shared view, so don't override it.
+  const suppressFlyRef = useRef(!!(initialCamera || initialCenter))
 
   const isGlobal = !center
 
@@ -227,15 +302,24 @@ export default function QuakesApp() {
   useEffect(() => {
     if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
     mapboxgl.accessToken = MAPBOX_TOKEN
+    // Start at the shared camera if the URL had one, else frame the shared
+    // location, else the default world view.
+    const startCamera = initialCamera
+      || (initialCenter ? { lng: initialCenter.lng, lat: initialCenter.lat, zoom: zoomForRadius(radius) } : null)
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: basemapStyleFor(basemap),
-      center: DEFAULT_VIEW.center,
-      zoom: DEFAULT_VIEW.zoom,
-      preserveDrawingBuffer: true, // lets us snapshot the canvas for the report
+      center: startCamera ? [startCamera.lng, startCamera.lat] : DEFAULT_VIEW.center,
+      zoom: startCamera ? startCamera.zoom : DEFAULT_VIEW.zoom,
     })
     mapRef.current = map
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+
+    // Track the camera so the shareable URL always reflects the current view.
+    map.on('moveend', () => {
+      const c = map.getCenter()
+      setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
+    })
 
     const addLayers = () => {
       if (!map.getSource('radius-circle')) {
@@ -292,11 +376,13 @@ export default function QuakesApp() {
       }
     }
 
-    map.on('load', () => { addLayers(); setMapReady(true) })
-    // Re-add our layers after a basemap (style) switch.
-    map.on('style.load', () => { if (mapRef.current) addLayers() })
+    // style.load fires on the initial style AND after every basemap switch, so
+    // re-add our sources/layers and (re)assert readiness each time. More robust
+    // than 'load' (which can be missed under StrictMode's mount/unmount with
+    // heavier styles like satellite) — mirrors how /fire wires mapReady.
+    map.on('style.load', () => { addLayers(); setMapReady(true) })
 
-    return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null }
+    return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -333,12 +419,41 @@ export default function QuakesApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
+    // On a cold load hydrated from the URL the map already opened at the shared
+    // view — don't fly away from it on the first run.
+    if (suppressFlyRef.current) { suppressFlyRef.current = false; return }
     if (isGlobal) {
       map.flyTo({ center: DEFAULT_VIEW.center, zoom: DEFAULT_VIEW.zoom, duration: 1200, essential: true })
     } else {
       map.flyTo({ center: [center.lng, center.lat], zoom: zoomForRadius(radius), duration: 1400, essential: true })
     }
   }, [isGlobal, center, radius, mapReady])
+
+  // ─── Persist the full view to the URL (shareable links) ───────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams()
+    if (feed && feed !== 'all') sp.set('mag', feed)
+    if (center) {
+      sp.set('clat', center.lat.toFixed(4))
+      sp.set('clng', center.lng.toFixed(4))
+      if (center.name) sp.set('cname', center.name)
+      if (radius !== DEFAULT_RADIUS) sp.set('r', String(radius))
+    }
+    if (activePreset && activePreset !== 'month') {
+      sp.set('t', activePreset)
+      if (activePreset === 'custom' && range) {
+        sp.set('ts', String(Math.round(range[0])))
+        sp.set('te', String(Math.round(range[1])))
+      }
+    }
+    if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (mapView) {
+      sp.set('lat', mapView.lat.toFixed(3))
+      sp.set('lng', mapView.lng.toFixed(3))
+      sp.set('z', mapView.zoom.toFixed(1))
+    }
+    writeUrlQuery(sp.toString())
+  }, [feed, center, radius, activePreset, range, basemap, mapView])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -408,46 +523,6 @@ export default function QuakesApp() {
     })
   }, [dataSpan])
 
-  const handlePrint = useCallback(() => {
-    const map = mapRef.current
-    let mapImg = ''
-    try { mapImg = map ? map.getCanvas().toDataURL('image/png') : '' } catch { mapImg = '' }
-    const scatter = document.getElementById('quakes-scatter')?.outerHTML || ''
-    const daily = document.getElementById('quakes-daily')?.outerHTML || ''
-    const top = [...filteredEvents].sort((a, b) => b.mag - a.mag).slice(0, 12)
-    const rangeLabel = range ? `${new Date(range[0]).toLocaleDateString()} – ${new Date(range[1]).toLocaleDateString()}` : 'Full month'
-    const html = `<!doctype html><html><head><title>Earthquake Report</title><style>
-      body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#1f2937;line-height:1.45}
-      h1{font-size:22px;margin:0 0 2px} h2{font-size:15px;color:#6b7280;margin:0 0 14px;font-weight:500}
-      .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
-      .box{border:1px solid #e5e7eb;border-radius:6px;padding:8px;text-align:center}
-      .box h4{margin:0 0 3px;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
-      .box p{margin:0;font-size:20px;font-weight:700}
-      .charts{display:flex;gap:16px;margin:14px 0} .charts svg{background:#0a0e17;border-radius:6px;padding:6px;flex:1;max-width:50%}
-      img{max-width:100%;border:1px solid #e5e7eb;border-radius:6px;margin:8px 0}
-      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
-      th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #eee} th{color:#6b7280}
-      .src{margin-top:18px;color:#6b7280;font-size:11px;border-top:1px solid #eee;padding-top:8px}
-    </style></head><body>
-      <h1>Earthquake Activity Report</h1>
-      <h2>${escapeHtml(isGlobal ? 'Worldwide' : center.name)}${isGlobal ? '' : ` · ${radius}-mile radius`} · ${escapeHtml(rangeLabel)}</h2>
-      <div class="stats">
-        <div class="box"><h4>Events</h4><p>${stats.count}</p></div>
-        <div class="box"><h4>Max mag</h4><p>${stats.maxMag.toFixed(1)}</p></div>
-        <div class="box"><h4>Avg mag</h4><p>${stats.avgMag.toFixed(2)}</p></div>
-        <div class="box"><h4>Min mag</h4><p>${stats.minMag.toFixed(1)}</p></div>
-      </div>
-      ${mapImg ? `<img src="${mapImg}" alt="Earthquake map" />` : ''}
-      <div class="charts">${scatter}${daily}</div>
-      <table><thead><tr><th>Mag</th><th>Location</th><th>When</th><th>Depth</th></tr></thead><tbody>
-        ${top.map((e) => `<tr><td>M${e.mag.toFixed(1)}</td><td>${escapeHtml(e.place)}</td><td>${escapeHtml(fmtTime(e.time))}</td><td>${e.depth.toFixed(0)} km</td></tr>`).join('')}
-      </tbody></table>
-      <div class="src">Data: USGS Earthquake Hazards Program · Generated ${new Date().toLocaleString()} · EarthAtlas /quakes</div>
-    </body></html>`
-    const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 350) }
-  }, [filteredEvents, isGlobal, center, radius, range, stats])
-
   // ─── No token guard ───────────────────────────────────────────────────────
   if (!MAPBOX_TOKEN) {
     return (
@@ -465,6 +540,7 @@ export default function QuakesApp() {
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
+      {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       {/* Branding */}
       <div className={styles.branding}>
@@ -580,8 +656,10 @@ export default function QuakesApp() {
               </div>
               {dataSpan && range && (
                 <div className={styles.rangeWrap}>
-                  <input type="range" className={styles.rangeSlider} min={sliderMin} max={sliderMax} value={Math.min(Math.max(range[0], sliderMin), sliderMax)} onChange={(e) => handleRangeInput(0, Number(e.target.value))} />
-                  <input type="range" className={styles.rangeSlider} min={sliderMin} max={sliderMax} value={Math.min(Math.max(range[1], sliderMin), sliderMax)} onChange={(e) => handleRangeInput(1, Number(e.target.value))} />
+                  <div className={styles.rangeTrack}>
+                    <input type="range" className={styles.rangeInput} min={sliderMin} max={sliderMax} value={Math.min(Math.max(range[0], sliderMin), sliderMax)} onChange={(e) => handleRangeInput(0, Number(e.target.value))} aria-label="Range start" />
+                    <input type="range" className={styles.rangeInput} min={sliderMin} max={sliderMax} value={Math.min(Math.max(range[1], sliderMin), sliderMax)} onChange={(e) => handleRangeInput(1, Number(e.target.value))} aria-label="Range end" />
+                  </div>
                   <div className={styles.rangeLabels}>
                     <span>{fmtTime(range[0])}</span><span>{fmtTime(range[1])}</span>
                   </div>
@@ -601,36 +679,101 @@ export default function QuakesApp() {
               <>
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>Magnitude over time</label>
-                  <div id="quakes-scatter"><ScatterChart events={filteredEvents.slice(0, 1500)} range={range || dataSpan} /></div>
+                  <ScatterChart events={sampleEvenly(filteredEvents, 2000)} range={range || dataSpan} />
                 </div>
+
+                {/* Magnitude scale — sits under the scatter because it explains
+                    those dot colors (and the map circles). */}
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Magnitude scale</label>
+                  <div className={styles.legendBar} style={{ background: `linear-gradient(to right, ${MAG_RAMP.map(([, c]) => c).join(',')})` }} />
+                  <div className={styles.legendScale}><span>0</span><span>4</span><span>8+</span></div>
+                  <div className={styles.legendNote}>Brighter dots are more recent (last 6 h fully opaque).</div>
+                </div>
+
                 <div className={styles.field}>
                   <label className={styles.fieldLabel}>Quakes per day</label>
-                  <div id="quakes-daily"><DailyChart events={filteredEvents} /></div>
+                  <DailyChart events={filteredEvents} />
                 </div>
               </>
             )}
 
-            {/* Magnitude legend */}
-            <div className={styles.field}>
-              <label className={styles.fieldLabel}>Magnitude scale</label>
-              <div className={styles.legendBar} style={{ background: `linear-gradient(to right, ${MAG_RAMP.map(([, c]) => c).join(',')})` }} />
-              <div className={styles.legendScale}><span>0</span><span>4</span><span>8+</span></div>
-              <div className={styles.legendNote}>Brighter circles are more recent (last 6 h fully opaque).</div>
-            </div>
+            <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>
+              ⓘ How this is sourced
+            </button>
 
-            {/* Print */}
-            {filteredEvents.length > 0 && (
-              <button className={styles.printBtn} onClick={handlePrint}>🖨 Print report</button>
-            )}
-
-            <div className={styles.source}>
-              Data: <a href="https://earthquake.usgs.gov/earthquakes/feed/" target="_blank" rel="noopener noreferrer">USGS Earthquake Hazards Program</a> · past 30 days
+            <div className={styles.builtBy}>
+              EarthAtlas is built by{' '}
+              <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
+                KnauerNever.com
+              </a>
             </div>
           </div>
         )}
       </div>
 
       <div className={styles.tip}>Click a quake for details · search a place or stay worldwide</div>
+
+      {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} />}
+    </div>
+  )
+}
+
+// ─── "How this is sourced" modal ────────────────────────────────────────────
+function MethodologyModal({ onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        <h2 className={styles.modalTitle}>How this is sourced</h2>
+
+        <section className={styles.modalSection}>
+          <h3>What you're looking at</h3>
+          <p>
+            Every circle is a single earthquake recorded by the{' '}
+            <strong>USGS Earthquake Hazards Program</strong> over the past ~30 days. Circle{' '}
+            <strong>color</strong> encodes magnitude (yellow = small → red → purple for great quakes),{' '}
+            <strong>size</strong> grows with magnitude, and <strong>brightness</strong> with recency —
+            quakes in the last 6 hours render fully opaque, older ones fade back.
+          </p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>Where the data comes from</h3>
+          <ul>
+            <li>
+              <strong>Earthquakes — USGS GeoJSON feeds.</strong> The public{' '}
+              <a href="https://earthquake.usgs.gov/earthquakes/feed/v1.0/" target="_blank" rel="noopener noreferrer">USGS real-time feeds</a>{' '}
+              (e.g. <code>all_month</code>, <code>M2.5+</code>, <code>M4.5+</code>), pulled straight from the
+              browser and refreshed each load. No account or API key — and no third-party database.
+            </li>
+            <li>
+              <strong>Location &amp; radius.</strong> Picking a place filters to quakes within the chosen
+              radius, computed in your browser with the haversine great-circle distance. Place search uses
+              Mapbox geocoding.
+            </li>
+            <li>
+              <strong>Basemap.</strong> Mapbox satellite, dark, light, and streets styles.
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>Caveats</h3>
+          <p>
+            Magnitudes and depths are <strong>preliminary</strong> for recent events and may be revised by
+            USGS as more data arrives. Detection completeness varies by region — areas with denser seismic
+            networks report more small quakes. Times are shown in your local timezone. For authoritative
+            details on any event, click it and follow the link to its USGS event page.
+          </p>
+        </section>
+      </div>
     </div>
   )
 }

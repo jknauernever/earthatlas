@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import styles from './FireApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -437,6 +438,7 @@ export default function FireApp() {
   )
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
+  const [showMethodology, setShowMethodology] = useState(false)
 
   const [mapView, setMapView] = useState(() => {
     const { lat, lng, zoom } = initial
@@ -746,6 +748,7 @@ export default function FireApp() {
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
+      {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       {/* Branding */}
       <div className={styles.branding}>
@@ -900,10 +903,90 @@ export default function FireApp() {
             </div>
           )
         })}
+
+        <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>
+          ⓘ How this is sourced
+        </button>
+
+        <div className={styles.builtBy}>
+          EarthAtlas is built by{' '}
+          <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
+            KnauerNever.com
+          </a>
+        </div>
       </div>
 
       <div className={styles.tip}>
         Click anywhere to inspect a point · the wildfire-risk layers cover the US only · more layers coming
+      </div>
+
+      {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} />}
+    </div>
+  )
+}
+
+// ─── "How this is sourced" modal ────────────────────────────────────────────
+function MethodologyModal({ onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        <h2 className={styles.modalTitle}>How this is sourced</h2>
+
+        <section className={styles.modalSection}>
+          <h3>What you're looking at</h3>
+          <p>
+            Each layer is a raster overlay served live from the agency that publishes it — there's no
+            EarthAtlas database in between. The wildfire-risk layers model the long-term landscape, not
+            active fire: they answer "if a fire started here, how bad could it get, and how likely is it,"
+            not "is something burning right now."
+          </p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>The layers</h3>
+          <ul>
+            <li>
+              <strong>Wildfire Hazard Potential &amp; Burn Probability</strong> — modeled long-term wildfire
+              risk for the United States from the{' '}
+              <a href="https://www.firelab.org/project/wildfire-hazard-potential" target="_blank" rel="noopener noreferrer">USDA Forest Service, Rocky Mountain Research Station</a>,
+              streamed from their public ArcGIS ImageServers.
+            </li>
+            <li>
+              <strong>Vegetation greenness (NDVI)</strong> — recent cloud-masked{' '}
+              <strong>Sentinel-2</strong> (Copernicus) imagery, last 12 months, computed in Google Earth
+              Engine via the same EarthAtlas cloud function that powers the Forest Monitor. A proxy for fuel
+              state — browned vegetation is drier, more flammable. Global.
+            </li>
+            <li>
+              <strong>Land cover</strong> — Esri / Impact Observatory 10 m Sentinel-2 land cover. Global.
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>When you click a point</h3>
+          <p>
+            We query each layer at that exact location (ArcGIS identify for the agency rasters, the Earth
+            Engine function for NDVI) and translate the raw values into plain language. Place search uses
+            Mapbox geocoding; basemaps are Mapbox.
+          </p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>Caveats</h3>
+          <p>
+            The wildfire-risk layers are <strong>United States only</strong> and are long-term modeled
+            estimates, <strong>not forecasts</strong> of current conditions. NDVI and land cover are global.
+            For active fire, defer to official sources such as NASA FIRMS and local agencies.
+          </p>
+        </section>
       </div>
     </div>
   )

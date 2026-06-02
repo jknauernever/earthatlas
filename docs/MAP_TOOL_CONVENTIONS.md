@@ -6,7 +6,9 @@ shared conventions that make the suite feel like one product. Each new map tool
 must satisfy all of them — they are requirements, not suggestions.
 
 Reference implementations: `src/fire/FireApp.jsx`, `src/forestmonitor/ForestMonitor.jsx`,
-`src/quakes/QuakesApp.jsx`.
+`src/quakes/QuakesApp.jsx`, `src/carbon/CarbonApp.jsx` (the last also demonstrates
+polygon **drawing** via `@mapbox/mapbox-gl-draw` and a server-side carbon
+calculation proxied through `api/carbon.js` → the GEE tile server).
 
 ---
 

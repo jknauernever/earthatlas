@@ -1,0 +1,292 @@
+/* EarthAtlas CarbonApp — same dark-glass visual language as FireApp / Quakes so
+   the suite reads as one product. Accent here is carbon/forest green. */
+
+.container {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #e5e7eb;
+}
+.mapWrap { position: absolute; inset: 0; }
+
+.tokenError {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.tokenError code { color: #34d399; }
+
+/* ─── Branding ───────────────────────────────────────────────────────────── */
+.branding {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.brandingLink { text-decoration: none; color: inherit; display: inline-flex; align-items: center; transition: opacity 0.15s ease; }
+.brandingLink:hover { opacity: 0.8; }
+.wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
+.subBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #34d399; /* carbon green */
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+}
+
+/* ─── Search box ─────────────────────────────────────────────────────────── */
+.searchBox {
+  position: absolute;
+  top: 16px; right: 60px;
+  width: 320px;
+  max-width: calc(100vw - 80px);
+  z-index: 11;
+  font-family: inherit;
+}
+
+/* ─── Basemap picker ─────────────────────────────────────────────────────── */
+.basemapMenu { position: absolute; top: 64px; right: 60px; z-index: 10; }
+.basemapToggle, .basemapToggleActive {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.basemapToggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
+.basemapToggleActive { background: #131c30; color: #34d399; border-color: rgba(52, 211, 153, 0.5); }
+.basemapMenuPanel {
+  position: absolute; top: 42px; right: 0;
+  width: 160px; padding: 4px;
+  background: rgba(10, 14, 23, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.basemapMenuTitle {
+  padding: 8px 10px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5); font-weight: 600;
+}
+.basemapMenuItem, .basemapMenuItemActive {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
+  border: 0; background: transparent; color: #e5e7eb;
+  font: inherit; font-size: 13px; text-align: left;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.1s ease;
+}
+.basemapMenuItem:hover { background: rgba(255, 255, 255, 0.05); }
+.basemapMenuItemActive { background: rgba(52, 211, 153, 0.12); color: #fff; }
+.basemapMenuItemLabel { flex: 1; font-weight: 500; }
+.basemapMenuCheck { color: #34d399; }
+
+/* ─── Control / results panel ────────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 70px; left: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 100px);
+  display: flex; flex-direction: column;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  z-index: 11;
+  overflow: hidden;
+}
+.panelHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px;
+  flex-shrink: 0;
+}
+.panelTitle { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #fff; }
+.panelCollapse { border: 0; background: transparent; color: rgba(255, 255, 255, 0.6); font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1; }
+.panelCollapse:hover { color: #fff; }
+.panelCollapsed { width: 320px; }
+.panelBody { padding: 0 14px 14px; overflow-y: auto; }
+
+/* ─── Draw controls ──────────────────────────────────────────────────────── */
+.drawRow { display: flex; gap: 6px; margin-bottom: 10px; }
+.drawBtn {
+  flex: 1;
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  background: rgba(52, 211, 153, 0.16);
+  color: #6ee7b7;
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  transition: background 0.12s ease;
+}
+.drawBtn:hover { background: rgba(52, 211, 153, 0.26); }
+.clearBtn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit; font-size: 13px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  transition: background 0.12s ease;
+}
+.clearBtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.clearBtn:disabled { opacity: 0.4; cursor: default; }
+.hint { font-size: 11.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.55); margin: 0 0 12px; }
+
+/* ─── Area readout ───────────────────────────────────────────────────────── */
+.areaRow { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.areaVal { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.areaSub { font-size: 12px; color: rgba(255, 255, 255, 0.55); }
+
+/* ─── Status ─────────────────────────────────────────────────────────────── */
+.status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(255, 255, 255, 0.8); margin-bottom: 12px; }
+.statusError { color: #fca5a5; font-size: 12.5px; margin-bottom: 12px; line-height: 1.4; }
+.spinner {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid rgba(52, 211, 153, 0.3);
+  border-top-color: #34d399;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Total card ─────────────────────────────────────────────────────────── */
+.totalCard {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.14), rgba(16, 185, 129, 0.05));
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.totalLabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.6); font-weight: 600; }
+.totalVal { font-size: 28px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; }
+.totalUnit { font-size: 14px; font-weight: 600; color: #6ee7b7; }
+.totalSub { font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 4px; }
+
+/* ─── Pool breakdown ─────────────────────────────────────────────────────── */
+.poolList { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.poolRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+}
+.poolDot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.poolLabel { flex: 1; font-size: 12px; color: rgba(255, 255, 255, 0.85); }
+.poolVals { display: flex; flex-direction: column; align-items: flex-end; }
+.poolCo2e { font-size: 13px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.poolDensity { font-size: 10px; color: rgba(255, 255, 255, 0.45); font-variant-numeric: tabular-nums; }
+
+/* ─── Land cover bars ────────────────────────────────────────────────────── */
+.lcRow { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.lcLabel { font-size: 11px; color: rgba(255, 255, 255, 0.8); width: 96px; flex-shrink: 0; }
+.lcBarWrap { flex: 1; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden; }
+.lcBar { display: block; height: 100%; background: #34d399; border-radius: 3px; }
+.lcPct { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ─── Biomass source note ────────────────────────────────────────────────── */
+.sourceNote { font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.5); margin: -6px 0 12px; }
+.sourceNote strong { color: #6ee7b7; font-weight: 600; }
+
+/* ─── Vegetation row ─────────────────────────────────────────────────────── */
+.vegRow { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: rgba(255, 255, 255, 0.75); margin-bottom: 14px; }
+.vegSub { color: rgba(255, 255, 255, 0.45); }
+
+/* ─── Fields, chips, legend (shared idiom) ───────────────────────────────── */
+.field { margin-bottom: 14px; }
+.fieldLabel { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.55); font-weight: 600; margin-bottom: 6px; }
+.chipRow { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip, .chipActive {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit; font-size: 11px;
+  padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.chip:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.chipActive { background: rgba(52, 211, 153, 0.16); border-color: rgba(52, 211, 153, 0.5); color: #6ee7b7; }
+.legendBar { height: 10px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 8px; }
+.legendNote { font-size: 10.5px; color: rgba(255, 255, 255, 0.45); margin-top: 5px; line-height: 1.4; }
+
+/* ─── Methodology link, disclaimer, footer ───────────────────────────────── */
+.methodology {
+  display: block; width: 100%; margin-top: 12px; padding: 8px 0 0;
+  border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent; color: rgba(96, 165, 250, 0.95);
+  font: inherit; font-size: 11px; text-align: left; cursor: pointer;
+  transition: color 0.15s ease;
+}
+.methodology:hover { color: #93c5fd; text-decoration: underline; }
+.disclaimer { font-size: 10.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.5); margin: 10px 0 0; }
+.disclaimer strong { color: rgba(255, 255, 255, 0.75); }
+.builtBy { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.45); }
+.builtByLink { color: rgba(120, 200, 255, 0.85); text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s; }
+.builtByLink:hover { color: rgba(160, 220, 255, 1); }
+
+/* ─── Methodology modal ──────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal {
+  background: #0f1726; color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 100%; max-width: 640px; max-height: 90vh;
+  overflow-y: auto; padding: 32px 36px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.modalClose {
+  position: absolute; top: 12px; right: 12px;
+  width: 32px; height: 32px;
+  border: 0; border-radius: 50%; background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 24px; line-height: 1; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.modalClose:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.modalTitle { margin: 0 0 4px; font-size: 22px; font-weight: 600; color: #fff; }
+.modalSection { margin-top: 22px; }
+.modalSection h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #34d399; }
+.modalSection p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+.modalSection ul { margin: 0; padding-left: 22px; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+.modalSection li { margin-bottom: 8px; }
+.modalSection strong { color: #fff; }
+
+/* ─── Help tip ───────────────────────────────────────────────────────────── */
+.tip {
+  position: absolute; bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; color: rgba(255, 255, 255, 0.5);
+  pointer-events: none; text-align: center; max-width: 90vw;
+}
+
+@media (max-width: 640px) {
+  .panel { top: 64px; left: 8px; right: 8px; width: auto; max-width: none; max-height: 56vh; }
+  .panelCollapsed { width: auto; }
+  .searchBox { width: calc(100vw - 120px); right: 56px; }
+}

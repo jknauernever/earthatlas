@@ -13,6 +13,7 @@
     "lint": "eslint src --ext .js,.jsx"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/react": "^10.53.1",
     "@vercel/analytics": "^1.6.1",

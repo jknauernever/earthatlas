@@ -1,0 +1,275 @@
+/* EarthAtlas QuakesApp — same dark-glass visual language as FireApp /
+   ForestMonitor so the suite reads as one. Accent here is seismic amber/red;
+   the sub-badge is a quake red to signal the seismic context. */
+
+.container {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #e5e7eb;
+}
+.mapWrap { position: absolute; inset: 0; }
+
+.tokenError {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.tokenError code { color: #fbbf24; }
+
+/* ─── Branding ───────────────────────────────────────────────────────────── */
+.branding {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.brandingLink { text-decoration: none; color: inherit; display: inline-flex; align-items: center; transition: opacity 0.15s ease; }
+.brandingLink:hover { opacity: 0.8; }
+.wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
+.subBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #f87171; /* quake red */
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+}
+
+/* ─── Search box ─────────────────────────────────────────────────────────── */
+.searchBox {
+  position: absolute;
+  top: 16px; right: 60px;
+  width: 320px;
+  max-width: calc(100vw - 80px);
+  z-index: 11;
+  font-family: inherit;
+}
+
+/* ─── Basemap picker ─────────────────────────────────────────────────────── */
+.basemapMenu { position: absolute; top: 64px; right: 60px; z-index: 10; }
+.basemapToggle, .basemapToggleActive {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.basemapToggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
+.basemapToggleActive { background: #131c30; color: #fbbf24; border-color: rgba(251, 191, 36, 0.5); }
+.basemapMenuPanel {
+  position: absolute; top: 42px; right: 0;
+  width: 160px; padding: 4px;
+  background: rgba(10, 14, 23, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.basemapMenuTitle {
+  padding: 8px 10px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5); font-weight: 600;
+}
+.basemapMenuItem, .basemapMenuItemActive {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
+  border: 0; background: transparent; color: #e5e7eb;
+  font: inherit; font-size: 13px; text-align: left;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.1s ease;
+}
+.basemapMenuItem:hover { background: rgba(255, 255, 255, 0.05); }
+.basemapMenuItemActive { background: rgba(251, 191, 36, 0.12); color: #fff; }
+.basemapMenuItemLabel { flex: 1; font-weight: 500; }
+.basemapMenuCheck { color: #fbbf24; }
+
+/* ─── Control panel ──────────────────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 70px; left: 16px;
+  width: 312px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 100px);
+  display: flex; flex-direction: column;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  z-index: 11;
+  overflow: hidden;
+}
+.panelHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px;
+  flex-shrink: 0;
+}
+.panelTitle {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
+}
+.panelCollapse {
+  border: 0; background: transparent; color: rgba(255, 255, 255, 0.6);
+  font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1;
+}
+.panelCollapse:hover { color: #fff; }
+.panelCollapsed { width: 312px; }
+.panelBody { padding: 0 14px 14px; overflow-y: auto; }
+
+.status { font-size: 12.5px; color: rgba(255, 255, 255, 0.8); margin-bottom: 10px; line-height: 1.4; }
+.statusError { color: #fca5a5; }
+
+.clearLoc {
+  width: 100%;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+  color: #fca5a5;
+  font: inherit; font-size: 12px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.12s ease;
+}
+.clearLoc:hover { background: rgba(248, 113, 113, 0.16); }
+
+.field { margin-bottom: 14px; }
+.fieldLabel {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55); font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Chip rows (magnitude band, radius, time presets) */
+.chipRow { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip, .chipActive {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit; font-size: 12px;
+  padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.chip:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.chipActive {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fde68a;
+}
+
+/* Dual-range time slider */
+.rangeWrap { margin-top: 10px; position: relative; }
+.rangeSlider {
+  width: 100%;
+  -webkit-appearance: none; appearance: none;
+  height: 4px; background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px; outline: none; cursor: pointer;
+  margin: 4px 0;
+}
+.rangeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; border: 2px solid #fbbf24; cursor: grab;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.rangeSlider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; border: 2px solid #fbbf24; cursor: grab;
+}
+.rangeLabels {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums; margin-top: 2px;
+}
+
+/* Stats grid */
+.statGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
+.statBox {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+}
+.statVal { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.statKey { font-size: 10px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+/* Charts */
+.chartSvg {
+  width: 100%; height: auto;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+}
+.chartAxis { fill: rgba(255, 255, 255, 0.45); font-size: 8px; }
+
+/* Magnitude legend */
+.legendBar { height: 10px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.1); }
+.legendScale {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: rgba(255, 255, 255, 0.6);
+  margin-top: 3px; font-variant-numeric: tabular-nums;
+}
+.legendNote { font-size: 10.5px; color: rgba(255, 255, 255, 0.45); margin-top: 5px; line-height: 1.4; }
+
+.printBtn {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+  font: inherit; font-size: 13px; font-weight: 500;
+  padding: 8px; border-radius: 7px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.12s ease;
+}
+.printBtn:hover { background: rgba(255, 255, 255, 0.1); }
+
+.source { font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.4; }
+.source a { color: rgba(251, 191, 36, 0.8); text-decoration: none; }
+.source a:hover { text-decoration: underline; }
+
+/* ─── Map click popup (setHTML string; white card) ───────────────────────── */
+.popup { padding: 11px 13px; font-size: 13px; color: #1f2937; line-height: 1.5; min-width: 190px; }
+.popupMag { font-size: 18px; font-weight: 700; line-height: 1; }
+.popupPlace { font-weight: 600; margin: 4px 0 2px; color: #111827; }
+.popupMeta { font-size: 11.5px; color: #6b7280; }
+.popupLink { display: inline-block; margin-top: 6px; font-size: 11.5px; color: #b45309; text-decoration: none; }
+.popupLink:hover { text-decoration: underline; }
+
+:global(.mapboxgl-popup-content) {
+  padding: 0 !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
+}
+:global(.mapboxgl-popup-tip) { border-top-color: #fff !important; border-bottom-color: #fff !important; }
+:global(.mapboxgl-popup-close-button) { font-size: 18px !important; color: #6b7280 !important; padding: 2px 8px !important; }
+
+/* ─── Help tip ───────────────────────────────────────────────────────────── */
+.tip {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; color: rgba(255, 255, 255, 0.5);
+  pointer-events: none; text-align: center; max-width: 90vw;
+}
+
+@media (max-width: 640px) {
+  .panel { top: 64px; left: 8px; right: 8px; width: auto; max-width: none; max-height: 56vh; }
+  .searchBox { width: calc(100vw - 120px); right: 56px; }
+}

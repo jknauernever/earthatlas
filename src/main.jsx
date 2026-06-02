@@ -28,6 +28,7 @@ import LiveGlobe from './live/LiveGlobe.jsx'
 import LiveLocal from './live/LiveLocal.jsx'
 import ForestMonitor from './forestmonitor/ForestMonitor.jsx'
 import FireApp from './fire/FireApp.jsx'
+import QuakesApp from './quakes/QuakesApp.jsx'
 import './index.css'
 
 // Sentry: only initialize in production builds AND when a DSN is configured.
@@ -94,6 +95,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/live-local" element={<LiveLocal />} />
           <Route path="/forestmonitor" element={<ForestMonitor />} />
           <Route path="/fire" element={<FireApp />} />
+          <Route path="/quakes" element={<QuakesApp />} />
           <Route path="/admin" element={<AdminApp />} />
           <Route path="/*" element={<App />} />
         </Routes>

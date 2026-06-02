@@ -40,6 +40,18 @@ const ROUTES = [
     keywords:
       'wildfire risk map, wildfire hazard potential, WHP, fire fuels, NAIP NDVI vegetation, land cover, wildland urban interface, USDA Forest Service, fire risk United States',
   },
+  {
+    out: 'quakes.html',
+    url: 'https://earthatlas.org/quakes',
+    title: 'Quakes — Live earthquake map · EarthAtlas',
+    description:
+      'Explore worldwide earthquakes from the past 30 days — search any location, set a radius, filter by time, and inspect magnitude and depth. Live USGS data. An EarthAtlas tool.',
+    // TODO: dedicated quakes-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Quakes — live worldwide earthquake map from USGS data',
+    keywords:
+      'earthquake map, live earthquakes, USGS earthquakes, seismic activity, recent earthquakes near me, magnitude, earthquake tracker, real-time earthquakes',
+  },
 ]
 
 function patchHead(html, r) {

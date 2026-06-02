@@ -52,6 +52,18 @@ const ROUTES = [
     keywords:
       'earthquake map, live earthquakes, USGS earthquakes, seismic activity, recent earthquakes near me, magnitude, earthquake tracker, real-time earthquakes',
   },
+  {
+    out: 'carbon.html',
+    url: 'https://earthatlas.org/carbon',
+    title: 'Carbon — Land carbon calculator · EarthAtlas',
+    description:
+      'Draw any parcel and estimate the carbon stored in its vegetation and soil — from measured satellite datasets (NASA/ORNL biomass, OpenLandMap soil, ESA WorldCover). An EarthAtlas tool.',
+    // TODO: dedicated carbon-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Carbon — draw a parcel to estimate its stored land carbon from satellite data',
+    keywords:
+      'land carbon calculator, carbon storage estimate, above-ground biomass, soil organic carbon, CO2e, NASA ORNL biomass, OpenLandMap, ESA WorldCover, draw parcel carbon, forest carbon map',
+  },
 ]
 
 function patchHead(html, r) {

@@ -53,10 +53,19 @@ export default async function handler(req) {
     const overlay = String(searchParams.get('overlay') || '').toLowerCase()
     if (!OVERLAYS.has(overlay)) return json({ error: 'unknown overlay' }, { status: 400 })
     try {
-      const upstream = new URL(`${base}/api/tiles`)
-      upstream.searchParams.set('dataset', overlay)
-      upstream.searchParams.set('autoLatest', 'true')
-      upstream.searchParams.set('apikey', apiKey)
+      // NDVI comes from the dedicated Sentinel-2 endpoint (10 m, clean Mercator)
+      // rather than /api/tiles' MODIS layer (250 m, sinusoidal — renders as
+      // coarse, angled blocks at parcel zoom). Other overlays use /api/tiles.
+      let upstream
+      if (overlay === 'ndvi') {
+        upstream = new URL(`${base}/api/s2-ndvi`)
+        upstream.searchParams.set('apikey', apiKey)
+      } else {
+        upstream = new URL(`${base}/api/tiles`)
+        upstream.searchParams.set('dataset', overlay)
+        upstream.searchParams.set('autoLatest', 'true')
+        upstream.searchParams.set('apikey', apiKey)
+      }
       const r = await fetch(upstream, { headers: { accept: 'application/json' } })
       const data = await r.json()
       if (!r.ok || !data.tile_url) {

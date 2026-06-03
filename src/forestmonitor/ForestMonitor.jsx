@@ -66,7 +66,7 @@ const EXTRA_LAYERS = [
   {
     id: 'hansen', label: 'Forest loss (Hansen)', defaultOpacity: 0.85,
     legend: {
-      gradient: 'linear-gradient(to right, #fde68a, #fb923c, #dc2626, #7f1d1d)',
+      gradient: 'linear-gradient(to right, #fde68a, #fb923c, #ef4444, #ff1500)',
       left: '2001', right: '2025',
       blurb: 'Validated annual tree-cover loss, 30 m, global (2001–2025). The trusted long-term loss record. Color = year of loss; when zoomed out, fainter areas had less loss and solid areas had more, so scattered loss no longer looks like a solid blanket. Source: Hansen / UMD-GLAD.',
     },
@@ -119,7 +119,7 @@ const EXTRA_LAYERS = [
 
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
 // STATUS_VIS, SEVERITY_VIS in main.py).
-const RECENCY_GRADIENT = 'linear-gradient(to right, #fde68a, #fbbf24, #fb923c, #ef4444, #dc2626, #b91c1c, #7f1d1d)'
+const RECENCY_GRADIENT = 'linear-gradient(to right, #fde68a, #fbbf24, #fb923c, #ef4444, #f5160a, #ff1500)'
 const SEVERITY_GRADIENT = 'linear-gradient(to right, #fef3c7, #fde68a, #fbbf24, #fb923c, #ef4444, #b91c1c)'
 
 const STATUS_SWATCHES = [
@@ -1372,7 +1372,7 @@ export default function ForestMonitor() {
                     <span>Today</span>
                   </div>
                   <div className={styles.legendBlurb}>
-                    <strong>Pale yellow</strong> = oldest disturbance, <strong>deep red</strong> = most recent — same as the forest-loss (Hansen) layer. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
+                    <strong>Pale yellow</strong> = oldest disturbance, <strong>bright red</strong> = most recent — same as the forest-loss (Hansen) layer. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
                   </div>
                 </>
               )}
@@ -1599,7 +1599,7 @@ function MethodologyModal({ onClose }) {
             Colored pixels are forest-disturbance alerts from <strong>NASA OPERA L3 DIST-ALERT</strong> (Vegetation Disturbance Alert),
             derived from harmonized Landsat-8 and Sentinel-2 imagery at 30 m resolution. New alerts typically appear within ~5 days
             of the most recent satellite pass. Color encodes <em>recency</em> (default), <em>status</em>, or <em>severity</em>;
-            switch modes at the top of the screen. In recency view the ramp runs from pale yellow (older alerts) to deep red (most
+            switch modes at the top of the screen. In recency view the ramp runs from pale yellow (older alerts) to bright red (most
             recent) — the same direction as the Hansen forest-loss layer, so the freshest disturbance reads as urgent red. The
             date slider in the legend masks which alerts are shown but does not change colors.
           </p>

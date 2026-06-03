@@ -54,7 +54,7 @@ DATE_MAX = 2200   # ~2027 — auto-comfortable headroom
 RECENCY_VIS = {
     'min': DATE_MIN,
     'max': DATE_MAX,
-    'palette': ['fde68a', 'fbbf24', 'fb923c', 'ef4444', 'dc2626', 'b91c1c', '7f1d1d'],
+    'palette': ['fde68a', 'fbbf24', 'fb923c', 'ef4444', 'f5160a', 'ff1500'],
 }
 
 SEVERITY_VIS = {
@@ -2546,7 +2546,7 @@ TMF_LATEST_BAND = 'Dec2023'   # newest annual-change band in the v1_2023 release
 # that span, in magenta/pink to stay distinct from OPERA's red→yellow.
 RADD_VIS = {'min': 20001, 'max': 26200, 'palette': ['3b0764', 'a21caf', 'e879f9', 'fbcfe8']}
 # Hansen lossyear 1–25 → 2001–2025; yellow (old) → dark red (recent).
-HANSEN_VIS = {'min': 1, 'max': 25, 'palette': ['fde68a', 'fb923c', 'dc2626', '7f1d1d']}
+HANSEN_VIS = {'min': 1, 'max': 25, 'palette': ['fde68a', 'fb923c', 'ef4444', 'ff1500']}
 # TMF annual class 1–6: undisturbed=dark green, degraded=amber, deforested=red,
 # regrowth=light green, water=blue, other=grey.
 TMF_VIS = {'min': 1, 'max': 6, 'palette': ['0d4d0d', 'f59e0b', 'b91c1c', '86efac', '3b82f6', '9ca3af']}

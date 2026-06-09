@@ -12,6 +12,7 @@
  */
 
 import { cached } from '../utils/cache'
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
 const GBIF_API = 'https://api.gbif.org/v1'
 
@@ -170,7 +171,7 @@ export async function fetchGBIFOccurrences({
     if (keys) keys.forEach(k => params.append('taxonKey', k))
   }
 
-  const res = await fetch(`${GBIF_API}/occurrence/search?${params}`)
+  const res = await fetchWithTimeout(`${GBIF_API}/occurrence/search?${params}`)
   if (!res.ok) throw new Error(`GBIF API error: ${res.status} ${res.statusText}`)
 
   const data = await res.json()

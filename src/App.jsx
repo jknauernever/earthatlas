@@ -120,7 +120,7 @@ export default function App() {
   }, [area, qp.mlat, qp.mlng, qp.z])
 
   // ─── Geo ───────────────────────────────────────────────────────
-  const { coords: geoCoords, status: geoStatus, locate } = useGeolocation()
+  const { coords: geoCoords, status: geoStatus, error: geoError, locate } = useGeolocation()
   const [manualCoords, setManualCoords] = useState(null)
   // locationName lives in the URL (loc=…) so a shared link renders the
   // correct place label immediately without waiting on reverse-geocoding.
@@ -685,6 +685,12 @@ export default function App() {
         {/* Error banner */}
         {error && !loading && (
           <div className="error-bar">{error}</div>
+        )}
+
+        {/* Geolocation error — surfaced so a failed "Locate Me" (common on
+            mobile when a GPS fix times out) isn't a silent dead end. */}
+        {geoStatus === 'error' && geoError && !coords && (
+          <div className="error-bar">{geoError}</div>
         )}
 
         {/* Content */}

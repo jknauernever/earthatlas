@@ -4,6 +4,7 @@
     { "source": "/fire", "destination": "/fire.html" },
     { "source": "/quakes", "destination": "/quakes.html" },
     { "source": "/carbon", "destination": "/carbon.html" },
+    { "source": "/birdsong", "destination": "/birdsong.html" },
     { "source": "/((?!api/|@)[^.]*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -42,6 +43,10 @@
     {
       "path": "/api/news/dispatch",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/birdsong/refresh",
+      "schedule": "0 9 * * 1"
     }
   ]
 }

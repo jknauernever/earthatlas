@@ -64,6 +64,18 @@ const ROUTES = [
     keywords:
       'land carbon calculator, carbon storage estimate, above-ground biomass, soil organic carbon, CO2e, NASA ORNL biomass, OpenLandMap, ESA WorldCover, draw parcel carbon, forest carbon map',
   },
+  {
+    out: 'birdsong.html',
+    url: 'https://earthatlas.org/birdsong',
+    title: 'Birdsong — Live bird-audio map · EarthAtlas',
+    description:
+      'Hear what birds are calling anywhere on Earth — a live map of BirdWeather’s global acoustic monitoring network. Pan to any place for its stations, recent detections with playable audio, and most-heard species. An EarthAtlas tool.',
+    // TODO: dedicated birdsong-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Birdsong — live map of bird-call detections from the BirdWeather acoustic network',
+    keywords:
+      'bird sounds map, bird call identification, BirdWeather, BirdNET, bird song detection, acoustic bird monitoring, live bird detections, what bird is singing, citizen science birds, bird audio map',
+  },
 ]
 
 function patchHead(html, r) {

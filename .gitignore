@@ -21,3 +21,6 @@ __pycache__/
 
 # Claude Code local config (machine-specific)
 .claude/
+
+# Generated at build time by scripts/generate-birdsong-stations.js (BirdWeather station registry snapshot)
+public/birdsong-stations.json

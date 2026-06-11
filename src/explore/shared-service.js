@@ -334,8 +334,9 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   }
 
   // ─── eBird fetch ─────────────────────────────────────────────────────────────
-
-  const EBIRD_KEY = typeof import.meta !== 'undefined' ? import.meta.env.VITE_EBIRD_API_KEY : null
+  // eBird is fetched via fetchEBirdRecentRaw, which now routes through the
+  // /api/ebird edge proxy (token server-side, shared edge cache). No client key
+  // to gate on anymore — `useEBird` alone decides.
 
   function normalizeEBirdObs(obs) {
     const sciName = obs.sciName || ''
@@ -362,7 +363,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   }
 
   async function fetchEBirdSightings({ lat, lng, bounds, days = 90, signal }) {
-    if (!useEBird || !EBIRD_KEY) return []
+    if (!useEBird) return []
     try {
       // Bridge the explore subsite's `days` → the eBird service's
       // `timeWindow` vocabulary. fetchEBirdRecentRaw expects 'day' / 'week' /

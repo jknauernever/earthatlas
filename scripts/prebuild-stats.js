@@ -18,7 +18,9 @@ const OUT_PATH = join(OUT_DIR, 'preloaded-stats.json')
 // Ensure src/data/ directory exists (won't exist on fresh clone)
 mkdirSync(OUT_DIR, { recursive: true })
 
-const EBIRD_API_KEY = process.env.VITE_EBIRD_API_KEY || ''
+// Server-side key. Prefer the non-VITE name (it's no longer exposed to the
+// browser); fall back to the old VITE_ name during the transition.
+const EBIRD_API_KEY = process.env.EBIRD_API_KEY || process.env.VITE_EBIRD_API_KEY || ''
 
 // ─── iNaturalist ────────────────────────────────────────────────────────────
 

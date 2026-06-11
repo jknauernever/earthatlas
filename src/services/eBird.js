@@ -6,10 +6,51 @@
 import { cached } from '../utils/cache'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
-const EBIRD_API = 'https://api.ebird.org/v2'
+// All eBird traffic goes through our own /api/ebird edge proxy, NOT directly to
+// api.ebird.org. The proxy holds the token server-side and edge-caches
+// responses so repeat hits across visitors share one upstream call — essential
+// now that eBird caps keys at 10,000 req/day + 1 req/sec burst. See api/ebird.js.
+const EBIRD_PROXY = '/api/ebird'
 const INAT_API = 'https://api.inaturalist.org/v1'
-const API_KEY = import.meta.env.VITE_EBIRD_API_KEY
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+
+// ─── 1 req/sec dispatch gate ──────────────────────────────────────────────────
+// eBird enforces a 1 req/sec burst limit. The edge cache absorbs most repeat
+// load, but a single browser on a cold cache can still fan out several
+// day-fetches at once. Serialize every proxy dispatch through a gate that spaces
+// requests ~1s apart, so one client never bursts the upstream. Warm requests
+// short-circuit via the in-memory cache() below and never reach the gate.
+const MIN_DISPATCH_MS = 1050
+let dispatchChain = Promise.resolve()
+let lastDispatch = 0
+
+function gate() {
+  const turn = dispatchChain.then(async () => {
+    const wait = MIN_DISPATCH_MS - (Date.now() - lastDispatch)
+    if (wait > 0) await new Promise(r => setTimeout(r, wait))
+    lastDispatch = Date.now()
+  })
+  // Swallow rejections so the chain never breaks; individual fetches handle errs.
+  dispatchChain = turn.catch(() => {})
+  return turn
+}
+
+// GET our eBird proxy with a query object, returning parsed JSON (or `fallback`
+// on any failure). All eBird-bound calls funnel through here so they share the
+// dispatch gate. 20s timeout: a stalled mobile request must reject (not hang
+// the whole search — see fetchWithTimeout), and Vercel's edge runtime gives up
+// on slow upstreams around 25s anyway, so waiting longer buys nothing.
+async function proxyGet(params, fallback) {
+  const qs = new URLSearchParams(params).toString()
+  await gate()
+  try {
+    const res = await fetchWithTimeout(`${EBIRD_PROXY}?${qs}`, {}, 20000)
+    if (!res.ok) return fallback
+    return await res.json()
+  } catch {
+    return fallback
+  }
+}
 
 // ─── Photo cache (sciName → photoUrl) ─────────────────────────
 const photoCache = new Map()
@@ -35,11 +76,8 @@ let taxonomyCache = null
 export function fetchEBirdTaxonomy() {
   if (taxonomyCache) return Promise.resolve(taxonomyCache)
   return cached('ebird:taxonomy', async () => {
-    const res = await fetch(`${EBIRD_API}/ref/taxonomy/ebird?fmt=json&locale=en`, {
-      headers: { 'x-ebirdapitoken': API_KEY },
-    })
-    if (!res.ok) throw new Error(`eBird taxonomy error: ${res.status}`)
-    const data = await res.json()
+    const data = await proxyGet({ op: 'taxonomy' }, [])
+    if (!Array.isArray(data) || data.length === 0) throw new Error('eBird taxonomy unavailable')
     taxonomyCache = data
       .filter(t => t.category === 'species')
       .map(t => ({
@@ -85,10 +123,16 @@ function timeWindowToDays(timeWindow) {
   }
 }
 
+// Each historic day is a separate eBird request, so a naïve 'month' window =
+// 30 calls per search. Cap the fan-out: recent days still surface the user's own
+// freshly-logged checklists (the reason we fetch per-day at all), and the longer
+// tail adds little but a lot of upstream load. 'week' (7) is unaffected.
+const MAX_HISTORIC_DAYS = 7
+
 // Build the list of (y, m, d) tuples for each calendar day in the time window,
 // rolling back from today.
 function daysInRange(timeWindow) {
-  const n = timeWindowToDays(timeWindow)
+  const n = Math.min(timeWindowToDays(timeWindow), MAX_HISTORIC_DAYS)
   const out = []
   const today = new Date()
   for (let i = 0; i < n; i++) {
@@ -200,11 +244,10 @@ async function fetchRegionStats(code, date) {
   const y = date.getFullYear()
   const m = date.getMonth() + 1
   const d = date.getDate()
-  const res = await fetch(`${EBIRD_API}/product/stats/${code}/${y}/${m}/${d}`, {
-    headers: { 'x-ebirdapitoken': API_KEY },
-  })
-  if (!res.ok) return null
-  return res.json()
+  const stats = await proxyGet({ op: 'stats', region: code, y, m, d }, null)
+  // The proxy returns {} when upstream fails; a real stats payload always has
+  // numChecklists. Treat anything else as a miss.
+  return stats && typeof stats.numChecklists === 'number' ? stats : null
 }
 
 export function fetchEBirdDashboardStats(date) {
@@ -252,23 +295,15 @@ export function fetchEBirdDashboardStats(date) {
 
 async function fetchEBirdGeoRecent({ lat, lng, radiusKm, timeWindow, perPage, speciesCode }) {
   const back = timeWindowToDays(timeWindow)
-  const dist = Math.min(radiusKm, 50)
-  const url = speciesCode
-    ? `${EBIRD_API}/data/obs/geo/recent/${speciesCode}`
-    : `${EBIRD_API}/data/obs/geo/recent`
-  const params = new URLSearchParams({
-    lat: lat.toFixed(4),
-    lng: lng.toFixed(4),
-    dist,
-    back,
-    maxResults: Math.min(perPage, 10000),
-    includeProvisional: true,
-  })
-  const res = await fetchWithTimeout(`${url}?${params}`, {
-    headers: { 'x-ebirdapitoken': API_KEY },
-  })
-  if (!res.ok) throw new Error(`eBird API error: ${res.status} ${res.statusText}`)
-  return res.json()
+  const dist = Math.min(Math.round(radiusKm), 50)
+  const maxResults = Math.min(perPage, 10000)
+  const params = { op: 'obsRecent', lat: lat.toFixed(4), lng: lng.toFixed(4), dist, back, maxResults }
+  if (speciesCode) params.speciesCode = speciesCode
+  // Cache per request shape: repeat views of the same circle skip both the
+  // network and the dispatch gate.
+  const key = `ebird:recent:${params.lat},${params.lng}:${dist}:${back}:${maxResults}:${speciesCode || ''}`
+  const data = await cached(key, () => proxyGet(params, []))
+  return Array.isArray(data) ? data : []
 }
 
 // Shared raw eBird fetcher used by both the main App (radius-based) and the
@@ -307,18 +342,17 @@ export async function fetchEBirdRecentRaw({ lat, lng, bounds, radiusKm, timeWind
   }
 
   const days = daysInRange(timeWindow)
-  const tasks = days.map(({ y, m, d }) => async () => {
-    const params = new URLSearchParams({
-      maxResults: 10000,
-      includeProvisional: true,
-    })
-    const res = await fetchWithTimeout(
-      `${EBIRD_API}/data/obs/${regionCode}/historic/${y}/${m}/${d}?${params}`,
-      { headers: { 'x-ebirdapitoken': API_KEY } }
-    )
-    if (!res.ok) return []
-    return res.json()
+  const tasks = days.map(({ y, m, d }) => () => {
+    // A past day's historic data never changes, so cache it aggressively — the
+    // same region+day requested again (this session or, via the edge, by any
+    // other visitor) costs zero upstream calls.
+    const key = `ebird:historic:${regionCode}:${y}-${m}-${d}`
+    return cached(key, () => proxyGet({ op: 'obsHistoric', region: regionCode, y, m, d, maxResults: 10000 }, []))
+      .then(r => (Array.isArray(r) ? r : []))
   })
+  // Concurrency only governs how many slow historic fetches overlap — the 1
+  // req/sec burst ceiling is already enforced by the dispatch gate (which spaces
+  // request *starts*), so we can keep this at 4 for a faster cold wall-clock.
   const dayResults = await runLimited(tasks, 4)
   const flat = dayResults.flat()
 

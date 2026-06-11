@@ -245,8 +245,11 @@ export default function App() {
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           const t = data?.results?.[0]
-          if (!t) return
-          handleSpeciesSelect({
+          // Unresolvable species id — drop it from the URL so the page falls
+          // back to the normal landing state instead of waiting forever on a
+          // search that will never fire.
+          if (!t) { setQP({ species: null }); return }
+          return handleSpeciesSelect({
             id: t.id,
             name: t.preferred_common_name || t.name,
             scientificName: t.name,
@@ -255,9 +258,9 @@ export default function App() {
             photoUrl: t.default_photo?.square_url || null,
           })
         })
-        .catch(() => {})
+        .catch(() => setQP({ species: null }))
     }
-  }, [qp.species, selectedSpecies, handleSpeciesSelect])
+  }, [qp.species, selectedSpecies, handleSpeciesSelect, setQP])
 
   // ─── Search ────────────────────────────────────────────────────
   // GBIF dataset keys for deduplication (iNat and eBird both export to GBIF)
@@ -697,6 +700,12 @@ export default function App() {
         {loading ? (
           <LoadingState />
         ) : totalResults === null && !error ? (
+          // A shared link with a species filter or coordinates will start a
+          // search as soon as its species id hydrates — show the loading state
+          // for that gap rather than mounting a stats dashboard. EBirdStats
+          // alone fires 12 region-stat requests on mount, all wasted (and
+          // visually jarring) when a scoped search is about to replace it.
+          (qp.species != null || coords) ? <LoadingState /> :
           dataSource === 'eBird' ? <EBirdStats /> : dataSource === 'GBIF' ? <GBIFStats /> : <GlobalStats dataSource={dataSource} />
         ) : observations.length === 0 && !error ? (
           <EmptyState variant="noResults" />

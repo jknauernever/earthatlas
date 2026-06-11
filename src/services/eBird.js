@@ -4,6 +4,7 @@
  */
 
 import { cached } from '../utils/cache'
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
 const EBIRD_API = 'https://api.ebird.org/v2'
 const INAT_API = 'https://api.inaturalist.org/v1'
@@ -16,7 +17,7 @@ const photoCache = new Map()
 async function fetchBirdPhoto(sciName) {
   if (photoCache.has(sciName)) return photoCache.get(sciName)
   try {
-    const res = await fetch(`${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(sciName)}&per_page=1`)
+    const res = await fetchWithTimeout(`${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(sciName)}&per_page=1`)
     if (!res.ok) { photoCache.set(sciName, null); return null }
     const data = await res.json()
     const url = data.results?.[0]?.default_photo?.square_url || null
@@ -134,7 +135,7 @@ async function getRegionCode(lat, lng) {
   const key = `${lat.toFixed(1)}:${lng.toFixed(1)}`
   if (regionCodeCache.has(key)) return regionCodeCache.get(key)
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=region,country&access_token=${MAPBOX_TOKEN}`
     )
     if (!res.ok) { regionCodeCache.set(key, null); return null }
@@ -263,7 +264,7 @@ async function fetchEBirdGeoRecent({ lat, lng, radiusKm, timeWindow, perPage, sp
     maxResults: Math.min(perPage, 10000),
     includeProvisional: true,
   })
-  const res = await fetch(`${url}?${params}`, {
+  const res = await fetchWithTimeout(`${url}?${params}`, {
     headers: { 'x-ebirdapitoken': API_KEY },
   })
   if (!res.ok) throw new Error(`eBird API error: ${res.status} ${res.statusText}`)
@@ -311,7 +312,7 @@ export async function fetchEBirdRecentRaw({ lat, lng, bounds, radiusKm, timeWind
       maxResults: 10000,
       includeProvisional: true,
     })
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${EBIRD_API}/data/obs/${regionCode}/historic/${y}/${m}/${d}?${params}`,
       { headers: { 'x-ebirdapitoken': API_KEY } }
     )

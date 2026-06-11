@@ -1,6 +1,8 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { GRAPHQL_URL, resolveBirdweatherQuery } from './api/_birdweather-core.js'
+import { EBIRD_BASE, resolveEbirdRequest } from './api/_ebird-core.js'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -252,11 +254,112 @@ function inatProxyPlugin() {
   }
 }
 
-export default defineConfig({
+// Dev middleware: serve /api/birdweather by building the same locked-down
+// GraphQL queries the production Edge function does (shared core) and
+// forwarding to BirdWeather server-side. Keeps /birdsong working the same under
+// `npm run dev` as under `vercel dev` and prod.
+function birdweatherProxyPlugin() {
+  return {
+    name: 'birdweather-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/birdweather', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        const resolved = resolveBirdweatherQuery(searchParams)
+        res.setHeader('content-type', 'application/json')
+        if (resolved.error) {
+          res.statusCode = resolved.status
+          res.end(JSON.stringify({ error: resolved.error }))
+          return
+        }
+        const { query, variables, empty } = resolved
+        try {
+          const r = await fetch(GRAPHQL_URL, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', accept: 'application/json' },
+            body: JSON.stringify({ query, variables }),
+          })
+          res.statusCode = 200
+          if (!r.ok) {
+            res.end(JSON.stringify({ data: empty, _upstream_status: r.status }))
+            return
+          }
+          const payload = await r.json()
+          if (payload.errors) {
+            res.end(JSON.stringify({ data: empty, _upstream_errors: payload.errors }))
+            return
+          }
+          res.end(JSON.stringify({ data: payload.data || empty }))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ data: empty, _upstream_status: 0, _upstream_error: String(err) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/ebird by building the same locked-down requests
+// the production Edge function does (shared core) and forwarding to eBird with
+// the server-side token. Keeps every eBird-backed tool working the same under
+// `npm run dev` as under `vercel dev` and prod. Needs EBIRD_API_KEY in the
+// environment (.env / .env.local); without it the proxy returns empty bodies,
+// same as a missing-key prod deploy.
+function ebirdProxyPlugin(apiKey) {
+  return {
+    name: 'ebird-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/ebird', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        const resolved = resolveEbirdRequest(searchParams)
+        res.setHeader('content-type', 'application/json')
+        if (resolved.error) {
+          res.statusCode = resolved.status
+          res.end(JSON.stringify({ error: resolved.error }))
+          return
+        }
+        const { path, empty } = resolved
+        if (!apiKey) {
+          res.statusCode = 200
+          res.setHeader('x-ebird-upstream', 'nokey')
+          res.end(JSON.stringify(empty))
+          return
+        }
+        try {
+          const r = await fetch(`${EBIRD_BASE}${path}`, {
+            headers: { 'x-ebirdapitoken': apiKey, accept: 'application/json' },
+          })
+          res.statusCode = 200
+          if (!r.ok) {
+            res.setHeader('x-ebird-upstream', String(r.status))
+            res.end(JSON.stringify(empty))
+            return
+          }
+          res.end(await r.text())
+        } catch (err) {
+          res.statusCode = 200
+          res.setHeader('x-ebird-upstream', '0')
+          res.end(JSON.stringify(empty))
+        }
+      })
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  // Load all env (incl. non-VITE_ vars) so the eBird dev proxy can read the
+  // server-side token under `npm run dev`. Never bundled into the client.
+  const env = loadEnv(mode, process.cwd(), '')
+  // Prefer the clean name; fall back to the legacy VITE_ name so existing local
+  // .env.local files keep working. Server-side only — never bundled.
+  const ebirdKey = env.EBIRD_API_KEY || env.VITE_EBIRD_API_KEY ||
+    process.env.EBIRD_API_KEY || process.env.VITE_EBIRD_API_KEY || ''
+  return {
   plugins: [
     react(),
     newsProxyPlugin(),
     inatProxyPlugin(),
+    birdweatherProxyPlugin(),
+    ebirdProxyPlugin(ebirdKey),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is
@@ -283,4 +386,5 @@ export default defineConfig({
     port: 5173,
     open: true,
   },
+  }
 })

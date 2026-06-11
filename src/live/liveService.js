@@ -13,10 +13,14 @@ import { cached } from '../utils/cache'
 // responses at the edge for 60s, sharply reducing upstream pressure when
 // many users have /live open.
 const INAT_PROXY = '/api/inat-proxy'
-const EBIRD_API = 'https://api.ebird.org/v2'
+// eBird notable observations go through our edge proxy (token server-side +
+// shared edge cache), NOT directly to api.ebird.org. Critical here: /live fans
+// out to ~24 points and only caches each for 90s per tab, so without a shared
+// cache every visitor independently hammered eBird's now-capped key. See
+// api/ebird.js.
+const EBIRD_PROXY = '/api/ebird'
 const MACAULAY_API = 'https://search.macaulaylibrary.org/api/v1/search'
 const MACAULAY_CDN = 'https://cdn.download.ams.birds.cornell.edu/api/v1/asset'
-const EBIRD_KEY = import.meta.env.VITE_EBIRD_API_KEY
 
 // ─── Land-based sample points distributed globally ───────────────────────
 // Each point is { lat, lng } on or near a populated/observable land area.
@@ -276,7 +280,6 @@ export async function fetchRecentINat(mapView) {
 
 // ─── eBird: notable observations from visible land points ────────────────
 export async function fetchRecentEBird(mapView) {
-  if (!EBIRD_KEY) return []
   const center = mapView?.center
   const zoom = mapView?.zoom ?? 0
   const bounds = mapView?.bounds
@@ -315,11 +318,18 @@ export async function fetchRecentEBird(mapView) {
       return
     }
     try {
-      const res = await fetch(
-        `${EBIRD_API}/data/obs/geo/recent/notable?lat=${pt.lat}&lng=${pt.lng}&dist=50&back=3&maxResults=30`,
-        { headers: { 'x-ebirdapitoken': EBIRD_KEY } }
-      )
-      if (!res.ok) { ebirdPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS }); return }
+      const params = new URLSearchParams({
+        op: 'obsNotable',
+        lat: pt.lat.toFixed(4), lng: pt.lng.toFixed(4),
+        dist: 50, back: 3, maxResults: 30,
+      })
+      const res = await fetch(`${EBIRD_PROXY}?${params}`)
+      // The proxy always replies 200; an upstream failure (e.g. eBird 429) is
+      // signalled via the x-ebird-upstream header. Treat that like the old
+      // !res.ok path so we back off this point for several minutes.
+      if (!res.ok || res.headers.get('x-ebird-upstream')) {
+        ebirdPointCache.set(key, { obs: [], expires: now + POINT_FAIL_TTL_MS }); return
+      }
       const data = await res.json()
       if (!Array.isArray(data)) { ebirdPointCache.set(key, { obs: [], expires: now + POINT_CACHE_TTL_MS }); return }
 

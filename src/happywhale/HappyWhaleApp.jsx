@@ -396,9 +396,17 @@ export default function HappyWhaleApp() {
     if (!map || !mapReady) return
     const src = map.getSource('hw-encounters')
     if (!src) return
+    // A journey is a full-history view: the selected whale's own encounters
+    // always render as dots even when the time-range/species filters would
+    // hide them — otherwise its track arrows appear to come from empty water.
+    const shown = new Set(filteredEncounters.map((e) => e.id))
+    const journeyEncounters = (track?.encounters || [])
+      .filter((e) => !shown.has(e.id))
+      .map((e) => ({ ...e, individual: e.individual || { id: selectedInd } }))
     // Identified encounters go last so they render ON TOP of unidentified ones
     // in dense clusters — they're the clickable stars of this tool.
-    const ordered = [...filteredEncounters].sort((a, b) => (a.individual ? 1 : 0) - (b.individual ? 1 : 0))
+    const ordered = [...filteredEncounters, ...journeyEncounters]
+      .sort((a, b) => (a.individual ? 1 : 0) - (b.individual ? 1 : 0))
     src.setData({
       type: 'FeatureCollection',
       features: ordered.map((e) => ({
@@ -425,7 +433,7 @@ export default function HappyWhaleApp() {
         geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
       })),
     })
-  }, [filteredEncounters, selectedInd, live, mapReady, speciesName])
+  }, [filteredEncounters, track, selectedInd, live, mapReady, speciesName])
 
   // ─── Journey mode: fetch the selected individual's track ──────────────────
   // Deliberately NOT keyed on mapReady — a second fetch after map init would

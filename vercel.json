@@ -6,42 +6,79 @@
     }
   },
   "rewrites": [
-    { "source": "/forestmonitor", "destination": "/forestmonitor.html" },
-    { "source": "/fire", "destination": "/fire.html" },
-    { "source": "/quakes", "destination": "/quakes.html" },
-    { "source": "/carbon", "destination": "/carbon.html" },
-    { "source": "/birdsong", "destination": "/birdsong.html" },
-    { "source": "/((?!api/|@)[^.]*)", "destination": "/index.html" }
+    {
+      "source": "/forestmonitor",
+      "destination": "/forestmonitor.html"
+    },
+    {
+      "source": "/fire",
+      "destination": "/fire.html"
+    },
+    {
+      "source": "/quakes",
+      "destination": "/quakes.html"
+    },
+    {
+      "source": "/carbon",
+      "destination": "/carbon.html"
+    },
+    {
+      "source": "/birdsong",
+      "destination": "/birdsong.html"
+    },
+    {
+      "source": "/happywhale",
+      "destination": "/happywhale.html"
+    },
+    {
+      "source": "/((?!api/|@)[^.]*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/(favicon\\.svg|robots\\.txt)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
       ]
     },
     {
       "source": "/(.*\\.(?:jpg|jpeg|png|webp|gif|svg|ico|woff2?))",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=86400"
+        }
       ]
     },
     {
       "source": "/(.*\\.html|/)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
     },
     {
       "source": "/sitemap\\.xml",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
       ]
     }
   ],

@@ -1,0 +1,346 @@
+openapi: 3.0.3
+x-navigateMethodsByName: true
+x-sortMethodsBy:
+    - path
+    - operation
+info:
+    description: Happywhale External API
+    version: 1.0.0
+    title: hwx
+    contact:
+        email: developer@happywhale.com
+servers:
+    - url: https://api.happywhale.com/v1/hwx
+      description: Production server
+    - url: https://api.beta.happywhale.com/v1/hwx
+      description: Test server
+schemes:
+    - https
+paths:
+    /individuals/byloc:
+        post:
+            summary: Individual Info By Location
+            description: |-
+                Given a polygon defined in Well Known Text format (GPS 4326, i.e. Latitude/Longitude) you will get all the Individuals ever recorded in this region and all of their encounters wherever else they are spotted in the world. There is a limit to the polygon size. (currently 1,000,000 sq. km.).
+            operationId: individuals
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        description: Details about the request being made
+                        schema:
+                            type: object
+                            properties:
+                                wkt:
+                                    required: true
+                                    type: string
+                                    description: Well Known Text (WKT) geom fromat (any level of decimal places, example just truncates to 1 for brevity)
+                                    example: POLYGON ((-54.0 63.8, -63.4 62.2, -61.6 59.2, -57.1 55.1, -51.1 48.2, -48.4 42.3, -33.3 54.4, -40.2 59.4, -54.0 63.8)
+            responses:
+                "200":
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: object
+                                    $ref: "#/definitions/IndInfo"
+                "500":
+                    description: Server Error
+    /individual/info/{id}:
+        post:
+            summary: Individual Info By ID
+            description: Get the individual info for a given individual id
+            operationId: individual
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/definitions/IndInfo"
+                "500":
+                    description: Server Error
+    /config/species:
+        get:
+            summary: Species Info
+            description: Get mapping of species key to full species object. Only need to do this at app start and can then cache. This data changes very slowly over time so actually could be cached over a long time. And the only downfall would be you wouldn't be able to find the full name of the species if it was a new species added but then you can just use the code in this case as it is usually pretty obvious e.g. humpback_whale for Humpback Whale.
+            operationId: config
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    properties:
+                                        code:
+                                            type: string
+                                            description: code to match against the species field of the individual/encounter
+                                        name:
+                                            type: string
+                                            description: User friendly label of this species
+                                        icon:
+                                            type: string
+                                            description: Name of icon to use (internal happywhale icon)
+                                        plural:
+                                            type: string
+                                            description: Plural name of species
+                                        scientific:
+                                            type: string
+                                            description: Scientific name of species
+                "500":
+                    description: Server Error
+    /encounters:
+        post:
+            summary: Encounters
+            description: Encounters fulfilling search criteria with a maximum of 10,000
+            operationId: encounters
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        description: Details about the request being made
+                        schema:
+                            type: object
+                            properties:
+                                area:
+                                    type: object
+                                    properties:
+                                        wkt:
+                                            type: string
+                                            description: Well Known Text (WKT) geom fromat (any level of decimal places, example just truncates to 1 for brevity)
+                                            example: POLYGON ((-54.0 63.8, -63.4 62.2, -61.6 59.2, -57.1 55.1, -51.1 48.2, -48.4 42.3, -33.3 54.4, -40.2 59.4, -5
+                                        circle:
+                                            type: object
+                                            properties:
+                                                center:
+                                                    $ref: "#/definitions/LatLng"
+                                                    required: true
+                                                radius:
+                                                    type: number
+                                                    format: double
+                                                    description: Radius in meters
+                                    description: Search on a specific area. Choose either wkt or circle. Will choose wkt if both are specified.
+                                date:
+                                    type: object
+                                    properties:
+                                        from:
+                                            type: string
+                                            required: true
+                                            description: From date in YYYY-MM-DD format
+                                        to:
+                                            type: string
+                                            description: From date in YYYY-MM-DD format
+                                    description: If second date not specified then the search will be since the first date, as in up to present.
+            responses:
+                "200":
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    limitExceeded:
+                                        type: boolean
+                                        description: True if the search results were limited because of size
+                                    results:
+                                        type: array
+                                        items:
+                                            $ref: "#/definitions/BBEncounter"
+                "500":
+                    description: Server Error
+definitions:
+    LatLng:
+        title: LatLng
+        type: object
+        properties:
+            lat:
+                type: number
+                format: float
+                description: -90 to 90
+            lng:
+                type: number
+                format: float
+                description: -180 to 180
+        required:
+            - lat
+            - lng
+    IndInfo:
+        title: IndInfo
+        type: object
+        properties:
+            individual:
+                type: object
+                $ref: "#/definitions/PubIndividual"
+            encs:
+                type: array
+                items:
+                    type: object
+                    $ref: "#/definitions/PubEncounter"
+    BBAUMedia:
+        title: BBAUMedia
+        type: object
+        properties:
+            id:
+                type: number
+                format: integer
+                description: Internal ID
+            type:
+                type: string
+                description: One of "IMAGE" or "VIDEO"
+            thumbUrl:
+                type: string
+                description: URL for the thumbnail image for this media.
+            url:
+                type: string
+                description: URL for the media.
+    BBIndividual:
+        title: BBIndividual
+        type: object
+        properties:
+            id:
+                type: number
+                format: integer
+                description: Internal ID
+            speciesKey:
+                type: string
+                description: species key (e.g. humpback_whale)
+            primaryId:
+                type: string
+                description: An external ID assigned by a research institution
+            nickname:
+                type: string
+                description: A list of nicknames that this individual has been given by researchers/locals
+            sex:
+                type: string
+                description: The sex of this individual
+            avatar:
+                $ref: "#/definitions/BBAUMedia"
+                description: A photo representing this individuals avatar
+    BBEncounter:
+        title: BBEncounter
+        type: object
+        properties:
+            id:
+                type: number
+                format: integer
+                description: Internal ID
+            date:
+                type: string
+                description: Date of the encounter YYYY-MM-DD
+            latlng:
+                type: array
+                items:
+                    type: float
+                    description: A float array of length 2. First is latitude, 2nd element is longitude.
+            region:
+                type: string
+                description: geographic region
+            individual:
+                $ref: "#/definitions/BBIndividual"
+                description: The individual encounter if this encounter is identified.
+            speciesKey:
+                type: string
+                description: species key (e.g. humpback_whale)
+            minCount:
+                type: number
+                format: integer
+                description: For unidentified encounters we record the minimum number of individuals sighted. Dolphins for example can be difficult to count so you might have minCount = 20, maxCount = 45. For a known number of individuals minCount = maxCount.
+            maxCount:
+                type: number
+                format: integer
+                description: See minCount.
+            media:
+                $ref: "#/definitions/BBAUMedia"
+                description: A photo representing this encounter. Generally the best image of the encounter.
+    PubEncounter:
+        title: PubEncounter
+        type: object
+        properties:
+            id:
+                type: number
+                format: integer
+                description: Internal ID
+            date:
+                type: string
+                description: Date of the encounter (e.g. 2024-02-13)
+            latlng:
+                type: array
+                items:
+                    type: float
+                    description: A float array of length 2. First is latitude, 2nd element is longitude.
+            region:
+                type: string
+                description: geographic region
+            individual:
+                $ref: "#/definitions/BBIndividual"
+                description: The individual encounter if this encounter is identified.
+            speciesKey:
+                type: string
+                description: species key, will be same as individual.speciesKey if this is identified encounter (e.g. humpback_whale)
+            species:
+                type: string
+                description: species of individual (e.g. "Humpback Whale")
+            minCount:
+                type: number
+                format: integer
+                description: For unidentified encounters we record the minimum number of individuals sighted. Dolphins for example can be difficult to count so you might have minCount = 20, maxCount = 45. For a known number of individuals minCount = maxCount.
+            maxCount:
+                type: number
+                format: integer
+                description: See minCount.
+            media:
+                $ref: "#/definitions/BBAUMedia"
+                description: A photo representing this encounter. Generally the best image of the encounter.
+            comments:
+                type: string
+                description: User comments about the enconuter
+            location:
+                type: string
+                description: More specific location information about the encounter
+            sea:
+                type: string
+                description: The sea that the encounter occurs in. e.g. Gulf of California
+            ocean:
+                type: string
+                description: The ocean that the encounter occurs in. e.g. Pacific Ocean
+    PubIndividual:
+        title: PubIndividual
+        type: object
+        properties:
+            id:
+                type: number
+                format: integer
+                description: Internal ID
+            speciesKey:
+                type: string
+                description: species key (e.g. humpback_whale)
+            primaryId:
+                type: string
+                description: An external ID assigned by a research institution
+            nickname:
+                type: string
+                description: A list of nicknames that this individual has been given by researchers/locals
+            sex:
+                type: string
+                description: The sex of this individual
+            avatar:
+                $ref: "#/definitions/BBAUMedia"
+                description: A photo representing this individuals avatar
+            species:
+                type: string
+                description: species of individual (e.g. "Humpback Whale")
+            bio:
+                type: string
+                description: Brief bio/description of this individual

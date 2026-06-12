@@ -76,6 +76,18 @@ const ROUTES = [
     keywords:
       'bird sounds map, bird call identification, BirdWeather, BirdNET, bird song detection, acoustic bird monitoring, live bird detections, what bird is singing, citizen science birds, bird audio map',
   },
+  {
+    out: 'happywhale.html',
+    url: 'https://earthatlas.org/happywhale',
+    title: 'HappyWhale — Whale encounters & individual journeys · EarthAtlas',
+    description:
+      'Explore whale encounters from HappyWhale’s photo-ID network — search any coast, filter by species and time, and follow a named whale’s journey across oceans. An EarthAtlas tool.',
+    // TODO: dedicated happywhale-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas HappyWhale — whale encounter map with photo-identified individual journeys',
+    keywords:
+      'whale sightings map, HappyWhale, whale encounters, humpback whale tracking, whale photo ID, individual whale identification, whale migration map, whale watching sightings, fluke identification',
+  },
 ]
 
 function patchHead(html, r) {

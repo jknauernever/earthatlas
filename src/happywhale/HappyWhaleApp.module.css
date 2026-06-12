@@ -173,6 +173,13 @@
   border: 2px solid #fff; flex-shrink: 0;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 }
+.journeyAvatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+}
 .journeyName { flex: 1; font-size: 14px; font-weight: 600; color: #fff; }
 .journeyClose {
   border: 0; background: transparent; color: rgba(255, 255, 255, 0.55);

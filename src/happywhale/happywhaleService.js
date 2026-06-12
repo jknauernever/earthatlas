@@ -297,6 +297,46 @@ const SPECIES_ID_PREFIX = {
   sperm_whale: 'PM', fin_whale: 'BP', minke_whale: 'BA', southern_right_whale: 'EA',
 }
 
+// REAL HappyWhale photos (harvested from happywhale.com/browse, 2026-06) so
+// the demo popups/cards show what live media will look like. Only species
+// whose photos we could verify get a pool — the rest stay photo-less, which
+// also exercises the no-photo popup variant. HappyWhale's media buckets, all
+// keyed by the same UUID: `-t` = 100px micro-thumb (public), `-m` = 1200px
+// medium (public), `-f` = full-res (403, access-controlled). Demo encounters
+// put the -m variant in thumbUrl because the popup's ~250px photo slot turns
+// the 100px -t to mush; avatars use -t (perfect for a 38px circle). Which
+// bucket the real API's thumbUrl/url point at is an open question for Ken.
+const MEDIA_HOST_T = 'https://au-hw-media-t.happywhale.com/'
+const MEDIA_HOST_M = 'https://au-hw-media-m.happywhale.com/'
+const REAL_ENCOUNTER_THUMBS = {
+  humpback_whale: [
+    'a5d552a3-3e42-4202-a79b-bdea85fc68a0.jpg',
+    'f294c5ef-0f32-4f9f-848e-636b4577f1b7.jpg',
+    'da37032d-b47a-4dfa-b619-1303103144cc.jpg',
+    '6dcfd10c-33df-4af4-a991-17f6c0840d8b.jpg',
+    'e78d983f-f160-4ed2-8681-bd03ee4d68cf.jpg',
+    '493b885b-2ce1-4ba3-a07d-508c906b7900.jpg',
+    '6b7a8263-2795-4fcc-a74c-24735f5b1e0b.jpg',
+  ],
+  sperm_whale: [
+    '5ff3578e-3726-4df1-addf-7a7f267c0081.jpg',
+    '627e70a0-b2e6-4688-a198-bc7bdc552861.jpg',
+    '4d6c31ec-f078-4d87-bf52-eaceb260c206.jpg',
+    'e1c45ce5-fb8a-48f9-a6a5-58c9c8ee1a47.jpg',
+    '9424d9a5-dbce-43ee-b64e-0f99ce41ebcb.jpg',
+  ],
+}
+const REAL_AVATARS = {
+  humpback_whale: [
+    'e81f4893-b87c-4f76-a85a-33c95ddb173c.jpg',
+    'c808e542-4da7-46b5-a788-163e5176bf07.jpg',
+    '7c791f85-5597-45a0-af49-1ddc6418df53.jpg',
+  ],
+  sperm_whale: [
+    '5ff3578e-3726-4df1-addf-7a7f267c0081.jpg',
+  ],
+}
+
 let _store = null
 function mockStore() {
   if (_store) return _store
@@ -332,6 +372,23 @@ function mockStore() {
   const encMeta = new Map() // encId → { spot, anchorIdx } (for water-safe track routing)
   let encId = 41000
   let indId = 7300
+  let mediaId = 90000
+
+  // ~60% of encounters of a pooled species carry a real HappyWhale thumbnail.
+  const mediaFor = (speciesKey) => {
+    const pool = REAL_ENCOUNTER_THUMBS[speciesKey]
+    if (!pool || rnd() > 0.6) return null
+    return { id: mediaId++, type: 'IMAGE', thumbUrl: MEDIA_HOST_M + pool[Math.floor(rnd() * pool.length)], url: null }
+  }
+  // Hand each pooled species' first individuals a distinct real avatar.
+  const avatarCursor = {}
+  const avatarFor = (speciesKey) => {
+    const pool = REAL_AVATARS[speciesKey]
+    const i = avatarCursor[speciesKey] || 0
+    if (!pool || i >= pool.length) return null
+    avatarCursor[speciesKey] = i + 1
+    return { id: mediaId++, type: 'IMAGE', thumbUrl: MEDIA_HOST_T + pool[i], url: null }
+  }
 
   // Identified individuals: 4–10 encounters each across their hotspot circuit.
   for (const def of MOCK_INDIVIDUALS) {
@@ -342,7 +399,7 @@ function mockStore() {
       primaryId: `HW-${SPECIES_ID_PREFIX[def.species] || 'XX'}-${1000 + Math.floor(rnd() * 9000)}`,
       nickname: def.nickname,
       sex: def.sex,
-      avatar: null,
+      avatar: avatarFor(def.species),
     }
     const n = 4 + Math.floor(rnd() * 7)
     const ids = []
@@ -361,7 +418,7 @@ function mockStore() {
         ocean: spot.ocean,
         speciesKey: def.species,
         minCount: 1, maxCount: 1 + Math.floor(rnd() * 2),
-        media: null,
+        media: mediaFor(def.species),
         individual,
       }
       encounters.push(e)
@@ -389,7 +446,7 @@ function mockStore() {
         speciesKey,
         minCount,
         maxCount: minCount + Math.floor(rnd() * 5),
-        media: null,
+        media: mediaFor(speciesKey),
         individual: null,
       }
       encounters.push(e)

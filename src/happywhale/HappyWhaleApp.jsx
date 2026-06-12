@@ -698,7 +698,9 @@ export default function HappyWhaleApp() {
             {trackInd && (
               <div className={styles.journeyCard}>
                 <div className={styles.journeyHead}>
-                  <span className={styles.journeyDot} style={{ background: speciesColor(trackInd.speciesKey) }} />
+                  {trackInd.avatar?.thumbUrl
+                    ? <img className={styles.journeyAvatar} src={trackInd.avatar.thumbUrl} alt="" />
+                    : <span className={styles.journeyDot} style={{ background: speciesColor(trackInd.speciesKey) }} />}
                   <span className={styles.journeyName}>
                     {SEX_GLYPH[trackInd.sex] ? `${SEX_GLYPH[trackInd.sex]} ` : ''}{trackInd.nickname || 'Identified individual'}
                   </span>
@@ -848,7 +850,11 @@ function MethodologyModal({ live, onClose }) {
               HappyWhale's public API ships with their next release. Until it's live, this map
               shows a <strong>realistic sample dataset</strong> — invented encounters and
               individuals placed in real whale hotspots with real seasonality — so you can
-              explore how the tool will work. None of the whales shown here are real records.
+              explore how the tool will work. None of the whales shown here are real records,
+              though the photos are <strong>real HappyWhale contributor images</strong>{' '}
+              (© their photographers via{' '}
+              <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">happywhale.com</a>),
+              shown as placeholders for what the live feed will look like.
             </p>
           </section>
         )}

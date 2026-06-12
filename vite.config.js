@@ -345,6 +345,58 @@ function ebirdProxyPlugin(apiKey) {
   }
 }
 
+// Dev middleware: serve /api/geo/{suggest,retrieve} by forwarding to Mapbox
+// Search Box with the server-side token, mirroring the production Edge
+// functions in api/geo/. Keeps GeoSearch autocomplete (subsites, forestmonitor)
+// working the same under `npm run dev` as in prod.
+function geoProxyPlugin(mapboxToken) {
+  const SUGGEST_PARAMS = new Set(['q', 'session_token', 'limit', 'types', 'proximity', 'language'])
+  return {
+    name: 'geo-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/geo', async (req, res) => {
+        const url = new URL(req.url, 'http://localhost')
+        const op = url.pathname.replace(/\/+$/, '')
+        res.setHeader('content-type', 'application/json')
+        if (!mapboxToken) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'MAPBOX_TOKEN not configured' }))
+          return
+        }
+        let upstreamUrl
+        if (op === '/suggest') {
+          const upstream = new URLSearchParams({ access_token: mapboxToken })
+          for (const [k, v] of url.searchParams) {
+            if (SUGGEST_PARAMS.has(k)) upstream.set(k, v)
+          }
+          upstreamUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?${upstream}`
+        } else if (op === '/retrieve') {
+          const id = url.searchParams.get('id') || ''
+          const upstream = new URLSearchParams({
+            access_token: mapboxToken,
+            session_token: url.searchParams.get('session_token') || '',
+          })
+          const language = url.searchParams.get('language')
+          if (language) upstream.set('language', language)
+          upstreamUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(id)}?${upstream}`
+        } else {
+          res.statusCode = 404
+          res.end(JSON.stringify({ error: 'unknown geo op; expected /suggest or /retrieve' }))
+          return
+        }
+        try {
+          const r = await fetch(upstreamUrl)
+          res.statusCode = r.status
+          res.end(await r.text())
+        } catch (err) {
+          res.statusCode = 502
+          res.end(JSON.stringify({ error: 'upstream fetch failed', detail: String(err) }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // Load all env (incl. non-VITE_ vars) so the eBird dev proxy can read the
   // server-side token under `npm run dev`. Never bundled into the client.
@@ -353,6 +405,8 @@ export default defineConfig(({ mode }) => {
   // .env.local files keep working. Server-side only — never bundled.
   const ebirdKey = env.EBIRD_API_KEY || env.VITE_EBIRD_API_KEY ||
     process.env.EBIRD_API_KEY || process.env.VITE_EBIRD_API_KEY || ''
+  const mapboxToken = env.MAPBOX_TOKEN || env.VITE_MAPBOX_TOKEN ||
+    process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN || ''
   return {
   plugins: [
     react(),
@@ -360,6 +414,7 @@ export default defineConfig(({ mode }) => {
     inatProxyPlugin(),
     birdweatherProxyPlugin(),
     ebirdProxyPlugin(ebirdKey),
+    geoProxyPlugin(mapboxToken),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

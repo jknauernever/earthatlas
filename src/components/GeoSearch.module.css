@@ -37,6 +37,15 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Chrome/Safari draw a native clear (×) inside type="search" inputs, which
+   doubles up with our custom .searchClear button. appearance:none on the
+   input doesn't reach this pseudo-element — it needs its own reset. */
+.searchInput::-webkit-search-cancel-button,
+.searchInput::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .searchInput::placeholder {
   color: rgba(255, 255, 255, 0.55);
   opacity: 1;

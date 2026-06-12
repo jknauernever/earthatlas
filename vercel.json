@@ -1,4 +1,10 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  },
   "rewrites": [
     { "source": "/forestmonitor", "destination": "/forestmonitor.html" },
     { "source": "/fire", "destination": "/fire.html" },

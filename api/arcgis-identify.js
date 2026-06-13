@@ -19,9 +19,7 @@ export const config = { runtime: 'edge' }
 
 // Only these hosts may be proxied — keeps this from becoming an open relay.
 const ALLOWED_HOSTS = new Set([
-  'apps.fs.usda.gov',          // Wildfire Hazard Potential
-  'imagery.geoplatform.gov',   // Probabilistic Wildfire Risk — Burn Probability
-  'imagery.nationalmap.gov',   // USGS NAIP
+  'imagery.geoplatform.gov',   // USFS WRC services (Burn Probability, etc.)
   'ic.imagery1.arcgis.com',    // Sentinel-2 Land Cover
 ])
 

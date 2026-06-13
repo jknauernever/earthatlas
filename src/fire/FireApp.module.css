@@ -188,6 +188,16 @@
   padding: 8px 0;
 }
 .layerRow:first-of-type { border-top: none; padding-top: 0; }
+
+/* Section label between layer groups ("Wildfire hazard", "Risk to communities"…) */
+.layerGroup {
+  margin: 4px 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fb923c;
+}
 .layerHeader {
   display: flex;
   align-items: center;

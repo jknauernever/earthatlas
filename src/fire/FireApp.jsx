@@ -286,6 +286,19 @@ const FIRE_LAYERS = [
 const SENTINEL_HOST = 'ea-imageserver-tile.invalid'
 const LAYER_BY_ID = Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, l]))
 
+// ─── Per-attribute provenance (credibility & traceability — a prime directive
+// across earthatlas.org) ─────────────────────────────────────────────────────
+// Every value shown in the popup carries its own visible, clickable source, so
+// a reader never has to guess where a number came from. `short` is the label
+// shown inline; `url` links to the authoritative public page ("more info"); the
+// precise per-dataset citation (layer.source) rides along as the hover title.
+const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities', url: 'https://wildfirerisk.org' }
+const SOURCE_CITATION = {
+  whp: CITE_WRC, bp: CITE_WRC, cfl: CITE_WRC, rps: CITE_WRC, rrz: CITE_WRC, exposure: CITE_WRC,
+  ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
+  lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
+}
+
 const sourceId = (id) => `fire-${id}-src`
 const layerId = (id) => `fire-${id}-layer`
 
@@ -534,10 +547,20 @@ function renderPopupHTML({ results, lat, lng }) {
     const dot = it.swatch
       ? `<span class="${styles.popupDot}" style="background:${it.swatch}"></span>`
       : `<span class="${styles.popupDot}"></span>`
+    // Inline, clickable provenance for THIS attribute. The link opens the
+    // authoritative source; the hover title carries the exact dataset citation.
+    const cite = SOURCE_CITATION[l.id]
+    const full = escapeHtml(l.source || (cite && cite.short) || '')
+    const srcHtml = cite
+      ? `<a class="${styles.popupRowSrc}" href="${cite.url}" target="_blank" rel="noopener noreferrer" title="${full}">${escapeHtml(cite.short)} ↗</a>`
+      : (l.source ? `<span class="${styles.popupRowSrc}" title="${full}">${escapeHtml(l.source)}</span>` : '')
     rowsHtml +=
       `<div class="${styles.popupRow}">${dot}` +
+      `<div class="${styles.popupRowMain}">` +
       `<span class="${styles.popupRowLabel}">${escapeHtml(it.popupLabel)}</span>` +
-      `<span class="${styles.popupRowValue}">${escapeHtml(it.value)}</span></div>`
+      `<span class="${styles.popupRowValue}">${escapeHtml(it.value)}</span>` +
+      srcHtml +
+      `</div></div>`
   }
 
   const summary = !pending && rowsHtml ? buildSummary(results) : ''

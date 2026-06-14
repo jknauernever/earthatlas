@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import { reverseGeocode } from '../explore/utils.js'
 import styles from './FireApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -135,9 +136,9 @@ const FIRE_LAYERS = [
   },
   {
     id: 'rps',
-    label: 'Risk to homes',
+    label: 'Risk to structures',
     group: 'Risk to communities',
-    // Risk to Potential Structures — WRC's headline layer: if a home stood
+    // Risk to Potential Structures — WRC's headline layer: if a structure stood
     // here, its relative wildfire risk vs. the rest of the US (percentiles).
     baseUrl: 'https://imagery.geoplatform.gov/iipp/rest/services/Fire_Aviation/USFS_EDW_RMRS_WRC_RiskToPotentialStructures/ImageServer',
     renderingRule: JSON.stringify({ rasterFunction: 'RPS' }),
@@ -146,9 +147,9 @@ const FIRE_LAYERS = [
       { label: 'None', hex: '#ffffff', skip: true },
       { label: 'Low',       hex: '#f1f2a0', pct: 'in the lower 40% of the US', risk: 'low' },
       { label: 'Moderate',  hex: '#f2c13c', pct: 'in the middle of the pack for the US (40–70th percentile)', risk: 'moderate' },
-      { label: 'High',      hex: '#f28017', pct: 'in the top 30% of US wildfire risk to homes', risk: 'high' },
-      { label: 'Very high', hex: '#f21900', pct: 'in the top 10% of US wildfire risk to homes', risk: 'high' },
-      { label: 'Extreme',   hex: '#c4001a', pct: 'in the top 5% of US wildfire risk to homes', risk: 'high' },
+      { label: 'High',      hex: '#f28017', pct: 'in the top 30% of US wildfire risk to structures', risk: 'high' },
+      { label: 'Very high', hex: '#f21900', pct: 'in the top 10% of US wildfire risk to structures', risk: 'high' },
+      { label: 'Extreme',   hex: '#c4001a', pct: 'in the top 5% of US wildfire risk to structures', risk: 'high' },
     ],
     defaultOpacity: 0.6,
     minZoom: 0,
@@ -163,7 +164,7 @@ const FIRE_LAYERS = [
         { c: '#c4001a', l: 'Extreme (top 5%)' },
       ],
     },
-    blurb: 'If a home stood on this spot, how at-risk would it be — likelihood and intensity combined, ranked against the whole US. The headline layer of the USFS Wildfire Risk to Communities project.',
+    blurb: 'If a structure stood on this spot, how at-risk would it be — likelihood and intensity combined, ranked against the whole US. The headline layer of the USFS Wildfire Risk to Communities project.',
     source: 'USDA Forest Service · RMRS Wildfire Risk to Communities (Risk to Potential Structures 2024)',
   },
   {
@@ -176,8 +177,8 @@ const FIRE_LAYERS = [
     colormatch: [
       { label: 'NA', hex: '#ffffff', skip: true },
       { label: 'Minimal exposure zone', hex: '#b9bbc2', zone: 'wildfire exposure here is minimal' },
-      { label: 'Indirect exposure zone', hex: '#f5c766', zone: 'homes here face embers and home-to-home spread rather than direct flames — hardening homes matters most' },
-      { label: 'Direct exposure zone', hex: '#ff3b54', zone: 'flames can reach homes directly from surrounding wildland — defensible space and fuel breaks matter most' },
+      { label: 'Indirect exposure zone', hex: '#f5c766', zone: 'structures here face embers and structure-to-structure spread rather than direct flames — hardening buildings matters most' },
+      { label: 'Direct exposure zone', hex: '#ff3b54', zone: 'flames can reach structures directly from surrounding wildland — defensible space and fuel breaks matter most' },
       { label: 'Wildfire transmission zone', hex: '#d5e3d5', zone: 'wildland where fires start and spread toward communities — landscape fuel treatment territory' },
     ],
     defaultOpacity: 0.6,
@@ -192,7 +193,7 @@ const FIRE_LAYERS = [
         { c: '#d5e3d5', l: 'Wildfire transmission zone' },
       ],
     },
-    blurb: 'Where wildfire mitigation matters, and what kind: zones where homes face direct flames, ember/indirect exposure, or the wildland areas that transmit fire toward communities.',
+    blurb: 'Where wildfire mitigation matters, and what kind: zones where structures face direct flames, ember/indirect exposure, or the wildland areas that transmit fire toward communities.',
     source: 'USDA Forest Service · RMRS Wildfire Risk to Communities (Risk Reduction Zones 2024)',
   },
   {
@@ -292,11 +293,13 @@ const LAYER_BY_ID = Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, l]))
 // a reader never has to guess where a number came from. `short` is the label
 // shown inline; `url` links to the authoritative public page ("more info"); the
 // precise per-dataset citation (layer.source) rides along as the hover title.
-const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities', url: 'https://wildfirerisk.org' }
+// `short` = full citation (hover title); `tag` = compact name for the
+// consolidated sources footer.
+const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities', tag: 'USFS Wildfire Risk to Communities', url: 'https://wildfirerisk.org' }
 const SOURCE_CITATION = {
   whp: CITE_WRC, bp: CITE_WRC, cfl: CITE_WRC, rps: CITE_WRC, rrz: CITE_WRC, exposure: CITE_WRC,
-  ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
-  lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
+  ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', tag: 'Sentinel-2', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
+  lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', tag: 'Esri / Impact Observatory', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
 }
 
 const sourceId = (id) => `fire-${id}-src`
@@ -415,53 +418,74 @@ function ndviColor(n) {
 
 // Translate one layer's raw identify value into { popupLabel, value (plain
 // text), swatch, ...extras }. Returns null when there's no usable data here.
+// Compact zone/exposure labels for the one-line popup rows (full phrasing lives
+// in the summary).
+const RRZ_SHORT = {
+  'Minimal exposure zone': 'Minimal', 'Indirect exposure zone': 'Indirect',
+  'Direct exposure zone': 'Direct', 'Wildfire transmission zone': 'Transmission',
+}
+const EXPOSURE_SHORT = { 'Directly exposed': 'Directly', 'Indirectly exposed': 'Indirectly', 'Not exposed': 'Not exposed' }
+const ndviWord = (n) => (n < 0 ? 'water' : n < 0.2 ? 'bare/dry' : n < 0.4 ? 'sparse' : n < 0.6 ? 'moderate' : 'green')
+
+// Each row carries: popupLabel, `short` (the compact value shown in the row),
+// `value` (full text, used as the row's hover title), swatch, + semantic fields
+// the summary reads. Returns null when there's no usable data at the point.
 function interpretLayer(id, value) {
   if (value == null) return null
   // Color-matched WRC layers: value is the matched colormatch entry
-  // { label, hex, ...extras } from readRenderedClass; `skip:true` entries are
-  // NA/empty classes that shouldn't render a row.
+  // { label, hex, ...extras }; `skip:true` entries are NA/empty classes.
   if (value.skip) return null
   if (id === 'whp') {
     if (!value.label) return null
-    return { popupLabel: 'Wildfire hazard', value: value.label, swatch: value.hex, risk: value.risk, word: value.label }
+    return { popupLabel: 'Wildfire hazard', short: value.label, value: value.label, swatch: value.hex, risk: value.risk, word: value.label }
   }
   if (id === 'cfl') {
     if (!value.label) return null
-    return { popupLabel: 'Flame length', value: `${value.label} — ${value.fire}`, swatch: value.hex, feet: value.label, fire: value.fire }
+    return { popupLabel: 'Flame length', short: value.label, value: `${value.label} — ${value.fire}`, swatch: value.hex, feet: value.label, fire: value.fire }
   }
   if (id === 'rps') {
     if (!value.label) return null
-    return { popupLabel: 'Risk to homes', value: `${value.label} — ${value.pct}`, swatch: value.hex, risk: value.risk, word: value.label, pct: value.pct }
+    return { popupLabel: 'Risk to structures', short: value.label, value: `${value.label} — ${value.pct}`, swatch: value.hex, risk: value.risk, word: value.label, pct: value.pct }
   }
   if (id === 'rrz') {
     if (!value.label) return null
-    return { popupLabel: 'Risk zone', value: value.label, swatch: value.hex, zone: value.zone, word: value.label }
+    return { popupLabel: 'Risk zone', short: RRZ_SHORT[value.label] || value.label, value: value.label, swatch: value.hex, zone: value.zone, word: value.label }
   }
   if (id === 'exposure') {
     if (!value.label) return null
-    return { popupLabel: 'Exposure', value: value.label, swatch: value.hex, how: value.how, word: value.label }
+    return { popupLabel: 'Exposure', short: EXPOSURE_SHORT[value.label] || value.label, value: value.label, swatch: value.hex, how: value.how, word: value.label }
   }
   if (id === 'bp') {
     const n = Number(value)
     if (!Number.isFinite(n)) return null
-    if (n <= 0) return { popupLabel: 'Burn probability', value: 'Negligible', swatch: '#fff0cf', risk: 'low', oneIn: null }
+    if (n <= 0) return { popupLabel: 'Burn probability', short: 'Negligible', value: 'Negligible', swatch: '#fff0cf', risk: 'low', oneIn: null }
     const prob = n / 1e4 // WRC service stores annual probability × 10,000
     const oneIn = Math.max(1, Math.round(1 / prob))
     const b = burnBand(oneIn)
-    return { popupLabel: 'Burn probability', value: `${b.word} — about a 1-in-${oneIn.toLocaleString()} chance per year`, swatch: b.color, risk: b.risk, word: b.word, oneIn }
+    return { popupLabel: 'Burn probability', short: `~1-in-${oneIn.toLocaleString()}/yr`, value: `${b.word} — about a 1-in-${oneIn.toLocaleString()} chance per year`, swatch: b.color, risk: b.risk, word: b.word, oneIn }
   }
   if (id === 'ndvi') {
     // Cloud function returns the NDVI value directly (Sentinel-2 median).
     const ndvi = Number(value)
     if (!Number.isFinite(ndvi)) return null
-    return { popupLabel: 'Vegetation (NDVI)', value: `${ndviCondition(ndvi)} (NDVI ${ndvi.toFixed(2)})`, swatch: ndviColor(ndvi), ndvi }
+    return { popupLabel: 'Vegetation (NDVI)', short: `${ndvi.toFixed(2)} · ${ndviWord(ndvi)}`, value: `${ndviCondition(ndvi)} (NDVI ${ndvi.toFixed(2)})`, swatch: ndviColor(ndvi), ndvi }
   }
   if (id === 'lulc') {
     const n = Math.round(Number(value))
     const label = LULC_CLASSES[n]
     if (!label) return null
-    return { popupLabel: 'Land cover', value: label, swatch: LULC_COLORS[n] || null, cover: label }
+    return { popupLabel: 'Land cover', short: label, value: label, swatch: LULC_COLORS[n] || null, cover: label }
   }
+  return null
+}
+
+// One-line verdict headline for the summary hero, from the strongest available
+// signal (risk-to-structures → hazard → burn probability). Returns { text, sev }
+// where sev ∈ low|moderate|high tints the hero card; null off-coverage.
+function buildVerdict(r) {
+  if (r.rps && r.rps.word) return { text: `${r.rps.word} wildfire risk to structures`, sev: r.rps.risk }
+  if (r.whp && r.whp.word) return { text: `${r.whp.word} wildfire hazard`, sev: r.whp.risk }
+  if (r.bp && r.bp.word) return { text: `${r.bp.word} burn likelihood`, sev: r.bp.risk }
   return null
 }
 
@@ -508,10 +532,10 @@ function buildSummary(r) {
     out.push(`If one starts, expect flames of ${r.cfl.feet} — ${r.cfl.fire}.`)
   }
 
-  // 5. What it means for homes/communities — prefer the headline Risk to Homes
+  // 5. What it means for structures/communities — prefer the headline Risk to Structures
   // percentile; the risk-reduction zone adds the "what kind of exposure" angle.
   if (r.rps) {
-    out.push(`For a home on this spot, wildfire risk would be ${r.rps.word.toLowerCase()} — ${r.rps.pct}.`)
+    out.push(`For a structure on this spot, wildfire risk would be ${r.rps.word.toLowerCase()} — ${r.rps.pct}.`)
   }
   if (r.rrz && r.rrz.zone) {
     out.push(`This is a ${r.rrz.word.toLowerCase()}: ${r.rrz.zone}.`)
@@ -536,41 +560,83 @@ function escapeHtml(s) {
 // that layer's identify has settled (interpretation object, or null = no data
 // here). Rendered progressively: rows stream in, then the summary lands once
 // every layer has reported.
-function renderPopupHTML({ results, lat, lng }) {
+// Severity → hero card tint (background / left-border / headline text).
+const HERO_SEV = {
+  high:     { bg: '#fef2f2', bd: '#dc2626', tx: '#991b1b' },
+  moderate: { bg: '#fff7ed', bd: '#f59e0b', tx: '#b45309' },
+  low:      { bg: '#f0fdf4', bd: '#16a34a', tx: '#15803d' },
+}
+const HERO_NEUTRAL = { bg: '#f9fafb', bd: '#9ca3af', tx: '#6b7280' }
+
+// Option A layout: header (place + coords) → severity-tinted hero (one-line
+// verdict + plain-language summary) → compact one-line rows → consolidated
+// sources footer. `place` arrives async from reverseGeocode.
+function renderPopupHTML({ results, lat, lng, place, maxH }) {
   const settled = FIRE_LAYERS.filter((l) => l.id in results).length
   const pending = settled < FIRE_LAYERS.length
 
+  // Compact one-line rows (short value; full text on hover).
   let rowsHtml = ''
   for (const l of FIRE_LAYERS) {
     const it = results[l.id]
     if (!it) continue
-    const dot = it.swatch
-      ? `<span class="${styles.popupDot}" style="background:${it.swatch}"></span>`
-      : `<span class="${styles.popupDot}"></span>`
-    // Inline, clickable provenance for THIS attribute. The link opens the
-    // authoritative source; the hover title carries the exact dataset citation.
-    const cite = SOURCE_CITATION[l.id]
-    const full = escapeHtml(l.source || (cite && cite.short) || '')
-    const srcHtml = cite
-      ? `<a class="${styles.popupRowSrc}" href="${cite.url}" target="_blank" rel="noopener noreferrer" title="${full}">${escapeHtml(cite.short)} ↗</a>`
-      : (l.source ? `<span class="${styles.popupRowSrc}" title="${full}">${escapeHtml(l.source)}</span>` : '')
+    const dot = `<span class="${styles.popupDot}" style="background:${it.swatch || 'transparent'}"></span>`
     rowsHtml +=
-      `<div class="${styles.popupRow}">${dot}` +
-      `<div class="${styles.popupRowMain}">` +
+      `<div class="${styles.popupRow}" title="${escapeHtml(it.value)}">${dot}` +
       `<span class="${styles.popupRowLabel}">${escapeHtml(it.popupLabel)}</span>` +
-      `<span class="${styles.popupRowValue}">${escapeHtml(it.value)}</span>` +
-      srcHtml +
-      `</div></div>`
+      `<span class="${styles.popupRowValue}">${escapeHtml(it.short)}</span></div>`
   }
 
-  const summary = !pending && rowsHtml ? buildSummary(results) : ''
+  // Consolidated sources footer — one link per distinct source (deduped).
+  let footerHtml = ''
+  if (rowsHtml) {
+    const seen = new Set()
+    const links = []
+    for (const l of FIRE_LAYERS) {
+      const c = results[l.id] && SOURCE_CITATION[l.id]
+      if (!c || seen.has(c.url)) continue
+      seen.add(c.url)
+      links.push(`<a href="${c.url}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(c.short)}">${escapeHtml(c.tag)}</a>`)
+    }
+    if (links.length) footerHtml = `<div class="${styles.popupSources}">Sources: ${links.join(' · ')} <i style="font-style:normal">↗</i></div>`
+  }
+
+  // Hero: verdict headline + plain-language summary, tinted by severity.
+  let heroHtml = ''
+  if (pending) {
+    heroHtml = `<div class="${styles.popupHero}" style="background:${HERO_NEUTRAL.bg};border-left-color:${HERO_NEUTRAL.bd}"><div class="${styles.popupLoading}"><span class="${styles.popupSpinner}"></span>Reading wildfire data…</div></div>`
+  } else if (rowsHtml) {
+    const verdict = buildVerdict(results)
+    const sev = verdict ? (HERO_SEV[verdict.sev] || HERO_SEV.moderate) : HERO_NEUTRAL
+    const summary = buildSummary(results)
+    heroHtml =
+      `<div class="${styles.popupHero}" style="background:${sev.bg};border-left-color:${sev.bd}">` +
+      (verdict ? `<div class="${styles.popupVerdict}" style="color:${sev.tx}">${escapeHtml(verdict.text)}</div>` : '') +
+      `<div class="${styles.popupSummaryText}">${escapeHtml(summary)}</div></div>`
+  } else {
+    heroHtml = `<div class="${styles.popupNoData}">No wildfire-layer data at this point.</div>`
+  }
+
+  const placeLine = place
+    ? `<div class="${styles.popupPlace}">${escapeHtml(place)}</div>`
+    : `<div class="${styles.popupPlace}">Point check</div>`
+
+  // Opens the same "How this is sourced" modal as the left panel. The popup is
+  // a setHTML string (no React handlers), so it's wired via the data attribute
+  // + document-level click delegation in the component.
+  const methodologyHtml = !pending
+    ? `<button type="button" class="${styles.popupMethodology}" data-fire-methodology>How this analysis &amp; data is derived</button>`
+    : ''
+
+  const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
   return (
-    `<div class="${styles.popup}">` +
-    `<div class="${styles.popupHeader}">Point check</div>` +
-    `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>` +
-    (rowsHtml || (!pending ? `<div class="${styles.popupNoData}">No layer data at this point.</div>` : '')) +
-    (pending ? `<div class="${styles.popupLoading}"><span class="${styles.popupSpinner}"></span>Checking layers…</div>` : '') +
-    (summary ? `<div class="${styles.popupSummary}"><div class="${styles.popupSummaryLabel}">In plain terms</div>${escapeHtml(summary)}</div>` : '') +
+    `<div class="${styles.popup}"${capStyle}>` +
+    `<div class="${styles.popupHeader}">${placeLine}` +
+    `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>` +
+    heroHtml +
+    rowsHtml +
+    footerHtml +
+    methodologyHtml +
     `</div>`
   )
 }
@@ -608,11 +674,28 @@ function readUrlState() {
   return {
     on: sp.get('on'),
     op: sp.get('op'),
+    ord: sp.get('ord'),
     basemap: sp.get('bm'),
     lat: num('lat'),
     lng: num('lng'),
     zoom: num('z'),
   }
+}
+
+// Default layer order (top of panel = top of map), and a sanitizer that keeps
+// a URL-supplied order valid: only known ids, no dupes, any missing ids
+// appended in default order so a stale link never drops a layer.
+const DEFAULT_ORDER = FIRE_LAYERS.map((l) => l.id)
+function sanitizeOrder(raw) {
+  if (!raw) return DEFAULT_ORDER.slice()
+  const wanted = raw.split(',').map((s) => s.trim())
+  const seen = new Set()
+  const out = []
+  for (const id of wanted) {
+    if (LAYER_BY_ID[id] && !seen.has(id)) { seen.add(id); out.push(id) }
+  }
+  for (const id of DEFAULT_ORDER) if (!seen.has(id)) out.push(id)
+  return out
 }
 
 function parseOpacities(s) {
@@ -654,6 +737,13 @@ export default function FireApp() {
   const [expanded, setExpanded] = useState(
     () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, false]))
   )
+  // User-controllable layer order (top of panel = top of map). Drag to reorder.
+  const [order, setOrder] = useState(() => sanitizeOrder(initial.ord))
+  const orderRef = useRef(order)
+  useEffect(() => { orderRef.current = order }, [order])
+  // Drag-and-drop transient state: id being dragged, and the row + edge it's over.
+  const [dragId, setDragId] = useState(null)
+  const [dragOver, setDragOver] = useState(null) // { id, after }
   const [opacity, setOpacity] = useState(
     () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, initialOp[l.id] != null ? initialOp[l.id] : l.defaultOpacity]))
   )
@@ -686,6 +776,19 @@ export default function FireApp() {
   // these don't change, so fetch once and reuse across basemap swaps.
   const eeTileUrlRef = useRef({})
 
+  // Restack map layers to match the panel order (orderRef): top of panel = top
+  // of map. Mapbox draws the last-added layer on top, so we move each layer to
+  // the top from the bottom of the desired order upward. Idempotent and cheap;
+  // safe to call after any add or reorder. Layers not yet added are skipped.
+  const restack = useCallback((map) => {
+    if (!map) return
+    const ord = orderRef.current
+    for (let i = ord.length - 1; i >= 0; i--) {
+      const lId = layerId(ord[i])
+      try { if (map.getLayer(lId)) map.moveLayer(lId) } catch { /* mid style swap */ }
+    }
+  }, [])
+
   // Add one raster layer to the map with a resolved XYZ tiles template.
   const addRaster = useCallback((map, layer, tiles) => {
     const sId = sourceId(layer.id)
@@ -701,8 +804,9 @@ export default function FireApp() {
         layout: { visibility: visibleRef.current[layer.id] ? 'visible' : 'none' },
         paint: { 'raster-opacity': opacityRef.current[layer.id] ?? layer.defaultOpacity },
       })
+      restack(map) // keep z-order in sync as layers (incl. async EE) land
     } catch { /* style swap raced us; harmless */ }
-  }, [])
+  }, [restack])
 
   // Cloud-function (EE) tile layers must fetch their tile URL once before the
   // source can be added; ArcGIS layers use the sentinel template directly.
@@ -866,6 +970,7 @@ export default function FireApp() {
       }
     }
     if (op.length) sp.set('op', op.join(','))
+    if (order.join(',') !== DEFAULT_ORDER.join(',')) sp.set('ord', order.join(','))
     if (basemap !== DEFAULT_BASEMAP_ID) sp.set('bm', basemap)
     if (mapView) {
       sp.set('lat', mapView.lat.toFixed(3))
@@ -873,7 +978,12 @@ export default function FireApp() {
       sp.set('z', mapView.zoom.toFixed(1))
     }
     writeUrlQuery(sp.toString())
-  }, [visible, opacity, basemap, mapView])
+  }, [visible, opacity, order, basemap, mapView])
+
+  // ─── React layer order → Mapbox z-order ───────────────────────────────────
+  useEffect(() => {
+    if (mapReady) restack(mapRef.current)
+  }, [order, mapReady, restack])
 
   // ─── React layer visibility → Mapbox ──────────────────────────────────────
   useEffect(() => {
@@ -938,13 +1048,36 @@ export default function FireApp() {
       const { lng, lat } = e.lngLat
       if (popupRef.current) popupRef.current.remove()
 
+      // Position the popup deterministically from the click pixel so it always
+      // fits the window: anchor toward whichever side has more room, and cap the
+      // body's max-height to that space (it then scrolls internally if the
+      // content is taller). Mapbox's own auto-anchor uses the popup's initial
+      // (tiny, still-loading) height, so a popup that grows after open can
+      // overflow — this avoids that entirely.
+      const cont = map.getContainer()
+      const mapW = cont.clientWidth, mapH = cont.clientHeight
+      const px = e.point.x, py = e.point.y
+      const vMargin = 24
+      const vert = (mapH - py) >= py ? 'top' : 'bottom' // 'top' anchor = popup below the point
+      const availV = (vert === 'top' ? mapH - py : py) - vMargin
+      const maxH = Math.max(180, Math.min(Math.round(mapH * 0.82), availV))
+      const horiz = px < mapW / 3 ? 'left' : px > (mapW * 2) / 3 ? 'right' : ''
+      const anchor = horiz ? `${vert}-${horiz}` : vert
+
       const results = {} // layer id → interpretation | null (key present = settled)
-      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '340px', offset: 14 })
+      let place = null   // reverse-geocoded "City, ST" — fills in async
+      // maxWidth 'none' so our CSS clamp() controls width responsively; anchor
+      // fixed so the popup never re-flips into the off-screen direction as it grows.
+      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: 'none', offset: 14, anchor })
         .setLngLat([lng, lat])
-        .setHTML(renderPopupHTML({ results, lat, lng }))
+        .setHTML(renderPopupHTML({ results, lat, lng, place, maxH }))
         .addTo(map)
       popupRef.current = popup
       const stillCurrent = () => popupRef.current === popup
+      const rerender = () => { if (stillCurrent()) popup.setHTML(renderPopupHTML({ results, lat, lng, place, maxH })) }
+
+      // Place name for the header (Mapbox reverse geocode; falls back to coords).
+      reverseGeocode(lat, lng).then((name) => { if (name) { place = name; rerender() } }).catch(() => {})
 
       // Per-layer point reader → the raw value interpretLayer expects:
       //   ee         → cloud function ?greenonly (NDVI number)
@@ -965,11 +1098,25 @@ export default function FireApp() {
           .then(() => readRaw(layer))
           .then((raw) => { results[layer.id] = interpretLayer(layer.id, raw) })
           .catch(() => { results[layer.id] = null })
-          .finally(() => { if (stillCurrent()) popup.setHTML(renderPopupHTML({ results, lat, lng })) })
+          .finally(rerender)
       })
     }
     map.on('click', handler)
     return () => map.off('click', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // The popup's "How this analysis & data is derived" link lives in a setHTML
+  // string, so catch its click via delegation and open the same modal the left
+  // panel uses.
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (e.target.closest && e.target.closest('[data-fire-methodology]')) {
+        setShowMethodology(true)
+      }
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -979,6 +1126,38 @@ export default function FireApp() {
   }
   const toggleExpanded = (id) => setExpanded((e) => ({ ...e, [id]: !e[id] }))
   const setLayerOpacity = (id, val) => setOpacity((o) => ({ ...o, [id]: val }))
+
+  // ─── Drag-to-reorder (HTML5 DnD; only the grip handle is draggable so the
+  // toggle/opacity controls keep working) ───────────────────────────────────
+  const onDragStart = (e, id) => {
+    setDragId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    try { e.dataTransfer.setData('text/plain', id) } catch { /* some browsers are picky */ }
+  }
+  const onRowDragOver = (e, id) => {
+    if (!dragId) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const r = e.currentTarget.getBoundingClientRect()
+    const after = (e.clientY - r.top) > r.height / 2
+    if (!dragOver || dragOver.id !== id || dragOver.after !== after) setDragOver({ id, after })
+  }
+  const onRowDrop = (e, id) => {
+    e.preventDefault()
+    const from = dragId || (() => { try { return e.dataTransfer.getData('text/plain') } catch { return null } })()
+    const after = dragOver && dragOver.id === id ? dragOver.after : false
+    setDragId(null); setDragOver(null)
+    if (!from || from === id) return
+    setOrder((cur) => {
+      const arr = cur.filter((x) => x !== from)
+      let idx = arr.indexOf(id)
+      if (idx < 0) return cur
+      if (after) idx += 1
+      arr.splice(idx, 0, from)
+      return arr
+    })
+  }
+  const onDragEnd = () => { setDragId(null); setDragOver(null) }
 
   return (
     <div className={styles.container}>
@@ -1051,16 +1230,44 @@ export default function FireApp() {
       {/* Layer panel */}
       <div className={styles.layerPanel}>
         <div className={styles.layerPanelTitle}>Fire layers</div>
-        {FIRE_LAYERS.map((layer, i) => {
+        {order.map((id) => {
+          const layer = LAYER_BY_ID[id]
+          if (!layer) return null
           const isOn = visible[layer.id]
           const isOpen = expanded[layer.id]
           const belowMinZoom = isOn && zoom < layer.minZoom
-          // Section header whenever the group changes (catalog is ordered by group).
-          const newGroup = layer.group && (i === 0 || FIRE_LAYERS[i - 1].group !== layer.group)
+          const isDragging = dragId === layer.id
+          const isOverBefore = dragOver && dragOver.id === layer.id && !dragOver.after && dragId !== layer.id
+          const isOverAfter = dragOver && dragOver.id === layer.id && dragOver.after && dragId !== layer.id
+          const rowClass = [
+            styles.layerRow,
+            isDragging ? styles.layerRowDragging : '',
+            isOverBefore ? styles.dropBefore : '',
+            isOverAfter ? styles.dropAfter : '',
+          ].filter(Boolean).join(' ')
           return (
-            <div className={styles.layerRow} key={layer.id}>
-              {newGroup && <div className={styles.layerGroup}>{layer.group}</div>}
+            <div
+              className={rowClass}
+              key={layer.id}
+              onDragOver={(e) => onRowDragOver(e, layer.id)}
+              onDrop={(e) => onRowDrop(e, layer.id)}
+            >
               <div className={styles.layerHeader}>
+                <span
+                  className={styles.dragHandle}
+                  draggable
+                  onDragStart={(e) => onDragStart(e, layer.id)}
+                  onDragEnd={onDragEnd}
+                  role="button"
+                  aria-label={`Drag to reorder ${layer.label}`}
+                  title="Drag to reorder"
+                >
+                  <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true">
+                    <circle cx="2.5" cy="3" r="1.3" /><circle cx="7.5" cy="3" r="1.3" />
+                    <circle cx="2.5" cy="8" r="1.3" /><circle cx="7.5" cy="8" r="1.3" />
+                    <circle cx="2.5" cy="13" r="1.3" /><circle cx="7.5" cy="13" r="1.3" />
+                  </svg>
+                </span>
                 <button
                   className={styles.layerCaret}
                   onClick={() => toggleExpanded(layer.id)}
@@ -1192,7 +1399,7 @@ function MethodologyModal({ onClose }) {
           <ul>
             <li>
               <strong>Wildfire hazard &amp; risk to communities</strong> — Wildfire Hazard Potential, Burn
-              Probability, Conditional Flame Length, Risk to Homes, Risk Reduction Zones, and Exposure Type
+              Probability, Conditional Flame Length, Risk to Structures, Risk Reduction Zones, and Exposure Type
               are all modeled long-term wildfire risk for the United States from the USDA Forest Service,
               Rocky Mountain Research Station's{' '}
               <a href="https://wildfirerisk.org" target="_blank" rel="noopener noreferrer">Wildfire Risk to Communities</a>{' '}

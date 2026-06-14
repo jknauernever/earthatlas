@@ -302,6 +302,10 @@ const SOURCE_CITATION = {
   lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', tag: 'Esri / Impact Observatory', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
 }
 
+// Distinct layer groups in catalog order — drives the grouped "The layers"
+// list in the sourcing modal (so it always reflects the live catalog).
+const LAYER_GROUPS = [...new Set(FIRE_LAYERS.map((l) => l.group).filter(Boolean))]
+
 const sourceId = (id) => `fire-${id}-src`
 const layerId = (id) => `fire-${id}-layer`
 
@@ -758,6 +762,9 @@ export default function FireApp() {
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
   const [showMethodology, setShowMethodology] = useState(false)
+  // First-click nudge: a transient "click the map" hint, dismissed on the first
+  // map click. Session-only (no persistence) — reappears on a fresh load.
+  const [showNudge, setShowNudge] = useState(true)
 
   const [mapView, setMapView] = useState(() => {
     const { lat, lng, zoom } = initial
@@ -1046,6 +1053,7 @@ export default function FireApp() {
     if (!map) return
     const handler = (e) => {
       const { lng, lat } = e.lngLat
+      setShowNudge(false) // first interaction → retire the hint
       if (popupRef.current) popupRef.current.remove()
 
       // Position the popup deterministically from the click pixel so it always
@@ -1175,6 +1183,7 @@ export default function FireApp() {
       {/* Search (same proxy + fly-to behavior as /forestmonitor) */}
       <div className={styles.searchBox}>
         <GeoSearch
+          placeholder="Search any location…"
           proximity={() => {
             const m = mapRef.current
             if (!m) return undefined
@@ -1229,6 +1238,9 @@ export default function FireApp() {
 
       {/* Layer panel */}
       <div className={styles.layerPanel}>
+        <p className={styles.layerIntro}>
+          Click any point on Earth to assess its wildfire risk. Or jump to a place with the search bar above.
+        </p>
         <div className={styles.layerPanelTitle}>Fire layers</div>
         {order.map((id) => {
           const layer = LAYER_BY_ID[id]
@@ -1361,8 +1373,15 @@ export default function FireApp() {
         </div>
       </div>
 
+      {showNudge && mapReady && (
+        <div className={styles.nudge} aria-hidden="true">
+          <span className={styles.nudgeDot} />
+          Click anywhere to inspect a point
+        </div>
+      )}
+
       <div className={styles.tip}>
-        Click anywhere to inspect a point · the wildfire-risk layers cover the US only · more layers coming
+        Wildfire-risk layers cover the US; vegetation &amp; land cover are global · more layers coming
       </div>
 
       {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} />}
@@ -1396,25 +1415,33 @@ function MethodologyModal({ onClose }) {
 
         <section className={styles.modalSection}>
           <h3>The layers</h3>
-          <ul>
-            <li>
-              <strong>Wildfire hazard &amp; risk to communities</strong> — Wildfire Hazard Potential, Burn
-              Probability, Conditional Flame Length, Risk to Structures, Risk Reduction Zones, and Exposure Type
-              are all modeled long-term wildfire risk for the United States from the USDA Forest Service,
-              Rocky Mountain Research Station's{' '}
-              <a href="https://wildfirerisk.org" target="_blank" rel="noopener noreferrer">Wildfire Risk to Communities</a>{' '}
-              program (2024 data), streamed live from their public ArcGIS image services.
-            </li>
-            <li>
-              <strong>Vegetation greenness (NDVI)</strong> — recent cloud-masked{' '}
-              <strong>Sentinel-2</strong> (Copernicus) imagery, last 12 months, computed in Google Earth
-              Engine via the same EarthAtlas cloud function that powers the Forest Monitor. A proxy for fuel
-              state — browned vegetation is drier, more flammable. Global.
-            </li>
-            <li>
-              <strong>Land cover</strong> — Esri / Impact Observatory 10 m Sentinel-2 land cover. Global.
-            </li>
-          </ul>
+          <p>
+            Every layer in the panel, with what it shows and where it comes from. The six wildfire-risk
+            layers are modeled long-term risk for the United States from the USDA Forest Service, Rocky
+            Mountain Research Station's{' '}
+            <a href="https://wildfirerisk.org" target="_blank" rel="noopener noreferrer">Wildfire Risk to Communities</a>{' '}
+            program (2024), streamed live from their public ArcGIS image services.
+          </p>
+          {LAYER_GROUPS.map((group) => (
+            <div key={group}>
+              <p className={styles.modalGroupLabel}>{group}</p>
+              <ul>
+                {FIRE_LAYERS.filter((l) => l.group === group).map((l) => {
+                  const cite = SOURCE_CITATION[l.id]
+                  return (
+                    <li key={l.id}>
+                      <strong>{l.label}</strong> — {l.blurb}{cite && (
+                        <>
+                          {' '}
+                          <a href={cite.url} target="_blank" rel="noopener noreferrer" title={l.source}>{cite.tag} ↗</a>
+                        </>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
         </section>
 
         <section className={styles.modalSection}>

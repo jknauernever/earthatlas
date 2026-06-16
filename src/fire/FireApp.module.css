@@ -511,21 +511,30 @@
 
 /* ─── Click popup (setHTML strings; white card over the map) ───────────── */
 .popup {
-  /* Responsive: fills small screens, comfortable on desktop, never overflows. */
+  /* Responsive: fills small screens, comfortable on desktop, never overflows.
+     Flex column: a fixed header + a scrolling body (.popupBody), so the header
+     can never be clipped regardless of content height or anchor direction. */
   width: clamp(270px, 92vw, 400px);
-  padding: 12px 14px;
+  /* Horizontal padding lives on the header/body (not here) so the body's
+     scrollbar floats over the right padding instead of the right-aligned
+     values. Vertical padding only here. */
+  padding: 12px 0;
   font-size: 13px;
   color: #1f2937;
   line-height: 1.5;
   max-height: 72vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #fff;
   border-radius: 8px;
 }
 /* Header: place name (bold) + coordinates (muted), stacked so neither
-   collides with Mapbox's close button. */
-.popupHeader { margin-bottom: 10px; padding-right: 18px; }
+   collides with Mapbox's close button. Fixed (never scrolls/shrinks). */
+.popupHeader { flex: 0 0 auto; margin-bottom: 10px; padding: 0 18px 0 14px; }
+/* Body: everything below the header scrolls here when the popup is tall. The
+   14px right padding keeps right-aligned values clear of the scrollbar. */
+.popupBody { flex: 1 1 auto; min-height: 0; padding: 0 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .popupPlace {
   font-size: 14px;
   font-weight: 600;
@@ -605,6 +614,47 @@
 .popupSources a { color: #2563eb; text-decoration: none; }
 .popupSources a:hover { text-decoration: underline; }
 
+/* Property (parcel) card — cyan-tinted to stand apart from the warm fire hero. */
+.popupParcel {
+  margin-bottom: 10px;
+  padding: 9px 11px;
+  background: #f0f9ff;
+  border-left: 3px solid #38bdf8;
+  border-radius: 4px;
+}
+.popupParcelTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin-bottom: 4px;
+}
+.popupParcelApn {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+.popupParcelFire {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 0.5px solid #d8eefb;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #334155;
+}
+.popupParcelSrc {
+  margin-top: 7px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+.popupParcelSrc a { color: #0284c7; text-decoration: none; }
+.popupParcelSrc a:hover { text-decoration: underline; }
+
 /* "How this analysis & data is derived" — opens the sourcing modal. */
 .popupMethodology {
   display: block;
@@ -653,6 +703,12 @@
   background: #fff !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
+  /* Neutralize Mapbox's dynamic max-height + column-reverse scroll on the
+     content box (for anchor-bottom popups it scrolls to the bottom, hiding our
+     header). Our inner .popup div owns the scroll instead — normal top-down,
+     so the header/verdict stay visible and it's capped to fit the viewport. */
+  max-height: none !important;
+  overflow: visible !important;
 }
 :global(.mapboxgl-popup-tip) {
   border-top-color: #fff !important;

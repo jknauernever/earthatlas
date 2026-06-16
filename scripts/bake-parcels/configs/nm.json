@@ -1,0 +1,40 @@
+{
+  "regionId": "nm",
+  "label": "New Mexico",
+  "version": "2025",
+  "source": {
+    "type": "arcgis",
+    "serviceUrl": "https://gis.ose.nm.gov/server_s/rest/services/Parcels/County_Parcels_2025/MapServer",
+    "layerIds": "0-32",
+    "pageSize": 5000,
+    "geometryPrecision": 6,
+    "outFields": [
+      "UPC", "Owner1", "Owner2", "SitusAddressAll", "SitusCity", "SitusZipCode",
+      "StateCodePrimary", "County", "StructureCount", "TaxYear"
+    ]
+  },
+  "fieldMap": {
+    "apn": "UPC",
+    "owner": "Owner1",
+    "owner2": "Owner2",
+    "addr": "SitusAddressAll",
+    "city": "SitusCity",
+    "zip": "SitusZipCode",
+    "county": "County",
+    "structures": "StructureCount",
+    "tax_year": "TaxYear"
+  },
+  "constants": { "region_id": "nm" },
+  "numberFields": ["structures", "tax_year"],
+  "derive": {
+    "acresFromGeometry": true,
+    "landUse": { "field": "StateCodePrimary", "map": { "R": "Residential", "N": "Non-residential" } }
+  },
+  "citation": {
+    "short": "NM TRD PTD / County Assessors via NM OSE",
+    "url": "https://gis.ose.nm.gov"
+  },
+  "note": "acres computed from geometry (LandArea is 0 in many counties). land_use derived from StateCodePrimary R/N (per-county use codes are undecodable). No assessed-value field exists.",
+  "bbox": [-109.05, 31.33, -103.0, 37.0],
+  "minZoom": 13
+}

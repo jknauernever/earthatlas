@@ -4,6 +4,11 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import { reverseGeocode } from '../explore/utils.js'
+import {
+  buildParcelsLayer, addParcelLayers, applyParcelVisibility, applyParcelOpacity,
+  restackParcels, raiseParcelSelection, queryParcelAt, setParcelSelection,
+  clearParcelSelection, renderParcelCard, PARCEL_SOURCE_CITATION,
+} from './parcels.js'
 import styles from './FireApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -285,6 +290,15 @@ const FIRE_LAYERS = [
 // that tile's Web-Mercator bbox from its z/x/y. This is the standard way to
 // drive an Esri ImageServer from Mapbox GL JS.
 const SENTINEL_HOST = 'ea-imageserver-tile.invalid'
+
+// Append the vector "Property parcels" layer when at least one region is baked
+// + uploaded (parcelSources.json). It rides the same catalog so the panel row,
+// legend, opacity, drag-reorder and URL state all work for free; the map
+// effects branch on `kind:'parcels'` to take the vector (not raster) path. When
+// no region is live this is a no-op and the app is byte-for-byte the same.
+const PARCELS_LAYER = buildParcelsLayer()
+if (PARCELS_LAYER) FIRE_LAYERS.push(PARCELS_LAYER)
+
 const LAYER_BY_ID = Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, l]))
 
 // ─── Per-attribute provenance (credibility & traceability — a prime directive
@@ -301,6 +315,13 @@ const SOURCE_CITATION = {
   ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', tag: 'Sentinel-2', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
   lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', tag: 'Esri / Impact Observatory', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
 }
+// Parcels carries its own per-region citation (added only when a region is live).
+if (PARCEL_SOURCE_CITATION) SOURCE_CITATION.parcels = PARCEL_SOURCE_CITATION
+
+// The raster identify layers (everything except the vector parcels layer). The
+// popup's wildfire rows/summary/sources iterate these; parcels render as their
+// own Property card.
+const RASTER_LAYERS = FIRE_LAYERS.filter((l) => l.kind !== 'parcels')
 
 // Distinct layer groups in catalog order — drives the grouped "The layers"
 // list in the sourcing modal (so it always reflects the live catalog).
@@ -500,58 +521,93 @@ const COVER_PHRASE = {
   'Snow / ice': 'snow or ice', Clouds: 'cloud-obscured ground', Rangeland: 'rangeland (grass and shrub)',
 }
 
-// Build the plain-English cross-layer summary from whatever resolved.
-// r is keyed by layer id → interpretation (or null/absent).
+// ── Plain-language helpers for the narrative summary ────────────────────────
+// A parcel's land_use → a natural noun for the reader. Handles NM's coarse
+// "Residential"/"Non-residential" and San Juan's specific descriptions
+// ("HOUSEHOLD, SINGLE FAMILY UNITS", "UNDEVELOPED LAND", …).
+const RESIDENTIAL_RE = /RESIDENT|HOUSEHOLD|SINGLE FAMILY|\bSFR\b|DWELLING|CABIN|VACATION|MOBILE|MANUFACT|CONDO|APARTMENT/
+function propertyPhrase(landUse) {
+  const u = (landUse || '').toUpperCase()
+  if (RESIDENTIAL_RE.test(u)) return 'home'
+  if (/UNDEVELOPED|VACANT|OPEN SPACE|FOREST LAND|\bFARM\b|\bAG\b|RANGELAND|TIMBER/.test(u)) return 'undeveloped parcel'
+  if (/COMMERCIAL|RETAIL|OFFICE|INDUSTRIAL|SERVICE|BUSINESS/.test(u)) return 'commercial property'
+  if (u === 'NON-RESIDENTIAL') return 'non-residential property'
+  return 'property'
+}
+const isResidential = (landUse) => RESIDENTIAL_RE.test((landUse || '').toUpperCase())
+// Vegetation as fuel.
+function fuelPhrase(ndvi) {
+  if (ndvi < 0) return null
+  if (ndvi >= 0.6) return 'blanketed in dense, green vegetation — plenty of fuel'
+  if (ndvi >= 0.4) return 'with moderately green vegetation'
+  if (ndvi >= 0.2) return 'with sparse, drying vegetation — drier, more flammable fuel'
+  return 'with little vegetation — mostly bare or very dry ground'
+}
+// How often fire occurs, from the 1-in-N annual chance.
+function likelihoodWord(oneIn) {
+  if (oneIn >= 5000) return 'very rare'
+  if (oneIn >= 1000) return 'rare'
+  if (oneIn >= 250) return 'occasional'
+  if (oneIn >= 100) return 'fairly common'
+  return 'common'
+}
+
+// Build the plain-English cross-layer summary — written to read like a person
+// explaining it: lead with the property, then reconcile the three fire metrics
+// (hazard = how bad if it burns, likelihood = how often, risk = the bottom line
+// for a structure), which often diverge. r is keyed by layer id → interpretation,
+// plus r.parcels (the clicked parcel) when available.
 function buildSummary(r) {
   const out = []
+  const parcel = r.parcels && r.parcels.props
+  const subject = parcel ? `This ${propertyPhrase(parcel.land_use)}` : null
+  const target = parcel ? (isResidential(parcel.land_use) ? 'this home' : 'this property') : 'a building on this spot'
 
-  // 1. What's on the ground.
-  if (r.lulc) out.push(`You've clicked on ${COVER_PHRASE[r.lulc.cover] || r.lulc.cover.toLowerCase()}.`)
-  else if (r.ndvi) out.push(`The ground here reads as ${ndviCondition(r.ndvi.ndvi).toLowerCase()}.`)
-
-  // 2. Vegetation / fuel state (skip when we already led with NDVI, or over water).
-  if (r.ndvi && r.lulc && r.ndvi.ndvi >= 0) {
-    const n = r.ndvi.ndvi
-    if (n >= 0.6) out.push('The vegetation is dense and green.')
-    else if (n >= 0.4) out.push('The vegetation is moderately green.')
-    else if (n >= 0.2) out.push('The vegetation is sparse or drying — drier fuel.')
-    else out.push('There’s little green vegetation — bare or very dry.')
+  // 1) Setting + fuel — what's here and how flammable.
+  const ground = r.lulc ? (COVER_PHRASE[r.lulc.cover] || r.lulc.cover.toLowerCase()) : null
+  const fuel = r.ndvi ? fuelPhrase(r.ndvi.ndvi) : null
+  if (subject) {
+    let s = subject
+    if (ground) s += ` sits on ${ground}`
+    if (fuel) s += `${ground ? ', ' : ' is '}${fuel}`
+    out.push(s + '.')
+  } else if (ground || fuel) {
+    let s = ground ? `You've clicked on ${ground}` : 'This spot is'
+    if (fuel) s += `${ground ? ', ' : ' '}${fuel}`
+    out.push(s + '.')
   }
 
-  // 3. Wildfire risk — prefer the composite hazard, fall back to burn probability.
-  if (r.whp && r.bp && r.bp.oneIn) {
-    out.push(`Wildfire hazard is ${r.whp.value.toLowerCase()}, with a modeled burn likelihood of roughly 1-in-${r.bp.oneIn.toLocaleString()} per year.`)
-  } else if (r.whp) {
-    out.push(`Overall wildfire hazard here is ${r.whp.value.toLowerCase()}.`)
-  } else if (r.bp && r.bp.oneIn) {
-    out.push(`Modeled wildfire likelihood is ${r.bp.word.toLowerCase()} — about a 1-in-${r.bp.oneIn.toLocaleString()} chance of burning in a typical year.`)
-  } else if (r.bp) {
-    out.push('Modeled wildfire likelihood here is negligible.')
+  // 2) The fire read — hazard, likelihood, and the bottom-line risk, reconciled.
+  const hazWord = r.whp && r.whp.word ? r.whp.word.toLowerCase() : null
+  const hazHigh = r.whp && r.whp.risk === 'high'
+  const oneIn = r.bp && r.bp.oneIn
+  const likely = oneIn ? likelihoodWord(oneIn) : null
+  const chance = oneIn ? `about a 1-in-${oneIn.toLocaleString()} chance in any given year` : null
+  const rpsWord = r.rps && r.rps.word ? r.rps.word.toLowerCase() : null
+
+  if (hazWord && oneIn && rpsWord) {
+    if (hazHigh && oneIn >= 1000) {
+      // The reads-as-a-contradiction case: high hazard but low likelihood.
+      out.push(`If a fire reached here it could burn intensely — the landscape rates ${hazWord} wildfire hazard — but fires are ${likely} in this area (${chance}). So the real-world risk to ${target} is ${rpsWord}: ${r.rps.pct}.`)
+    } else {
+      out.push(`Wildfire is ${likely} here (${chance}) and the landscape rates ${hazWord} hazard, putting the risk to ${target} at ${rpsWord} — ${r.rps.pct}.`)
+    }
+  } else if (rpsWord) {
+    out.push(`The wildfire risk to ${target} is ${rpsWord}${r.rps.pct ? ` — ${r.rps.pct}` : ''}.`)
+  } else if (hazWord && oneIn) {
+    out.push(`Wildfire hazard here is ${hazWord}, with ${chance} of a fire.`)
+  } else if (hazWord) {
+    out.push(`Wildfire hazard here is ${hazWord}.`)
+  } else if (oneIn) {
+    out.push(`A wildfire here is ${likely} — ${chance}.`)
   } else {
-    out.push('Wildfire-risk data isn’t available here (those layers cover the US only).')
+    out.push(`Detailed wildfire-risk data isn't available here (those layers cover the US only).`)
   }
 
-  // 4. Intensity — what a fire here would look like (Conditional Flame Length).
-  if (r.cfl) {
-    out.push(`If one starts, expect flames of ${r.cfl.feet} — ${r.cfl.fire}.`)
-  }
-
-  // 5. What it means for structures/communities — prefer the headline Risk to Structures
-  // percentile; the risk-reduction zone adds the "what kind of exposure" angle.
-  if (r.rps) {
-    out.push(`For a structure on this spot, wildfire risk would be ${r.rps.word.toLowerCase()} — ${r.rps.pct}.`)
-  }
-  if (r.rrz && r.rrz.zone) {
-    out.push(`This is a ${r.rrz.word.toLowerCase()}: ${r.rrz.zone}.`)
-  } else if (r.exposure && r.exposure.how && !r.rps) {
-    out.push(`It is ${r.exposure.word.toLowerCase()} — ${r.exposure.how}.`)
-  }
-
-  // 6. A light interpretive nudge for the classic fire-prone combination.
-  const fireRisk = (r.whp && r.whp.risk) || (r.bp && r.bp.risk)
-  if (r.lulc && r.lulc.cover === 'Trees' && fireRisk === 'high' && !r.rrz) {
-    out.push('Forested, fire-prone terrain — the kind of place to watch in fire season.')
-  }
+  // 3) How fire could reach it — the actionable angle (risk-reduction zone, else exposure).
+  const where = subject ? 'This property' : 'This area'
+  if (r.rrz && r.rrz.zone) out.push(`${where} sits in a ${r.rrz.word.toLowerCase()} — ${r.rrz.zone}.`)
+  else if (r.exposure && r.exposure.how) out.push(`${where} is ${r.exposure.word.toLowerCase()} — ${r.exposure.how}.`)
 
   return out.join(' ')
 }
@@ -576,12 +632,15 @@ const HERO_NEUTRAL = { bg: '#f9fafb', bd: '#9ca3af', tx: '#6b7280' }
 // verdict + plain-language summary) → compact one-line rows → consolidated
 // sources footer. `place` arrives async from reverseGeocode.
 function renderPopupHTML({ results, lat, lng, place, maxH }) {
-  const settled = FIRE_LAYERS.filter((l) => l.id in results).length
-  const pending = settled < FIRE_LAYERS.length
+  const settled = RASTER_LAYERS.filter((l) => l.id in results).length
+  const pending = settled < RASTER_LAYERS.length
+  // Cross-layer wildfire verdict, computed once: tints the hero AND becomes the
+  // "risk to this parcel" line in the Property card.
+  const verdict = pending ? null : buildVerdict(results)
 
   // Compact one-line rows (short value; full text on hover).
   let rowsHtml = ''
-  for (const l of FIRE_LAYERS) {
+  for (const l of RASTER_LAYERS) {
     const it = results[l.id]
     if (!it) continue
     const dot = `<span class="${styles.popupDot}" style="background:${it.swatch || 'transparent'}"></span>`
@@ -596,7 +655,7 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
   if (rowsHtml) {
     const seen = new Set()
     const links = []
-    for (const l of FIRE_LAYERS) {
+    for (const l of RASTER_LAYERS) {
       const c = results[l.id] && SOURCE_CITATION[l.id]
       if (!c || seen.has(c.url)) continue
       seen.add(c.url)
@@ -610,7 +669,6 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
   if (pending) {
     heroHtml = `<div class="${styles.popupHero}" style="background:${HERO_NEUTRAL.bg};border-left-color:${HERO_NEUTRAL.bd}"><div class="${styles.popupLoading}"><span class="${styles.popupSpinner}"></span>Reading wildfire data…</div></div>`
   } else if (rowsHtml) {
-    const verdict = buildVerdict(results)
     const sev = verdict ? (HERO_SEV[verdict.sev] || HERO_SEV.moderate) : HERO_NEUTRAL
     const summary = buildSummary(results)
     heroHtml =
@@ -632,15 +690,28 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     ? `<button type="button" class="${styles.popupMethodology}" data-fire-methodology>How this analysis &amp; data is derived</button>`
     : ''
 
+  // Property card — present whenever the click landed on a parcel, even with
+  // the layer toggled off. Carries the wildfire verdict as its risk-to-this-
+  // -property line, and its own inline assessor-source citation.
+  const parcelHtml = ('parcels' in results)
+    ? renderParcelCard(results.parcels, verdict ? verdict.text : null)
+    : ''
+
   const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
+  // Fixed header (place + coords) + a separately-scrolling body. This guarantees
+  // the header is never clipped no matter how tall the content or which way the
+  // popup is anchored — only the body scrolls.
   return (
     `<div class="${styles.popup}"${capStyle}>` +
     `<div class="${styles.popupHeader}">${placeLine}` +
     `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>` +
+    `<div class="${styles.popupBody}">` +
     heroHtml +
+    parcelHtml +
     rowsHtml +
     footerHtml +
     methodologyHtml +
+    `</div>` +
     `</div>`
   )
 }
@@ -791,9 +862,11 @@ export default function FireApp() {
     if (!map) return
     const ord = orderRef.current
     for (let i = ord.length - 1; i >= 0; i--) {
+      if (ord[i] === 'parcels') { restackParcels(map); continue } // vector layer = multiple sublayers
       const lId = layerId(ord[i])
       try { if (map.getLayer(lId)) map.moveLayer(lId) } catch { /* mid style swap */ }
     }
+    raiseParcelSelection(map) // clicked-parcel highlight always sits on top
   }, [])
 
   // Add one raster layer to the map with a resolved XYZ tiles template.
@@ -845,10 +918,12 @@ export default function FireApp() {
   // custom sources/layers). Idempotent: skips sources/layers already present.
   const addAllLayers = useCallback((map) => {
     for (const layer of FIRE_LAYERS) {
-      if (layer.kind === 'ee') addEeLayer(map, layer)
+      if (layer.kind === 'parcels') addParcelLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'ee') addEeLayer(map, layer)
       else addRaster(map, layer, tileTemplate(layer))
     }
-  }, [addRaster, addEeLayer])
+    restack(map) // position parcel sublayers + raise selection after (re)adding
+  }, [addRaster, addEeLayer, restack])
 
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -997,6 +1072,7 @@ export default function FireApp() {
     const map = mapRef.current
     if (!map || !mapReady) return
     for (const layer of FIRE_LAYERS) {
+      if (layer.kind === 'parcels') { applyParcelVisibility(map, visible[layer.id], opacityRef.current[layer.id]); continue }
       const lId = layerId(layer.id)
       if (map.getLayer(lId)) {
         map.setLayoutProperty(lId, 'visibility', visible[layer.id] ? 'visible' : 'none')
@@ -1009,6 +1085,7 @@ export default function FireApp() {
     const map = mapRef.current
     if (!map || !mapReady) return
     for (const layer of FIRE_LAYERS) {
+      if (layer.kind === 'parcels') { applyParcelOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       const lId = layerId(layer.id)
       if (map.getLayer(lId)) {
         try { map.setPaintProperty(lId, 'raster-opacity', opacity[layer.id]) } catch {}
@@ -1074,6 +1151,17 @@ export default function FireApp() {
 
       const results = {} // layer id → interpretation | null (key present = settled)
       let place = null   // reverse-geocoded "City, ST" — fills in async
+
+      // Parcel lookup is synchronous (baked into the vector tile) and runs on
+      // EVERY click regardless of whether the Parcels layer is toggled on — so
+      // the property card is ambient context, and the wildfire rows below tie
+      // risk to this specific parcel. Highlights the clicked parcel.
+      try {
+        const hit = queryParcelAt(map, e.point)
+        results.parcels = hit || null
+        if (hit) setParcelSelection(map, hit.geometry)
+        else clearParcelSelection(map)
+      } catch { results.parcels = null }
       // maxWidth 'none' so our CSS clamp() controls width responsively; anchor
       // fixed so the popup never re-flips into the off-screen direction as it grows.
       const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: 'none', offset: 14, anchor })
@@ -1081,8 +1169,17 @@ export default function FireApp() {
         .setHTML(renderPopupHTML({ results, lat, lng, place, maxH }))
         .addTo(map)
       popupRef.current = popup
+      popup.on('close', () => { try { clearParcelSelection(map) } catch {} })
       const stillCurrent = () => popupRef.current === popup
-      const rerender = () => { if (stillCurrent()) popup.setHTML(renderPopupHTML({ results, lat, lng, place, maxH })) }
+      const rerender = () => {
+        if (!stillCurrent()) return
+        popup.setHTML(renderPopupHTML({ results, lat, lng, place, maxH }))
+        // Keep the body pinned to the top so the verdict shows first (the
+        // streaming re-renders can otherwise leave it scrolled mid-content).
+        const el = popup.getElement()
+        const body = el && el.querySelector(`.${styles.popupBody}`)
+        if (body) body.scrollTop = 0
+      }
 
       // Place name for the header (Mapbox reverse geocode; falls back to coords).
       reverseGeocode(lat, lng).then((name) => { if (name) { place = name; rerender() } }).catch(() => {})
@@ -1102,6 +1199,7 @@ export default function FireApp() {
       }
 
       FIRE_LAYERS.forEach((layer) => {
+        if (layer.kind === 'parcels') return // not a raster identify — handled above
         Promise.resolve()
           .then(() => readRaw(layer))
           .then((raw) => { results[layer.id] = interpretLayer(layer.id, raw) })
@@ -1406,10 +1504,11 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>What you're looking at</h3>
           <p>
-            Each layer is a raster overlay served live from the agency that publishes it — there's no
+            Most layers are raster overlays served live from the agency that publishes them — there's no
             EarthAtlas database in between. The wildfire-risk layers model the long-term landscape, not
             active fire: they answer "if a fire started here, how bad could it get, and how likely is it,"
-            not "is something burning right now."
+            not "is something burning right now." Property parcels are public county-assessor boundaries,
+            pre-packaged as map tiles so they load fast without hammering the source.
           </p>
         </section>
 
@@ -1448,8 +1547,10 @@ function MethodologyModal({ onClose }) {
           <h3>When you click a point</h3>
           <p>
             We query each layer at that exact location (ArcGIS identify for the agency rasters, the Earth
-            Engine function for NDVI) and translate the raw values into plain language. Place search uses
-            Mapbox geocoding; basemaps are Mapbox.
+            Engine function for NDVI) and translate the raw values into plain language. If you click inside
+            a mapped parcel, its assessor details are read straight from the tile and the wildfire reading
+            is tied to that specific property — whether or not the parcels layer is switched on. Place
+            search uses Mapbox geocoding; basemaps are Mapbox.
           </p>
         </section>
 

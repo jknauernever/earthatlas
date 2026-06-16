@@ -1,0 +1,25 @@
+{
+  "regionId": "sanjuan-wa",
+  "label": "San Juan County, WA",
+  "version": "2025",
+  "source": {
+    "type": "file",
+    "path": "/Users/jknauer/Projects/salish-sea-propmapper/public/data/Tax_Parcels.geojson"
+  },
+  "fieldMap": {
+    "apn": "PIN",
+    "owner": "Owner_Last",
+    "acres": "Acres",
+    "assessed_value": "Appraised_",
+    "land_use": "Descriptio"
+  },
+  "constants": { "region_id": "sanjuan-wa", "county": "San Juan" },
+  "numberFields": ["acres", "assessed_value"],
+  "citation": {
+    "short": "San Juan County Assessor (WA)",
+    "url": "https://www.sanjuanco.com/167/Assessor"
+  },
+  "note": "Static GeoJSON snapshot (Tax_Parcels.geojson) from the Salish Sea Property Mapper. Owner is last-name-only and ~40% populated; no street address in the file. Richer than NM: has Acres, plain-English land-use (Descriptio) and assessed value (Appraised_).",
+  "bbox": [-123.25, 48.35, -122.7, 48.8],
+  "minZoom": 13
+}

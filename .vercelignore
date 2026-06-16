@@ -7,3 +7,6 @@
 .claude/
 __pycache__/
 *.pyc
+
+# Parcel bake artifacts — large, belong on Blob, must never enter build context
+scripts/bake-parcels/build/

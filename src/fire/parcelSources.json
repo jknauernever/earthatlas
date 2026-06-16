@@ -1,0 +1,14 @@
+{
+  "nm": {
+    "pmtilesUrl": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/parcels/nm-2025.pmtiles",
+    "sourceLayer": "parcels",
+    "version": "2025",
+    "updatedAt": "2026-06-16"
+  },
+  "sanjuan-wa": {
+    "pmtilesUrl": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/parcels/sanjuan-wa-2025.pmtiles",
+    "sourceLayer": "parcels",
+    "version": "2025",
+    "updatedAt": "2026-06-16"
+  }
+}

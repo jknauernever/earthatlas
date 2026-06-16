@@ -24,3 +24,6 @@ __pycache__/
 
 # Generated at build time by scripts/generate-birdsong-stations.js (BirdWeather station registry snapshot)
 public/birdsong-stations.json
+
+# Parcel bake artifacts (large NDJSON / PMTiles — never commit; upload to Blob instead)
+scripts/bake-parcels/build/

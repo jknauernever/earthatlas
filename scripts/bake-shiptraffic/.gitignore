@@ -1,0 +1,5 @@
+# Downloaded MarineCadastre AIS per-month aggregates (~65 MB); regenerate with
+# fetch_ais.py. Not committed — see README.md.
+cache/
+__pycache__/
+*.pyc

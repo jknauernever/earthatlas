@@ -88,6 +88,17 @@ const ROUTES = [
     keywords:
       'whale sightings map, HappyWhale, whale encounters, humpback whale tracking, whale photo ID, individual whale identification, whale migration map, whale watching sightings, fluke identification',
   },
+  {
+    out: 'shiptraffic.html',
+    url: 'https://earthatlas.org/shiptraffic',
+    title: 'Ship Traffic & Whales — Salish Sea · EarthAtlas',
+    description:
+      'Explore vessel traffic by class against observed whale presence across the Salish Sea, for any month/year range — with a derived interaction surface showing where heavy traffic overlaps whales. Real iNaturalist + OBIS cetacean sightings. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Ship Traffic & Whales — Salish Sea vessel traffic vs. whale presence',
+    keywords:
+      'Salish Sea vessel traffic, ship strike risk, whale ship interaction, AIS vessel density, San Juan Islands orcas, Southern Resident killer whales, MarineCadastre AIS, cetacean sightings map, iNaturalist whales, OBIS, Haro Strait shipping',
+  },
 ]
 
 function patchHead(html, r) {

@@ -1,0 +1,699 @@
+/**
+ * EarthAtlas ShipTraffic — Salish Sea vessel traffic vs. whale presence at
+ * /shiptraffic.
+ *
+ * Three layers:
+ *   - Vessels (yellow) : Esri Living Atlas "U.S. Vessel Traffic" per-month vector
+ *                        tile services (real MarineCadastre AIS tracks), recolored
+ *                        to a yellow glow and filtered by vessel type.
+ *   - Whales (magenta) : real iNaturalist + OBIS cetacean sightings as points.
+ *   - Concern (heatmap): the computed ship×whale overlap surface — a red→white-hot
+ *                        alarm heatmap, from a coarse grid aggregated client-side.
+ * A month/year range drives all three. Vessel type + whale source filters apply
+ * across the matching layers.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import GeoSearch from '../components/GeoSearch.jsx'
+import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import {
+  loadGrid,
+  loadWhales,
+  aggregate,
+  buildConcernPointsViewport,
+  buildWhaleGeoJSON,
+  monthRangeIndices,
+  fmtMonth,
+  esriMonthTilesUrl,
+  esriSymbolsFor,
+  ESRI_SOURCE_LAYERS,
+  ESRI_ATTRIBUTION,
+  VESSEL_LINE_COLOR,
+  WHALE_POINT_COLOR,
+  CONCERN_HEATMAP_RAMP,
+  VESSEL_TYPE_LABELS,
+  WHALE_SOURCE_LABELS,
+  WHALE_SOURCE_URLS,
+} from './shiptrafficData.js'
+import styles from './ShipTrafficApp.module.css'
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+
+const DEFAULT_VIEW = { center: [-123.0, 48.45], zoom: 8.4 }
+
+// Cap how many monthly Esri vessel tile-services are stacked at once. Single
+// months (the common case) load just one; only multi-month spans sample up to
+// this many evenly across the range (tracks vary little month to month).
+const VESSEL_MONTH_CAP = 6
+
+const BASEMAPS = [
+  { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  { id: 'dark', label: 'Dark', style: 'mapbox://styles/mapbox/dark-v11' },
+  { id: 'light', label: 'Light', style: 'mapbox://styles/mapbox/light-v11' },
+  { id: 'streets', label: 'Streets', style: 'mapbox://styles/mapbox/streets-v12' },
+]
+const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
+
+const VESSEL_TYPES = Object.keys(VESSEL_TYPE_LABELS)
+const WHALE_SOURCES = Object.keys(WHALE_SOURCE_LABELS)
+
+const WHALE_LAYER = 'st-whale-pts'
+const WHALE_SRC = 'st-whale-src'
+const CONCERN_LAYER = 'st-concern-heat'
+const CONCERN_SRC = 'st-concern-src'
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+// Evenly sample `cap` items (keeping first + last) from a list.
+function sampleEvenly(arr, cap) {
+  if (arr.length <= cap) return arr.slice()
+  const out = []
+  const step = (arr.length - 1) / (cap - 1)
+  for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
+  return [...new Set(out)]
+}
+
+// ─── Shareable URL state ────────────────────────────────────────────────────
+function readUrlState() {
+  if (typeof window === 'undefined') return {}
+  const sp = new URLSearchParams(window.location.search)
+  const num = (k) => {
+    const v = sp.get(k)
+    if (v == null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  const list = (k) => {
+    const v = sp.get(k)
+    return v == null ? null : v.split(',').filter(Boolean)
+  }
+  return {
+    ts: num('ts'), te: num('te'),
+    ly: list('ly'), vt: list('vt'), ws: list('ws'),
+    bm: sp.get('bm'),
+    lat: num('lat'), lng: num('lng'), z: num('z'),
+  }
+}
+
+function writeUrlQuery(qs) {
+  if (typeof window === 'undefined') return
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+  if (url === window.location.pathname + window.location.search + window.location.hash) return
+  window.history.replaceState(window.history.state, '', url)
+}
+
+const LAYER_CODE = { vessels: 'v', whales: 'w', concern: 'c' }
+const CODE_LAYER = { v: 'vessels', w: 'whales', c: 'concern' }
+const LAYER_ORDER = ['vessels', 'whales', 'concern']
+
+export default function ShipTrafficApp() {
+  const containerRef = useRef(null)
+  const mapRef = useRef(null)
+  const popupRef = useRef(null)
+  const vesselSrcRef = useRef(new Set()) // ids of currently-added vessel tile sources
+  const aggRef = useRef(null)            // latest aggregation, for the moveend concern rebuild
+  const [mapReady, setMapReady] = useState(false)
+
+  const initial = (typeof window !== 'undefined') ? readUrlState() : {}
+  const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
+    ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null
+
+  const [grid, setGrid] = useState(null)
+  const [whales, setWhales] = useState(null)
+  const [loadErr, setLoadErr] = useState(null)
+  const months = grid?.meta?.months || whales?.meta?.months || []
+
+  const [visible, setVisible] = useState(() => {
+    if (initial.ly) {
+      const set = new Set(initial.ly.map((c) => CODE_LAYER[c]).filter(Boolean))
+      return { vessels: set.has('vessels'), whales: set.has('whales'), concern: set.has('concern') }
+    }
+    return { vessels: true, whales: true, concern: true }
+  })
+
+  const [vesselTypes, setVesselTypes] = useState(() => new Set(initial.vt?.length ? initial.vt.filter((t) => VESSEL_TYPES.includes(t)) : VESSEL_TYPES))
+  const [whaleSources, setWhaleSources] = useState(() => new Set(initial.ws?.length ? initial.ws.filter((s) => WHALE_SOURCES.includes(s)) : WHALE_SOURCES))
+  const [range, setRange] = useState(null)
+
+  const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  const basemapMenuRef = useRef(null)
+  const [panelOpen, setPanelOpen] = useState(true)
+  const [showMethodology, setShowMethodology] = useState(false)
+  const [mapView, setMapView] = useState(initialCamera)
+  const suppressFlyRef = useRef(!!initialCamera)
+
+  // ─── Load both data files once ────────────────────────────────────────────
+  useEffect(() => {
+    const ac = new AbortController()
+    Promise.all([loadGrid(ac.signal), loadWhales(ac.signal)])
+      .then(([g, w]) => {
+        if (ac.signal.aborted) return
+        setGrid(g)
+        setWhales(w)
+        const m = g.meta.months
+        const [a, b] = (Number.isFinite(initial.ts) && Number.isFinite(initial.te))
+          ? monthRangeIndices(m, m[initial.ts], m[initial.te])
+          : [0, m.length - 1]
+        setRange([a, b])
+      })
+      .catch((err) => {
+        if (ac.signal.aborted || err.name === 'AbortError') return
+        setLoadErr('Could not load the ship-traffic data.')
+      })
+    return () => ac.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Aggregate concern grid over the window + filters ─────────────────────
+  const agg = useMemo(() => {
+    if (!grid || !range) return null
+    return aggregate(grid, { months, startIdx: range[0], endIdx: range[1], vesselTypes, whaleSources })
+  }, [grid, range, vesselTypes, whaleSources, months])
+
+  const whaleGeo = useMemo(() => {
+    if (!whales || !range) return null
+    return buildWhaleGeoJSON(whales, range[0], range[1], whaleSources, WHALE_SOURCES)
+  }, [whales, range, whaleSources])
+
+  // Which months' vessel tile-services to stack (capped + sampled).
+  const vesselMonths = useMemo(() => {
+    if (!range || !months.length) return []
+    const inRange = months.slice(range[0], range[1] + 1)
+    return sampleEvenly(inRange, VESSEL_MONTH_CAP)
+  }, [range, months])
+
+  // Rebuild the concern heatmap normalized to the current viewport.
+  const pushConcern = useCallback((map) => {
+    if (!map || !aggRef.current) return
+    const src = map.getSource(CONCERN_SRC)
+    if (!src) return
+    const b = map.getBounds()
+    const bounds = { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }
+    src.setData(buildConcernPointsViewport(aggRef.current.cells, bounds))
+  }, [])
+
+  // ─── Map init (once) ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
+    mapboxgl.accessToken = MAPBOX_TOKEN
+    const start = initialCamera
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: basemapStyleFor(basemap),
+      center: start ? [start.lng, start.lat] : DEFAULT_VIEW.center,
+      zoom: start ? start.zoom : DEFAULT_VIEW.zoom,
+    })
+    mapRef.current = map
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    map.on('moveend', () => {
+      const c = map.getCenter()
+      setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
+      pushConcern(map) // re-normalize concern colors to the new viewport
+    })
+
+    const addStaticLayers = () => {
+      // Concern heatmap (below whale points).
+      if (!map.getSource(CONCERN_SRC)) {
+        map.addSource(CONCERN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+        map.addLayer({
+          id: CONCERN_LAYER,
+          type: 'heatmap',
+          source: CONCERN_SRC,
+          paint: {
+            // weight is the normalized overlap index (0..1); a slight power curve
+            // lifts mid-range concern so it's visible, not just the very top cells.
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'w'], 0, 0.05, 0.3, 0.45, 1, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 6, 1.1, 12, 2.6],
+            'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...CONCERN_HEATMAP_RAMP],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 6, 14, 9, 26, 13, 48],
+            'heatmap-opacity': 0.9,
+          },
+        })
+      }
+      // Whale points (top).
+      if (!map.getSource(WHALE_SRC)) {
+        map.addSource(WHALE_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+        map.addLayer({
+          id: WHALE_LAYER,
+          type: 'circle',
+          source: WHALE_SRC,
+          paint: {
+            // Grow markers as you zoom in so sightings are easy to pick out up close.
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2, 9, 3.5, 11, 6, 13, 9, 16, 14],
+            'circle-color': WHALE_POINT_COLOR,
+            'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.65, 12, 0.8],
+            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 13, 1],
+            'circle-stroke-color': 'rgba(255,255,255,0.5)',
+          },
+        })
+        map.on('mouseenter', WHALE_LAYER, () => { map.getCanvas().style.cursor = 'pointer' })
+        map.on('mouseleave', WHALE_LAYER, () => { map.getCanvas().style.cursor = '' })
+        map.on('click', WHALE_LAYER, (e) => {
+          const f = e.features?.[0]
+          if (!f) return
+          popupRef.current?.remove()
+          popupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '260px' })
+            .setLngLat(f.geometry.coordinates.slice())
+            .setHTML(whalePopupHTML(f.properties))
+            .addTo(map)
+        })
+      }
+      // Vessel tile sources are (re)added by the reconcile effect; clear the
+      // ref so they get rebuilt against this fresh style.
+      vesselSrcRef.current = new Set()
+      setMapReady(true)
+    }
+
+    map.on('style.load', () => addStaticLayers())
+    return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Reconcile vessel tile sources (months in range) ──────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const symbols = esriSymbolsFor(vesselTypes)
+    const wanted = new Set(vesselMonths.map((ym) => `ves-${ym}`))
+    const show = visible.vessels
+    // Higher floor so the yellow lanes read on satellite; stacked months overlap
+    // and build up brightness where traffic is heaviest.
+    const opacity = Math.max(0.5, 0.85 / Math.sqrt(Math.max(1, vesselMonths.length)))
+
+    // Remove stale sources/layers.
+    for (const sid of [...vesselSrcRef.current]) {
+      if (!wanted.has(sid)) {
+        for (const sl of ESRI_SOURCE_LAYERS) {
+          const lid = `${sid}-${sl}`
+          if (map.getLayer(lid)) map.removeLayer(lid)
+        }
+        if (map.getSource(sid)) map.removeSource(sid)
+        vesselSrcRef.current.delete(sid)
+      }
+    }
+    // Add new + update existing.
+    for (const ym of vesselMonths) {
+      const sid = `ves-${ym}`
+      if (!map.getSource(sid)) {
+        map.addSource(sid, {
+          type: 'vector',
+          tiles: [esriMonthTilesUrl(ym)],
+          minzoom: 0,
+          maxzoom: 16,
+          attribution: ESRI_ATTRIBUTION,
+        })
+        for (const sl of ESRI_SOURCE_LAYERS) {
+          map.addLayer({
+            id: `${sid}-${sl}`,
+            type: 'line',
+            source: sid,
+            'source-layer': sl,
+            paint: {
+              'line-color': VESSEL_LINE_COLOR,
+              'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
+              'line-blur': 0.6,
+            },
+          }, map.getLayer(CONCERN_LAYER) ? CONCERN_LAYER : undefined) // keep vessels beneath concern + whales
+        }
+        vesselSrcRef.current.add(sid)
+      }
+      for (const sl of ESRI_SOURCE_LAYERS) {
+        const lid = `${sid}-${sl}`
+        if (!map.getLayer(lid)) continue
+        map.setFilter(lid, ['in', ['get', '_symbol'], ['literal', symbols]])
+        map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
+        map.setPaintProperty(lid, 'line-opacity', show ? opacity : 0)
+      }
+    }
+  }, [vesselMonths, vesselTypes, visible.vessels, mapReady])
+
+  // ─── Push concern (viewport-normalized) + whale data ──────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !agg || !grid) return
+    aggRef.current = agg
+    pushConcern(map)
+    if (map.getLayer(CONCERN_LAYER)) map.setLayoutProperty(CONCERN_LAYER, 'visibility', visible.concern ? 'visible' : 'none')
+  }, [agg, grid, visible.concern, mapReady, pushConcern])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !whaleGeo) return
+    map.getSource(WHALE_SRC)?.setData(whaleGeo)
+    if (map.getLayer(WHALE_LAYER)) map.setLayoutProperty(WHALE_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
+  }, [whaleGeo, visible.whales, mapReady])
+
+  // ─── Persist URL ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!grid || !range) return
+    const sp = new URLSearchParams()
+    if (range[0] !== 0) sp.set('ts', String(range[0]))
+    if (range[1] !== months.length - 1) sp.set('te', String(range[1]))
+    const ly = LAYER_ORDER.filter((l) => visible[l]).map((l) => LAYER_CODE[l])
+    if (ly.length !== 3) sp.set('ly', ly.join(','))
+    if (vesselTypes.size !== VESSEL_TYPES.length) sp.set('vt', VESSEL_TYPES.filter((t) => vesselTypes.has(t)).join(','))
+    if (whaleSources.size !== WHALE_SOURCES.length) sp.set('ws', WHALE_SOURCES.filter((s) => whaleSources.has(s)).join(','))
+    if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (mapView) {
+      sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1))
+    }
+    writeUrlQuery(sp.toString())
+  }, [grid, range, visible, vesselTypes, whaleSources, basemap, mapView, months])
+
+  // ─── Basemap switch ───────────────────────────────────────────────────────
+  const appliedBasemapRef = useRef(basemap)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (appliedBasemapRef.current === basemap) return
+    appliedBasemapRef.current = basemap
+    setMapReady(false)
+    map.setStyle(basemapStyleFor(basemap))
+  }, [basemap, mapReady])
+
+  useEffect(() => {
+    if (!basemapMenuOpen) return
+    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [basemapMenuOpen])
+
+  useEffect(() => {
+    const prevTitle = document.title
+    document.title = 'Ship Traffic & Whales — Salish Sea · EarthAtlas'
+    return () => { document.title = prevTitle }
+  }, [])
+
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+  const handleSelect = useCallback((r) => {
+    const map = mapRef.current
+    if (!map || !Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
+    map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(r.zoom || 10, 9), duration: 1200, essential: true })
+  }, [])
+
+  const toggleLayer = useCallback((layer) => setVisible((v) => ({ ...v, [layer]: !v[layer] })), [])
+
+  const toggleSetMember = (setter, value, allValues) => {
+    setter((prev) => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value); else next.add(value)
+      return next.size === 0 ? new Set(allValues) : next
+    })
+  }
+
+  const applyYear = useCallback((year) => {
+    if (!months.length) return
+    if (year === 'all') { setRange([0, months.length - 1]); return }
+    const idxs = months.map((m, i) => (m.startsWith(String(year)) ? i : -1)).filter((i) => i >= 0)
+    if (idxs.length) setRange([idxs[0], idxs[idxs.length - 1]])
+  }, [months])
+
+  // Click a month → that single month. Shift-click → span from the current
+  // anchor to the clicked month.
+  const pickMonth = useCallback((idx, shift) => {
+    setRange((prev) => (shift && prev ? [Math.min(prev[0], idx), Math.max(prev[0], idx)] : [idx, idx]))
+  }, [])
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.tokenError}>
+          <strong>Mapbox token missing.</strong> Set <code>VITE_MAPBOX_TOKEN</code> to load the map.
+        </div>
+      </div>
+    )
+  }
+
+  const startKey = range ? months[range[0]] : null
+  const endKey = range ? months[range[1]] : null
+  const whaleCount = whaleGeo?.features.length ?? 0
+  const concernCount = agg ? agg.cells.filter((c) => c.iRaw > 0).length : 0
+  const rngLen = range ? range[1] - range[0] + 1 : 0
+  const isAll = !!range && range[0] === 0 && range[1] === months.length - 1
+  const isYear = (y) => rngLen === 12 && startKey?.startsWith(String(y)) && endKey?.startsWith(String(y))
+  const rangeLabel = !range ? ''
+    : isAll ? 'All (2024–2025)'
+    : rngLen === 1 ? fmtMonth(startKey)
+    : isYear(2024) ? '2024' : isYear(2025) ? '2025'
+    : `${fmtMonth(startKey)} – ${fmtMonth(endKey)}`
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.mapWrap} ref={containerRef} />
+      {mapReady && <ZoomIndicator map={mapRef.current} />}
+
+      <div className={styles.branding}>
+        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
+          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
+        </a>
+        <span className={styles.subBadge}>Ship Traffic × Whales</span>
+      </div>
+
+      <div className={styles.searchBox}>
+        <GeoSearch
+          placeholder="Search a place in the Salish Sea…"
+          proximity={() => {
+            const m = mapRef.current
+            if (!m) return undefined
+            try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined }
+          }}
+          onSelect={handleSelect}
+        />
+      </div>
+
+      <div className={styles.basemapMenu} ref={basemapMenuRef}>
+        <button
+          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
+          onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+          </svg>
+        </button>
+        {basemapMenuOpen && (
+          <div className={styles.basemapMenuPanel}>
+            <div className={styles.basemapMenuTitle}>Basemap</div>
+            {BASEMAPS.map((b) => (
+              <button key={b.id} className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem}
+                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}>
+                <span className={styles.basemapMenuItemLabel}>{b.label}</span>
+                {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}>
+        <div className={styles.panelHead}>
+          <span className={styles.panelTitle}>Salish Sea</span>
+          <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>
+            {panelOpen ? '▾' : '▸'}
+          </button>
+        </div>
+
+        {panelOpen && (
+          <div className={styles.panelBody}>
+            {loadErr && <div className={styles.statusError}>{loadErr}</div>}
+            {!grid && !loadErr && <div className={styles.status}>Loading data…</div>}
+
+            {grid && range && (
+              <>
+                {/* Timeframe */}
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Timeframe · <span className={styles.fieldHint}>{rangeLabel}</span></label>
+                  <div className={styles.chipRow}>
+                    <button className={isAll ? styles.chipActive : styles.chip} onClick={() => applyYear('all')}>All</button>
+                    <button className={isYear(2024) ? styles.chipActive : styles.chip} onClick={() => applyYear(2024)}>2024</button>
+                    <button className={isYear(2025) ? styles.chipActive : styles.chip} onClick={() => applyYear(2025)}>2025</button>
+                  </div>
+                  <MonthStrip months={months} range={range} onPick={pickMonth} />
+                  <div className={styles.monthHint}>Click a month · shift-click for a span</div>
+                </div>
+
+                {/* Layers */}
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Layers</label>
+                  <div className={styles.layerRows}>
+                    <LayerRow on={visible.vessels} onToggle={() => toggleLayer('vessels')}
+                      swatch="linear-gradient(90deg,#ca8a04,#eab308,#fde047)" label="Vessel traffic" sub="Esri / MarineCadastre AIS" />
+                    <LayerRow on={visible.whales} onToggle={() => toggleLayer('whales')}
+                      swatch="radial-gradient(circle,#f472b6,#db2777)" label="Whale sightings" count={whaleCount} />
+                    <LayerRow on={visible.concern} onToggle={() => toggleLayer('concern')}
+                      swatch="linear-gradient(90deg,#991b1b,#f97316,#fffbe6)" label="Concern (overlap)" count={concernCount} />
+                  </div>
+                </div>
+
+                {/* Vessel type filter */}
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Vessel class</label>
+                  <div className={styles.chipRow}>
+                    {VESSEL_TYPES.map((t) => (
+                      <button key={t} className={vesselTypes.has(t) ? styles.chipActive : styles.chip}
+                        onClick={() => toggleSetMember(setVesselTypes, t, VESSEL_TYPES)}>{VESSEL_TYPE_LABELS[t]}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Whale source filter */}
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Whale source</label>
+                  <div className={styles.chipRow}>
+                    {WHALE_SOURCES.map((s) => {
+                      const disabled = (grid.meta.whaleCounts?.[s] ?? 0) === 0 && s === 'happywhale'
+                      return (
+                        <button key={s} className={whaleSources.has(s) && !disabled ? styles.chipActive : styles.chip}
+                          onClick={() => !disabled && toggleSetMember(setWhaleSources, s, WHALE_SOURCES)}
+                          disabled={disabled} title={disabled ? 'No data yet (API not live)' : undefined}
+                          style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>{WHALE_SOURCE_LABELS[s]}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className={styles.statGrid}>
+                  <div className={styles.statBox}><span className={styles.statVal}>{whaleCount.toLocaleString()}</span><span className={styles.statKey}>whale sightings</span></div>
+                  <div className={styles.statBox}><span className={styles.statVal}>{concernCount.toLocaleString()}</span><span className={styles.statKey}>concern cells</span></div>
+                </div>
+
+                <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>ⓘ How this is sourced</button>
+                <div className={styles.builtBy}>
+                  EarthAtlas is built by{' '}
+                  <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>KnauerNever.com</a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.tip}>Yellow = ship tracks · magenta = whale sightings · red glow = overlap of concern</div>
+
+      {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} counts={grid?.meta?.whaleCounts} />}
+    </div>
+  )
+}
+
+const MONTH_LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+
+// Clickable month grid (one row per year). Click a cell → single month;
+// shift-click → span from the current anchor. Active months are highlighted.
+function MonthStrip({ months, range, onPick }) {
+  const years = [...new Set(months.map((m) => m.slice(0, 4)))]
+  return (
+    <div className={styles.monthStrip}>
+      {years.map((y) => (
+        <div className={styles.monthRow} key={y}>
+          <span className={styles.monthYear}>’{y.slice(2)}</span>
+          {MONTH_LETTERS.map((L, mi) => {
+            const idx = months.indexOf(`${y}-${String(mi + 1).padStart(2, '0')}`)
+            if (idx < 0) return <span key={mi} className={styles.monthCellEmpty} />
+            const active = range && idx >= range[0] && idx <= range[1]
+            return (
+              <button
+                key={mi}
+                className={active ? styles.monthCellActive : styles.monthCell}
+                onClick={(e) => onPick(idx, e.shiftKey)}
+                title={fmtMonth(months[idx])}
+              >{L}</button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function LayerRow({ on, onToggle, swatch, label, count, sub }) {
+  return (
+    <button className={on ? styles.layerRowOn : styles.layerRow} onClick={onToggle}>
+      <span className={styles.layerSwatch} style={{ background: swatch, opacity: on ? 1 : 0.3 }} />
+      <span className={styles.layerLabel}>
+        {label}
+        {sub && <span className={styles.layerSub}>{sub}</span>}
+      </span>
+      {count != null && <span className={styles.layerCount}>{count.toLocaleString()}</span>}
+      <span className={styles.layerCheck}>{on ? '●' : '○'}</span>
+    </button>
+  )
+}
+
+function whalePopupHTML(p) {
+  const src = p.src
+  const url = WHALE_SOURCE_URLS[src] || '#'
+  const label = WHALE_SOURCE_LABELS[src] || src
+  return (
+    `<div class="${styles.popup}">` +
+    `<div class="${styles.popupHead}">Whale sighting</div>` +
+    `<div class="${styles.popupSpecies}">${escapeHtml(p.species || 'Cetacean')}</div>` +
+    `<div class="${styles.popupMeta}">${escapeHtml(p.m || '')}</div>` +
+    `<div class="${styles.popupSrc}">Source: <a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a></div>` +
+    `</div>`
+  )
+}
+
+function MethodologyModal({ onClose, counts }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
+        <h2 className={styles.modalTitle}>How this is sourced</h2>
+
+        <section className={styles.modalSection}>
+          <h3>What you're looking at</h3>
+          <p>
+            <strong>Yellow</strong> tracks are real vessel traffic; <strong>magenta</strong> dots are whale
+            sightings; the <strong>red glow</strong> is where they overlap — the areas of concern. A month/year
+            range drives all three.
+          </p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>Where the data comes from</h3>
+          <ul>
+            <li>
+              <strong>Vessel traffic — Esri Living Atlas / MarineCadastre AIS.</strong> The{' '}
+              <a href="https://livingatlas.arcgis.com/vessel-traffic/" target="_blank" rel="noopener noreferrer">U.S. Vessel Traffic</a>{' '}
+              per-month vector tile services (U.S. Coast Guard AIS via{' '}
+              <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre</a>),
+              recolored and filtered by vessel class.
+            </li>
+            <li>
+              <strong>Whale sightings — real.</strong>{' '}
+              <a href="https://www.inaturalist.org/" target="_blank" rel="noopener noreferrer">iNaturalist</a>{' '}
+              (order Cetacea{counts?.inat ? `, ${counts.inat.toLocaleString()} obs` : ''}) and{' '}
+              <a href="https://obis.org/" target="_blank" rel="noopener noreferrer">OBIS</a>
+              {counts?.obis ? ` (${counts.obis.toLocaleString()})` : ''}, 2024–2025.{' '}
+              <a href="https://happywhale.com/" target="_blank" rel="noopener noreferrer">Happywhale</a> joins
+              when its public API ships.
+            </li>
+            <li>
+              <strong>Concern heatmap.</strong> A coarse grid of local vessel density × whale presence,
+              aggregated over your selected months and filters — a co-occurrence heuristic for exploration,
+              <strong> not</strong> a validated ship-strike risk model.
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>Caveats</h3>
+          <p>
+            Whale "presence" is observed-sighting density, biased toward where people and surveys go. Vessel
+            tracks are shown for representative months across long ranges (they vary little month to month).
+          </p>
+        </section>
+      </div>
+    </div>
+  )
+}

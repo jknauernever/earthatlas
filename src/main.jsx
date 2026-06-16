@@ -32,6 +32,7 @@ import QuakesApp from './quakes/QuakesApp.jsx'
 import CarbonApp from './carbon/CarbonApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
+import ShipTrafficApp from './shiptraffic/ShipTrafficApp.jsx'
 import './index.css'
 
 // Sentry: only initialize in production builds AND when a DSN is configured.
@@ -102,6 +103,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/carbon" element={<CarbonApp />} />
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />
+          <Route path="/shiptraffic" element={<ShipTrafficApp />} />
           <Route path="/admin" element={<AdminApp />} />
           <Route path="/*" element={<App />} />
         </Routes>

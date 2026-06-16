@@ -67,6 +67,9 @@ addUrl('/birdsong')
 // HappyWhale
 addUrl('/happywhale')
 
+// ShipTraffic
+addUrl('/shiptraffic')
+
 // Explore subsites
 for (const slug of slugs) {
   addUrl(`/${slug}`)

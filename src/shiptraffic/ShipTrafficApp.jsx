@@ -26,6 +26,7 @@ import {
   buildWhaleGeoJSON,
   monthRangeIndices,
   fmtMonth,
+  interactionBand,
   esriMonthTilesUrl,
   esriSymbolsFor,
   ESRI_SOURCE_LAYERS,
@@ -116,6 +117,7 @@ export default function ShipTrafficApp() {
   const popupRef = useRef(null)
   const vesselSrcRef = useRef(new Set()) // ids of currently-added vessel tile sources
   const aggRef = useRef(null)            // latest aggregation, for the moveend concern rebuild
+  const cellMetaRef = useRef(null)       // grid cell {lngStep, latStep}, for click hit-testing
   const [mapReady, setMapReady] = useState(false)
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
@@ -155,6 +157,7 @@ export default function ShipTrafficApp() {
         if (ac.signal.aborted) return
         setGrid(g)
         setWhales(w)
+        cellMetaRef.current = g.meta.cell
         const m = g.meta.months
         const [a, b] = (Number.isFinite(initial.ts) && Number.isFinite(initial.te))
           ? monthRangeIndices(m, m[initial.ts], m[initial.te])
@@ -197,6 +200,21 @@ export default function ShipTrafficApp() {
     src.setData(buildConcernPointsViewport(aggRef.current.cells, bounds))
   }, [])
 
+  // Find the aggregated grid cell containing a clicked lng/lat (whale-bearing
+  // cells only — that's what the grid stores). Returns the cell with its
+  // vessel + whale breakdown, or null.
+  const findCellAt = useCallback((lngLat) => {
+    const cells = aggRef.current?.cells
+    const meta = cellMetaRef.current
+    if (!cells || !meta) return null
+    const hx = meta.lngStep / 2
+    const hy = meta.latStep / 2
+    for (const c of cells) {
+      if (Math.abs(lngLat.lng - c.lng) <= hx && Math.abs(lngLat.lat - c.lat) <= hy) return c
+    }
+    return null
+  }, [])
+
   // ─── Map init (once) ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
@@ -209,11 +227,53 @@ export default function ShipTrafficApp() {
       zoom: start ? start.zoom : DEFAULT_VIEW.zoom,
     })
     mapRef.current = map
+    // Esri's vessel-traffic vector tiles are large and externally hosted; an
+    // occasional one comes back truncated/unparseable and Mapbox's worker throws
+    // (e.g. pbf "Unimplemented type: 3"). Swallow tile/source errors so they
+    // degrade gracefully — one missing tile, not an uncaught global that spams
+    // Sentry. Real config errors still surface in the console.
+    map.on('error', (e) => {
+      const msg = e?.error?.message || ''
+      if (e?.sourceId?.startsWith('ves-') || /Unimplemented type|tile/i.test(msg)) return
+      // eslint-disable-next-line no-console
+      console.warn('[shiptraffic] map error', e?.error || e)
+    })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('moveend', () => {
       const c = map.getCenter()
       setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
       pushConcern(map) // re-normalize concern colors to the new viewport
+    })
+
+    const vesselLayerIds = () => {
+      const s = map.getStyle()
+      if (!s) return []
+      return s.layers.filter((l) => l.id.startsWith('ves-')).map((l) => l.id).filter((id) => map.getLayer(id))
+    }
+
+    // One click handler for the whole map: a concern cell gives the full area
+    // readout (vessels + whales + overlap, with sources); else a whale point or
+    // a vessel track gives its own detail.
+    map.on('click', (e) => {
+      const whaleHit = map.getLayer(WHALE_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER] })[0] : null
+      const cell = findCellAt(e.lngLat)
+      let html = null
+      if (cell) html = cellPopupHTML(cell, whaleHit?.properties)
+      else if (whaleHit) html = whalePopupHTML(whaleHit.properties)
+      else {
+        const vids = vesselLayerIds()
+        const vHit = vids.length ? map.queryRenderedFeatures(e.point, { layers: vids })[0] : null
+        if (vHit) html = vesselPopupHTML(vHit.properties)
+      }
+      if (!html) return
+      popupRef.current?.remove()
+      popupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map)
+    })
+
+    // Pointer cursor over anything clickable.
+    map.on('mousemove', (e) => {
+      const overFeature = map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER, ...vesselLayerIds()].filter((id) => map.getLayer(id)) }).length > 0
+      map.getCanvas().style.cursor = (overFeature || findCellAt(e.lngLat)) ? 'pointer' : ''
     })
 
     const addStaticLayers = () => {
@@ -250,17 +310,6 @@ export default function ShipTrafficApp() {
             'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 13, 1],
             'circle-stroke-color': 'rgba(255,255,255,0.5)',
           },
-        })
-        map.on('mouseenter', WHALE_LAYER, () => { map.getCanvas().style.cursor = 'pointer' })
-        map.on('mouseleave', WHALE_LAYER, () => { map.getCanvas().style.cursor = '' })
-        map.on('click', WHALE_LAYER, (e) => {
-          const f = e.features?.[0]
-          if (!f) return
-          popupRef.current?.remove()
-          popupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '260px' })
-            .setLngLat(f.geometry.coordinates.slice())
-            .setHTML(whalePopupHTML(f.properties))
-            .addTo(map)
         })
       }
       // Vessel tile sources are (re)added by the reconcile effect; clear the
@@ -303,7 +352,13 @@ export default function ShipTrafficApp() {
         map.addSource(sid, {
           type: 'vector',
           tiles: [esriMonthTilesUrl(ym)],
-          minzoom: 0,
+          // Don't request tiles below z8: the sub-z8 aggregate tiles cover a huge
+          // area and balloon in size (the z8 region tile is already ~1.3 MB
+          // decompressed, and we stack one source per month), which is where the
+          // worker's parse failures concentrate. The default view is z8.4, so z8
+          // is the floor we actually need; below it the lanes just hide rather
+          // than dragging the worker through multi-MB tiles.
+          minzoom: 8,
           maxzoom: 16,
           attribution: ESRI_ATTRIBUTION,
         })
@@ -572,7 +627,7 @@ export default function ShipTrafficApp() {
         )}
       </div>
 
-      <div className={styles.tip}>Yellow = ship tracks · magenta = whale sightings · red glow = overlap of concern</div>
+      <div className={styles.tip}>Click anywhere for the area's vessel + whale data · yellow = tracks · magenta = whales · red glow = overlap</div>
 
       {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} counts={grid?.meta?.whaleCounts} />}
     </div>
@@ -637,6 +692,44 @@ function whalePopupHTML(p) {
   )
 }
 
+// Rich "click a spot" readout for a concern grid cell: vessels + whales +
+// overlap for the current timeframe/filters, each with its inline source.
+function cellPopupHTML(cell, whaleProps) {
+  const vSum = cell.vSum || 0
+  const wSum = cell.wSum || 0
+  const nI = cell.nI || 0  // 0..1 relative to the most-concerning cell in the region
+  const band = interactionBand(nI)
+  const wBySrc = cell.wBySrc || {}
+  // Each present source as a linked name with its count, e.g. "iNaturalist (1) · OBIS (4)".
+  const srcLinks = WHALE_SOURCES.filter((s) => wBySrc[s])
+    .map((s) => `<a href="${WHALE_SOURCE_URLS[s]}" target="_blank" rel="noopener noreferrer">${WHALE_SOURCE_LABELS[s]}</a> (${wBySrc[s]})`)
+    .join(' · ')
+  return (
+    `<div class="${styles.popup}">` +
+    `<div class="${styles.popupHead}">This area · selected timeframe</div>` +
+    (whaleProps ? `<div class="${styles.popupSpecies}">${escapeHtml(whaleProps.species || 'Cetacean')}</div>` : '') +
+    `<div class="${styles.popupRow}"><span class="${styles.popupDotV}"></span><span class="${styles.popupK}">Vessel transits</span><span class="${styles.popupV}">${vSum.toLocaleString()}</span></div>` +
+    `<div class="${styles.popupSrc}">Source: <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a></div>` +
+    `<div class="${styles.popupRow}"><span class="${styles.popupDotW}"></span><span class="${styles.popupK}">Whale sightings</span><span class="${styles.popupV}">${wSum.toLocaleString()}</span></div>` +
+    `<div class="${styles.popupSrc}">Sources: ${srcLinks || `<a href="${WHALE_SOURCE_URLS.inat}" target="_blank" rel="noopener noreferrer">iNaturalist</a> · <a href="${WHALE_SOURCE_URLS.obis}" target="_blank" rel="noopener noreferrer">OBIS</a>`}</div>` +
+    `<div class="${styles.popupIx} ${styles['popupIx_' + band.tone]}">${escapeHtml(band.label)} · ${Math.round(nI * 100)}/100</div>` +
+    `<div class="${styles.popupFormula}">relative ship×whale overlap (0–100 across the region)</div>` +
+    `</div>`
+  )
+}
+
+const ESRI_SYMBOL_LABEL = { 0: 'Cargo', 1: 'Fishing', 2: 'Military', 3: 'Passenger', 4: 'Pleasure', 5: 'Tanker', 6: 'Tug / tow', 7: 'Other', 8: 'Unknown' }
+function vesselPopupHTML(p) {
+  const label = ESRI_SYMBOL_LABEL[p._symbol] ?? 'Vessel'
+  return (
+    `<div class="${styles.popup}">` +
+    `<div class="${styles.popupHead}">Vessel track</div>` +
+    `<div class="${styles.popupSpecies}">${escapeHtml(label)}</div>` +
+    `<div class="${styles.popupSrc}">Source: <a href="https://livingatlas.arcgis.com/vessel-traffic/" target="_blank" rel="noopener noreferrer">Esri Living Atlas</a> / <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a></div>` +
+    `</div>`
+  )
+}
+
 function MethodologyModal({ onClose, counts }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -667,14 +760,16 @@ function MethodologyModal({ onClose, counts }) {
               <a href="https://livingatlas.arcgis.com/vessel-traffic/" target="_blank" rel="noopener noreferrer">U.S. Vessel Traffic</a>{' '}
               per-month vector tile services (U.S. Coast Guard AIS via{' '}
               <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre</a>),
-              recolored and filtered by vessel class.
+              recolored and filtered by vessel class. AIS is published with a multi-month
+              processing lag, so the timeframe ends at the latest available month
+              (<strong>June 2025</strong> as of this build).
             </li>
             <li>
               <strong>Whale sightings — real.</strong>{' '}
               <a href="https://www.inaturalist.org/" target="_blank" rel="noopener noreferrer">iNaturalist</a>{' '}
               (order Cetacea{counts?.inat ? `, ${counts.inat.toLocaleString()} obs` : ''}) and{' '}
               <a href="https://obis.org/" target="_blank" rel="noopener noreferrer">OBIS</a>
-              {counts?.obis ? ` (${counts.obis.toLocaleString()})` : ''}, 2024–2025.{' '}
+              {counts?.obis ? ` (${counts.obis.toLocaleString()})` : ''}, Jan 2024 – Jun 2025.{' '}
               <a href="https://happywhale.com/" target="_blank" rel="noopener noreferrer">Happywhale</a> joins
               when its public API ships.
             </li>

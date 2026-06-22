@@ -55,6 +55,12 @@ if (sentryDsn && import.meta.env.PROD) {
       'ResizeObserver loop limit exceeded',
       'ResizeObserver loop completed with undelivered notifications',
       'Non-Error promise rejection captured',
+      // Mapbox's tile worker throws this (uncaught) when an external vector tile
+      // comes back truncated/unparseable — e.g. the heavy Esri vessel-traffic
+      // tiles on /shiptraffic. It's non-fatal (one tile fails to render, the map
+      // keeps working) and can't be caught via map.on('error'), so filter it
+      // here. Revisit if real-user sessions (not headless crawlers) report it.
+      /Unimplemented type: \d+/,
     ],
   })
   // Expose the SDK on window for prod smoke-testing from devtools console

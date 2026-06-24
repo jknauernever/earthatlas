@@ -13,15 +13,15 @@ Layers
               iNaturalist (order Cetacea) + OBIS (api.obis.org). Happywhale is
               wired but its public API is not live yet (returns 500), so it
               contributes 0 for now and flips on when the upstream ships.
-  - vessels : Salish Sea AIS traffic. v0 uses a clearly-labelled SYNTHETIC
-              generator that lays traffic along the REAL shipping lanes
-              (Haro Strait, Rosario Strait, Admiralty Inlet, ferry routes,
-              San Juan whale-watch/pleasure grounds) with monthly seasonality.
-              Swap in the MarineCadastre GeoParquet bake (see README) to make
-              this real without touching the tool.
+  - vessels : REAL Salish Sea AIS traffic from MarineCadastre monthly track
+              GeoParquet, binned to this grid by fetch_ais.py (which imports
+              this module for the region/grid, whale fetch, and grid writer).
 
-Run:  python3 scripts/bake-shiptraffic/bake.py
-Deps: stdlib + requests + numpy (no pyarrow/geopandas/h3/duckdb needed).
+This module is a SHARED LIBRARY — it has NO standalone bake path. There is only
+one vessel source (real AIS); to (re)bake, run the real pipeline:
+
+Run:  python3 scripts/bake-shiptraffic/fetch_ais.py
+Deps: stdlib + requests.
 """
 
 import json
@@ -31,7 +31,6 @@ import sys
 import time
 import datetime as dt
 
-import numpy as np
 import requests
 
 # ─── Region & grid ──────────────────────────────────────────────────────────
@@ -226,122 +225,11 @@ def fetch_happywhale():
     print("→ Happywhale… (public API not live yet — contributes 0, wired for flip)")
     return 0
 
-# ─── Vessels: SYNTHETIC traffic along the real Salish Sea lanes ─────────────
-# Each lane is a polyline (lng,lat waypoints) + a per-type mix + a monthly
-# intensity profile. Points are sampled along the lane with lateral spread and
-# binned. This is a stand-in for the MarineCadastre AIS bake; the grid format
-# is identical, so swapping in real data needs no tool changes.
-# With finer (~0.6 km) cells, each lane needs more sampled points to read as a
-# continuous track instead of a dotted line; SPREAD_SCALE tightens the lateral
-# spread so lanes stay crisp at the higher resolution.
-VESSEL_DENSITY = 2.5
-SPREAD_SCALE = 0.6
-
-SUMMER_BOOST = {  # month(1-12) -> multiplier for seasonal traffic
-    1: 0.7, 2: 0.7, 3: 0.85, 4: 1.0, 5: 1.2, 6: 1.5,
-    7: 1.7, 8: 1.7, 9: 1.4, 10: 1.0, 11: 0.8, 12: 0.7,
-}
-
-# mix weights per type; "season" flags traffic that swells in summer
-LANES = [
-    {  # Haro Strait deep-draft lane: Juan de Fuca -> Boundary Pass -> Georgia
-        "name": "Haro Strait shipping lane",
-        "pts": [(-123.55, 48.20), (-123.30, 48.35), (-123.20, 48.55),
-                (-123.10, 48.70), (-123.00, 48.78), (-122.85, 48.92)],
-        "mix": {"cargo": 0.45, "tanker": 0.22, "tug": 0.12, "fishing": 0.05,
-                "passenger": 0.04, "pleasure": 0.04, "other": 0.08},
-        "base": 90, "season": False, "spread": 0.012,
-    },
-    {  # Rosario Strait lane: Juan de Fuca -> Rosario -> Cherry Point/Bellingham
-        "name": "Rosario Strait shipping lane",
-        "pts": [(-122.80, 48.15), (-122.75, 48.35), (-122.74, 48.52),
-                (-122.70, 48.68), (-122.75, 48.84)],
-        "mix": {"cargo": 0.38, "tanker": 0.30, "tug": 0.14, "fishing": 0.05,
-                "passenger": 0.03, "pleasure": 0.03, "other": 0.07},
-        "base": 70, "season": False, "spread": 0.011,
-    },
-    {  # Admiralty Inlet entrance toward Puget Sound (south edge of bbox)
-        "name": "Admiralty Inlet approach",
-        "pts": [(-122.95, 48.16), (-122.78, 48.05), (-122.70, 47.95), (-122.68, 47.88)],
-        "mix": {"cargo": 0.40, "tanker": 0.18, "tug": 0.15, "fishing": 0.07,
-                "passenger": 0.07, "pleasure": 0.05, "other": 0.08},
-        "base": 60, "season": False, "spread": 0.012,
-    },
-    {  # Anacortes <-> San Juans <-> Sidney ferry corridor
-        "name": "WSF San Juan ferry corridor",
-        "pts": [(-122.61, 48.50), (-122.75, 48.52), (-122.95, 48.53),
-                (-123.10, 48.55), (-123.30, 48.58)],
-        "mix": {"passenger": 0.62, "pleasure": 0.12, "other": 0.10,
-                "fishing": 0.06, "cargo": 0.04, "tug": 0.04, "tanker": 0.02},
-        "base": 55, "season": True, "spread": 0.008,
-    },
-    {  # Coupeville <-> Port Townsend ferry
-        "name": "Port Townsend ferry",
-        "pts": [(-122.69, 48.16), (-122.76, 48.13), (-122.83, 48.11)],
-        "mix": {"passenger": 0.66, "pleasure": 0.12, "other": 0.10,
-                "fishing": 0.06, "cargo": 0.03, "tug": 0.02, "tanker": 0.01},
-        "base": 35, "season": True, "spread": 0.006,
-    },
-    {  # San Juan west side: whale-watch + pleasure grounds (Haro, Lime Kiln)
-        "name": "San Juan west-side pleasure/whale-watch grounds",
-        "pts": [(-123.18, 48.42), (-123.16, 48.52), (-123.13, 48.58), (-123.10, 48.66)],
-        "mix": {"pleasure": 0.52, "passenger": 0.26, "fishing": 0.10,
-                "other": 0.06, "cargo": 0.02, "tug": 0.02, "tanker": 0.0},
-        "base": 45, "season": True, "spread": 0.020,
-    },
-    {  # Scattered fishing across the eastern straits / Bellingham Bay
-        "name": "Eastern straits fishing grounds",
-        "pts": [(-122.85, 48.45), (-122.70, 48.60), (-122.55, 48.70), (-122.62, 48.78)],
-        "mix": {"fishing": 0.70, "pleasure": 0.14, "other": 0.08,
-                "passenger": 0.03, "tug": 0.03, "cargo": 0.01, "tanker": 0.01},
-        "base": 30, "season": True, "spread": 0.025,
-    },
-]
-
-def lane_samples(lane, n, rng):
-    """Sample n points along a lane polyline with gaussian lateral spread."""
-    pts = np.array(lane["pts"], dtype=float)
-    seg = np.linalg.norm(np.diff(pts, axis=0), axis=1)
-    cum = np.concatenate([[0], np.cumsum(seg)])
-    total = cum[-1]
-    out = []
-    for _ in range(n):
-        d = rng.random() * total
-        k = int(np.searchsorted(cum, d) - 1)
-        k = max(0, min(k, len(seg) - 1))
-        f = (d - cum[k]) / max(seg[k], 1e-9)
-        p = pts[k] + f * (pts[k + 1] - pts[k])
-        # lateral spread (degrees), tightened for the finer grid
-        p = p + rng.normal(0, lane["spread"] * SPREAD_SCALE, size=2)
-        out.append(p)
-    return out
-
-def generate_vessels():
-    print("→ Vessels (SYNTHETIC — real Salish Sea lanes, monthly seasonality)…")
-    rng = np.random.default_rng(20240615)  # deterministic
-    total = 0
-    for mk in MONTHS:
-        month_num = int(mk[5:7])
-        boost = SUMMER_BOOST[month_num]
-        for lane in LANES:
-            intensity = lane["base"] * VESSEL_DENSITY * (boost if lane["season"] else 1.0)
-            # transit count for the month (Poisson around intensity)
-            n = int(rng.poisson(intensity))
-            if n <= 0:
-                continue
-            samples = lane_samples(lane, n, rng)
-            types = list(lane["mix"].keys())
-            probs = np.array([lane["mix"][t] for t in types], dtype=float)
-            probs = probs / probs.sum()
-            picks = rng.choice(len(types), size=n, p=probs)
-            for (lng, lat), ti in zip(samples, picks):
-                if not in_bbox(lng, lat):
-                    continue
-                i, j = cell_index(lng, lat)
-                bump(i, j, "v", mk, types[ti])
-                total += 1
-    print(f"  Vessels: {total} synthetic transits binned")
-    return total
+# ─── Vessels ────────────────────────────────────────────────────────────────
+# There is NO synthetic vessel generator. Vessel bins are filled ONLY from real
+# MarineCadastre AIS by fetch_ais.py, which imports this module. (The former v0
+# synthetic-lane stand-in was removed deliberately so fabricated traffic can
+# never bake into a live grid.json.)
 
 # ─── Assemble & write ───────────────────────────────────────────────────────
 def assemble_and_write(vessel_source):
@@ -410,12 +298,12 @@ def fetch_whales():
     STATS["happywhale"] = fetch_happywhale()
 
 
-def main():
-    print(f"ShipTraffic bake — bbox {BBOX}, {len(MONTHS)} months")
-    fetch_whales()
-    STATS["vessels"] = generate_vessels()
-    assemble_and_write("synthetic")
-
-
+# ─── Entry point ────────────────────────────────────────────────────────────
+# Intentionally NO standalone bake. This module is a library for fetch_ais.py
+# (the real-AIS bake). Running it directly must not fabricate a grid.json.
 if __name__ == "__main__":
-    main()
+    sys.exit(
+        "bake.py is a shared library, not a runnable bake.\n"
+        "Vessel data is REAL MarineCadastre AIS — run the real pipeline:\n"
+        "    python3 scripts/bake-shiptraffic/fetch_ais.py\n"
+    )

@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+Build vessel-track vector tiles (PMTiles) for /shiptraffic from the REAL
+MarineCadastre AIS GeoParquet — Salish Sea bbox, all of 2024 + 2025.
+
+This is the display layer that REPLACES the Esri Living Atlas tiles. Each tile
+feature is a real vessel track (LineString, clipped to the bbox) tagged with:
+  - class : one of our 7 UI classes (reuses fetch_ais.vessel_class)
+  - month : "YYYY-MM"  (lets the timeframe slider filter client-side)
+  - mmsi  : stable vessel id (popups + future name/search work)
+
+So the existing vessel-type filter + month range work unchanged — just point the
+Mapbox source at tracks.pmtiles instead of the per-month Esri services.
+
+One PMTiles PER MONTH is the deliverable (track_tiles/tracks-YYYY-MM.pmtiles):
+  for each month:  DuckDB clip+simplify -> tmp NDJSON -> tippecanoe -> tracks-YM.pmtiles
+                   (delete the multi-GB NDJSON immediately)
+
+The app stacks only the months in view (capped + sampled), one Mapbox source per
+month, so each tile stays ~150-460 KB. We deliberately do NOT tile-join the months
+into one file: tile-join concatenates features without re-applying the per-tile
+size limit, which produced ~16 MB combined tiles that hung the Mapbox worker.
+Upload the per-month files with upload.mjs.
+
+Resumable: months whose tracks-YM.pmtiles already exists are skipped.
+
+Run:  python3 build_tracks_tiles.py             # all 24 months
+      python3 build_tracks_tiles.py 2024-01      # one month (smoke test)
+Deps: pip install duckdb ; brew install tippecanoe
+"""
+
+import json
+import os
+import sys
+import time
+import subprocess
+
+import bake  # BBOX
+from fetch_ais import vessel_class, TRACK_URL
+
+HERE = os.path.dirname(__file__)
+TILES_DIR = os.path.join(HERE, "track_tiles")         # per-month pmtiles (gitignored) → upload to Vercel Blob
+
+# Full real range — independent of bake.MONTHS (which the concern grid may cap).
+ALL_MONTHS = [f"{y}-{m:02d}" for y in (2024, 2025) for m in range(1, 13)]
+
+# Raw AIS tracks are wildly over-sampled (a ping every few seconds → thousands of
+# vertices per monthly track). Simplify to ~20 m before tiling: invisible at map
+# zoom, but cuts vertex count (and tile size) by ~1-2 orders of magnitude.
+SIMPLIFY_TOL = 0.0002  # degrees (~18 m lat, ~13 m lng at 48°N)
+
+
+def extract_month(con, ym, path):
+    """Write real clipped + simplified tracks for one month to an NDJSON file."""
+    W, S, E, N = bake.BBOX["w"], bake.BBOX["s"], bake.BBOX["e"], bake.BBOX["n"]
+    env = f"ST_MakeEnvelope({W},{S},{E},{N})"
+    url = TRACK_URL.format(ym=ym)
+    sql = f"""
+      SELECT mmsi, vessel_type,
+             ST_AsGeoJSON(ST_Simplify(ST_Intersection(geometry, {env}), {SIMPLIFY_TOL})) AS gj
+      FROM read_parquet('{url}')
+      WHERE ST_Intersects(geometry, {env})
+    """
+    cur = con.execute(sql)
+    n = 0
+    with open(path, "w") as fh:
+        while True:
+            rows = cur.fetchmany(5000)
+            if not rows:
+                break
+            for mmsi, vt, gj in rows:
+                if not gj:
+                    continue
+                geom = json.loads(gj)
+                if geom.get("type") not in ("LineString", "MultiLineString"):
+                    continue  # tangent intersections can yield points — skip
+                fh.write(json.dumps({
+                    "type": "Feature",
+                    "properties": {
+                        "class": vessel_class(vt),
+                        "month": ym,
+                        "mmsi": int(mmsi) if mmsi is not None else 0,
+                    },
+                    "geometry": geom,
+                }) + "\n")
+                n += 1
+    return n
+
+
+def tile_month(ndjson, out):
+    cmd = [
+        "tippecanoe", "-o", out, "-l", "tracks", "-f", "-q",
+        "-Z5", "-z11",
+        "--simplification=10",
+        "--drop-densest-as-needed",
+        "--extend-zooms-if-still-dropping",
+        "--read-parallel",
+        ndjson,
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def build_month(con, ym):
+    """Extract → tile → drop the multi-GB NDJSON. Skips if monthly tile exists."""
+    monthly = os.path.join(TILES_DIR, f"tracks-{ym}.pmtiles")
+    if os.path.exists(monthly):
+        print(f"  {ym}: skip (tile exists, {os.path.getsize(monthly)/1e6:.1f} MB)")
+        return monthly
+    ndjson = os.path.join(HERE, f".tracks-{ym}.ndjson")
+    t0 = time.time()
+    try:
+        n = extract_month(con, ym, ndjson)
+        tile_month(ndjson, monthly)
+    except Exception as e:
+        print(f"  {ym}: FAILED — {str(e)[:140]}")
+        if os.path.exists(ndjson):
+            os.remove(ndjson)
+        return None
+    os.remove(ndjson)  # reclaim the ~5 GB immediately
+    print(f"  {ym}: {n:>7,} tracks → {os.path.getsize(monthly)/1e6:.1f} MB  ({time.time()-t0:.0f}s)")
+    return monthly
+
+
+def main():
+    os.makedirs(TILES_DIR, exist_ok=True)
+    months = [a for a in sys.argv[1:] if not a.startswith("--")] or ALL_MONTHS
+    print(f"ShipTraffic track tiles — bbox {bake.BBOX}, {len(months)} month(s)")
+    import duckdb
+    con = duckdb.connect()
+    con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
+    con.execute("SET enable_progress_bar=false;")
+    built = [m for m in (build_month(con, ym) for ym in months) if m]
+    print(f"\n✓ {len(built)} month(s) in {TILES_DIR} — upload with upload.mjs")
+
+
+if __name__ == "__main__":
+    main()

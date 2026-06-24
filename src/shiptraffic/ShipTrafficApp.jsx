@@ -3,9 +3,9 @@
  * /shiptraffic.
  *
  * Three layers:
- *   - Vessels (yellow) : Esri Living Atlas "U.S. Vessel Traffic" per-month vector
- *                        tile services (real MarineCadastre AIS tracks), recolored
- *                        to a yellow glow and filtered by vessel type.
+ *   - Vessels (yellow) : real MarineCadastre AIS vessel tracks, baked to our own
+ *                        PMTiles (Salish Sea, by class + month) and served as MVT
+ *                        by /api/vessel-tiles; filtered by vessel type + month.
  *   - Whales (magenta) : real iNaturalist + OBIS cetacean sightings as points.
  *   - Concern (heatmap): the computed ship×whale overlap surface — a red→white-hot
  *                        alarm heatmap, from a coarse grid aggregated client-side.
@@ -27,10 +27,6 @@ import {
   monthRangeIndices,
   fmtMonth,
   interactionBand,
-  esriMonthTilesUrl,
-  esriSymbolsFor,
-  ESRI_SOURCE_LAYERS,
-  ESRI_ATTRIBUTION,
   VESSEL_LINE_COLOR,
   WHALE_POINT_COLOR,
   CONCERN_HEATMAP_RAMP,
@@ -38,16 +34,47 @@ import {
   WHALE_SOURCE_LABELS,
   WHALE_SOURCE_URLS,
 } from './shiptrafficData.js'
+import trackSource from './trackSource.json'
 import styles from './ShipTrafficApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
 const DEFAULT_VIEW = { center: [-123.0, 48.45], zoom: 8.4 }
 
-// Cap how many monthly Esri vessel tile-services are stacked at once. Single
-// months (the common case) load just one; only multi-month spans sample up to
-// this many evenly across the range (tracks vary little month to month).
+// Vessel tracks: our own PER-MONTH PMTiles of real MarineCadastre AIS, served as
+// MVT by /api/vessel-tiles (which range-reads the .pmtiles; see that file for why
+// we don't use Mapbox's native pmtiles:// under Vite). Each tile feature is a real
+// track tagged with `class` (one of our 7 types); the type chips filter it
+// client-side. We add ONE source per month in view (capped + sampled) rather than
+// one giant all-months source — a single combined file produced ~16 MB tiles that
+// hung the Mapbox worker; per-month tiles stay ~150-460 KB.
+//
+// The tiles URL MUST be absolute: Mapbox resolves a root-relative tile URL against
+// the Mapbox API base (not the page), so it silently never loads.
+// VITE_VESSEL_TILES_BASE lets plain-vite QA point at a standalone tile server.
+const VESSEL_TILES_BASE = (import.meta.env.VITE_VESSEL_TILES_BASE
+  || (typeof window !== 'undefined' ? window.location.origin : '')).trim()
+const vesselTileUrl = (ym) =>
+  `${VESSEL_TILES_BASE}/api/vessel-tiles?m=${ym}&v=${trackSource.version}&z={z}&x={x}&y={y}`
+const vesselSrcId = (ym) => `ves-${ym}`
+const vesselLayerId = (ym) => `ves-${ym}-line`
+const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this
+const SALISH_BBOX = [-123.8, 47.85, -122.2, 49.0] // source bounds → no tile requests outside the region
+const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
+
+// Cap how many monthly tilesets are stacked at once. Single months (the common
+// case) load just one; multi-month spans sample up to this many evenly across the
+// range (tracks vary little month to month), keeping total tile weight bounded.
 const VESSEL_MONTH_CAP = 6
+
+// Evenly sample `cap` items (keeping first + last) from a list.
+function sampleEvenly(arr, cap) {
+  if (arr.length <= cap) return arr.slice()
+  const out = []
+  const step = (arr.length - 1) / (cap - 1)
+  for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
+  return [...new Set(out)]
+}
 
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
@@ -67,15 +94,6 @@ const CONCERN_SRC = 'st-concern-src'
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-
-// Evenly sample `cap` items (keeping first + last) from a list.
-function sampleEvenly(arr, cap) {
-  if (arr.length <= cap) return arr.slice()
-  const out = []
-  const step = (arr.length - 1) / (cap - 1)
-  for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
-  return [...new Set(out)]
 }
 
 // ─── Shareable URL state ────────────────────────────────────────────────────
@@ -115,9 +133,9 @@ export default function ShipTrafficApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const popupRef = useRef(null)
-  const vesselSrcRef = useRef(new Set()) // ids of currently-added vessel tile sources
   const aggRef = useRef(null)            // latest aggregation, for the moveend concern rebuild
   const cellMetaRef = useRef(null)       // grid cell {lngStep, latStep}, for click hit-testing
+  const vesselSrcRef = useRef(new Set()) // active per-month vessel source ids
   const [mapReady, setMapReady] = useState(false)
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
@@ -183,12 +201,12 @@ export default function ShipTrafficApp() {
     return buildWhaleGeoJSON(whales, range[0], range[1], whaleSources, WHALE_SOURCES)
   }, [whales, range, whaleSources])
 
-  // Which months' vessel tile-services to stack (capped + sampled).
+  // Which months' vessel tilesets to stack (capped + sampled across the range).
   const vesselMonths = useMemo(() => {
     if (!range || !months.length) return []
-    const inRange = months.slice(range[0], range[1] + 1)
-    return sampleEvenly(inRange, VESSEL_MONTH_CAP)
+    return sampleEvenly(months.slice(range[0], range[1] + 1), VESSEL_MONTH_CAP)
   }, [range, months])
+
 
   // Rebuild the concern heatmap normalized to the current viewport.
   const pushConcern = useCallback((map) => {
@@ -227,11 +245,9 @@ export default function ShipTrafficApp() {
       zoom: start ? start.zoom : DEFAULT_VIEW.zoom,
     })
     mapRef.current = map
-    // Esri's vessel-traffic vector tiles are large and externally hosted; an
-    // occasional one comes back truncated/unparseable and Mapbox's worker throws
-    // (e.g. pbf "Unimplemented type: 3"). Swallow tile/source errors so they
-    // degrade gracefully — one missing tile, not an uncaught global that spams
-    // Sentry. Real config errors still surface in the console.
+    // Swallow vessel tile/source errors so a single failed tile degrades
+    // gracefully instead of becoming an uncaught global that spams Sentry. Real
+    // config errors still surface in the console.
     map.on('error', (e) => {
       const msg = e?.error?.message || ''
       if (e?.sourceId?.startsWith('ves-') || /Unimplemented type|tile/i.test(msg)) return
@@ -245,11 +261,8 @@ export default function ShipTrafficApp() {
       pushConcern(map) // re-normalize concern colors to the new viewport
     })
 
-    const vesselLayerIds = () => {
-      const s = map.getStyle()
-      if (!s) return []
-      return s.layers.filter((l) => l.id.startsWith('ves-')).map((l) => l.id).filter((id) => map.getLayer(id))
-    }
+    const vesselLayerIds = () => [...vesselSrcRef.current]
+      .map((sid) => `${sid}-line`).filter((id) => map.getLayer(id))
 
     // One click handler for the whole map: a concern cell gives the full area
     // readout (vessels + whales + overlap, with sources); else a whale point or
@@ -277,6 +290,8 @@ export default function ShipTrafficApp() {
     })
 
     const addStaticLayers = () => {
+      // Vessel tracks are per-month sources added dynamically (below) so only the
+      // months in view load; here we just set up concern + whales above them.
       // Concern heatmap (below whale points).
       if (!map.getSource(CONCERN_SRC)) {
         map.addSource(CONCERN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
@@ -312,9 +327,6 @@ export default function ShipTrafficApp() {
           },
         })
       }
-      // Vessel tile sources are (re)added by the reconcile effect; clear the
-      // ref so they get rebuilt against this fresh style.
-      vesselSrcRef.current = new Set()
       setMapReady(true)
     }
 
@@ -323,66 +335,60 @@ export default function ShipTrafficApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ─── Reconcile vessel tile sources (months in range) ──────────────────────
+  // ─── Sync per-month vessel sources (stack the sampled months in view) ──────
+  // Adds one vector source+layer per month in `vesselMonths`, removes stale ones,
+  // and applies the vessel-type filter + visibility. Keyed on mapReady so it
+  // re-applies after a basemap swap (which drops all sources/layers).
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
-    const symbols = esriSymbolsFor(vesselTypes)
-    const wanted = new Set(vesselMonths.map((ym) => `ves-${ym}`))
+    if (!map || !mapReady || !map.getLayer(CONCERN_LAYER)) return
+    const types = VESSEL_TYPES.filter((t) => vesselTypes.has(t))
+    const typeFilter = ['in', ['get', 'class'], ['literal', types]]
     const show = visible.vessels
-    // Higher floor so the yellow lanes read on satellite; stacked months overlap
-    // and build up brightness where traffic is heaviest.
-    const opacity = Math.max(0.5, 0.85 / Math.sqrt(Math.max(1, vesselMonths.length)))
+    // Stacked months overlap; dim each so heavily-trafficked lanes build up
+    // brightness instead of saturating to a solid block.
+    const opacity = show ? Math.max(0.4, 0.7 / Math.sqrt(Math.max(1, vesselMonths.length))) : 0
+    const wanted = new Set(vesselMonths.map(vesselSrcId))
 
-    // Remove stale sources/layers.
+    // Remove months no longer in view.
     for (const sid of [...vesselSrcRef.current]) {
-      if (!wanted.has(sid)) {
-        for (const sl of ESRI_SOURCE_LAYERS) {
-          const lid = `${sid}-${sl}`
-          if (map.getLayer(lid)) map.removeLayer(lid)
-        }
-        if (map.getSource(sid)) map.removeSource(sid)
-        vesselSrcRef.current.delete(sid)
-      }
+      if (wanted.has(sid)) continue
+      const lid = `${sid}-line`
+      if (map.getLayer(lid)) map.removeLayer(lid)
+      if (map.getSource(sid)) map.removeSource(sid)
+      vesselSrcRef.current.delete(sid)
     }
-    // Add new + update existing.
+    // Add new months + refresh filter/visibility on all.
     for (const ym of vesselMonths) {
-      const sid = `ves-${ym}`
+      const sid = vesselSrcId(ym)
+      const lid = vesselLayerId(ym)
       if (!map.getSource(sid)) {
         map.addSource(sid, {
           type: 'vector',
-          tiles: [esriMonthTilesUrl(ym)],
-          // Don't request tiles below z8: the sub-z8 aggregate tiles cover a huge
-          // area and balloon in size (the z8 region tile is already ~1.3 MB
-          // decompressed, and we stack one source per month), which is where the
-          // worker's parse failures concentrate. The default view is z8.4, so z8
-          // is the floor we actually need; below it the lanes just hide rather
-          // than dragging the worker through multi-MB tiles.
-          minzoom: 8,
-          maxzoom: 16,
-          attribution: ESRI_ATTRIBUTION,
+          tiles: [vesselTileUrl(ym)],
+          minzoom: 5,
+          maxzoom: VESSEL_TILE_MAXZOOM,
+          bounds: SALISH_BBOX,
+          attribution: VESSEL_ATTRIBUTION,
         })
-        for (const sl of ESRI_SOURCE_LAYERS) {
-          map.addLayer({
-            id: `${sid}-${sl}`,
-            type: 'line',
-            source: sid,
-            'source-layer': sl,
-            paint: {
-              'line-color': VESSEL_LINE_COLOR,
-              'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
-              'line-blur': 0.6,
-            },
-          }, map.getLayer(CONCERN_LAYER) ? CONCERN_LAYER : undefined) // keep vessels beneath concern + whales
-        }
+        map.addLayer({
+          id: lid,
+          type: 'line',
+          source: sid,
+          'source-layer': trackSource.sourceLayer,
+          layout: { 'line-join': 'round' },
+          paint: {
+            'line-color': VESSEL_LINE_COLOR,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
+            'line-blur': 0.6,
+          },
+        }, CONCERN_LAYER) // keep vessels beneath concern + whales
         vesselSrcRef.current.add(sid)
       }
-      for (const sl of ESRI_SOURCE_LAYERS) {
-        const lid = `${sid}-${sl}`
-        if (!map.getLayer(lid)) continue
-        map.setFilter(lid, ['in', ['get', '_symbol'], ['literal', symbols]])
+      if (map.getLayer(lid)) {
+        map.setFilter(lid, typeFilter)
         map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
-        map.setPaintProperty(lid, 'line-opacity', show ? opacity : 0)
+        map.setPaintProperty(lid, 'line-opacity', opacity)
       }
     }
   }, [vesselMonths, vesselTypes, visible.vessels, mapReady])
@@ -576,7 +582,7 @@ export default function ShipTrafficApp() {
                   <label className={styles.fieldLabel}>Layers</label>
                   <div className={styles.layerRows}>
                     <LayerRow on={visible.vessels} onToggle={() => toggleLayer('vessels')}
-                      swatch="linear-gradient(90deg,#ca8a04,#eab308,#fde047)" label="Vessel traffic" sub="Esri / MarineCadastre AIS" />
+                      swatch="linear-gradient(90deg,#ca8a04,#eab308,#fde047)" label="Vessel traffic" sub="MarineCadastre AIS" />
                     <LayerRow on={visible.whales} onToggle={() => toggleLayer('whales')}
                       swatch="radial-gradient(circle,#f472b6,#db2777)" label="Whale sightings" count={whaleCount} />
                     <LayerRow on={visible.concern} onToggle={() => toggleLayer('concern')}
@@ -718,14 +724,15 @@ function cellPopupHTML(cell, whaleProps) {
   )
 }
 
-const ESRI_SYMBOL_LABEL = { 0: 'Cargo', 1: 'Fishing', 2: 'Military', 3: 'Passenger', 4: 'Pleasure', 5: 'Tanker', 6: 'Tug / tow', 7: 'Other', 8: 'Unknown' }
 function vesselPopupHTML(p) {
-  const label = ESRI_SYMBOL_LABEL[p._symbol] ?? 'Vessel'
+  const label = VESSEL_TYPE_LABELS[p.class] ?? 'Vessel'
+  const meta = [p.month && fmtMonth(p.month), p.mmsi ? `MMSI ${p.mmsi}` : null].filter(Boolean).join(' · ')
   return (
     `<div class="${styles.popup}">` +
     `<div class="${styles.popupHead}">Vessel track</div>` +
     `<div class="${styles.popupSpecies}">${escapeHtml(label)}</div>` +
-    `<div class="${styles.popupSrc}">Source: <a href="https://livingatlas.arcgis.com/vessel-traffic/" target="_blank" rel="noopener noreferrer">Esri Living Atlas</a> / <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a></div>` +
+    (meta ? `<div class="${styles.popupMeta}">${escapeHtml(meta)}</div>` : '') +
+    `<div class="${styles.popupSrc}">Source: <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a> (NOAA / BOEM / USCG)</div>` +
     `</div>`
   )
 }
@@ -756,13 +763,13 @@ function MethodologyModal({ onClose, counts }) {
           <h3>Where the data comes from</h3>
           <ul>
             <li>
-              <strong>Vessel traffic — Esri Living Atlas / MarineCadastre AIS.</strong> The{' '}
-              <a href="https://livingatlas.arcgis.com/vessel-traffic/" target="_blank" rel="noopener noreferrer">U.S. Vessel Traffic</a>{' '}
-              per-month vector tile services (U.S. Coast Guard AIS via{' '}
-              <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre</a>),
-              recolored and filtered by vessel class. AIS is published with a multi-month
-              processing lag, so the timeframe ends at the latest available month
-              (<strong>June 2025</strong> as of this build).
+              <strong>Vessel traffic — MarineCadastre AIS.</strong> Real monthly AIS
+              vessel tracks from{' '}
+              <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre</a>{' '}
+              (U.S. Coast Guard AIS), clipped to the Salish Sea and tiled by class and
+              month, drawn straight from the raw tracks. AIS is published with a
+              multi-month processing lag, so the timeframe ends at the latest
+              available month.
             </li>
             <li>
               <strong>Whale sightings — real.</strong>{' '}

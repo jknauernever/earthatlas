@@ -47,15 +47,14 @@ const DEFAULT_VIEW = { center: [-123.0, 48.45], zoom: 8.4 }
 // track tagged with `class` (one of our 7 types); the type chips filter it
 // client-side.
 //
-// A "tileset" id is a month ("2025-07"), a year ("2025"), or "all". We pick the
-// smallest set of sources that covers the selected range:
-//   single month  -> that month's tileset (1 source)
-//   a full year   -> the year aggregate   (1 source, true all-12-months)
-//   everything    -> the "all" aggregate  (1 source, all 24 months)
-//   partial span  -> per-month, capped + sampled (the rare shift-click case)
-// Year/all are density-capped aggregates (~200-430 KB/tile) so the big views load
-// in ONE light source — a single un-capped combined file produced ~16 MB tiles
-// that hung the Mapbox worker.
+// Each tileset id is a MONTH ("2025-07"). Multi-month views (a year, "All", a
+// shift-click span) STACK the clean per-month tiles, sampled to VESSEL_MONTH_CAP
+// so the load stays bounded. We deliberately do NOT use a single combined
+// "all-months" tile: building one means decoding+merging the per-month tiles,
+// whose render buffer duplicates edge tracks → faint grid-line artifacts on the
+// dense views. Stacking the per-month tiles (each clean, no merge) avoids that
+// entirely; the only cost is N tile requests. Tracks vary little month to month,
+// so an even sample reads as the full span.
 //
 // The tiles URL MUST be absolute: Mapbox resolves a root-relative tile URL against
 // the Mapbox API base (not the page), so it silently never loads.
@@ -70,9 +69,9 @@ const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms
 const SALISH_BBOX = [-123.8, 47.85, -122.2, 49.0] // source bounds → no tile requests outside the region
 const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
 
-// Only the rare arbitrary partial span stacks per-month sources; cap how many at
-// once (sampled evenly — tracks vary little month to month) to bound tile weight.
-const VESSEL_MONTH_CAP = 6
+// How many monthly tilesets to stack at once. A full year (12) stacks them all;
+// "All" (24) samples down to this many evenly. Bounds tile requests + GPU layers.
+const VESSEL_MONTH_CAP = 12
 
 // Evenly sample `cap` items (keeping first + last) from a list.
 function sampleEvenly(arr, cap) {
@@ -83,18 +82,11 @@ function sampleEvenly(arr, cap) {
   return [...new Set(out)]
 }
 
-// The minimal set of tileset ids covering months[a..b]: one aggregate for a full
-// year or "all", a single month, else per-month (capped) for a partial span.
+// Months to stack for range months[a..b] — the selected months, evenly sampled to
+// the cap (a single month returns just itself).
 function tilesetsForRange(months, a, b) {
   if (!months.length) return []
-  const selected = months.slice(a, b + 1)
-  if (selected.length === months.length) return ['all']
-  const years = [...new Set(selected.map((m) => m.slice(0, 4)))]
-  if (years.length === 1 && selected.length === months.filter((m) => m.startsWith(years[0])).length) {
-    return [years[0]] // exactly one full calendar year
-  }
-  if (selected.length === 1) return [selected[0]]
-  return sampleEvenly(selected, VESSEL_MONTH_CAP)
+  return sampleEvenly(months.slice(a, b + 1), VESSEL_MONTH_CAP)
 }
 
 const BASEMAPS = [
@@ -356,9 +348,9 @@ export default function ShipTrafficApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ─── Sync vessel sources (one aggregate, or stacked months for a span) ─────
-  // Adds one vector source+layer per id in `vesselTilesets`, removes stale ones,
-  // and applies the vessel-type filter + visibility. Keyed on mapReady so it
+  // ─── Sync vessel sources (stack the sampled per-month tiles in view) ───────
+  // Adds one vector source+layer per month id in `vesselTilesets`, removes stale
+  // ones, and applies the vessel-type filter + visibility. Keyed on mapReady so it
   // re-applies after a basemap swap (which drops all sources/layers).
   useEffect(() => {
     const map = mapRef.current
@@ -366,14 +358,9 @@ export default function ShipTrafficApp() {
     const types = VESSEL_TYPES.filter((t) => vesselTypes.has(t))
     const typeFilter = ['in', ['get', 'class'], ['literal', types]]
     const show = visible.vessels
-    // Opacity scales with how many MONTHS of overlapping tracks are drawn — NOT the
-    // source count. A single `all` aggregate is one source but carries 24 months of
-    // tracks, so at full opacity the lanes saturate to solid yellow blocks. Dim by
-    // √(months drawn) so density reads as brightness build-up, like the old
-    // per-month stacking did (6 months ≈ 0.29; a year ≈ 0.20; all 24 ≈ 0.14).
-    const monthsOf = (id) => id === 'all' ? 24 : /^\d{4}$/.test(id) ? 12 : 1
-    const monthsDrawn = vesselTilesets.reduce((s, id) => s + monthsOf(id), 0)
-    const opacity = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, monthsDrawn))) : 0
+    // Stacked months overlap; dim each by √(count) so density reads as brightness
+    // build-up instead of saturating (1 month ≈ 0.7; 12 ≈ 0.20).
+    const opacity = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
     const wanted = new Set(vesselTilesets.map(vesselSrcId))
 
     // Remove tilesets no longer in view.

@@ -1,14 +1,12 @@
 // Vessel-track vector-tile endpoint — serves MVT tiles out of the baked
 // PMTiles (real MarineCadastre AIS, Salish Sea, 2024–2025).
 //
-//   /api/vessel-tiles?t=<tileset>&z=<z>&x=<x>&y=<y>
+//   /api/vessel-tiles?t=<YYYY-MM>&z=<z>&x=<x>&y=<y>
 //
-// `t` is a tileset id: a month ("2024-07"), a year ("2025"), or "all". Months
-// stay ~150-460 KB/tile; the year/all aggregates are density-capped to ~200-430
-// KB/tile so the "2024"/"2025"/"All" views render in ONE light source instead of
-// stacking 12-24 month layers. A single un-capped combined file produced ~16 MB
-// tiles that hung the Mapbox worker — these aggregates are re-tiled with
-// drop-densest so they never blow past the size limit.
+// `t` is a month id; each month's tiles stay ~150-460 KB. Multi-month views (a
+// year, "All", a span) STACK the per-month tiles client-side — we don't build a
+// combined all-months tile, because merging the per-month tiles duplicates edge
+// tracks (render buffer) into faint grid-line artifacts on the dense views.
 //
 // Same approach as api/parcel-tiles.js: Mapbox's native .pmtiles source throws
 // `__vite__injectQuery` under Vite's dev pipeline, so we range-read the PMTiles
@@ -39,13 +37,10 @@ class LocalFileSource {
 const localPathFor = (t) =>
   resolve(process.cwd(), `scripts/bake-shiptraffic/track_tiles/tracks-${t}.pmtiles`)
 
-// A tileset id `t` is a month ("2024-07"), a year ("2025"), or "all".
-const isTileset = (t) => /^\d{4}-\d{2}$/.test(t) || /^\d{4}$/.test(t) || t === 'all'
-const blobUrlFor = (t) =>
-  /^\d{4}-\d{2}$/.test(t) ? manifest.tiles?.[t]
-  : /^\d{4}$/.test(t) ? manifest.years?.[t]
-  : t === 'all' ? manifest.all
-  : null
+// A tileset id `t` is a month ("2024-07"). Multi-month views stack months
+// client-side, so the endpoint only ever serves a single month's tiles.
+const isTileset = (t) => /^\d{4}-\d{2}$/.test(t)
+const blobUrlFor = (t) => manifest.tiles?.[t] || null
 
 // Reuse the PMTiles instance (cached header/directory) across warm invocations.
 const cache = new Map()

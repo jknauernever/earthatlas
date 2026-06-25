@@ -27,10 +27,5 @@
     "2025-10": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-2025-10-2024-2025.pmtiles",
     "2025-11": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-2025-11-2024-2025.pmtiles",
     "2025-12": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-2025-12-2024-2025.pmtiles"
-  },
-  "years": {
-    "2024": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-2024-2024-2025c.pmtiles",
-    "2025": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-2025-2024-2025c.pmtiles"
-  },
-  "all": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shiptraffic/tracks-all-2024-2025c.pmtiles"
+  }
 }

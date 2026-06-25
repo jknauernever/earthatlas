@@ -40,6 +40,15 @@ const MODES = [
   { id: 'severity', label: 'Severity', blurb: 'Percent vegetation loss in the disturbed pixel.' },
 ]
 
+// Native data resolution per dataset id (meters), shown on the expanded panel.
+// OPERA DIST-ALERT (HLS) + Hansen/TMF/forest-type/EFDA = 30 m; the commodity crop
+// models, RADD, canopy height and WorldCereal cropland = 10 m.
+const FOREST_RESOLUTION = {
+  opera: '30 m', commodity: '10 m',
+  radd: '10 m', hansen: '30 m', tmf: '30 m', foresttype: '30 m',
+  canopy: '10 m', cropland: '10 m', efda: '30 m',
+}
+
 // Forest Data Partnership commodity overlay layers. `key` is the cloud-function
 // `?commodity=` param; `color` is the bold end of that crop's gradient palette
 // (mirrors COMMODITY_TILE_PALETTES in main.py) and doubles as the legend swatch.
@@ -1324,6 +1333,8 @@ export default function ForestMonitor() {
                 />
               </div>
 
+              <div className={styles.legendBlurb}><strong>Resolution:</strong> {FOREST_RESOLUTION.opera}</div>
+
               <div className={styles.subLabel}>View</div>
               <div className={styles.modeRow}>
                 {MODES.map((m) => (
@@ -1465,6 +1476,7 @@ export default function ForestMonitor() {
                 ))}
               </ul>
 
+              <div className={styles.legendBlurb}><strong>Resolution:</strong> {FOREST_RESOLUTION.commodity}</div>
               <div className={styles.legendBlurb}>
                 Faint → bold = lower → higher model confidence. These models under-detect smallholder & shade-grown crops (e.g. Colombian coffee), so treat faint areas as "possible," not absent. Pan-tropical only. Source: Forest Data Partnership (Google), 10 m.
               </div>
@@ -1532,6 +1544,9 @@ export default function ForestMonitor() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {FOREST_RESOLUTION[layer.id] && (
+                  <div className={styles.legendBlurb}><strong>Resolution:</strong> {FOREST_RESOLUTION[layer.id]}</div>
                 )}
                 <div className={styles.legendBlurb}>{layer.legend.blurb}</div>
               </div>

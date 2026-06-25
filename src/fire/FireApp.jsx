@@ -44,6 +44,13 @@ const TILES_API_BASE = (
 //   coverage      short human note shown as a hint ('US only', 'Global', …)
 //   legend        { kind:'swatches', items:[{c,l}] } | { kind:'gradient', css, left, right }
 //   source        attribution line
+// Native data resolution per layer id (meters), shown on the expanded panel. WRC
+// raster suite = 30 m (verified from the ImageServer pixelSize); Sentinel-2 NDVI +
+// land cover = 10 m; parcels are vector (no native pixel resolution → no entry).
+const LAYER_RESOLUTION = {
+  whp: '30 m', bp: '30 m', cfl: '30 m', rps: '30 m', rrz: '30 m', exposure: '30 m',
+  ndvi: '10 m', lulc: '10 m',
+}
 const FIRE_LAYERS = [
   {
     id: 'whp',
@@ -1451,6 +1458,9 @@ export default function FireApp() {
 
                   <div className={styles.legendBlurb}>
                     {layer.blurb}
+                    {LAYER_RESOLUTION[layer.id] && (
+                      <span className={styles.legendSource}>Resolution: {LAYER_RESOLUTION[layer.id]}</span>
+                    )}
                     <span className={styles.legendSource}>Source: {layer.source}</span>
                   </div>
                 </div>

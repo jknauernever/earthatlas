@@ -9,3 +9,7 @@ tracks.ndjson
 track_tiles/
 .tracks-*.ndjson
 dist/
+
+# aggregate build intermediates
+.aggsrc-*.ndjson
+.agg-*.ndjson

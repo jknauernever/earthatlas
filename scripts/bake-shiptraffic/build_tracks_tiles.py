@@ -24,17 +24,19 @@ Upload the per-month files with upload.mjs.
 
 Plus year + "all" AGGREGATES (tracks-2024/2025/all.pmtiles): one size-capped
 tileset per year so the "2024"/"2025"/"All" views show true all-months traffic in
-a single light source instead of stacking N per-month layers. See build_aggregate.
+a single light source instead of stacking N per-month layers. Built by decoding +
+centroid-deduping the per-month tiles, see build_aggregate.
 
 Resumable: months whose tracks-YM.pmtiles already exists are skipped.
 
 Run:  python3 build_tracks_tiles.py                  # all 24 months + aggregates
       python3 build_tracks_tiles.py 2024-01          # one month (smoke test)
-      python3 build_tracks_tiles.py --aggregates-only  # rebuild year/all from existing monthlies
+      python3 build_tracks_tiles.py --aggregates-only  # rebuild year/all from monthlies
 Deps: pip install duckdb ; brew install tippecanoe jq
 """
 
 import json
+import math
 import os
 import sys
 import time
@@ -55,14 +57,14 @@ ALL_MONTHS = [f"{y}-{m:02d}" for y in (2024, 2025) for m in range(1, 13)]
 SIMPLIFY_TOL = 0.0002  # degrees (~18 m lat, ~13 m lng at 48°N)
 
 
-def extract_month(con, ym, path):
+def extract_month(con, ym, path, tol=SIMPLIFY_TOL):
     """Write real clipped + simplified tracks for one month to an NDJSON file."""
     W, S, E, N = bake.BBOX["w"], bake.BBOX["s"], bake.BBOX["e"], bake.BBOX["n"]
     env = f"ST_MakeEnvelope({W},{S},{E},{N})"
     url = TRACK_URL.format(ym=ym)
     sql = f"""
       SELECT mmsi, vessel_type,
-             ST_AsGeoJSON(ST_Simplify(ST_Intersection(geometry, {env}), {SIMPLIFY_TOL})) AS gj
+             ST_AsGeoJSON(ST_Simplify(ST_Intersection(geometry, {env}), {tol})) AS gj
       FROM read_parquet('{url}')
       WHERE ST_Intersects(geometry, {env})
     """
@@ -130,25 +132,68 @@ def build_month(con, ym):
 # all of them), so the "2024"/"2025"/"All" views render true all-months traffic in
 # a single light source instead of stacking N per-month layers. Capped at z10.
 #
-# The per-month NDJSON is deleted after each month bakes, so we rebuild an
-# aggregate's input by DECODING the existing per-month pmtiles back to GeoJSON
-# (tippecanoe-decode at the monthly maxzoom) and re-tiling the union with
-# --drop-densest-as-needed. drop-densest thins the heavily-overlapping lanes
-# (vessels repeat the same lanes every month) to keep each tile ~200-430 KB while
-# the aggregate still reads as the full year. Needs `jq` (brew install jq).
+# Built by DECODING the per-month pmtiles (re-extracting source geometry isn't an
+# option — one month is ~5 GB of NDJSON regardless of simplify tolerance, so all 24
+# at once would be ~120 GB). tippecanoe-decode emits each tile's features WITH its
+# render buffer, so tracks near a tile edge are duplicated into the neighbour tile;
+# left in, those duplicates stack into faint extra-density lines along the tile
+# grid. We drop them with a centroid test: keep a decoded feature only if its
+# centroid lies in its EXACT source tile (the buffer-only copies centre outside it).
+# This brings the feature count back to the true un-buffered value. Needs `jq`.
+#
+# THINNING: --drop-FRACTION-as-needed, NOT --drop-densest. Both meet the ~500 KB
+# tile cap, but drop-densest removes spatially-clustered densest features, so
+# adjacent tiles survive at visibly different densities → hard rectangular seams.
+# drop-fraction removes a uniform random fraction → density steps smoothly.
 AGG_MAXZOOM = 10
 
 
-def decode_month_into(monthly, fh):
-    """Append a month's tracks, decoded from its pmtiles, as NDJSON to fh."""
+def _z11_bounds(tx, ty):
+    n = 2 ** 11
+    return (tx / n * 360 - 180,
+            math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (ty + 1) / n)))),
+            (tx + 1) / n * 360 - 180,
+            math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * ty / n)))))
+
+
+def decode_month_into(monthly, out_fh):
+    """Append a month's decoded tracks to out_fh, dropping buffer-duplicate copies
+    (kept only if the feature centroid is in its exact z11 source tile)."""
     dec = subprocess.Popen(["tippecanoe-decode", "-z11", "-Z11", monthly],
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    jq = subprocess.Popen(["jq", "-c", ".features[].features[].features[]"],
-                          stdin=dec.stdout, stdout=fh)
+    jq = subprocess.Popen(
+        ["jq", "-c", ".features[] | .properties as $t | .features[].features[]"
+         " | .properties.tx=$t.x | .properties.ty=$t.y"],
+        stdin=dec.stdout, stdout=subprocess.PIPE)
     dec.stdout.close()
-    jq.communicate()
-    if dec.wait() or jq.returncode:
-        raise RuntimeError(f"decode failed for {monthly}")
+    kept = 0
+    for line in jq.stdout:
+        try:
+            f = json.loads(line)
+        except Exception:
+            continue
+        p = f.get("properties", {})
+        tx, ty = p.get("tx"), p.get("ty")
+        if tx is None:
+            continue
+        g = f["geometry"]
+        c = g["coordinates"]
+        pts = c if g["type"] == "LineString" else [pt for ls in c for pt in ls]
+        if not pts:
+            continue
+        mx = sum(q[0] for q in pts) / len(pts)
+        my = sum(q[1] for q in pts) / len(pts)
+        w, s, e, nth = _z11_bounds(tx, ty)
+        if not (w <= mx <= e and s <= my <= nth):
+            continue  # buffer-only duplicate of a neighbouring tile's track
+        p.pop("tx", None)
+        p.pop("ty", None)
+        out_fh.write(json.dumps(f) + "\n")
+        kept += 1
+    jq.stdout.close()
+    jq.wait()
+    dec.wait()
+    return kept
 
 
 def build_aggregate(name, months):
@@ -164,11 +209,6 @@ def build_aggregate(name, months):
     with open(tmp, "w") as fh:
         for m in monthlies:
             decode_month_into(m, fh)
-    # --drop-FRACTION-as-needed, not --drop-densest: both thin each tile to meet the
-    # size cap, but drop-densest removes spatially-clustered densest features, so
-    # adjacent tiles survive at visibly different densities → hard rectangular SEAMS
-    # at tile boundaries (very obvious on the 24-month aggregate). drop-fraction
-    # removes a uniform random fraction, so density steps smoothly across borders.
     subprocess.run(["tippecanoe", "-o", out, "-l", "tracks", "-f", "-q",
                     "-Z5", f"-z{AGG_MAXZOOM}", "--simplification=10",
                     "--drop-fraction-as-needed", "--read-parallel", tmp], check=True)
@@ -178,7 +218,7 @@ def build_aggregate(name, months):
 
 
 def build_all_aggregates():
-    print("→ year + all aggregates")
+    print("→ year + all aggregates (decode per-month + centroid-dedup buffer)")
     for y in ("2024", "2025"):
         build_aggregate(y, [ym for ym in ALL_MONTHS if ym.startswith(y)])
     build_aggregate("all", ALL_MONTHS)
@@ -199,7 +239,7 @@ def main():
     built = [m for m in (build_month(con, ym) for ym in months) if m]
     print(f"\n✓ {len(built)} month(s) in {TILES_DIR}")
     if months == ALL_MONTHS:
-        build_all_aggregates()
+        build_all_aggregates(con)
     print("upload with upload.mjs")
 
 

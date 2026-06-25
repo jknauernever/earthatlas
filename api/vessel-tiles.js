@@ -1,11 +1,14 @@
 // Vessel-track vector-tile endpoint — serves MVT tiles out of the baked
-// PER-MONTH PMTiles (real MarineCadastre AIS, Salish Sea, 2024–2025).
+// PMTiles (real MarineCadastre AIS, Salish Sea, 2024–2025).
 //
-//   /api/vessel-tiles?m=<YYYY-MM>&z=<z>&x=<x>&y=<y>
+//   /api/vessel-tiles?t=<tileset>&z=<z>&x=<x>&y=<y>
 //
-// One PMTiles per month; the app stacks only the months in view (capped +
-// sampled), so each tile stays ~150-460 KB. A single combined file produced
-// ~16 MB tiles that hung the Mapbox worker, so we never merge months.
+// `t` is a tileset id: a month ("2024-07"), a year ("2025"), or "all". Months
+// stay ~150-460 KB/tile; the year/all aggregates are density-capped to ~200-430
+// KB/tile so the "2024"/"2025"/"All" views render in ONE light source instead of
+// stacking 12-24 month layers. A single un-capped combined file produced ~16 MB
+// tiles that hung the Mapbox worker — these aggregates are re-tiled with
+// drop-densest so they never blow past the size limit.
 //
 // Same approach as api/parcel-tiles.js: Mapbox's native .pmtiles source throws
 // `__vite__injectQuery` under Vite's dev pipeline, so we range-read the PMTiles
@@ -33,41 +36,49 @@ class LocalFileSource {
   }
 }
 
-const localPathFor = (month) =>
-  resolve(process.cwd(), `scripts/bake-shiptraffic/track_tiles/tracks-${month}.pmtiles`)
+const localPathFor = (t) =>
+  resolve(process.cwd(), `scripts/bake-shiptraffic/track_tiles/tracks-${t}.pmtiles`)
+
+// A tileset id `t` is a month ("2024-07"), a year ("2025"), or "all".
+const isTileset = (t) => /^\d{4}-\d{2}$/.test(t) || /^\d{4}$/.test(t) || t === 'all'
+const blobUrlFor = (t) =>
+  /^\d{4}-\d{2}$/.test(t) ? manifest.tiles?.[t]
+  : /^\d{4}$/.test(t) ? manifest.years?.[t]
+  : t === 'all' ? manifest.all
+  : null
 
 // Reuse the PMTiles instance (cached header/directory) across warm invocations.
 const cache = new Map()
-function pmtilesFor(month) {
-  let p = cache.get(month)
+function pmtilesFor(t) {
+  let p = cache.get(t)
   if (!p) {
-    const localPath = localPathFor(month)
-    const blobUrl = manifest.tiles?.[month]
+    const localPath = localPathFor(t)
+    const blobUrl = blobUrlFor(t)
     if (existsSync(localPath)) p = new PMTiles(new LocalFileSource(localPath))
     else if (blobUrl) p = new PMTiles(new FetchSource(blobUrl))
     else return null
-    cache.set(month, p)
+    cache.set(t, p)
   }
   return p
 }
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
-  const month = searchParams.get('m')
+  const t = searchParams.get('t')
   const z = Number(searchParams.get('z'))
   const x = Number(searchParams.get('x'))
   const y = Number(searchParams.get('y'))
-  if (!/^\d{4}-\d{2}$/.test(month || '')) { res.statusCode = 400; return res.end('bad month') }
+  if (!isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
   if (![z, x, y].every(Number.isInteger)) { res.statusCode = 400; return res.end('bad tile coords') }
 
-  const p = pmtilesFor(month)
-  if (!p) { res.statusCode = 404; return res.end('month not deployed') }
+  const p = pmtilesFor(t)
+  if (!p) { res.statusCode = 404; return res.end('tileset not deployed') }
 
   let tile
   try {
     tile = await p.getZxy(z, x, y)
   } catch {
-    cache.delete(month) // drop a stale instance (e.g. file replaced)
+    cache.delete(t) // drop a stale instance (e.g. file replaced)
     res.statusCode = 502
     res.setHeader('Cache-Control', 'no-store')
     return res.end('tile read failed')

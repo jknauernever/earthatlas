@@ -34,20 +34,22 @@ const version = manifest.version;
 
 const ALL_MONTHS = [2024, 2025].flatMap((y) =>
   Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`));
+// Tileset ids: 24 months + 2 year aggregates + "all".
+const TILESETS = [...ALL_MONTHS, '2024', '2025', 'all'];
 
 const tilesDir = resolve(__dirname, 'track_tiles');
-const tiles = {};
+const urls = {};
 let total = 0;
 
-for (const ym of ALL_MONTHS) {
-  const pmtilesPath = resolve(tilesDir, `tracks-${ym}.pmtiles`);
+for (const id of TILESETS) {
+  const pmtilesPath = resolve(tilesDir, `tracks-${id}.pmtiles`);
   if (!existsSync(pmtilesPath)) {
-    console.warn(`  ${ym}: SKIP (no tile at ${pmtilesPath})`);
+    console.warn(`  ${id}: SKIP (no tile at ${pmtilesPath})`);
     continue;
   }
   const { size } = await stat(pmtilesPath);
-  const key = `shiptraffic/tracks-${ym}-${version}.pmtiles`;
-  process.stdout.write(`  ${ym}: ${(size / 1e6).toFixed(1)} MB -> ${key} ... `);
+  const key = `shiptraffic/tracks-${id}-${version}.pmtiles`;
+  process.stdout.write(`  ${id}: ${(size / 1e6).toFixed(1)} MB -> ${key} ... `);
   const { url } = await put(key, createReadStream(pmtilesPath), {
     access: 'public',
     addRandomSuffix: false,
@@ -55,19 +57,22 @@ for (const ym of ALL_MONTHS) {
     allowOverwrite: true,
     multipart: size > 8e6, // multipart only pays off for the bigger summer months
   });
-  tiles[ym] = url;
+  urls[id] = url;
   total += size;
   process.stdout.write('done\n');
 }
 
-if (!Object.keys(tiles).length) {
-  console.error('No per-month tiles uploaded. Run build_tracks_tiles.py first.');
+if (!Object.keys(urls).length) {
+  console.error('No tiles uploaded. Run build_tracks_tiles.py first.');
   process.exit(1);
 }
 
-manifest.tiles = tiles;
+// Split the flat url map into the manifest's month / year / all buckets.
+manifest.tiles = Object.fromEntries(ALL_MONTHS.filter((m) => urls[m]).map((m) => [m, urls[m]]));
+manifest.years = Object.fromEntries(['2024', '2025'].filter((y) => urls[y]).map((y) => [y, urls[y]]));
+if (urls.all) manifest.all = urls.all;
 manifest.updatedAt = new Date().toISOString().slice(0, 10);
-delete manifest.pmtilesUrl; // legacy single-file field — superseded by `tiles`
+delete manifest.pmtilesUrl; // legacy single-file field — superseded by tiles/years/all
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
-console.log(`\nUploaded ${Object.keys(tiles).length} months (${(total / 1e6).toFixed(0)} MB total).`);
+console.log(`\nUploaded ${Object.keys(urls).length} tilesets (${(total / 1e6).toFixed(0)} MB total).`);
 console.log(`Updated ${manifestPath}`);

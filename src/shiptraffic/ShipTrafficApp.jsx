@@ -41,30 +41,37 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
 const DEFAULT_VIEW = { center: [-123.0, 48.45], zoom: 8.4 }
 
-// Vessel tracks: our own PER-MONTH PMTiles of real MarineCadastre AIS, served as
-// MVT by /api/vessel-tiles (which range-reads the .pmtiles; see that file for why
-// we don't use Mapbox's native pmtiles:// under Vite). Each tile feature is a real
+// Vessel tracks: our own PMTiles of real MarineCadastre AIS, served as MVT by
+// /api/vessel-tiles (which range-reads the .pmtiles; see that file for why we
+// don't use Mapbox's native pmtiles:// under Vite). Each tile feature is a real
 // track tagged with `class` (one of our 7 types); the type chips filter it
-// client-side. We add ONE source per month in view (capped + sampled) rather than
-// one giant all-months source — a single combined file produced ~16 MB tiles that
-// hung the Mapbox worker; per-month tiles stay ~150-460 KB.
+// client-side.
+//
+// A "tileset" id is a month ("2025-07"), a year ("2025"), or "all". We pick the
+// smallest set of sources that covers the selected range:
+//   single month  -> that month's tileset (1 source)
+//   a full year   -> the year aggregate   (1 source, true all-12-months)
+//   everything    -> the "all" aggregate  (1 source, all 24 months)
+//   partial span  -> per-month, capped + sampled (the rare shift-click case)
+// Year/all are density-capped aggregates (~200-430 KB/tile) so the big views load
+// in ONE light source — a single un-capped combined file produced ~16 MB tiles
+// that hung the Mapbox worker.
 //
 // The tiles URL MUST be absolute: Mapbox resolves a root-relative tile URL against
 // the Mapbox API base (not the page), so it silently never loads.
 // VITE_VESSEL_TILES_BASE lets plain-vite QA point at a standalone tile server.
 const VESSEL_TILES_BASE = (import.meta.env.VITE_VESSEL_TILES_BASE
   || (typeof window !== 'undefined' ? window.location.origin : '')).trim()
-const vesselTileUrl = (ym) =>
-  `${VESSEL_TILES_BASE}/api/vessel-tiles?m=${ym}&v=${trackSource.version}&z={z}&x={x}&y={y}`
-const vesselSrcId = (ym) => `ves-${ym}`
-const vesselLayerId = (ym) => `ves-${ym}-line`
+const vesselTileUrl = (id) =>
+  `${VESSEL_TILES_BASE}/api/vessel-tiles?t=${id}&v=${trackSource.version}&z={z}&x={x}&y={y}`
+const vesselSrcId = (id) => `ves-${id}`
+const vesselLayerId = (id) => `ves-${id}-line`
 const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this
 const SALISH_BBOX = [-123.8, 47.85, -122.2, 49.0] // source bounds → no tile requests outside the region
 const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
 
-// Cap how many monthly tilesets are stacked at once. Single months (the common
-// case) load just one; multi-month spans sample up to this many evenly across the
-// range (tracks vary little month to month), keeping total tile weight bounded.
+// Only the rare arbitrary partial span stacks per-month sources; cap how many at
+// once (sampled evenly — tracks vary little month to month) to bound tile weight.
 const VESSEL_MONTH_CAP = 6
 
 // Evenly sample `cap` items (keeping first + last) from a list.
@@ -74,6 +81,20 @@ function sampleEvenly(arr, cap) {
   const step = (arr.length - 1) / (cap - 1)
   for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
   return [...new Set(out)]
+}
+
+// The minimal set of tileset ids covering months[a..b]: one aggregate for a full
+// year or "all", a single month, else per-month (capped) for a partial span.
+function tilesetsForRange(months, a, b) {
+  if (!months.length) return []
+  const selected = months.slice(a, b + 1)
+  if (selected.length === months.length) return ['all']
+  const years = [...new Set(selected.map((m) => m.slice(0, 4)))]
+  if (years.length === 1 && selected.length === months.filter((m) => m.startsWith(years[0])).length) {
+    return [years[0]] // exactly one full calendar year
+  }
+  if (selected.length === 1) return [selected[0]]
+  return sampleEvenly(selected, VESSEL_MONTH_CAP)
 }
 
 const BASEMAPS = [
@@ -201,10 +222,10 @@ export default function ShipTrafficApp() {
     return buildWhaleGeoJSON(whales, range[0], range[1], whaleSources, WHALE_SOURCES)
   }, [whales, range, whaleSources])
 
-  // Which months' vessel tilesets to stack (capped + sampled across the range).
-  const vesselMonths = useMemo(() => {
+  // Which vessel tilesets to show (usually one aggregate; per-month for spans).
+  const vesselTilesets = useMemo(() => {
     if (!range || !months.length) return []
-    return sampleEvenly(months.slice(range[0], range[1] + 1), VESSEL_MONTH_CAP)
+    return tilesetsForRange(months, range[0], range[1])
   }, [range, months])
 
 
@@ -335,8 +356,8 @@ export default function ShipTrafficApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ─── Sync per-month vessel sources (stack the sampled months in view) ──────
-  // Adds one vector source+layer per month in `vesselMonths`, removes stale ones,
+  // ─── Sync vessel sources (one aggregate, or stacked months for a span) ─────
+  // Adds one vector source+layer per id in `vesselTilesets`, removes stale ones,
   // and applies the vessel-type filter + visibility. Keyed on mapReady so it
   // re-applies after a basemap swap (which drops all sources/layers).
   useEffect(() => {
@@ -345,12 +366,12 @@ export default function ShipTrafficApp() {
     const types = VESSEL_TYPES.filter((t) => vesselTypes.has(t))
     const typeFilter = ['in', ['get', 'class'], ['literal', types]]
     const show = visible.vessels
-    // Stacked months overlap; dim each so heavily-trafficked lanes build up
-    // brightness instead of saturating to a solid block.
-    const opacity = show ? Math.max(0.4, 0.7 / Math.sqrt(Math.max(1, vesselMonths.length))) : 0
-    const wanted = new Set(vesselMonths.map(vesselSrcId))
+    // Stacked sources overlap; dim each so heavily-trafficked lanes build up
+    // brightness instead of saturating (a single aggregate stays at full 0.7).
+    const opacity = show ? Math.max(0.4, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
+    const wanted = new Set(vesselTilesets.map(vesselSrcId))
 
-    // Remove months no longer in view.
+    // Remove tilesets no longer in view.
     for (const sid of [...vesselSrcRef.current]) {
       if (wanted.has(sid)) continue
       const lid = `${sid}-line`
@@ -358,14 +379,14 @@ export default function ShipTrafficApp() {
       if (map.getSource(sid)) map.removeSource(sid)
       vesselSrcRef.current.delete(sid)
     }
-    // Add new months + refresh filter/visibility on all.
-    for (const ym of vesselMonths) {
-      const sid = vesselSrcId(ym)
-      const lid = vesselLayerId(ym)
+    // Add new tilesets + refresh filter/visibility on all.
+    for (const id of vesselTilesets) {
+      const sid = vesselSrcId(id)
+      const lid = vesselLayerId(id)
       if (!map.getSource(sid)) {
         map.addSource(sid, {
           type: 'vector',
-          tiles: [vesselTileUrl(ym)],
+          tiles: [vesselTileUrl(id)],
           minzoom: 5,
           maxzoom: VESSEL_TILE_MAXZOOM,
           bounds: SALISH_BBOX,
@@ -391,7 +412,7 @@ export default function ShipTrafficApp() {
         map.setPaintProperty(lid, 'line-opacity', opacity)
       }
     }
-  }, [vesselMonths, vesselTypes, visible.vessels, mapReady])
+  }, [vesselTilesets, vesselTypes, visible.vessels, mapReady])
 
   // ─── Push concern (viewport-normalized) + whale data ──────────────────────
   useEffect(() => {

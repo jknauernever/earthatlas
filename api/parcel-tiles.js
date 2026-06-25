@@ -75,6 +75,12 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Access-Control-Allow-Origin', '*')
+  // We hand back a gzipped body with an explicit Content-Encoding. Vary on
+  // Accept-Encoding so the CDN caches the gzip and identity variants under
+  // separate keys — otherwise a single no-Accept-Encoding request (a monitor,
+  // a bare curl) can poison the cache with an uncompressed copy that then gets
+  // served to gzip-capable browsers for the full s-maxage window.
+  res.setHeader('Vary', 'Accept-Encoding')
   if (!tile) {
     // No data for this tile — 204 tells Mapbox "empty", and we still cache it.
     res.statusCode = 204

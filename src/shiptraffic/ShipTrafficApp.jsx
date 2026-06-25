@@ -366,9 +366,14 @@ export default function ShipTrafficApp() {
     const types = VESSEL_TYPES.filter((t) => vesselTypes.has(t))
     const typeFilter = ['in', ['get', 'class'], ['literal', types]]
     const show = visible.vessels
-    // Stacked sources overlap; dim each so heavily-trafficked lanes build up
-    // brightness instead of saturating (a single aggregate stays at full 0.7).
-    const opacity = show ? Math.max(0.4, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
+    // Opacity scales with how many MONTHS of overlapping tracks are drawn — NOT the
+    // source count. A single `all` aggregate is one source but carries 24 months of
+    // tracks, so at full opacity the lanes saturate to solid yellow blocks. Dim by
+    // √(months drawn) so density reads as brightness build-up, like the old
+    // per-month stacking did (6 months ≈ 0.29; a year ≈ 0.20; all 24 ≈ 0.14).
+    const monthsOf = (id) => id === 'all' ? 24 : /^\d{4}$/.test(id) ? 12 : 1
+    const monthsDrawn = vesselTilesets.reduce((s, id) => s + monthsOf(id), 0)
+    const opacity = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, monthsDrawn))) : 0
     const wanted = new Set(vesselTilesets.map(vesselSrcId))
 
     // Remove tilesets no longer in view.

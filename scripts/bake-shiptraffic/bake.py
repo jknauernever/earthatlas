@@ -46,14 +46,13 @@ BBOX = {"w": -123.8, "s": 47.85, "e": -122.2, "n": 49.0}
 LNG_STEP = 0.012      # ~0.90 km (3× the 0.004° AIS cache step)
 LAT_STEP = 0.0081     # ~0.90 km (3× the 0.0027° AIS cache step)
 
-# Window end is bounded by the LATEST published vessel data. Esri Living Atlas
-# vessel-track tile services (and MarineCadastre's optimized products) lag by a
-# few months — as of 2026-06 the newest is 2025-06. Beyond that there are whale
-# sightings but no vessel tracks, which is confusing, so cap the whole tool at
-# the latest vessel month. Bump this when newer months publish.
-MONTHS = [f"2024-{m:02d}" for m in range(1, 13)] + [f"2025-{m:02d}" for m in range(1, 7)]
+# Window end is bounded by the LATEST published vessel data. MarineCadastre's
+# monthly AIS GeoParquet (binned into the grid by fetch_ais.py, and tiled by
+# build_tracks_tiles.py) now publishes through 2025-12, so the tool covers both
+# full years. Bump this when newer months publish.
+MONTHS = [f"2024-{m:02d}" for m in range(1, 13)] + [f"2025-{m:02d}" for m in range(1, 13)]
 START_DATE = "2024-01-01"
-END_DATE = "2025-06-30"
+END_DATE = "2025-12-31"
 
 VESSEL_TYPES = ["cargo", "tanker", "fishing", "passenger", "tug", "pleasure", "other"]
 WHALE_SOURCES = ["inat", "obis", "happywhale"]

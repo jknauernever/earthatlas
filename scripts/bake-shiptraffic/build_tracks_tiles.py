@@ -164,9 +164,14 @@ def build_aggregate(name, months):
     with open(tmp, "w") as fh:
         for m in monthlies:
             decode_month_into(m, fh)
+    # --drop-FRACTION-as-needed, not --drop-densest: both thin each tile to meet the
+    # size cap, but drop-densest removes spatially-clustered densest features, so
+    # adjacent tiles survive at visibly different densities → hard rectangular SEAMS
+    # at tile boundaries (very obvious on the 24-month aggregate). drop-fraction
+    # removes a uniform random fraction, so density steps smoothly across borders.
     subprocess.run(["tippecanoe", "-o", out, "-l", "tracks", "-f", "-q",
                     "-Z5", f"-z{AGG_MAXZOOM}", "--simplification=10",
-                    "--drop-densest-as-needed", "--read-parallel", tmp], check=True)
+                    "--drop-fraction-as-needed", "--read-parallel", tmp], check=True)
     os.remove(tmp)
     print(f"  agg {name}: {len(monthlies)} months → {os.path.getsize(out)/1e6:.1f} MB  ({time.time()-t0:.0f}s)")
     return out

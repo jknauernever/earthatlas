@@ -2734,6 +2734,54 @@ def _handle_ndvi_tile() -> tuple:
     return (jsonify({'tileUrl': _tile_url(_s2_ndvi_image(), NDVI_VIS)}), 200, CORS_HEADERS)
 
 
+# Global burned area (MODIS MCD64A1, 500 m monthly) — where fires have burned
+# worldwide, the global counterpart to the US-only IFPH/MTBS history layers on
+# /fire. Per pixel: the MOST RECENT year it burned over the last ~24 years,
+# colored old→recent (matching the IFPH year ramp). Burned area is sparse, so we
+# use the density treatment to avoid the low-zoom bloom a baked overview causes.
+BA_WINDOW_YEARS = 24
+BA_VIS = {'min': 2001, 'max': date.today().year,
+          'palette': ['5b4636', '8a5a2b', 'c9772a', 'ff7a00']}  # old→recent
+
+
+def _burnedarea_image() -> ee.Image:
+    """Most-recent burn YEAR per pixel from MODIS MCD64A1, last ~24 years."""
+    today = date.today()
+    start = f'{today.year - BA_WINDOW_YEARS}-01-01'
+    coll = ee.ImageCollection('MODIS/061/MCD64A1').filterDate(start, today.isoformat())
+
+    def to_year(img: ee.Image) -> ee.Image:
+        y = ee.Number.parse(img.date().format('YYYY'))
+        # BurnDate >= 1 marks a burned pixel (0 = unburned, <0 = unmapped/water).
+        # .toShort() forces a consistent band type across the collection — without
+        # it EE rejects the .max() reduction ("incompatible band type") because
+        # multiply() promotes types inconsistently.
+        return img.select('BurnDate').gte(1).multiply(y).selfMask().rename('year').toShort()
+
+    return coll.map(to_year).max()  # latest burn year wins where a pixel reburned
+
+
+def _handle_burnedarea_tile() -> tuple:
+    # MCD64A1 is coarse (500 m), so plain visualize is fine — the density
+    # treatment (for sparse 30 m data) needs a default projection MCD64A1's
+    # derived year-image lacks, and would error.
+    return (jsonify({'tileUrl': _tile_url(_burnedarea_image(), BA_VIS)}), 200, CORS_HEADERS)
+
+
+def _handle_point_burnedyear(lat: float, lng: float) -> tuple:
+    """Most-recent MODIS MCD64A1 burn year at a point, or None if it hasn't
+    burned since 2001. Powers the FireApp 'Past fires (global)' popup row."""
+    _ensure_ee()
+    point = ee.Geometry.Point([lng, lat])
+    try:
+        sampled = _burnedarea_image().reduceRegion(
+            ee.Reducer.max(), point, 500).getInfo()
+        v = sampled.get('year')
+        return (jsonify({'year': int(v) if v is not None else None}), 200, CORS_HEADERS)
+    except Exception:
+        return (jsonify({'year': None}), 200, CORS_HEADERS)
+
+
 # Dispatch table for the simple single-raster overlays (?layer=<id>).
 _LAYER_TILE_HANDLERS = {
     'radd': _handle_radd_tile,
@@ -2744,6 +2792,7 @@ _LAYER_TILE_HANDLERS = {
     'cropland': _handle_cropland_tile,
     'efda': _handle_efda_tile,
     'ndvi': _handle_ndvi_tile,
+    'burnedarea': _handle_burnedarea_tile,
 }
 
 
@@ -4026,6 +4075,8 @@ def get_tiles(request):
             #   ?extras=1   patch geometry + cause + fires     ~5-15 s (slow tail)
             if request.args.get('greenonly'):
                 return _handle_point_greenness(float(lat), float(lng))
+            if request.args.get('burnedyear'):
+                return _handle_point_burnedyear(float(lat), float(lng))
             if request.args.get('context'):
                 return _handle_point_context(float(lat), float(lng))
             if request.args.get('aefonly'):

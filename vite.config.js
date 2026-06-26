@@ -6,6 +6,7 @@ import { EBIRD_BASE, resolveEbirdRequest } from './api/_ebird-core.js'
 import { resolveFirmsRequest, firmsCsvToGeoJSON } from './api/_firms-core.js'
 import { resolveNifcRequest, normalizeNifc } from './api/_nifc-core.js'
 import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-history-core.js'
+import { resolveCwfisRequest, normalizeCwfis } from './api/_cwfis-core.js'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -383,7 +384,7 @@ function firmsProxyPlugin(mapKey) {
             )
           )
           res.statusCode = 200
-          res.end(JSON.stringify(firmsCsvToGeoJSON(texts, Date.now())))
+          res.end(JSON.stringify(firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp })))
         } catch (err) {
           res.statusCode = 200
           res.setHeader('x-firms-upstream', '0')
@@ -445,6 +446,32 @@ function fireHistoryProxyPlugin() {
           if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
           const raw = await r.json()
           res.end(JSON.stringify(normalizeFireHistory(raw, resolved.max)))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/cwfis by mirroring the production Edge function
+// (api/cwfis.js) — same CWFIS core — so the Canada active-wildfire layer works
+// identically under `npm run dev`. No key needed.
+function cwfisProxyPlugin() {
+  return {
+    name: 'cwfis-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/cwfis', async (req, res) => {
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        const { url } = resolveCwfisRequest()
+        try {
+          const r = await fetch(url, { headers: { accept: 'application/json' } })
+          res.statusCode = 200
+          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          const raw = await r.json()
+          res.end(JSON.stringify(normalizeCwfis(raw)))
         } catch (err) {
           res.statusCode = 200
           res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
@@ -527,6 +554,7 @@ export default defineConfig(({ mode }) => {
     ebirdProxyPlugin(ebirdKey),
     firmsProxyPlugin(firmsKey),
     nifcProxyPlugin(),
+    cwfisProxyPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     // Upload source maps to Sentry during production builds so stack traces

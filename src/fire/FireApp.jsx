@@ -10,7 +10,7 @@ import {
   clearParcelSelection, renderParcelCard, PARCEL_SOURCE_CITATION,
 } from './parcels.js'
 import {
-  FIRMS_LAYER, FIRMS_SOURCE_CITATION, FIRMS_MIN_ZOOM,
+  FIRMS_LAYER, FIRMS_SOURCE_CITATION, FIRMS_MIN_ZOOM, FIRMS_WILDFIRE_MIN_FRP,
   addFirmsLayer, applyFirmsVisibility, applyFirmsOpacity, restackFirms,
   refreshFirms, clearFirms, queryFirmsAt, renderFirmsCard,
 } from './firms.js'
@@ -24,6 +24,12 @@ import {
   addHistoryLayers, applyHistoryVisibility, applyHistoryOpacity, restackHistory,
   refreshHistory, clearHistory, queryHistoryAt, renderHistoryCard,
 } from './fireHistory.js'
+import {
+  CWFIS_LAYER, CWFIS_SOURCE_CITATION,
+  addCwfisLayers, applyCwfisVisibility, applyCwfisOpacity, restackCwfis,
+  loadCwfis, queryCwfisAt, renderCwfisCard,
+} from './cwfis.js'
+import { fetchFireNews, renderNewsCard, newsLocation } from './fireNews.js'
 import styles from './FireApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -324,10 +330,14 @@ FIRE_LAYERS.unshift(FIRMS_LAYER)
 // GeoJSON polygons.
 FIRE_LAYERS.splice(1, 0, NIFC_LAYER)
 
+// Canada active wildfires (CWFIS) — sits with the other active-fire layers
+// (after NIFC). kind:'cwfis' = fetch-once GeoJSON polygons. Off by default.
+FIRE_LAYERS.splice(2, 0, CWFIS_LAYER)
+
 // Historical perimeters (NIFC IFPH) — "where fires have burned." Sits after the
-// two active layers; kind:'firehistory' = viewport-driven GeoJSON polygons
+// active layers; kind:'firehistory' = viewport-driven GeoJSON polygons
 // (zoom-gated). Off by default.
-FIRE_LAYERS.splice(2, 0, HISTORY_LAYER)
+FIRE_LAYERS.splice(3, 0, HISTORY_LAYER)
 
 // MTBS burn severity — the *severity* dimension the perimeter layers lack (how
 // hard each large fire burned, 1984–present). It's an ArcGIS ImageServer on the
@@ -369,6 +379,79 @@ const MTBS_LAYER = {
 }
 FIRE_LAYERS.splice(3, 0, MTBS_LAYER)
 
+// GWIS Fire Weather Index — GLOBAL fire-danger forecast (Copernicus EMS / EC-JRC
+// + NASA), the international counterpart to the US-only WRC risk layers. It's an
+// OGC WMS layer (not Esri), so `kind:'wms'` takes the WMS GetMap branch in the
+// tile resolver; it still rides the ordinary raster source/layer machinery.
+// `wmsTime` appends today's date so the danger surface is current. 6-class
+// danger ramp sampled from the live service.
+const FWI_LAYER = {
+  id: 'fwi',
+  kind: 'wms',
+  label: 'Fire danger (global, FWI)',
+  group: 'Fire danger',
+  baseUrl: 'https://maps.effis.emergency.copernicus.eu/gwis',
+  wmsLayer: 'ecmwf.fwi',
+  wmsTime: true,
+  // Popup reads the rendered pixel and matches to the 6-class danger palette
+  // (same trick as the WRC layers) — the WMS has no clean point-value endpoint.
+  point: 'colormatch',
+  colormatch: [
+    { label: 'Very low', hex: '#9cffc0', danger: 'very low' },
+    { label: 'Low', hex: '#cde24e', danger: 'low' },
+    { label: 'Moderate', hex: '#e6ac00', danger: 'moderate' },
+    { label: 'High', hex: '#d97010', danger: 'high' },
+    { label: 'Very high', hex: '#ad060e', danger: 'very high' },
+    { label: 'Extreme', hex: '#3a0015', danger: 'extreme' },
+  ],
+  defaultOpacity: 0.55,
+  minZoom: 0,
+  coverage: 'Global · Copernicus GWIS · today’s forecast',
+  legend: {
+    kind: 'swatches',
+    items: [
+      { c: '#9cffc0', l: 'Very low' },
+      { c: '#cde24e', l: 'Low' },
+      { c: '#e6ac00', l: 'Moderate' },
+      { c: '#d97010', l: 'High' },
+      { c: '#ad060e', l: 'Very high' },
+      { c: '#3a0015', l: 'Extreme' },
+    ],
+  },
+  blurb:
+    'Today’s wildfire-danger forecast, worldwide — the Fire Weather Index (FWI) from Copernicus’ Global Wildfire Information System (EC-JRC + NASA). FWI combines temperature, humidity, wind and rainfall into one number for how readily a fire would ignite, spread and resist control. This is the global counterpart to the US-only wildfire-risk layers: where they model long-term landscape risk, FWI is a daily weather-driven forecast. Higher classes flag dangerous fire weather right now. Global.',
+  source: 'Copernicus GWIS / EFFIS · ECMWF Fire Weather Index (FWI)',
+}
+FIRE_LAYERS.splice(4, 0, FWI_LAYER)
+
+// Global burned area (MODIS MCD64A1, 2001–present) — the GLOBAL counterpart to
+// the US-only Past-fires / Burn-severity layers: where fires have burned
+// worldwide, colored by most-recent burn year. It's an Earth Engine tile layer
+// (kind:'ee') served by our cloud function (?layer=burnedarea), so it reuses the
+// same async-tile machinery as the NDVI layer. Inserted next to the US history
+// layers. (Prod needs the cloud function deployed with the burnedarea handler;
+// it works locally against the dev :8080 instance now.)
+const BURNEDAREA_LAYER = {
+  id: 'burnedarea',
+  kind: 'ee',
+  eeParam: 'burnedarea',
+  label: 'Past fires (global)',
+  group: 'Fire history',
+  defaultOpacity: 0.8,
+  minZoom: 2,
+  coverage: 'Global · MODIS MCD64A1, 2001–present',
+  legend: {
+    kind: 'gradient',
+    css: 'linear-gradient(to right, #5b4636, #8a5a2b, #c9772a, #ff7a00)',
+    left: 'older',
+    right: 'recent',
+  },
+  blurb:
+    'Where fires have burned worldwide since 2001 — global burned area from NASA’s MODIS MCD64A1 product (500 m, monthly), with each pixel colored by the most recent year it burned (older = brown, recent = orange). This is the global counterpart to the US-only Past-fires and Burn-severity layers; outside the US it’s the best wall-to-wall record of fire history. Coarser than the US perimeter layers (500 m vs 30 m). Same Earth Engine pipeline as the Forest Monitor.',
+  source: 'NASA · MODIS MCD64A1 Burned Area (via Google Earth Engine)',
+}
+FIRE_LAYERS.splice(FIRE_LAYERS.findIndex((l) => l.id === 'mtbs') + 1, 0, BURNEDAREA_LAYER)
+
 // Append the vector "Property parcels" layer when at least one region is baked
 // + uploaded (parcelSources.json). It rides the same catalog so the panel row,
 // legend, opacity, drag-reorder and URL state all work for free; the map
@@ -391,8 +474,11 @@ const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities',
 const SOURCE_CITATION = {
   firms: FIRMS_SOURCE_CITATION,
   nifc: NIFC_SOURCE_CITATION,
+  cwfis: CWFIS_SOURCE_CITATION,
   firehistory: HISTORY_SOURCE_CITATION,
   mtbs: { short: 'USGS/USFS · Monitoring Trends in Burn Severity', tag: 'MTBS', url: 'https://www.mtbs.gov' },
+  fwi: { short: 'Copernicus GWIS / EFFIS · ECMWF Fire Weather Index', tag: 'Copernicus GWIS', url: 'https://gwis.jrc.ec.europa.eu/' },
+  burnedarea: { short: 'NASA · MODIS MCD64A1 Burned Area (via Google Earth Engine)', tag: 'MODIS MCD64A1', url: 'https://developers.google.com/earth-engine/datasets/catalog/MODIS_061_MCD64A1' },
   whp: CITE_WRC, bp: CITE_WRC, cfl: CITE_WRC, rps: CITE_WRC, rrz: CITE_WRC, exposure: CITE_WRC,
   ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', tag: 'Sentinel-2', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
   lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', tag: 'Esri / Impact Observatory', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
@@ -403,7 +489,7 @@ if (PARCEL_SOURCE_CITATION) SOURCE_CITATION.parcels = PARCEL_SOURCE_CITATION
 // The raster identify layers (everything except the vector parcels layer and the
 // FIRMS point layer). The popup's wildfire rows/summary/sources iterate these;
 // parcels and FIRMS detections render as their own cards.
-const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'nifc', 'firehistory'].includes(l.kind))
+const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'nifc', 'cwfis', 'firehistory'].includes(l.kind))
 
 // Distinct layer groups in catalog order — drives the grouped "The layers"
 // list in the sourcing modal (so it always reflects the live catalog).
@@ -438,6 +524,22 @@ function resolveArcgisTile(url) {
   const layer = LAYER_BY_ID[id]
   if (!layer) return null
   const [minX, minY, maxX, maxY] = tileToMercatorBbox(+zS, +xS, +yS)
+
+  // OGC WMS layers (e.g. Copernicus GWIS) — build a GetMap instead of the Esri
+  // exportImage. WMS 1.3.0 + EPSG:3857 uses easting,northing axis order, so the
+  // bbox order matches. `wmsTime` layers (daily forecasts like FWI) get today's
+  // UTC date so the map shows current conditions, not the service's stale default.
+  if (layer.kind === 'wms') {
+    const wp = new URLSearchParams({
+      service: 'WMS', request: 'GetMap', version: '1.3.0',
+      layers: layer.wmsLayer, styles: '',
+      crs: 'EPSG:3857', bbox: `${minX},${minY},${maxX},${maxY}`,
+      width: '256', height: '256', format: 'image/png', transparent: 'true',
+    })
+    if (layer.wmsTime) wp.set('time', new Date().toISOString().slice(0, 10))
+    return `${layer.baseUrl}?${wp.toString()}`
+  }
+
   const p = new URLSearchParams({
     bbox: `${minX},${minY},${maxX},${maxY}`,
     bboxSR: '3857',
@@ -467,9 +569,25 @@ function readRenderedClass(layer, lat, lng) {
   const x = (lng * 20037508.34) / 180
   const y = (Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * 20037508.34) / Math.PI
   const d = 120
-  const url = `${layer.baseUrl}/exportImage?bbox=${x - d},${y - d},${x + d},${y + d}`
-    + `&bboxSR=3857&imageSR=3857&size=3,3&format=png32&transparent=true&f=image`
-    + `&renderingRule=${encodeURIComponent(layer.renderingRule)}`
+  // WMS layers (e.g. GWIS FWI) render the same colour-coded surface, so the same
+  // read-the-pixel-and-match-the-palette trick works — just a GetMap instead of
+  // an Esri exportImage. GWIS sends `access-control-allow-origin: *`, so the
+  // canvas read isn't tainted. `wmsTime` layers need today's date.
+  let url
+  if (layer.kind === 'wms') {
+    const wp = new URLSearchParams({
+      service: 'WMS', request: 'GetMap', version: '1.3.0',
+      layers: layer.wmsLayer, styles: '',
+      crs: 'EPSG:3857', bbox: `${x - d},${y - d},${x + d},${y + d}`,
+      width: '3', height: '3', format: 'image/png', transparent: 'true',
+    })
+    if (layer.wmsTime) wp.set('time', new Date().toISOString().slice(0, 10))
+    url = `${layer.baseUrl}?${wp.toString()}`
+  } else {
+    url = `${layer.baseUrl}/exportImage?bbox=${x - d},${y - d},${x + d},${y + d}`
+      + `&bboxSR=3857&imageSR=3857&size=3,3&format=png32&transparent=true&f=image`
+      + `&renderingRule=${encodeURIComponent(layer.renderingRule)}`
+  }
   return new Promise((resolve) => {
     const im = new Image()
     im.crossOrigin = 'anonymous'
@@ -566,6 +684,17 @@ function interpretLayer(id, value) {
     if (!value.label) return null
     return { popupLabel: 'Past burn severity', short: value.label, value: `This spot burned at ${value.sev} (MTBS)`, swatch: value.hex, sev: value.sev }
   }
+  if (id === 'fwi') {
+    // Color-matched WMS class entry { label, hex, danger }.
+    if (!value.label) return null
+    return { popupLabel: 'Fire danger today', short: value.label, value: `Today’s fire-weather danger here is ${value.danger} (FWI)`, swatch: value.hex, word: value.label, danger: value.danger }
+  }
+  if (id === 'burnedarea') {
+    // Cloud-function point value: most-recent burn year, or null/0 = unburned.
+    const y = Math.round(Number(value))
+    if (!Number.isFinite(y) || y < 2000) return null
+    return { popupLabel: 'Past fire (global)', short: `burned ${y}`, value: `This spot last burned in ${y} (MODIS global burned area)`, swatch: '#ff7a00', year: y }
+  }
   if (id === 'bp') {
     const n = Number(value)
     if (!Number.isFinite(n)) return null
@@ -593,10 +722,14 @@ function interpretLayer(id, value) {
 // One-line verdict headline for the summary hero, from the strongest available
 // signal (risk-to-structures → hazard → burn probability). Returns { text, sev }
 // where sev ∈ low|moderate|high tints the hero card; null off-coverage.
+const FWI_SEV = { 'Very low': 'low', Low: 'low', Moderate: 'moderate', High: 'high', 'Very high': 'high', Extreme: 'high' }
 function buildVerdict(r) {
   if (r.rps && r.rps.word) return { text: `${r.rps.word} wildfire risk to structures`, sev: r.rps.risk }
   if (r.whp && r.whp.word) return { text: `${r.whp.word} wildfire hazard`, sev: r.whp.risk }
   if (r.bp && r.bp.word) return { text: `${r.bp.word} burn likelihood`, sev: r.bp.risk }
+  // Outside the US the WRC risk layers are blank, but FWI gives a global, today
+  // fire-danger headline.
+  if (r.fwi && r.fwi.word) return { text: `${r.fwi.word} fire danger today`, sev: FWI_SEV[r.fwi.word] || 'moderate' }
   return null
 }
 
@@ -686,6 +819,14 @@ function buildSummary(r) {
     out.push(`Wildfire hazard here is ${hazWord}.`)
   } else if (oneIn) {
     out.push(`A wildfire here is ${likely} — ${chance}.`)
+  } else if (r.fwi && r.fwi.danger) {
+    // Outside the US: lead with the global FWI fire-danger reading (+ global
+    // burned-area history) instead of the bare "US-only" message.
+    let s = `Today’s fire-weather danger here is ${r.fwi.danger}.`
+    if (r.burnedarea && r.burnedarea.year) s += ` This spot last burned in ${r.burnedarea.year}.`
+    out.push(s + ` Detailed long-term wildfire-risk modelling is US-only.`)
+  } else if (r.burnedarea && r.burnedarea.year) {
+    out.push(`This spot last burned in ${r.burnedarea.year} (global burned-area record). Detailed wildfire-risk modelling is US-only.`)
   } else {
     out.push(`Detailed wildfire-risk data isn't available here (those layers cover the US only).`)
   }
@@ -789,9 +930,16 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
   // Named US incident card — when the click landed inside an official WFIGS
   // perimeter. Sits right after the heat detection (heat → which named fire).
   const nifcHtml = results.nifc ? renderNifcCard(results.nifc) : ''
+  const cwfisHtml = results.cwfis ? renderCwfisCard(results.cwfis) : ''
   // Past-fire footprint card — when the click landed inside a historical
   // perimeter. After the active cards (now → past).
   const historyHtml = results.firehistory ? renderHistoryCard(results.firehistory) : ''
+  // Fire-news section — only when an ACTIVE fire (named US incident, satellite
+  // hotspot, or Canada perimeter) was clicked. Fetched async; `results._news`
+  // holds { articles, loading } once the lookup starts.
+  const newsHtml = (results.nifc || results.firms || results.cwfis) && results._news
+    ? renderNewsCard({ ...results._news, named: results.nifc?.name || null, place })
+    : ''
 
   const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
   // Fixed header (place + coords) + a separately-scrolling body. This guarantees
@@ -804,7 +952,9 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     `<div class="${styles.popupBody}">` +
     firmsHtml +
     nifcHtml +
+    cwfisHtml +
     historyHtml +
+    newsHtml +
     heroHtml +
     parcelHtml +
     rowsHtml +
@@ -962,10 +1112,20 @@ export default function FireApp() {
   const firmsAbortRef = useRef(null)
   // Lightweight status for the panel row (loading spinner + "showing N" / hints).
   const [firmsMeta, setFirmsMeta] = useState({ loading: false, count: 0, truncated: false, error: false })
+  // FIRMS detects all thermal anomalies, not just wildfires. Default ON = apply
+  // the FRP "wildfire-likely" floor (drops industrial flares / refineries etc.);
+  // the panel toggle flips to showing every detection. Ref mirrors it so the
+  // stable moveend handler reads the current value.
+  const [firmsAllSources, setFirmsAllSources] = useState(false)
+  const firmsAllSourcesRef = useRef(false)
+  useEffect(() => { firmsAllSourcesRef.current = firmsAllSources }, [firmsAllSources])
   // NIFC perimeters fetch-once (whole current service). Abort guards an in-flight
   // load if the map tears down; status drives the panel row.
   const nifcAbortRef = useRef(null)
   const [nifcMeta, setNifcMeta] = useState({ loading: false, count: 0, error: false })
+  // CWFIS (Canada) — fetch-once, same shape as NIFC.
+  const cwfisAbortRef = useRef(null)
+  const [cwfisMeta, setCwfisMeta] = useState({ loading: false, count: 0, error: false })
   // Historical perimeters: viewport-driven like FIRMS (debounce + abort + zoom gate).
   const historyTimerRef = useRef(null)
   const historyAbortRef = useRef(null)
@@ -982,6 +1142,7 @@ export default function FireApp() {
       if (ord[i] === 'parcels') { restackParcels(map); continue } // vector layer = multiple sublayers
       if (ord[i] === 'firms') { restackFirms(map); continue }     // glow + dot sublayers
       if (ord[i] === 'nifc') { restackNifc(map); continue }       // fill + line sublayers
+      if (ord[i] === 'cwfis') { restackCwfis(map); continue }     // fill + line sublayers
       if (ord[i] === 'firehistory') { restackHistory(map); continue } // fill + line sublayers
       const lId = layerId(ord[i])
       try { if (map.getLayer(lId)) map.moveLayer(lId) } catch { /* mid style swap */ }
@@ -1041,6 +1202,7 @@ export default function FireApp() {
       if (layer.kind === 'parcels') addParcelLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'firms') addFirmsLayer(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'nifc') addNifcLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'cwfis') addCwfisLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'firehistory') addHistoryLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'ee') addEeLayer(map, layer)
       else addRaster(map, layer, tileTemplate(layer))
@@ -1067,7 +1229,8 @@ export default function FireApp() {
       firmsAbortRef.current = ctrl
       setFirmsMeta((p) => ({ ...p, loading: true, error: false }))
       try {
-        const res = await refreshFirms(m, { signal: ctrl.signal })
+        const minFrp = firmsAllSourcesRef.current ? 0 : FIRMS_WILDFIRE_MIN_FRP
+        const res = await refreshFirms(m, { minFrp, signal: ctrl.signal })
         if (ctrl.signal.aborted) return
         setFirmsMeta({ loading: false, count: res ? res.count : 0, truncated: !!(res && res.truncated), error: !res })
       } catch (err) {
@@ -1076,6 +1239,15 @@ export default function FireApp() {
       }
     }, 250)
   }, [])
+
+  // Flip the wildfire-likely FRP filter and immediately refetch. Sets the ref
+  // synchronously so triggerFirmsRefresh reads the new value this tick.
+  const toggleFirmsSources = useCallback(() => {
+    const next = !firmsAllSourcesRef.current
+    firmsAllSourcesRef.current = next
+    setFirmsAllSources(next)
+    triggerFirmsRefresh()
+  }, [triggerFirmsRefresh])
 
   // ─── NIFC active wildfires: fetch-once load ───────────────────────────────
   // Pulls the whole current-perimeters service (small) and pushes it into the
@@ -1095,6 +1267,24 @@ export default function FireApp() {
     } catch (err) {
       if (ctrl.signal.aborted || err?.name === 'AbortError') return
       setNifcMeta({ loading: false, count: 0, error: true })
+    }
+  }, [])
+
+  // ─── CWFIS (Canada) active wildfires: fetch-once load ─────────────────────
+  const triggerCwfisLoad = useCallback(async () => {
+    const map = mapRef.current
+    if (!map || !visibleRef.current.cwfis) return
+    if (cwfisAbortRef.current) cwfisAbortRef.current.abort()
+    const ctrl = new AbortController()
+    cwfisAbortRef.current = ctrl
+    setCwfisMeta((p) => ({ ...p, loading: true, error: false }))
+    try {
+      const res = await loadCwfis(map, { signal: ctrl.signal })
+      if (ctrl.signal.aborted) return
+      setCwfisMeta({ loading: false, count: res ? res.count : 0, error: !res })
+    } catch (err) {
+      if (ctrl.signal.aborted || err?.name === 'AbortError') return
+      setCwfisMeta({ loading: false, count: 0, error: true })
     }
   }, [])
 
@@ -1178,6 +1368,7 @@ export default function FireApp() {
       setMapReady(true)
       triggerFirmsRefresh() // load active-fire detections for the opening view
       triggerNifcLoad()     // load US perimeters if the layer is on
+      triggerCwfisLoad()    // load Canada perimeters if the layer is on
       triggerHistoryRefresh() // load historical perimeters if on + zoomed in
     }
     map.on('style.load', onStyleLoad)
@@ -1212,6 +1403,7 @@ export default function FireApp() {
       clearTimeout(firmsTimerRef.current)
       if (firmsAbortRef.current) firmsAbortRef.current.abort()
       if (nifcAbortRef.current) nifcAbortRef.current.abort()
+      if (cwfisAbortRef.current) cwfisAbortRef.current.abort()
       clearTimeout(historyTimerRef.current)
       if (historyAbortRef.current) historyAbortRef.current.abort()
       map.remove()
@@ -1293,6 +1485,11 @@ export default function FireApp() {
         if (visible[layer.id]) triggerNifcLoad()            // fetch perimeters on toggle-on (cached after first)
         continue
       }
+      if (layer.kind === 'cwfis') {
+        applyCwfisVisibility(map, visible[layer.id], opacityRef.current[layer.id])
+        if (visible[layer.id]) triggerCwfisLoad()
+        continue
+      }
       if (layer.kind === 'firehistory') {
         applyHistoryVisibility(map, visible[layer.id], opacityRef.current[layer.id])
         if (visible[layer.id]) triggerHistoryRefresh()      // load past perimeters for the view
@@ -1314,6 +1511,7 @@ export default function FireApp() {
       if (layer.kind === 'parcels') { applyParcelOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       if (layer.kind === 'firms') { applyFirmsOpacity(map, opacity[layer.id]); continue }
       if (layer.kind === 'nifc') { applyNifcOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
+      if (layer.kind === 'cwfis') { applyCwfisOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       if (layer.kind === 'firehistory') { applyHistoryOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       const lId = layerId(layer.id)
       if (map.getLayer(lId)) {
@@ -1400,6 +1598,9 @@ export default function FireApp() {
       // Named US incident perimeter under the click (synchronous, like parcels).
       try { results.nifc = queryNifcAt(map, e.point) } catch { results.nifc = null }
 
+      // Canada active-fire perimeter under the click (synchronous).
+      try { results.cwfis = queryCwfisAt(map, e.point) } catch { results.cwfis = null }
+
       // Historical fire footprint under the click (synchronous).
       try { results.firehistory = queryHistoryAt(map, e.point) } catch { results.firehistory = null }
       // maxWidth 'none' so our CSS clamp() controls width responsively; anchor
@@ -1422,14 +1623,34 @@ export default function FireApp() {
       }
 
       // Place name for the header (Mapbox reverse geocode; falls back to coords).
-      reverseGeocode(lat, lng).then((name) => { if (name) { place = name; rerender() } }).catch(() => {})
+      // Once the place resolves, look up fire news — but only when an ACTIVE fire
+      // was clicked. A NIFC named incident searches by fire name (precise); a
+      // FIRMS hotspot / Canada perimeter searches by place + "wildfire" in a
+      // short window (labeled "nearby"). Skip entirely with no name and no place.
+      const runFireNews = (resolvedPlace) => {
+        const named = results.nifc?.name || null
+        const hasActiveFire = !!(results.nifc || results.firms || results.cwfis)
+        if (!hasActiveFire || (!named && !resolvedPlace)) return
+        results._news = { articles: null, loading: true }
+        rerender()
+        fetchFireNews(TILES_API_BASE, { named, location: newsLocation(resolvedPlace, { broad: !named }), windowDays: named ? 30 : 14 })
+          .then((articles) => { if (stillCurrent()) { results._news = { articles, loading: false }; rerender() } })
+          .catch(() => { if (stillCurrent()) { results._news = { articles: [], loading: false }; rerender() } })
+      }
+      reverseGeocode(lat, lng)
+        .then((name) => { if (name) { place = name; rerender() } runFireNews(name) })
+        .catch(() => runFireNews(null))
 
       // Per-layer point reader → the raw value interpretLayer expects:
-      //   ee         → cloud function ?greenonly (NDVI number)
-      //   colormatch → rendered-pixel class match (WHP — see readWhpClass)
-      //   default    → ArcGIS identify via the proxy (raw pixel value)
+      //   ee burnedarea → cloud function ?burnedyear (most-recent burn year)
+      //   ee (ndvi)     → cloud function ?greenonly (NDVI number)
+      //   colormatch    → rendered-pixel class match (WRC / FWI)
+      //   default       → ArcGIS identify via the proxy (raw pixel value)
       const readRaw = (layer) => {
         if (layer.kind === 'ee') {
+          if (layer.eeParam === 'burnedarea') {
+            return fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&burnedyear=1`).then((r) => r.json()).then((d) => d.year)
+          }
           return fetch(`${TILES_API_BASE}?lat=${lat}&lng=${lng}&greenonly=1`).then((r) => r.json()).then((d) => d.ndvi)
         }
         if (layer.point === 'colormatch') {
@@ -1443,7 +1664,7 @@ export default function FireApp() {
         // synchronously above (queryParcelAt / queryFirmsAt) into their own
         // cards. Skipping them here also stops this loop from overwriting
         // results.firms / results.parcels with a null identify result.
-        if (['parcels', 'firms', 'nifc', 'firehistory'].includes(layer.kind)) return
+        if (['parcels', 'firms', 'nifc', 'cwfis', 'firehistory'].includes(layer.kind)) return
         Promise.resolve()
           .then(() => readRaw(layer))
           .then((raw) => { results[layer.id] = interpretLayer(layer.id, raw) })
@@ -1658,8 +1879,19 @@ export default function FireApp() {
                 ) : (
                   <div className={styles.layerHint}>
                     {firmsMeta.count > 0
-                      ? `${firmsMeta.count.toLocaleString()} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
-                      : 'No active fire detections in this view (last 48 h)'}
+                      ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
+                      : `No ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detections in this view (last 48 h)`}
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={toggleFirmsSources}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
+                      title={firmsAllSources
+                        ? 'Re-apply the wildfire-likely filter (drops low-power industrial/agricultural heat)'
+                        : 'Show every thermal detection, including industrial flares, refineries and agricultural burns'}
+                    >
+                      {firmsAllSources ? 'wildfires only' : 'show all heat sources'}
+                    </button>
                   </div>
                 )
               ) : isOn && layer.kind === 'nifc' ? (
@@ -1672,6 +1904,18 @@ export default function FireApp() {
                     {nifcMeta.count > 0
                       ? `${nifcMeta.count.toLocaleString()} active US fire perimeter${nifcMeta.count === 1 ? '' : 's'} · official (NIFC)`
                       : 'No current US fire perimeters in the feed'}
+                  </div>
+                )
+              ) : isOn && layer.kind === 'cwfis' ? (
+                cwfisMeta.error ? (
+                  <div className={styles.layerError}>Couldn’t load CWFIS perimeters — toggle off and on to retry.</div>
+                ) : cwfisMeta.loading ? (
+                  <div className={styles.layerHint}>Loading active Canada wildfire perimeters…</div>
+                ) : (
+                  <div className={styles.layerHint}>
+                    {cwfisMeta.count > 0
+                      ? `${cwfisMeta.count.toLocaleString()} active Canada fire perimeter${cwfisMeta.count === 1 ? '' : 's'} · satellite (CWFIS)`
+                      : 'No current Canada fire perimeters in the feed'}
                   </div>
                 )
               ) : isOn && layer.kind === 'firehistory' ? (

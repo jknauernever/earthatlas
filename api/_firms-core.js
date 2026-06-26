@@ -75,10 +75,19 @@ export function resolveFirmsRequest(searchParams, mapKey) {
     url: `${base}/${mapKey}/${src}/${coords}/${days}`,
   }))
 
+  // Minimum fire radiative power (MW). FIRMS detects ALL thermal anomalies, not
+  // just wildfires — industrial heat (gas flares, refineries, steel mills) and
+  // agricultural/prescribed burns show up too, and the near-real-time product
+  // has no `type` field to separate them. Real wildfires radiate far more power
+  // than persistent industrial sources (which are typically < ~5 MW), so a FRP
+  // floor is the best available "wildfire-likely" filter for live data. 0 = off
+  // (show every detection). The client defaults this on and exposes a toggle.
+  const minFrp = Math.max(0, Number(searchParams.get('minfrp')) || 0)
+
   // Detections refresh on satellite overpass cadence; a few minutes of edge
   // staleness is invisible and keeps us well under the 5000-per-10-min cap.
   const cacheControl = 'public, s-maxage=300, stale-while-revalidate=600'
-  return { urls, sources, na, bbox, days, cacheControl }
+  return { urls, sources, na, bbox, days, minFrp, cacheControl }
 }
 
 // One CSV row → a parsed object keyed by FIRMS column name. FIRMS area CSV always
@@ -138,6 +147,7 @@ function acqMs(date, time) {
 export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
   const cap = opts.cap ?? 6000
   const keepLow = !!opts.keepLow
+  const minFrp = opts.minFrp ?? 0
   const seen = new Set()
   const feats = []
   for (const { src, text } of fetched) {
@@ -158,6 +168,9 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
       if (seen.has(key)) continue
       seen.add(key)
       const frp = Number(row.frp)
+      // Wildfire-likely filter: drop low-power thermal sources (industrial flares
+      // etc.). A detection with no/zero FRP can't clear a positive floor.
+      if (minFrp > 0 && !(Number.isFinite(frp) && frp >= minFrp)) continue
       const bright = Number(row.bright_ti4 ?? row.brightness)
       // Ground footprint of the detection pixel: scan × track are its along-scan
       // and along-track dimensions in km, growing from ~375 m at nadir toward the

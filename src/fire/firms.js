@@ -31,6 +31,12 @@ const AGE_COLORS = {
 // VIIRS pull gets large; we gate the fetch (and show a "zoom in" hint) instead.
 export const FIRMS_MIN_ZOOM = 3
 
+// "Wildfire-likely" FRP floor (MW). FIRMS detects all thermal anomalies; real
+// wildfires radiate far more than persistent industrial sources (flares,
+// refineries, ~< 5 MW), so this floor filters most non-fire heat out of live
+// data. The panel exposes a toggle to drop it (show every detection).
+export const FIRMS_WILDFIRE_MIN_FRP = 5
+
 // Default look-back window (days). FIRMS DAY_RANGE counts UTC *calendar* days, so
 // days=1 only returns the current UTC day — near-empty for the first hours after
 // 00:00 UTC. days=2 always spans a full recent day's worth of overpasses
@@ -63,7 +69,7 @@ export const FIRMS_LAYER = {
     ],
   },
   blurb:
-    'Satellite-detected active fire and thermal hotspots from NASA FIRMS (VIIRS, 375 m), refreshed through the most recent overpass. Each dot is a heat detection, colored by how recently the satellite saw it — this is where fire is burning now, not a risk model. Over North America it uses the faster US/Canada feed (~30 min); elsewhere it is near-real-time (~3 h). Points, not perimeters; for official incident perimeters use the Active wildfires layer.',
+    'Satellite-detected active fire and thermal hotspots from NASA FIRMS (VIIRS, 375 m), refreshed through the most recent overpass. Each dot is a heat detection, colored by how recently the satellite saw it — this is where fire is burning now, not a risk model. Over North America it uses the faster US/Canada feed (~30 min); elsewhere it is near-real-time (~3 h). Points, not perimeters; for official incident perimeters use the Active wildfires layer. Note: FIRMS detects all thermal anomalies, so industrial heat (gas flares, refineries) and agricultural/prescribed burns appear too; the live product can’t label them. By default we show only higher-power, wildfire-likely detections (fire radiative power ≥ 5 MW) — use “show all heat sources” to see every detection.',
   source: 'NASA FIRMS · VIIRS (S-NPP / NOAA-20 / NOAA-21) near-real-time',
 }
 
@@ -160,11 +166,11 @@ export function restackFirms(map) {
 // Called (debounced) on moveend while the layer is on and zoom ≥ FIRMS_MIN_ZOOM.
 // Returns { count, truncated } or null on failure/abort. `signal` lets the
 // caller cancel a stale in-flight fetch when the user keeps panning.
-export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, signal } = {}) {
+export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0, signal } = {}) {
   const b = map.getBounds()
   const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
     .map((n) => n.toFixed(3)).join(',')
-  const url = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}`
+  const url = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}${minFrp > 0 ? `&minfrp=${minFrp}` : ''}`
   const r = await fetch(url, { signal })
   const fc = await r.json()
   const src = map.getSource(SRC)

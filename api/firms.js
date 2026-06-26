@@ -67,7 +67,7 @@ export default async function handler(req) {
           .catch(() => ({ src, text: '' }))
       )
     )
-    const fc = firmsCsvToGeoJSON(texts, Date.now())
+    const fc = firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp })
     return json(fc, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
   } catch (err) {
     return json({ ...EMPTY, _error: String(err).slice(0, 120) }, {

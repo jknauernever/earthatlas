@@ -129,16 +129,15 @@ def cache_all_months(months=None, retries=5):
                 break
 
 
-# The cache was binned at the fine AIS step; collapse those indices into the
-# (coarser) concern-grid cells defined in bake.py.
-FINE_LNG, FINE_LAT = 0.004, 0.0027
-FI = max(1, round(bake.LNG_STEP / FINE_LNG))
-FJ = max(1, round(bake.LAT_STEP / FINE_LAT))
+# query_month bins AIS at bake.LNG_STEP/LAT_STEP — i.e. directly at the concern-grid
+# step — so the cached (i,j) ARE the grid cell indices and align 1:1 with the whale
+# cell_index(). (A previous version divided these by 3 assuming a finer cache step,
+# which scattered vessels into the wrong cells and zeroed out concern.)
 
 
 def assemble_from_cache():
     print(f"→ Folding AIS cache into concern grid "
-          f"(fine→coarse {FI}×{FJ}, threshold ≥ {DISPLAY_THRESHOLD} vessels/fine-cell/type/month)…")
+          f"(threshold ≥ {DISPLAY_THRESHOLD} vessels/cell/type/month)…")
     total = 0
     for ym in bake.MONTHS:
         path = os.path.join(CACHE_DIR, f"ais-{ym}.json")
@@ -150,7 +149,7 @@ def assemble_from_cache():
         for i, j, vt, n in rows:
             if n < DISPLAY_THRESHOLD:
                 continue
-            ci, cj = i // FI, j // FJ
+            ci, cj = i, j  # cache is binned at the grid step; indices map 1:1
             cls = vessel_class(vt)
             c = bake.cells.setdefault((ci, cj), {"v": {}, "w": {}})
             bucket = c["v"].setdefault(ym, {})

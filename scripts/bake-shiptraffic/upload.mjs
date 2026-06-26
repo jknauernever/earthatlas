@@ -34,8 +34,8 @@ const version = manifest.version;
 
 const ALL_MONTHS = [2024, 2025].flatMap((y) =>
   Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`));
-// Tileset ids: 24 months + 2 year aggregates + "all".
-const TILESETS = [...ALL_MONTHS, '2024', '2025', 'all'];
+// One tileset per month — the app stacks them; no year/all aggregates.
+const TILESETS = ALL_MONTHS;
 
 const tilesDir = resolve(__dirname, 'track_tiles');
 const urls = {};
@@ -67,12 +67,11 @@ if (!Object.keys(urls).length) {
   process.exit(1);
 }
 
-// Split the flat url map into the manifest's month / year / all buckets.
 manifest.tiles = Object.fromEntries(ALL_MONTHS.filter((m) => urls[m]).map((m) => [m, urls[m]]));
-manifest.years = Object.fromEntries(['2024', '2025'].filter((y) => urls[y]).map((y) => [y, urls[y]]));
-if (urls.all) manifest.all = urls.all;
 manifest.updatedAt = new Date().toISOString().slice(0, 10);
-delete manifest.pmtilesUrl; // legacy single-file field — superseded by tiles/years/all
+delete manifest.years;
+delete manifest.all;
+delete manifest.pmtilesUrl;
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 console.log(`\nUploaded ${Object.keys(urls).length} tilesets (${(total / 1e6).toFixed(0)} MB total).`);
 console.log(`Updated ${manifestPath}`);

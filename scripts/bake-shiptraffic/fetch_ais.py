@@ -89,26 +89,44 @@ def query_month(con, ym):
     return con.execute(sql).fetchall()
 
 
-def cache_all_months():
+_TRANSIENT = ("could not establish connection", "io error", "http", "connection",
+              "timeout", "timed out", "reset", "temporarily")
+
+
+def cache_all_months(months=None, retries=5):
+    """Bin each month's AIS into the fine grid and cache it. Skips months already
+    cached (resumable) and retries transient network errors with backoff so a
+    laptop sleep / dropped connection just pauses a month instead of failing it.
+    Pass a months subset to cache in parallel from several processes."""
     import duckdb
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
-    con.execute("SET enable_progress_bar=false;")
+    con.execute("SET enable_progress_bar=false; SET memory_limit='4GB'; SET threads=3;")
     os.makedirs(CACHE_DIR, exist_ok=True)
-    for ym in bake.MONTHS:
+    for ym in (months or bake.MONTHS):
         path = os.path.join(CACHE_DIR, f"ais-{ym}.json")
         if os.path.exists(path):
             print(f"  cache hit {ym}")
             continue
-        t0 = time.time()
-        try:
-            rows = query_month(con, ym)
-        except Exception as e:
-            print(f"  [ais] {ym} FAILED: {str(e)[:120]}")
-            continue
-        with open(path, "w") as f:
-            json.dump([[r[0], r[1], int(r[2]) if r[2] is not None else -1, r[3]] for r in rows], f)
-        print(f"  cached {ym}: {len(rows)} rows  ({time.time()-t0:.0f}s)")
+        for attempt in range(retries):
+            t0 = time.time()
+            try:
+                rows = query_month(con, ym)
+                with open(path, "w") as f:
+                    json.dump([[r[0], r[1], int(r[2]) if r[2] is not None else -1, r[3]] for r in rows], f)
+                print(f"  cached {ym}: {len(rows)} rows  ({time.time()-t0:.0f}s)")
+                break
+            except Exception as e:
+                msg = str(e)
+                if os.path.exists(path):
+                    os.remove(path)
+                if any(s in msg.lower() for s in _TRANSIENT) and attempt < retries - 1:
+                    wait = 30 * (attempt + 1)
+                    print(f"  [ais] {ym} transient (try {attempt+1}/{retries}), retry in {wait}s")
+                    time.sleep(wait)
+                    continue
+                print(f"  [ais] {ym} FAILED: {msg[:120]}")
+                break
 
 
 # The cache was binned at the fine AIS step; collapse those indices into the
@@ -143,6 +161,14 @@ def assemble_from_cache():
 
 
 def main():
+    # Month args (e.g. `fetch_ais.py 2024-01 2024-02`) → cache ONLY those months and
+    # exit, so several processes can warm the cache in parallel. Then run with
+    # --assemble to fold the full cache + whales into grid.json/whales.json.
+    month_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if month_args:
+        cache_all_months(month_args)
+        return
+
     assemble_only = "--assemble" in sys.argv
     if not assemble_only:
         try:

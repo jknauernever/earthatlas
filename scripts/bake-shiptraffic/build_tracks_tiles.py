@@ -52,7 +52,10 @@ SIMPLIFY_TOL = 0.0002  # degrees (~18 m lat, ~13 m lng at 48°N)
 
 
 def extract_month(con, ym, path, tol=SIMPLIFY_TOL):
-    """Write real clipped + simplified tracks for one month to an NDJSON file."""
+    """Write real clipped + simplified tracks for one month to an NDJSON file.
+    (A server-side DuckDB COPY ... TO FORMAT JSON was tried and was ~2x SLOWER —
+    the ST_AsGeoJSON::JSON re-parse + json_object cost more than this Python loop,
+    so we keep streaming rows out here. The cost is the remote scan + clip, not this.)"""
     W, S, E, N = bake.BBOX["w"], bake.BBOX["s"], bake.BBOX["e"], bake.BBOX["n"]
     env = f"ST_MakeEnvelope({W},{S},{E},{N})"
     url = TRACK_URL.format(ym=ym)
@@ -89,37 +92,54 @@ def extract_month(con, ym, path, tol=SIMPLIFY_TOL):
 
 
 def tile_month(ndjson, out):
+    # Cap at z10 — the app's source maxzoom is 10 and Mapbox over-zooms past it, so
+    # z11+ tiles are never requested. NO --extend-zooms-if-still-dropping: under the
+    # full-ecosystem bbox it extended to z16, exploding the file (~477 MB) and build
+    # time (~35 min) on tiles nobody fetches. drop-densest caps each z10 tile instead.
     cmd = [
         "tippecanoe", "-o", out, "-l", "tracks", "-f", "-q",
-        "-Z5", "-z11",
+        "-Z5", "-z10",
         "--simplification=10",
         "--drop-densest-as-needed",
-        "--extend-zooms-if-still-dropping",
         "--read-parallel",
         ndjson,
     ]
     subprocess.run(cmd, check=True)
 
 
-def build_month(con, ym):
-    """Extract → tile → drop the multi-GB NDJSON. Skips if monthly tile exists."""
+_TRANSIENT = ("could not establish connection", "io error", "http", "connection",
+              "timeout", "timed out", "reset", "temporarily")
+
+
+def build_month(con, ym, retries=5):
+    """Extract → tile → drop the multi-GB NDJSON. Skips if the monthly tile exists.
+    Retries transient network errors with backoff so a brief drop (e.g. the laptop
+    sleeping) just pauses that month instead of failing it."""
     monthly = os.path.join(TILES_DIR, f"tracks-{ym}.pmtiles")
     if os.path.exists(monthly):
         print(f"  {ym}: skip (tile exists, {os.path.getsize(monthly)/1e6:.1f} MB)")
         return monthly
     ndjson = os.path.join(HERE, f".tracks-{ym}.ndjson")
-    t0 = time.time()
-    try:
-        n = extract_month(con, ym, ndjson)
-        tile_month(ndjson, monthly)
-    except Exception as e:
-        print(f"  {ym}: FAILED — {str(e)[:140]}")
-        if os.path.exists(ndjson):
-            os.remove(ndjson)
-        return None
-    os.remove(ndjson)  # reclaim the ~5 GB immediately
-    print(f"  {ym}: {n:>7,} tracks → {os.path.getsize(monthly)/1e6:.1f} MB  ({time.time()-t0:.0f}s)")
-    return monthly
+    for attempt in range(retries):
+        t0 = time.time()
+        try:
+            n = extract_month(con, ym, ndjson)
+            tile_month(ndjson, monthly)
+            os.remove(ndjson)  # reclaim the multi-GB intermediate immediately
+            print(f"  {ym}: {n:>7,} tracks → {os.path.getsize(monthly)/1e6:.1f} MB  ({time.time()-t0:.0f}s)")
+            return monthly
+        except Exception as e:
+            msg = str(e)
+            if os.path.exists(ndjson):
+                os.remove(ndjson)
+            transient = any(s in msg.lower() for s in _TRANSIENT)
+            if transient and attempt < retries - 1:
+                wait = 30 * (attempt + 1)
+                print(f"  {ym}: transient error (try {attempt+1}/{retries}), retry in {wait}s — {msg[:70]}")
+                time.sleep(wait)
+                continue
+            print(f"  {ym}: FAILED — {msg[:140]}")
+            return None
 
 
 def main():
@@ -130,6 +150,8 @@ def main():
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
     con.execute("SET enable_progress_bar=false;")
+    # Bounded so a few month-range processes can run in parallel without OOM.
+    con.execute("SET memory_limit='4GB'; SET threads=3;")
     built = [m for m in (build_month(con, ym) for ym in months) if m]
     print(f"\n✓ {len(built)} month(s) in {TILES_DIR} — upload with upload.mjs")
 

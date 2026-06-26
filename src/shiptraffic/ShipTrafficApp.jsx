@@ -39,7 +39,7 @@ import styles from './ShipTrafficApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
-const DEFAULT_VIEW = { center: [-123.0, 48.45], zoom: 8.4 }
+const DEFAULT_VIEW = { center: [-123.45, 48.1], zoom: 7.7 }
 
 // Vessel tracks: our own PMTiles of real MarineCadastre AIS, served as MVT by
 // /api/vessel-tiles (which range-reads the .pmtiles; see that file for why we
@@ -66,7 +66,7 @@ const vesselTileUrl = (id) =>
 const vesselSrcId = (id) => `ves-${id}`
 const vesselLayerId = (id) => `ves-${id}-line`
 const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this
-const SALISH_BBOX = [-123.8, 47.85, -122.2, 49.0] // source bounds → no tile requests outside the region
+const SALISH_BBOX = [-124.85, 47.0, -122.05, 49.0] // source bounds → no tile requests outside the region
 const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
 
 // How many monthly tilesets to stack at once. A full year (12) stacks them all;

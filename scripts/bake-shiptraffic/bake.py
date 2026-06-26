@@ -36,7 +36,7 @@ import requests
 # ─── Region & grid ──────────────────────────────────────────────────────────
 # Salish Sea core around the San Juan Islands: eastern Strait of Juan de Fuca,
 # Haro & Rosario Straits, southern Strait of Georgia, Admiralty Inlet entrance.
-BBOX = {"w": -123.8, "s": 47.85, "e": -122.2, "n": 49.0}
+BBOX = {"w": -124.85, "s": 47.0, "e": -122.05, "n": 49.0}  # Salish Sea: Puget Sound→Olympia, Strait of Juan de Fuca→Cape Flattery, north to the border (US AIS thins past it)
 
 # Concern-grid resolution. Vessels are now drawn from Esri's vector tiles and
 # whales as raw points, so this grid ONLY feeds the ship×whale concern heatmap —

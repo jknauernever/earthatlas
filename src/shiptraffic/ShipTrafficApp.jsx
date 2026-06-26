@@ -33,6 +33,10 @@ import {
   VESSEL_TYPE_LABELS,
   WHALE_SOURCE_LABELS,
   WHALE_SOURCE_URLS,
+  esriMonthTilesUrl,
+  esriSymbolsFor,
+  ESRI_SOURCE_LAYERS,
+  ESRI_ATTRIBUTION,
 } from './shiptrafficData.js'
 import trackSource from './trackSource.json'
 import styles from './ShipTrafficApp.module.css'
@@ -66,12 +70,35 @@ const vesselTileUrl = (id) =>
 const vesselSrcId = (id) => `ves-${id}`
 const vesselLayerId = (id) => `ves-${id}-line`
 const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this
-const SALISH_BBOX = [-124.85, 47.0, -122.05, 49.0] // source bounds → no tile requests outside the region
+const SALISH_BBOX = [-124.85, 47.0, -122.05, 49.0] // [w,s,e,n] source bounds → no tile requests outside the region
 const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
+
+// ESRI "US Vessel Traffic" tiles fill the area OUTSIDE our baked bbox as ambient
+// context (same US/MarineCadastre source, professionally tiled). Our own tiles are
+// clipped to the bbox; ESRI is clipped to its COMPLEMENT via a `within` expression,
+// so the two never overlap and layer order doesn't matter. ESRI is per-month
+// services, so we stack the same months the slider selects.
+const [BW, BS, BE, BN] = SALISH_BBOX
+const BBOX_POLY = { type: 'Polygon', coordinates: [[[BW, BS], [BE, BS], [BE, BN], [BW, BN], [BW, BS]]] }
+const esriSrcId = (id) => `esri-${id}`
+const esriLayerId = (id, sl) => `esri-${id}-${sl}`
 
 // How many monthly tilesets to stack at once. A full year (12) stacks them all;
 // "All" (24) samples down to this many evenly. Bounds tile requests + GPU layers.
 const VESSEL_MONTH_CAP = 12
+// How many of the selected months to stack as ESRI context outside the bbox. Kept
+// low — each is an external Esri tile service and it's only ambient context.
+const ESRI_CONTEXT_CAP = 4
+// Esri only publishes US_Vessel_Traffic through this month; newer months 404 with a
+// JSON body that crashes Mapbox's MVT decoder (Unimplemented type: 3). Clamp any
+// later selection to this month — lanes barely change, and it's just context.
+const ESRI_LATEST = '2025-06'
+// Zoom hand-off: below this, the ESRI overview shows everywhere (incl. over our
+// box); above it, our precise tiles take over INSIDE the box and ESRI fades out
+// there. Avoids ever clipping ESRI geographically (Mapbox can't), since only one
+// layer is visible inside the box at a given zoom. Outside the box ESRI always shows.
+const ZSW_LO = 8.0  // ESRI-only at/below
+const ZSW_HI = 9.0  // ours-only at/above (inside the box)
 
 // Evenly sample `cap` items (keeping first + last) from a list.
 function sampleEvenly(arr, cap) {
@@ -149,6 +176,7 @@ export default function ShipTrafficApp() {
   const aggRef = useRef(null)            // latest aggregation, for the moveend concern rebuild
   const cellMetaRef = useRef(null)       // grid cell {lngStep, latStep}, for click hit-testing
   const vesselSrcRef = useRef(new Set()) // active per-month vessel source ids
+  const esriSrcRef = useRef(new Set())   // active ESRI context source ids (outside bbox)
   const [mapReady, setMapReady] = useState(false)
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
@@ -263,7 +291,7 @@ export default function ShipTrafficApp() {
     // config errors still surface in the console.
     map.on('error', (e) => {
       const msg = e?.error?.message || ''
-      if (e?.sourceId?.startsWith('ves-') || /Unimplemented type|tile/i.test(msg)) return
+      if (e?.sourceId?.startsWith('ves-') || e?.sourceId?.startsWith('esri-') || /Unimplemented type|tile/i.test(msg)) return
       // eslint-disable-next-line no-console
       console.warn('[shiptraffic] map error', e?.error || e)
     })
@@ -359,8 +387,10 @@ export default function ShipTrafficApp() {
     const typeFilter = ['in', ['get', 'class'], ['literal', types]]
     const show = visible.vessels
     // Stacked months overlap; dim each by √(count) so density reads as brightness
-    // build-up instead of saturating (1 month ≈ 0.7; 12 ≈ 0.20).
-    const opacity = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
+    // build-up instead of saturating (1 month ≈ 0.7; 12 ≈ 0.20). Our tiles fade IN
+    // as you zoom past the hand-off — below it the ESRI overview shows instead.
+    const opacityVal = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
+    const opacity = ['interpolate', ['linear'], ['zoom'], ZSW_LO, 0, ZSW_HI, opacityVal]
     const wanted = new Set(vesselTilesets.map(vesselSrcId))
 
     // Remove tilesets no longer in view.
@@ -402,6 +432,67 @@ export default function ShipTrafficApp() {
         map.setFilter(lid, typeFilter)
         map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
         map.setPaintProperty(lid, 'line-opacity', opacity)
+      }
+    }
+
+    // ─── ESRI context tiles OUTSIDE our bbox ───────────────────────────────
+    // Stack a few of the selected months from Esri's US Vessel Traffic, recolored
+    // to match, clipped to the COMPLEMENT of our bbox (`line-opacity` 0 `within`
+    // it) so it never overlaps our tiles — it just fills the surrounding waters so
+    // our box doesn't end at a hard edge. Capped low: each is an external tile
+    // service, and it's only ambient context.
+    const esriMonths = [...new Set(
+      sampleEvenly(vesselTilesets, ESRI_CONTEXT_CAP).map((m) => (m > ESRI_LATEST ? ESRI_LATEST : m)),
+    )]
+    const esriOp = show ? Math.max(0.10, 0.6 / Math.sqrt(Math.max(1, esriMonths.length))) : 0
+    // Full everywhere when zoomed out / outside our box; inside the box it fades OUT
+    // as you zoom past the hand-off, where our own tiles take over. `zoom` must be
+    // the input to a TOP-LEVEL interpolate, so the within-box test lives in the stops.
+    const esriOpacityExpr = ['interpolate', ['linear'], ['zoom'],
+      ZSW_LO, esriOp,                                       // zoomed out: full everywhere
+      ZSW_HI, ['case', ['within', BBOX_POLY], 0, esriOp]]   // zoomed in: 0 inside box, full outside
+    const symbols = esriSymbolsFor(vesselTypes)
+    const wantedEsri = new Set(esriMonths.map(esriSrcId))
+    for (const sid of [...esriSrcRef.current]) {
+      if (wantedEsri.has(sid)) continue
+      for (const sl of ESRI_SOURCE_LAYERS) {
+        if (map.getLayer(`${sid}-${sl}`)) map.removeLayer(`${sid}-${sl}`)
+      }
+      if (map.getSource(sid)) map.removeSource(sid)
+      esriSrcRef.current.delete(sid)
+    }
+    for (const ym of esriMonths) {
+      const sid = esriSrcId(ym)
+      if (!map.getSource(sid)) {
+        map.addSource(sid, {
+          type: 'vector',
+          tiles: [esriMonthTilesUrl(ym)],
+          minzoom: 0,
+          maxzoom: 16,
+          attribution: ESRI_ATTRIBUTION,
+        })
+        for (const sl of ESRI_SOURCE_LAYERS) {
+          map.addLayer({
+            id: esriLayerId(ym, sl),
+            type: 'line',
+            source: sid,
+            'source-layer': sl,
+            layout: { 'line-join': 'round' },
+            paint: {
+              'line-color': VESSEL_LINE_COLOR,
+              'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
+              'line-blur': 0.6,
+            },
+          }, CONCERN_LAYER)
+        }
+        esriSrcRef.current.add(sid)
+      }
+      for (const sl of ESRI_SOURCE_LAYERS) {
+        const lid = esriLayerId(ym, sl)
+        if (!map.getLayer(lid)) continue
+        map.setFilter(lid, ['in', ['get', '_symbol'], ['literal', symbols]])
+        map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
+        map.setPaintProperty(lid, 'line-opacity', esriOpacityExpr)
       }
     }
   }, [vesselTilesets, vesselTypes, visible.vessels, mapReady])

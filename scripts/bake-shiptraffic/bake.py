@@ -76,6 +76,36 @@ def cell_center(i, j):
 def in_bbox(lng, lat):
     return BBOX["w"] <= lng <= BBOX["e"] and BBOX["s"] <= lat <= BBOX["n"]
 
+
+# ─── Drop whale sightings that fall >1 km INLAND ────────────────────────────
+# iNaturalist deliberately OBSCURES threatened/endangered taxa (most orcas +
+# humpbacks here) — it returns a coordinate randomized within a ~0.2° box, which
+# frequently lands on an island/land. Plus shore-observers pin their own (on-land)
+# spot. We can't recover the true location, but we CAN drop the impossible ones:
+# a point >1 km inside a landmass is never a real sighting. We keep everything in
+# water or within 1 km of shore (genuine near-shore / bluff sightings survive).
+# Land = GSHHG full-res, clipped to the bbox (salish_land.geojson); the 1 km test
+# erodes the land by 1 km in a longitude-scaled space so it's ~isotropic.
+_LAND_GEOJSON = os.path.join(os.path.dirname(__file__), "salish_land.geojson")
+_LON_SCALE = math.cos(math.radians(48))  # squash lon so 1° ≈ 1° lat ≈ 111 km
+_DEEP_LAND = None  # lazily-built eroded land polygon (scaled space)
+
+
+def _deep_land():
+    global _DEEP_LAND
+    if _DEEP_LAND is None:
+        from shapely.geometry import shape
+        from shapely.affinity import scale
+        land = shape(json.load(open(_LAND_GEOJSON)))
+        _DEEP_LAND = scale(land, xfact=_LON_SCALE, yfact=1, origin=(0, 0)).buffer(-1.0 / 111.32)
+    return _DEEP_LAND
+
+
+def is_inland(lng, lat):
+    """True if (lng,lat) is >1 km inside land — an impossible whale sighting."""
+    from shapely.geometry import Point
+    return _deep_land().contains(Point(lng * _LON_SCALE, lat))
+
 def month_key(date_str):
     """'2024-07-13' (or ISO datetime) -> '2024-07', or None if unparseable/out of range."""
     if not date_str:
@@ -152,7 +182,7 @@ def fetch_inat():
             if not geo or geo.get("type") != "Point":
                 continue
             lng, lat = geo["coordinates"]
-            if not in_bbox(lng, lat):
+            if not in_bbox(lng, lat) or is_inland(lng, lat):
                 continue
             mk = month_key(o.get("observed_on"))
             if not mk:
@@ -202,7 +232,7 @@ def fetch_obis():
         for o in results:
             lng = o.get("decimalLongitude")
             lat = o.get("decimalLatitude")
-            if lng is None or lat is None or not in_bbox(lng, lat):
+            if lng is None or lat is None or not in_bbox(lng, lat) or is_inland(lng, lat):
                 continue
             mk = month_key(o.get("eventDate") or o.get("date_mid"))
             if not mk:

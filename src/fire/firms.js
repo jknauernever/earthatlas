@@ -83,12 +83,15 @@ const ageColorExpr = () => [
 ]
 
 // Dot radius grows with zoom and nudges up with fire radiative power (FRP, MW)
-// so the big, intense detections read as bigger.
+// so the big, intense detections read as bigger. Sized up generously — a VIIRS
+// pixel is only ~375–780 m on the ground, so at most zooms a footprint-accurate
+// dot would be sub-pixel and invisible; these are deliberately larger so the
+// detections stay legible against busy satellite imagery.
 const radiusExpr = () => [
   'interpolate', ['linear'], ['zoom'],
-  3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 1.6, 50, 3],
-  7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 3, 100, 6],
-  11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 5, 200, 11],
+  3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 3, 50, 5],
+  7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 5.5, 100, 10],
+  11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 9, 200, 18],
 ]
 
 // ─── Map: add source + layers (idempotent; called on every style.load) ──────
@@ -107,9 +110,9 @@ export function addFirmsLayer(map, isOn, op) {
         // Soft halo ≈ 2.5× the dot, giving each detection a "heat" bloom.
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 4, 50, 8],
-          7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 8, 100, 16],
-          11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 13, 200, 28],
+          3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 7, 50, 12],
+          7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 13, 100, 25],
+          11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 22, 200, 45],
         ],
         'circle-blur': 1,
         'circle-opacity': 0.35 * o,
@@ -124,9 +127,11 @@ export function addFirmsLayer(map, isOn, op) {
         'circle-color': ageColorExpr(),
         'circle-radius': radiusExpr(),
         'circle-opacity': o,
-        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 5, 0, 8, 0.6],
+        // A dark outline at all zooms gives the dots contrast on bright or busy
+        // satellite imagery so they don't wash out.
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.4, 12, 2],
         'circle-stroke-color': '#3a0a00',
-        'circle-stroke-opacity': 0.5 * o,
+        'circle-stroke-opacity': 0.85 * o,
       },
     })
   }
@@ -221,7 +226,9 @@ export function renderFirmsCard(d) {
     `<div class="${styles.popupRow}"><span class="${styles.popupRowLabel}">Satellite</span>` +
       `<span class="${styles.popupRowValue}">${esc(sat)} · VIIRS${conf ? ` · ${esc(conf)}` : ''}</span></div>` +
     (frp ? `<div class="${styles.popupRow}"><span class="${styles.popupRowLabel}">Fire power</span>` +
-      `<span class="${styles.popupRowValue}">${esc(frp)} (radiative)</span></div>` : '')
+      `<span class="${styles.popupRowValue}">${esc(frp)} (radiative)</span></div>` : '') +
+    (d.footprint_m ? `<div class="${styles.popupRow}"><span class="${styles.popupRowLabel}">Footprint</span>` +
+      `<span class="${styles.popupRowValue}">~${esc(d.footprint_m)} m pixel</span></div>` : '')
 
   const src = `<div class="${styles.popupParcelSrc}">Detection: ` +
     `<a href="${FIRMS_SOURCE_CITATION.url}" target="_blank" rel="noopener noreferrer" title="${esc(FIRMS_SOURCE_CITATION.short)}">NASA FIRMS ↗</a></div>`

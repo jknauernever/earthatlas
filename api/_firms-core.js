@@ -148,13 +148,23 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
       if (!keepLow && conf.label === 'low') continue
       const ms = acqMs(row.acq_date, row.acq_time)
       const hoursAgo = ms == null ? null : Math.max(0, Math.round(((nowMs - ms) / 3.6e6) * 10) / 10)
-      // Dedup the same ground pixel detected by multiple platforms in the same
-      // pass: round to ~1 km and the hour.
-      const key = `${lat.toFixed(2)},${lng.toFixed(2)},${row.acq_date},${String(row.acq_time).slice(0, 2)}`
+      // Drop only byte-identical detections (the same satellite reporting the
+      // exact same pixel at the same time — rare). Key on the FULL-precision
+      // coordinate + satellite + acquisition timestamp. Do NOT collapse by a
+      // coarse spatial/time bucket: distinct VIIRS pixels (~375 m) and separate
+      // overpasses are real, separate observations, and a lossy bucket made
+      // survivors depend on the bbox — so dots flickered in/out on zoom.
+      const key = `${row.latitude},${row.longitude},${row.satellite || ''},${row.acq_date},${row.acq_time}`
       if (seen.has(key)) continue
       seen.add(key)
       const frp = Number(row.frp)
       const bright = Number(row.bright_ti4 ?? row.brightness)
+      // Ground footprint of the detection pixel: scan × track are its along-scan
+      // and along-track dimensions in km, growing from ~375 m at nadir toward the
+      // swath edge. Report the effective square side in metres.
+      const scan = Number(row.scan), track = Number(row.track)
+      const footprint = (Number.isFinite(scan) && Number.isFinite(track))
+        ? Math.round(Math.sqrt(scan * track) * 1000) : null
       feats.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [lng, lat] },
@@ -165,6 +175,7 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
           frp: Number.isFinite(frp) ? frp : null,
           bright: Number.isFinite(bright) ? bright : null,
           dn: row.daynight === 'N' ? 'night' : row.daynight === 'D' ? 'day' : '',
+          footprint_m: footprint,
           acq_ms: ms,
           hours_ago: hoursAgo,
           _w: conf.w, // internal sort weight, stripped below

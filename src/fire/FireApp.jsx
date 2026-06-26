@@ -9,6 +9,21 @@ import {
   restackParcels, raiseParcelSelection, queryParcelAt, setParcelSelection,
   clearParcelSelection, renderParcelCard, PARCEL_SOURCE_CITATION,
 } from './parcels.js'
+import {
+  FIRMS_LAYER, FIRMS_SOURCE_CITATION, FIRMS_MIN_ZOOM,
+  addFirmsLayer, applyFirmsVisibility, applyFirmsOpacity, restackFirms,
+  refreshFirms, clearFirms, queryFirmsAt, renderFirmsCard,
+} from './firms.js'
+import {
+  NIFC_LAYER, NIFC_SOURCE_CITATION,
+  addNifcLayers, applyNifcVisibility, applyNifcOpacity, restackNifc,
+  loadNifc, queryNifcAt, renderNifcCard,
+} from './nifc.js'
+import {
+  HISTORY_LAYER, HISTORY_SOURCE_CITATION, HISTORY_MIN_ZOOM,
+  addHistoryLayers, applyHistoryVisibility, applyHistoryOpacity, restackHistory,
+  refreshHistory, clearHistory, queryHistoryAt, renderHistoryCard,
+} from './fireHistory.js'
 import styles from './FireApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -49,7 +64,7 @@ const TILES_API_BASE = (
 // land cover = 10 m; parcels are vector (no native pixel resolution → no entry).
 const LAYER_RESOLUTION = {
   whp: '30 m', bp: '30 m', cfl: '30 m', rps: '30 m', rrz: '30 m', exposure: '30 m',
-  ndvi: '10 m', lulc: '10 m',
+  ndvi: '10 m', lulc: '10 m', mtbs: '30 m',
 }
 const FIRE_LAYERS = [
   {
@@ -298,6 +313,62 @@ const FIRE_LAYERS = [
 // drive an Esri ImageServer from Mapbox GL JS.
 const SENTINEL_HOST = 'ea-imageserver-tile.invalid'
 
+// Active Hotspots (NASA FIRMS) leads the catalog — top of the panel = top of the
+// map z-order, so live satellite heat detections draw above everything. ON by
+// default alongside the perimeters layer below. kind:'firms' = GeoJSON fetch-on-move.
+FIRE_LAYERS.unshift(FIRMS_LAYER)
+
+// NIFC WFIGS official US perimeters sit just under Hotspots in the "Active fire"
+// group: satellite heat on top, official mapped footprints beneath. Also ON by
+// default (the two active-fire layers open together). kind:'nifc' = fetch-once
+// GeoJSON polygons.
+FIRE_LAYERS.splice(1, 0, NIFC_LAYER)
+
+// Historical perimeters (NIFC IFPH) — "where fires have burned." Sits after the
+// two active layers; kind:'firehistory' = viewport-driven GeoJSON polygons
+// (zoom-gated). Off by default.
+FIRE_LAYERS.splice(2, 0, HISTORY_LAYER)
+
+// MTBS burn severity — the *severity* dimension the perimeter layers lack (how
+// hard each large fire burned, 1984–present). It's an ArcGIS ImageServer on the
+// same geoplatform host as the WRC rasters, so it rides the ordinary raster
+// machinery (no special kind): catalog entry → transformRequest → exportImage,
+// and the popup reads the rendered class via colormatch like the WRC layers.
+// 508-scheme colors decoded from the service legend.
+const MTBS_LAYER = {
+  id: 'mtbs',
+  label: 'Burn severity (MTBS)',
+  group: 'Fire history',
+  baseUrl: 'https://imagery.geoplatform.gov/iipp/rest/services/Fire_Aviation/USFS_EDW_MTBS_CONUS/ImageServer',
+  renderingRule: JSON.stringify({ rasterFunction: 'MTBS_DNBR6_508scheme' }),
+  point: 'colormatch',
+  colormatch: [
+    { label: 'Non-processing area mask', hex: '#ffffff', skip: true },
+    { label: 'Unburned to low', hex: '#008080', sev: 'unburned or very low severity' },
+    { label: 'Low severity', hex: '#52cccc', sev: 'low burn severity' },
+    { label: 'Moderate severity', hex: '#ffe820', sev: 'moderate burn severity' },
+    { label: 'High severity', hex: '#a80000', sev: 'high burn severity — heavy vegetation loss' },
+    { label: 'Increased greenness', hex: '#39b54a', sev: 'increased post-fire greenness' },
+  ],
+  defaultOpacity: 0.75,
+  minZoom: 0,
+  coverage: 'US (CONUS) · MTBS large fires 1984–present',
+  legend: {
+    kind: 'swatches',
+    items: [
+      { c: '#008080', l: 'Unburned to low' },
+      { c: '#52cccc', l: 'Low' },
+      { c: '#ffe820', l: 'Moderate' },
+      { c: '#a80000', l: 'High' },
+      { c: '#39b54a', l: 'Increased greenness' },
+    ],
+  },
+  blurb:
+    'How hard past fires burned — thematic burn severity for large US wildfires (1984–present) from the Monitoring Trends in Burn Severity program. Unlike the perimeter layers, this grades each fire’s interior from unburned/low through high severity (and post-fire “increased greenness”). Maps fires over ~1,000 acres in the West / ~500 in the East. Click a burned area to read its severity class. CONUS. Some fires show faint diagonal striping — that’s the Landsat 7 scan-line gap (post-2003 “SLC-off” imagery) carried through from the source assessment, not a map error.',
+  source: 'USGS/USFS · Monitoring Trends in Burn Severity (MTBS)',
+}
+FIRE_LAYERS.splice(3, 0, MTBS_LAYER)
+
 // Append the vector "Property parcels" layer when at least one region is baked
 // + uploaded (parcelSources.json). It rides the same catalog so the panel row,
 // legend, opacity, drag-reorder and URL state all work for free; the map
@@ -318,6 +389,10 @@ const LAYER_BY_ID = Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, l]))
 // consolidated sources footer.
 const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities', tag: 'USFS Wildfire Risk to Communities', url: 'https://wildfirerisk.org' }
 const SOURCE_CITATION = {
+  firms: FIRMS_SOURCE_CITATION,
+  nifc: NIFC_SOURCE_CITATION,
+  firehistory: HISTORY_SOURCE_CITATION,
+  mtbs: { short: 'USGS/USFS · Monitoring Trends in Burn Severity', tag: 'MTBS', url: 'https://www.mtbs.gov' },
   whp: CITE_WRC, bp: CITE_WRC, cfl: CITE_WRC, rps: CITE_WRC, rrz: CITE_WRC, exposure: CITE_WRC,
   ndvi: { short: 'Sentinel-2 (Copernicus) via Google Earth Engine', tag: 'Sentinel-2', url: 'https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED' },
   lulc: { short: 'Esri / Impact Observatory · Sentinel-2 Land Cover', tag: 'Esri / Impact Observatory', url: 'https://livingatlas.arcgis.com/landcoverexplorer/' },
@@ -325,10 +400,10 @@ const SOURCE_CITATION = {
 // Parcels carries its own per-region citation (added only when a region is live).
 if (PARCEL_SOURCE_CITATION) SOURCE_CITATION.parcels = PARCEL_SOURCE_CITATION
 
-// The raster identify layers (everything except the vector parcels layer). The
-// popup's wildfire rows/summary/sources iterate these; parcels render as their
-// own Property card.
-const RASTER_LAYERS = FIRE_LAYERS.filter((l) => l.kind !== 'parcels')
+// The raster identify layers (everything except the vector parcels layer and the
+// FIRMS point layer). The popup's wildfire rows/summary/sources iterate these;
+// parcels and FIRMS detections render as their own cards.
+const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'nifc', 'firehistory'].includes(l.kind))
 
 // Distinct layer groups in catalog order — drives the grouped "The layers"
 // list in the sourcing modal (so it always reflects the live catalog).
@@ -486,6 +561,10 @@ function interpretLayer(id, value) {
   if (id === 'exposure') {
     if (!value.label) return null
     return { popupLabel: 'Exposure', short: EXPOSURE_SHORT[value.label] || value.label, value: value.label, swatch: value.hex, how: value.how, word: value.label }
+  }
+  if (id === 'mtbs') {
+    if (!value.label) return null
+    return { popupLabel: 'Past burn severity', short: value.label, value: `This spot burned at ${value.sev} (MTBS)`, swatch: value.hex, sev: value.sev }
   }
   if (id === 'bp') {
     const n = Number(value)
@@ -704,6 +783,16 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     ? renderParcelCard(results.parcels, verdict ? verdict.text : null)
     : ''
 
+  // Active-fire detection card — present when the click landed on a FIRMS
+  // hotspot. Ground-truth heat, so it leads the body (above the risk readout).
+  const firmsHtml = results.firms ? renderFirmsCard(results.firms) : ''
+  // Named US incident card — when the click landed inside an official WFIGS
+  // perimeter. Sits right after the heat detection (heat → which named fire).
+  const nifcHtml = results.nifc ? renderNifcCard(results.nifc) : ''
+  // Past-fire footprint card — when the click landed inside a historical
+  // perimeter. After the active cards (now → past).
+  const historyHtml = results.firehistory ? renderHistoryCard(results.firehistory) : ''
+
   const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
   // Fixed header (place + coords) + a separately-scrolling body. This guarantees
   // the header is never clipped no matter how tall the content or which way the
@@ -713,6 +802,9 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     `<div class="${styles.popupHeader}">${placeLine}` +
     `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>` +
     `<div class="${styles.popupBody}">` +
+    firmsHtml +
+    nifcHtml +
+    historyHtml +
     heroHtml +
     parcelHtml +
     rowsHtml +
@@ -811,10 +903,13 @@ export default function FireApp() {
     : null
   const initialOp = parseOpacities(initial.op)
 
-  // Per-layer on/off. Default: everything off (a clean satellite map of the West),
-  // so the user opts into each dataset — matches the layers+legend-only phase-1 scope.
+  // Per-layer on/off. Default (no URL state): the two active-fire layers on —
+  // satellite Hotspots (raw heat, global) + official US wildfire perimeters — so
+  // the map opens fully answering "where is fire burning now" over a clean
+  // satellite basemap; every risk/historical dataset is opt-in. A shared link's
+  // `on=` set takes over verbatim so it round-trips.
   const [visible, setVisible] = useState(
-    () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, initialOn ? initialOn.has(l.id) : false]))
+    () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, initialOn ? initialOn.has(l.id) : (l.kind === 'firms' || l.kind === 'nifc')]))
   )
   const [expanded, setExpanded] = useState(
     () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, false]))
@@ -860,6 +955,21 @@ export default function FireApp() {
   // Cache of fetched cloud-function tile URLs (EE layers), keyed by layer id —
   // these don't change, so fetch once and reuse across basemap swaps.
   const eeTileUrlRef = useRef({})
+  // FIRMS active-fire layer is viewport-driven: it refetches the visible bbox on
+  // pan/zoom. A debounce timer coalesces rapid moves; an AbortController cancels
+  // the stale in-flight request when the user keeps moving.
+  const firmsTimerRef = useRef(null)
+  const firmsAbortRef = useRef(null)
+  // Lightweight status for the panel row (loading spinner + "showing N" / hints).
+  const [firmsMeta, setFirmsMeta] = useState({ loading: false, count: 0, truncated: false, error: false })
+  // NIFC perimeters fetch-once (whole current service). Abort guards an in-flight
+  // load if the map tears down; status drives the panel row.
+  const nifcAbortRef = useRef(null)
+  const [nifcMeta, setNifcMeta] = useState({ loading: false, count: 0, error: false })
+  // Historical perimeters: viewport-driven like FIRMS (debounce + abort + zoom gate).
+  const historyTimerRef = useRef(null)
+  const historyAbortRef = useRef(null)
+  const [historyMeta, setHistoryMeta] = useState({ loading: false, count: 0, truncated: false, error: false })
 
   // Restack map layers to match the panel order (orderRef): top of panel = top
   // of map. Mapbox draws the last-added layer on top, so we move each layer to
@@ -870,6 +980,9 @@ export default function FireApp() {
     const ord = orderRef.current
     for (let i = ord.length - 1; i >= 0; i--) {
       if (ord[i] === 'parcels') { restackParcels(map); continue } // vector layer = multiple sublayers
+      if (ord[i] === 'firms') { restackFirms(map); continue }     // glow + dot sublayers
+      if (ord[i] === 'nifc') { restackNifc(map); continue }       // fill + line sublayers
+      if (ord[i] === 'firehistory') { restackHistory(map); continue } // fill + line sublayers
       const lId = layerId(ord[i])
       try { if (map.getLayer(lId)) map.moveLayer(lId) } catch { /* mid style swap */ }
     }
@@ -926,11 +1039,90 @@ export default function FireApp() {
   const addAllLayers = useCallback((map) => {
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') addParcelLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'firms') addFirmsLayer(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'nifc') addNifcLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'firehistory') addHistoryLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'ee') addEeLayer(map, layer)
       else addRaster(map, layer, tileTemplate(layer))
     }
     restack(map) // position parcel sublayers + raise selection after (re)adding
   }, [addRaster, addEeLayer, restack])
+
+  // ─── FIRMS active-fire: debounced viewport refetch ────────────────────────
+  // Fetches the current map bbox from /api/firms and pushes it into the GeoJSON
+  // source. No-ops unless the layer is on and we're zoomed in enough (below
+  // FIRMS_MIN_ZOOM the bbox is near-global and the pull gets large). Coalesces
+  // rapid pans (250 ms) and aborts the previous request so only the latest view
+  // resolves into the source.
+  const triggerFirmsRefresh = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !visibleRef.current.firms) return
+    clearTimeout(firmsTimerRef.current)
+    firmsTimerRef.current = setTimeout(async () => {
+      const m = mapRef.current
+      if (!m || !visibleRef.current.firms) return
+      if (m.getZoom() < FIRMS_MIN_ZOOM) { setFirmsMeta((p) => ({ ...p, loading: false })); return }
+      if (firmsAbortRef.current) firmsAbortRef.current.abort()
+      const ctrl = new AbortController()
+      firmsAbortRef.current = ctrl
+      setFirmsMeta((p) => ({ ...p, loading: true, error: false }))
+      try {
+        const res = await refreshFirms(m, { signal: ctrl.signal })
+        if (ctrl.signal.aborted) return
+        setFirmsMeta({ loading: false, count: res ? res.count : 0, truncated: !!(res && res.truncated), error: !res })
+      } catch (err) {
+        if (ctrl.signal.aborted || err?.name === 'AbortError') return
+        setFirmsMeta({ loading: false, count: 0, truncated: false, error: true })
+      }
+    }, 250)
+  }, [])
+
+  // ─── NIFC active wildfires: fetch-once load ───────────────────────────────
+  // Pulls the whole current-perimeters service (small) and pushes it into the
+  // GeoJSON source. No-ops unless the layer is on. The module caches the result,
+  // so basemap swaps re-apply instantly; calling again just refreshes the data.
+  const triggerNifcLoad = useCallback(async () => {
+    const map = mapRef.current
+    if (!map || !visibleRef.current.nifc) return
+    if (nifcAbortRef.current) nifcAbortRef.current.abort()
+    const ctrl = new AbortController()
+    nifcAbortRef.current = ctrl
+    setNifcMeta((p) => ({ ...p, loading: true, error: false }))
+    try {
+      const res = await loadNifc(map, { signal: ctrl.signal })
+      if (ctrl.signal.aborted) return
+      setNifcMeta({ loading: false, count: res ? res.count : 0, error: !res })
+    } catch (err) {
+      if (ctrl.signal.aborted || err?.name === 'AbortError') return
+      setNifcMeta({ loading: false, count: 0, error: true })
+    }
+  }, [])
+
+  // ─── Historical perimeters: debounced viewport refetch ────────────────────
+  // Same shape as triggerFirmsRefresh — no-ops unless the layer is on and zoomed
+  // in past HISTORY_MIN_ZOOM (below it IFPH returns too many dense polygons).
+  const triggerHistoryRefresh = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !visibleRef.current.firehistory) return
+    clearTimeout(historyTimerRef.current)
+    historyTimerRef.current = setTimeout(async () => {
+      const m = mapRef.current
+      if (!m || !visibleRef.current.firehistory) return
+      if (m.getZoom() < HISTORY_MIN_ZOOM) { setHistoryMeta((p) => ({ ...p, loading: false })); return }
+      if (historyAbortRef.current) historyAbortRef.current.abort()
+      const ctrl = new AbortController()
+      historyAbortRef.current = ctrl
+      setHistoryMeta((p) => ({ ...p, loading: true, error: false }))
+      try {
+        const res = await refreshHistory(m, { signal: ctrl.signal })
+        if (ctrl.signal.aborted) return
+        setHistoryMeta({ loading: false, count: res ? res.count : 0, truncated: !!(res && res.truncated), error: !res })
+      } catch (err) {
+        if (ctrl.signal.aborted || err?.name === 'AbortError') return
+        setHistoryMeta({ loading: false, count: 0, truncated: false, error: true })
+      }
+    }, 250)
+  }, [])
 
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -984,6 +1176,9 @@ export default function FireApp() {
     const onStyleLoad = () => {
       addAllLayers(map)
       setMapReady(true)
+      triggerFirmsRefresh() // load active-fire detections for the opening view
+      triggerNifcLoad()     // load US perimeters if the layer is on
+      triggerHistoryRefresh() // load historical perimeters if on + zoomed in
     }
     map.on('style.load', onStyleLoad)
     if (map.isStyleLoaded()) onStyleLoad()
@@ -992,6 +1187,8 @@ export default function FireApp() {
       const c = map.getCenter()
       setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
       setZoom(map.getZoom())
+      triggerFirmsRefresh()   // refetch active-fire detections for the new bbox
+      triggerHistoryRefresh() // refetch historical perimeters for the new bbox
     }
     map.on('moveend', onMoveEnd)
 
@@ -1012,6 +1209,11 @@ export default function FireApp() {
       map.off('error', onError)
       if (popupRef.current) { popupRef.current.remove(); popupRef.current = null }
       map.off('moveend', onMoveEnd)
+      clearTimeout(firmsTimerRef.current)
+      if (firmsAbortRef.current) firmsAbortRef.current.abort()
+      if (nifcAbortRef.current) nifcAbortRef.current.abort()
+      clearTimeout(historyTimerRef.current)
+      if (historyAbortRef.current) historyAbortRef.current.abort()
       map.remove()
       mapRef.current = null
       setMapReady(false)
@@ -1080,6 +1282,23 @@ export default function FireApp() {
     if (!map || !mapReady) return
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') { applyParcelVisibility(map, visible[layer.id], opacityRef.current[layer.id]); continue }
+      if (layer.kind === 'firms') {
+        applyFirmsVisibility(map, visible[layer.id])
+        if (visible[layer.id]) triggerFirmsRefresh()        // load detections on toggle-on
+        else clearFirms(map)                                 // free the data when off
+        continue
+      }
+      if (layer.kind === 'nifc') {
+        applyNifcVisibility(map, visible[layer.id], opacityRef.current[layer.id])
+        if (visible[layer.id]) triggerNifcLoad()            // fetch perimeters on toggle-on (cached after first)
+        continue
+      }
+      if (layer.kind === 'firehistory') {
+        applyHistoryVisibility(map, visible[layer.id], opacityRef.current[layer.id])
+        if (visible[layer.id]) triggerHistoryRefresh()      // load past perimeters for the view
+        else clearHistory(map)
+        continue
+      }
       const lId = layerId(layer.id)
       if (map.getLayer(lId)) {
         map.setLayoutProperty(lId, 'visibility', visible[layer.id] ? 'visible' : 'none')
@@ -1093,6 +1312,9 @@ export default function FireApp() {
     if (!map || !mapReady) return
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') { applyParcelOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
+      if (layer.kind === 'firms') { applyFirmsOpacity(map, opacity[layer.id]); continue }
+      if (layer.kind === 'nifc') { applyNifcOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
+      if (layer.kind === 'firehistory') { applyHistoryOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       const lId = layerId(layer.id)
       if (map.getLayer(lId)) {
         try { map.setPaintProperty(lId, 'raster-opacity', opacity[layer.id]) } catch {}
@@ -1169,6 +1391,17 @@ export default function FireApp() {
         if (hit) setParcelSelection(map, hit.geometry)
         else clearParcelSelection(map)
       } catch { results.parcels = null }
+
+      // Active-fire detection under the click (synchronous queryRenderedFeatures
+      // against the FIRMS dot layer). Only hits when the layer is on and a dot is
+      // rendered at the point; otherwise null and the card is omitted.
+      try { results.firms = queryFirmsAt(map, e.point) } catch { results.firms = null }
+
+      // Named US incident perimeter under the click (synchronous, like parcels).
+      try { results.nifc = queryNifcAt(map, e.point) } catch { results.nifc = null }
+
+      // Historical fire footprint under the click (synchronous).
+      try { results.firehistory = queryHistoryAt(map, e.point) } catch { results.firehistory = null }
       // maxWidth 'none' so our CSS clamp() controls width responsively; anchor
       // fixed so the popup never re-flips into the off-screen direction as it grows.
       const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: 'none', offset: 14, anchor })
@@ -1206,7 +1439,11 @@ export default function FireApp() {
       }
 
       FIRE_LAYERS.forEach((layer) => {
-        if (layer.kind === 'parcels') return // not a raster identify — handled above
+        // Parcels and FIRMS aren't raster identify layers — they're read
+        // synchronously above (queryParcelAt / queryFirmsAt) into their own
+        // cards. Skipping them here also stops this loop from overwriting
+        // results.firms / results.parcels with a null identify result.
+        if (['parcels', 'firms', 'nifc', 'firehistory'].includes(layer.kind)) return
         Promise.resolve()
           .then(() => readRaw(layer))
           .then((raw) => { results[layer.id] = interpretLayer(layer.id, raw) })
@@ -1410,6 +1647,47 @@ export default function FireApp() {
                 <div className={styles.layerError}>
                   Couldn’t load this layer — the data service may be temporarily unavailable. Toggle off and on to retry.
                 </div>
+              ) : isOn && layer.kind === 'firms' ? (
+                // FIRMS is live data: surface its load state + in-view count.
+                belowMinZoom ? (
+                  <div className={styles.layerHint}>Zoom in to load active fire detections — global, NASA FIRMS, last 48 h</div>
+                ) : firmsMeta.error ? (
+                  <div className={styles.layerError}>Couldn’t load active fire data — toggle off and on to retry.</div>
+                ) : firmsMeta.loading ? (
+                  <div className={styles.layerHint}>Loading active fire detections…</div>
+                ) : (
+                  <div className={styles.layerHint}>
+                    {firmsMeta.count > 0
+                      ? `${firmsMeta.count.toLocaleString()} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
+                      : 'No active fire detections in this view (last 48 h)'}
+                  </div>
+                )
+              ) : isOn && layer.kind === 'nifc' ? (
+                nifcMeta.error ? (
+                  <div className={styles.layerError}>Couldn’t load NIFC perimeters — toggle off and on to retry.</div>
+                ) : nifcMeta.loading ? (
+                  <div className={styles.layerHint}>Loading active US wildfire perimeters…</div>
+                ) : (
+                  <div className={styles.layerHint}>
+                    {nifcMeta.count > 0
+                      ? `${nifcMeta.count.toLocaleString()} active US fire perimeter${nifcMeta.count === 1 ? '' : 's'} · official (NIFC)`
+                      : 'No current US fire perimeters in the feed'}
+                  </div>
+                )
+              ) : isOn && layer.kind === 'firehistory' ? (
+                belowMinZoom ? (
+                  <div className={styles.layerHint}>Zoom in to about z{HISTORY_MIN_ZOOM} to load past fire perimeters — US, NIFC history</div>
+                ) : historyMeta.error ? (
+                  <div className={styles.layerError}>Couldn’t load fire history — toggle off and on to retry.</div>
+                ) : historyMeta.loading ? (
+                  <div className={styles.layerHint}>Loading past fire perimeters…</div>
+                ) : (
+                  <div className={styles.layerHint}>
+                    {historyMeta.count > 0
+                      ? `${historyMeta.count.toLocaleString()} past fire${historyMeta.count === 1 ? '' : 's'} in view${historyMeta.truncated ? ' (most recent shown)' : ''} · NIFC history`
+                      : 'No recorded past fires in this view'}
+                  </div>
+                )
               ) : isOn ? (
                 <div className={styles.layerHint}>
                   {belowMinZoom
@@ -1514,10 +1792,13 @@ function MethodologyModal({ onClose }) {
         <section className={styles.modalSection}>
           <h3>What you're looking at</h3>
           <p>
-            Most layers are raster overlays served live from the agency that publishes them — there's no
-            EarthAtlas database in between. The wildfire-risk layers model the long-term landscape, not
-            active fire: they answer "if a fire started here, how bad could it get, and how likely is it,"
-            not "is something burning right now." Property parcels are public county-assessor boundaries,
+            Layers are served live from the agency that publishes them — there's no EarthAtlas database in
+            between. They fall into three kinds. <strong>Active fire</strong> shows what's burning now:
+            satellite heat detections (NASA FIRMS) and official, named US incident perimeters (NIFC).
+            <strong> Fire history</strong> shows where fires have burned and how severely (NIFC perimeter
+            history and MTBS burn severity). The <strong>wildfire-risk</strong> layers model the long-term
+            landscape instead — they answer "if a fire started here, how bad could it get, and how likely is
+            it," not "is something burning right now." Property parcels are public county-assessor boundaries,
             pre-packaged as map tiles so they load fast without hammering the source.
           </p>
         </section>

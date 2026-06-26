@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { GRAPHQL_URL, resolveBirdweatherQuery } from './api/_birdweather-core.js'
 import { EBIRD_BASE, resolveEbirdRequest } from './api/_ebird-core.js'
+import { resolveFirmsRequest, firmsCsvToGeoJSON } from './api/_firms-core.js'
+import { resolveNifcRequest, normalizeNifc } from './api/_nifc-core.js'
+import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-history-core.js'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -345,6 +348,112 @@ function ebirdProxyPlugin(apiKey) {
   }
 }
 
+// Dev middleware: serve /api/firms by mirroring the production Edge function
+// (api/firms.js) — same FIRMS core, same CSV→GeoJSON shape — so the active-fire
+// layer works identically under `npm run dev`. Needs FIRMS_MAP_KEY in the
+// environment; without it, returns an empty FeatureCollection like a no-key prod
+// deploy (the map just shows no detections).
+function firmsProxyPlugin(mapKey) {
+  return {
+    name: 'firms-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/firms', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        const resolved = resolveFirmsRequest(searchParams, mapKey)
+        if (resolved.error) {
+          if (resolved.status === 500) {
+            res.statusCode = 200
+            res.setHeader('x-firms-upstream', 'nokey')
+            res.end(JSON.stringify({ ...empty, _error: resolved.error }))
+          } else {
+            res.statusCode = resolved.status
+            res.end(JSON.stringify({ error: resolved.error }))
+          }
+          return
+        }
+        try {
+          const texts = await Promise.all(
+            resolved.urls.map(({ src, url }) =>
+              fetch(url, { headers: { accept: 'text/csv' } })
+                .then((r) => (r.ok ? r.text() : ''))
+                .then((text) => ({ src, text }))
+                .catch(() => ({ src, text: '' }))
+            )
+          )
+          res.statusCode = 200
+          res.end(JSON.stringify(firmsCsvToGeoJSON(texts, Date.now())))
+        } catch (err) {
+          res.statusCode = 200
+          res.setHeader('x-firms-upstream', '0')
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/nifc by mirroring the production Edge function
+// (api/nifc.js) — same NIFC core, same normalized GeoJSON — so the US active-
+// wildfire layer works identically under `npm run dev`. No key needed.
+function nifcProxyPlugin() {
+  return {
+    name: 'nifc-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/nifc', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        const resolved = resolveNifcRequest(searchParams)
+        if (resolved.error) {
+          res.statusCode = resolved.status
+          res.end(JSON.stringify({ error: resolved.error }))
+          return
+        }
+        try {
+          const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
+          res.statusCode = 200
+          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          const raw = await r.json()
+          res.end(JSON.stringify(normalizeNifc(raw, resolved.layer)))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/fire-history by mirroring the production Edge
+// function (api/fire-history.js) — same IFPH core — so the US historical-
+// perimeter layer works identically under `npm run dev`. No key needed.
+function fireHistoryProxyPlugin() {
+  return {
+    name: 'fire-history-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/fire-history', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        const resolved = resolveFireHistoryRequest(searchParams)
+        if (resolved.error) { res.statusCode = resolved.status; res.end(JSON.stringify({ error: resolved.error })); return }
+        try {
+          const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
+          res.statusCode = 200
+          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          const raw = await r.json()
+          res.end(JSON.stringify(normalizeFireHistory(raw, resolved.max)))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
 // Dev middleware: serve /api/geo/{suggest,retrieve} by forwarding to Mapbox
 // Search Box with the server-side token, mirroring the production Edge
 // functions in api/geo/. Keeps GeoSearch autocomplete (subsites, forestmonitor)
@@ -407,6 +516,8 @@ export default defineConfig(({ mode }) => {
     process.env.EBIRD_API_KEY || process.env.VITE_EBIRD_API_KEY || ''
   const mapboxToken = env.MAPBOX_TOKEN || env.VITE_MAPBOX_TOKEN ||
     process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN || ''
+  // Server-side only — never bundled. Powers the /fire active-fire dev proxy.
+  const firmsKey = env.FIRMS_MAP_KEY || process.env.FIRMS_MAP_KEY || ''
   return {
   plugins: [
     react(),
@@ -414,6 +525,9 @@ export default defineConfig(({ mode }) => {
     inatProxyPlugin(),
     birdweatherProxyPlugin(),
     ebirdProxyPlugin(ebirdKey),
+    firmsProxyPlugin(firmsKey),
+    nifcProxyPlugin(),
+    fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev

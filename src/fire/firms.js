@@ -168,8 +168,15 @@ export function restackFirms(map) {
 // caller cancel a stale in-flight fetch when the user keeps panning.
 export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0, signal } = {}) {
   const b = map.getBounds()
-  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
-    .map((n) => n.toFixed(3)).join(',')
+  // ~1m precision. At high zoom the viewport can be narrower than the rounding
+  // step, collapsing west==east (or south==north) into a zero-area bbox that
+  // FIRMS rejects with 400 — so pad to a tiny minimum span before formatting.
+  const round = (v) => Number(v.toFixed(5))
+  let west = round(b.getWest()), south = round(b.getSouth()), east = round(b.getEast()), north = round(b.getNorth())
+  const MIN_SPAN = 0.0005 // ~50m; keeps the bbox non-degenerate at any zoom
+  if (east - west < MIN_SPAN) { const c = (east + west) / 2; west = round(c - MIN_SPAN / 2); east = round(c + MIN_SPAN / 2) }
+  if (north - south < MIN_SPAN) { const c = (north + south) / 2; south = round(c - MIN_SPAN / 2); north = round(c + MIN_SPAN / 2) }
+  const bbox = [west, south, east, north].join(',')
   const url = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}${minFrp > 0 ? `&minfrp=${minFrp}` : ''}`
   const r = await fetch(url, { signal })
   const fc = await r.json()

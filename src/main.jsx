@@ -61,6 +61,14 @@ if (sentryDsn && import.meta.env.PROD) {
       // keeps working) and can't be caught via map.on('error'), so filter it
       // here. Revisit if real-user sessions (not headless crawlers) report it.
       /Unimplemented type: \d+/,
+      // Mapbox teardown race: a vector tile (the satellite-streets basemap's own
+      // tiles) finishes loading in the worker after the map/style was destroyed
+      // — navigation or a style swap — so map.style is null when _tileLoaded
+      // pokes it. Surfaces as "...style.imageManager" / "...style.listImages"
+      // undefined. Benign (the map is going away) and uncatchable via
+      // map.on('error'); the property names are stable across minification.
+      /imageManager/,
+      /listImages/,
     ],
   })
   // Expose the SDK on window for prod smoke-testing from devtools console

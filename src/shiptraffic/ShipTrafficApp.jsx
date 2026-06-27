@@ -40,6 +40,8 @@ import {
 } from './shiptrafficData.js'
 import trackSource from './trackSource.json'
 import styles from './ShipTrafficApp.module.css'
+import { createExploreService } from '../explore/shared-service.js'
+import { GBIF_TAXON_KEY, INAT_TAXON_ID, SPECIES_META } from '../explore/species-data/whales.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -132,6 +134,48 @@ const WHALE_SRC = 'st-whale-src'
 const CONCERN_LAYER = 'st-concern-heat'
 const CONCERN_SRC = 'st-concern-src'
 
+const EMPTY_FC = { type: 'FeatureCollection', features: [] }
+
+// Exact paint shared by the curated and the ambient whale layers, so a GBIF point
+// outside the bbox is pixel-identical to a curated point inside it.
+const WHALE_CIRCLE_PAINT = {
+  'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2, 9, 3.5, 11, 6, 13, 9, 16, 14],
+  'circle-color': WHALE_POINT_COLOR,
+  'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.65, 12, 0.8],
+  'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 13, 1],
+  'circle-stroke-color': 'rgba(255,255,255,0.5)',
+}
+
+// Ambient whales: live GBIF cetacean sightings fill the world OUTSIDE our baked
+// bbox, reusing the same /explore service /whales uses. Inside the bbox our curated
+// iNat+OBIS points own the map (and drive the concern math); any GBIF point landing
+// inside is dropped so the two never double-draw. Timeline-coherent — queried for
+// the SAME month range the strip selects, so the whole map is one temporal snapshot.
+const WHALE_GBIF_LAYER = 'st-whale-gbif-pts'
+const WHALE_GBIF_SRC = 'st-whale-gbif-src'
+const WHALE_GBIF_CAP = 500 // max ambient points per viewport fetch
+const cetaceanService = createExploreService({
+  gbifTaxonKey: GBIF_TAXON_KEY,
+  inatTaxonId: INAT_TAXON_ID,
+  speciesMeta: SPECIES_META,
+  keepInatRecords: true, // GBIF is our ONLY ambient source — keep its iNat-sourced
+                         // records (≈99% of cetacean obs) instead of dropping them.
+})
+
+// GBIF eventDate range spanning the selected months[a..b], with full-day bounds so
+// the last month is included: ["2024-03","2024-05"] → "2024-03-01,2024-05-31".
+function eventDateForRange(months, r) {
+  if (!months?.length || !r) return null
+  const a = months[r[0]], b = months[r[1]]
+  if (!a || !b) return null
+  const [by, bm] = b.split('-').map(Number)
+  const last = new Date(by, bm, 0).getDate()
+  return `${a}-01,${b}-${String(last).padStart(2, '0')}`
+}
+
+// Inside the Salish bbox, our curated data owns the map (BW/BS/BE/BN from SALISH_BBOX).
+const inSalishBbox = (lng, lat) => lng >= BW && lng <= BE && lat >= BS && lat <= BN
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
@@ -177,6 +221,9 @@ export default function ShipTrafficApp() {
   const cellMetaRef = useRef(null)       // grid cell {lngStep, latStep}, for click hit-testing
   const vesselSrcRef = useRef(new Set()) // active per-month vessel source ids
   const esriSrcRef = useRef(new Set())   // active ESRI context source ids (outside bbox)
+  const whaleGbifAbortRef = useRef(null) // in-flight ambient-GBIF fetch, aborted on each refetch
+  const gbifEventDateRef = useRef(null)  // GBIF date range for the selected timeline (read inside moveend)
+  const whalesVisibleRef = useRef(true)  // current whale-layer visibility (read inside moveend)
   const [mapReady, setMapReady] = useState(false)
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
@@ -259,6 +306,51 @@ export default function ShipTrafficApp() {
     src.setData(buildConcernPointsViewport(aggRef.current.cells, bounds))
   }, [])
 
+  // Fetch live GBIF cetacean points for the part of the viewport OUTSIDE our bbox
+  // and render them as the same dots as the curated layer. Skipped entirely when
+  // whales are hidden or the viewport sits fully inside the bbox (our data owns it),
+  // so zooming into the Salish Sea makes zero GBIF requests. Honors the selected
+  // timeline via gbifEventDateRef. AbortController cancels the prior fetch on each
+  // call so rapid panning doesn't pile up requests.
+  const pushGbifWhales = useCallback(async (map) => {
+    if (!map) return
+    const src = map.getSource(WHALE_GBIF_SRC)
+    if (!src) return
+    if (!whalesVisibleRef.current) { src.setData(EMPTY_FC); return }
+    const b = map.getBounds()
+    const sw = b.getSouthWest(), ne = b.getNorthEast()
+    if (sw.lng >= BW && ne.lng <= BE && sw.lat >= BS && ne.lat <= BN) { src.setData(EMPTY_FC); return }
+    const eventDate = gbifEventDateRef.current
+    if (!eventDate) return
+    whaleGbifAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    whaleGbifAbortRef.current = ctrl
+    try {
+      const { sightings } = await cetaceanService.fetchRecentSightings({
+        bounds: { minLat: sw.lat, maxLat: ne.lat, minLng: sw.lng, maxLng: ne.lng },
+        eventDate, limit: WHALE_GBIF_CAP, signal: ctrl.signal,
+      })
+      const features = []
+      for (const s of sightings) {
+        if (s.lng == null || s.lat == null) continue
+        if (inSalishBbox(s.lng, s.lat)) continue // curated layer owns inside the box
+        features.push({
+          type: 'Feature',
+          properties: {
+            src: 'gbif',
+            species: s.common || s.scientific || 'Cetacean',
+            m: s.date || '',
+            url: s.id ? `https://www.gbif.org/occurrence/${s.id}` : null,
+          },
+          geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+        })
+      }
+      src.setData({ type: 'FeatureCollection', features })
+    } catch (err) {
+      if (err?.name !== 'AbortError') console.warn('[shiptraffic] GBIF whales', err) // eslint-disable-line no-console
+    }
+  }, [])
+
   // Find the aggregated grid cell containing a clicked lng/lat (whale-bearing
   // cells only — that's what the grid stores). Returns the cell with its
   // vessel + whale breakdown, or null.
@@ -300,6 +392,7 @@ export default function ShipTrafficApp() {
       const c = map.getCenter()
       setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
       pushConcern(map) // re-normalize concern colors to the new viewport
+      pushGbifWhales(map) // refresh ambient GBIF whales for the new viewport
     })
 
     const vesselLayerIds = () => [...vesselSrcRef.current]
@@ -309,7 +402,8 @@ export default function ShipTrafficApp() {
     // readout (vessels + whales + overlap, with sources); else a whale point or
     // a vessel track gives its own detail.
     map.on('click', (e) => {
-      const whaleHit = map.getLayer(WHALE_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER] })[0] : null
+      const whaleLayers = [WHALE_LAYER, WHALE_GBIF_LAYER].filter((l) => map.getLayer(l))
+      const whaleHit = whaleLayers.length ? map.queryRenderedFeatures(e.point, { layers: whaleLayers })[0] : null
       const cell = findCellAt(e.lngLat)
       let html = null
       if (cell) html = cellPopupHTML(cell, whaleHit?.properties)
@@ -326,7 +420,7 @@ export default function ShipTrafficApp() {
 
     // Pointer cursor over anything clickable.
     map.on('mousemove', (e) => {
-      const overFeature = map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER, ...vesselLayerIds()].filter((id) => map.getLayer(id)) }).length > 0
+      const overFeature = map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER, WHALE_GBIF_LAYER, ...vesselLayerIds()].filter((id) => map.getLayer(id)) }).length > 0
       map.getCanvas().style.cursor = (overFeature || findCellAt(e.lngLat)) ? 'pointer' : ''
     })
 
@@ -351,22 +445,16 @@ export default function ShipTrafficApp() {
           },
         })
       }
-      // Whale points (top).
+      // Ambient GBIF whale points (added first → below the curated layer; paint is
+      // identical so order is purely cosmetic and they never overlap anyway).
+      if (!map.getSource(WHALE_GBIF_SRC)) {
+        map.addSource(WHALE_GBIF_SRC, { type: 'geojson', data: EMPTY_FC })
+        map.addLayer({ id: WHALE_GBIF_LAYER, type: 'circle', source: WHALE_GBIF_SRC, paint: WHALE_CIRCLE_PAINT })
+      }
+      // Curated whale points (top).
       if (!map.getSource(WHALE_SRC)) {
-        map.addSource(WHALE_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-        map.addLayer({
-          id: WHALE_LAYER,
-          type: 'circle',
-          source: WHALE_SRC,
-          paint: {
-            // Grow markers as you zoom in so sightings are easy to pick out up close.
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2, 9, 3.5, 11, 6, 13, 9, 16, 14],
-            'circle-color': WHALE_POINT_COLOR,
-            'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.65, 12, 0.8],
-            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 13, 1],
-            'circle-stroke-color': 'rgba(255,255,255,0.5)',
-          },
-        })
+        map.addSource(WHALE_SRC, { type: 'geojson', data: EMPTY_FC })
+        map.addLayer({ id: WHALE_LAYER, type: 'circle', source: WHALE_SRC, paint: WHALE_CIRCLE_PAINT })
       }
       setMapReady(true)
     }
@@ -512,6 +600,18 @@ export default function ShipTrafficApp() {
     map.getSource(WHALE_SRC)?.setData(whaleGeo)
     if (map.getLayer(WHALE_LAYER)) map.setLayoutProperty(WHALE_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
   }, [whaleGeo, visible.whales, mapReady])
+
+  // Keep the ambient GBIF layer coherent with the selected timeline + visibility,
+  // and refetch on range/visibility change (moveend covers pans). The curated layer
+  // toggles with the same `whales` control, so GBIF mirrors it.
+  useEffect(() => {
+    gbifEventDateRef.current = eventDateForRange(months, range)
+    whalesVisibleRef.current = visible.whales
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (map.getLayer(WHALE_GBIF_LAYER)) map.setLayoutProperty(WHALE_GBIF_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
+    pushGbifWhales(map)
+  }, [months, range, visible.whales, mapReady, pushGbifWhales])
 
   // ─── Persist URL ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -790,8 +890,10 @@ function LayerRow({ on, onToggle, swatch, label, count, sub }) {
 
 function whalePopupHTML(p) {
   const src = p.src
-  const url = WHALE_SOURCE_URLS[src] || '#'
-  const label = WHALE_SOURCE_LABELS[src] || src
+  // Ambient GBIF points carry a per-occurrence url; curated points use their
+  // source's landing page. Same template either way — only the source label differs.
+  const url = p.url || WHALE_SOURCE_URLS[src] || '#'
+  const label = WHALE_SOURCE_LABELS[src] || (src === 'gbif' ? 'GBIF' : src)
   return (
     `<div class="${styles.popup}">` +
     `<div class="${styles.popupHead}">Whale sighting</div>` +

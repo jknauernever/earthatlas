@@ -31,7 +31,7 @@ function getBoundingBox(lat, lng, radiusKm) {
  * @param {Function} [config.postFilter] — optional filter applied to raw GBIF occurrences (e.g. isShark)
  * @param {boolean}  [config.useEBird]   — if true, fetch from eBird API as primary source (for birds)
  */
-export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter, useEBird = false }) {
+export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter, useEBird = false, keepInatRecords = false }) {
   const defaultCommon = fallback.commonName || 'Unknown species'
   const defaultColor = fallback.color || '#888888'
   const defaultEmoji = fallback.emoji || '🔵'
@@ -119,7 +119,10 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
-  async function fetchRecentSightings({ lat, lng, radiusKm = 300, bounds, days = 90, limit = 200, signal }) {
+  // `eventDate` (optional) is an explicit GBIF date range ("YYYY-MM-DD,YYYY-MM-DD")
+  // that overrides the rolling `days` window — lets callers query a fixed
+  // historical span (e.g. a selected month/year) instead of "last N days".
+  async function fetchRecentSightings({ lat, lng, radiusKm = 300, bounds, days = 90, eventDate, limit = 200, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
     const d2 = new Date()
     const d1 = new Date(d2 - days * 86400000)
@@ -134,7 +137,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       occurrenceStatus: 'PRESENT',
       decimalLatitude: `${bb.minLat},${bb.maxLat}`,
       decimalLongitude: `${bb.minLng},${bb.maxLng}`,
-      eventDate: `${fmt(d1)},${fmt(d2)}`,
+      eventDate: eventDate || `${fmt(d1)},${fmt(d2)}`,
       limit: PAGE_SIZE,
     }
 
@@ -168,9 +171,12 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     let results = allResults
       .filter(o => o.decimalLatitude && o.decimalLongitude)
       .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
-    // Only exclude iNat-sourced records from GBIF if we're NOT using eBird
-    // (for birds, ~99% of GBIF records ARE from iNat, so filtering them leaves nothing)
-    if (!useEBird) {
+    // Exclude iNat-sourced records from GBIF only when a caller fetches iNat
+    // SEPARATELY (the /explore apps do, to avoid double-counting). Callers that
+    // rely on GBIF alone — or use eBird as the primary bird source — keep them,
+    // since ~99% of GBIF cetacean/bird records are iNat and dropping them leaves
+    // almost nothing.
+    if (!useEBird && !keepInatRecords) {
       results = results.filter(o => o.datasetKey !== GBIF_INAT_DATASET)
     }
 

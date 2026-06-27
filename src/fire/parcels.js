@@ -61,10 +61,18 @@ const SEL_LINE = 'fire-parcel-sel-line'
 
 const fillOpacity = (op, isOn) => (isOn ? Math.min(0.18, (op ?? 0.9) * 0.12) : 0)
 
-// Tile endpoint base. Defaults to the same-origin serverless function; can be
-// pointed at a standalone tile server for local QA on the plain-vite preview
-// (which lacks /api) via VITE_PARCEL_TILES_BASE. .trim() guards stray newlines.
-const TILES_BASE = ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PARCEL_TILES_BASE) || '').trim()
+// Tile endpoint base. Can be pointed at a standalone tile server for local QA on
+// the plain-vite preview (which lacks /api) via VITE_PARCEL_TILES_BASE. .trim()
+// guards stray newlines.
+//
+// MUST be an ABSOLUTE URL: Mapbox GL fetches vector tiles inside a Web Worker,
+// which has no document base, so a relative template ('/api/parcel-tiles?…')
+// throws "Failed to construct 'Request': Failed to parse URL" on every tile and
+// no parcels render (raster layers escape this — they load on the main thread).
+// So when no override is set, default to the page origin rather than '' — same
+// endpoint, but absolute.
+const ENV_TILES_BASE = ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PARCEL_TILES_BASE) || '').trim()
+const TILES_BASE = ENV_TILES_BASE || (typeof window !== 'undefined' ? window.location.origin : '')
 const tileTemplate = (r) => `${TILES_BASE}/api/parcel-tiles?r=${r.id}&v=${r.version}&z={z}&x={x}&y={y}`
 
 // ─── Catalog entry ──────────────────────────────────────────────────────────

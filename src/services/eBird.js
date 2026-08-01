@@ -328,6 +328,26 @@ export async function fetchEBirdRecentRaw({ lat, lng, bounds, radiusKm, timeWind
   const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : lng
   if (centerLat == null || centerLng == null) return []
 
+  // Narrow-radius fast path: for an explicit small circle (no bounds, radius
+  // ≤ eBird's 50 km cap), /geo/recent is a single call and finishes in
+  // ~500 ms. The region-historic path would fire N daily calls to
+  // /data/obs/{regionCode}/historic and can 500 outright on large regions
+  // (e.g. US-CA state-wide historic dies after 60 s), pushing total page
+  // load to 3+ minutes for something like "Alameda, past month, 10 km".
+  if (!bounds && typeof radiusKm === 'number' && radiusKm <= 50) {
+    try {
+      return await fetchEBirdGeoRecent({
+        lat: centerLat, lng: centerLng, radiusKm, timeWindow, perPage: 10000,
+      })
+    } catch {
+      return []
+    }
+  }
+
+  // Bbox path (or bounds-larger-than-50 km): region historic per-day so a
+  // user's checklist isn't displaced by another birder's later sighting on a
+  // different day. Trades speed for fidelity — appropriate when the user
+  // explicitly asked for a wide view.
   const regionCode = await getRegionCode(centerLat, centerLng)
   if (!regionCode) {
     // No region (ocean / geocode failure) — best effort with /geo/recent.

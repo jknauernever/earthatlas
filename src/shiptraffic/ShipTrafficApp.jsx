@@ -252,7 +252,12 @@ export default function ShipTrafficApp() {
   const basemapMenuRef = useRef(null)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
-  const [mapView, setMapView] = useState(initialCamera)
+  // Seed with the actual starting camera (URL camera if present, else the default
+  // view) so a share link pins lat/lng/z from first render — not only after the
+  // first pan/zoom fires moveend. moveend keeps it current thereafter.
+  const [mapView, setMapView] = useState(
+    initialCamera || { lat: DEFAULT_VIEW.center[1], lng: DEFAULT_VIEW.center[0], zoom: DEFAULT_VIEW.zoom },
+  )
   const suppressFlyRef = useRef(!!initialCamera)
 
   // ─── Load both data files once ────────────────────────────────────────────
@@ -265,7 +270,12 @@ export default function ShipTrafficApp() {
         setWhales(w)
         cellMetaRef.current = g.meta.cell
         const m = g.meta.months
-        const [a, b] = (Number.isFinite(initial.ts) && Number.isFinite(initial.te))
+        // The URL omits ts when the range starts at the first month and te when it
+        // ends at the last (see the persist effect), so a range touching either end
+        // carries only ONE of the two. Restore whenever EITHER is present —
+        // monthRangeIndices defaults a missing start to 0 and a missing end to the
+        // last month. Requiring both (&&) silently dropped 2024/2025/end-spans → All.
+        const [a, b] = (Number.isFinite(initial.ts) || Number.isFinite(initial.te))
           ? monthRangeIndices(m, m[initial.ts], m[initial.te])
           : [0, m.length - 1]
         setRange([a, b])

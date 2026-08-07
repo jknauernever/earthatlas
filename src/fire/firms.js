@@ -58,7 +58,7 @@ export const FIRMS_LAYER = {
   group: 'Active fire',
   defaultOpacity: 0.9,
   minZoom: FIRMS_MIN_ZOOM,
-  coverage: 'Global · NASA FIRMS, last 48 h · zoom in to load',
+  coverage: 'Global · NASA FIRMS + NOAA GOES · last 48 h · zoom in to load',
   legend: {
     kind: 'swatches',
     items: [
@@ -70,7 +70,7 @@ export const FIRMS_LAYER = {
   },
   blurb:
     'Satellite-detected active fire and thermal hotspots from NASA FIRMS (VIIRS, 375 m), refreshed through the most recent overpass. Each dot is a heat detection, colored by how recently the satellite saw it — this is where fire is burning now, not a risk model. Over North America it uses the faster US/Canada feed (~30 min); elsewhere it is near-real-time (~3 h). Points, not perimeters; for official incident perimeters use the Active wildfires layer. Note: FIRMS detects all thermal anomalies, so industrial heat (gas flares, refineries) and agricultural/prescribed burns appear too; the live product can’t label them. By default we show only higher-power, wildfire-likely detections (fire radiative power ≥ 5 MW) — use “show all heat sources” to see every detection.',
-  source: 'NASA FIRMS · VIIRS (S-NPP / NOAA-20 / NOAA-21) near-real-time',
+  source: 'NASA FIRMS (VIIRS) + NOAA HMS (GOES + polar) satellite fire detections',
 }
 
 // Inline citation for the sourcing modal + per-attribute provenance.
@@ -177,13 +177,42 @@ export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0,
   if (east - west < MIN_SPAN) { const c = (east + west) / 2; west = round(c - MIN_SPAN / 2); east = round(c + MIN_SPAN / 2) }
   if (north - south < MIN_SPAN) { const c = (north + south) / 2; south = round(c - MIN_SPAN / 2); north = round(c + MIN_SPAN / 2) }
   const bbox = [west, south, east, north].join(',')
-  const url = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}${minFrp > 0 ? `&minfrp=${minFrp}` : ''}`
-  const r = await fetch(url, { signal })
-  const fc = await r.json()
+  // "Active Hotspots" = ALL satellite heat, user-first: raw FIRMS VIIRS (fine,
+  // near-real-time) + NOAA HMS (adds the fast geostationary GOES + analyst QC).
+  // Users don't care which satellite saw it — they want where the heat is — so
+  // both feeds are merged into this one layer.
+  const firmsUrl = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}${minFrp > 0 ? `&minfrp=${minFrp}` : ''}`
+  const hmsUrl = `${API_BASE}/api/hms?bbox=${bbox}`
+  const [firmsFC, hmsFC] = await Promise.all([
+    fetch(firmsUrl, { signal }).then((r) => r.json()).catch(() => null),
+    fetch(hmsUrl, { signal }).then((r) => r.json()).catch(() => null),
+  ])
+  const feats = []
+  let truncated = false
+  if (firmsFC && firmsFC.type === 'FeatureCollection') { feats.push(...firmsFC.features); truncated = !!firmsFC._truncated }
+  if (hmsFC && hmsFC.type === 'FeatureCollection') {
+    for (const f of hmsFC.features) {
+      const p = f.properties
+      feats.push({
+        type: 'Feature', geometry: f.geometry,
+        properties: { src: p.geo ? 'GOES' : 'HMS', sat: p.sat, geo: !!p.geo, conf: '', frp: p.frp, bright: null, dn: '', footprint_m: null, acq_ms: p.acq_ms, hours_ago: p.hours_ago },
+      })
+    }
+  }
+  // Dedup only near-coincident detections (~100 m) keeping the newest, so FIRMS
+  // and GOES don't double-plot the exact same pixel without thinning the fire.
+  feats.sort((a, b) => (b.properties.acq_ms || 0) - (a.properties.acq_ms || 0))
+  const seen = new Set(); const kept = []
+  for (const f of feats) {
+    const [lng, lat] = f.geometry.coordinates
+    const k = `${Math.round(lat * 1000)},${Math.round(lng * 1000)}`
+    if (seen.has(k)) continue
+    seen.add(k); kept.push(f)
+  }
   const src = map.getSource(SRC)
-  if (src && fc && fc.type === 'FeatureCollection') {
-    src.setData(fc)
-    return { count: fc._count ?? fc.features.length, truncated: !!fc._truncated }
+  if (src) {
+    src.setData({ type: 'FeatureCollection', features: kept })
+    return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated }
   }
   return null
 }

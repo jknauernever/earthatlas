@@ -7,6 +7,8 @@ import { resolveFirmsRequest, firmsCsvToGeoJSON } from './api/_firms-core.js'
 import { resolveNifcRequest, normalizeNifc } from './api/_nifc-core.js'
 import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-history-core.js'
 import { resolveCwfisRequest, normalizeCwfis } from './api/_cwfis-core.js'
+import { resolveHmsRequest, normalizeHms } from './api/_hms-core.js'
+import { INCIWEB_RSS, parseInciwebRss } from './api/_inciweb-core.js'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -481,6 +483,57 @@ function cwfisProxyPlugin() {
   }
 }
 
+// Dev middleware: serve /api/hms by mirroring the production Edge function
+// (api/hms.js) — NOAA HMS GOES+polar fire detections — so the layer works under
+// `npm run dev`. No key needed.
+function hmsProxyPlugin() {
+  return {
+    name: 'hms-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/hms', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        const resolved = resolveHmsRequest(searchParams)
+        if (resolved.error) { res.statusCode = resolved.status; res.end(JSON.stringify({ error: resolved.error })); return }
+        try {
+          const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
+          res.statusCode = 200
+          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          const raw = await r.json()
+          res.end(JSON.stringify(normalizeHms(raw, Date.now())))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/inciweb by mirroring the production Edge function.
+function inciwebProxyPlugin() {
+  return {
+    name: 'inciweb-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/inciweb', async (req, res) => {
+        res.setHeader('content-type', 'application/json')
+        const empty = { type: 'FeatureCollection', features: [], _count: 0 }
+        try {
+          const r = await fetch(INCIWEB_RSS, { headers: { accept: 'application/rss+xml, text/xml' } })
+          res.statusCode = 200
+          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          const xml = await r.text()
+          res.end(JSON.stringify(parseInciwebRss(xml)))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
 // Dev middleware: serve /api/geo/{suggest,retrieve} by forwarding to Mapbox
 // Search Box with the server-side token, mirroring the production Edge
 // functions in api/geo/. Keeps GeoSearch autocomplete (subsites, forestmonitor)
@@ -555,6 +608,8 @@ export default defineConfig(({ mode }) => {
     firmsProxyPlugin(firmsKey),
     nifcProxyPlugin(),
     cwfisProxyPlugin(),
+    hmsProxyPlugin(),
+    inciwebProxyPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     // Upload source maps to Sentry during production builds so stack traces

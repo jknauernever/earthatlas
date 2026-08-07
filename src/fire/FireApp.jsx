@@ -10,15 +10,20 @@ import {
   clearParcelSelection, renderParcelCard, PARCEL_SOURCE_CITATION,
 } from './parcels.js'
 import {
+  BUILDINGS_SOURCE_CITATION,
+  addBuildingsLayers, applyBuildingsVisibility, restackBuildings,
+  queryBuildingsForParcel, buildingAtPoint, structuresPhrase,
+} from './buildings.js'
+import {
   FIRMS_LAYER, FIRMS_SOURCE_CITATION, FIRMS_MIN_ZOOM, FIRMS_WILDFIRE_MIN_FRP,
   addFirmsLayer, applyFirmsVisibility, applyFirmsOpacity, restackFirms,
   refreshFirms, clearFirms, queryFirmsAt, renderFirmsCard,
 } from './firms.js'
 import {
-  NIFC_LAYER, NIFC_SOURCE_CITATION,
-  addNifcLayers, applyNifcVisibility, applyNifcOpacity, restackNifc,
-  loadNifc, queryNifcAt, renderNifcCard,
-} from './nifc.js'
+  US_FIRES_LAYER, US_FIRES_SOURCE_CITATION,
+  addUsFiresLayers, applyUsFiresVisibility, applyUsFiresOpacity, restackUsFires,
+  loadUsFires, queryUsFiresAt, renderUsFiresCard,
+} from './usFires.js'
 import {
   HISTORY_LAYER, HISTORY_SOURCE_CITATION, HISTORY_MIN_ZOOM,
   addHistoryLayers, applyHistoryVisibility, applyHistoryOpacity, restackHistory,
@@ -320,19 +325,22 @@ const FIRE_LAYERS = [
 const SENTINEL_HOST = 'ea-imageserver-tile.invalid'
 
 // Active Hotspots (NASA FIRMS) leads the catalog — top of the panel = top of the
-// map z-order, so live satellite heat detections draw above everything. ON by
-// default alongside the perimeters layer below. kind:'firms' = GeoJSON fetch-on-move.
+// map z-order, sitting just below the named-fires layer. ON by default alongside
+// the perimeters layer above. kind:'firms' = GeoJSON fetch-on-move.
 FIRE_LAYERS.unshift(FIRMS_LAYER)
 
-// NIFC WFIGS official US perimeters sit just under Hotspots in the "Active fire"
-// group: satellite heat on top, official mapped footprints beneath. Also ON by
-// default (the two active-fire layers open together). kind:'nifc' = fetch-once
-// GeoJSON polygons.
-FIRE_LAYERS.splice(1, 0, NIFC_LAYER)
+// Active wildfires (US) — the user-facing "named fires" layer: NIFC WFIGS
+// perimeters + InciWeb names merged and deduplicated into ONE layer (users care
+// where fires are, not which feed named them). FIRST in the list and ON by
+// default — the named fires are what people look for. Its labels/perimeters draw
+// above the hotspot layer. kind:'usfires' = fetch-once, orchestrates both sources
+// internally (see usFires.js).
+FIRE_LAYERS.splice(0, 0, US_FIRES_LAYER)
 
 // Canada active wildfires (CWFIS) — sits with the other active-fire layers
 // (after NIFC). kind:'cwfis' = fetch-once GeoJSON polygons. Off by default.
 FIRE_LAYERS.splice(2, 0, CWFIS_LAYER)
+
 
 // Historical perimeters (NIFC IFPH) — "where fires have burned." Sits after the
 // active layers; kind:'firehistory' = viewport-driven GeoJSON polygons
@@ -473,7 +481,7 @@ const LAYER_BY_ID = Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, l]))
 const CITE_WRC = { short: 'USDA Forest Service · Wildfire Risk to Communities', tag: 'USFS Wildfire Risk to Communities', url: 'https://wildfirerisk.org' }
 const SOURCE_CITATION = {
   firms: FIRMS_SOURCE_CITATION,
-  nifc: NIFC_SOURCE_CITATION,
+  usfires: US_FIRES_SOURCE_CITATION,
   cwfis: CWFIS_SOURCE_CITATION,
   firehistory: HISTORY_SOURCE_CITATION,
   mtbs: { short: 'USGS/USFS · Monitoring Trends in Burn Severity', tag: 'MTBS', url: 'https://www.mtbs.gov' },
@@ -489,7 +497,7 @@ if (PARCEL_SOURCE_CITATION) SOURCE_CITATION.parcels = PARCEL_SOURCE_CITATION
 // The raster identify layers (everything except the vector parcels layer and the
 // FIRMS point layer). The popup's wildfire rows/summary/sources iterate these;
 // parcels and FIRMS detections render as their own cards.
-const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'nifc', 'cwfis', 'firehistory'].includes(l.kind))
+const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'usfires', 'cwfis', 'firehistory'].includes(l.kind))
 
 // Distinct layer groups in catalog order — drives the grouped "The layers"
 // list in the sourcing modal (so it always reflects the live catalog).
@@ -745,15 +753,22 @@ const COVER_PHRASE = {
 // "Residential"/"Non-residential" and San Juan's specific descriptions
 // ("HOUSEHOLD, SINGLE FAMILY UNITS", "UNDEVELOPED LAND", …).
 const RESIDENTIAL_RE = /RESIDENT|HOUSEHOLD|SINGLE FAMILY|\bSFR\b|DWELLING|CABIN|VACATION|MOBILE|MANUFACT|CONDO|APARTMENT/
+// "NON-RESIDENTIAL" / "NON RESIDENTIAL" contains the substring "RESIDENT", so it
+// must be excluded before the residential test — otherwise vacant/commercial
+// land gets described as a "home".
+const NON_RESIDENTIAL_RE = /NON.?RESIDENT/
 function propertyPhrase(landUse) {
   const u = (landUse || '').toUpperCase()
+  if (NON_RESIDENTIAL_RE.test(u)) return 'non-residential property'
   if (RESIDENTIAL_RE.test(u)) return 'home'
   if (/UNDEVELOPED|VACANT|OPEN SPACE|FOREST LAND|\bFARM\b|\bAG\b|RANGELAND|TIMBER/.test(u)) return 'undeveloped parcel'
   if (/COMMERCIAL|RETAIL|OFFICE|INDUSTRIAL|SERVICE|BUSINESS/.test(u)) return 'commercial property'
-  if (u === 'NON-RESIDENTIAL') return 'non-residential property'
   return 'property'
 }
-const isResidential = (landUse) => RESIDENTIAL_RE.test((landUse || '').toUpperCase())
+const isResidential = (landUse) => {
+  const u = (landUse || '').toUpperCase()
+  return !NON_RESIDENTIAL_RE.test(u) && RESIDENTIAL_RE.test(u)
+}
 // Vegetation as fuel.
 function fuelPhrase(ndvi) {
   if (ndvi < 0) return null
@@ -779,8 +794,18 @@ function likelihoodWord(oneIn) {
 function buildSummary(r) {
   const out = []
   const parcel = r.parcels && r.parcels.props
-  const subject = parcel ? `This ${propertyPhrase(parcel.land_use)}` : null
-  const target = parcel ? (isResidential(parcel.land_use) ? 'this home' : 'this property') : 'a building on this spot'
+  // Building footprints are ground truth for developed-vs-vacant — trust them
+  // over the assessor land-use label, so vacant land is never called a "home".
+  const structures = structuresPhrase(r.buildings)
+  const undeveloped = !!structures && structures.count === 0
+  const subject = parcel
+    ? (undeveloped ? 'This undeveloped parcel' : `This ${propertyPhrase(parcel.land_use)}`)
+    : null
+  // The WRC risk layer is "risk to a POTENTIAL structure", so on vacant land we
+  // frame it as hypothetical ("a structure built here") rather than "this home".
+  const target = parcel
+    ? (undeveloped ? 'a structure built here' : (isResidential(parcel.land_use) ? 'this home' : 'this property'))
+    : ((r.buildings && r.buildings.onBuilding) ? 'this building' : 'a building on this spot')
 
   // 1) Setting + fuel — what's here and how flammable.
   const ground = r.lulc ? (COVER_PHRASE[r.lulc.cover] || r.lulc.cover.toLowerCase()) : null
@@ -788,7 +813,9 @@ function buildSummary(r) {
   if (subject) {
     let s = subject
     if (ground) s += ` sits on ${ground}`
-    if (fuel) s += `${ground ? ', ' : ' is '}${fuel}`
+    // "with …" fuel phrases read as a modifier (", with sparse vegetation");
+    // "blanketed in …" reads as a verb (" is blanketed in …").
+    if (fuel) s += `${ground || fuel.startsWith('with') ? ', ' : ' is '}${fuel}`
     out.push(s + '.')
   } else if (ground || fuel) {
     let s = ground ? `You've clicked on ${ground}` : 'This spot is'
@@ -888,6 +915,10 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
       seen.add(c.url)
       links.push(`<a href="${c.url}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(c.short)}">${escapeHtml(c.tag)}</a>`)
     }
+    // Building footprints source, when a Structures row is shown.
+    if (results.buildings && typeof results.buildings.count === 'number' && ('parcels' in results) && !seen.has(BUILDINGS_SOURCE_CITATION.url)) {
+      links.push(`<a href="${BUILDINGS_SOURCE_CITATION.url}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(BUILDINGS_SOURCE_CITATION.short)}">${escapeHtml(BUILDINGS_SOURCE_CITATION.tag)}</a>`)
+    }
     if (links.length) footerHtml = `<div class="${styles.popupSources}">Sources: ${links.join(' · ')} <i style="font-style:normal">↗</i></div>`
   }
 
@@ -924,12 +955,31 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     ? renderParcelCard(results.parcels, verdict ? verdict.text : null)
     : ''
 
+  // Structures row — building footprints on the clicked parcel (ground truth for
+  // developed vs vacant), with its own source link. Only when known (zoomed in
+  // enough); shown for parcels, and standalone when the click is on a building.
+  let structuresHtml = ''
+  {
+    const b = results.buildings
+    if (b && typeof b.count === 'number' && ('parcels' in results)) {
+      const val = b.count === 0 ? 'None — undeveloped land'
+        : b.count === 1 ? '1 structure'
+        : b.count <= 4 ? `${b.count} structures`
+        : `~${b.count} structures`
+      structuresHtml =
+        `<div class="${styles.popupRow}" title="Building footprints on this parcel (Microsoft Building Footprints)">` +
+        `<span class="${styles.popupDot}" style="background:#f2efe9"></span>` +
+        `<span class="${styles.popupRowLabel}">Structures</span>` +
+        `<span class="${styles.popupRowValue}">${escapeHtml(val)}</span></div>`
+    }
+  }
+
   // Active-fire detection card — present when the click landed on a FIRMS
   // hotspot. Ground-truth heat, so it leads the body (above the risk readout).
   const firmsHtml = results.firms ? renderFirmsCard(results.firms) : ''
   // Named US incident card — when the click landed inside an official WFIGS
   // perimeter. Sits right after the heat detection (heat → which named fire).
-  const nifcHtml = results.nifc ? renderNifcCard(results.nifc) : ''
+  const usFiresHtml = results.usfires ? renderUsFiresCard(results.usfires) : ''
   const cwfisHtml = results.cwfis ? renderCwfisCard(results.cwfis) : ''
   // Past-fire footprint card — when the click landed inside a historical
   // perimeter. After the active cards (now → past).
@@ -937,8 +987,8 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
   // Fire-news section — only when an ACTIVE fire (named US incident, satellite
   // hotspot, or Canada perimeter) was clicked. Fetched async; `results._news`
   // holds { articles, loading } once the lookup starts.
-  const newsHtml = (results.nifc || results.firms || results.cwfis) && results._news
-    ? renderNewsCard({ ...results._news, named: results.nifc?.name || null, place })
+  const newsHtml = (results.usfires || results.firms || results.cwfis) && results._news
+    ? renderNewsCard({ ...results._news, named: results.usfires?.name || null, place })
     : ''
 
   const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
@@ -951,12 +1001,13 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>` +
     `<div class="${styles.popupBody}">` +
     firmsHtml +
-    nifcHtml +
+    usFiresHtml +
     cwfisHtml +
     historyHtml +
     newsHtml +
     heroHtml +
     parcelHtml +
+    structuresHtml +
     rowsHtml +
     footerHtml +
     methodologyHtml +
@@ -1059,7 +1110,7 @@ export default function FireApp() {
   // satellite basemap; every risk/historical dataset is opt-in. A shared link's
   // `on=` set takes over verbatim so it round-trips.
   const [visible, setVisible] = useState(
-    () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, initialOn ? initialOn.has(l.id) : (l.kind === 'firms' || l.kind === 'nifc')]))
+    () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, initialOn ? initialOn.has(l.id) : (l.kind === 'firms' || l.kind === 'usfires')]))
   )
   const [expanded, setExpanded] = useState(
     () => Object.fromEntries(FIRE_LAYERS.map((l) => [l.id, false]))
@@ -1111,7 +1162,7 @@ export default function FireApp() {
   const firmsTimerRef = useRef(null)
   const firmsAbortRef = useRef(null)
   // Lightweight status for the panel row (loading spinner + "showing N" / hints).
-  const [firmsMeta, setFirmsMeta] = useState({ loading: false, count: 0, truncated: false, error: false })
+  const [firmsMeta, setFirmsMeta] = useState({ loading: false, count: 0, geo: 0, truncated: false, error: false })
   // FIRMS detects all thermal anomalies, not just wildfires. Default ON = apply
   // the FRP "wildfire-likely" floor (drops industrial flares / refineries etc.);
   // the panel toggle flips to showing every detection. Ref mirrors it so the
@@ -1119,11 +1170,11 @@ export default function FireApp() {
   const [firmsAllSources, setFirmsAllSources] = useState(false)
   const firmsAllSourcesRef = useRef(false)
   useEffect(() => { firmsAllSourcesRef.current = firmsAllSources }, [firmsAllSources])
-  // NIFC perimeters fetch-once (whole current service). Abort guards an in-flight
-  // load if the map tears down; status drives the panel row.
-  const nifcAbortRef = useRef(null)
-  const [nifcMeta, setNifcMeta] = useState({ loading: false, count: 0, error: false })
-  // CWFIS (Canada) — fetch-once, same shape as NIFC.
+  // Active wildfires (US) — merged WFIGS + InciWeb, fetch-once. Abort guards an
+  // in-flight load if the map tears down; meta drives the panel row.
+  const usFiresAbortRef = useRef(null)
+  const [usFiresMeta, setUsFiresMeta] = useState({ loading: false, perimeters: 0, named: 0, inciweb: 0, error: false })
+  // CWFIS (Canada) — fetch-once.
   const cwfisAbortRef = useRef(null)
   const [cwfisMeta, setCwfisMeta] = useState({ loading: false, count: 0, error: false })
   // Historical perimeters: viewport-driven like FIRMS (debounce + abort + zoom gate).
@@ -1141,12 +1192,13 @@ export default function FireApp() {
     for (let i = ord.length - 1; i >= 0; i--) {
       if (ord[i] === 'parcels') { restackParcels(map); continue } // vector layer = multiple sublayers
       if (ord[i] === 'firms') { restackFirms(map); continue }     // glow + dot sublayers
-      if (ord[i] === 'nifc') { restackNifc(map); continue }       // fill + line sublayers
+      if (ord[i] === 'usfires') { restackUsFires(map); continue } // perimeters + points + labels
       if (ord[i] === 'cwfis') { restackCwfis(map); continue }     // fill + line sublayers
       if (ord[i] === 'firehistory') { restackHistory(map); continue } // fill + line sublayers
       const lId = layerId(ord[i])
       try { if (map.getLayer(lId)) map.moveLayer(lId) } catch { /* mid style swap */ }
     }
+    restackBuildings(map)     // footprints above the parcels fill/outline
     raiseParcelSelection(map) // clicked-parcel highlight always sits on top
   }, [])
 
@@ -1201,12 +1253,15 @@ export default function FireApp() {
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') addParcelLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'firms') addFirmsLayer(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
-      else if (layer.kind === 'nifc') addNifcLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
+      else if (layer.kind === 'usfires') addUsFiresLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'cwfis') addCwfisLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'firehistory') addHistoryLayers(map, visibleRef.current[layer.id], opacityRef.current[layer.id])
       else if (layer.kind === 'ee') addEeLayer(map, layer)
       else addRaster(map, layer, tileTemplate(layer))
     }
+    // Building footprints ride alongside parcels (shown when parcels are on, but
+    // always present so the click analysis can read them). Added unconditionally.
+    addBuildingsLayers(map, !!visibleRef.current.parcels)
     restack(map) // position parcel sublayers + raise selection after (re)adding
   }, [addRaster, addEeLayer, restack])
 
@@ -1232,10 +1287,10 @@ export default function FireApp() {
         const minFrp = firmsAllSourcesRef.current ? 0 : FIRMS_WILDFIRE_MIN_FRP
         const res = await refreshFirms(m, { minFrp, signal: ctrl.signal })
         if (ctrl.signal.aborted) return
-        setFirmsMeta({ loading: false, count: res ? res.count : 0, truncated: !!(res && res.truncated), error: !res })
+        setFirmsMeta({ loading: false, count: res ? res.count : 0, geo: res ? (res.geo || 0) : 0, truncated: !!(res && res.truncated), error: !res })
       } catch (err) {
         if (ctrl.signal.aborted || err?.name === 'AbortError') return
-        setFirmsMeta({ loading: false, count: 0, truncated: false, error: true })
+        setFirmsMeta({ loading: false, count: 0, geo: 0, truncated: false, error: true })
       }
     }, 250)
   }, [])
@@ -1253,20 +1308,20 @@ export default function FireApp() {
   // Pulls the whole current-perimeters service (small) and pushes it into the
   // GeoJSON source. No-ops unless the layer is on. The module caches the result,
   // so basemap swaps re-apply instantly; calling again just refreshes the data.
-  const triggerNifcLoad = useCallback(async () => {
+  const triggerUsFiresLoad = useCallback(async () => {
     const map = mapRef.current
-    if (!map || !visibleRef.current.nifc) return
-    if (nifcAbortRef.current) nifcAbortRef.current.abort()
+    if (!map || !visibleRef.current.usfires) return
+    if (usFiresAbortRef.current) usFiresAbortRef.current.abort()
     const ctrl = new AbortController()
-    nifcAbortRef.current = ctrl
-    setNifcMeta((p) => ({ ...p, loading: true, error: false }))
+    usFiresAbortRef.current = ctrl
+    setUsFiresMeta((p) => ({ ...p, loading: true, error: false }))
     try {
-      const res = await loadNifc(map, { signal: ctrl.signal })
+      const res = await loadUsFires(map, { signal: ctrl.signal })
       if (ctrl.signal.aborted) return
-      setNifcMeta({ loading: false, count: res ? res.count : 0, error: !res })
+      setUsFiresMeta({ loading: false, perimeters: res?.perimeters || 0, named: res?.named || 0, inciweb: res?.inciweb || 0, error: !res })
     } catch (err) {
       if (ctrl.signal.aborted || err?.name === 'AbortError') return
-      setNifcMeta({ loading: false, count: 0, error: true })
+      setUsFiresMeta({ loading: false, perimeters: 0, named: 0, inciweb: 0, error: true })
     }
   }, [])
 
@@ -1287,6 +1342,7 @@ export default function FireApp() {
       setCwfisMeta({ loading: false, count: 0, error: true })
     }
   }, [])
+
 
   // ─── Historical perimeters: debounced viewport refetch ────────────────────
   // Same shape as triggerFirmsRefresh — no-ops unless the layer is on and zoomed
@@ -1366,8 +1422,8 @@ export default function FireApp() {
     const onStyleLoad = () => {
       addAllLayers(map)
       setMapReady(true)
-      triggerFirmsRefresh() // load active-fire detections for the opening view
-      triggerNifcLoad()     // load US perimeters if the layer is on
+      triggerFirmsRefresh() // load satellite hotspots (FIRMS + GOES) for the view
+      triggerUsFiresLoad()  // load US named fires (WFIGS + InciWeb) if on
       triggerCwfisLoad()    // load Canada perimeters if the layer is on
       triggerHistoryRefresh() // load historical perimeters if on + zoomed in
     }
@@ -1378,7 +1434,7 @@ export default function FireApp() {
       const c = map.getCenter()
       setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
       setZoom(map.getZoom())
-      triggerFirmsRefresh()   // refetch active-fire detections for the new bbox
+      triggerFirmsRefresh()   // refetch satellite hotspots for the new bbox
       triggerHistoryRefresh() // refetch historical perimeters for the new bbox
     }
     map.on('moveend', onMoveEnd)
@@ -1402,7 +1458,7 @@ export default function FireApp() {
       map.off('moveend', onMoveEnd)
       clearTimeout(firmsTimerRef.current)
       if (firmsAbortRef.current) firmsAbortRef.current.abort()
-      if (nifcAbortRef.current) nifcAbortRef.current.abort()
+      if (usFiresAbortRef.current) usFiresAbortRef.current.abort()
       if (cwfisAbortRef.current) cwfisAbortRef.current.abort()
       clearTimeout(historyTimerRef.current)
       if (historyAbortRef.current) historyAbortRef.current.abort()
@@ -1472,6 +1528,8 @@ export default function FireApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
+    // Building footprints show/hide with the parcels layer.
+    applyBuildingsVisibility(map, !!visible.parcels)
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') { applyParcelVisibility(map, visible[layer.id], opacityRef.current[layer.id]); continue }
       if (layer.kind === 'firms') {
@@ -1480,9 +1538,9 @@ export default function FireApp() {
         else clearFirms(map)                                 // free the data when off
         continue
       }
-      if (layer.kind === 'nifc') {
-        applyNifcVisibility(map, visible[layer.id], opacityRef.current[layer.id])
-        if (visible[layer.id]) triggerNifcLoad()            // fetch perimeters on toggle-on (cached after first)
+      if (layer.kind === 'usfires') {
+        applyUsFiresVisibility(map, visible[layer.id], opacityRef.current[layer.id])
+        if (visible[layer.id]) triggerUsFiresLoad()         // fetch on toggle-on (cached after first)
         continue
       }
       if (layer.kind === 'cwfis') {
@@ -1510,7 +1568,7 @@ export default function FireApp() {
     for (const layer of FIRE_LAYERS) {
       if (layer.kind === 'parcels') { applyParcelOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       if (layer.kind === 'firms') { applyFirmsOpacity(map, opacity[layer.id]); continue }
-      if (layer.kind === 'nifc') { applyNifcOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
+      if (layer.kind === 'usfires') { applyUsFiresOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       if (layer.kind === 'cwfis') { applyCwfisOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       if (layer.kind === 'firehistory') { applyHistoryOpacity(map, opacity[layer.id], visibleRef.current[layer.id]); continue }
       const lId = layerId(layer.id)
@@ -1590,16 +1648,28 @@ export default function FireApp() {
         else clearParcelSelection(map)
       } catch { results.parcels = null }
 
+      // Building footprints — read on EVERY click (like parcels) so the analysis
+      // knows whether the land is developed. On a parcel: count structures inside
+      // it; otherwise whether the click itself landed on a building. Returns null
+      // when zoomed out past BUILDINGS_MIN_ZOOM (absence ≠ vacant up there).
+      try {
+        results.buildings = results.parcels
+          ? queryBuildingsForParcel(map, results.parcels.geometry)
+          : buildingAtPoint(map, e.point)
+      } catch { results.buildings = null }
+
       // Active-fire detection under the click (synchronous queryRenderedFeatures
       // against the FIRMS dot layer). Only hits when the layer is on and a dot is
       // rendered at the point; otherwise null and the card is omitted.
       try { results.firms = queryFirmsAt(map, e.point) } catch { results.firms = null }
 
+
       // Named US incident perimeter under the click (synchronous, like parcels).
-      try { results.nifc = queryNifcAt(map, e.point) } catch { results.nifc = null }
+      try { results.usfires = queryUsFiresAt(map, e.point) } catch { results.usfires = null }
 
       // Canada active-fire perimeter under the click (synchronous).
       try { results.cwfis = queryCwfisAt(map, e.point) } catch { results.cwfis = null }
+
 
       // Historical fire footprint under the click (synchronous).
       try { results.firehistory = queryHistoryAt(map, e.point) } catch { results.firehistory = null }
@@ -1628,8 +1698,8 @@ export default function FireApp() {
       // FIRMS hotspot / Canada perimeter searches by place + "wildfire" in a
       // short window (labeled "nearby"). Skip entirely with no name and no place.
       const runFireNews = (resolvedPlace) => {
-        const named = results.nifc?.name || null
-        const hasActiveFire = !!(results.nifc || results.firms || results.cwfis)
+        const named = results.usfires?.name || null
+        const hasActiveFire = !!(results.usfires || results.firms || results.cwfis)
         if (!hasActiveFire || (!named && !resolvedPlace)) return
         results._news = { articles: null, loading: true }
         rerender()
@@ -1664,7 +1734,7 @@ export default function FireApp() {
         // synchronously above (queryParcelAt / queryFirmsAt) into their own
         // cards. Skipping them here also stops this loop from overwriting
         // results.firms / results.parcels with a null identify result.
-        if (['parcels', 'firms', 'nifc', 'cwfis', 'firehistory'].includes(layer.kind)) return
+        if (['parcels', 'firms', 'usfires', 'cwfis', 'firehistory'].includes(layer.kind)) return
         Promise.resolve()
           .then(() => readRaw(layer))
           .then((raw) => { results[layer.id] = interpretLayer(layer.id, raw) })
@@ -1879,7 +1949,7 @@ export default function FireApp() {
                 ) : (
                   <div className={styles.layerHint}>
                     {firmsMeta.count > 0
-                      ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
+                      ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.geo > 0 ? ` · ${firmsMeta.geo.toLocaleString()} from GOES` : ''}${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
                       : `No ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detections in this view (last 48 h)`}
                     {' · '}
                     <button
@@ -1894,16 +1964,16 @@ export default function FireApp() {
                     </button>
                   </div>
                 )
-              ) : isOn && layer.kind === 'nifc' ? (
-                nifcMeta.error ? (
-                  <div className={styles.layerError}>Couldn’t load NIFC perimeters — toggle off and on to retry.</div>
-                ) : nifcMeta.loading ? (
-                  <div className={styles.layerHint}>Loading active US wildfire perimeters…</div>
+              ) : isOn && layer.kind === 'usfires' ? (
+                usFiresMeta.error ? (
+                  <div className={styles.layerError}>Couldn’t load active wildfires — toggle off and on to retry.</div>
+                ) : usFiresMeta.loading ? (
+                  <div className={styles.layerHint}>Loading active US wildfires…</div>
                 ) : (
                   <div className={styles.layerHint}>
-                    {nifcMeta.count > 0
-                      ? `${nifcMeta.count.toLocaleString()} active US fire perimeter${nifcMeta.count === 1 ? '' : 's'} · official (NIFC)`
-                      : 'No current US fire perimeters in the feed'}
+                    {usFiresMeta.named > 0
+                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'}${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb`
+                      : 'No active US fires in the feeds right now'}
                   </div>
                 )
               ) : isOn && layer.kind === 'cwfis' ? (

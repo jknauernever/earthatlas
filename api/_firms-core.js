@@ -144,6 +144,44 @@ function acqMs(date, time) {
  * @param {number} nowMs
  * @param {{cap?:number, keepLow?:boolean}} [opts]
  */
+// Neighbourhood grid: CELL_DEG ≈ 1.5 km at mid-latitudes (3×3 window ≈ 4–5 km).
+// Clustering alone can't separate fires from industrial heat — persistent flares
+// and refineries cluster too. What DOES separate them is peak power: a real
+// fire's front burns HOT somewhere (a small NM wilderness fire peaked at ~160 MW
+// even with most detections < 5 MW), while industrial clusters stay cool (~1–5
+// MW). So we rescue a detection's cool neighbours when a genuinely hot peak sits
+// nearby (same fire), but never rescue an all-cool industrial cluster.
+const CLUSTER_CELL_DEG = 0.015
+const HOT_RESCUE_FRP = 10
+
+// Predicate factory: keep a detection if EITHER it clears the isolated FRP floor
+// (a lone hot pixel), OR a hot peak (≥ HOT_RESCUE_FRP) sits in its 3×3
+// neighbourhood — which pulls in the low-power edges of a real fire while
+// dropping cool, isolated industrial detections. Builds a cell→maxFRP grid once.
+function wildfireLikelyKeeper(feats, minFrp) {
+  const gridMax = new Map()
+  const ci = (v) => Math.floor(v / CLUSTER_CELL_DEG)
+  for (const f of feats) {
+    const frp = f.properties.frp
+    if (!Number.isFinite(frp)) continue
+    const [lng, lat] = f.geometry.coordinates
+    const k = `${ci(lat)},${ci(lng)}`
+    if (frp > (gridMax.get(k) ?? -Infinity)) gridMax.set(k, frp)
+  }
+  return (f) => {
+    const frp = f.properties.frp
+    if (Number.isFinite(frp) && frp >= minFrp) return true
+    const [lng, lat] = f.geometry.coordinates
+    const a = ci(lat), b = ci(lng)
+    let peak = -Infinity
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const v = gridMax.get(`${a + di},${b + dj}`)
+      if (v !== undefined && v > peak) peak = v
+    }
+    return peak >= HOT_RESCUE_FRP
+  }
+}
+
 export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
   const cap = opts.cap ?? 6000
   const keepLow = !!opts.keepLow
@@ -168,9 +206,6 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
       if (seen.has(key)) continue
       seen.add(key)
       const frp = Number(row.frp)
-      // Wildfire-likely filter: drop low-power thermal sources (industrial flares
-      // etc.). A detection with no/zero FRP can't clear a positive floor.
-      if (minFrp > 0 && !(Number.isFinite(frp) && frp >= minFrp)) continue
       const bright = Number(row.bright_ti4 ?? row.brightness)
       // Ground footprint of the detection pixel: scan × track are its along-scan
       // and along-track dimensions in km, growing from ~375 m at nadir toward the
@@ -196,11 +231,20 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
       })
     }
   }
+  // Wildfire-likely filter (when minFrp > 0). FIRMS detects all thermal
+  // anomalies; a flat FRP floor strips industrial flares but also hides small,
+  // low-intensity wildfires (a fire creeping through timber can read < 5 MW).
+  // So keep a detection if EITHER it clears the FRP floor OR it belongs to a
+  // spatial cluster — a real fire lights up the same area repeatedly across
+  // overpasses (many detections within ~1–2 km), while an industrial flare is
+  // typically one or two isolated points. This surfaces clustered low-power
+  // fires while still dropping isolated low-FRP noise.
+  const filtered = minFrp > 0 ? feats.filter(wildfireLikelyKeeper(feats, minFrp)) : feats
   // Newest first, then by confidence — so when we cap, we keep the freshest,
   // most reliable detections.
-  feats.sort((a, b) => (b.properties.acq_ms || 0) - (a.properties.acq_ms || 0) || b.properties._w - a.properties._w)
-  const truncated = feats.length > cap
-  const kept = truncated ? feats.slice(0, cap) : feats
+  filtered.sort((a, b) => (b.properties.acq_ms || 0) - (a.properties.acq_ms || 0) || b.properties._w - a.properties._w)
+  const truncated = filtered.length > cap
+  const kept = truncated ? filtered.slice(0, cap) : filtered
   for (const f of kept) delete f.properties._w
   return {
     type: 'FeatureCollection',

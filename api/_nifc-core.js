@@ -37,8 +37,11 @@ const SERVICES = {
   },
   incidents: {
     path: 'WFIGS_Incident_Locations_Current/FeatureServer/0',
+    // NB: 'DailyAcres' drifted off this service (season 2026) — one bad field
+    // 400s the WHOLE query, so keep this list matched to the live schema. Current
+    // size field is 'IncidentSize'.
     outFields: [
-      'IncidentName', 'IncidentTypeCategory', 'DailyAcres', 'DiscoveryAcres',
+      'IncidentName', 'IncidentTypeCategory', 'IncidentSize', 'DiscoveryAcres',
       'PercentContained', 'FireCause', 'FireDiscoveryDateTime', 'IrwinID',
     ].join(','),
   },
@@ -77,7 +80,7 @@ export function normalizeNifc(geojson, layer) {
     if (!f || !f.geometry) continue
     const p = f.properties || {}
     const name = p.poly_IncidentName || p.attr_IncidentName || p.IncidentName || null
-    const acres = num(p.poly_GISAcres) ?? num(p.attr_IncidentSize) ?? num(p.DailyAcres) ?? num(p.DiscoveryAcres)
+    const acres = num(p.poly_GISAcres) ?? num(p.attr_IncidentSize) ?? num(p.IncidentSize) ?? num(p.DiscoveryAcres)
     const contained = num(p.attr_PercentContained) ?? num(p.PercentContained)
     const cause = p.attr_FireCause || p.FireCause || null
     const type = p.attr_IncidentTypeCategory || p.IncidentTypeCategory || null

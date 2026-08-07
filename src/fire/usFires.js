@@ -81,6 +81,16 @@ const FLAME_ICONS = {
   contained: [COL_CONTAINED, '#e6e9ec'],
   named: [COL_INCIWEB, '#ffc2d1'],
 }
+// Graduated size multiplier by fire acreage (range-graded, powers-of-ten breaks).
+// Unknown/negative acreage falls into the smallest class. Feature-only expression
+// so it can be nested inside the zoom `interpolate` on icon-size.
+const ACRE_SIZE_MUL = ['step', ['coalesce', ['get', 'acres'], -1],
+  0.8,         // < 100 ac (and unknown)
+  100, 1.0,    // 100 – 1k
+  1000, 1.25,  // 1k – 10k
+  10000, 1.55, // 10k – 100k
+  100000, 1.9, // ≥ 100k ac (megafire)
+]
 const FLAME_PATH = 'M24 3 C 31 13 43 19 40.5 32 C 39 40.6 32.6 46 24 46 C 15.4 46 9 40.6 7.5 32 C 5 19 17 13 24 3 Z'
 const FLAME_INNER = 'M24 20 C 28 25 34 28 32 35 C 31 39.6 27.6 43 24 43 C 20.4 43 17 39.6 16 35 C 14 28 20 25 24 20 Z'
 
@@ -159,8 +169,19 @@ export function addUsFiresLayers(map, isOn, op) {
       layout: {
         visibility: 'visible',
         'icon-image': ['concat', 'usfire-', ['coalesce', ['get', 'iconKey'], 'uncontained']],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.42, 8, 0.58, 12, 0.72],
-        'icon-anchor': 'center',
+        // Size ∝ fire size: base zoom ramp × a graduated acreage multiplier.
+        // Five range-graded classes at powers of ten (unknown acreage → smallest).
+        // NB: the zoom `interpolate` must stay top-level (Mapbox forbids nesting a
+        // zoom expression inside `*`), so the acreage multiplier — a feature-only
+        // `step`, which IS allowed here — is folded into each zoom stop's output.
+        'icon-size': ['interpolate', ['linear'], ['zoom'],
+          3, ['*', 0.42, ACRE_SIZE_MUL],
+          8, ['*', 0.58, ACRE_SIZE_MUL],
+          12, ['*', 0.72, ACRE_SIZE_MUL],
+        ],
+        // Anchor the flame base at the fire point so bigger fires grow UPWARD and
+        // never overlap their own label (which sits just below the point).
+        'icon-anchor': 'bottom',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
       },
@@ -174,7 +195,7 @@ export function addUsFiresLayers(map, isOn, op) {
       id: LABEL, type: 'symbol', source: PTS_SRC,
       layout: {
         visibility: vis,
-        'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 1.6],
+        'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 0.5],
         'text-anchor': 'top', 'text-max-width': 9, 'text-allow-overlap': false,
       },
       paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.75)', 'text-halo-width': 1.4, 'text-opacity': o },

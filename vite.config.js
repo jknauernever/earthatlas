@@ -416,12 +416,14 @@ function nifcProxyPlugin() {
         }
         try {
           const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
-          res.statusCode = 200
-          if (!r.ok) { res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
+          if (!r.ok) { res.statusCode = 503; res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
           const raw = await r.json()
+          // ArcGIS reports quota/errors as a 200 with an { error } body.
+          if (raw && raw.error) { res.statusCode = 503; res.end(JSON.stringify({ ...empty, _upstream: raw.error.code || 'arcgis-error' })); return }
+          res.statusCode = 200
           res.end(JSON.stringify(normalizeNifc(raw, resolved.layer)))
         } catch (err) {
-          res.statusCode = 200
+          res.statusCode = 503
           res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
         }
       })

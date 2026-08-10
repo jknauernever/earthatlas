@@ -503,6 +503,18 @@ const RASTER_LAYERS = FIRE_LAYERS.filter((l) => !['parcels', 'firms', 'usfires',
 // list in the sourcing modal (so it always reflects the live catalog).
 const LAYER_GROUPS = [...new Set(FIRE_LAYERS.map((l) => l.group).filter(Boolean))]
 
+// Compact "updated N ago" from an epoch-ms timestamp (snapshot provenance).
+function updatedAgo(ms) {
+  if (!ms) return ''
+  const s = Math.max(0, (Date.now() - ms) / 1000)
+  if (s < 90) return 'updated just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `updated ${m} min ago`
+  const h = Math.round(m / 60)
+  if (h < 48) return `updated ${h} h ago`
+  return `updated ${Math.round(h / 24)} d ago`
+}
+
 const sourceId = (id) => `fire-${id}-src`
 const layerId = (id) => `fire-${id}-layer`
 
@@ -1173,7 +1185,7 @@ export default function FireApp() {
   // Active wildfires (US) — merged WFIGS + InciWeb, fetch-once. Abort guards an
   // in-flight load if the map tears down; meta drives the panel row.
   const usFiresAbortRef = useRef(null)
-  const [usFiresMeta, setUsFiresMeta] = useState({ loading: false, perimeters: 0, named: 0, inciweb: 0, error: false })
+  const [usFiresMeta, setUsFiresMeta] = useState({ loading: false, perimeters: 0, named: 0, inciweb: 0, updatedMs: null, error: false })
   // CWFIS (Canada) — fetch-once.
   const cwfisAbortRef = useRef(null)
   const [cwfisMeta, setCwfisMeta] = useState({ loading: false, count: 0, error: false })
@@ -1318,10 +1330,10 @@ export default function FireApp() {
     try {
       const res = await loadUsFires(map, { signal: ctrl.signal })
       if (ctrl.signal.aborted) return
-      setUsFiresMeta({ loading: false, perimeters: res?.perimeters || 0, named: res?.named || 0, inciweb: res?.inciweb || 0, error: !res })
+      setUsFiresMeta({ loading: false, perimeters: res?.perimeters || 0, named: res?.named || 0, inciweb: res?.inciweb || 0, updatedMs: res?.updatedMs ?? null, error: !res })
     } catch (err) {
       if (ctrl.signal.aborted || err?.name === 'AbortError') return
-      setUsFiresMeta({ loading: false, perimeters: 0, named: 0, inciweb: 0, error: true })
+      setUsFiresMeta({ loading: false, perimeters: 0, named: 0, inciweb: 0, updatedMs: null, error: true })
     }
   }, [])
 
@@ -1972,7 +1984,7 @@ export default function FireApp() {
                 ) : (
                   <div className={styles.layerHint}>
                     {usFiresMeta.named > 0
-                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'}${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb`
+                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'}${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
                       : 'No active US fires in the feeds right now'}
                   </div>
                 )

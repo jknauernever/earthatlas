@@ -29,6 +29,7 @@ const COL_INCIWEB = '#e11d48'
 const API_BASE = ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIRE_API_BASE) || '').trim()
 let cachedPerim = null
 let cachedPts = null
+let lastMeta = { perimeters: 0, named: 0, inciweb: 0, updatedMs: null } // last good load, for stale-keep
 
 export const US_FIRES_LAYER = {
   id: 'usfires',
@@ -233,11 +234,25 @@ export function restackUsFires(map) {
 //     somehow miss).
 // Prescribed burns (RX) are excluded — this is the wildfire layer.
 export async function loadUsFires(map, { signal } = {}) {
+  // A feed "failed" if the request errored, the proxy flagged an upstream error
+  // (503 / _upstream / _error), or it isn't a FeatureCollection. NIFC's shared
+  // ArcGIS quota rate-limits (429) during fire season, so failures are expected.
+  const fetchFC = (url) => fetch(url, { signal })
+    .then((r) => (r.ok ? r.json() : { _failed: r.status }))
+    .catch((e) => (e?.name === 'AbortError' ? Promise.reject(e) : { _failed: 'network' }))
   const [perimFC, incFC, inciFC] = await Promise.all([
-    fetch(`${API_BASE}/api/nifc?layer=perimeters`, { signal }).then((r) => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/nifc?layer=incidents`, { signal }).then((r) => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/inciweb`, { signal }).then((r) => r.json()).catch(() => null),
+    fetchFC(`${API_BASE}/api/nifc?layer=perimeters`),
+    fetchFC(`${API_BASE}/api/nifc?layer=incidents`),
+    fetchFC(`${API_BASE}/api/inciweb`),
   ])
+  const failed = (fc) => !fc || fc._failed != null || fc._upstream != null || fc._error != null
+
+  // Don't blank the map on a transient NIFC rate-limit: if the comprehensive
+  // incident feed failed and we already have a good render, keep it.
+  if (failed(incFC) && cachedPts && cachedPts.features.length) {
+    return { ...lastMeta, stale: true }
+  }
+
   const perims = (perimFC && perimFC.features) || []
   const incidents = (incFC && incFC.features) || []
   const pts = []
@@ -275,12 +290,19 @@ export async function loadUsFires(map, { signal } = {}) {
     seen.push({ norm: n, c: [lng, lat] })
     pts.push({ type: 'Feature', geometry: f.geometry, properties: { ...p, source: 'inciweb', iconKey: 'named' } })
   }
-  cachedPerim = perimFC && perimFC.type === 'FeatureCollection' ? perimFC : EMPTY_FC
+  // Keep the last good perimeters if that feed alone failed (incidents succeeded).
+  if (perimFC && perimFC.type === 'FeatureCollection') cachedPerim = perimFC
+  else if (!cachedPerim) cachedPerim = EMPTY_FC
   cachedPts = { type: 'FeatureCollection', features: pts }
   if (map.getSource(PERIM_SRC)) map.getSource(PERIM_SRC).setData(cachedPerim)
   if (map.getSource(PTS_SRC)) map.getSource(PTS_SRC).setData(cachedPts)
   const inciwebOnly = pts.filter((f) => f.properties.source === 'inciweb').length
-  return { perimeters: perims.length, named: pts.length, inciweb: inciwebOnly }
+  const perimCount = (cachedPerim.features || []).filter((f) => (f.properties || {}).name).length
+  // Snapshot age (provenance): newest `_fetched_ms` across the WFIGS feeds.
+  const stamps = [perimFC && perimFC._fetched_ms, incFC && incFC._fetched_ms].filter((n) => typeof n === 'number')
+  const updatedMs = stamps.length ? Math.max(...stamps) : null
+  lastMeta = { perimeters: perimCount, named: pts.length, inciweb: inciwebOnly, updatedMs }
+  return lastMeta
 }
 
 // ─── Click → card (perimeter or named point) ────────────────────────────────

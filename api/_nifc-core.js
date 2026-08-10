@@ -62,9 +62,11 @@ export function resolveNifcRequest(searchParams) {
     f: 'geojson',
   })
   const url = `${NIFC_HOST}/${svc.path}/query?${qs}`
-  // 5-min refresh upstream; a few minutes of edge staleness is invisible and
-  // keeps every visitor sharing one upstream pull.
-  const cacheControl = 'public, s-maxage=300, stale-while-revalidate=600'
+  // 5-min refresh upstream; every visitor shares one pull. The long SWR window is
+  // deliberate: NIFC's shared ArcGIS quota gets rate-limited (429) during fire
+  // season, so we keep serving the last good copy for up to a day while a
+  // background revalidation retries, rather than blanking the map.
+  const cacheControl = 'public, s-maxage=300, stale-while-revalidate=86400'
   return { layer, url, cacheControl }
 }
 

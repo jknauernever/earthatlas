@@ -94,6 +94,10 @@
     {
       "path": "/api/birdsong/refresh",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/nifc-snapshot",
+      "schedule": "0 */3 * * *"
     }
   ]
 }

@@ -16,8 +16,27 @@
  */
 
 import { resolveNifcRequest, normalizeNifc } from './_nifc-core.js'
+import { list } from '@vercel/blob'
+import { blobPath } from './cron/nifc-snapshot.js'
 
 export const config = { runtime: 'edge' }
+
+// Serve the pre-baked snapshot written by the nifc-snapshot cron. Returns the
+// stored FeatureCollection (incl. its `_fetched_ms` stamp) or null if there's no
+// snapshot yet / Blob is unreachable — in which case we fall back to live NIFC.
+async function readSnapshot(layer) {
+  try {
+    const { blobs } = await list({ prefix: blobPath(layer), limit: 1 })
+    const b = blobs && blobs[0]
+    if (!b) return null
+    const r = await fetch(b.url, { headers: { accept: 'application/json' } })
+    if (!r.ok) return null
+    const fc = await r.json()
+    return fc && fc.type === 'FeatureCollection' && fc.features.length ? fc : null
+  } catch {
+    return null
+  }
+}
 
 function corsHeaders() {
   return {
@@ -49,17 +68,31 @@ export default async function handler(req) {
   const resolved = resolveNifcRequest(searchParams)
   if (resolved.error) return json({ error: resolved.error }, { status: resolved.status })
 
+  // Prefer the cron-baked snapshot (decoupled from NIFC's live quota).
+  const snap = await readSnapshot(resolved.layer)
+  if (snap) return json(snap, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+
+  // Fallback: live NIFC (before the first snapshot exists, or a Blob outage).
   try {
     const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
     if (!r.ok) {
-      return json({ ...EMPTY, _upstream: r.status }, { status: 200, headers: { 'cache-control': 'no-store' } })
+      // Upstream rate-limited (429, common on NIFC's shared quota during fire
+      // season) or down. Return a NON-cacheable 503 — never a 200-empty — so the
+      // CDN keeps serving the last good copy (stale-while-revalidate) instead of
+      // caching this blank over it. The client keeps its last render on failure.
+      return json({ ...EMPTY, _upstream: r.status }, { status: 503, headers: { 'cache-control': 'no-store' } })
     }
     const raw = await r.json()
+    // ArcGIS returns quota/errors as a 200 with an { error } body — treat that as
+    // an upstream failure too, so we don't cache or render an empty map.
+    if (raw && raw.error) {
+      return json({ ...EMPTY, _upstream: raw.error.code || 'arcgis-error' }, { status: 503, headers: { 'cache-control': 'no-store' } })
+    }
     const fc = normalizeNifc(raw, resolved.layer)
     return json(fc, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
   } catch (err) {
     return json({ ...EMPTY, _error: String(err).slice(0, 120) }, {
-      status: 200,
+      status: 503,
       headers: { 'cache-control': 'no-store' },
     })
   }

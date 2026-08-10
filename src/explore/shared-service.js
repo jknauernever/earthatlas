@@ -5,7 +5,7 @@
  * butterflies, etc.) that wraps GBIF and iNaturalist API calls.
  */
 
-import { fetchEBirdRecentRaw } from '../services/eBird'
+import { fetchEBirdRecentRaw, fetchEBirdSpeciesRecentRaw } from '../services/eBird'
 
 const GBIF_API = 'https://api.gbif.org/v1'
 const INAT_API = 'https://api.inaturalist.org/v1'
@@ -24,17 +24,31 @@ function getBoundingBox(lat, lng, radiusKm) {
 
 /**
  * @param {Object} config
- * @param {number} config.gbifTaxonKey   — GBIF backbone taxon key (e.g. 733 for Cetacea)
- * @param {number} config.inatTaxonId    — iNaturalist taxon ID (e.g. 152871 for Cetacea)
+ * @param {number|number[]} config.gbifTaxonKey — GBIF backbone taxon key(s) (e.g. 733 for Cetacea, or an array of species keys)
+ * @param {number|string}   config.inatTaxonId  — iNaturalist taxon ID(s) (single ID or comma-separated string)
  * @param {Object} config.speciesMeta    — { [gbifSpeciesKey]: { common, scientific, color, emoji, ... } }
  * @param {Object} [config.fallback]     — { commonName, color, emoji } defaults for unknown species
  * @param {Function} [config.postFilter] — optional filter applied to raw GBIF occurrences (e.g. isShark)
  * @param {boolean}  [config.useEBird]   — if true, fetch from eBird API as primary source (for birds)
+ * @param {string[]} [config.eBirdSpeciesCodes] — eBird species codes for a fixed species set
+ *   (e.g. condors: ['calcon', 'andcon1']). Fetches one targeted /geo/recent call per code —
+ *   much lighter than useEBird's all-species sweep, and doesn't change GBIF/iNat behavior.
  */
-export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter, useEBird = false, keepInatRecords = false }) {
+export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, fallback = {}, postFilter, useEBird = false, eBirdSpeciesCodes = [], keepInatRecords = false }) {
   const defaultCommon = fallback.commonName || 'Unknown species'
   const defaultColor = fallback.color || '#888888'
   const defaultEmoji = fallback.emoji || '🔵'
+
+  // GBIF ORs repeated taxonKey params (comma-separated is NOT supported);
+  // iNat takes comma-separated taxon_id values in a single param.
+  const gbifTaxonKeys = Array.isArray(gbifTaxonKey) ? gbifTaxonKey : [gbifTaxonKey]
+  const inatTaxonIds = Array.isArray(inatTaxonId) ? inatTaxonId.join(',') : inatTaxonId
+
+  function gbifSearchParams(base, taxonKeys = gbifTaxonKeys) {
+    const p = new URLSearchParams(base)
+    for (const k of taxonKeys) p.append('taxonKey', k)
+    return p
+  }
 
   // ─── Internal helpers ──────────────────────────────────────────────────────
 
@@ -132,7 +146,6 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     const maxPages = Math.ceil(Math.min(limit, 1500) / PAGE_SIZE)  // up to 5 pages
 
     const baseParams = {
-      taxonKey: gbifTaxonKey,
       hasCoordinate: 'true',
       occurrenceStatus: 'PRESENT',
       decimalLatitude: `${bb.minLat},${bb.maxLat}`,
@@ -142,7 +155,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
 
     // Fetch first page to get the total count
-    const params = new URLSearchParams(baseParams)
+    const params = gbifSearchParams(baseParams)
     const url = `${GBIF_API}/occurrence/search?${params}`
     const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
@@ -155,7 +168,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       const pageCount = Math.min(maxPages, Math.ceil(totalAvailable / PAGE_SIZE))
       const pagePromises = []
       for (let page = 1; page < pageCount; page++) {
-        const p = new URLSearchParams({ ...baseParams, offset: page * PAGE_SIZE })
+        const p = gbifSearchParams({ ...baseParams, offset: page * PAGE_SIZE })
         pagePromises.push(
           fetch(`${GBIF_API}/occurrence/search?${p}`, { signal })
             .then(r => r.ok ? r.json() : { results: [] })
@@ -201,22 +214,21 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     // Fetch GBIF and iNaturalist in parallel
     const [gbifResult, inatResult] = await Promise.allSettled([
       (async () => {
-        const params = new URLSearchParams({
-          taxonKey: speciesKey || gbifTaxonKey,
+        const params = gbifSearchParams({
           hasCoordinate: 'true',
           occurrenceStatus: 'PRESENT',
           decimalLatitude: `${bb.minLat},${bb.maxLat}`,
           decimalLongitude: `${bb.minLng},${bb.maxLng}`,
           month,
           limit: Math.min(limit, 300),
-        })
+        }, speciesKey ? [speciesKey] : gbifTaxonKeys)
         const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
         if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
         return res.json()
       })(),
       (async () => {
-        // Look up iNat taxon ID: use species scientific name if filtering by species, else group ID
-        let taxonId = inatTaxonId
+        // Look up iNat taxon ID: use species scientific name if filtering by species, else group ID(s)
+        let taxonId = inatTaxonIds
         if (speciesKey) {
           const meta = getSpeciesMeta(speciesKey)
           if (meta?.scientific) {
@@ -277,8 +289,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   async function fetchSeasonalPattern({ lat, lng, radiusKm = 500, bounds, speciesKey = null, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
 
-    const params = new URLSearchParams({
-      taxonKey: speciesKey || gbifTaxonKey,
+    const params = gbifSearchParams({
       hasCoordinate: 'true',
       occurrenceStatus: 'PRESENT',
       decimalLatitude: `${bb.minLat},${bb.maxLat}`,
@@ -286,7 +297,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       limit: '0',
       facet: 'month',
       'month.facetLimit': '12',
-    })
+    }, speciesKey ? [speciesKey] : gbifTaxonKeys)
 
     const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
     if (!res.ok) throw new Error(`GBIF facets error: ${res.status}`)
@@ -317,7 +328,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         : { lat, lng, radius: radiusKm }
 
       const params = new URLSearchParams({
-        taxon_id: inatTaxonId,
+        taxon_id: inatTaxonIds,
         ...geoParams,
         d1: fmt(d1),
         d2: fmt(d2),
@@ -368,16 +379,26 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
   }
 
-  async function fetchEBirdSightings({ lat, lng, bounds, days = 90, signal }) {
-    if (!useEBird) return []
+  async function fetchEBirdSightings({ lat, lng, bounds, radiusKm, days = 90, signal }) {
+    if (!useEBird && eBirdSpeciesCodes.length === 0) return []
     try {
       // Bridge the explore subsite's `days` → the eBird service's
-      // `timeWindow` vocabulary. fetchEBirdRecentRaw expects 'day' / 'week' /
-      // 'month' and translates them into a daily fetch range.
+      // `timeWindow` vocabulary. The eBird fetchers expect 'day' / 'week' /
+      // 'month' and translate them into a fetch range (eBird caps at 30 days).
       const timeWindow = days <= 1 ? 'day' : days <= 7 ? 'week' : 'month'
-      const rawResults = await fetchEBirdRecentRaw({
-        lat, lng, bounds, timeWindow,
-      })
+      let rawResults
+      if (eBirdSpeciesCodes.length > 0) {
+        // Fixed species set: one targeted /geo/recent call per species code.
+        const perSpecies = await Promise.all(
+          eBirdSpeciesCodes.map(speciesCode =>
+            fetchEBirdSpeciesRecentRaw({ lat, lng, bounds, radiusKm, timeWindow, speciesCode }))
+        )
+        rawResults = perSpecies.flat()
+      } else {
+        rawResults = await fetchEBirdRecentRaw({
+          lat, lng, bounds, timeWindow,
+        })
+      }
       if (signal?.aborted) return []
       return rawResults.map(normalizeEBirdObs).filter(Boolean)
     } catch {

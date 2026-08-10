@@ -389,17 +389,32 @@ export async function fetchEBirdRecentRaw({ lat, lng, bounds, radiusKm, timeWind
   )
 }
 
+// Raw single-species /geo/recent fetch (bbox or radius). Used by explore
+// subsites that track a small fixed species set (e.g. /condors: calcon +
+// andcon1) — one targeted, edge-cached call per species instead of the
+// all-species region-historic sweep. eBird caps dist at 50 km, so wide views
+// get eBird coverage for a 50 km circle around the view center while GBIF/iNat
+// cover the full extent. Returns un-normalized eBird records.
+export async function fetchEBirdSpeciesRecentRaw({ lat, lng, bounds, radiusKm, timeWindow, perPage = 10000, speciesCode }) {
+  const useLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : lat
+  const useLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : lng
+  if (useLat == null || useLng == null || !speciesCode) return []
+  const useDist = bounds
+    ? Math.min(50, Math.max(5, Math.round(((bounds.maxLat - bounds.minLat) * 111) / 2)))
+    : Math.min(radiusKm || 50, 50)
+  try {
+    return await fetchEBirdGeoRecent({ lat: useLat, lng: useLng, radiusKm: useDist, timeWindow, perPage, speciesCode })
+  } catch {
+    return []
+  }
+}
+
 export async function fetchEBirdObservations({ lat, lng, radiusKm, bounds, timeWindow, perPage = 200, speciesCode }) {
   let rawResults
   if (speciesCode) {
     // Single-species queries: /geo/recent is the right tool — one-per-species
     // dedup is desired. Use bbox center if provided.
-    const useLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : lat
-    const useLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : lng
-    const useDist = bounds
-      ? Math.min(50, Math.max(5, Math.round(((bounds.maxLat - bounds.minLat) * 111) / 2)))
-      : Math.min(radiusKm || 50, 50)
-    rawResults = await fetchEBirdGeoRecent({ lat: useLat, lng: useLng, radiusKm: useDist, timeWindow, perPage, speciesCode })
+    rawResults = await fetchEBirdSpeciesRecentRaw({ lat, lng, bounds, radiusKm, timeWindow, perPage, speciesCode })
   } else {
     rawResults = await fetchEBirdRecentRaw({ lat, lng, bounds, radiusKm, timeWindow })
   }

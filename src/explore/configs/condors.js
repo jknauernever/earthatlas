@@ -1,4 +1,4 @@
-import { GBIF_TAXON_KEY, INAT_TAXON_ID, SPECIES_META, isCondor } from '../species-data/condors'
+import { GBIF_TAXON_KEY, INAT_TAXON_ID, EBIRD_SPECIES_CODES, SPECIES_META, isCondor } from '../species-data/condors'
 import { createExploreService } from '../shared-service'
 
 const config = {
@@ -72,6 +72,7 @@ const config = {
 config.service = createExploreService({
   gbifTaxonKey: GBIF_TAXON_KEY,
   inatTaxonId: INAT_TAXON_ID,
+  eBirdSpeciesCodes: EBIRD_SPECIES_CODES,
   speciesMeta: SPECIES_META,
   fallback: config.fallback,
   postFilter: isCondor,

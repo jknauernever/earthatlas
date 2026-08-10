@@ -56,6 +56,16 @@ function formatTime(timeStr) {
 }
 
 // ─── Shared popup HTML builder ─────────────────────────────────────────────
+// Source link for a sighting — every record links to its origin platform.
+// eBird ids are `ebird-<subId>-<speciesCode>` (see normalizeEBirdObs), and the
+// checklist page is the canonical public URL for an eBird observation.
+function observationUrl(s) {
+  const id = String(s.id)
+  if (s.source === 'iNaturalist') return 'https://www.inaturalist.org/observations/' + id.replace('inat-', '')
+  if (s.source === 'eBird') return 'https://ebird.org/checklist/' + id.split('-')[1]
+  return 'https://www.gbif.org/occurrence/' + id
+}
+
 function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
   const iucn = s.iucn || s.meta?.iucn || null
@@ -147,10 +157,7 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
             text-decoration:none;
             border:1px solid ${accentColor}30;
           ">Species info</a>` : ''}
-          <a href="${s.source === 'iNaturalist'
-            ? 'https://www.inaturalist.org/observations/' + String(s.id).replace('inat-', '')
-            : 'https://www.gbif.org/occurrence/' + s.id
-          }" target="_blank" rel="noopener noreferrer" style="
+          <a href="${observationUrl(s)}" target="_blank" rel="noopener noreferrer" style="
             flex:1;text-align:center;white-space:nowrap;
             padding:5px 8px;border-radius:5px;
             background:#f0f2f5;color:#3d4f5f;
@@ -183,6 +190,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     defaultZoom = 6,
     gbifTaxonKey = null,
   } = config
+
+  // GBIF's v2 map API takes a single taxonKey per tile URL, so a multi-key
+  // config (e.g. condors: two species keys) gets one density source/layer per key.
+  const gbifTaxonKeys = gbifTaxonKey == null ? [] : (Array.isArray(gbifTaxonKey) ? gbifTaxonKey : [gbifTaxonKey])
+  const gbifDensityLayerIds = gbifTaxonKeys.map(k => `gbif-density-heat-${k}`)
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
@@ -265,18 +277,18 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       if (map.getSource('sighting-src')) return
 
       // GBIF vector tile density heatmap — covers the entire globe
-      if (gbifTaxonKey) {
-        map.addSource('gbif-density', {
+      for (const key of gbifTaxonKeys) {
+        map.addSource(`gbif-density-${key}`, {
           type: 'vector',
           tiles: [
-            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}.mvt?taxonKey=${gbifTaxonKey}&basisOfRecord=HUMAN_OBSERVATION`,
+            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}.mvt?taxonKey=${key}&basisOfRecord=HUMAN_OBSERVATION`,
           ],
           maxzoom: 14,
         })
         map.addLayer({
-          id: 'gbif-density-heat',
+          id: `gbif-density-heat-${key}`,
           type: 'heatmap',
-          source: 'gbif-density',
+          source: `gbif-density-${key}`,
           'source-layer': 'occurrence',
           paint: {
             'heatmap-weight': [
@@ -740,13 +752,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // Remove seasonal heatmap, restore sighting layers
         if (map.getLayer(layerId)) map.removeLayer(layerId)
         if (map.getSource(sourceId)) map.removeSource(sourceId)
-        if (map.getLayer('gbif-density-heat')) {
-          map.setPaintProperty('gbif-density-heat', 'heatmap-opacity', [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO - 1, 0.85,
-            XFADE_LO, 0.6,
-            XFADE_HI, 0,
-          ])
+        for (const id of gbifDensityLayerIds) {
+          if (map.getLayer(id)) {
+            map.setPaintProperty(id, 'heatmap-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              XFADE_LO - 1, 0.85,
+              XFADE_LO, 0.6,
+              XFADE_HI, 0,
+            ])
+          }
         }
         if (map.getLayer('sighting-heat')) {
           map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
@@ -772,7 +786,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       }
 
       // Hide sighting layers during patterns mode
-      if (map.getLayer('gbif-density-heat')) map.setPaintProperty('gbif-density-heat', 'heatmap-opacity', 0)
+      for (const id of gbifDensityLayerIds) {
+        if (map.getLayer(id)) map.setPaintProperty(id, 'heatmap-opacity', 0)
+      }
       if (map.getLayer('sighting-heat')) map.setPaintProperty('sighting-heat', 'heatmap-opacity', 0)
       if (map.getLayer('sighting-circles')) {
         map.setPaintProperty('sighting-circles', 'circle-opacity', 0)

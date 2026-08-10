@@ -1,7 +1,15 @@
-export const GBIF_TAXON_KEY = 3242141  // Cathartidae (New World Vultures — includes both condor genera)
-export const INAT_TAXON_ID = 71306    // Cathartidae on iNat
+// Condors are exactly two species — California Condor (Gymnogyps californianus)
+// and Andean Condor (Vultur gryphus) — both monotypic, so species-level keys
+// capture everything. Querying the family (Cathartidae 3242141 / iNat 71306)
+// pulled in Turkey, Black, King, and Yellow-headed Vultures, which are not condors.
+export const GBIF_TAXON_KEY = [2481920, 2481907]  // [California, Andean]
+export const INAT_TAXON_ID = '4778,4747'          // [California, Andean]
+// eBird species codes — fresh checklists surface here within minutes, vs the
+// ~annual eBird→GBIF (EOD dataset) sync lag.
+export const EBIRD_SPECIES_CODES = ['calcon', 'andcon1']  // [California, Andean]
 
-// Only condor species keys — used by postFilter to exclude other vultures
+// Only condor species keys — postFilter is defense-in-depth on top of the
+// species-level queries above
 const CONDOR_SPECIES_KEYS = new Set([
   2481920, // California Condor
   2481907, // Andean Condor

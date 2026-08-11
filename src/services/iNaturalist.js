@@ -8,6 +8,7 @@
 
 import { cached } from '../utils/cache'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
+import { INAT_COUNTRIES } from '../data/inatCountries'
 
 const INAT_API = 'https://api.inaturalist.org/v1'
 // Route /observations through our same-origin proxy. iNat throttles client IPs
@@ -166,29 +167,11 @@ export function fetchTopSpecies(count = 8, { d1, d2 } = {}) {
 }
 
 // ─── Top countries by observation count ───────────────────────────
-const COUNTRIES = [
-  { placeId: 1,    name: 'United States', flag: '🇺🇸' },
-  { placeId: 6712, name: 'Canada',        flag: '🇨🇦' },
-  { placeId: 6744, name: 'Australia',      flag: '🇦🇺' },
-  { placeId: 7161, name: 'Russia',         flag: '🇷🇺' },
-  { placeId: 6793, name: 'Mexico',         flag: '🇲🇽' },
-  { placeId: 6857, name: 'United Kingdom', flag: '🇬🇧' },
-  { placeId: 6986, name: 'South Africa',   flag: '🇿🇦' },
-  { placeId: 7207, name: 'Germany',        flag: '🇩🇪' },
-  { placeId: 6681, name: 'India',          flag: '🇮🇳' },
-  { placeId: 6878, name: 'Brazil',         flag: '🇧🇷' },
-  { placeId: 6803, name: 'New Zealand',    flag: '🇳🇿' },
-  { placeId: 6737, name: 'France',         flag: '🇫🇷' },
-  { placeId: 6774, name: 'Spain',          flag: '🇪🇸' },
-  { placeId: 6973, name: 'Italy',          flag: '🇮🇹' },
-  { placeId: 7142, name: 'Japan',          flag: '🇯🇵' },
-]
-
 export function fetchTopCountries({ d1, d2 } = {}) {
   const cacheKey = `inat:topCountries:${d1 || 'all'}:${d2 || ''}`
   return cached(cacheKey, async () => {
     const results = await Promise.all(
-      COUNTRIES.map(async (c) => {
+      INAT_COUNTRIES.map(async (c) => {
         const params = new URLSearchParams({ place_id: c.placeId, per_page: 0 })
         if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
         const res = await fetch(`${INAT_API}/observations?${params}`)

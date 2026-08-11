@@ -10,6 +10,7 @@
 import { writeFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { INAT_COUNTRIES } from '../src/data/inatCountries.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT_DIR = join(__dirname, '..', 'src', 'data')
@@ -51,24 +52,6 @@ async function fetchINatTopSpecies() {
   ).then(r => r.json())
   return res.results || []
 }
-
-const INAT_COUNTRIES = [
-  { placeId: 1, name: 'United States', flag: '🇺🇸' },
-  { placeId: 6712, name: 'Canada', flag: '🇨🇦' },
-  { placeId: 6744, name: 'Australia', flag: '🇦🇺' },
-  { placeId: 6843, name: 'Russia', flag: '🇷🇺' },
-  { placeId: 6793, name: 'Mexico', flag: '🇲🇽' },
-  { placeId: 6857, name: 'United Kingdom', flag: '🇬🇧' },
-  { placeId: 113055, name: 'South Africa', flag: '🇿🇦' },
-  { placeId: 7207, name: 'Germany', flag: '🇩🇪' },
-  { placeId: 6681, name: 'India', flag: '🇮🇳' },
-  { placeId: 8057, name: 'Brazil', flag: '🇧🇷' },
-  { placeId: 6803, name: 'New Zealand', flag: '🇳🇿' },
-  { placeId: 6753, name: 'France', flag: '🇫🇷' },
-  { placeId: 6860, name: 'Spain', flag: '🇪🇸' },
-  { placeId: 7161, name: 'Italy', flag: '🇮🇹' },
-  { placeId: 6737, name: 'Japan', flag: '🇯🇵' },
-]
 
 async function fetchINatTopCountries() {
   const now = new Date()

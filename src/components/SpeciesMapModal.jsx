@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchSpeciesObservations } from '../services/iNaturalist'
 import { getTaxonMeta, formatDate } from '../utils/taxon'
@@ -92,6 +93,7 @@ export default function SpeciesMapModal({ taxon, onClose }) {
     // Wait for the modal transition to finish so the container has dimensions
     const timer = setTimeout(() => {
       if (!mapContainer.current) return
+      if (!ensureWebGLSupport(mapContainer.current)) return
       const map = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/light-v11',

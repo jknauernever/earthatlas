@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -223,6 +224,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   // ─── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     // initialView (from a shared URL) overrides defaults: pass center to

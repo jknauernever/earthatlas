@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import { useSEO } from '../hooks/useSEO.js'
 import { useQueryParams } from '../hooks/useQueryParams.js'
 
@@ -248,6 +249,7 @@ export default function SpeciesDetailPage() {
     if (!mapContainerRef.current) return
     if (!MAPBOX_TOKEN) return
     if (!gbifPoints?.length) return
+    if (!ensureWebGLSupport(mapContainerRef.current)) return
 
     if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
 

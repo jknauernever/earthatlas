@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchAllRecent } from './liveService'
 import { useQueryParams } from '../hooks/useQueryParams'
@@ -604,6 +605,7 @@ export default function LiveGlobe() {
   // ─── Initialize map ────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     const map = new mapboxgl.Map({

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { getTaxonMeta } from '../utils/taxon'
 import styles from './MapView.module.css'
@@ -29,6 +30,7 @@ export default function MapView({ observations, onSelect, coords, radiusKm, data
   // ─── Initialize map ──────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current) return
+    if (!ensureWebGLSupport(mapContainer.current)) return
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,

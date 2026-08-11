@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchRecentINat, fetchRecentEBird } from './liveService'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -318,6 +319,7 @@ export default function LiveLocal() {
   // ─── Initialize map ──────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     const map = new mapboxgl.Map({

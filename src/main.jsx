@@ -69,6 +69,13 @@ if (sentryDsn && import.meta.env.PROD) {
       // map.on('error'); the property names are stable across minification.
       /imageManager/,
       /listImages/,
+      // Map components probe WebGL2 support and render a fallback before ever
+      // constructing a mapbox Map, so this constructor throw should no longer
+      // happen. Keep the filter as a backstop: the probe can pass while
+      // mapbox's own context creation still fails (context-count limits, GPU
+      // resets), and those events are ~all headless crawlers (Googlebot's UA:
+      // "Linux; Android 10; K"), not real users.
+      'Failed to initialize WebGL',
     ],
   })
   // Expose the SDK on window for prod smoke-testing from devtools console

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
@@ -447,6 +448,7 @@ export default function ForestMonitor() {
   // ─── Init map once ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     // Initial view from URL if present, otherwise the default world view.

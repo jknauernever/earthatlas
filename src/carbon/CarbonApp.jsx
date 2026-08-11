@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
@@ -182,6 +183,7 @@ export default function CarbonApp() {
   // ─── Map init (once) ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     const startCamera = initialCamera

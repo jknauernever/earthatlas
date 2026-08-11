@@ -198,7 +198,16 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
     }
   }, [])
 
+  // The build bakes 24h top-species/top-countries into preloaded-stats.json,
+  // and state is seeded from it above — so the mount-time fetch would just
+  // redo work the build already did (for countries that's 15 parallel iNat
+  // requests per pageload, flagged by Sentry as an N+1). Skip the first run
+  // when preloaded data exists; fetch live only once the user changes the
+  // time toggle. Preloaded numbers can lag by up to a deploy cycle, which is
+  // an acceptable trade for the default view.
+  const speciesSeededRef = useRef(!!PRE_INAT.topSpecies)
   useEffect(() => {
+    if (speciesSeededRef.current) { speciesSeededRef.current = false; return }
     loadSpecies(speciesTime)
   }, [speciesTime, loadSpecies])
 
@@ -216,7 +225,9 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
     }
   }, [])
 
+  const countriesSeededRef = useRef(!!PRE_INAT.topCountries)
   useEffect(() => {
+    if (countriesSeededRef.current) { countriesSeededRef.current = false; return }
     loadCountries(countriesTime)
   }, [countriesTime, loadCountries])
 

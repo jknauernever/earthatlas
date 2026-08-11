@@ -93,11 +93,14 @@ const ageColorExpr = () => [
 // pixel is only ~375–780 m on the ground, so at most zooms a footprint-accurate
 // dot would be sub-pixel and invisible; these are deliberately larger so the
 // detections stay legible against busy satellite imagery.
+// FRP → radius, deliberately EXTREME: faint detections stay tiny, intense fire
+// fronts balloon. Exponential curve (base 1.4) so high-FRP dots pull away hard;
+// three FRP stops (0 / 100 / 400 MW) widen the dynamic range vs. the old 2× ramp.
 const radiusExpr = () => [
   'interpolate', ['linear'], ['zoom'],
-  3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 3, 50, 5],
-  7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 5.5, 100, 10],
-  11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 9, 200, 18],
+  3, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 2.5, 100, 6, 400, 13],
+  7, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 4, 100, 12, 400, 28],
+  11, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 6, 100, 20, 400, 54],
 ]
 
 // ─── Map: add source + layers (idempotent; called on every style.load) ──────
@@ -110,15 +113,17 @@ export function addFirmsLayer(map, isOn, op) {
   if (!map.getLayer(GLOW)) {
     map.addLayer({
       id: GLOW, type: 'circle', source: SRC, minzoom: FIRMS_MIN_ZOOM,
-      layout: { visibility: vis },
+      // Newest detections draw on top (higher acq time = higher sort key).
+      layout: { visibility: vis, 'circle-sort-key': ['coalesce', ['get', 'acq_ms'], 0] },
       paint: {
         'circle-color': ageColorExpr(),
-        // Soft halo ≈ 2.5× the dot, giving each detection a "heat" bloom.
+        // Soft halo ≈ 2× the dot, giving each detection a "heat" bloom that grows
+        // with FRP alongside the core (same exponential shape).
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
-          3, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 7, 50, 12],
-          7, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 13, 100, 25],
-          11, ['interpolate', ['linear'], ['coalesce', ['get', 'frp'], 0], 0, 22, 200, 45],
+          3, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 5, 100, 13, 400, 28],
+          7, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 9, 100, 26, 400, 58],
+          11, ['interpolate', ['exponential', 1.4], ['coalesce', ['get', 'frp'], 0], 0, 13, 100, 42, 400, 100],
         ],
         'circle-blur': 1,
         'circle-opacity': 0.35 * o,
@@ -128,16 +133,15 @@ export function addFirmsLayer(map, isOn, op) {
   if (!map.getLayer(DOT)) {
     map.addLayer({
       id: DOT, type: 'circle', source: SRC, minzoom: FIRMS_MIN_ZOOM,
-      layout: { visibility: vis },
+      // Newest detections draw on top (higher acq time = higher sort key).
+      layout: { visibility: vis, 'circle-sort-key': ['coalesce', ['get', 'acq_ms'], 0] },
       paint: {
         'circle-color': ageColorExpr(),
         'circle-radius': radiusExpr(),
         'circle-opacity': o,
-        // A dark outline at all zooms gives the dots contrast on bright or busy
-        // satellite imagery so they don't wash out.
-        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.4, 12, 2],
-        'circle-stroke-color': '#3a0a00',
-        'circle-stroke-opacity': 0.85 * o,
+        // No outline — a soft blur instead, so the core reads as a glowing ember
+        // (the GLOW halo behind it carries contrast against busy imagery).
+        'circle-blur': 0.5,
       },
     })
   }
@@ -152,7 +156,6 @@ export function applyFirmsOpacity(map, op) {
   if (map.getLayer(GLOW)) map.setPaintProperty(GLOW, 'circle-opacity', 0.35 * op)
   if (map.getLayer(DOT)) {
     map.setPaintProperty(DOT, 'circle-opacity', op)
-    map.setPaintProperty(DOT, 'circle-stroke-opacity', 0.5 * op)
   }
 }
 

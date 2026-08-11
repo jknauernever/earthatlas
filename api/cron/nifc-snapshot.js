@@ -4,9 +4,12 @@
  *
  * Runs on a schedule (see vercel.json "crons", every 3 h). Each run pulls the
  * WFIGS perimeters + incident-locations feeds, normalizes them, and writes each
- * as a public GeoJSON object to Vercel Blob at a stable path. /api/nifc then
- * serves these snapshots, so NIFC sees ~16 requests/day total instead of one per
- * visitor.
+ * as a public GeoJSON object to Vercel Blob at a stable, deterministic path
+ * (fire/nifc-<layer>.json). /api/nifc reads those directly, so NIFC sees ~16
+ * requests/day total instead of one per visitor.
+ *
+ * Node runtime (NOT edge): @vercel/blob's `put` pulls in node:stream / undici,
+ * which the Edge runtime rejects — mirrors api/vessel-tiles.js.
  *
  * SAFETY: a failed or empty pull is SKIPPED — it never overwrites the last good
  * snapshot — so a transient 429 can't blank the map. A `_fetched_ms` stamp on
@@ -16,10 +19,8 @@
 import { put } from '@vercel/blob'
 import { resolveNifcRequest, normalizeNifc } from '../_nifc-core.js'
 
-export const config = { runtime: 'edge' }
-
 const LAYERS = ['perimeters', 'incidents']
-export const blobPath = (layer) => `fire/nifc-${layer}.json`
+const blobPath = (layer) => `fire/nifc-${layer}.json`
 
 async function snapshotLayer(layer) {
   const resolved = resolveNifcRequest(new URLSearchParams({ layer }))
@@ -41,12 +42,15 @@ async function snapshotLayer(layer) {
   return { layer, count: fc.features.length }
 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   // Vercel injects `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set;
   // reject anything else so the endpoint can't be triggered by the public.
   const secret = process.env.CRON_SECRET
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return new Response('Unauthorized', { status: 401 })
+  const auth = req.headers['authorization'] || req.headers['Authorization']
+  if (secret && auth !== `Bearer ${secret}`) {
+    res.statusCode = 401
+    res.end('Unauthorized')
+    return
   }
   const results = []
   for (const layer of LAYERS) {
@@ -57,8 +61,8 @@ export default async function handler(req) {
       results.push({ layer, skipped: true, error: String(err).slice(0, 120) })
     }
   }
-  return new Response(JSON.stringify({ ok: true, results }), {
-    status: 200,
-    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
-  })
+  res.statusCode = 200
+  res.setHeader('content-type', 'application/json')
+  res.setHeader('cache-control', 'no-store')
+  res.end(JSON.stringify({ ok: true, results }))
 }

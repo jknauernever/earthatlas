@@ -16,20 +16,22 @@
  */
 
 import { resolveNifcRequest, normalizeNifc } from './_nifc-core.js'
-import { list } from '@vercel/blob'
-import { blobPath } from './cron/nifc-snapshot.js'
 
 export const config = { runtime: 'edge' }
 
-// Serve the pre-baked snapshot written by the nifc-snapshot cron. Returns the
-// stored FeatureCollection (incl. its `_fetched_ms` stamp) or null if there's no
-// snapshot yet / Blob is unreachable — in which case we fall back to live NIFC.
+// The nifc-snapshot cron writes fire/nifc-<layer>.json to the project's Blob
+// store at a deterministic public URL. We read it with a plain fetch — NOT the
+// @vercel/blob SDK, whose node deps (undici/node:stream) the Edge runtime
+// rejects. The store's public origin is stable for the store's lifetime (this is
+// the same store api/vessel-tiles.js reads); override via BLOB_PUBLIC_BASE if the
+// store is ever recreated. If it's ever wrong, the read 404s → live NIFC fallback.
+const BLOB_BASE = (process.env.BLOB_PUBLIC_BASE || 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com').replace(/\/+$/, '')
+
+// Serve the pre-baked snapshot (incl. its `_fetched_ms` stamp), or null if
+// there's no snapshot yet / Blob is unreachable — then we fall back to live NIFC.
 async function readSnapshot(layer) {
   try {
-    const { blobs } = await list({ prefix: blobPath(layer), limit: 1 })
-    const b = blobs && blobs[0]
-    if (!b) return null
-    const r = await fetch(b.url, { headers: { accept: 'application/json' } })
+    const r = await fetch(`${BLOB_BASE}/fire/nifc-${layer}.json`, { headers: { accept: 'application/json' } })
     if (!r.ok) return null
     const fc = await r.json()
     return fc && fc.type === 'FeatureCollection' && fc.features.length ? fc : null

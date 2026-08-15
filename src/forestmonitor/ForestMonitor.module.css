@@ -1955,3 +1955,17 @@
   .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
   .modalTitle { font-size: 19px; padding-right: 44px; }
 }
+
+/* ─── Missing-token notice (fresh clone, no VITE_MAPBOX_TOKEN) ─────────── */
+.tokenError {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  font-size: 14px;
+  max-width: calc(100vw - 40px);
+}
+.tokenError code { color: #fbbf24; }

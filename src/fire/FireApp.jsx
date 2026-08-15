@@ -1815,6 +1815,18 @@ export default function FireApp() {
   }
   const onDragEnd = () => { setDragId(null); setDragOver(null) }
 
+  // No token → say so, like /quakes and /carbon do. Without this the Mapbox
+  // constructor throws and the whole page white-screens on a fresh clone.
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.tokenError}>
+          <strong>Mapbox token missing.</strong> Set <code>VITE_MAPBOX_TOKEN</code> to load the map.
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />

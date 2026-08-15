@@ -2,6 +2,7 @@
  * iNaturalist /observations proxy.
  *
  * GET /api/inat-proxy?per_page=…&swlat=…&nelat=…&swlng=…&nelng=…
+ * GET /api/inat-proxy?agg=place_counts&place_ids=1,6712,…&d1=…&d2=…
  *
  * The /live globe queries iNat from ~24 visible land points in parallel. When
  * iNat IP-throttles us, their 429 responses omit CORS headers — which Chrome
@@ -67,11 +68,62 @@ function isFiniteCoord(raw) {
   return Number.isFinite(n) && n >= -360 && n <= 360
 }
 
+// Aggregate mode (?agg=place_counts&place_ids=1,6712,…): one observation count
+// per place, in a single response. The "top countries" leaderboard needs a
+// count for each of ~15 places; doing that from the browser is 15 parallel
+// requests per view, which Sentry's performance detector files as an N+1 API
+// call and which multiplies our exposure to iNat's per-IP throttling. Fan out
+// here instead — the client makes one request, the edge caches one entry, and
+// iNat sees a single origin.
+const MAX_PLACE_IDS = 20
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+async function placeCounts(searchParams) {
+  const ids = (searchParams.get('place_ids') || '')
+    .split(',')
+    .map((s) => parseInt(s, 10))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .slice(0, MAX_PLACE_IDS)
+  if (!ids.length) return json({ error: 'place_ids required' }, { status: 400 })
+
+  const shared = new URLSearchParams({ per_page: '0' })
+  for (const k of ['d1', 'd2']) {
+    const v = searchParams.get(k)
+    if (v && ISO_DATE.test(v)) shared.set(k, v)
+  }
+
+  const results = await Promise.all(ids.map(async (placeId) => {
+    const params = new URLSearchParams(shared)
+    params.set('place_id', String(placeId))
+    try {
+      const r = await fetch(`${INAT_BASE}?${params}`, { headers: { accept: 'application/json' } })
+      if (!r.ok) return { place_id: placeId, total_results: null, _upstream_status: r.status }
+      const data = await r.json()
+      return { place_id: placeId, total_results: data.total_results || 0 }
+    } catch (err) {
+      return { place_id: placeId, total_results: null, _upstream_error: String(err) }
+    }
+  }))
+
+  // Counts move slowly, so a partial result is worth returning — but don't let
+  // the edge cache pin one in place; only a clean sweep gets cached.
+  const complete = results.every((r) => r.total_results != null)
+  return json({ results }, {
+    headers: {
+      'cache-control': complete
+        ? 'public, s-maxage=600, stale-while-revalidate=3600'
+        : 'no-store',
+    },
+  })
+}
+
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() })
   if (req.method !== 'GET') return json({ error: 'method not allowed' }, { status: 405 })
 
   const { searchParams } = new URL(req.url)
+  if (searchParams.get('agg') === 'place_counts') return placeCounts(searchParams)
+
   const upstream = new URLSearchParams()
 
   for (const [key, value] of searchParams) {

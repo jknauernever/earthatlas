@@ -30,3 +30,15 @@
   opacity: 0.5;
   margin-right: 0.5px;
 }
+
+/* On phones the top-right corner belongs to the geolocate button and the
+   basemap picker, and the search bar spans the row below the wordmark — so the
+   badge moves to the left edge, under the search. */
+@media (max-width: 768px) {
+  .badge {
+    top: auto;
+    right: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+  }
+}

@@ -779,3 +779,77 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55); }
   50%      { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0); }
 }
+
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   The layer panel moves into a bottom sheet (components/MapSheet.jsx). Before
+   this, a 300px-wide, full-height panel with no close control sat over the map
+   from the moment the page loaded — on a 390px screen there was nothing left to
+   look at. `.layerPanel`'s own positioning is unused down here; the sheet
+   supplies the frame, so only the contents need adjusting. */
+@media (max-width: 768px) {
+  .branding {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+  .wordmark { font-size: 14px; }
+  .subBadge { font-size: 10px; padding-left: 8px; }
+
+  .searchBox {
+    top: calc(58px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+  }
+
+  .basemapMenu {
+    top: calc(114px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+  .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
+  .basemapMenuItem, .basemapMenuItemActive { padding: 11px 10px; }
+
+  /* The sheet header already reads "Fire layers · 2 of 11 on". */
+  .layerPanelTitle { display: none; }
+  .layerIntro { font-size: 13px; margin-bottom: 14px; }
+
+  /* Reordering is HTML5 drag-and-drop, which never fired on touch — the grip
+     was decoration a thumb couldn't use. Hide it and give the row the space. */
+  .dragHandle { display: none; }
+
+  /* Thumb-sized rows: a 44px caret, a bigger switch, and a slider you can
+     actually catch. */
+  .layerRow { padding: 4px 0; }
+  .layerHeader { gap: 10px; min-height: 52px; }
+  .layerCaret { width: 44px; height: 44px; justify-content: center; margin-left: -10px; }
+  .caretClosed, .caretOpen { font-size: 13px; }
+  .layerName { font-size: 14.5px; }
+  .switchOn, .switchOff { width: 46px; height: 26px; flex-shrink: 0; }
+  .switchKnob { width: 22px; height: 22px; }
+  .switchOn .switchKnob { transform: translateX(20px); }
+  .layerHint, .layerError { font-size: 12.5px; }
+
+  .opacitySlider { height: 26px; background: transparent; }
+  .opacitySlider::-webkit-slider-runnable-track { height: 6px; }
+  .opacitySlider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -9px; }
+  .opacitySlider::-moz-range-thumb { width: 24px; height: 24px; }
+
+  .methodology { padding: 12px 0 0; font-size: 13px; }
+
+  /* Both sit behind the sheet or fight it for attention. */
+  .tip { display: none; }
+  .nudge { top: 38%; font-size: 12px; }
+
+  /* Full-bleed modal — a 640px card with 36px gutters wastes a phone screen. */
+  .modalBackdrop { padding: 0; align-items: flex-end; }
+  .modal {
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
+  .modalTitle { font-size: 19px; padding-right: 44px; }
+}

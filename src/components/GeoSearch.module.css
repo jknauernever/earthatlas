@@ -215,3 +215,28 @@
 @keyframes ea-geo-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   16px on the input is load-bearing: iOS Safari zooms the whole page in when
+   a focused field is smaller, and on a full-bleed map that zoom is very hard
+   to undo. Everything else here is thumb sizing. */
+@media (max-width: 768px) {
+  .searchInput {
+    font-size: 16px;
+    padding: 11px 44px 11px 38px;
+    border-radius: 10px;
+  }
+  .searchClear {
+    right: 4px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+  .searchResults {
+    max-height: min(46dvh, 380px);
+    padding: 6px;
+  }
+  .searchResult, .searchResultActive { padding: 11px 10px; }
+  .searchResultName { font-size: 14px; }
+  .searchResultMeta { font-size: 11.5px; }
+}

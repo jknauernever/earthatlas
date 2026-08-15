@@ -285,8 +285,60 @@
   pointer-events: none; text-align: center; max-width: 90vw;
 }
 
-@media (max-width: 640px) {
-  .panel { top: 64px; left: 8px; right: 8px; width: auto; max-width: none; max-height: 56vh; }
-  .panelCollapsed { width: auto; }
-  .searchBox { width: calc(100vw - 120px); right: 56px; }
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   The control panel moves into a bottom sheet (components/MapSheet.jsx), which
+   frees the whole screen for the map and gives the top chrome room to breathe:
+   wordmark on row one, full-width search on row two, basemap picker under the
+   geolocate button. `.panel`'s own positioning is unused down here — the sheet
+   supplies its own frame — so only the inner pieces need adjusting. */
+@media (max-width: 768px) {
+  .branding {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+  .wordmark { font-size: 14px; }
+  .subBadge { font-size: 10px; padding-left: 8px; }
+
+  .searchBox {
+    top: calc(58px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+  }
+
+  .basemapMenu {
+    top: calc(114px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+  .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
+  .basemapMenuItem, .basemapMenuItemActive { padding: 11px 10px; }
+
+  /* The sheet header already names the panel and shows its status. */
+  .panelHead { display: none; }
+  .panelBody { padding: 0; overflow: visible; }
+
+  /* Sits behind the sheet, and the sheet says the same thing. */
+  .tip { display: none; }
+
+  /* Thumb-sized controls. Draw/Clear get the most room — they're the whole
+     point of this tool and the first thing a thumb reaches for. */
+  .drawRow { gap: 8px; }
+  .drawBtn, .clearBtn { padding: 13px 14px; font-size: 14px; }
+  .chipRow { gap: 6px; }
+  .chip, .chipActive { font-size: 13px; padding: 9px 13px; }
+  .methodology { padding: 12px 0 0; font-size: 13px; }
+
+  /* Full-bleed modal — a 640px card with 36px gutters wastes a phone screen. */
+  .modalBackdrop { padding: 0; align-items: flex-end; }
+  .modal {
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
+  .modalTitle { font-size: 19px; padding-right: 44px; }
 }

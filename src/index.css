@@ -197,6 +197,29 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib-button { display: none !important; }
 
+/* ─── Mapbox controls on touch/phone ───
+   Keep the control groups clear of the notch and the home indicator, and drop
+   the +/− buttons on phones: pinch-to-zoom covers it, and those two 29px
+   buttons were the widest thing competing with the map for thumb space. The
+   geolocate button stays — there's no gesture equivalent. */
+.mapboxgl-ctrl-top-right    { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.mapboxgl-ctrl-top-left     { padding-top: env(safe-area-inset-top, 0px); padding-left: env(safe-area-inset-left, 0px); }
+.mapboxgl-ctrl-bottom-right { padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.mapboxgl-ctrl-bottom-left  { padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); }
+
+@media (max-width: 768px) {
+  /* Drop the whole NavigationControl group, not just its buttons — an empty
+     group still holds its 10px margins and pushes the geolocate button down
+     into the search row. The button rule is the fallback for browsers without
+     :has(). */
+  .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group:has(button.mapboxgl-ctrl-zoom-in) { display: none; }
+  .mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-in,
+  .mapboxgl-ctrl-group button.mapboxgl-ctrl-zoom-out { display: none; }
+  /* Geolocate is now the only button in its group — give it a real 44px target. */
+  .mapboxgl-ctrl-group button.mapboxgl-ctrl-geolocate { width: 44px; height: 44px; }
+  .mapboxgl-ctrl-group button.mapboxgl-ctrl-geolocate .mapboxgl-ctrl-icon { background-size: 22px 22px; }
+}
+
 /* ─── Map popup overrides ─── */
 /* Let popups extend beyond the map's rounded-corner bounds. Mapbox's default
    `.mapboxgl-map { overflow: hidden }` clips popups near the edges; we push

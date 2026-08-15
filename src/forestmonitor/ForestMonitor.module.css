@@ -1870,3 +1870,88 @@
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   The layer panel moves into a bottom sheet (components/MapSheet.jsx). Before
+   this, a 300px-wide, full-height panel with no close control sat over the map
+   from the moment the page loaded — on a 390px screen there was nothing left to
+   look at. `.layerPanel`'s own positioning is unused down here; the sheet
+   supplies the frame, so only the contents need adjusting. */
+@media (max-width: 768px) {
+  .branding {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+  .wordmark { font-size: 14px; }
+  .subBadge { font-size: 10px; padding-left: 8px; }
+
+  .searchBox {
+    top: calc(58px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+  }
+
+  .basemapMenu {
+    top: calc(114px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+  .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
+  .basemapMenuItem, .basemapMenuItemActive { padding: 11px 10px; }
+
+  /* The sheet header already reads "Layers · 1 of 6 on". */
+  .layerPanelTitle { display: none; }
+
+  /* Thumb-sized rows. */
+  .layerRow { padding: 4px 0; }
+  .layerHeader { gap: 10px; min-height: 52px; }
+  .layerCaret { width: 44px; height: 44px; justify-content: center; margin-left: -10px; }
+  .caretClosed, .caretOpen { font-size: 13px; }
+  .layerName { font-size: 14.5px; }
+  .switchOn, .switchOff { width: 46px; height: 26px; }
+  .switchKnob { width: 22px; height: 22px; }
+  .switchOn .switchKnob { transform: translateX(20px); }
+
+  .opacitySlider { height: 26px; background: transparent; }
+  .opacitySlider::-webkit-slider-runnable-track { height: 6px; }
+  .opacitySlider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -9px; }
+  .opacitySlider::-moz-range-thumb { width: 24px; height: 24px; }
+
+  /* The date-range handles are custom divs dragged by pointer events, so they
+     need real size rather than a bigger native thumb. */
+  .sliderWrap { padding: 0 12px; }
+  .sliderTrack { height: 8px; }
+  .sliderHandle { width: 24px; height: 24px; margin-left: -12px; }
+
+  .modeRow { gap: 6px; }
+  .modeBtn, .modeBtnActive { font-size: 13px; padding: 10px 12px; }
+  .presetBtn, .presetBtnActive { font-size: 13px; padding: 9px 12px; }
+  .cropList { gap: 2px; }
+  .cropRow { font-size: 14px; min-height: 44px; }
+  .cropRow input { width: 20px; height: 20px; }
+  .legendMethodology { padding: 12px 0 0; font-size: 13px; }
+
+  /* Sits behind the sheet, and the sheet says the same thing. */
+  .tip { display: none; }
+  /* Move the tile status/error badges out from under the search row, to the
+     strip of map just above the collapsed sheet. */
+  .statusBadge, .errorBadge {
+    top: auto;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 32px);
+  }
+
+  /* Full-bleed modal — a wide card with big gutters wastes a phone screen. */
+  .modalBackdrop { padding: 0; align-items: flex-end; }
+  .modal {
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
+  .modalTitle { font-size: 19px; padding-right: 44px; }
+}

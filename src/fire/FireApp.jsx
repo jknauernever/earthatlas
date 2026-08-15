@@ -4,6 +4,7 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import MapSheet from '../components/MapSheet.jsx'
 import { reverseGeocode } from '../explore/utils.js'
 import {
   buildParcelsLayer, addParcelLayers, applyParcelVisibility, applyParcelOpacity,
@@ -1883,8 +1884,12 @@ export default function FireApp() {
         )}
       </div>
 
-      {/* Layer panel */}
-      <div className={styles.layerPanel}>
+      {/* Layer panel — floating left panel on desktop, bottom sheet on phones */}
+      <MapSheet
+        title="Fire layers"
+        summary={`${order.filter((id) => visible[id]).length} of ${order.length} on`}
+        className={styles.layerPanel}
+      >
         <p className={styles.layerIntro}>
           Click any point on Earth to assess its wildfire risk. Or jump to a place with the search bar above.
         </p>
@@ -2085,7 +2090,7 @@ export default function FireApp() {
             KnauerNever.com
           </a>
         </div>
-      </div>
+      </MapSheet>
 
       {showNudge && mapReady && (
         <div className={styles.nudge} aria-hidden="true">

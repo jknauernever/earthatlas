@@ -21,6 +21,8 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import MapSheet from '../components/MapSheet.jsx'
+import { useIsMobile } from '../hooks/useMediaQuery'
 import {
   FEEDS,
   fetchQuakes,
@@ -239,6 +241,9 @@ export default function QuakesApp() {
   const basemapMenuRef = useRef(null)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
+  // Below 768px the panel becomes a bottom sheet, which owns collapsing —
+  // the desktop caret and its `panelOpen` state sit this one out.
+  const isMobile = useIsMobile()
   // Live map camera (lat/lng/zoom), tracked on moveend for the shareable URL.
   const [mapView, setMapView] = useState(initialCamera)
   // Skip the first auto-flyTo when we hydrated a camera/location from the URL —
@@ -593,8 +598,14 @@ export default function QuakesApp() {
         )}
       </div>
 
-      {/* Control panel */}
-      <div className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}>
+      {/* Control panel — floating left panel on desktop, bottom sheet on phones */}
+      <MapSheet
+        title="Earthquakes"
+        summary={loading ? 'Loading USGS data…'
+          : error ? 'Data unavailable'
+          : `${stats.count.toLocaleString()} quakes · ${isGlobal ? 'worldwide' : center.name}`}
+        className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}
+      >
         <div className={styles.panelHead}>
           <span className={styles.panelTitle}>Earthquakes</span>
           <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>
@@ -602,7 +613,7 @@ export default function QuakesApp() {
           </button>
         </div>
 
-        {panelOpen && (
+        {(panelOpen || isMobile) && (
           <div className={styles.panelBody}>
             {/* Status line */}
             <div className={styles.status}>
@@ -712,7 +723,7 @@ export default function QuakesApp() {
             </div>
           </div>
         )}
-      </div>
+      </MapSheet>
 
       <div className={styles.tip}>Click a quake for details · search a place or stay worldwide</div>
 

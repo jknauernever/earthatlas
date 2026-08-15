@@ -24,6 +24,8 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import MapSheet from '../components/MapSheet.jsx'
+import { useIsMobile } from '../hooks/useMediaQuery'
 import styles from './CarbonApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -136,6 +138,13 @@ export default function CarbonApp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  // Below 768px the panel becomes a bottom sheet, which owns collapsing —
+  // the desktop caret and its `panelOpen` state sit this one out.
+  const isMobile = useIsMobile()
+  // Counters the mobile sheet watches: drop out of the way while drawing,
+  // come back up when there's an estimate to read.
+  const [sheetCollapse, setSheetCollapse] = useState(0)
+  const [sheetExpand, setSheetExpand] = useState(0)
   const [showMethodology, setShowMethodology] = useState(false)
   const [mapView, setMapView] = useState(initialCamera)
   const suppressFlyRef = useRef(!!(initialCamera || initialPolyRef.current))
@@ -160,6 +169,8 @@ export default function CarbonApp() {
         throw new Error((data && data.error) || `Calculation failed (HTTP ${r.status}).`)
       }
       setResult(data)
+      // There's an estimate to read now — raise the mobile sheet back up.
+      setSheetExpand((n) => n + 1)
     } catch (e) {
       setError(e.message || 'Could not calculate carbon for this area.')
     } finally {
@@ -322,6 +333,9 @@ export default function CarbonApp() {
     draw.deleteAll()
     setDrawnRing(null); setAreaHa(null); setResult(null); setError(null)
     draw.changeMode('draw_polygon')
+    // On a phone the panel is a bottom sheet sitting over the map — drop it out
+    // of the way so the next tap lands on the parcel, not on the sheet.
+    setSheetCollapse((n) => n + 1)
   }, [])
 
   const clearDrawing = useCallback(() => {
@@ -380,14 +394,23 @@ export default function CarbonApp() {
         )}
       </div>
 
-      {/* Control / results panel */}
-      <div className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}>
+      {/* Control / results panel — floating left panel on desktop, bottom sheet on phones */}
+      <MapSheet
+        title="Land carbon"
+        summary={loading ? 'Sampling satellite datasets…'
+          : error ? 'Estimate unavailable'
+          : result ? `${fmt(result.co2e_tonnes.total, 0)} t CO₂e · ${fmt(result?.area?.hectares ?? areaHa, 1)} ha`
+          : 'Draw a parcel to estimate'}
+        className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}
+        collapseSignal={sheetCollapse}
+        expandSignal={sheetExpand}
+      >
         <div className={styles.panelHead}>
           <span className={styles.panelTitle}>Land carbon</span>
           <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>{panelOpen ? '▾' : '▸'}</button>
         </div>
 
-        {panelOpen && (
+        {(panelOpen || isMobile) && (
           <div className={styles.panelBody}>
             {/* Draw controls */}
             <div className={styles.drawRow}>
@@ -479,7 +502,7 @@ export default function CarbonApp() {
             <div className={styles.builtBy}>EarthAtlas is built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>KnauerNever.com</a></div>
           </div>
         )}
-      </div>
+      </MapSheet>
 
       <div className={styles.tip}>Draw a parcel to estimate its stored carbon · search a place to get there fast</div>
 

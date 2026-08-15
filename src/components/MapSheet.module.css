@@ -1,0 +1,141 @@
+/* MapSheet — the mobile half of the shared map-tool control panel.
+   Desktop keeps each tool's own absolutely-positioned left panel (MapSheet
+   renders it verbatim); below 768px the same children move into a bottom
+   sheet that starts collapsed so the map is never occluded.
+
+   Snap points: peek (header only) → half (50dvh) → full (viewport minus the
+   top chrome). Drag the header to resize, tap it to toggle peek ↔ half. */
+
+.sheet {
+  /* Header height + the home-indicator inset, so "peek" always shows exactly
+     the grab handle row and nothing more. */
+  --peek-height: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sheet-peek: calc(var(--peek-height) + var(--safe-bottom));
+  /* Keep this in step with SNAP_TOP_GAP in MapSheet.jsx. */
+  --sheet-full: calc(100dvh - 108px);
+
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 23, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #e5e7eb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  transition: height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Snap heights. dvh keeps the sheet honest while mobile browsers grow and
+   shrink their address bar; vh is the fallback for older Safari. */
+.peek { height: var(--sheet-peek); }
+.half { height: 50vh; height: 50dvh; }
+.full { height: calc(100vh - 108px); height: var(--sheet-full); }
+
+/* While a finger is down the height is driven inline, frame by frame. */
+.dragging { transition: none; }
+
+/* ─── Grab handle / header ─────────────────────────────────────────────── */
+.grab {
+  flex: 0 0 auto;
+  height: var(--peek-height);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 6px 0 16px;
+  cursor: grab;
+  /* The header owns vertical gestures; the browser must not steal them for
+     page scroll or the drag stutters. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.grab:active { cursor: grabbing; }
+
+.grabBar {
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 44px square: the smallest comfortable touch target. */
+.toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.toggleIcon {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.toggleIconOpen {
+  transform: rotate(180deg);
+}
+
+/* ─── Scrollable body ──────────────────────────────────────────────────── */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 16px calc(20px + var(--safe-bottom));
+}
+
+/* Collapsed: keep the body out of the tab order and off the compositor. */
+.bodyHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .toggleIcon { transition: none; }
+}

@@ -4,6 +4,7 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import MapSheet from '../components/MapSheet.jsx'
 import styles from './ForestMonitor.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -441,6 +442,12 @@ export default function ForestMonitor() {
   const [extraOpacity, setExtraOpacity] = useState(
     () => Object.fromEntries(EXTRA_LAYERS.map((l) => [l.id, _lop[l.id] != null ? _lop[l.id] : l.defaultOpacity]))
   )
+  // Drives the mobile sheet's collapsed summary line ("3 of 6 on").
+  const layersOnCount =
+    (operaVisible ? 1 : 0) +
+    (commodityVisible ? 1 : 0) +
+    EXTRA_LAYERS.reduce((n, l) => n + (extraVisible[l.id] ? 1 : 0), 0)
+
   const extraVisibleRef = useRef(extraVisible)
   const extraOpacityRef = useRef(extraOpacity)
   const extraUrlRef = useRef({})   // cached tile URLs per layer id
@@ -1291,7 +1298,12 @@ export default function ForestMonitor() {
         )}
       </div>
 
-      <aside className={styles.layerPanel} aria-label="Map layers">
+      {/* Layer panel — floating left panel on desktop, bottom sheet on phones */}
+      <MapSheet
+        title="Layers"
+        summary={`${layersOnCount} of ${LAYER_IDS.length} on`}
+        className={styles.layerPanel}
+      >
         <div className={styles.layerPanelTitle}>Layers</div>
 
         {/* ── Layer 1: NASA OPERA vegetation disturbance ───────────────── */}
@@ -1575,7 +1587,7 @@ export default function ForestMonitor() {
             KnauerNever.com
           </a>
         </div>
-      </aside>
+      </MapSheet>
 
       {tileLoading && <div className={styles.statusBadge}>Loading tiles…</div>}
       {tileError && (

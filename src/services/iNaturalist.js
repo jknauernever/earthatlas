@@ -170,16 +170,30 @@ export function fetchTopSpecies(count = 8, { d1, d2 } = {}) {
 export function fetchTopCountries({ d1, d2 } = {}) {
   const cacheKey = `inat:topCountries:${d1 || 'all'}:${d2 || ''}`
   return cached(cacheKey, async () => {
-    const results = await Promise.all(
-      INAT_COUNTRIES.map(async (c) => {
-        const params = new URLSearchParams({ place_id: c.placeId, per_page: 0 })
-        if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
-        const res = await fetch(`${INAT_API}/observations?${params}`)
-        const data = await res.json()
-        return { ...c, count: data.total_results || 0 }
-      })
-    )
-    return results.sort((a, b) => b.count - a.count).slice(0, 10)
+    // One aggregate request, fanned out server-side by the proxy. Counting
+    // from the browser meant one request per country — fifteen parallel calls
+    // per view, which Sentry files as an N+1 API call and which burns through
+    // iNat's per-IP rate limit fifteen times faster than it needs to.
+    const params = new URLSearchParams({
+      agg: 'place_counts',
+      place_ids: INAT_COUNTRIES.map((c) => c.placeId).join(','),
+    })
+    if (d1) { params.set('d1', d1); if (d2) params.set('d2', d2) }
+    const res = await fetchWithTimeout(`${INAT_OBS_PROXY}?${params}`)
+    if (!res.ok) throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`)
+    const data = await res.json()
+
+    const counts = new Map((data.results || []).map((r) => [r.place_id, r.total_results]))
+    // A place the upstream failed for comes back null. Everything failing means
+    // we have no leaderboard at all — throw so callers keep what they had
+    // rather than rendering a table of zeros.
+    if (![...counts.values()].some((n) => n != null)) {
+      throw new Error('iNaturalist API error: no place counts returned')
+    }
+    return INAT_COUNTRIES
+      .map((c) => ({ ...c, count: counts.get(c.placeId) || 0 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
   })
 }
 

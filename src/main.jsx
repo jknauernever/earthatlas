@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { isMapTileRequest } from './utils/mapTileRequests'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
@@ -47,7 +48,13 @@ if (sentryDsn && import.meta.env.PROD) {
     replaysSessionSampleRate: 0,        // no idle session replays
     replaysOnErrorSampleRate: 1.0,      // capture replay only when an error fires
     integrations: [
-      Sentry.browserTracingIntegration(),
+      // Skip spans for map tiles. A map pageload fetches dozens of them in
+      // parallel, which Sentry's "N+1 API Call" detector reads as a fixable
+      // query pattern (it isn't — see src/utils/mapTileRequests.js) while
+      // burying the handful of spans that describe real app work.
+      Sentry.browserTracingIntegration({
+        shouldCreateSpanForRequest: (url) => !isMapTileRequest(url),
+      }),
       Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
     ],
     // Drop low-signal noise (browser extensions, third-party script errors).

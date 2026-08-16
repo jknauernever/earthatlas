@@ -25,8 +25,13 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
+import MapSearch from '../components/MapSearch.jsx'
+import { installPopupSheet } from '../lib/popupSheet.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import styles from './CarbonApp.module.css'
+
+// Mobile popups get a drag-to-extend grab handle (no-op after first call).
+installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -208,6 +213,14 @@ export default function CarbonApp() {
     })
     mapRef.current = map
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: false },
+        trackUserLocation: false,
+        showUserLocation: false,
+      }),
+      'bottom-right'
+    )
 
     // Polygon drawing — controls hidden; driven by our own dark-glass buttons.
     const draw = new MapboxDraw({ displayControlsDefault: false, controls: {} })
@@ -365,14 +378,14 @@ export default function CarbonApp() {
         <span className={styles.subBadge}>Carbon</span>
       </div>
 
-      {/* Search */}
-      <div className={styles.searchBox}>
+      {/* Search — full box on desktop, magnifier icon top-right on phones */}
+      <MapSearch className={styles.searchBox}>
         <GeoSearch
           placeholder="Search a place, then draw your parcel…"
           proximity={() => { const m = mapRef.current; if (!m) return undefined; try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined } }}
           onSelect={handleSelect}
         />
-      </div>
+      </MapSearch>
 
       {/* Basemap picker */}
       <div className={styles.basemapMenu} ref={basemapMenuRef}>

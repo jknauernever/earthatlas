@@ -723,6 +723,19 @@
   overscroll-behavior: contain;
   display: block;
 }
+/* Phone popups (≤600px matches index.css's bottom-sheet popup mode): the
+   shell is full-width and owns scrolling + the drag-to-extend handle
+   (src/lib/popupSheet.js), so the body's desktop width/height caps must go
+   or they strand the scrollbar mid-popup. */
+@media (max-width: 600px) {
+  .popupBody {
+    min-width: 0;
+    max-width: none;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
 .popupBody::-webkit-scrollbar { width: 6px; }
 .popupBody::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.15);
@@ -1888,16 +1901,10 @@
   .wordmark { font-size: 14px; }
   .subBadge { font-size: 10px; padding-left: 8px; }
 
-  .searchBox {
-    top: calc(58px + env(safe-area-inset-top, 0px));
-    left: calc(10px + env(safe-area-inset-left, 0px));
-    right: calc(10px + env(safe-area-inset-right, 0px));
-    width: auto;
-    max-width: none;
-  }
-
+  /* Search is a magnifier icon at top right (components/MapSearch.jsx); the
+     basemap toggle stacks directly below it. */
   .basemapMenu {
-    top: calc(114px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
   .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }

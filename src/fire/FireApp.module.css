@@ -703,12 +703,18 @@
   background: #fff !important;
   border-radius: 8px !important;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
-  /* Neutralize Mapbox's dynamic max-height + column-reverse scroll on the
-     content box (for anchor-bottom popups it scrolls to the bottom, hiding our
-     header). Our inner .popup div owns the scroll instead — normal top-down,
-     so the header/verdict stay visible and it's capped to fit the viewport. */
-  max-height: none !important;
-  overflow: visible !important;
+}
+/* Desktop/tablet only: neutralize Mapbox's dynamic max-height + column-reverse
+   scroll on the content box (for anchor-bottom popups it scrolls to the bottom,
+   hiding our header). Our inner .popup div owns the scroll instead — normal
+   top-down, so the header/verdict stay visible and it's capped to fit the
+   viewport. On phones (≤600px) the shell IS the scroller (bottom-sheet mode in
+   index.css) — there these two would break its height cap and drag handle. */
+@media (min-width: 601px) {
+  :global(.mapboxgl-popup-content) {
+    max-height: none !important;
+    overflow: visible !important;
+  }
 }
 :global(.mapboxgl-popup-tip) {
   border-top-color: #fff !important;
@@ -781,11 +787,12 @@
 }
 
 /* ─── Phones ───────────────────────────────────────────────────────────────
-   The layer panel moves into a bottom sheet (components/MapSheet.jsx). Before
-   this, a 300px-wide, full-height panel with no close control sat over the map
-   from the moment the page loaded — on a 390px screen there was nothing left to
-   look at. `.layerPanel`'s own positioning is unused down here; the sheet
-   supplies the frame, so only the contents need adjusting. */
+   The layer panel moves into a left-edge pull-out drawer (components/
+   MapSheet.jsx). Before this, a 300px-wide, full-height panel with no close
+   control sat over the map from the moment the page loaded — on a 390px screen
+   there was nothing left to look at. `.layerPanel`'s own positioning is unused
+   down here; the drawer supplies the frame, so only the contents need
+   adjusting. */
 @media (max-width: 768px) {
   .branding {
     top: calc(10px + env(safe-area-inset-top, 0px));
@@ -797,16 +804,10 @@
   .wordmark { font-size: 14px; }
   .subBadge { font-size: 10px; padding-left: 8px; }
 
-  .searchBox {
-    top: calc(58px + env(safe-area-inset-top, 0px));
-    left: calc(10px + env(safe-area-inset-left, 0px));
-    right: calc(10px + env(safe-area-inset-right, 0px));
-    width: auto;
-    max-width: none;
-  }
-
+  /* Search is a magnifier icon at top right (components/MapSearch.jsx); the
+     basemap toggle stacks directly below it. */
   .basemapMenu {
-    top: calc(114px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
   .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
@@ -852,6 +853,32 @@
   }
   .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
   .modalTitle { font-size: 19px; padding-right: 44px; }
+}
+
+/* ─── Phone popups (≤600px matches index.css's bottom-sheet popup mode) ───
+   The shell (.mapboxgl-popup-content) is full-width and is the scroller, with
+   a drag handle to extend it (src/lib/popupSheet.js). The card must fill it
+   and stop scrolling internally, or its desktop clamp() width strands the
+   scrollbar and a dead gutter mid-popup. */
+@media (max-width: 600px) {
+  .popup {
+    width: 100%;
+    /* !important so this beats the inline max-height the JSX bakes into the
+       popup HTML (maxH) — on phones the shell + drag handle own the height. */
+    max-height: none !important;
+  }
+  .popupBody {
+    overflow-y: visible;
+    /* No inner scrollbar down here, so stop reserving a gutter for one. */
+    scrollbar-gutter: auto;
+  }
+  /* Re-assert the sheet cap at !important strength: Mapbox writes an inline
+     max-height on the content box, and index.css's sheet rule isn't
+     !important. The drag handle rewrites the variable. */
+  :global(.mapboxgl-popup-content) {
+    max-height: var(--popup-sheet-h, 280px) !important;
+    overflow-y: auto !important;
+  }
 }
 
 /* ─── Missing-token notice (fresh clone, no VITE_MAPBOX_TOKEN) ─────────── */

@@ -9,52 +9,54 @@ import styles from './MapSheet.module.css'
  * /fire, /forestmonitor, /carbon and /quakes keep the floating left panel they
  * already have — pixel for pixel.
  *
- * Mobile (≤768px): the same children move into a bottom sheet that starts
- * collapsed to a 60px handle. Previously these panels were 300–320px wide and
- * ~full height with no close control, which covered the entire map on a phone.
- * Now the map is always visible, and the panel is one tap (or drag) away.
+ * Mobile (≤768px): the same children move into a drawer that pulls out from
+ * the left edge, collapsed by default to a slim grab rail. Previously these
+ * panels were 300–320px wide and ~full height with no close control, which
+ * covered the entire map on a phone. Now the map is always visible, and the
+ * panel is one tap (or drag) away.
  *
  * Props:
- *   title    — sheet header text (also the desktop aria-label)
- *   summary  — one-line state readout shown next to the title while collapsed
+ *   title    — drawer header text (also the desktop aria-label)
+ *   summary  — one-line state readout shown next to the title while open
  *              (e.g. "3 of 11 layers on"); keep it short, it truncates
  *   className— the tool's desktop panel class (from its own CSS module)
  *   children — panel contents, unchanged between layouts
- *   collapseSignal / expandSignal — bump these counters to drive the sheet from
- *              the app: collapse when an action hands the map back to the user
- *              (carbon's "Draw area"), expand when a result arrives worth
+ *   collapseSignal / expandSignal — bump these counters to drive the drawer
+ *              from the app: collapse when an action hands the map back to the
+ *              user (carbon's "Draw area"), expand when a result arrives worth
  *              reading. Both are no-ops on desktop.
  */
 
-// Height reserved above a fully-open sheet — enough to clear the wordmark row
-// and the search bar, so the top chrome stays usable at every snap point.
-const SNAP_TOP_GAP = 108
+// Width kept free to the right of a fully-open drawer — a sliver of map plus
+// the basemap toggle stay reachable at every snap point.
+const SNAP_RIGHT_GAP = 56
 const TAP_SLOP = 8        // px of movement still counted as a tap, not a drag
 const TAP_MS = 500
 
 export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0 }) {
   const isMobile = useIsMobile()
   const [snap, setSnap] = useState('peek')
-  const [dragHeight, setDragHeight] = useState(null)
+  const [dragWidth, setDragWidth] = useState(null)
 
   const sheetRef = useRef(null)
-  const peekPxRef = useRef(60)
+  const peekPxRef = useRef(44)
   const dragRef = useRef(null)
 
-  // Remember what "peek" actually measures to (60px + the home-indicator inset,
-  // which only CSS knows) so drag snapping lands exactly on the collapsed state.
+  // Remember what "peek" actually measures to (44px + the notch inset, which
+  // only CSS knows) so drag snapping lands exactly on the collapsed state.
   useLayoutEffect(() => {
     if (!isMobile || snap !== 'peek' || !sheetRef.current) return
-    const h = sheetRef.current.getBoundingClientRect().height
-    if (h > 0) peekPxRef.current = h
+    const w = sheetRef.current.getBoundingClientRect().width
+    if (w > 0) peekPxRef.current = w
   }, [isMobile, snap])
 
-  const snapHeights = useCallback(() => {
-    const vh = window.innerHeight
+  // Keep these in step with .peek/.half/.full in MapSheet.module.css.
+  const snapWidths = useCallback(() => {
+    const vw = window.innerWidth
     return {
       peek: peekPxRef.current,
-      half: vh * 0.5,
-      full: Math.max(vh - SNAP_TOP_GAP, vh * 0.5),
+      half: Math.min(vw * 0.72, 320),
+      full: Math.max(vw - SNAP_RIGHT_GAP, Math.min(vw * 0.72, 320)),
     }
   }, [])
 
@@ -68,8 +70,8 @@ export default function MapSheet({ title, summary, className, children, id, coll
     if (!sheetRef.current || e.button > 0) return
     dragRef.current = {
       id: e.pointerId,
-      startY: e.clientY,
-      startH: sheetRef.current.getBoundingClientRect().height,
+      startX: e.clientX,
+      startW: sheetRef.current.getBoundingClientRect().width,
       startedAt: Date.now(),
       moved: 0,
     }
@@ -79,11 +81,11 @@ export default function MapSheet({ title, summary, className, children, id, coll
   const onPointerMove = useCallback((e) => {
     const d = dragRef.current
     if (!d || d.id !== e.pointerId) return
-    const dy = d.startY - e.clientY
-    d.moved = Math.max(d.moved, Math.abs(dy))
-    const { peek, full } = snapHeights()
-    setDragHeight(Math.min(Math.max(d.startH + dy, peek), full))
-  }, [snapHeights])
+    const dx = e.clientX - d.startX
+    d.moved = Math.max(d.moved, Math.abs(dx))
+    const { peek, full } = snapWidths()
+    setDragWidth(Math.min(Math.max(d.startW + dx, peek), full))
+  }, [snapWidths])
 
   const onPointerUp = useCallback((e) => {
     const d = dragRef.current
@@ -92,15 +94,15 @@ export default function MapSheet({ title, summary, className, children, id, coll
     try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* already released */ }
 
     const isTap = d.moved < TAP_SLOP && Date.now() - d.startedAt < TAP_MS
-    setDragHeight(null)
+    setDragWidth(null)
     if (isTap) { toggle(); return }
 
-    const h = Math.min(Math.max(d.startH + (d.startY - e.clientY), 0), Infinity)
-    const heights = snapHeights()
-    const nearest = Object.keys(heights).reduce((best, key) =>
-      Math.abs(heights[key] - h) < Math.abs(heights[best] - h) ? key : best, 'peek')
+    const w = Math.max(d.startW + (e.clientX - d.startX), 0)
+    const widths = snapWidths()
+    const nearest = Object.keys(widths).reduce((best, key) =>
+      Math.abs(widths[key] - w) < Math.abs(widths[best] - w) ? key : best, 'peek')
     setSnap(nearest)
-  }, [snapHeights, toggle])
+  }, [snapWidths, toggle])
 
   // App-driven snapping. Compare against the last value rather than "have I run
   // before?" — StrictMode invokes mount effects twice, and a run-once guard
@@ -140,14 +142,14 @@ export default function MapSheet({ title, summary, className, children, id, coll
   const sheetClass = [
     styles.sheet,
     styles[snap],
-    dragHeight != null ? styles.dragging : '',
+    dragWidth != null ? styles.dragging : '',
   ].filter(Boolean).join(' ')
 
   return (
     <aside
       ref={sheetRef}
       className={sheetClass}
-      style={dragHeight != null ? { height: `${dragHeight}px` } : undefined}
+      style={dragWidth != null ? { width: `${dragWidth}px` } : undefined}
       aria-label={title}
       id={id}
     >
@@ -159,6 +161,10 @@ export default function MapSheet({ title, summary, className, children, id, coll
         onPointerCancel={onPointerUp}
       >
         <span className={styles.grabBar} aria-hidden="true" />
+        <span className={styles.railTitle}>{title}</span>
+      </div>
+
+      <div className={`${styles.panel} ${open ? '' : styles.panelHidden}`}>
         <div className={styles.headRow}>
           <span className={styles.title}>{title}</span>
           {summary && <span className={styles.summary}>{summary}</span>}
@@ -180,10 +186,10 @@ export default function MapSheet({ title, summary, className, children, id, coll
             </svg>
           </button>
         </div>
-      </div>
 
-      <div className={`${styles.body} ${open ? '' : styles.bodyHidden}`}>
-        {children}
+        <div className={styles.body}>
+          {children}
+        </div>
       </div>
     </aside>
   )

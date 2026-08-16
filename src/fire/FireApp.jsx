@@ -5,6 +5,8 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
+import MapSearch from '../components/MapSearch.jsx'
+import { installPopupSheet } from '../lib/popupSheet.js'
 import { reverseGeocode } from '../explore/utils.js'
 import {
   buildParcelsLayer, addParcelLayers, applyParcelVisibility, applyParcelOpacity,
@@ -38,6 +40,9 @@ import {
 } from './cwfis.js'
 import { fetchFireNews, renderNewsCard, newsLocation } from './fireNews.js'
 import styles from './FireApp.module.css'
+
+// Mobile popups get a drag-to-extend grab handle (no-op after first call).
+installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -1416,7 +1421,7 @@ export default function FireApp() {
         trackUserLocation: false,
         showUserLocation: false,
       }),
-      'top-right'
+      'bottom-right'
     )
 
     // Crosshair cursor signals "click a point to inspect" (Mapbox flips to a
@@ -1840,8 +1845,9 @@ export default function FireApp() {
         <span className={styles.subBadge}>FireApp</span>
       </div>
 
-      {/* Search (same proxy + fly-to behavior as /forestmonitor) */}
-      <div className={styles.searchBox}>
+      {/* Search (same proxy + fly-to behavior as /forestmonitor) —
+          full box on desktop, magnifier icon top-right on phones */}
+      <MapSearch className={styles.searchBox}>
         <GeoSearch
           placeholder="Search any location…"
           proximity={() => {
@@ -1862,7 +1868,7 @@ export default function FireApp() {
             }
           }}
         />
-      </div>
+      </MapSearch>
 
       {/* Basemap picker */}
       <div className={styles.basemapMenu} ref={basemapMenuRef}>

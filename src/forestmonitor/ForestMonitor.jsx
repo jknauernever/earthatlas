@@ -5,7 +5,12 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
+import MapSearch from '../components/MapSearch.jsx'
+import { installPopupSheet } from '../lib/popupSheet.js'
 import styles from './ForestMonitor.module.css'
+
+// Mobile popups get a drag-to-extend grab handle (no-op after first call).
+installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -508,7 +513,7 @@ export default function ForestMonitor() {
         trackUserLocation: false,
         showUserLocation: false,
       }),
-      'top-right'
+      'bottom-right'
     )
 
     // Persist the map view (lat/lng/zoom) to React state on moveend so the
@@ -1245,7 +1250,7 @@ export default function ForestMonitor() {
         </a>
       </div>
 
-      <div className={styles.searchBox}>
+      <MapSearch className={styles.searchBox}>
         <GeoSearch
           proximity={() => {
             const m = mapRef.current
@@ -1265,7 +1270,7 @@ export default function ForestMonitor() {
             }
           }}
         />
-      </div>
+      </MapSearch>
 
       <div className={styles.basemapMenu} ref={basemapMenuRef}>
         <button

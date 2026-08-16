@@ -1,0 +1,64 @@
+/* MapSearch — the mobile half of the shared map-tool search chrome.
+   Desktop keeps each tool's own absolutely-positioned search box (MapSearch
+   renders it verbatim); below 768px the search collapses to a magnifier
+   button in the top right corner, expanding to a full-width row on tap.
+   Colors match the tools' shared basemap toggle (#0f1726 dark glass). */
+
+.fab {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  z-index: 25;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.fab:active { background: #131c30; color: #fff; }
+
+/* Expanded: a full-width row over the top chrome. Above the drawer (z 20)
+   and the icon column (z 25) — search is modal-ish while it's open. */
+.row {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.rowSearch {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rowClose {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.rowClose:active { background: #131c30; color: #fff; }

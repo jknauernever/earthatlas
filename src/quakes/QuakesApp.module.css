@@ -383,16 +383,10 @@
   .wordmark { font-size: 14px; }
   .subBadge { font-size: 10px; padding-left: 8px; }
 
-  .searchBox {
-    top: calc(58px + env(safe-area-inset-top, 0px));
-    left: calc(10px + env(safe-area-inset-left, 0px));
-    right: calc(10px + env(safe-area-inset-right, 0px));
-    width: auto;
-    max-width: none;
-  }
-
+  /* Search is a magnifier icon at top right (components/MapSearch.jsx); the
+     basemap toggle stacks directly below it. */
   .basemapMenu {
-    top: calc(114px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
   .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }

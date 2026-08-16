@@ -262,15 +262,41 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
   .mapboxgl-popup .mapboxgl-popup-content {
     border-radius: 16px 16px 0 0 !important;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18) !important;
-    max-height: 280px;
+    /* Default sheet height; dragging the grab handle (src/lib/popupSheet.js)
+       rewrites the variable to extend the sheet over the map. */
+    max-height: var(--popup-sheet-h, 280px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Grab handle injected by popupSheet.js — sticky so it stays under the
+     thumb while the sheet content scrolls beneath it. */
+  .ea-popup-grab {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    background: #fff;
+    touch-action: none;
+    cursor: grab;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ea-popup-grab:active { cursor: grabbing; }
+  .ea-popup-grab-bar {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.22);
   }
   .mapboxgl-popup .mapboxgl-popup-close-button {
     font-size: 24px;
     padding: 4px 10px;
     color: #fff;
-    z-index: 2;
+    /* Above the sticky .ea-popup-grab strip (z 3), or the × is unreachable. */
+    z-index: 4;
     right: 2px;
     top: 2px;
     text-shadow: 0 1px 4px rgba(0,0,0,0.5);

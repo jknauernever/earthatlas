@@ -1,60 +1,68 @@
 /* MapSheet — the mobile half of the shared map-tool control panel.
    Desktop keeps each tool's own absolutely-positioned left panel (MapSheet
-   renders it verbatim); below 768px the same children move into a bottom
-   sheet that starts collapsed so the map is never occluded.
+   renders it verbatim); below 768px the same children move into a drawer that
+   pulls out from the LEFT EDGE, collapsed by default to a slim grab rail so
+   the map is never occluded.
 
-   Snap points: peek (header only) → half (50dvh) → full (viewport minus the
-   top chrome). Drag the header to resize, tap it to toggle peek ↔ half. */
+   Snap points: peek (rail only) → half (min(72vw, 320px)) → full (viewport
+   minus a right-hand map sliver). Drag the rail to resize, tap it to toggle
+   peek ↔ half. The drawer starts below the search row, so the top chrome
+   stays usable at every snap point. */
 
 .sheet {
-  /* Header height + the home-indicator inset, so "peek" always shows exactly
-     the grab handle row and nothing more. */
-  --peek-height: 60px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --sheet-peek: calc(var(--peek-height) + var(--safe-bottom));
-  /* Keep this in step with SNAP_TOP_GAP in MapSheet.jsx. */
-  --sheet-full: calc(100dvh - 108px);
+  /* Rail width + the notch inset, so "peek" always shows exactly the grab
+     rail and nothing more. */
+  --rail-width: 44px;
+  --safe-left: env(safe-area-inset-left, 0px);
+  --sheet-peek: calc(var(--rail-width) + var(--safe-left));
 
   position: fixed;
-  left: 0;
-  right: 0;
+  /* Clears the branding pill (ends ~46px down on every tool — search is just
+     an icon on the right now). Keep in step with each tool's mobile chrome. */
+  top: calc(52px + env(safe-area-inset-top, 0px));
   bottom: 0;
-  z-index: 20;
+  left: 0;
+  /* Below Mapbox popups (z 5 in index.css) and the rest of the chrome — the
+     drawer is furniture; anything the user just summoned should cover it. */
+  z-index: 4;
   display: flex;
-  flex-direction: column;
+  /* Markup order is [rail, panel]; reversed so the rail sits on the drawer's
+     right edge — the pull handle faces the map. */
+  flex-direction: row-reverse;
   background: rgba(10, 14, 23, 0.94);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px 18px 0 0;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.55);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0 18px 0 0;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   color: #e5e7eb;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
   overscroll-behavior: contain;
-  transition: height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: width 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Snap heights. dvh keeps the sheet honest while mobile browsers grow and
-   shrink their address bar; vh is the fallback for older Safari. */
-.peek { height: var(--sheet-peek); }
-.half { height: 50vh; height: 50dvh; }
-.full { height: calc(100vh - 108px); height: var(--sheet-full); }
+/* Snap widths. Keep these in step with snapWidths() in MapSheet.jsx. */
+.peek { width: var(--sheet-peek); }
+.half { width: min(72vw, 320px); }
+.full { width: calc(100vw - 56px); }
 
-/* While a finger is down the height is driven inline, frame by frame. */
+/* While a finger is down the width is driven inline, frame by frame. */
 .dragging { transition: none; }
 
-/* ─── Grab handle / header ─────────────────────────────────────────────── */
+/* ─── Grab rail ────────────────────────────────────────────────────────── */
 .grab {
   flex: 0 0 auto;
-  height: var(--peek-height);
+  width: var(--rail-width);
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 0 6px 0 16px;
+  gap: 12px;
   cursor: grab;
-  /* The header owns vertical gestures; the browser must not steal them for
-     page scroll or the drag stutters. */
+  /* The rail owns horizontal gestures; the browser must not steal them for
+     page pan or the drag stutters. */
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -63,19 +71,49 @@
 .grab:active { cursor: grabbing; }
 
 .grabBar {
-  width: 40px;
-  height: 4px;
-  margin: 0 auto 8px;
+  width: 4px;
+  height: 40px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.28);
   flex: 0 0 auto;
 }
 
+/* Vertical label on the collapsed rail — the affordance that says what's
+   behind the handle. Hidden once the header row is visible. */
+.railTitle {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+.half .railTitle,
+.full .railTitle { display: none; }
+
+/* ─── Sliding panel: header row + scrollable body ──────────────────────── */
+.panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Collapsed: keep the panel out of the tab order and off the compositor. */
+.panelHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .headRow {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  padding: 6px 0 0 16px;
 }
 
 .title {
@@ -113,28 +151,30 @@
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
+/* Chevron points toward the map (open direction) when closed, back toward
+   the edge when open. */
 .toggleIcon {
+  transform: rotate(90deg);
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .toggleIconOpen {
-  transform: rotate(180deg);
+  transform: rotate(-90deg);
 }
 
-/* ─── Scrollable body ──────────────────────────────────────────────────── */
 .body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 2px 16px calc(20px + var(--safe-bottom));
+  padding: 2px 4px calc(20px + env(safe-area-inset-bottom, 0px)) 16px;
 }
 
-/* Collapsed: keep the body out of the tab order and off the compositor. */
-.bodyHidden {
-  visibility: hidden;
-  pointer-events: none;
-}
+/* The global scrollbar theme (index.css) is parchment-light; on this dark
+   glass it reads as a bright white strip. */
+.body::-webkit-scrollbar { width: 4px; }
+.body::-webkit-scrollbar-track { background: transparent; }
+.body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .sheet, .toggleIcon { transition: none; }

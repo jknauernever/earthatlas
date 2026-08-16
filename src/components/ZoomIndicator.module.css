@@ -31,14 +31,16 @@
   margin-right: 0.5px;
 }
 
-/* On phones the top-right corner belongs to the geolocate button and the
-   basemap picker, and the search bar spans the row below the wordmark — so the
-   badge moves to the left edge, under the search. */
+/* On phones the top-right corner belongs to the search icon and the basemap
+   picker, and the left edge to the drawer's grab rail — so the badge sits at
+   the bottom, just right of the rail (44px + its inset). */
 @media (max-width: 768px) {
   .badge {
     top: auto;
     right: auto;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    left: calc(10px + env(safe-area-inset-left, 0px));
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: calc(54px + env(safe-area-inset-left, 0px));
+    /* Below Mapbox popups (z 5) — the badge is ambient, popups are summoned. */
+    z-index: 3;
   }
 }

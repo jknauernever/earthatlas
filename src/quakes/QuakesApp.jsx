@@ -22,6 +22,8 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
+import MapSearch from '../components/MapSearch.jsx'
+import { installPopupSheet } from '../lib/popupSheet.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import {
   FEEDS,
@@ -34,6 +36,9 @@ import {
   MAG_RAMP,
 } from './quakesService.js'
 import styles from './QuakesApp.module.css'
+
+// Mobile popups get a drag-to-extend grab handle (no-op after first call).
+installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -321,6 +326,14 @@ export default function QuakesApp() {
     })
     mapRef.current = map
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: false },
+        trackUserLocation: false,
+        showUserLocation: false,
+      }),
+      'bottom-right'
+    )
 
     // Track the camera so the shareable URL always reflects the current view.
     map.on('moveend', () => {
@@ -557,8 +570,8 @@ export default function QuakesApp() {
         <span className={styles.subBadge}>Quakes</span>
       </div>
 
-      {/* Search */}
-      <div className={styles.searchBox}>
+      {/* Search — full box on desktop, magnifier icon top-right on phones */}
+      <MapSearch className={styles.searchBox}>
         <GeoSearch
           placeholder="Search a place to see nearby quakes…"
           proximity={() => {
@@ -568,7 +581,7 @@ export default function QuakesApp() {
           }}
           onSelect={handleSelect}
         />
-      </div>
+      </MapSearch>
 
       {/* Basemap picker */}
       <div className={styles.basemapMenu} ref={basemapMenuRef}>

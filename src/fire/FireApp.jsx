@@ -26,7 +26,7 @@ import {
 import {
   US_FIRES_LAYER, US_FIRES_SOURCE_CITATION,
   addUsFiresLayers, applyUsFiresVisibility, applyUsFiresOpacity, restackUsFires,
-  loadUsFires, queryUsFiresAt, renderUsFiresCard,
+  loadUsFires, queryUsFiresAt, renderUsFiresCard, ZERO_ACRE_MAX_AGE_MS,
 } from './usFires.js'
 import {
   HISTORY_LAYER, HISTORY_SOURCE_CITATION, HISTORY_MIN_ZOOM,
@@ -1003,11 +1003,11 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
   // Past-fire footprint card — when the click landed inside a historical
   // perimeter. After the active cards (now → past).
   const historyHtml = results.firehistory ? renderHistoryCard(results.firehistory) : ''
-  // Fire-news section — only when an ACTIVE fire (named US incident, satellite
-  // hotspot, or Canada perimeter) was clicked. Fetched async; `results._news`
-  // holds { articles, loading } once the lookup starts.
-  const newsHtml = (results.usfires || results.firms || results.cwfis) && results._news
-    ? renderNewsCard({ ...results._news, named: results.usfires?.name || null, place })
+  // Fire-news section — only when a NAMED US incident was clicked (its name makes
+  // the search precise/trustworthy). Fetched async; `results._news` holds
+  // { articles, loading } once the lookup starts.
+  const newsHtml = results.usfires?.name && results._news
+    ? renderNewsCard({ ...results._news, named: results.usfires.name, place })
     : ''
 
   const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
@@ -1713,17 +1713,17 @@ export default function FireApp() {
       }
 
       // Place name for the header (Mapbox reverse geocode; falls back to coords).
-      // Once the place resolves, look up fire news — but only when an ACTIVE fire
-      // was clicked. A NIFC named incident searches by fire name (precise); a
-      // FIRMS hotspot / Canada perimeter searches by place + "wildfire" in a
-      // short window (labeled "nearby"). Skip entirely with no name and no place.
+      // Once the place resolves, look up fire news — but ONLY for a NAMED incident
+      // (searched precisely by fire name). Unnamed satellite hotspots / Canada
+      // perimeters used to fall back to a broad place + "wildfire" search, which
+      // returned generic, irrelevant coverage; the fire name is what makes the
+      // results trustworthy, so with no name we show no news at all.
       const runFireNews = (resolvedPlace) => {
         const named = results.usfires?.name || null
-        const hasActiveFire = !!(results.usfires || results.firms || results.cwfis)
-        if (!hasActiveFire || (!named && !resolvedPlace)) return
+        if (!named) return
         results._news = { articles: null, loading: true }
         rerender()
-        fetchFireNews(TILES_API_BASE, { named, location: newsLocation(resolvedPlace, { broad: !named }), windowDays: named ? 30 : 14 })
+        fetchFireNews(TILES_API_BASE, { named, location: newsLocation(resolvedPlace, { broad: false }), windowDays: 30 })
           .then((articles) => { if (stillCurrent()) { results._news = { articles, loading: false }; rerender() } })
           .catch(() => { if (stillCurrent()) { results._news = { articles: [], loading: false }; rerender() } })
       }
@@ -2009,7 +2009,7 @@ export default function FireApp() {
                 ) : (
                   <div className={styles.layerHint}>
                     {usFiresMeta.named > 0
-                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'}${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
+                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'} with acreage, or reported in the last ${Math.round(ZERO_ACRE_MAX_AGE_MS / 3.6e6)} h${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
                       : 'No active US fires in the feeds right now'}
                   </div>
                 )

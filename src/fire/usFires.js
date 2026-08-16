@@ -20,6 +20,11 @@ const DOT = 'fire-usfires-dot'
 const LABEL = 'fire-usfires-label'
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
+// A 0-acre incident older than this is treated as a caught-immediately dispatch
+// (initial-attack noise) and hidden; newer ones still show in case they grow.
+// Exported so the panel hint can state the window without drifting out of sync.
+export const ZERO_ACRE_MAX_AGE_MS = 36 * 60 * 60 * 1000 // ~36 h
+
 // Perimeter/marker colors by containment (WFIGS); InciWeb-only fires in rose.
 const COL_UNCONTAINED = '#ff3b30'
 const COL_PARTIAL = '#ff9500'
@@ -259,12 +264,19 @@ export async function loadUsFires(map, { signal } = {}) {
   const seen = [] // {norm, c:[lng,lat]} — dedup across all three sources
 
   // Every active wildfire from the incident-locations feed (WF + CX; drop RX).
+  const now = Date.now()
   for (const f of incidents) {
     if (!f.geometry || f.geometry.type !== 'Point') continue
     const p = f.properties || {}
     if (!p.name) continue
     const t = String(p.type || '').toUpperCase()
     if (t && t !== 'WF' && t !== 'CX') continue // exclude prescribed burns etc.
+    // Size/age floor: hide a 0-acre (or unsized) incident once it's older than
+    // ~36 h. A real fire has acreage reported by then; a stale zero-acre record is
+    // a caught-immediately dispatch (e.g. LA County's LAC-##### initial attacks),
+    // not a fire of consequence. New zero-acre starts still show for their first
+    // day-and-a-half in case they grow.
+    if ((p.acres == null || p.acres === 0) && p.discovered_ms && (now - p.discovered_ms) > ZERO_ACRE_MAX_AGE_MS) continue
     seen.push({ norm: normName(p.name), c: f.geometry.coordinates })
     pts.push({ type: 'Feature', geometry: f.geometry, properties: { ...p, source: 'wfigs', iconKey: FLAME_STATE('wfigs', p.contained) } })
   }

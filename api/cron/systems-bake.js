@@ -39,27 +39,38 @@ export default async function handler(req, res) {
   const entry = SYSTEMS_DATASETS[ds]
   let out
   if (sp.get('tape') && SYSTEMS_TAPES[ds]) {
+    // `day=YYYY-MM-DD` or `days=d1,d2,…` (backfills): days are baked in
+    // sequence with the index carried in memory between them. Reading the
+    // index back from Blob between calls is unsafe — the CDN serves it for
+    // up to a minute, and two quick merges would drop each other's frames
+    // (that happened on the first prod seed).
+    const days = (sp.get('days') || sp.get('day') || '').split(',').map((d) => d.trim()).filter(Boolean)
+    if (!days.length) days.push(undefined)
+    const results = []
+    let existing = null
     try {
-      let existing = null
+      const r = await fetch(`${BLOB_PUBLIC_BASE}/${SYSTEMS_TAPES[ds].blobBase}-tape.json?nocache=${Date.now()}`, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } })
+      if (r.ok) existing = await r.json()
+    } catch { /* first bake */ }
+    const t0 = Date.now()
+    for (const day of days) {
+      if (Date.now() - t0 > 240000) { results.push({ day, skipped: true, error: 'time budget' }); continue }
       try {
-        const r = await fetch(`${BLOB_PUBLIC_BASE}/${SYSTEMS_TAPES[ds].blobBase}-tape.json`, { cache: 'no-store' })
-        if (r.ok) existing = await r.json()
-      } catch { /* first bake */ }
-      const result = await bakeTape(ds, { day: sp.get('day') || undefined, existing })
-      if (result.unchanged) {
-        out = { ok: true, ds, tape: true, day: result.day, unchanged: true }
-      } else {
+        const result = await bakeTape(ds, { day, existing })
+        if (result.unchanged) { results.push({ day: result.day, unchanged: true }); continue }
         let bytes = 0
         for (const b of result.binaries) {
           await put(b.path, b.buffer, { ...putOpts(b.contentType), cacheControlMaxAge: 31536000 })
           bytes += b.buffer.length
         }
-        for (const f of result.jsons) await put(f.path, JSON.stringify(f.json), putOpts('application/json'))
-        out = { ok: true, ds, tape: true, day: result.day, added: result.added, frames: result.jsons[0].json.frames.length, bytes }
+        existing = result.jsons[0].json
+        for (const f of result.jsons) await put(f.path, JSON.stringify(f.json), { ...putOpts('application/json'), cacheControlMaxAge: 60 })
+        results.push({ day: result.day, added: result.added, frames: existing.frames.length, bytes })
+      } catch (err) {
+        results.push({ day, skipped: true, error: String(err).slice(0, 200) })
       }
-    } catch (err) {
-      out = { ok: false, ds, tape: true, skipped: true, error: String(err).slice(0, 200) }
     }
+    out = { ok: results.every((r) => !r.skipped), ds, tape: true, frames: existing?.frames.length ?? 0, results }
   } else if (!entry) {
     out = { ok: false, error: `unknown dataset "${ds}"` }
   } else {

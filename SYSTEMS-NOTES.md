@@ -559,6 +559,14 @@ other layers untouched). Event feeds (quakes, hotspots) re-pull each cycle.
 Dev note: the check reads the prod Blob base, so on localhost (dev-data)
 nothing ever looks newer — expected.
 
+**Prod backfills (2026-08-21 lesson):** drive the cron endpoint with a day
+LIST — `/api/cron/systems-bake?ds=<tape>&tape=1&days=d1,d2,…` (Bearer
+CRON_SECRET; ≤ ~240 s of work per call: ~2 CAMS days, 7 GFS/WW3 days, 31
+CRW days, 27 weekly). Rapid single-day calls read a CDN-stale index and
+dropped frames; the handler now holds the index in memory across the list
+and the index TTL is 60 s. Local bakes with BLOB_READ_WRITE_TOKEN are fine
+too (sequential, in-process).
+
 ### 2i. Event timelines (earthquakes) — replay without a bake
 `EventTape` (src/systems/eventTape.js) turns the USGS feed's own timestamps
 into a tape the ReplayController can drive. Playing: 3-h ticks, ~3 s per

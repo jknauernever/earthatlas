@@ -18,7 +18,7 @@
  * a throttled upstream never surfaces as a scary CORS/network error.
  */
 
-import { resolveFirmsRequest, firmsCsvToGeoJSON } from './_firms-core.js'
+import { resolveFirmsRequest, firmsCsvToGeoJSON, fetchFirmsSources, firmsUpstreamStatus } from './_firms-core.js'
 
 export const config = { runtime: 'edge' }
 
@@ -59,16 +59,12 @@ export default async function handler(req) {
   }
 
   try {
-    const texts = await Promise.all(
-      resolved.urls.map(({ src, url }) =>
-        fetch(url, { headers: { accept: 'text/csv' } })
-          .then((r) => (r.ok ? r.text() : ''))
-          .then((text) => ({ src, text }))
-          .catch(() => ({ src, text: '' }))
-      )
-    )
-    const fc = firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp })
-    return json(fc, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+    const texts = await fetchFirmsSources(resolved.urls)
+    const status = firmsUpstreamStatus(texts)
+    const fc = { ...firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp, maxHours: resolved.maxHours }), ...status }
+    // Don't let the CDN pin a failed pull for 5 minutes.
+    const cacheControl = status._error ? 'no-store' : resolved.cacheControl
+    return json(fc, { status: 200, headers: { 'cache-control': cacheControl } })
   } catch (err) {
     return json({ ...EMPTY, _error: String(err).slice(0, 120) }, {
       status: 200,

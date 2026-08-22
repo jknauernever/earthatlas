@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { GRAPHQL_URL, resolveBirdweatherQuery } from './api/_birdweather-core.js'
 import { EBIRD_BASE, resolveEbirdRequest } from './api/_ebird-core.js'
-import { resolveFirmsRequest, firmsCsvToGeoJSON } from './api/_firms-core.js'
+import { resolveFirmsRequest, firmsCsvToGeoJSON, fetchFirmsSources, firmsUpstreamStatus } from './api/_firms-core.js'
 import { resolveNifcRequest, normalizeNifc, simplifyNifc } from './api/_nifc-core.js'
 import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-history-core.js'
 import { resolveCwfisRequest, normalizeCwfis } from './api/_cwfis-core.js'
@@ -364,7 +364,10 @@ function firmsProxyPlugin(mapKey) {
         const { searchParams } = new URL(req.url, 'http://localhost')
         res.setHeader('content-type', 'application/json')
         const empty = { type: 'FeatureCollection', features: [], _count: 0 }
-        const resolved = resolveFirmsRequest(searchParams, mapKey)
+        // Dev-only QA hook: ?_fail=1 sends a bogus key upstream so the client's
+        // "couldn't load" state can be exercised without touching .env.local.
+        const key = searchParams.get('_fail') ? 'BADKEY0000000000000000000000000' : mapKey
+        const resolved = resolveFirmsRequest(searchParams, key)
         if (resolved.error) {
           if (resolved.status === 500) {
             res.statusCode = 200
@@ -377,16 +380,10 @@ function firmsProxyPlugin(mapKey) {
           return
         }
         try {
-          const texts = await Promise.all(
-            resolved.urls.map(({ src, url }) =>
-              fetch(url, { headers: { accept: 'text/csv' } })
-                .then((r) => (r.ok ? r.text() : ''))
-                .then((text) => ({ src, text }))
-                .catch(() => ({ src, text: '' }))
-            )
-          )
+          const texts = await fetchFirmsSources(resolved.urls)
+          const status = firmsUpstreamStatus(texts)
           res.statusCode = 200
-          res.end(JSON.stringify(firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp })))
+          res.end(JSON.stringify({ ...firmsCsvToGeoJSON(texts, Date.now(), { minFrp: resolved.minFrp, maxHours: resolved.maxHours }), ...status }))
         } catch (err) {
           res.statusCode = 200
           res.setHeader('x-firms-upstream', '0')

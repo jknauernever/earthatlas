@@ -70,9 +70,20 @@ export function resolveFirmsRequest(searchParams, mapKey) {
   const na = bboxInNA(bbox)
   const base = `${FIRMS_HOST}/${na ? 'usfs/' : ''}api/area/csv`
   const coords = bbox.join(',')
+  // FIRMS's day range counts UTC *calendar* days ending today, not a rolling
+  // window — so `1` right after 00:00 UTC (late afternoon in the US) returns
+  // nothing because no overpass has landed on the new date yet. Fetch one extra
+  // calendar day upstream and trim to a true rolling `days × 24 h` window in
+  // firmsCsvToGeoJSON (via maxHours) so the layer never blanks out at rollover.
+  // Instance limits differ: the US/Canada (usfs) endpoint rejects ranges > 5
+  // with a 200 text body, the global one allows up to 10. Stay inside them and
+  // shrink the rolling window to what we can actually cover.
+  const maxUpstreamDays = na ? 5 : 10
+  const upstreamDays = Math.min(maxUpstreamDays, days + 1)
+  const maxHours = Math.min(days, maxUpstreamDays - 1) * 24
   const urls = sources.map((src) => ({
     src,
-    url: `${base}/${mapKey}/${src}/${coords}/${days}`,
+    url: `${base}/${mapKey}/${src}/${coords}/${upstreamDays}`,
   }))
 
   // Minimum fire radiative power (MW). FIRMS detects ALL thermal anomalies, not
@@ -87,7 +98,39 @@ export function resolveFirmsRequest(searchParams, mapKey) {
   // Detections refresh on satellite overpass cadence; a few minutes of edge
   // staleness is invisible and keeps us well under the 5000-per-10-min cap.
   const cacheControl = 'public, s-maxage=300, stale-while-revalidate=600'
-  return { urls, sources, na, bbox, days, minFrp, cacheControl }
+  return { urls, sources, na, bbox, days, maxHours, minFrp, cacheControl }
+}
+
+/**
+ * Fetch every resolved source URL. FIRMS signals failure two ways: a non-2xx
+ * status (throttled, down) AND a 200 with a plain-text message instead of CSV
+ * ("Invalid MAP_KEY.", "Invalid day range. Expects [1..5].", ...). Both are
+ * surfaced as `error` on the entry so a failed pull never masquerades as a
+ * legitimately empty sky. Never throws.
+ * @returns {Promise<{src:string,text:string,error?:string}[]>}
+ */
+export async function fetchFirmsSources(urls, fetchImpl = fetch) {
+  return Promise.all(urls.map(async ({ src, url }) => {
+    try {
+      const r = await fetchImpl(url, { headers: { accept: 'text/csv' } })
+      const text = await r.text()
+      if (!r.ok) return { src, text: '', error: `HTTP ${r.status}${text ? ': ' + text.trim().slice(0, 80) : ''}` }
+      if (!/^latitude\s*,/i.test(text.trimStart())) {
+        return { src, text: '', error: text.trim().slice(0, 80) || 'empty response' }
+      }
+      return { src, text }
+    } catch (err) {
+      return { src, text: '', error: String(err?.message || err).slice(0, 80) }
+    }
+  }))
+}
+
+/** Summarise fetch outcomes: `_error` only when NO source produced CSV. */
+export function firmsUpstreamStatus(fetched) {
+  const failed = fetched.filter((f) => f.error)
+  const out = { _sources_ok: fetched.length - failed.length, _sources_failed: failed.length }
+  if (failed.length && failed.length === fetched.length) out._error = `NASA FIRMS: ${failed[0].error}`
+  return out
 }
 
 // One CSV row → a parsed object keyed by FIRMS column name. FIRMS area CSV always
@@ -158,7 +201,7 @@ const HOT_RESCUE_FRP = 10
 // (a lone hot pixel), OR a hot peak (≥ HOT_RESCUE_FRP) sits in its 3×3
 // neighbourhood — which pulls in the low-power edges of a real fire while
 // dropping cool, isolated industrial detections. Builds a cell→maxFRP grid once.
-function wildfireLikelyKeeper(feats, minFrp) {
+export function wildfireLikelyKeeper(feats, minFrp) {
   const gridMax = new Map()
   const ci = (v) => Math.floor(v / CLUSTER_CELL_DEG)
   for (const f of feats) {
@@ -186,6 +229,9 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
   const cap = opts.cap ?? 6000
   const keepLow = !!opts.keepLow
   const minFrp = opts.minFrp ?? 0
+  // Rolling time window in hours (see resolveFirmsRequest). Rows with an
+  // unparseable timestamp are kept rather than guessed at.
+  const maxHours = opts.maxHours ?? Infinity
   const seen = new Set()
   const feats = []
   for (const { src, text } of fetched) {
@@ -196,6 +242,7 @@ export function firmsCsvToGeoJSON(fetched, nowMs, opts = {}) {
       if (!keepLow && conf.label === 'low') continue
       const ms = acqMs(row.acq_date, row.acq_time)
       const hoursAgo = ms == null ? null : Math.max(0, Math.round(((nowMs - ms) / 3.6e6) * 10) / 10)
+      if (hoursAgo != null && hoursAgo > maxHours) continue
       // Drop only byte-identical detections (the same satellite reporting the
       // exact same pixel at the same time — rare). Key on the FULL-precision
       // coordinate + satellite + acquisition timestamp. Do NOT collapse by a

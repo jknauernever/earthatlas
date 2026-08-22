@@ -11,6 +11,8 @@
 // kind to take the GeoJSON path (fetch-on-move) instead of the raster path.
 
 import styles from './FireApp.module.css'
+import { wildfireLikelyKeeper } from '../../api/_firms-core.js'
+import { getActiveFireContext, kmBetween } from './usFires.js'
 
 const SRC = 'fire-firms-src'
 const GLOW = 'fire-firms-glow'   // soft halo under each point (the "heat" look)
@@ -36,6 +38,11 @@ export const FIRMS_MIN_ZOOM = 3
 // refineries, ~< 5 MW), so this floor filters most non-fire heat out of live
 // data. The panel exposes a toggle to drop it (show every detection).
 export const FIRMS_WILDFIRE_MIN_FRP = 5
+// How far (km) from a NIFC incident point a cool detection is still "that fire".
+// Scaled up with the fire's reported acreage; 8 km floor covers spotting and
+// the point-vs-front offset of a mid-size fire.
+const NIFC_RESCUE_MIN_KM = 8
+const PERIM_PAD_DEG = 0.03 // ~3 km buffer around a mapped perimeter's bbox
 
 // Default look-back window (days). FIRMS DAY_RANGE counts UTC *calendar* days, so
 // days=1 only returns the current UTC day — near-empty for the first hours after
@@ -169,6 +176,49 @@ export function restackFirms(map) {
 // Called (debounced) on moveend while the layer is on and zoom ≥ FIRMS_MIN_ZOOM.
 // Returns { count, truncated } or null on failure/abort. `signal` lets the
 // caller cancel a stale in-flight fetch when the user keeps panning.
+// "Wildfire-likely" = the proxy's power/peak heuristic (see api/_firms-core.js)
+// OR proximity to a fire NIFC is actively tracking. The power rule alone hides
+// a real fire whose every pixel is cool — e.g. a large fire smouldering after
+// its run, or one seen only under smoke — and those are exactly the fires people
+// come here to watch. An incident point or mapped perimeter is ground truth that
+// the heat nearby is a wildfire, so it overrides the industrial-heat assumption.
+function wildfireLikelyFilter(feats, minFrp, ctx) {
+  const byPower = wildfireLikelyKeeper(feats, minFrp)
+  const pts = (ctx && ctx.pts) || []
+  const perimBoxes = ((ctx && ctx.perims) || []).map(bboxOf).filter(Boolean)
+  const radiusKm = (p) => {
+    const acres = Number(p && p.acres) || 0
+    const areaKm2 = acres * 0.00404686
+    return Math.max(NIFC_RESCUE_MIN_KM, 2.5 * Math.sqrt(areaKm2 / Math.PI))
+  }
+  return (f) => {
+    if (byPower(f)) return true
+    const c = f.geometry.coordinates
+    for (const b of perimBoxes) {
+      if (c[0] >= b[0] - PERIM_PAD_DEG && c[0] <= b[2] + PERIM_PAD_DEG && c[1] >= b[1] - PERIM_PAD_DEG && c[1] <= b[3] + PERIM_PAD_DEG) return true
+    }
+    for (const p of pts) {
+      const g = p.geometry
+      if (!g || g.type !== 'Point') continue
+      if (Math.abs(g.coordinates[1] - c[1]) > 1) continue // cheap pre-cut (~110 km)
+      if (kmBetween(g.coordinates, c) <= radiusKm(p.properties)) return true
+    }
+    return false
+  }
+}
+
+function bboxOf(f) {
+  const g = f && f.geometry
+  if (!g) return null
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity
+  const walk = (x) => {
+    if (typeof x[0] === 'number') { if (x[0] < w) w = x[0]; if (x[0] > e) e = x[0]; if (x[1] < s) s = x[1]; if (x[1] > n) n = x[1] }
+    else for (const y of x) walk(y)
+  }
+  walk(g.coordinates)
+  return Number.isFinite(w) ? [w, s, e, n] : null
+}
+
 export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0, signal } = {}) {
   const b = map.getBounds()
   // ~1m precision. At high zoom the viewport can be narrower than the rounding
@@ -184,14 +234,25 @@ export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0,
   // near-real-time) + NOAA HMS (adds the fast geostationary GOES + analyst QC).
   // Users don't care which satellite saw it — they want where the heat is — so
   // both feeds are merged into this one layer.
-  const firmsUrl = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}${minFrp > 0 ? `&minfrp=${minFrp}` : ''}`
+  // Always pull every detection (one edge-cache key per view) and apply the
+  // wildfire-likely filter here, where we also know what NIFC knows.
+  const firmsUrl = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}`
   const hmsUrl = `${API_BASE}/api/hms?bbox=${bbox}`
-  const [firmsFC, hmsFC] = await Promise.all([
+  const [firmsFC, hmsFC, fireCtx] = await Promise.all([
     fetch(firmsUrl, { signal }).then((r) => r.json()).catch(() => null),
     fetch(hmsUrl, { signal }).then((r) => r.json()).catch(() => null),
+    minFrp > 0 ? getActiveFireContext({ signal }).catch(() => ({ pts: [], perims: [] })) : null,
   ])
+  if (firmsFC && firmsFC.type === 'FeatureCollection' && minFrp > 0) {
+    firmsFC.features = firmsFC.features.filter(wildfireLikelyFilter(firmsFC.features, minFrp, fireCtx))
+  }
   const feats = []
   let truncated = false
+  // Upstream failure is NOT an empty sky. The proxy always answers 200 (so a
+  // throttled NASA never looks like a CORS error) but flags `_error` when every
+  // source failed; a network-level failure leaves firmsFC null. Either way we
+  // report it so the panel can say "couldn't load" instead of "no detections".
+  const firmsError = !firmsFC ? 'no response from /api/firms' : (firmsFC._error || null)
   if (firmsFC && firmsFC.type === 'FeatureCollection') { feats.push(...firmsFC.features); truncated = !!firmsFC._truncated }
   if (hmsFC && hmsFC.type === 'FeatureCollection') {
     for (const f of hmsFC.features) {
@@ -215,7 +276,7 @@ export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0,
   const src = map.getSource(SRC)
   if (src) {
     src.setData({ type: 'FeatureCollection', features: kept })
-    return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated }
+    return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated, error: firmsError }
   }
   return null
 }

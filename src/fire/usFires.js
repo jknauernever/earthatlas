@@ -168,7 +168,7 @@ function centroidOf(geometry) {
 // Normalize a fire name for matching: drop "fire"/"complex" and punctuation.
 const normName = (s) => String(s || '').toLowerCase().replace(/\b(fire|complex)\b/g, '').replace(/[^a-z0-9]/g, '')
 // Rough km between two lng/lat.
-function kmBetween(a, b) {
+export function kmBetween(a, b) {
   const dx = (a[0] - b[0]) * 111 * Math.cos((a[1] + b[1]) / 2 * Math.PI / 180)
   const dy = (a[1] - b[1]) * 111
   return Math.hypot(dx, dy)
@@ -266,6 +266,35 @@ export function restackUsFires(map) {
 //   • InciWeb — adds the official incident-page link (and any name the WFIGS feeds
 //     somehow miss).
 // Prescribed burns (RX) are excluded — this is the wildfire layer.
+// ─── Active-fire context for other layers ──────────────────────────────────
+// The hotspot layer's "wildfire-likely" filter needs to know where NIFC says a
+// fire is burning, even when this layer is off. Returns the full dedup'd point
+// set if loadUsFires has run; otherwise pulls just the (small, edge-cached)
+// incident feed once and keeps it. Perimeters ride along when we have them.
+let incidentsOnly = null
+export async function getActiveFireContext({ signal } = {}) {
+  if (cachedPts && cachedPts.features.length) return { pts: cachedPts.features, perims: (cachedPerim && cachedPerim.features) || [] }
+  if (!incidentsOnly) {
+    try {
+      const fc = await fetch(`${API_BASE}/api/nifc?layer=incidents`, { signal }).then((r) => (r.ok ? r.json() : null))
+      const now = Date.now()
+      const pts = []
+      for (const f of ((fc && fc.features) || [])) {
+        if (!f.geometry || f.geometry.type !== 'Point') continue
+        const p = f.properties || {}
+        const t = String(p.type || '').toUpperCase()
+        if (t && t !== 'WF' && t !== 'CX') continue
+        if ((p.acres == null || p.acres === 0) && p.discovered_ms && (now - p.discovered_ms) > ZERO_ACRE_MAX_AGE_MS) continue
+        pts.push(f)
+      }
+      if (fc) incidentsOnly = pts
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e
+    }
+  }
+  return { pts: incidentsOnly || [], perims: (cachedPerim && cachedPerim.features) || [] }
+}
+
 export async function loadUsFires(map, { signal } = {}) {
   // A feed "failed" if the request errored, the proxy flagged an upstream error
   // (503 / _upstream / _error), or it isn't a FeatureCollection. NIFC's shared

@@ -1306,10 +1306,10 @@ export default function FireApp() {
         const minFrp = firmsAllSourcesRef.current ? 0 : FIRMS_WILDFIRE_MIN_FRP
         const res = await refreshFirms(m, { minFrp, signal: ctrl.signal })
         if (ctrl.signal.aborted) return
-        setFirmsMeta({ loading: false, count: res ? res.count : 0, geo: res ? (res.geo || 0) : 0, truncated: !!(res && res.truncated), error: !res })
+        setFirmsMeta({ loading: false, count: res ? res.count : 0, geo: res ? (res.geo || 0) : 0, truncated: !!(res && res.truncated), error: !res ? true : (res.error || false) })
       } catch (err) {
         if (ctrl.signal.aborted || err?.name === 'AbortError') return
-        setFirmsMeta({ loading: false, count: 0, geo: 0, truncated: false, error: true })
+        setFirmsMeta({ loading: false, count: 0, geo: 0, truncated: false, error: String(err?.message || err) })
       }
     }, 250)
   }, [])
@@ -1980,7 +1980,10 @@ export default function FireApp() {
                 belowMinZoom ? (
                   <div className={styles.layerHint}>Zoom in to load active fire detections — global, NASA FIRMS, last 48 h</div>
                 ) : firmsMeta.error ? (
-                  <div className={styles.layerError}>Couldn’t load active fire data — toggle off and on to retry.</div>
+                  <div className={styles.layerError}>
+                    Couldn’t load active fire data{typeof firmsMeta.error === 'string' ? ` (${firmsMeta.error})` : ''}
+                    {firmsMeta.count > 0 ? ` — showing ${firmsMeta.count.toLocaleString()} from NOAA GOES only` : ''} — toggle off and on to retry.
+                  </div>
                 ) : firmsMeta.loading ? (
                   <div className={styles.layerHint}>Loading active fire detections…</div>
                 ) : (

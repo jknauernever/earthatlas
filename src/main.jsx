@@ -4,7 +4,13 @@ import * as Sentry from '@sentry/react'
 import { isMapTileRequest } from './utils/mapTileRequests'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+
+// Old tool URLs redirect with their shareable state intact (/systems → /inmotion).
+function RedirectKeepingQuery({ to }) {
+  const { search, hash } = useLocation()
+  return <Navigate to={`${to}${search}${hash}`} replace />
+}
 import App from './App.jsx'
 import ExploreApp from './explore/ExploreApp.jsx'
 import whalesConfig from './explore/configs/whales.js'
@@ -34,6 +40,7 @@ import CarbonApp from './carbon/CarbonApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
 import ShipTrafficApp from './shiptraffic/ShipTrafficApp.jsx'
+import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
 
 // Sentry: only initialize in production builds AND when a DSN is configured.
@@ -132,6 +139,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />
           <Route path="/shiptraffic" element={<ShipTrafficApp />} />
+          <Route path="/inmotion" element={<SystemsApp />} />
+          <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />
           <Route path="/admin" element={<AdminApp />} />
           <Route path="/*" element={<App />} />
         </Routes>

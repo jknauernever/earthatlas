@@ -27,3 +27,6 @@ public/birdsong-stations.json
 
 # Parcel bake artifacts (large NDJSON / PMTiles — never commit; upload to Blob instead)
 scripts/bake-parcels/build/
+
+# Local dev bakes (scripts/bake-gfs-wind.mjs without a Blob token)
+public/dev-data/

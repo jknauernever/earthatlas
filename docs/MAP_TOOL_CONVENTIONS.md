@@ -43,6 +43,13 @@ Use short, stable param names (`bm`, `z`, `lat`, `lng`, plus per-tool keys).
 Offer a basemap picker (Satellite / Dark / Light / Streets, + others as needed),
 but satellite is the default everywhere.
 
+**Globe carve-out:** planet-scale tools whose subject is inherently global
+(`/inmotion`, code in src/systems) may use `projection: 'globe'` with the `/live`-style fog/atmosphere
+(`setFog` in `style.load` — see `src/systems/SystemsApp.jsx`). Mercator badly
+distorts polar circulation at low zoom. Everything else in this doc still
+applies to them — satellite default, URL state, zoom indicator, `style.load`
+readiness.
+
 ## 3. Live zoom indicator (required)
 
 Render the shared `<ZoomIndicator map={mapRef.current} />`

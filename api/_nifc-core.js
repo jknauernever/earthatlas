@@ -52,6 +52,14 @@ export function resolveNifcRequest(searchParams) {
   const svc = SERVICES[layer]
   if (!svc) return { error: 'invalid layer (expect perimeters|incidents)', status: 400 }
 
+  // detail=low → simplified perimeter geometry (see simplifyNifc). The full
+  // perimeters pull is ~33 MB of vertex precision nobody can see zoomed out;
+  // the client asks for `low` below its detail zoom and upgrades on zoom-in.
+  // Points (incidents) have nothing to simplify, so detail is forced to full.
+  const detailRaw = (searchParams.get('detail') || 'full').trim()
+  if (detailRaw !== 'full' && detailRaw !== 'low') return { error: 'invalid detail (expect low)', status: 400 }
+  const detail = layer === 'perimeters' ? detailRaw : 'full'
+
   // where=1=1, all features, GeoJSON. resultRecordCount well above the live
   // count so we never silently truncate; the services are small.
   const qs = new URLSearchParams({
@@ -67,7 +75,7 @@ export function resolveNifcRequest(searchParams) {
   // season, so we keep serving the last good copy for up to a day while a
   // background revalidation retries, rather than blanking the map.
   const cacheControl = 'public, s-maxage=300, stale-while-revalidate=86400'
-  return { layer, url, cacheControl }
+  return { layer, detail, url, cacheControl }
 }
 
 // Normalize the GeoJSON: WFIGS perimeters and incidents use different field
@@ -109,4 +117,77 @@ function num(v) {
   if (v == null || v === '') return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
+}
+
+// ─── Geometry simplification (the detail=low variant) ───────────────────────
+// Douglas–Peucker per polygon ring + 5-decimal coordinate rounding (~1 m).
+// EVERY feature survives — only vertex counts shrink — so perimeter-only fires
+// still get their centroid markers and nothing disappears from the map. The
+// default tolerance (0.001° ≈ 110 m) is sub-pixel below zoom ~10 and ≲2 px at
+// the client's detail-upgrade zoom, where it swaps in full geometry anyway.
+// Shared by the snapshot cron, the Edge fallback, and the dev middleware.
+
+function perpDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1]
+  if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1])
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)))
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy))
+}
+
+// Iterative DP — endpoints always survive.
+function dpOpen(points, tol) {
+  const n = points.length
+  if (n <= 2) return points.slice()
+  const keep = new Uint8Array(n)
+  keep[0] = 1; keep[n - 1] = 1
+  const stack = [[0, n - 1]]
+  while (stack.length) {
+    const [i, j] = stack.pop()
+    let maxD = -1, maxK = -1
+    for (let k = i + 1; k < j; k++) {
+      const d = perpDist(points[k], points[i], points[j])
+      if (d > maxD) { maxD = d; maxK = k }
+    }
+    if (maxD > tol) { keep[maxK] = 1; stack.push([i, maxK], [maxK, j]) }
+  }
+  const out = []
+  for (let k = 0; k < n; k++) if (keep[k]) out.push(points[k])
+  return out
+}
+
+const round5 = (n) => Math.round(n * 1e5) / 1e5
+
+// Closed ring (first == last): split at a mid anchor so DP can't collapse the
+// loop toward a line, simplify each half, re-close. Result is always a valid
+// ring of ≥ 4 points.
+function simplifyRing(ring, tol) {
+  const open = ring.slice(0, Math.max(ring.length - 1, 0))
+  let pts
+  if (open.length <= 4) {
+    pts = open.map(([x, y]) => [round5(x), round5(y)])
+  } else {
+    const mid = Math.floor(open.length / 2)
+    const a = dpOpen(open.slice(0, mid + 1), tol)
+    const b = dpOpen(open.slice(mid), tol)
+    pts = a.concat(b.slice(1)).map(([x, y]) => [round5(x), round5(y)])
+  }
+  if (pts.length < 3) pts = open.map(([x, y]) => [round5(x), round5(y)]) // degenerate: keep original shape
+  pts.push([pts[0][0], pts[0][1]])
+  return pts
+}
+
+export function simplifyNifc(fc, tol = 0.001) {
+  if (!fc || !Array.isArray(fc.features)) return fc
+  const features = fc.features.map((f) => {
+    const g = f && f.geometry
+    if (!g) return f
+    if (g.type === 'Polygon') {
+      return { ...f, geometry: { type: 'Polygon', coordinates: g.coordinates.map((r) => simplifyRing(r, tol)) } }
+    }
+    if (g.type === 'MultiPolygon') {
+      return { ...f, geometry: { type: 'MultiPolygon', coordinates: g.coordinates.map((poly) => poly.map((r) => simplifyRing(r, tol))) } }
+    }
+    return f
+  })
+  return { ...fc, features, _detail: 'low' }
 }

@@ -36,6 +36,33 @@ let cachedPerim = null
 let cachedPts = null
 let lastMeta = { perimeters: 0, named: 0, inciweb: 0, updatedMs: null } // last good load, for stale-keep
 
+// Perimeter detail is zoom-dependent: below this zoom we fetch the ~10× smaller
+// `detail=low` variant (simplified vertices, EVERY fire still present); at or
+// above it we swap in the full-fidelity borders. 0.001° simplification is ≲2 px
+// at z11, so the seam is invisible.
+const PERIM_DETAIL_ZOOM = 11
+let perimDetail = null            // 'low' | 'full' — what cachedPerim holds
+let perimUpgradeInFlight = false
+const perimUpgradeHooked = new WeakSet() // maps we've attached the zoom watcher to
+
+// Swap in full-fidelity perimeters once the user zooms in far enough to see
+// the difference. Failure keeps the low copy and retries on the next zoomend.
+async function maybeUpgradePerims(map) {
+  if (perimDetail !== 'low' || perimUpgradeInFlight) return
+  try { if (map.getZoom() < PERIM_DETAIL_ZOOM) return } catch { return }
+  perimUpgradeInFlight = true
+  try {
+    const r = await fetch(`${API_BASE}/api/nifc?layer=perimeters`)
+    const fc = r.ok ? await r.json() : null
+    if (fc && fc.type === 'FeatureCollection' && fc._upstream == null && fc._error == null && fc.features.length) {
+      cachedPerim = fc
+      perimDetail = 'full'
+      if (map.getSource(PERIM_SRC)) map.getSource(PERIM_SRC).setData(fc)
+    }
+  } catch { /* transient — low detail stays up */ }
+  finally { perimUpgradeInFlight = false }
+}
+
 export const US_FIRES_LAYER = {
   id: 'usfires',
   kind: 'usfires',
@@ -91,7 +118,8 @@ const FLAME_ICONS = {
 // Unknown/negative acreage falls into the smallest class. Feature-only expression
 // so it can be nested inside the zoom `interpolate` on icon-size.
 const ACRE_SIZE_MUL = ['step', ['coalesce', ['get', 'acres'], -1],
-  0.8,         // < 100 ac (and unknown)
+  0.45,        // < 1 ac (zero/unreported): dispatch-scale, visually minor
+  1, 0.8,      // 1 – 100
   100, 1.0,    // 100 – 1k
   1000, 1.25,  // 1k – 10k
   10000, 1.55, // 10k – 100k
@@ -245,8 +273,17 @@ export async function loadUsFires(map, { signal } = {}) {
   const fetchFC = (url) => fetch(url, { signal })
     .then((r) => (r.ok ? r.json() : { _failed: r.status }))
     .catch((e) => (e?.name === 'AbortError' ? Promise.reject(e) : { _failed: 'network' }))
+  // Zoomed out, the simplified perimeter variant is plenty (and ~10× smaller —
+  // the full 33 MB pull was what made first paint slow); zoomed in, fetch full
+  // borders straight away. Crossing the threshold later upgrades via zoomend.
+  let wantFull = true
+  try { wantFull = map.getZoom() >= PERIM_DETAIL_ZOOM } catch { wantFull = false }
+  if (!perimUpgradeHooked.has(map)) {
+    perimUpgradeHooked.add(map)
+    map.on('zoomend', () => { maybeUpgradePerims(map) })
+  }
   const [perimFC, incFC, inciFC] = await Promise.all([
-    fetchFC(`${API_BASE}/api/nifc?layer=perimeters`),
+    fetchFC(`${API_BASE}/api/nifc?layer=perimeters${wantFull ? '' : '&detail=low'}`),
     fetchFC(`${API_BASE}/api/nifc?layer=incidents`),
     fetchFC(`${API_BASE}/api/inciweb`),
   ])
@@ -303,8 +340,10 @@ export async function loadUsFires(map, { signal } = {}) {
     pts.push({ type: 'Feature', geometry: f.geometry, properties: { ...p, source: 'inciweb', iconKey: 'named' } })
   }
   // Keep the last good perimeters if that feed alone failed (incidents succeeded).
-  if (perimFC && perimFC.type === 'FeatureCollection') cachedPerim = perimFC
-  else if (!cachedPerim) cachedPerim = EMPTY_FC
+  if (perimFC && perimFC.type === 'FeatureCollection') {
+    cachedPerim = perimFC
+    perimDetail = wantFull ? 'full' : 'low'
+  } else if (!cachedPerim) cachedPerim = EMPTY_FC
   cachedPts = { type: 'FeatureCollection', features: pts }
   if (map.getSource(PERIM_SRC)) map.getSource(PERIM_SRC).setData(cachedPerim)
   if (map.getSource(PTS_SRC)) map.getSource(PTS_SRC).setData(cachedPts)

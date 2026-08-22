@@ -4,7 +4,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { GRAPHQL_URL, resolveBirdweatherQuery } from './api/_birdweather-core.js'
 import { EBIRD_BASE, resolveEbirdRequest } from './api/_ebird-core.js'
 import { resolveFirmsRequest, firmsCsvToGeoJSON } from './api/_firms-core.js'
-import { resolveNifcRequest, normalizeNifc } from './api/_nifc-core.js'
+import { resolveNifcRequest, normalizeNifc, simplifyNifc } from './api/_nifc-core.js'
 import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-history-core.js'
 import { resolveCwfisRequest, normalizeCwfis } from './api/_cwfis-core.js'
 import { resolveHmsRequest, normalizeHms } from './api/_hms-core.js'
@@ -401,6 +401,12 @@ function firmsProxyPlugin(mapKey) {
 // (api/nifc.js) — same NIFC core, same normalized GeoJSON — so the US active-
 // wildfire layer works identically under `npm run dev`. No key needed.
 function nifcProxyPlugin() {
+  // Dev-only in-memory cache. The perimeters pull is ~33 MB from NIFC's
+  // rate-limited shared ArcGIS quota — without this, every /fire reload
+  // re-downloaded it (≈6 s before any flame icon rendered) and burned quota.
+  // Prod doesn't need it: the edge fn reads the cron-baked Blob snapshot.
+  const cache = new Map() // `${layer}:${detail}` → { t, body }
+  const CACHE_TTL_MS = 5 * 60 * 1000
   return {
     name: 'nifc-proxy',
     configureServer(server) {
@@ -414,14 +420,25 @@ function nifcProxyPlugin() {
           res.end(JSON.stringify({ error: resolved.error }))
           return
         }
+        const key = `${resolved.layer}:${resolved.detail}`
+        const hit = cache.get(key)
+        if (hit && Date.now() - hit.t < CACHE_TTL_MS) {
+          res.statusCode = 200
+          res.end(hit.body)
+          return
+        }
         try {
           const r = await fetch(resolved.url, { headers: { accept: 'application/json' } })
           if (!r.ok) { res.statusCode = 503; res.end(JSON.stringify({ ...empty, _upstream: r.status })); return }
           const raw = await r.json()
           // ArcGIS reports quota/errors as a 200 with an { error } body.
           if (raw && raw.error) { res.statusCode = 503; res.end(JSON.stringify({ ...empty, _upstream: raw.error.code || 'arcgis-error' })); return }
+          let fc = normalizeNifc(raw, resolved.layer)
+          if (resolved.detail === 'low') fc = simplifyNifc(fc)
+          const body = JSON.stringify(fc)
+          cache.set(key, { t: Date.now(), body })
           res.statusCode = 200
-          res.end(JSON.stringify(normalizeNifc(raw, resolved.layer)))
+          res.end(body)
         } catch (err) {
           res.statusCode = 503
           res.end(JSON.stringify({ ...empty, _error: String(err).slice(0, 120) }))
@@ -588,6 +605,43 @@ function geoProxyPlugin(mapboxToken) {
   }
 }
 
+// Dev middleware: /api/systems-explain — mirrors the production function
+// (api/systems-explain.js), same core module, so the /systems "Explain this
+// view" button works identically under `npm run dev`. Needs ANTHROPIC_API_KEY
+// in .env.local; without it the endpoint returns the honest 503
+// not-configured state (the UI handles it). Dev-only in-memory cache stands
+// in for the CDN cache prod gets from s-maxage.
+function systemsExplainPlugin(anthropicKey, mapboxKey) {
+  const cache = new Map() // facts param → { t, body }
+  const CACHE_TTL_MS = 60 * 60 * 1000
+  return {
+    name: 'systems-explain-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/systems-explain', async (req, res) => {
+        res.setHeader('content-type', 'application/json')
+        const { decodeFacts, narrateFacts } = await import('./api/_systems-explain-core.js')
+        const param = new URL(req.url, 'http://localhost').searchParams.get('f')
+        const facts = decodeFacts(param)
+        if (!facts) { res.statusCode = 400; res.end(JSON.stringify({ error: 'bad_facts' })); return }
+        const hit = cache.get(param)
+        if (hit && Date.now() - hit.t < CACHE_TTL_MS) { res.statusCode = 200; res.end(hit.body); return }
+        if (anthropicKey) process.env.ANTHROPIC_API_KEY = anthropicKey
+        if (mapboxKey) process.env.MAPBOX_TOKEN = mapboxKey
+        try {
+          const out = await narrateFacts(facts)
+          const body = JSON.stringify(out)
+          cache.set(param, { t: Date.now(), body })
+          res.statusCode = 200
+          res.end(body)
+        } catch (err) {
+          res.statusCode = err.code === 'not_configured' ? 503 : 502
+          res.end(JSON.stringify({ error: err.code === 'not_configured' ? 'not_configured' : 'narration_failed' }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // Load all env (incl. non-VITE_ vars) so the eBird dev proxy can read the
   // server-side token under `npm run dev`. Never bundled into the client.
@@ -600,6 +654,8 @@ export default defineConfig(({ mode }) => {
     process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN || ''
   // Server-side only — never bundled. Powers the /fire active-fire dev proxy.
   const firmsKey = env.FIRMS_MAP_KEY || process.env.FIRMS_MAP_KEY || ''
+  // Server-side only — never bundled. Powers the /systems explain dev proxy.
+  const anthropicKey = env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || ''
   return {
   plugins: [
     react(),
@@ -614,6 +670,7 @@ export default defineConfig(({ mode }) => {
     inciwebProxyPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
+    systemsExplainPlugin(anthropicKey, mapboxToken),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

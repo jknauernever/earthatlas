@@ -99,6 +99,18 @@ const ROUTES = [
     keywords:
       'Salish Sea vessel traffic, ship strike risk, whale ship interaction, AIS vessel density, San Juan Islands orcas, Southern Resident killer whales, MarineCadastre AIS, cetacean sightings map, iNaturalist whales, OBIS, Haro Strait shipping',
   },
+  {
+    out: 'inmotion.html',
+    url: 'https://earthatlas.org/inmotion',
+    title: 'In Motion — Earth’s systems, animated · EarthAtlas',
+    description:
+      'Watch Earth’s systems in motion — global winds animated as flowing particles on a live globe, with plain-language explanations of what you’re seeing and where every value comes from. An EarthAtlas tool.',
+    // TODO: dedicated systems-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas In Motion — animated global wind particles flowing over a 3D globe',
+    keywords:
+      'global wind map, animated wind map, earth wind visualization, NOAA GFS winds, jet stream map, trade winds, wind particle animation, earth systems, live globe, weather globe',
+  },
 ]
 
 function patchHead(html, r) {

@@ -35,6 +35,14 @@
       "destination": "/shiptraffic.html"
     },
     {
+      "source": "/inmotion",
+      "destination": "/inmotion.html"
+    },
+    {
+      "source": "/systems",
+      "destination": "/inmotion"
+    },
+    {
       "source": "/((?!api/|@)[^.]*)",
       "destination": "/index.html"
     }
@@ -98,6 +106,82 @@
     {
       "path": "/api/cron/nifc-snapshot",
       "schedule": "0 */3 * * *"
+    },
+    {
+      "path": "/api/cron/gfs-wind",
+      "schedule": "30 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=currents",
+      "schedule": "45 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sst",
+      "schedule": "15 8,20 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=waves",
+      "schedule": "5 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=airtemp",
+      "schedule": "35 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sstanom",
+      "schedule": "20 8,20 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=hotspots",
+      "schedule": "10 */3 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=aerosol",
+      "schedule": "50 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sst-year&tape=1",
+      "schedule": "50 19 * * 5"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sstanom-year&tape=1",
+      "schedule": "55 19 * * 5"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=smoke",
+      "schedule": "52 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=dust",
+      "schedule": "54 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=smoke&tape=1",
+      "schedule": "35 1,13 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=dust&tape=1",
+      "schedule": "45 1,13 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=aerosol&tape=1",
+      "schedule": "25 1,13 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=airtemp&tape=1",
+      "schedule": "40 2,8,14,20 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=waves&tape=1",
+      "schedule": "45 2,8,14,20 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sst&tape=1",
+      "schedule": "30 19 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=sstanom&tape=1",
+      "schedule": "35 19 * * *"
     }
   ]
 }

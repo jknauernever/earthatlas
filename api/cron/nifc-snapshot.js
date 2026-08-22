@@ -17,10 +17,18 @@
  */
 
 import { put } from '@vercel/blob'
-import { resolveNifcRequest, normalizeNifc } from '../_nifc-core.js'
+import { resolveNifcRequest, normalizeNifc, simplifyNifc } from '../_nifc-core.js'
 
 const LAYERS = ['perimeters', 'incidents']
 const blobPath = (layer) => `fire/nifc-${layer}.json`
+
+const putJson = (path, body) => put(path, body, {
+  access: 'public',
+  addRandomSuffix: false,
+  allowOverwrite: true,
+  contentType: 'application/json',
+  cacheControlMaxAge: 300,
+})
 
 async function snapshotLayer(layer) {
   const resolved = resolveNifcRequest(new URLSearchParams({ layer }))
@@ -32,14 +40,17 @@ async function snapshotLayer(layer) {
   // Never overwrite a good snapshot with an empty one (upstream hiccup).
   if (!fc.features.length) throw new Error('empty result')
   fc._fetched_ms = Date.now()
-  await put(blobPath(layer), JSON.stringify(fc), {
-    access: 'public',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: 'application/json',
-    cacheControlMaxAge: 300,
-  })
-  return { layer, count: fc.features.length }
+  await putJson(blobPath(layer), JSON.stringify(fc))
+  // Perimeters also get a simplified variant (same pull, no extra NIFC load):
+  // the client fetches this ~10× smaller file when zoomed out and upgrades to
+  // full geometry on zoom-in. Every fire keeps its perimeter in both.
+  let low = null
+  if (layer === 'perimeters') {
+    const lowFc = simplifyNifc(fc)
+    await putJson('fire/nifc-perimeters-low.json', JSON.stringify(lowFc))
+    low = lowFc.features.length
+  }
+  return { layer, count: fc.features.length, ...(low != null ? { low } : {}) }
 }
 
 export default async function handler(req, res) {

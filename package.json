@@ -15,12 +15,15 @@
     "lint": "eslint src --ext .js,.jsx"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/react": "^10.53.1",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.4.0",
+    "h5wasm": "^0.10.3",
     "mapbox-gl": "^3.24.1",
+    "netcdfjs": "^4.0.0",
     "pmtiles": "^4.4.1",
     "posthog-js": "^1.356.1",
     "react": "^18.3.1",

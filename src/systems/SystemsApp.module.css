@@ -1,0 +1,662 @@
+/* EarthAtlas Systems — same dark-glass visual language as the other map tools
+   so the suite reads as one. Accent here is atmosphere cyan; the sub-badge
+   matches to signal the earth-systems context. */
+
+.container {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #e5e7eb;
+}
+.mapWrap { position: absolute; inset: 0; }
+
+/* Particle animation overlay — plain DOM above the map canvas, below all
+   chrome. Clicks fall through to the map (that's the wind-readout popup). */
+.windCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tokenError {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.tokenError code { color: #22d3ee; }
+
+/* ─── Branding ───────────────────────────────────────────────────────────── */
+.branding {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.brandingLink { text-decoration: none; color: inherit; display: inline-flex; align-items: center; transition: opacity 0.15s ease; }
+.brandingLink:hover { opacity: 0.8; }
+.wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
+.subBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #67e8f9; /* atmosphere cyan */
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+}
+
+/* ─── Search box ─────────────────────────────────────────────────────────── */
+.searchBox {
+  position: absolute;
+  top: 16px; right: 60px;
+  width: 320px;
+  max-width: calc(100vw - 80px);
+  z-index: 11;
+  font-family: inherit;
+}
+
+/* ─── "Explain this view" ────────────────────────────────────────────────── */
+.explainBtn {
+  position: absolute;
+  top: 16px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 16px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: #e0fbff;
+  background: linear-gradient(rgba(10, 14, 23, 0.88), rgba(10, 14, 23, 0.88)) padding-box,
+    linear-gradient(120deg, rgba(34, 211, 238, 0.9), rgba(96, 165, 250, 0.7), rgba(34, 211, 238, 0.9)) border-box;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  box-shadow: 0 2px 18px rgba(34, 211, 238, 0.18);
+  transition: box-shadow 0.2s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.explainBtn:hover:not(:disabled) { box-shadow: 0 2px 26px rgba(34, 211, 238, 0.4); transform: translateX(-50%) translateY(-1px); }
+.explainBtn:disabled { opacity: 0.45; cursor: default; }
+.explainSpark { color: #67e8f9; font-size: 14px; }
+
+.explainCard {
+  position: absolute;
+  top: 62px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(560px, calc(100vw - 24px));
+  padding: 16px 18px 12px;
+  background: rgba(10, 14, 23, 0.92);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+  animation: explainIn 0.25s ease;
+}
+@keyframes explainIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.explainClose {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 30px; height: 30px;
+  border: 0; border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 20px; line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.explainClose:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.explainText {
+  margin: 0 14px 10px 0;
+  font-size: 13.5px; line-height: 1.65;
+  color: rgba(255, 255, 255, 0.92);
+}
+/* Narrator text is rendered from a strict mini-format (src/systems/aiFormat.js):
+   small caps-style section headers, short paragraphs, one bold key phrase. */
+.explainText :global(.ai-h) {
+  margin: 12px 0 3px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #67e8f9;
+}
+.explainText :global(.ai-h:first-child) { margin-top: 0; }
+.explainText :global(.ai-p) { margin: 0 0 8px; }
+.explainText :global(.ai-p:last-child) { margin-bottom: 0; }
+.explainText strong { color: #fff; font-weight: 700; }
+.explainMuted {
+  margin: 0 14px 10px 0;
+  font-size: 12.5px; line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+.explainLoading {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #a5f3fc;
+}
+.explainEllipsis::after {
+  content: '…';
+  animation: explainDots 1.2s steps(4, end) infinite;
+}
+@keyframes explainDots {
+  0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '…'; }
+}
+.explainCursor {
+  display: inline-block;
+  width: 7px; height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: rgba(103, 232, 249, 0.8);
+  animation: explainBlink 0.8s steps(2) infinite;
+}
+@keyframes explainBlink { 50% { opacity: 0; } }
+.explainChips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.explainChip {
+  font-size: 10.5px; line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.explainFooter {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 7px;
+}
+.explainRefresh {
+  border: 0; background: transparent; padding: 0;
+  font: inherit; font-size: 10px;
+  color: rgba(120, 200, 255, 0.85);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.explainRefresh:hover { color: rgba(160, 220, 255, 1); }
+
+/* ─── Basemap picker ─────────────────────────────────────────────────────── */
+.basemapMenu { position: absolute; top: 64px; right: 60px; z-index: 10; }
+.basemapToggle, .basemapToggleActive {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.basemapToggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
+.basemapToggleActive { background: #131c30; color: #22d3ee; border-color: rgba(34, 211, 238, 0.5); }
+.basemapMenuPanel {
+  position: absolute; top: 42px; right: 0;
+  width: 160px; padding: 4px;
+  background: rgba(10, 14, 23, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.basemapMenuTitle {
+  padding: 8px 10px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5); font-weight: 600;
+}
+.basemapMenuItem, .basemapMenuItemActive {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
+  border: 0; background: transparent; color: #e5e7eb;
+  font: inherit; font-size: 13px; text-align: left;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.1s ease;
+}
+.basemapMenuItem:hover { background: rgba(255, 255, 255, 0.05); }
+.basemapMenuItemActive { background: rgba(34, 211, 238, 0.12); color: #fff; }
+.basemapMenuItemLabel { flex: 1; font-weight: 500; }
+.basemapMenuCheck { color: #22d3ee; }
+
+/* ─── Control panel ──────────────────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 70px; left: 16px;
+  width: 312px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 100px);
+  display: flex; flex-direction: column;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  z-index: 11;
+  overflow: hidden;
+}
+.panelHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px;
+  flex-shrink: 0;
+}
+.panelTitle {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
+}
+.panelCollapse {
+  border: 0; background: transparent; color: rgba(255, 255, 255, 0.6);
+  font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1;
+}
+.panelCollapse:hover { color: #fff; }
+.panelCollapsed { width: 312px; }
+.panelBody { padding: 0 14px 14px; overflow-y: auto; }
+
+/* ─── Groups: Air / Water / Land ─────────────────────────────────────────── */
+.group + .group { margin-top: 10px; }
+.groupHead {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Layer rows: switch + name + inline source link ─────────────────────── */
+.layerBlock { padding-bottom: 0; }
+.layerBlock + .layerBlock { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.layerRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0;
+}
+.switch, .switchOn {
+  position: relative;
+  width: 34px; height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer; padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.switchOn { background: rgba(34, 211, 238, 0.35); border-color: rgba(34, 211, 238, 0.6); }
+.switchKnob {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+.switchOn .switchKnob { transform: translateX(14px); }
+/* One line per dataset: name + short descriptor side by side, descriptor
+   truncates rather than wrapping. Source links live in the live-stamp (when
+   the layer is on) and in "How this is sourced". */
+.layerInfo { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex: 1; }
+.layerName { font-size: 13.5px; font-weight: 600; color: #fff; line-height: 1.3; white-space: nowrap; }
+.layerSub {
+  font-size: 11px; color: rgba(255, 255, 255, 0.5); line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.sourceLink { color: rgba(120, 200, 255, 0.9); text-decoration: underline; text-underline-offset: 2px; }
+.sourceLink:hover { color: rgba(160, 220, 255, 1); }
+
+/* Inline provenance states: live run stamp / loading / honest failure. */
+.liveNote {
+  font-size: 11px; line-height: 1.5;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, 0.07);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 7px;
+  padding: 7px 9px;
+  margin: 0 0 12px;
+}
+.liveDot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  margin-right: 6px;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
+}
+.loadingNote {
+  font-size: 11px; line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 0 10px;
+}
+.errorNote {
+  font-size: 11px; line-height: 1.5;
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 7px;
+  padding: 7px 9px;
+  margin-bottom: 12px;
+}
+
+.field { margin-bottom: 14px; }
+.fieldLabel {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55); font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.chipRow { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip, .chipActive {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit; font-size: 10.5px;
+  padding: 3px 7px; border-radius: 999px; cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.chip:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.chipActive {
+  background: rgba(34, 211, 238, 0.16);
+  border-color: rgba(34, 211, 238, 0.5);
+  color: #a5f3fc;
+}
+
+/* Wind-speed legend */
+.legendBar { height: 10px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.1); }
+.legendScale {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: rgba(255, 255, 255, 0.6);
+  margin-top: 3px; font-variant-numeric: tabular-nums;
+}
+.legendWords {
+  display: flex; flex-wrap: wrap; gap: 4px 10px;
+  margin-top: 6px;
+  font-size: 10.5px; line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+}
+.legendWord strong { color: rgba(255, 255, 255, 0.85); font-weight: 600; }
+.legendNoteText { font-size: 10.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.55); }
+
+/* Plain-language explainer */
+/* "What am I seeing?" — the explain layer gets a rule above it and a
+   cyan-accented callout so it reads as the panel's payload, not a footnote. */
+.explainBox {
+  margin: 16px 0 14px;
+  padding: 12px 12px 12px 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(34, 211, 238, 0.04));
+  border-left: 3px solid #22d3ee;
+  box-shadow: inset 0 1px 0 rgba(34, 211, 238, 0.25);
+}
+.explainBoxLabel {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #67e8f9; font-weight: 700;
+  margin-bottom: 7px;
+}
+.explain {
+  margin: 0;
+  font-size: 12px; line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+}
+.explain + .explain { margin-top: 8px; }
+
+.comingNext {
+  font-size: 10.5px; line-height: 1.5;
+  color: rgba(255, 255, 255, 0.45);
+  padding-top: 2px;
+}
+
+/* "How this is sourced" link + built-by footer */
+.methodology {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(96, 165, 250, 0.95);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.methodology:hover { color: #93c5fd; text-decoration: underline; }
+.builtBy {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.45);
+}
+.builtByLink {
+  color: rgba(120, 200, 255, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+.builtByLink:hover { color: rgba(160, 220, 255, 1); }
+
+/* "How this is sourced" modal */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal {
+  background: #0f1726;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px 36px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.modalClose {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 32px; height: 32px;
+  border: 0; border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 24px; line-height: 1;
+  cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.modalClose:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.modalTitle { margin: 0 0 4px; font-size: 22px; font-weight: 600; color: #fff; }
+.modalSection { margin-top: 22px; }
+.modalSection h3 {
+  margin: 0 0 8px;
+  font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: #22d3ee;
+}
+.modalSection p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+.modalSection ul { margin: 0; padding-left: 22px; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+.modalSection li { margin-bottom: 8px; }
+.modalSection a { color: #60a5fa; text-decoration: none; }
+.modalSection a:hover { text-decoration: underline; color: #93c5fd; }
+.modalSection strong { color: #fff; }
+
+/* ─── Wind readout popup (setHTML string; white card like /quakes) ───────── */
+.popup {
+  padding: 11px 13px; font-size: 13px; color: #1f2937; line-height: 1.5; min-width: 200px;
+  /* Never taller than the viewport allows: scroll inside the card instead of
+     flowing off the top/bottom of the map. */
+  max-height: min(55vh, 420px); overflow-y: auto; overscroll-behavior: contain;
+}
+.popupMoreBtn {
+  appearance: none; border: 0; background: none; padding: 2px 0 0; margin-top: 2px;
+  font: inherit; font-size: 12px; font-weight: 600; color: #0e7490; cursor: pointer;
+}
+.popupMoreBtn:hover { text-decoration: underline; }
+.popupMore { margin-top: 4px; }
+.popupSection + .popupSection { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; }
+.popupHead { font-weight: 600; color: #111827; }
+.popupSpeed { font-size: 18px; font-weight: 700; line-height: 1.3; color: #0e7490; }
+.popupSpeed span { font-size: 12px; font-weight: 500; color: #6b7280; }
+.popupMeta { font-size: 11.5px; color: #6b7280; }
+.popupMeta a { color: #b45309; text-decoration: none; }
+.popupMeta a:hover { text-decoration: underline; }
+
+/* AI context line inside popups — pending state is muted italic, resolved is
+   body text; dashed divider separates it from the computed facts above. */
+.popupAnalysis {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d1d5db;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #9ca3af;
+  font-style: italic;
+}
+.popupAnalysisDone {
+  color: #374151;
+  font-style: normal;
+}
+.popupAnalysisDone :global(.ai-p) { margin: 0 0 6px; }
+.popupAnalysisDone :global(.ai-p:last-child) { margin-bottom: 0; }
+.popupAnalysisDone :global(.ai-h) {
+  margin: 6px 0 2px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #0e7490;
+}
+.popupAnalysisDone strong { color: #111827; font-weight: 700; }
+
+:global(.mapboxgl-popup-content) {
+  padding: 0 !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
+}
+:global(.mapboxgl-popup-tip) { border-top-color: #fff !important; border-bottom-color: #fff !important; }
+:global(.mapboxgl-popup-close-button) { font-size: 18px !important; color: #6b7280 !important; padding: 2px 8px !important; }
+
+/* ─── Help tip ───────────────────────────────────────────────────────────── */
+.tip {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; color: rgba(255, 255, 255, 0.5);
+  pointer-events: none; text-align: center; max-width: 90vw;
+}
+
+/* ─── Compact desktop (laptops, narrow windows): a tighter, narrower panel so
+   the globe keeps most of the width. Phones are handled below. */
+@media (max-width: 1280px) and (min-width: 769px) {
+  .panel, .panelCollapsed { width: 256px; top: 62px; left: 12px; }
+  .layerRow { gap: 8px; padding: 5px 0; }
+  .layerName { font-size: 12.5px; }
+  .layerSub { font-size: 10px; }
+  .panelTitle { font-size: 11px; }
+  .explainBox { font-size: 12px; }
+  .explain { font-size: 12px; line-height: 1.45; }
+}
+
+/* Icon rail (compact desktop): one glyph per layer, green when on. */
+.rail {
+  position: absolute; top: 62px; left: 12px; z-index: 11;
+  display: flex; flex-direction: column; gap: 6px; padding: 6px;
+  background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px; backdrop-filter: blur(8px);
+}
+.railGroup { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.railGroup:last-of-type { border-bottom: 0; padding-bottom: 0; }
+.railBtn {
+  width: 38px; height: 38px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05); cursor: pointer; display: grid; place-items: center; padding: 0;
+  transition: background 0.15s;
+}
+.railBtn:hover .railIcon { opacity: 0.9; }
+.railOn { background: rgba(46, 204, 113, 0.22); border-color: rgba(46, 204, 113, 0.7); box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.35) inset; }
+/* Grey/dim the glyph itself (not the button) so the hover label stays crisp. */
+.railIcon { font-size: 19px; line-height: 1; filter: grayscale(1); opacity: 0.55; transition: filter 0.15s, opacity 0.15s; }
+.railOn .railIcon { filter: none; opacity: 1; }
+/* Instant hover label to the right of the rail (native title tooltips lag). */
+.railBtn { position: relative; }
+.railBtn::after {
+  content: attr(data-tip);
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; padding: 5px 9px; border-radius: 7px;
+  background: rgba(10, 14, 23, 0.95); color: #fff; font-size: 12px; font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  opacity: 0; pointer-events: none; transition: opacity 0.08s; z-index: 20;
+}
+.railBtn:hover::after, .railBtn:focus-visible::after { opacity: 1; }
+.railMore { color: #fff; font-size: 16px; margin-top: 2px; opacity: 0.9; }
+.panelHidden { display: none; }
+
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   The control panel moves into the MapSheet drawer; top chrome compacts the
+   same way the other tools do. */
+@media (max-width: 768px) {
+  .branding {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+  .wordmark { font-size: 14px; }
+  .subBadge { font-size: 10px; padding-left: 8px; }
+
+  .basemapMenu {
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+
+  /* Explain button drops below the branding row; card fills the width. */
+  .explainBtn {
+    top: calc(60px + env(safe-area-inset-top, 0px));
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+  .explainCard { top: calc(104px + env(safe-area-inset-top, 0px)); }
+  .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
+  .basemapMenuItem, .basemapMenuItemActive { padding: 11px 10px; }
+
+  .panelHead { display: none; }
+  .panelBody { padding: 0; overflow: visible; }
+  .tip { display: none; }
+
+  .chipRow { gap: 6px; }
+  .chip, .chipActive { font-size: 13px; padding: 8px 13px; }
+  .switch, .switchOn { width: 44px; height: 26px; }
+  .switchKnob { width: 20px; height: 20px; }
+  .switchOn .switchKnob { transform: translateX(18px); }
+  .explain { font-size: 13px; }
+  .explainBox { padding: 13px 12px 13px 14px; }
+  .methodology { padding: 10px 0; font-size: 13px; }
+
+  .modalBackdrop { padding: 0; align-items: flex-end; }
+  .modal {
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
+  .modalTitle { font-size: 19px; padding-right: 44px; }
+}

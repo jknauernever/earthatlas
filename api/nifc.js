@@ -15,7 +15,7 @@
  * empty) FeatureCollection so an upstream hiccup degrades quietly on the map.
  */
 
-import { resolveNifcRequest, normalizeNifc } from './_nifc-core.js'
+import { resolveNifcRequest, normalizeNifc, simplifyNifc } from './_nifc-core.js'
 
 export const config = { runtime: 'edge' }
 
@@ -29,9 +29,10 @@ const BLOB_BASE = (process.env.BLOB_PUBLIC_BASE || 'https://fxj3imydg9misw9w.pub
 
 // Serve the pre-baked snapshot (incl. its `_fetched_ms` stamp), or null if
 // there's no snapshot yet / Blob is unreachable — then we fall back to live NIFC.
-async function readSnapshot(layer) {
+async function readSnapshot(layer, detail = 'full') {
   try {
-    const r = await fetch(`${BLOB_BASE}/fire/nifc-${layer}.json`, { headers: { accept: 'application/json' } })
+    const suffix = detail === 'low' ? '-low' : ''
+    const r = await fetch(`${BLOB_BASE}/fire/nifc-${layer}${suffix}.json`, { headers: { accept: 'application/json' } })
     if (!r.ok) return null
     const fc = await r.json()
     return fc && fc.type === 'FeatureCollection' && fc.features.length ? fc : null
@@ -70,9 +71,17 @@ export default async function handler(req) {
   const resolved = resolveNifcRequest(searchParams)
   if (resolved.error) return json({ error: resolved.error }, { status: resolved.status })
 
-  // Prefer the cron-baked snapshot (decoupled from NIFC's live quota).
-  const snap = await readSnapshot(resolved.layer)
+  // Prefer the cron-baked snapshot (decoupled from NIFC's live quota). For
+  // detail=low: the baked low snapshot first; failing that (cron predates the
+  // low variant), simplify the full snapshot right here — still no NIFC pull.
+  const snap = await readSnapshot(resolved.layer, resolved.detail)
   if (snap) return json(snap, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+  if (resolved.detail === 'low') {
+    const full = await readSnapshot(resolved.layer)
+    if (full) {
+      return json(simplifyNifc(full), { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+    }
+  }
 
   // Fallback: live NIFC (before the first snapshot exists, or a Blob outage).
   try {
@@ -90,7 +99,8 @@ export default async function handler(req) {
     if (raw && raw.error) {
       return json({ ...EMPTY, _upstream: raw.error.code || 'arcgis-error' }, { status: 503, headers: { 'cache-control': 'no-store' } })
     }
-    const fc = normalizeNifc(raw, resolved.layer)
+    let fc = normalizeNifc(raw, resolved.layer)
+    if (resolved.detail === 'low') fc = simplifyNifc(fc)
     return json(fc, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
   } catch (err) {
     return json({ ...EMPTY, _error: String(err).slice(0, 120) }, {

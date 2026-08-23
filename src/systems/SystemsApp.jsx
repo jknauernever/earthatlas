@@ -135,6 +135,37 @@ const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
 // reloads the page instead.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 
+// Scroll affordance for tall popups: a subtle ▾ pinned at the card's bottom,
+// shown only while more content is below the fold (the card itself scrolls).
+function attachPopupScrollHint(popup, styles) {
+  const content = popup.getElement()?.querySelector('.mapboxgl-popup-content')
+  const scroller = content?.querySelector(`.${styles.popup.split(' ')[0]}`)
+  if (!content || !scroller) return
+  let hint = content.querySelector(`.${styles.popupScrollHint.split(' ')[0]}`)
+  const update = () => {
+    const more = scroller.scrollHeight - scroller.clientHeight > 8 &&
+      scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 8
+    hint.style.opacity = more ? '1' : '0'
+    hint.style.pointerEvents = more ? 'auto' : 'none'
+  }
+  if (!hint) {
+    hint = document.createElement('button')
+    hint.type = 'button'
+    hint.className = styles.popupScrollHint
+    hint.title = 'More'
+    hint.setAttribute('aria-label', 'Scroll for more')
+    hint.textContent = '▾'
+    hint.addEventListener('click', () => scroller.scrollBy({ top: 160, behavior: 'smooth' }))
+    scroller.addEventListener('scroll', update, { passive: true })
+    // The card resizes after this runs (AI text lands, Mapbox re-anchors) —
+    // re-evaluate whenever its box changes, not just once.
+    new ResizeObserver(update).observe(scroller)
+    content.appendChild(hint)
+  }
+  update()
+  setTimeout(update, 400)
+}
+
 // Monoline layer icon (paths from the design handoff), colored by currentColor.
 function LayerIcon({ svg, size = 19 }) {
   return (
@@ -403,6 +434,7 @@ export default function SystemsApp() {
           `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div></div>`,
         )
         .addTo(map)
+      attachPopupScrollHint(popupRef.current, styles)
       // Phones: the replay bar shrinks to a pill while a popup is open so the
       // two never overlap; restored on close.
       setPopupOpen(true)
@@ -458,6 +490,12 @@ export default function SystemsApp() {
           if (r.ok && j.text) {
             el.innerHTML = formatAiText(j.text, { headers: false }) // escaped + formatted (aiFormat.js)
             el.classList.add(styles.popupAnalysisDone)
+            // Re-run Mapbox's layout so the anchor is re-chosen for the GROWN
+            // card — the anchor was picked while the popup still said
+            // "Adding context…", and without this the added text runs off the
+            // top of the map.
+            try { popup.setLngLat(popup.getLngLat()) } catch { /* popup closed */ }
+            attachPopupScrollHint(popup, styles)
           } else {
             el.remove()
           }

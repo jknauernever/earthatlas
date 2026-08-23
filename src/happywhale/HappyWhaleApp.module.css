@@ -59,7 +59,7 @@
 }
 
 /* ─── Basemap picker ─────────────────────────────────────────────────────── */
-.basemapMenu { position: absolute; top: 64px; right: 60px; z-index: 10; }
+.basemapMenu { position: absolute; top: 154px; right: 10px; z-index: 10; }
 .basemapToggle, .basemapToggleActive {
   width: 36px; height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -384,13 +384,18 @@
 }
 
 /* Share this view (docs/MAP_TOOL_CONVENTIONS.md §6) — top-right column,
-   under the shared zoom badge (top 80px, right 9px). On phones the badge
-   moves bottom-left and the basemap picker owns top-right, so share drops
-   below it. */
+   under the shared zoom badge (top 80px, right 9px), with the basemap
+   picker below it. Mobile column: share (62) -> basemap (106). */
 .shareCtl { position: absolute; top: 110px; right: 10px; z-index: 10; }
 @media (max-width: 768px) {
   .shareCtl {
-    top: calc(114px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+}
+@media (max-width: 768px) {
+  .basemapMenu {
+    top: calc(106px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 }

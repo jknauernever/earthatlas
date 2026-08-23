@@ -67,8 +67,8 @@
 /* ─── Basemap picker (icon button + popover, top-right below search) ──── */
 .basemapMenu {
   position: absolute;
-  top: 64px;
-  right: 60px;
+  top: 154px;
+  right: 10px;
   z-index: 10;
 }
 .basemapToggle, .basemapToggleActive {
@@ -807,7 +807,7 @@
   /* Search is a magnifier icon at top right (components/MapSearch.jsx); the
      basemap toggle stacks directly below it. */
   .basemapMenu {
-    top: calc(62px + env(safe-area-inset-top, 0px));
+    top: calc(106px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
   .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
@@ -896,13 +896,12 @@
 .tokenError code { color: #fbbf24; }
 
 /* Share this view (docs/MAP_TOOL_CONVENTIONS.md §6) — top-right column,
-   under the shared zoom badge (top 80px, right 9px). On phones the badge
-   moves bottom-left and the basemap picker owns top-right, so share drops
-   below it. */
+   under the shared zoom badge (top 80px, right 9px), with the basemap
+   picker below it. Mobile column: share (62) -> basemap (106). */
 .shareCtl { position: absolute; top: 110px; right: 10px; z-index: 10; }
 @media (max-width: 768px) {
   .shareCtl {
-    top: calc(114px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 }

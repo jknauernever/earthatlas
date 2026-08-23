@@ -118,8 +118,7 @@ const FLAME_ICONS = {
 // Unknown/negative acreage falls into the smallest class. Feature-only expression
 // so it can be nested inside the zoom `interpolate` on icon-size.
 const ACRE_SIZE_MUL = ['step', ['coalesce', ['get', 'acres'], -1],
-  0.45,        // < 1 ac (zero/unreported): dispatch-scale, visually minor
-  1, 0.8,      // 1 – 100
+  0.8,         // < 100 ac (and unknown)
   100, 1.0,    // 100 – 1k
   1000, 1.25,  // 1k – 10k
   10000, 1.55, // 10k – 100k

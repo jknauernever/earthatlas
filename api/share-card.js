@@ -37,7 +37,9 @@ export default async function handler(req, res) {
   const id = String(req.query.id || '')
   if (!ID_RE.test(id)) return res.status(400).json({ error: 'bad id' })
 
-  if (req.method === 'GET') {
+  // HEAD must behave like GET — crawlers (Facebook included) often HEAD an
+  // og:image before fetching it, and a 405 there kills the preview.
+  if (req.method === 'GET' || req.method === 'HEAD') {
     let blob = null
     try { blob = await head(pathFor(id)) } catch { /* not found */ }
     if (req.query.check) {

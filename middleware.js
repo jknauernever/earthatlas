@@ -277,6 +277,11 @@ async function handleToolShare(url, tool) {
     description: `A shared live view. ${tool.description}`,
     canonical,
     image: `${SITE}/api/share-card?id=${id}`,
+    // Explicit dimensions: without them Facebook fetches the image async and
+    // renders the FIRST share of a URL without its picture.
+    imageWidth: 1920,
+    imageHeight: 1080,
+    imageType: 'image/jpeg',
     ogType: 'website',
     jsonLd: {
       '@context': 'https://schema.org',
@@ -335,7 +340,12 @@ function handleSubsite(slug) {
 }
 
 // ─── Shared HTML shell ───────────────────────────────────────────────────────
-function botHtml({ title, description, canonical, image, ogType, jsonLd, body, cacheSeconds = 3600 }) {
+function botHtml({ title, description, canonical, image, imageWidth, imageHeight, imageType, ogType, jsonLd, body, cacheSeconds = 3600 }) {
+  const imageDims = imageWidth && imageHeight
+    ? `\n  <meta property="og:image:width" content="${imageWidth}" />` +
+      `\n  <meta property="og:image:height" content="${imageHeight}" />` +
+      (imageType ? `\n  <meta property="og:image:type" content="${imageType}" />` : '')
+    : ''
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -351,7 +361,7 @@ function botHtml({ title, description, canonical, image, ogType, jsonLd, body, c
   <meta property="og:title" content="${escapeAttr(title)}" />
   <meta property="og:description" content="${escapeAttr(description)}" />
   <meta property="og:url" content="${canonical}" />
-  <meta property="og:image" content="${escapeAttr(image)}" />
+  <meta property="og:image" content="${escapeAttr(image)}" />${imageDims}
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escapeAttr(title)}" />

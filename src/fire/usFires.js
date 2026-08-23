@@ -118,7 +118,8 @@ const FLAME_ICONS = {
 // Unknown/negative acreage falls into the smallest class. Feature-only expression
 // so it can be nested inside the zoom `interpolate` on icon-size.
 const ACRE_SIZE_MUL = ['step', ['coalesce', ['get', 'acres'], -1],
-  0.8,         // < 100 ac (and unknown)
+  0.6,         // < 1 ac (zero/unreported): smaller than any sized fire
+  1, 0.8,      // 1 – 100
   100, 1.0,    // 100 – 1k
   1000, 1.25,  // 1k – 10k
   10000, 1.55, // 10k – 100k
@@ -226,12 +227,21 @@ export function addUsFiresLayers(map, isOn, op) {
     // flame so the icon and text don't overlap.
     map.addLayer({
       id: LABEL, type: 'symbol', source: PTS_SRC,
+      // Names only appear once you're looking at a region (zoom ≥ 5) — at
+      // continental zooms hundreds of labels are unreadable clutter — and the
+      // font steps up with zoom for readability.
+      minzoom: 5,
       layout: {
         visibility: vis,
-        'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 0.5],
+        'text-field': ['get', 'name'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 13, 8, 14.5, 11, 16],
+        'text-offset': [0, 0.5],
         'text-anchor': 'top', 'text-max-width': 9, 'text-allow-overlap': false,
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.75)', 'text-halo-width': 1.4, 'text-opacity': o },
+      // White text in a red halo: white stays legible over any terrain, the
+      // halo carries the fire-red identity (plain red text sank into dark
+      // satellite imagery).
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#c1170c', 'text-halo-width': 1.6, 'text-opacity': o },
     })
   }
 }

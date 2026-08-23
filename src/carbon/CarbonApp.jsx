@@ -24,6 +24,8 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
@@ -126,6 +128,8 @@ export default function CarbonApp() {
   // current overlay after a basemap switch without a TDZ reference error.
   const addOverlayRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
+  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
   const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
@@ -306,7 +310,8 @@ export default function CarbonApp() {
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     if (drawnRing && drawnRing.length >= 3) sp.set('poly', encodePoly(drawnRing))
     writeUrlQuery(sp.toString())
-  }, [basemap, activeOverlay, mapView, drawnRing])
+    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
+  }, [basemap, activeOverlay, mapView, drawnRing, mapReady])
 
   useEffect(() => {
     if (!basemapMenuOpen) return
@@ -369,6 +374,7 @@ export default function CarbonApp() {
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding */}
       <div className={styles.branding}>

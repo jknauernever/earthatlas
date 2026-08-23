@@ -21,6 +21,8 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import {
   fetchSpeciesConfig,
   fetchEncounters,
@@ -140,6 +142,8 @@ export default function HappyWhaleApp() {
   const mapRef = useRef(null)
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
+  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
   const initialCenter = (Number.isFinite(initial.clat) && Number.isFinite(initial.clng))
@@ -536,7 +540,8 @@ export default function HappyWhaleApp() {
       sp.set('z', mapView.zoom.toFixed(1))
     }
     writeUrlQuery(sp.toString())
-  }, [species, preset, center, radius, selectedInd, basemap, mapView])
+    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
+  }, [species, preset, center, radius, selectedInd, basemap, mapView, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -609,6 +614,7 @@ export default function HappyWhaleApp() {
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding */}
       <div className={styles.branding}>

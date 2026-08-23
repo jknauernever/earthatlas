@@ -336,3 +336,15 @@
   .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
   .modalTitle { font-size: 19px; padding-right: 44px; }
 }
+
+/* Share this view (docs/MAP_TOOL_CONVENTIONS.md §6) — top-right column,
+   under the shared zoom badge (top 80px, right 9px). On phones the badge
+   moves bottom-left and the basemap picker owns top-right, so share drops
+   below it. */
+.shareCtl { position: absolute; top: 110px; right: 10px; z-index: 10; }
+@media (max-width: 768px) {
+  .shareCtl {
+    top: calc(114px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+}

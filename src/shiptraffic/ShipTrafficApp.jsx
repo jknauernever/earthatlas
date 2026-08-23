@@ -19,6 +19,8 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import {
   loadGrid,
   loadWhales,
@@ -226,6 +228,8 @@ export default function ShipTrafficApp() {
   const gbifEventDateRef = useRef(null)  // GBIF date range for the selected timeline (read inside moveend)
   const whalesVisibleRef = useRef(true)  // current whale-layer visibility (read inside moveend)
   const [mapReady, setMapReady] = useState(false)
+  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
   const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
@@ -640,7 +644,8 @@ export default function ShipTrafficApp() {
       sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1))
     }
     writeUrlQuery(sp.toString())
-  }, [grid, range, visible, vesselTypes, whaleSources, basemap, mapView, months])
+    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
+  }, [grid, range, visible, vesselTypes, whaleSources, basemap, mapView, months, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -723,6 +728,7 @@ export default function ShipTrafficApp() {
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       <div className={styles.branding}>
         <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">

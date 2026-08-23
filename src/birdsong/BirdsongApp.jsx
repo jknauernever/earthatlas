@@ -20,6 +20,8 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import {
   PERIOD_PRESETS,
   DEFAULT_PERIOD_ID,
@@ -129,6 +131,8 @@ export default function BirdsongApp() {
   const popupRef = useRef(null)
   const audioRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
+  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
   const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
@@ -440,7 +444,8 @@ export default function BirdsongApp() {
       sp.set('z', mapView.zoom.toFixed(1))
     }
     writeUrlQuery(sp.toString())
-  }, [periodId, selectedId, basemap, mapView])
+    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
+  }, [periodId, selectedId, basemap, mapView, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -521,6 +526,7 @@ export default function BirdsongApp() {
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} preload="none" />
 

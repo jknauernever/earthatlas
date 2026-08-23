@@ -4,6 +4,8 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
@@ -370,6 +372,8 @@ export default function ForestMonitor() {
   // Flips true on `map.on('load')`. Gates tile-source adds so we don't race
   // the style finishing — addLayer() before the style is ready silently no-ops.
   const [mapReady, setMapReady] = useState(false)
+  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
   // [startMs, endMs] in UTC epoch ms. Default = full available window.
   const [dateRange, setDateRange] = useState(_initialDateRange)
   // WorldCover-derived land use filter. 'all' = no filter applied.
@@ -598,8 +602,9 @@ export default function ForestMonitor() {
       zoom: mapView ? mapView.zoom : null,
     })
     _writeUrlQuery(qs)
+    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
   }, [mode, dateRange, landuse, basemap, opacity, mapView,
-      operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity])
+      operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity, mapReady])
 
   // ─── Fetch tile URL whenever mode or date range changes ──────────────────
   // Debounced 250 ms so dragging the slider doesn't hammer the cloud function.
@@ -1237,6 +1242,7 @@ export default function ForestMonitor() {
     <div className={styles.container}>
       <div ref={containerRef} className={styles.mapWrap} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding lockup: two independent links so "Forest Monitor" reliably
           re-opens this view (clears query state, closes modal, etc.) while

@@ -419,6 +419,28 @@ export class ClipRecorder {
   }
 }
 
+// One-shot still of the composited view (basemap + overlays + burned-in
+// watermark and source line) as a JPEG blob — used for social share cards.
+// Same compositor the clip recorder uses, captured inside a basemap paint.
+export function captureStill({ basemap, overlays, getBrand }, quality = 0.82) {
+  const rec = new ClipRecorder({ basemap, overlays, getBrand })
+  rec._brand = getBrand()
+  return new Promise((resolve) => {
+    let done = false
+    const off = basemap.onFrame(() => {
+      if (done) return
+      done = true
+      off()
+      try {
+        rec._composite()
+        rec._canvas.toBlob(resolve, 'image/jpeg', quality)
+      } catch { resolve(null) }
+    })
+    basemap.requestFrame()
+    setTimeout(() => { if (!done) { done = true; off(); resolve(null) } }, 4000)
+  })
+}
+
 // Translucent backing pill so the branding stays legible over bright basemaps.
 function pill(ctx, x, y, w, h) {
   ctx.fillStyle = 'rgba(6, 8, 16, 0.55)'

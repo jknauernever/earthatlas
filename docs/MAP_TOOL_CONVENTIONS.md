@@ -92,7 +92,35 @@ effect's cleanup.
   `position: fixed; inset: 0`. Top-left EarthAtlas wordmark + a tool sub-badge;
   `GeoSearch` top-right; basemap picker below it.
 
-## 6. Route wiring — the 5 places (required)
+## 6. Share control + per-view social cards (required)
+
+Every map tool renders the shared `<ShareControl />`
+(`src/components/ShareControl.jsx` — the standard box-with-arrow-up icon) in
+its top-right control column. It shares the current URL (native share sheet,
+else clipboard + toast) — the URL-state convention (§1) makes that URL the
+complete share.
+
+**Social cards for copy/pasted URLs:** a plain paste into
+Facebook/LinkedIn/X must unfurl with an image of the actual view. The
+machinery (`src/lib/shareCard.js`):
+
+- On every settled view change, call `scheduleViewCard(capture)` (debounced,
+  deduped) right after the URL-persist effect writes the query string. The
+  snapshot uploads to `/api/share-card` keyed by **SHA-1(pathname + search)**
+  of the canonical URL.
+- `middleware.js` computes the same hash when a crawler fetches any tool URL
+  with params and serves the stored snapshot as `og:image`. No snapshot or no
+  params → the tool's static SEO html (add new tools to the middleware
+  `TOOLS` table + `matcher`).
+- `capture` returns a 1920×1080 JPEG blob of the view. Plain Mapbox tools use
+  the generic `captureMapImage(map)` from the same lib; tools with overlay
+  canvases provide their own compositor (see `captureStill` in
+  `src/systems/clipRecorder.js`).
+
+Never fake the card image — it must be real pixels a user actually saw
+(no-synthetic-data rule applies to previews too).
+
+## 7. Route wiring — the 5 places (required)
 
 It's a client-side React Router SPA (not a multi-page Vite build). To add a
 tool at `/<tool>`, touch exactly five places:

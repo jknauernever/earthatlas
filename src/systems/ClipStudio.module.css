@@ -1,8 +1,8 @@
 /* ClipStudio — record-a-clip UI. Mirrors the dark-glass chrome conventions
    (SystemsApp.module.css: basemap toggle / menu panel / modal). */
 
-/* Top-right column order: nav zoom → zoom badge (80px) → clip → basemap. */
-.launcher { position: absolute; top: 110px; right: 10px; z-index: 10; }
+/* Top-right column: zoom badge (80) → share (110) → clip (154) → basemap (198). */
+.launcher { position: absolute; top: 154px; right: 10px; z-index: 10; }
 
 .toggle, .toggleActive {
   width: 36px; height: 36px;
@@ -162,7 +162,7 @@
 .modalHint { font-size: 12px; line-height: 1.5; color: rgba(255, 255, 255, 0.55); margin: 10px 0 0; }
 
 @media (max-width: 640px) {
-  /* No zoom badge up here on phones — clip sits where basemap was, basemap drops below. */
-  .launcher { top: calc(62px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
+  /* Mobile column: search (16) → share (62) → clip (106) → basemap (150). */
+  .launcher { top: calc(106px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
   .hud { top: calc(104px + env(safe-area-inset-top, 0px)); }
 }

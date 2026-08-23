@@ -40,6 +40,9 @@ import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
 import ClipStudio from './ClipStudio.jsx'
+import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
+import ShareControl from '../components/ShareControl.jsx'
+import { scheduleViewCard } from '../lib/shareCard.js'
 import styles from './SystemsApp.module.css'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
@@ -944,6 +947,38 @@ export default function SystemsApp() {
     return () => window.removeEventListener('resize', apply)
   }, [mapReady, panelOpen, isMobile, mobileView])
 
+  // ─── Clip recorder + share-card wiring (declared before the URL-persist
+  // effect below, which lists captureShareImage as a dependency) ────────────
+  const getClipMap = useCallback(() => mapRef.current, [])
+  const clipBeforeRecord = useCallback(() => popupRef.current?.remove(), [])
+  const getClipOverlays = useCallback(
+    () => OVERLAY_KEYS.map((k) => canvasEls.current[k]).filter(Boolean),
+    [],
+  )
+  const getClipBrand = useCallback(() => {
+    const imagery = basemap === 'satellite' ? '© Mapbox © Maxar' : '© Mapbox © OpenStreetMap'
+    const fmtD = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const activeNow = () => {
+      const { layerOn, layerStatus } = stateRef.current
+      return LAYERS.filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
+    }
+    // Re-read layers and replay position per frame: a playing replay's date
+    // (and a mid-take layer toggle) must stamp what's actually on screen.
+    const sourceLine = () => {
+      const rc = replayRef.current || eventReplayRef.current
+      const when = rc && !rc.atLive ? `showing ${fmtD(rc.t)}` : fmtD(Date.now())
+      return [...activeNow().map((d) => `${d.name}: ${d.sourceName}`), imagery, when].join(' · ')
+    }
+    return { sourceLine, shareUrl: window.location.href, layerIds: activeNow().map((d) => d.id) }
+  }, [basemap])
+
+  // Snapshot of the composited view (branding included) for social cards.
+  const captureShareImage = useCallback(() => {
+    const map = mapRef.current
+    if (!map) return Promise.resolve(null)
+    return captureStill({ basemap: mapboxBasemapSource(map), overlays: getClipOverlays(), getBrand: getClipBrand })
+  }, [getClipOverlays, getClipBrand])
+
   // ─── Persist the full view to the URL (shareable links) ───────────────────
   useEffect(() => {
     const sp = new URLSearchParams()
@@ -959,7 +994,10 @@ export default function SystemsApp() {
       sp.set('z', mapView.zoom.toFixed(1))
     }
     writeUrlQuery(sp.toString())
-  }, [layerOn, density, basemap, mapView])
+    // The URL is now canonical for this view — queue its social share card
+    // (debounced + deduped; see src/lib/shareCard.js).
+    if (mapReady) scheduleViewCard(captureShareImage)
+  }, [layerOn, density, basemap, mapView, mapReady, captureShareImage])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -1002,30 +1040,6 @@ export default function SystemsApp() {
       if (prevOgU != null) setMeta('meta[property="og:url"]', prevOgU)
     }
   }, [])
-
-  // ─── Clip recorder wiring (ClipStudio) ────────────────────────────────────
-  const getClipMap = useCallback(() => mapRef.current, [])
-  const clipBeforeRecord = useCallback(() => popupRef.current?.remove(), [])
-  const getClipOverlays = useCallback(
-    () => OVERLAY_KEYS.map((k) => canvasEls.current[k]).filter(Boolean),
-    [],
-  )
-  const getClipBrand = useCallback(() => {
-    const imagery = basemap === 'satellite' ? '© Mapbox © Maxar' : '© Mapbox © OpenStreetMap'
-    const fmtD = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    const activeNow = () => {
-      const { layerOn, layerStatus } = stateRef.current
-      return LAYERS.filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
-    }
-    // Re-read layers and replay position per frame: a playing replay's date
-    // (and a mid-take layer toggle) must stamp what's actually on screen.
-    const sourceLine = () => {
-      const rc = replayRef.current || eventReplayRef.current
-      const when = rc && !rc.atLive ? `showing ${fmtD(rc.t)}` : fmtD(Date.now())
-      return [...activeNow().map((d) => `${d.name}: ${d.sourceName}`), imagery, when].join(' · ')
-    }
-    return { sourceLine, shareUrl: window.location.href, layerIds: activeNow().map((d) => d.id) }
-  }, [basemap])
 
   const handleSelect = useCallback((r) => {
     if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
@@ -1208,6 +1222,9 @@ export default function SystemsApp() {
           </div>
         )}
       </div>
+
+      {/* Share this view — link + per-view social card */}
+      {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Record a clip — shareable branded video of exactly this view */}
       {mapReady && (

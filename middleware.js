@@ -10,12 +10,26 @@
  *   /news/:species/:slug  — NewsArticle schema (fetches article from DB)
  *   /species/:taxonId     — Taxon / CreativeWork schema (fetches from iNaturalist)
  *   /<subsite>            — CollectionPage schema (e.g. /whales, /sharks)
+ *   /<map tool>?<state>   — per-view share cards: if a snapshot of this exact
+ *                           view was uploaded (src/lib/shareCard.js keys it by
+ *                           SHA-1 of pathname+search), serve it as og:image so
+ *                           a plain copy/pasted URL unfurls with the actual
+ *                           view. No snapshot / no params → fall through to
+ *                           the tool's static SEO html.
  */
 
 export const config = {
   matcher: [
     '/news/:path*',
     '/species/:path*',
+    '/inmotion',
+    '/fire',
+    '/quakes',
+    '/forestmonitor',
+    '/carbon',
+    '/birdsong',
+    '/happywhale',
+    '/shiptraffic',
     '/bears',
     '/birds',
     '/butterflies',
@@ -58,6 +72,26 @@ const SUBSITES = {
   wolves:      { name: 'Wolves',             emoji: '🐺', title: 'Wolf Sightings Near You',                 description: 'Find wolf sightings and observations — seasonal patterns, species data, and real-time observations from GBIF and iNaturalist.',                                                                image: '/wolf-hero.jpg' },
 }
 
+// ─── Map-tool meta (mirrors scripts/generate-route-html.js ROUTES) ───────────
+const TOOLS = {
+  inmotion:      { title: 'In Motion — Earth’s systems, animated · EarthAtlas',
+                   description: 'Watch Earth’s systems in motion — global winds animated as flowing particles on a live globe, with plain-language explanations of what you’re seeing and where every value comes from. An EarthAtlas tool.' },
+  fire:          { title: 'FireApp — Wildfire risk & fuels · EarthAtlas',
+                   description: 'Explore wildfire hazard potential, vegetation fuel state, and land cover across the United States and beyond. An EarthAtlas tool.' },
+  quakes:        { title: 'Quakes — Live earthquake map · EarthAtlas',
+                   description: 'Explore worldwide earthquakes from the past 30 days — search any location, set a radius, filter by time, and inspect magnitude and depth. Live USGS data. An EarthAtlas tool.' },
+  forestmonitor: { title: 'Forest Monitor — Near-real-time global forest disturbance · EarthAtlas',
+                   description: 'Track forest loss anywhere on Earth, updated every 12 hours. 30-meter NASA OPERA DIST-ALERT data with crop-aware cause inference, named-fire context, and per-pixel diagnostics.' },
+  carbon:        { title: 'Carbon — Land carbon calculator · EarthAtlas',
+                   description: 'Draw any parcel and estimate the carbon stored in its vegetation and soil — from measured satellite datasets (NASA/ORNL biomass, OpenLandMap soil, ESA WorldCover). An EarthAtlas tool.' },
+  birdsong:      { title: 'Birdsong — Live bird-audio map · EarthAtlas',
+                   description: 'Hear what birds are calling anywhere on Earth — a live map of BirdWeather’s global acoustic monitoring network. An EarthAtlas tool.' },
+  happywhale:    { title: 'HappyWhale — Whale encounters & individual journeys · EarthAtlas',
+                   description: 'Explore whale encounters from HappyWhale’s photo-ID network — search any coast, filter by species and time, and follow a named whale’s journey across oceans. An EarthAtlas tool.' },
+  shiptraffic:   { title: 'Ship Traffic & Whales — Salish Sea · EarthAtlas',
+                   description: 'Explore vessel traffic by class against observed whale presence across the Salish Sea, for any month/year range — with a derived interaction surface showing where heavy traffic overlaps whales. An EarthAtlas tool.' },
+}
+
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
 export default async function middleware(req) {
   const ua = (req.headers.get('user-agent') || '').toLowerCase()
@@ -74,6 +108,9 @@ export default async function middleware(req) {
       return await handleSpecies(req, url)
     }
     const slug = path.replace(/^\//, '').replace(/\/$/, '')
+    if (TOOLS[slug]) {
+      return await handleToolShare(url, TOOLS[slug])
+    }
     if (SUBSITES[slug]) {
       return handleSubsite(slug)
     }
@@ -223,6 +260,44 @@ async function handleSpecies(req, url) {
     `,
     cacheSeconds: 86400, // species data changes slowly — cache 24h at edge
   })
+}
+
+// ─── /<map tool>?<view state> — per-view share card ──────────────────────────
+async function handleToolShare(url, tool) {
+  if (!url.search) return // bare route → static SEO html (designed hero card)
+  const id = await sha1Hex(url.pathname + url.search)
+  // Existence check goes through our own node API — @vercel/blob's SDK can't
+  // run on the Edge runtime (node:stream deps), and this keeps the blob store
+  // URL out of both the middleware and the markup.
+  const check = await fetch(`${url.origin}/api/share-card?id=${id}&check=1`)
+  if (!check.ok || !(await check.json()).exists) return // no snapshot → static html
+  const canonical = `${SITE}${url.pathname}${url.search}`
+  return botHtml({
+    title: tool.title,
+    description: `A shared live view. ${tool.description}`,
+    canonical,
+    image: `${SITE}/api/share-card?id=${id}`,
+    ogType: 'website',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: tool.title,
+      url: canonical,
+      description: tool.description,
+      isPartOf: { '@type': 'WebSite', name: 'EarthAtlas', url: SITE },
+    },
+    body: `
+      <h1>${escapeHtml(tool.title)}</h1>
+      <p>${escapeHtml(tool.description)}</p>
+      <p><a href="${escapeAttr(canonical)}">Open this live view on EarthAtlas</a></p>
+    `,
+    cacheSeconds: 3600,
+  })
+}
+
+async function sha1Hex(s) {
+  const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s))
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 // ─── /:subsite ───────────────────────────────────────────────────────────────

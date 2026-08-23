@@ -90,6 +90,18 @@ def _keywords_for_cause(cause_label: str | None) -> list:
 
 # ─── Query builder ──────────────────────────────────────────────────────────
 
+def _region_of(location: str | None) -> str | None:
+    """State/province from a "Place, Region, Country" admin string."""
+    if not location:
+        return None
+    parts = [p.strip() for p in location.split(',') if p.strip()]
+    if not parts:
+        return None
+    if len(parts) >= 2:
+        return parts[-2]
+    return parts[0]
+
+
 def _location_terms(named_fire: str | None, location: str | None) -> str:
     """Build the spatial part of the query. Named-fire (MTBS/NIFC) wins —
     those are the strongest possible search signals (the actual fire name).
@@ -98,9 +110,14 @@ def _location_terms(named_fire: str | None, location: str | None) -> str:
         # Quote so search engines treat it as a phrase. Strip "Fire" suffix
         # so it doesn't appear twice in the query.
         nm = named_fire.strip()
-        if nm.lower().endswith(' fire'):
-            return f'"{nm}"'
-        return f'"{nm} Fire"'
+        name_clause = f'"{nm}"' if nm.lower().endswith(' fire') else f'"{nm} Fire"'
+        # Fire names collide constantly ("Vista", "Post", "Hawk" burn somewhere
+        # every season), so the name alone pulls coverage of a different fire in
+        # another state. Anchor with the state/region from the geocoded location
+        # — the client sends "Town, State, Country" with codes already expanded
+        # to full names; the region is the second-to-last part (or the only one).
+        region = _region_of(location)
+        return f'{name_clause} "{region}"' if region else name_clause
     if location:
         # Use the first few admin components — full string can be too long
         # and exclude valid matches. Mapbox returns e.g.

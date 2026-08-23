@@ -13,6 +13,9 @@
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
 import { loadSystemsJson } from './windField.js'
 
+// Per-layer  +  (24×24 monoline, stroke=currentColor) come from
+// the Claude Design handoff (EarthAtlas collapsed navigation proposals, #3a/#4a).
+
 // ─── Shared formatters ──────────────────────────────────────────────────────
 
 // "Aug 20, 12z UTC" — the standard way model runs are named.
@@ -167,7 +170,8 @@ export const GROUPS = [
 export const LAYERS = [
   {
     id: 'wind',
-    icon: '💨',
+    hue: '#6ee7f0',
+    iconSvg: '<path d="M9.6 4.6A2 2 0 1 1 11 8H3"></path><path d="M12.6 19.4A2 2 0 1 0 14 16H3"></path><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H3"></path>',
     group: 'air',
     kind: 'vector',
     param: 'w',
@@ -204,7 +208,8 @@ export const LAYERS = [
   },
   {
     id: 'currents',
-    icon: '🌀',
+    hue: '#4fc3e8',
+    iconSvg: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v5h-5"></path>',
     group: 'water',
     kind: 'vector',
     param: 'c',
@@ -244,7 +249,8 @@ export const LAYERS = [
   },
   {
     id: 'quakes',
-    icon: '〰️',
+    hue: '#facc15',
+    iconSvg: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>',
     group: 'land',
     kind: 'events',
     param: 'q',
@@ -303,7 +309,8 @@ export const LAYERS = [
   },
   {
     id: 'hotspots',
-    icon: '🔥',
+    hue: '#fb7185',
+    iconSvg: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"></path>',
     group: 'land',
     kind: 'events',
     param: 'f',
@@ -347,7 +354,8 @@ export const LAYERS = [
   },
   {
     id: 'sst',
-    icon: '🌡️',
+    hue: '#fb923c',
+    iconSvg: '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path>',
     group: 'water',
     kind: 'scalar',
     param: 't',
@@ -386,7 +394,8 @@ export const LAYERS = [
   },
   {
     id: 'waves',
-    icon: '🌊',
+    hue: '#38bdf8',
+    iconSvg: '<path d="M1.5 9c2.3-2.4 4.6-2.4 6.9 0s4.6 2.4 6.9 0 4.6-2.4 6.9 0"></path><path d="M1.5 15.5c2.3-2.4 4.6-2.4 6.9 0s4.6 2.4 6.9 0 4.6-2.4 6.9 0"></path>',
     group: 'water',
     kind: 'scalar',
     param: 'h',
@@ -424,7 +433,8 @@ export const LAYERS = [
   },
   {
     id: 'airtemp',
-    icon: '☀️',
+    hue: '#fbbf24',
+    iconSvg: '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>',
     group: 'air',
     kind: 'scalar',
     param: 'a',
@@ -463,7 +473,8 @@ export const LAYERS = [
   },
   {
     id: 'aerosol',
-    icon: '🌫️',
+    hue: '#d9a441',
+    iconSvg: '<path d="M5.2 6.2l1.4 1.4M2 13h2M20 13h2M17.4 7.6l1.4-1.4M22 17H2M22 21H2M16 13a4 4 0 0 0-8 0"></path>',
     group: 'air',
     kind: 'scalar',
     param: 's',
@@ -513,7 +524,8 @@ export const LAYERS = [
   },
   {
     id: 'smoke',
-    icon: '🌁',
+    hue: '#b8a1e3',
+    iconSvg: '<path d="M12 21a4 4 0 0 1-4-4c0-1.6.8-2.8 2-4 .4 1.2 1.2 1.8 2 1.8-.5-2.2.3-4 2-5-.1 1.6.6 2.7 1.6 3.8.9 1 1.4 2.1 1.4 3.4a4 4 0 0 1-4 4Z"></path><path d="M9 3.5c1.2.8 2.4-.8 3.6 0s2.4-.8 3.4 0"></path>',
     group: 'air',
     kind: 'scalar',
     param: 'k',
@@ -563,7 +575,8 @@ export const LAYERS = [
   },
   {
     id: 'dust',
-    icon: '🏜️',
+    hue: '#e0b46c',
+    iconSvg: '<path d="M3 9c3-2.5 6 2.5 9 0s4.5-2 7-.5"></path><g fill="currentColor" stroke="none"><circle cx="6" cy="14" r="1"></circle><circle cx="11" cy="15.5" r="1"></circle><circle cx="16" cy="13.5" r="1"></circle><circle cx="8.5" cy="18.5" r="1"></circle><circle cx="14" cy="19.5" r="1"></circle><circle cx="19" cy="17.5" r="1"></circle></g>',
     group: 'air',
     kind: 'scalar',
     param: 'u',
@@ -613,7 +626,8 @@ export const LAYERS = [
   },
   {
     id: 'sstanom',
-    icon: '♨️',
+    hue: '#f87171',
+    iconSvg: '<path d="M4 14l4.5-4.5 3 3L17 7"></path><path d="M13.5 7H17v3.5"></path><path d="M3 20c2-1.7 4-1.7 6 0s4 1.7 6 0 4-1.7 6 0"></path>',
     group: 'water',
     kind: 'scalar',
     param: 'n',
@@ -652,7 +666,8 @@ export const LAYERS = [
   },
   {
     id: 'veg',
-    icon: '🌳',
+    hue: '#4ade80',
+    iconSvg: '<path d="M9 4l4.5 6.5h-2.7L14.5 16h-11l3.7-5.5H4.5L9 4Z"></path><path d="M9 16v4"></path><path d="M19 9v7"></path><path d="M16.8 13.8 19 16l2.2-2.2"></path>',
     group: 'land',
     kind: 'raster',
     param: 'v',

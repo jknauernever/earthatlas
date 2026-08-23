@@ -252,6 +252,8 @@
   padding: 11px 14px;
   flex-shrink: 0;
 }
+.panelHead .countChip { margin-left: auto; }
+.panelHidden { display: none !important; }
 .panelTitle {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
@@ -274,32 +276,21 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ─── Layer rows: switch + name + inline source link ─────────────────────── */
+/* ─── Layer rows: icon chip + name (the whole row is the toggle) ─────────── */
 .layerBlock { padding-bottom: 0; }
 .layerBlock + .layerBlock { border-top: 1px solid rgba(255, 255, 255, 0.06); }
 .layerRow {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 0;
+  padding: 7px 4px; margin: 0 -4px; border-radius: 8px;
+  cursor: pointer; user-select: none;
 }
-.switch, .switchOn {
-  position: relative;
-  width: 34px; height: 20px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  cursor: pointer; padding: 0;
-  transition: background 0.15s ease, border-color 0.15s ease;
+.layerRow:hover { background: rgba(255, 255, 255, 0.05); }
+.layerRow:focus-visible { outline: 2px solid rgba(103, 232, 249, 0.6); outline-offset: -2px; }
+/* Icon chip in rows — same off/on hue treatment as the dock (1:1 mapping). */
+.rowIcon {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px; display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5);
 }
-.switchOn { background: rgba(34, 211, 238, 0.35); border-color: rgba(34, 211, 238, 0.6); }
-.switchKnob {
-  position: absolute; top: 2px; left: 2px;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  transition: transform 0.15s ease;
-}
-.switchOn .switchKnob { transform: translateX(14px); }
 /* One line per dataset: name + short descriptor side by side, descriptor
    truncates rather than wrapping. Source links live in the live-stamp (when
    the layer is on) and in "How this is sourced". */
@@ -566,50 +557,77 @@
   pointer-events: none; text-align: center; max-width: 90vw;
 }
 
-/* ─── Compact desktop (laptops, narrow windows): a tighter, narrower panel so
-   the globe keeps most of the width. Phones are handled below. */
-@media (max-width: 1280px) and (min-width: 769px) {
-  .panel, .panelCollapsed { width: 256px; top: 62px; left: 12px; }
-  .layerRow { gap: 8px; padding: 5px 0; }
-  .layerName { font-size: 12.5px; }
-  .layerSub { font-size: 10px; }
-  .panelTitle { font-size: 11px; }
-  .explainBox { font-size: 12px; }
-  .explain { font-size: 12px; line-height: 1.45; }
-}
-
-/* Icon rail (compact desktop): one glyph per layer, green when on. */
-.rail {
-  position: absolute; top: 62px; left: 12px; z-index: 11;
-  display: flex; flex-direction: column; gap: 6px; padding: 6px;
+/* ─── Icon dock (default navigation; Claude Design handoff #3a/#4b/#4c) ── */
+.dock {
+  position: absolute; top: 70px; left: 16px; z-index: 11; width: 104px;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
   background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px; backdrop-filter: blur(8px);
 }
-.railGroup { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.railGroup:last-of-type { border-bottom: 0; padding-bottom: 0; }
-.railBtn {
-  width: 38px; height: 38px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05); cursor: pointer; display: grid; place-items: center; padding: 0;
-  transition: background 0.15s;
+.dockTitle { font-size: 12px; font-style: italic; font-weight: 700; letter-spacing: 0.01em; color: #6EEBFF; white-space: nowrap; padding: 0 2px; }
+.dockMeta { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.countChip {
+  font-size: 9px; font-weight: 700; color: #67e8f9; background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 999px; padding: 2px 6px; white-space: nowrap;
 }
-.railBtn:hover .railIcon { opacity: 0.9; }
-.railOn { background: rgba(46, 204, 113, 0.22); border-color: rgba(46, 204, 113, 0.7); box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.35) inset; }
-/* Grey/dim the glyph itself (not the button) so the hover label stays crisp. */
-.railIcon { font-size: 19px; line-height: 1; filter: grayscale(1); opacity: 0.55; transition: filter 0.15s, opacity 0.15s; }
-.railOn .railIcon { filter: none; opacity: 1; }
-/* Instant hover label to the right of the rail (native title tooltips lag). */
-.railBtn { position: relative; }
-.railBtn::after {
-  content: attr(data-tip);
+.dockCtl { display: flex; gap: 2px; }
+.dockBtnSm {
+  width: 22px; height: 22px; border-radius: 6px; border: 0; background: transparent; color: rgba(255, 255, 255, 0.6);
+  cursor: pointer; font-size: 12px; display: grid; place-items: center; padding: 0;
+}
+.dockBtnSm:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.dockGroup { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.dockGroupLabel { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.4); padding: 0 2px; }
+.dockGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.dockBtn {
+  position: relative; width: 42px; height: 42px; border-radius: 9px; cursor: pointer; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.dockBtn:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.85); border-color: rgba(255, 255, 255, 0.3); }
+.dockOn, .dockOn:hover { border-color: var(--hue-border); background: var(--hue-bg); color: var(--hue); }
+.liveDotHue {
+  position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--hue); box-shadow: 0 0 6px var(--hue);
+}
+/* Hover tooltip on EVERY icon, on or off — to the right of the button. */
+.dockTip {
   position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
-  white-space: nowrap; padding: 5px 9px; border-radius: 7px;
-  background: rgba(10, 14, 23, 0.95); color: #fff; font-size: 12px; font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  white-space: nowrap; padding: 6px 10px; border-radius: 7px;
+  background: rgba(10, 14, 23, 0.96); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  font-size: 11.5px; font-weight: 600; color: #fff;
   opacity: 0; pointer-events: none; transition: opacity 0.08s; z-index: 20;
 }
-.railBtn:hover::after, .railBtn:focus-visible::after { opacity: 1; }
-.railMore { color: #fff; font-size: 16px; margin-top: 2px; opacity: 0.9; }
-.panelHidden { display: none; }
+.dockTip span { color: rgba(255, 255, 255, 0.5); font-weight: 400; }
+.dockBtn:hover .dockTip, .dockBtn:focus-visible .dockTip { opacity: 1; }
+
+/* Mobile dock (88 px, 34 px buttons, 16 px icons) + tap confirmation chip + pill. */
+.dockMobile { width: 88px; top: 52px; left: 10px; gap: 5px; padding: 6px; border-radius: 11px; }
+.dockMobile .dockTitle { font-size: 10.5px; padding: 0 1px; }
+.dockMobile .countChip { font-size: 8px; padding: 2px 5px; }
+.dockMobile .dockBtnSm { width: 20px; height: 20px; font-size: 11px; }
+.dockMobile .dockBtn { width: 34px; height: 34px; border-radius: 8px; }
+.dockMobile .liveDotHue { top: 2px; right: 2px; width: 4px; height: 4px; box-shadow: 0 0 5px var(--hue); }
+.tapChip {
+  position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; padding: 5px 8px; border-radius: 6px;
+  background: rgba(10, 14, 23, 0.96); border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 10px; font-weight: 600; color: #fff; z-index: 20; pointer-events: none;
+  animation: chipFade 1.5s ease-out forwards;
+}
+.tapChip b { color: var(--hue); font-weight: 700; }
+@keyframes chipFade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.pill {
+  position: absolute; top: 52px; left: 10px; z-index: 11; width: 44px; height: 44px; border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(10, 14, 23, 0.85); color: rgba(255, 255, 255, 0.8);
+  display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(8px);
+}
+.pillBadge {
+  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; border-radius: 999px;
+  background: #22d3ee; color: #06121a; font-size: 9px; font-weight: 700; display: grid; place-items: center;
+  padding: 0 3px; border: 2px solid #0a0e17;
+}
 
 /* ─── Phones ───────────────────────────────────────────────────────────────
    The control panel moves into the MapSheet drawer; top chrome compacts the
@@ -646,19 +664,4 @@
 
   .chipRow { gap: 6px; }
   .chip, .chipActive { font-size: 13px; padding: 8px 13px; }
-  .switch, .switchOn { width: 44px; height: 26px; }
-  .switchKnob { width: 20px; height: 20px; }
-  .switchOn .switchKnob { transform: translateX(18px); }
-  .explain { font-size: 13px; }
-  .explainBox { padding: 13px 12px 13px 14px; }
-  .methodology { padding: 10px 0; font-size: 13px; }
-
-  .modalBackdrop { padding: 0; align-items: flex-end; }
-  .modal {
-    max-height: 92dvh;
-    border-radius: 16px 16px 0 0;
-    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   }
-  .modalClose { width: 44px; height: 44px; top: 8px; right: 8px; }
-  .modalTitle { font-size: 19px; padding-right: 44px; }
-}

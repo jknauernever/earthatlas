@@ -33,9 +33,17 @@ const SNAP_RIGHT_GAP = 56
 const TAP_SLOP = 8        // px of movement still counted as a tap, not a drag
 const TAP_MS = 500
 
-export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0 }) {
+export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange }) {
   const isMobile = useIsMobile()
   const [snap, setSnap] = useState('peek')
+  // Optional: let the app react to the drawer's snap point (e.g. /inmotion
+  // returns to its icon dock when the drawer is swiped back to 'peek').
+  const prevSnapRef = useRef('peek')
+  useEffect(() => {
+    if (prevSnapRef.current === snap) return // initial state (and StrictMode re-runs) aren't changes
+    prevSnapRef.current = snap
+    onSnapChange?.(snap)
+  }, [snap]) // eslint-disable-line react-hooks/exhaustive-deps
   const [dragWidth, setDragWidth] = useState(null)
 
   const sheetRef = useRef(null)

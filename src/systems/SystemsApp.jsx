@@ -135,6 +135,19 @@ const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
 // reloads the page instead.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 
+// Monoline layer icon (paths from the design handoff), colored by currentColor.
+function LayerIcon({ svg, size = 19 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
+  )
+}
+// On-state derivations from a layer hue: border .6, background .13, icon = hue.
+function hueStyle(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  return { '--hue': hex, '--hue-border': `rgba(${r},${g},${b},0.6)`, '--hue-bg': `rgba(${r},${g},${b},0.13)` }
+}
+
 function useMediaQuery(q) {
   const [m, setM] = useState(() => window.matchMedia(q).matches)
   useEffect(() => {
@@ -192,12 +205,18 @@ export default function SystemsApp() {
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
-  // Compact desktop (≤1280 px wide, not a phone): the text panel gives way to
-  // a slim icon rail (green = on, grey = off); the full panel opens on demand.
-  const compact = useMediaQuery('(max-width: 1280px) and (min-width: 769px)')
-  const [panelOpen, setPanelOpen] = useState(() => !window.matchMedia('(max-width: 1280px) and (min-width: 769px)').matches)
+  // Layer navigation (Claude Design handoff, 2026-08-22): an icon DOCK is the
+  // default everywhere — one monoline icon per dataset, click = toggle, hover
+  // tooltip. Desktop: dock ⇄ expanded panel (panelOpen). Mobile: pill ⇄ dock
+  // ⇄ full drawer (mobileView). Nothing auto-expands.
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [mobileView, setMobileView] = useState('dock') // 'pill' | 'dock' | 'drawer'
+  const [drawerSignal, setDrawerSignal] = useState(0)
+  const [chip, setChip] = useState(null) // mobile tap confirmation { id, on }
+  const chipTimerRef = useRef(0)
   const [showMethodology, setShowMethodology] = useState(false)
   const isMobile = useIsMobile()
+  if (import.meta.env.DEV) window.__systemsNav = { panelOpen, mobileView, isMobile } // dev-only QA handle
   const [mapView, setMapView] = useState(initialCamera)
   // Bumped on every style.load; raster overlays live inside the style and
   // must be re-added after basemap switches.
@@ -835,6 +854,18 @@ export default function SystemsApp() {
     }
   }, [density])
 
+  // Mobile: the drawer mounts only in 'drawer' view; open it once mounted.
+  useEffect(() => {
+    if (isMobile && mobileView === 'drawer') { const t = setTimeout(() => setDrawerSignal((n) => n + 1), 0); return () => clearTimeout(t) }
+  }, [isMobile, mobileView])
+
+  // Mobile: no hover, so a tap shows a transient "Name on/off" chip (~1.5 s).
+  const showChip = useCallback((id, on) => {
+    clearTimeout(chipTimerRef.current)
+    setChip({ id, on })
+    chipTimerRef.current = setTimeout(() => setChip(null), 1500)
+  }, [])
+
   const toggleLayer = useCallback((id) => {
     setLayerOn((on) => {
       const def = LAYERS.find((d) => d.id === id)
@@ -858,17 +889,17 @@ export default function SystemsApp() {
     const map = mapRef.current
     const apply = () => {
       const el = document.querySelector(`.${styles.panel.split(' ')[0]}`)
-      const rail = document.querySelector(`.${styles.rail.split(' ')[0]}`)
+      const dock = document.querySelector(`.${styles.dock.split(' ')[0]}`)
       const left = isMobile ? 0
         : panelOpen && el ? Math.round(el.getBoundingClientRect().right)
-        : rail ? Math.round(rail.getBoundingClientRect().right) : 0
+        : dock ? Math.round(dock.getBoundingClientRect().right) : 0
       const cur = map.getPadding()
       if (cur.left !== left) map.easeTo({ padding: { top: 0, right: 0, bottom: 0, left }, duration: 350 })
     }
     apply()
     window.addEventListener('resize', apply)
     return () => window.removeEventListener('resize', apply)
-  }, [mapReady, panelOpen, isMobile, compact])
+  }, [mapReady, panelOpen, isMobile, mobileView])
 
   // ─── Persist the full view to the URL (shareable links) ───────────────────
   useEffect(() => {
@@ -1112,38 +1143,79 @@ export default function SystemsApp() {
       </div>
 
       {/* Control panel — floating left panel on desktop, drawer on phones */}
-      {compact && !panelOpen && (
-        <div className={styles.rail} role="toolbar" aria-label="Layers">
-          {GROUPS.map((group, gi) => (
-            <div key={group.id} className={styles.railGroup}>
-              {LAYERS.filter((d) => d.group === group.id).map((def) => (
-                <button
-                  key={def.id}
-                  type="button"
-                  className={`${styles.railBtn} ${layerOn[def.id] ? styles.railOn : ''}`}
-                  onClick={() => toggleLayer(def.id)}
-                  data-tip={`${def.name} · ${def.sub}${layerOn[def.id] ? ' (on)' : ''}`}
-                  aria-pressed={!!layerOn[def.id]}
-                  aria-label={def.name}
-                >
-                  <span className={styles.railIcon} aria-hidden="true">{def.icon}</span>
-                </button>
-              ))}
+      {/* Icon dock — default navigation on every screen size. */}
+      {((!isMobile && !panelOpen) || (isMobile && mobileView === 'dock')) && (
+        <div className={`${styles.dock} ${isMobile ? styles.dockMobile : ''}`} role="toolbar" aria-label="Layers">
+          <div className={styles.dockTitle}>I want to see…</div>
+          <div className={styles.dockMeta}>
+            <span className={styles.countChip}>{activeDefs.length} on</span>
+            <div className={styles.dockCtl}>
+              {isMobile && (
+                <button type="button" className={styles.dockBtnSm} onClick={() => setMobileView('pill')} aria-label="Hide layer icons">«</button>
+              )}
+              <button
+                type="button"
+                className={styles.dockBtnSm}
+                onClick={() => { if (isMobile) setMobileView('drawer'); else setPanelOpen(true) }}
+                aria-label="Expand panel"
+              >▸</button>
+            </div>
+          </div>
+          {GROUPS.map((group) => (
+            <div key={group.id} className={styles.dockGroup}>
+              <div className={styles.dockGroupLabel}>{group.label}</div>
+              <div className={styles.dockGrid}>
+                {LAYERS.filter((d) => d.group === group.id).map((def) => {
+                  const on = !!layerOn[def.id]
+                  return (
+                    <button
+                      key={def.id}
+                      type="button"
+                      className={`${styles.dockBtn} ${on ? styles.dockOn : ''}`}
+                      style={on ? hueStyle(def.hue) : undefined}
+                      onClick={() => { toggleLayer(def.id); if (isMobile) showChip(def.id, !on) }}
+                      aria-pressed={on}
+                      aria-label={def.name}
+                      data-name={def.name}
+                      data-sub={def.sub}
+                    >
+                      <LayerIcon svg={def.iconSvg} size={isMobile ? 16 : 19} />
+                      {on && <span className={styles.liveDotHue} aria-hidden="true" />}
+                      {!isMobile && (
+                        <span className={styles.dockTip} aria-hidden="true">{def.name} <span>· {def.sub}</span></span>
+                      )}
+                      {isMobile && chip?.id === def.id && (
+                        <span className={styles.tapChip} style={{ '--hue': def.hue }} aria-hidden="true">{def.name} <b>{chip.on ? 'on' : 'off'}</b></span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           ))}
-          <button type="button" className={`${styles.railBtn} ${styles.railMore}`} onClick={() => setPanelOpen(true)} data-tip="Expand panel · legends & details" aria-label="Expand layer panel">▸</button>
         </div>
       )}
-      <MapSheet
-        title="Earth Systems"
+      {isMobile && mobileView === 'pill' && (
+        <button type="button" className={styles.pill} onClick={() => setMobileView('dock')} aria-label="Show layers">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+            <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+            <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
+          </svg>
+          {activeDefs.length > 0 && <span className={styles.pillBadge}>{activeDefs.length}</span>}
+        </button>
+      )}
+      {(!isMobile || mobileView === 'drawer') && <MapSheet
+        title="I want to see…"
         summary={summary}
-        className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed} ${compact && !panelOpen ? styles.panelHidden : ''}`}
+        className={`${styles.panel} ${!isMobile && !panelOpen ? styles.panelHidden : ''}`}
+        expandSignal={drawerSignal}
+        onSnapChange={(snap) => { if (isMobile && snap === 'peek' && mobileView === 'drawer') setMobileView('dock') }}
       >
         <div className={styles.panelHead}>
-          <span className={styles.panelTitle}>Earth Systems</span>
-          <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? (compact ? 'Collapse to icons' : 'Collapse') : 'Expand'} title={panelOpen && compact ? 'Collapse to icon rail' : undefined}>
-            {panelOpen ? (compact ? '◂' : '▾') : '▸'}
-          </button>
+          <span className={styles.dockTitle}>I want to see…</span>
+          <span className={styles.countChip}>{activeDefs.length} on</span>
+          <button className={styles.panelCollapse} onClick={() => { if (isMobile) setMobileView('dock'); else setPanelOpen(false) }} aria-label="Collapse to icons">◂</button>
         </div>
 
         {(panelOpen || isMobile) && (
@@ -1157,16 +1229,17 @@ export default function SystemsApp() {
               const meta = layerMeta[def.id]
               return (
                 <div key={def.id} className={styles.layerBlock}>
-                  <div className={styles.layerRow}>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={on}
-                      className={on ? styles.switchOn : styles.switch}
-                      onClick={() => toggleLayer(def.id)}
-                    >
-                      <span className={styles.switchKnob} />
-                    </button>
+                  <div
+                    className={styles.layerRow}
+                    role="switch"
+                    aria-checked={on}
+                    tabIndex={0}
+                    onClick={() => toggleLayer(def.id)}
+                    onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleLayer(def.id) } }}
+                  >
+                    <span className={`${styles.rowIcon} ${on ? styles.dockOn : ''}`} style={on ? hueStyle(def.hue) : undefined} aria-hidden="true">
+                      <LayerIcon svg={def.iconSvg} size={16} />
+                    </span>
                     <div className={styles.layerInfo}>
                       <span className={styles.layerName}>{def.name}</span>
                       <span className={styles.layerSub}>{def.sub}</span>
@@ -1177,7 +1250,7 @@ export default function SystemsApp() {
                     <div className={styles.liveNote}>
                       <span className={styles.liveDot} aria-hidden="true" />
                       Live —{' '}
-                      <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                         {def.sourceName}
                       </a>
                       {' · '}{def.stamp(meta)}, fetched {agoWord(meta.fetched_ms)}.
@@ -1268,7 +1341,7 @@ export default function SystemsApp() {
             </div>
           </div>
         )}
-      </MapSheet>
+      </MapSheet>}
 
       {(replay || eventReplay) ? (
         <TransportBar

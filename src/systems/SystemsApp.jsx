@@ -39,6 +39,7 @@ import { EventPingLayer } from './eventPings.js'
 import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
+import ClipStudio from './ClipStudio.jsx'
 import styles from './SystemsApp.module.css'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
@@ -65,6 +66,10 @@ const DENSITIES = [
   { id: 'high', label: 'High', count: 6000 },
 ]
 const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]).count
+
+// Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
+// the clip recorder composites these over the basemap in exactly this order.
+const OVERLAY_KEYS = ['scalar', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireevents', 'quakes']
 
 // ─── Shareable URL state ────────────────────────────────────────────────────
 // Required convention (docs/MAP_TOOL_CONVENTIONS.md). Per-layer params come
@@ -998,6 +1003,30 @@ export default function SystemsApp() {
     }
   }, [])
 
+  // ─── Clip recorder wiring (ClipStudio) ────────────────────────────────────
+  const getClipMap = useCallback(() => mapRef.current, [])
+  const clipBeforeRecord = useCallback(() => popupRef.current?.remove(), [])
+  const getClipOverlays = useCallback(
+    () => OVERLAY_KEYS.map((k) => canvasEls.current[k]).filter(Boolean),
+    [],
+  )
+  const getClipBrand = useCallback(() => {
+    const imagery = basemap === 'satellite' ? '© Mapbox © Maxar' : '© Mapbox © OpenStreetMap'
+    const fmtD = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const activeNow = () => {
+      const { layerOn, layerStatus } = stateRef.current
+      return LAYERS.filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
+    }
+    // Re-read layers and replay position per frame: a playing replay's date
+    // (and a mid-take layer toggle) must stamp what's actually on screen.
+    const sourceLine = () => {
+      const rc = replayRef.current || eventReplayRef.current
+      const when = rc && !rc.atLive ? `showing ${fmtD(rc.t)}` : fmtD(Date.now())
+      return [...activeNow().map((d) => `${d.name}: ${d.sourceName}`), imagery, when].join(' · ')
+    }
+    return { sourceLine, shareUrl: window.location.href, layerIds: activeNow().map((d) => d.id) }
+  }, [basemap])
+
   const handleSelect = useCallback((r) => {
     if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
     mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 4.5, duration: 1600, essential: true })
@@ -1179,6 +1208,16 @@ export default function SystemsApp() {
           </div>
         )}
       </div>
+
+      {/* Record a clip — shareable branded video of exactly this view */}
+      {mapReady && (
+        <ClipStudio
+          getMap={getClipMap}
+          getOverlays={getClipOverlays}
+          getBrand={getClipBrand}
+          onBeforeRecord={clipBeforeRecord}
+        />
+      )}
 
       {/* Control panel — floating left panel on desktop, drawer on phones */}
       {/* Icon dock — default navigation on every screen size. */}

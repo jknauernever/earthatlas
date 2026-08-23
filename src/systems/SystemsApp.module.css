@@ -192,7 +192,8 @@
 .explainRefresh:hover { color: rgba(160, 220, 255, 1); }
 
 /* ─── Basemap picker ─────────────────────────────────────────────────────── */
-.basemapMenu { position: absolute; top: 64px; right: 60px; z-index: 10; }
+/* Below the clip launcher (110px + 36px + 8px gap) in the top-right column. */
+.basemapMenu { position: absolute; top: 154px; right: 10px; z-index: 10; }
 .basemapToggle, .basemapToggleActive {
   width: 36px; height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -653,8 +654,9 @@
   .wordmark { font-size: 14px; }
   .subBadge { font-size: 10px; padding-left: 8px; }
 
+  /* Under the clip launcher (62px + 36px + 8px gap) — video above layers. */
   .basemapMenu {
-    top: calc(62px + env(safe-area-inset-top, 0px));
+    top: calc(106px + env(safe-area-inset-top, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 

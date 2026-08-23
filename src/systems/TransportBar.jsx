@@ -18,7 +18,7 @@ const fmtRunShort = (ms) => {
  * unambiguous readout of the date & time on screen (UTC + viewer's local)
  * with the frame's provenance underneath.
  */
-export default function TransportBar({ controller, sourceName, sourceUrl, shifted, range, onRange }) {
+export default function TransportBar({ controller, sourceName, sourceUrl, shifted, range, onRange, mini }) {
   const [, force] = useState(0)
   useEffect(() => controller.subscribe(() => force((n) => n + 1)), [controller])
   useEffect(() => {
@@ -61,6 +61,17 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   const steady = meta.event ? `${fk} · one day at a time` : `${fk ? fk.replace(/, weekly$/, '') : 'model analyses'}, ${stepWord}`
   const windowOptions = c.windowOptions
   const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : ''
+
+  if (mini) {
+    // Compact pill (phones, while a popup is open): date + play/pause only.
+    return (
+      <div className={`${styles.bar} ${styles.mini}`} role="region" aria-label="Replay controls">
+        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')}>{live ? 'NOW' : 'REPLAY'}</span>
+        <span className={styles.miniDate}>{daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
+        <button type="button" className={`${styles.btn} ${styles.play}`} onClick={() => c.toggle()} aria-label={c.playing ? 'Pause' : 'Play'}>{c.playing ? '❚❚' : '▶'}</button>
+      </div>
+    )
+  }
 
   return (
     <div className={`${styles.bar} ${shifted ? styles.shifted : ''}`} role="region" aria-label="Replay controls">

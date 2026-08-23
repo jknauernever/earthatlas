@@ -546,6 +546,8 @@
 }
 .popupAnalysisDone strong { color: #111827; font-weight: 700; }
 
+/* Popups sit above the replay bar (bar is z 6). */
+:global(.mapboxgl-popup) { z-index: 8 !important; }
 :global(.mapboxgl-popup-content) {
   padding: 0 !important;
   background: #fff !important;

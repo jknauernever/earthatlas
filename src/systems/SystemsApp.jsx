@@ -159,6 +159,7 @@ export default function SystemsApp() {
   const [dataEpoch, setDataEpoch] = useState(0) // bumped when a visible layer's data is refreshed
   const resumeRef = useRef({}) // layer id → { t, playing } to restore a replay across a data refresh
   const [eventReplay, setEventReplay] = useState(null)
+  const [popupOpen, setPopupOpen] = useState(false)
   const fieldsRef = useRef({})       // layer id → GridField
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
@@ -383,6 +384,10 @@ export default function SystemsApp() {
           `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div></div>`,
         )
         .addTo(map)
+      // Phones: the replay bar shrinks to a pill while a popup is open so the
+      // two never overlap; restored on close.
+      setPopupOpen(true)
+      popupRef.current.once('close', () => setPopupOpen(false))
 
       // Same facts→narration pipeline as "Explain this view", popup-sized.
       // Click point rounded to ~10 km so repeat clicks on the same feature
@@ -1271,6 +1276,7 @@ export default function SystemsApp() {
           sourceName={LAYERS.find((d) => d.id === (replay || eventReplay).layerId)?.sourceName}
           sourceUrl={LAYERS.find((d) => d.id === (replay || eventReplay).layerId)?.sourceUrl}
           shifted={panelOpen && !isMobile}
+          mini={isMobile && popupOpen}
           range={replay && LAYERS.find((d) => d.id === replay.layerId)?.tape?.year ? (replayRange[replay.layerId] || 'short') : undefined}
           onRange={replay && LAYERS.find((d) => d.id === replay.layerId)?.tape?.year
             ? (k) => setReplayRange((r) => ({ ...r, [replay.layerId]: k }))

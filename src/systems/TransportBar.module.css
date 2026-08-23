@@ -60,6 +60,9 @@
 .scrub::-moz-range-progress { height: 6px; border-radius: 3px; background: #ffd166; }
 .scrub::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #0b1220; }
 
+.mini { display: flex; align-items: center; gap: 10px; padding: 6px 10px; width: auto; max-width: calc(100vw - 24px); }
+.miniDate { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.mini .play { height: 28px; min-width: 36px; font-size: 12px; }
 .window { display: flex; gap: 2px; }
 .span { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .spanLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); margin-right: 2px; }

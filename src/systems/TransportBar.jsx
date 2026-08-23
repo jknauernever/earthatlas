@@ -73,37 +73,24 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
     )
   }
 
+  const stepTitle = c.weekly ? 'one week' : daily || meta.dayLabel ? 'one day' : `${stepH} hours`
   return (
     <div className={`${styles.bar} ${shifted ? styles.shifted : ''}`} role="region" aria-label="Replay controls">
-      <div className={styles.readout}>
-        <div className={styles.when}>
-          <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')}>{live ? 'NOW' : 'REPLAY'}</span>
-          <span className={styles.utc}>{daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
-          {!daily && !meta.dayLabel && <span className={styles.local}>({fmtLocal(shownMs)})</span>}
-          {onRange && (
-            <div className={styles.span} role="group" aria-label="Replay span">
-              <span className={styles.spanLabel}>Show</span>
-              {[['short', `Last ${Math.min(31, Math.max(1, Math.round((c.end_ms - c.start_ms) / 8.64e7)))} days`], ['year', 'Last year']].map(([k, label]) => (
-                <button key={k} type="button" className={`${styles.win} ${range === k ? styles.winOn : ''}`} onClick={() => onRange(k)}>{label}</button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className={styles.prov}>
-          {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noopener noreferrer">{sourceName}</a> : sourceName}
-          {' · '}{c.playing && !live ? steady : `${kind}${runLabel}`}
-          <span className={styles.status}>{status}</span>
-        </div>
+      {/* Line 1: the time on screen (fixed height). Line 2: the controls —
+          separated so the controls never shift as the date text changes. */}
+      <div className={styles.when}>
+        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')} title={`${sourceName} · ${c.playing && !live ? steady : `${kind}${runLabel}`}`}>{live ? 'NOW' : 'REPLAY'}</span>
+        <span className={styles.utc}>{daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
+        {!daily && !meta.dayLabel && <span className={styles.local}>({fmtLocal(shownMs)})</span>}
+        <span className={styles.status}>{status}</span>
       </div>
-      <div className={styles.controls}>
+      <div className={styles.row}>
         <button type="button" className={styles.btn} onClick={() => c.toStart()} title="Back to start of window" aria-label="Back to start">⏮</button>
-        <button type="button" className={styles.btn} onClick={() => c.stepDays(c.weekly ? -7 : -1)} title={c.weekly ? 'Back one week' : 'Back one day'} aria-label="Back one step">{c.weekly ? '−1 w' : '−1 d'}</button>
-        {!daily && !meta.dayLabel && <button type="button" className={styles.btn} onClick={() => c.stepFrames(-1)} title={`Back ${stepH} hours (←)`} aria-label="Back one frame">◀︎</button>}
+        <button type="button" className={styles.btn} onClick={() => (daily || meta.dayLabel ? c.stepDays(c.weekly ? -7 : -1) : c.stepFrames(-1))} title={`Back ${stepTitle} (←)`} aria-label="Back one step">◀︎</button>
         <button type="button" className={`${styles.btn} ${styles.play}`} onClick={() => c.toggle()} title={c.playing ? 'Pause (space)' : 'Play (space)'} aria-label={c.playing ? 'Pause' : 'Play'}>
           {c.playing ? '❚❚' : '▶'}
         </button>
-        {!daily && !meta.dayLabel && <button type="button" className={styles.btn} onClick={() => c.stepFrames(1)} title={`Forward ${stepH} hours (→)`} aria-label="Forward one frame">▶︎</button>}
-        <button type="button" className={styles.btn} onClick={() => c.stepDays(c.weekly ? 7 : 1)} title={c.weekly ? 'Forward one week' : 'Forward one day'} aria-label="Forward one step">{c.weekly ? '+1 w' : '+1 d'}</button>
+        <button type="button" className={styles.btn} onClick={() => (daily || meta.dayLabel ? c.stepDays(c.weekly ? 7 : 1) : c.stepFrames(1))} title={`Forward ${stepTitle} (→)`} aria-label="Forward one step">▶︎</button>
         <button type="button" className={`${styles.btn} ${live ? styles.btnLiveOn : ''}`} onClick={() => c.toLive()} title="Jump to now" aria-label="Jump to now">Now ⏭</button>
         <input
           className={styles.scrub}
@@ -116,6 +103,13 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
           aria-label="Scrub through time"
           style={{ '--pct': `${pct}%` }}
         />
+        {onRange && (
+          <div className={styles.window} role="group" aria-label="Replay span">
+            {[['short', `${Math.min(31, Math.max(1, Math.round((c.end_ms - c.start_ms) / 8.64e7)))} d`], ['year', '1 y']].map(([k, label]) => (
+              <button key={k} type="button" className={`${styles.win} ${range === k ? styles.winOn : ''}`} onClick={() => onRange(k)}>{label}</button>
+            ))}
+          </div>
+        )}
         {!onRange && windowOptions.length > 1 && (
           <div className={styles.window} role="group" aria-label="Replay window">
             {windowOptions.map((d) => (

@@ -1,12 +1,12 @@
 .bar {
   position: absolute;
-  left: 50%; bottom: 26px;
+  left: 50%; bottom: 18px;
   transform: translateX(-50%);
   width: min(760px, calc(100vw - 24px));
   background: rgba(8, 14, 22, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  padding: 10px 14px 12px;
+  padding: 7px 12px 6px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: #fff;
@@ -14,10 +14,11 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 .shifted { left: calc(50% + 170px); width: min(760px, calc(100vw - 380px)); }
-/* Fixed-height lines: the bar must never change height while playing (a
-   wrapping word or an appearing status made the top edge jump). */
-.readout { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-.when { display: flex; align-items: center; gap: 10px; height: 26px; white-space: nowrap; overflow: hidden; }
+/* One fixed-height row (badge · date · transport · scrubber · span) with a
+   thin provenance line under it — the bar must never change height while
+   playing, so both lines are fixed and text truncates instead of wrapping. */
+.when { display: flex; align-items: center; gap: 8px; height: 22px; white-space: nowrap; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 6px; height: 28px; margin-top: 4px; white-space: nowrap; overflow: hidden; }
 .badge {
   display: inline-block; width: 64px; text-align: center; flex: none;
   font-size: 10px; font-weight: 800; letter-spacing: 0.12em;
@@ -25,27 +26,26 @@
   background: rgba(255, 196, 0, 0.18); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.5);
 }
 .badgeLive { background: rgba(46, 204, 113, 0.18); color: #7ee2a4; border-color: rgba(126, 226, 164, 0.55); }
-.utc { font-size: 18px; font-weight: 700; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
-.local { font-size: 12px; color: rgba(255, 255, 255, 0.7); font-variant-numeric: tabular-nums; }
-.prov { font-size: 11.5px; color: rgba(255, 255, 255, 0.6); height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status { display: inline-block; min-width: 90px; margin-left: 8px; color: #ffd166; }
+.utc { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.local { font-size: 11px; color: rgba(255, 255, 255, 0.7); font-variant-numeric: tabular-nums; }
+.status { display: inline-block; min-width: 90px; font-size: 10.5px; color: #ffd166; flex: none; }
 .prov a { color: rgba(255, 255, 255, 0.85); text-decoration: underline; text-underline-offset: 2px; }
 .buffering { color: #ffd166; }
 
-.controls { display: flex; align-items: center; gap: 6px; }
+
 .btn {
   appearance: none; border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08); color: #fff;
-  border-radius: 8px; height: 32px; min-width: 34px; padding: 0 9px;
+  border-radius: 7px; height: 26px; min-width: 28px; padding: 0 7px; flex: none;
   font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
 .btn:hover { background: rgba(255, 255, 255, 0.16); }
-.play { min-width: 44px; font-size: 14px; background: rgba(255, 255, 255, 0.92); color: #0b1220; border-color: transparent; }
+.play { min-width: 36px; font-size: 13px; background: rgba(255, 255, 255, 0.92); color: #0b1220; border-color: transparent; }
 .play:hover { background: #fff; }
 .btnLiveOn { border-color: rgba(126, 226, 164, 0.7); color: #7ee2a4; }
 
 .scrub {
-  flex: 1; min-width: 90px; height: 32px; margin: 0 4px; cursor: pointer;
+  flex: 1; min-width: 70px; height: 26px; margin: 0 4px; cursor: pointer;
   appearance: none; background: transparent;
 }
 .scrub::-webkit-slider-runnable-track {
@@ -68,7 +68,7 @@
 .spanLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); margin-right: 2px; }
 .win {
   appearance: none; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; color: rgba(255, 255, 255, 0.7);
-  border-radius: 6px; height: 26px; padding: 0 7px; font-size: 11px; cursor: pointer;
+  border-radius: 6px; height: 22px; padding: 0 6px; font-size: 10.5px; cursor: pointer; flex: none;
 }
 .winOn { background: rgba(255, 255, 255, 0.14); color: #fff; }
 
@@ -76,10 +76,7 @@
   .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); padding: 8px 10px 10px; border-radius: 12px; }
   .utc { font-size: 15px; }
   .local { font-size: 11px; }
-  .prov { font-size: 10.5px; }
-  .btn { min-width: 30px; padding: 0 6px; height: 30px; }
-  .controls { flex-wrap: wrap; }
-  .when { height: auto; flex-wrap: wrap; }
-  .span { margin-left: 0; }
+    .btn { min-width: 30px; padding: 0 6px; height: 30px; }
+  .row { height: auto; flex-wrap: wrap; }
   .scrub { flex-basis: 100%; order: 10; }
-}
+  }

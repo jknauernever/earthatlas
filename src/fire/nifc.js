@@ -141,14 +141,22 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 const TYPE_LABEL = { WF: 'Wildfire', RX: 'Prescribed fire', CX: 'Incident complex' }
 
+// "Today"/"yesterday" are CALENDAR days in the viewer's local time, not 24 h
+// buckets — a fire discovered at 4:38 pm yesterday must read "yesterday" this
+// morning, not "today" until mid-afternoon. Recent starts also carry the clock
+// time so the reader can judge freshness against the satellite detections.
 function discoveredText(ms) {
   if (!ms) return null
-  const days = (Date.now() - ms) / 8.64e7
-  if (days < 0) return null
-  if (days < 1) return 'started today'
-  if (days < 2) return 'started yesterday'
-  if (days < 60) return `burning ~${Math.round(days)} days`
-  return `since ${new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
+  const now = Date.now()
+  if (ms > now + 3.6e6) return null
+  const d = new Date(ms)
+  const startOfDay = (t) => { const x = new Date(t); x.setHours(0, 0, 0, 0); return x.getTime() }
+  const calDays = Math.round((startOfDay(now) - startOfDay(ms)) / 8.64e7)
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (calDays <= 0) return `started today, ${time}`
+  if (calDays === 1) return `started yesterday, ${time}`
+  if (calDays < 60) return `burning ${calDays} days (since ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`
+  return `since ${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
 }
 
 function row(label, value) {

@@ -45,6 +45,7 @@ import trackSource from './trackSource.json'
 import styles from './ShipTrafficApp.module.css'
 import { createExploreService } from '../explore/shared-service.js'
 import { GBIF_TAXON_KEY, INAT_TAXON_ID, SPECIES_META } from '../explore/species-data/whales.js'
+import MapSheet from '../components/MapSheet.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -255,7 +256,6 @@ export default function ShipTrafficApp() {
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
-  const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
   // Seed with the actual starting camera (URL camera if present, else the default
   // view) so a share link pins lat/lng/z from first render — not only after the
@@ -772,15 +772,11 @@ export default function ShipTrafficApp() {
         )}
       </div>
 
-      <div className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}>
+      <MapSheet title="Salish Sea" className={styles.panel}>
         <div className={styles.panelHead}>
           <span className={styles.panelTitle}>Salish Sea</span>
-          <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>
-            {panelOpen ? '▾' : '▸'}
-          </button>
         </div>
 
-        {panelOpen && (
           <div className={styles.panelBody}>
             {loadErr && <div className={styles.statusError}>{loadErr}</div>}
             {!grid && !loadErr && <div className={styles.status}>Loading data…</div>}
@@ -852,8 +848,7 @@ export default function ShipTrafficApp() {
               </>
             )}
           </div>
-        )}
-      </div>
+      </MapSheet>
 
       <div className={styles.tip}>Click anywhere for the area's vessel + whale data · yellow = tracks · magenta = whales · red glow = overlap</div>
 

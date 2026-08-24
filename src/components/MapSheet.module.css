@@ -179,3 +179,47 @@
 @media (prefers-reduced-motion: reduce) {
   .sheet, .toggleIcon { transition: none; }
 }
+
+/* ─── Desktop minimize ─────────────────────────────────────────────────── */
+/* Chevron in the panel's top-right corner. The host panel is absolutely
+   positioned, so this anchors to it. */
+.deskCollapse {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  padding: 0;
+}
+.deskCollapse:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+
+/* Collapsed pill: title + summary; click anywhere to restore. */
+.deskPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.deskPill:hover { color: #fff; }
+.deskPillSummary {
+  font-weight: 400;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}

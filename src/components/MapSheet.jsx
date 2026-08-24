@@ -36,6 +36,9 @@ const TAP_MS = 500
 export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange }) {
   const isMobile = useIsMobile()
   const [snap, setSnap] = useState('peek')
+  // Desktop: the floating panel can be minimized to a small titled pill so the
+  // map underneath is reachable without losing the panel's position.
+  const [deskCollapsed, setDeskCollapsed] = useState(false)
   // Optional: let the app react to the drawer's snap point (e.g. /inmotion
   // returns to its icon dock when the drawer is swiped back to 'peek').
   const prevSnapRef = useRef('peek')
@@ -139,8 +142,45 @@ export default function MapSheet({ title, summary, className, children, id, coll
   }, [isMobile, snap])
 
   if (!isMobile) {
+    if (deskCollapsed) {
+      return (
+        <aside
+          className={className}
+          aria-label={title}
+          id={id}
+          // Inline overrides beat the tool's panel class: shrink to the pill.
+          style={{ width: 'auto', minWidth: 0, height: 'auto', minHeight: 0, maxHeight: 'none', padding: 0, overflow: 'hidden' }}
+        >
+          <button
+            type="button"
+            className={styles.deskPill}
+            onClick={() => setDeskCollapsed(false)}
+            aria-expanded="false"
+            aria-label={`Expand ${title}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+            <span>{title}</span>
+            {summary && <span className={styles.deskPillSummary}>{summary}</span>}
+          </button>
+        </aside>
+      )
+    }
     return (
       <aside className={className} aria-label={title} id={id}>
+        <button
+          type="button"
+          className={styles.deskCollapse}
+          onClick={() => setDeskCollapsed(true)}
+          aria-expanded="true"
+          aria-label={`Minimize ${title}`}
+          title={`Minimize ${title}`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </button>
         {children}
       </aside>
     )

@@ -1076,6 +1076,14 @@ function readUrlState() {
     lat: num('lat'),
     lng: num('lng'),
     zoom: num('z'),
+    // Measurement line: "lat1,lng1,lat2,lng2" → [[lng,lat],[lng,lat]] or null.
+    measure: (() => {
+      const parts = (sp.get('ml') || '').split(',').map(Number)
+      if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return null
+      const [a, b, c, d] = parts
+      if (Math.abs(a) > 90 || Math.abs(c) > 90 || Math.abs(b) > 180 || Math.abs(d) > 180) return null
+      return [[b, a], [d, c]]
+    })(),
   }
 }
 
@@ -1119,6 +1127,7 @@ export default function FireApp() {
   const measureRef = useRef(null)          // createMeasureTool instance
   const [measureOn, setMeasureOn] = useState(false)
   const [measureState, setMeasureState] = useState({ hasLine: false, drawing: false })
+  const [measureLine, setMeasureLine] = useState(null) // [[lng,lat],[lng,lat]] | null
   const [measureHintClosed, setMeasureHintClosed] = useState(false)
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
@@ -1127,6 +1136,9 @@ export default function FireApp() {
 
   // Hydrate from the URL once on mount so shared links recreate the view.
   const initial = (typeof window !== 'undefined') ? readUrlState() : {}
+  // Captured on FIRST render: the URL-persist effect rewrites the query string
+  // (without ml until the tool reports a line), so later reads would miss it.
+  const initialMeasureRef = useRef(initial.measure)
   const initialOn = initial.on != null
     ? new Set(initial.on.split(',').map((s) => s.trim()).filter(Boolean))
     : null
@@ -1228,6 +1240,8 @@ export default function FireApp() {
     }
     restackBuildings(map)     // footprints above the parcels fill/outline
     raiseParcelSelection(map) // clicked-parcel highlight always sits on top
+    // Measurement ruler is meta-info about the map: above every data layer.
+    if (measureRef.current) measureRef.current.raise()
   }, [])
 
   // Add one raster layer to the map with a resolved XYZ tiles template.
@@ -1480,6 +1494,7 @@ export default function FireApp() {
     map.on('error', onError)
 
     mapRef.current = map
+    if (import.meta.env.DEV) window.__eaFireMap = map // dev-only QA handle
     return () => {
       ro.disconnect()
       map.off('error', onError)
@@ -1545,9 +1560,13 @@ export default function FireApp() {
       sp.set('lng', mapView.lng.toFixed(3))
       sp.set('z', mapView.zoom.toFixed(1))
     }
+    // Measurement line — the shared link reproduces the ruler's story.
+    if (measureLine) {
+      sp.set('ml', measureLine.map(([lng, lat]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(','))
+    }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [visible, opacity, order, basemap, mapView, mapReady])
+  }, [visible, opacity, order, basemap, mapView, mapReady, measureLine])
 
   // ─── React layer order → Mapbox z-order ───────────────────────────────────
   useEffect(() => {
@@ -1798,18 +1817,33 @@ export default function FireApp() {
   // the map, with plain clicks back to the inspect popup. Press while armed →
   // cancel. Press when a line is showing → clear it and start a fresh one.
   // Button/banner state follows the tool via onChange (it disarms itself).
-  const toggleMeasure = () => {
+  const ensureMeasureTool = useCallback(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map) return null
     if (!measureRef.current) {
       measureRef.current = createMeasureTool(map, {
-        onChange: ({ armed, hasLine, drawing }) => { setMeasureOn(armed); setMeasureState({ hasLine, drawing }) },
+        onChange: ({ armed, hasLine, drawing, line }) => {
+          setMeasureOn(armed)
+          setMeasureState({ hasLine, drawing })
+          setMeasureLine(line)
+        },
       })
     }
-    const t = measureRef.current
+    return measureRef.current
+  }, [])
+  const toggleMeasure = () => {
+    const t = ensureMeasureTool()
+    if (!t) return
     if (t.isArmed()) t.disarm({ keep: false })
     else { t.arm(); setMeasureHintClosed(false) }
   }
+
+  // ─── Restore a shared measurement line once the map is ready ──────────────
+  useEffect(() => {
+    if (!mapReady || !initialMeasureRef.current) return
+    const t = ensureMeasureTool()
+    if (t) { t.setLine(initialMeasureRef.current); initialMeasureRef.current = null }
+  }, [mapReady, ensureMeasureTool])
 
   const toggleLayer = (id) => {
     setLoadError((e) => (e[id] ? { ...e, [id]: false } : e)) // clear → retry on next show

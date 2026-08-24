@@ -18,7 +18,7 @@ const PTS = 'ea-measure-pts'
 const LBL = 'ea-measure-lbl'
 
 // Present in every Mapbox-hosted style's glyph endpoint (all our basemaps).
-const FONT = ['DIN Offc Pro Medium', 'Arial Unicode MS Regular']
+const FONT = ['DIN Offc Pro Bold', 'Arial Unicode MS Bold']
 
 const R_EARTH_KM = 6371.0088
 export function kmBetween([lng1, lat1], [lng2, lat2]) {
@@ -37,13 +37,50 @@ export function formatDistance(km) {
   return `${f(mi)} mi (${f(km)} km)`
 }
 
+// White rounded-rect plate behind the distance label, generated on a canvas so
+// there's no asset to ship. Registered as a stretchable image (9-patch) that
+// icon-text-fit expands to the text. Style-scoped, so re-added on style.load.
+const PLATE = 'ea-measure-plate'
+function makePlateImage() {
+  const r = 2 // pixelRatio
+  // Small rigid frame (just enough for the rounded corners) so the fitted box
+  // hugs the text instead of ballooning past it.
+  const w = 20 * r, h = 16 * r, rad = 4 * r, bw = 1 * r
+  const cv = document.createElement('canvas')
+  cv.width = w; cv.height = h
+  const ctx = cv.getContext('2d')
+  ctx.beginPath()
+  ctx.roundRect(bw / 2, bw / 2, w - bw, h - bw, rad)
+  ctx.fillStyle = 'rgba(255,255,255,0.65)' // translucent — terrain stays readable underneath
+  ctx.fill()
+  ctx.lineWidth = bw
+  ctx.strokeStyle = 'rgba(10,14,23,0.55)'
+  ctx.stroke()
+  return { data: ctx.getImageData(0, 0, w, h), options: {
+    pixelRatio: r,
+    // Stretch zones + content box (in image px, pre-ratio): corners rigid,
+    // middle band stretches; content box symmetric so the text sits centered.
+    stretchX: [[7, 13]], stretchY: [[6, 10]], content: [6, 5, 14, 11],
+  } }
+}
+
+// Midpoint of the segment AS RENDERED: Mapbox draws LineStrings straight in
+// Web-Mercator screen space, so averaging raw lat puts the label off the line
+// on long north–south spans. Average in projected space and unproject.
+function segmentMidpoint([lng1, lat1], [lng2, lat2]) {
+  const rad = Math.PI / 180
+  const y = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * rad) / 2))
+  const midY = (y(lat1) + y(lat2)) / 2
+  return [(lng1 + lng2) / 2, (2 * Math.atan(Math.exp(midY)) - Math.PI / 2) / rad]
+}
+
 export function createMeasureTool(map, { onChange } = {}) {
   let armed = false
   let pts = []            // 0, 1, or 2 fixed endpoints
   let cursor = null       // live mouse position while drawing, for the preview leg
   let prevDoubleClickZoom = null
 
-  const emit = () => { if (onChange) onChange({ armed, hasLine: pts.length === 2, drawing: armed && pts.length === 1 }) }
+  const emit = () => { if (onChange) onChange({ armed, hasLine: pts.length === 2, drawing: armed && pts.length === 1, line: pts.length === 2 ? pts.map((c) => [...c]) : null }) }
 
   // ── GeoJSON build ─────────────────────────────────────────────────────────
   const featureCollection = () => {
@@ -52,13 +89,15 @@ export function createMeasureTool(map, { onChange } = {}) {
     if (pts.length && end) {
       const preview = pts.length < 2
       feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [pts[0], end] }, properties: { kind: preview ? 'preview' : 'line' } })
+      // The distance plate sits at the line's midpoint — it reads as "the
+      // length of THIS line" and leaves both endpoints visible.
       feats.push({
-        type: 'Feature', geometry: { type: 'Point', coordinates: end },
-        properties: { kind: 'pt', end: 1, label: formatDistance(kmBetween(pts[0], end)) },
+        type: 'Feature', geometry: { type: 'Point', coordinates: segmentMidpoint(pts[0], end) },
+        properties: { kind: 'label', label: formatDistance(kmBetween(pts[0], end)) },
       })
     }
     for (const c of pts) {
-      feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { kind: 'pt', end: 0, label: '' } })
+      feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { kind: 'pt', label: '' } })
     }
     return { type: 'FeatureCollection', features: feats }
   }
@@ -69,7 +108,14 @@ export function createMeasureTool(map, { onChange } = {}) {
   }
 
   // ── Layers (re-added on every style.load while geometry or armed) ─────────
+  const ensureImage = () => {
+    if (!map.hasImage(PLATE)) {
+      const { data, options } = makePlateImage()
+      map.addImage(PLATE, data, options)
+    }
+  }
   const ensureLayers = () => {
+    ensureImage()
     if (map.getSource(SRC)) { refresh(); return }
     map.addSource(SRC, { type: 'geojson', data: featureCollection() })
     map.addLayer({
@@ -86,7 +132,7 @@ export function createMeasureTool(map, { onChange } = {}) {
       id: PTS, type: 'circle', source: SRC,
       filter: ['==', ['get', 'kind'], 'pt'],
       paint: {
-        'circle-radius': ['case', ['==', ['get', 'end'], 1], 5, 4],
+        'circle-radius': 4.5,
         'circle-color': '#ffd166',
         'circle-stroke-color': 'rgba(10,14,23,0.9)',
         'circle-stroke-width': 1.5,
@@ -94,21 +140,35 @@ export function createMeasureTool(map, { onChange } = {}) {
     })
     map.addLayer({
       id: LBL, type: 'symbol', source: SRC,
-      filter: ['==', ['get', 'kind'], 'pt'],
+      filter: ['==', ['get', 'kind'], 'label'],
       layout: {
+        // The distance IS the story a shared link tells — a headline on a
+        // white plate (the stretchable PLATE image), not a map label.
         'text-field': ['get', 'label'],
         'text-font': FONT,
-        'text-size': 14,
-        'text-offset': [0, -1.1],
-        'text-anchor': 'bottom',
+        'text-size': 16,
+        'text-anchor': 'center',
         'text-allow-overlap': true,
+        'icon-image': PLATE,
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [2, 6, 2, 6],
+        'icon-allow-overlap': true,
       },
       paint: {
-        'text-color': '#ffd166',
-        'text-halo-color': 'rgba(10,14,23,0.95)',
-        'text-halo-width': 1.6,
+        'text-color': '#0a0e17',
       },
     })
+    raiseToTop()
+  }
+
+  // The measurement is meta-information ABOUT the map — it must never be
+  // buried under data layers. Exposed as `raise()` so the HOST calls it at the
+  // end of its own restack routine (the one place that owns z-order); GL v3
+  // has no reliable event for "some layer moved above you".
+  const raiseToTop = () => {
+    for (const id of [LINE, PTS, LBL]) {
+      try { if (map.getLayer(id)) map.moveLayer(id) } catch { /* mid style swap */ } // no beforeId → top
+    }
   }
 
   // Keep the measurement alive across basemap switches.
@@ -171,6 +231,18 @@ export function createMeasureTool(map, { onChange } = {}) {
     refresh(); emit()
   }
 
+  // For URL round-tripping: the finished line's endpoints, or null.
+  function getLine() {
+    return pts.length === 2 ? pts.map((c) => [...c]) : null
+  }
+  // Restore a finished line (e.g. from a shared URL) without arming.
+  function setLine(two) {
+    if (!Array.isArray(two) || two.length !== 2) return
+    pts = two.map((c) => [c[0], c[1]])
+    try { ensureLayers() } catch { /* re-added on style.load */ }
+    refresh(); emit()
+  }
+
   function clear() {
     pts = []; cursor = null
     refresh(); emit()
@@ -183,5 +255,5 @@ export function createMeasureTool(map, { onChange } = {}) {
     if (map.getSource(SRC)) map.removeSource(SRC)
   }
 
-  return { arm, disarm, clear, destroy, isArmed: () => armed, hasLine: () => pts.length === 2 }
+  return { arm, disarm, clear, destroy, isArmed: () => armed, hasLine: () => pts.length === 2, getLine, setLine, raise: raiseToTop }
 }

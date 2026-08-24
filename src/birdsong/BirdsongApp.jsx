@@ -39,6 +39,7 @@ import {
   stationTypeLabel,
 } from './birdsongService.js'
 import styles from './BirdsongApp.module.css'
+import MapSheet from '../components/MapSheet.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -147,7 +148,6 @@ export default function BirdsongApp() {
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
-  const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
   const [mapView, setMapView] = useState(initialCamera)
   const [viewport, setViewport] = useState(null) // {swlat,swlng,nelat,nelng}
@@ -580,15 +580,11 @@ export default function BirdsongApp() {
       </div>
 
       {/* Control panel */}
-      <div className={`${styles.panel} ${panelOpen ? '' : styles.panelCollapsed}`}>
+      <MapSheet title={selectedStation ? 'Station' : 'Birdsong'} className={styles.panel}>
         <div className={styles.panelHead}>
           <span className={styles.panelTitle}>{selectedStation ? 'Station' : 'Birdsong'}</span>
-          <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>
-            {panelOpen ? '▾' : '▸'}
-          </button>
         </div>
 
-        {panelOpen && (
           <div className={styles.panelBody}>
             {/* Time window — applies to both global and station views */}
             <div className={styles.field}>
@@ -642,8 +638,7 @@ export default function BirdsongApp() {
               </a>
             </div>
           </div>
-        )}
-      </div>
+      </MapSheet>
 
       <div className={styles.tip}>Pan anywhere · click a station for its calls · ▶ to listen</div>
 

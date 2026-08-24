@@ -176,6 +176,7 @@
   z-index: 11;
 }
 .layerIntro {
+  padding-right: 26px; /* clear the MapSheet minimize chevron */
   margin: 0 0 12px;
   font-size: 12px;
   line-height: 1.45;

@@ -32,6 +32,7 @@ import {
   individualUrl,
 } from './happywhaleService.js'
 import styles from './HappyWhaleApp.module.css'
+import MapSheet from '../components/MapSheet.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -171,7 +172,6 @@ export default function HappyWhaleApp() {
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
-  const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
   const [mapView, setMapView] = useState(initialCamera)
   const suppressFlyRef = useRef(!!(initialCamera || initialCenter))
@@ -665,16 +665,11 @@ export default function HappyWhaleApp() {
         )}
       </div>
 
-      {/* Control panel */}
-      <div className={styles.panel}>
+      <MapSheet title="Whale encounters" className={styles.panel}>
         <div className={styles.panelHead}>
           <span className={styles.panelTitle}>Whale encounters</span>
-          <button className={styles.panelCollapse} onClick={() => setPanelOpen((o) => !o)} aria-label={panelOpen ? 'Collapse' : 'Expand'}>
-            {panelOpen ? '▾' : '▸'}
-          </button>
         </div>
 
-        {panelOpen && (
           <div className={styles.panelBody}>
             {/* Demo-data notice — shown until HappyWhale's API goes live */}
             {live === false && (
@@ -796,8 +791,7 @@ export default function HappyWhaleApp() {
               </a>
             </div>
           </div>
-        )}
-      </div>
+      </MapSheet>
 
       <div className={styles.tip}>Click an encounter for details · ringed dots are identified whales with journeys</div>
 

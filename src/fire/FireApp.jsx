@@ -5,6 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
+import { createMeasureTool } from '../lib/measureTool.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
@@ -1115,6 +1116,10 @@ function writeUrlQuery(qs) {
 export default function FireApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const measureRef = useRef(null)          // createMeasureTool instance
+  const [measureOn, setMeasureOn] = useState(false)
+  const [measureState, setMeasureState] = useState({ hasLine: false, drawing: false })
+  const [measureHintClosed, setMeasureHintClosed] = useState(false)
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
   // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
@@ -1639,6 +1644,8 @@ export default function FireApp() {
     const map = mapRef.current
     if (!map) return
     const handler = (e) => {
+      // Ruler mode owns clicks: points go to the measurement, not the popup.
+      if (measureRef.current && measureRef.current.isArmed()) return
       const { lng, lat } = e.lngLat
       setShowNudge(false) // first interaction → retire the hint
       if (popupRef.current) popupRef.current.remove()
@@ -1786,6 +1793,24 @@ export default function FireApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Ruler: press → arm a single two-point measurement (replacing any previous
+  // line); the tool auto-disarms after the second click and the line STAYS on
+  // the map, with plain clicks back to the inspect popup. Press while armed →
+  // cancel. Press when a line is showing → clear it and start a fresh one.
+  // Button/banner state follows the tool via onChange (it disarms itself).
+  const toggleMeasure = () => {
+    const map = mapRef.current
+    if (!map) return
+    if (!measureRef.current) {
+      measureRef.current = createMeasureTool(map, {
+        onChange: ({ armed, hasLine, drawing }) => { setMeasureOn(armed); setMeasureState({ hasLine, drawing }) },
+      })
+    }
+    const t = measureRef.current
+    if (t.isArmed()) t.disarm({ keep: false })
+    else { t.arm(); setMeasureHintClosed(false) }
+  }
+
   const toggleLayer = (id) => {
     setLoadError((e) => (e[id] ? { ...e, [id]: false } : e)) // clear → retry on next show
     setVisible((v) => ({ ...v, [id]: !v[id] }))
@@ -1907,6 +1932,43 @@ export default function FireApp() {
           </div>
         )}
       </div>
+
+      {/* Measure (ruler) — clicks add points while armed; unclick clears */}
+      <div className={styles.measureCtl}>
+        <button
+          className={measureOn ? styles.basemapToggleActive : styles.basemapToggle}
+          onClick={toggleMeasure}
+          aria-label={measureOn ? 'Cancel measuring' : measureState.hasLine ? 'Measure again (replaces the current line)' : 'Measure distance'}
+          aria-pressed={measureOn}
+          title={measureOn ? 'Cancel measuring' : measureState.hasLine ? 'Measure again (replaces the current line)' : 'Measure distance'}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 15.5 15.5 2 22 8.5 8.5 22 2 15.5z" />
+            <path d="m6.5 11 2 2" /><path d="m9.5 8 2 2" /><path d="m12.5 5 2 2" />
+          </svg>
+        </button>
+        {!measureOn && measureState.hasLine && (
+          <button
+            className={styles.measureClear}
+            onClick={() => measureRef.current && measureRef.current.clear()}
+            aria-label="Remove the measurement line"
+            title="Remove the measurement line"
+          >×</button>
+        )}
+      </div>
+
+      {/* Ruler instructions — slim banner at the very top of the map so it
+          never covers a point the user wants to measure; X dismisses. */}
+      {measureOn && !measureHintClosed && (
+        <div className={styles.measureHint} role="status">
+          <span>
+            {measureState.drawing
+              ? 'Click the end point to finish · Esc cancels'
+              : 'Click two points to measure the distance between them'}
+          </span>
+          <button className={styles.measureHintClose} onClick={() => setMeasureHintClosed(true)} aria-label="Close measuring instructions">×</button>
+        </div>
+      )}
 
       {/* Layer panel — floating left panel on desktop, bottom sheet on phones */}
       <MapSheet
@@ -2120,9 +2182,10 @@ export default function FireApp() {
       </MapSheet>
 
       {showNudge && mapReady && (
-        <div className={styles.nudge} aria-hidden="true">
+        <div className={styles.nudge} role="status">
           <span className={styles.nudgeDot} />
           Click anywhere to inspect a point
+          <button className={styles.nudgeClose} onClick={() => setShowNudge(false)} aria-label="Dismiss this hint">×</button>
         </div>
       )}
 

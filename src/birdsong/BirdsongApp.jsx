@@ -19,6 +19,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
@@ -491,9 +492,7 @@ export default function BirdsongApp() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleSelect = useCallback((r) => {
-    const map = mapRef.current
-    if (!map || !Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
-    map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 9), duration: 1400, essential: true })
+    flyToSearchResult(mapRef.current, r)
   }, [])
 
   const closeStation = useCallback(() => { setSelectedId(null) }, [])

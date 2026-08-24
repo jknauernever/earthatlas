@@ -186,6 +186,27 @@ export async function retrieve(suggestion, {
   }
 }
 
+/**
+ * Canonical camera move for a picked search result. Every earthatlas.org tool
+ * that flies its map on select must use this — not a hand-rolled flyTo — so
+ * search behaves identically across sites: fit the result's bbox when it has
+ * one (regions, cities, parks), otherwise fly to the per-type zoom preset.
+ * Tools that scope a view instead of flying (e.g. /quakes radius) keep their
+ * own camera logic but share the same suggest/retrieve UI.
+ */
+export function flyToSearchResult(map, r, opts = {}) {
+  if (!map || !r) return
+  const { padding = 80, duration = 1400, maxZoom = 14 } = opts
+  if (r.bbox && r.bbox.length === 4) {
+    map.fitBounds(
+      [[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]],
+      { padding, duration, maxZoom, essential: true },
+    )
+  } else if (Number.isFinite(r.lng) && Number.isFinite(r.lat)) {
+    map.flyTo({ center: [r.lng, r.lat], zoom: r.zoom ?? 10, duration, essential: true })
+  }
+}
+
 export function highlightMatch(text, query) {
   const t = String(text || '')
   const q = String(query || '')

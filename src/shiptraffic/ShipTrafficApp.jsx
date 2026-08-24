@@ -18,6 +18,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
@@ -673,9 +674,7 @@ export default function ShipTrafficApp() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleSelect = useCallback((r) => {
-    const map = mapRef.current
-    if (!map || !Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
-    map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(r.zoom || 10, 9), duration: 1200, essential: true })
+    flyToSearchResult(mapRef.current, r)
   }, [])
 
   const toggleLayer = useCallback((layer) => setVisible((v) => ({ ...v, [layer]: !v[layer] })), [])

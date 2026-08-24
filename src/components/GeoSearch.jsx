@@ -6,8 +6,9 @@
  * nav, and result shape. Drop into any earthatlas.org React surface that
  * needs a place/address/POI lookup.
  *
- * Usage:
- *   <GeoSearch onSelect={(r) => map.flyTo({ center: [r.lng, r.lat], zoom: r.zoom })} />
+ * Usage (map tools MUST use the canonical camera helper, not a custom flyTo):
+ *   import { flyToSearchResult } from '../lib/eaGeoSearch.js'
+ *   <GeoSearch onSelect={(r) => flyToSearchResult(mapRef.current, r)} />
  *
  * Props:
  *   onSelect(result)    Required. Called with the normalized result:
@@ -69,6 +70,15 @@ export default function GeoSearch({
   const sessionTokenRef = useRef(null)
   const debounceRef = useRef(null)
   const abortRef = useRef(null)
+  // Set when we write the picked result's name into the input ourselves — the
+  // suggest effect must skip that change or the dropdown reopens over the map.
+  const skipSuggestRef = useRef(false)
+  // Callers pass proximity as an inline closure, so it changes identity every
+  // parent render; read it through a ref to keep it out of the suggest
+  // effect's deps (otherwise every map-driven render refetches and reopens
+  // the dropdown after a place was already picked).
+  const proximityRef = useRef(proximity)
+  proximityRef.current = proximity
   const inputRef = useRef(null)
   const containerRef = useRef(null)
 
@@ -76,6 +86,10 @@ export default function GeoSearch({
 
   useEffect(() => {
     clearTimeout(debounceRef.current)
+    if (skipSuggestRef.current) {
+      skipSuggestRef.current = false
+      return
+    }
     const q = query.trim()
     if (q.length < DEFAULTS.minQueryLength) {
       setSuggestions([])
@@ -91,7 +105,7 @@ export default function GeoSearch({
       try {
         const results = await eaSuggest(q, {
           sessionToken: sessionTokenRef.current,
-          proximity: resolveProximity(proximity),
+          proximity: resolveProximity(proximityRef.current),
           endpoint,
           accessToken,
           language,
@@ -110,7 +124,7 @@ export default function GeoSearch({
       }
     }, DEFAULTS.debounceMs)
     return () => clearTimeout(debounceRef.current)
-  }, [query, proximity, endpoint, accessToken, language])
+  }, [query, endpoint, accessToken, language])
 
   useEffect(() => {
     const handler = (e) => {
@@ -130,9 +144,12 @@ export default function GeoSearch({
       })
       if (!result) return
       onSelect?.(result)
+      abortRef.current?.abort()
+      skipSuggestRef.current = true
       setQuery(result.name || suggestion.name || '')
       setOpen(false)
       setSuggestions([])
+      setLoading(false)
       sessionTokenRef.current = newSessionToken()
       inputRef.current?.blur()
     } catch (err) {

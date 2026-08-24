@@ -21,6 +21,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
@@ -1042,8 +1043,7 @@ export default function SystemsApp() {
   }, [])
 
   const handleSelect = useCallback((r) => {
-    if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
-    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 4.5, duration: 1600, essential: true })
+    flyToSearchResult(mapRef.current, r)
   }, [])
 
   // ─── "Explain this view": facts engine → AI narration ─────────────────────

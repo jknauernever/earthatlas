@@ -10,6 +10,19 @@
       gtag('config', 'G-6G13WC6FHH');
     </script>
     <meta charset="UTF-8" />
+    <!-- Mapbox GL calls Object.hasOwn (ES2022); without this shim, browsers
+         older than Chrome 93 / Safari 15.4 crash every map tool on load. -->
+    <script>
+      if (!Object.hasOwn) {
+        Object.defineProperty(Object, 'hasOwn', {
+          value: function (obj, prop) {
+            return Object.prototype.hasOwnProperty.call(Object(obj), prop)
+          },
+          writable: true,
+          configurable: true,
+        })
+      }
+    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- viewport-fit=cover lets the full-bleed map tools (/fire, /forestmonitor,
          /carbon, /quakes) paint edge to edge on notched phones; their chrome

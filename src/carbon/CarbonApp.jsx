@@ -23,6 +23,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
@@ -341,8 +342,7 @@ export default function CarbonApp() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleSelect = useCallback((r) => {
-    if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return
-    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, duration: 1400, essential: true })
+    flyToSearchResult(mapRef.current, r)
   }, [])
 
   const startDrawing = useCallback(() => {

@@ -86,7 +86,11 @@ effect's cleanup.
 - **Token:** `const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN` — never
   hardcode a token. Guard for its absence.
 - **Place search:** reuse `src/components/GeoSearch.jsx` (the `/api/geo` proxy).
-  Don't roll your own geocoder.
+  Don't roll your own geocoder. On select, tools that fly the camera MUST call
+  `flyToSearchResult(map, r)` from `src/lib/eaGeoSearch.js` (bbox fit when the
+  result has one, else the per-type zoom preset) — never a hand-rolled
+  `flyTo` with a fixed zoom. Tools that scope a view instead (e.g. /quakes
+  radius) keep their own camera logic behind the same GeoSearch UI.
 - **Chrome:** dark-glass panels — `rgba(10,14,23,0.85)`, `1px solid
   rgba(255,255,255,0.08)`, `backdrop-filter: blur(8px)`, ~8–10px radius. Root is
   `position: fixed; inset: 0`. Top-left EarthAtlas wordmark + a tool sub-badge;

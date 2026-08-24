@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { createMeasureTool } from '../lib/measureTool.js'
@@ -1920,18 +1921,7 @@ export default function FireApp() {
             if (!m) return undefined
             try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined }
           }}
-          onSelect={(r) => {
-            const m = mapRef.current
-            if (!m) return
-            if (r.bbox && r.bbox.length === 4) {
-              m.fitBounds(
-                [[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]],
-                { padding: 80, duration: 1400, maxZoom: 14 },
-              )
-            } else if (Number.isFinite(r.lng) && Number.isFinite(r.lat)) {
-              m.flyTo({ center: [r.lng, r.lat], zoom: r.zoom, duration: 1400, essential: true })
-            }
-          }}
+          onSelect={(r) => flyToSearchResult(mapRef.current, r)}
         />
       </MapSearch>
 

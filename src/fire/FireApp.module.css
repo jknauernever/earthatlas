@@ -860,7 +860,10 @@
 
   /* Both sit behind the sheet or fight it for attention. */
   .tip { display: none; }
-  .nudge { top: 38%; font-size: 12px; }
+  /* Keep it a compact pill: setting `top` here while the base rule keeps
+     `bottom: 34px` anchored BOTH edges, stretching it into a giant capsule
+     over half the phone screen. Bottom-anchored only, above the safe area. */
+  .nudge { bottom: calc(48px + env(safe-area-inset-bottom, 0px)); font-size: 12px; max-width: calc(100vw - 32px); white-space: normal; text-align: center; }
 
   /* Full-bleed modal — a 640px card with 36px gutters wastes a phone screen. */
   .modalBackdrop { padding: 0; align-items: flex-end; }

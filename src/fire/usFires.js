@@ -12,6 +12,7 @@ import styles from './FireApp.module.css'
 import { renderNifcCard } from './nifc.js'
 import { renderInciwebCard } from './inciweb.js'
 import { loadSystemsJson } from '../systems/windField.js'
+import { drawFlame, flameStateOf, FLAME_STATES } from '../components/flameGlyph.js'
 
 const PERIM_SRC = 'fire-usfires-perim-src'
 const PTS_SRC = 'fire-usfires-pts-src'
@@ -75,9 +76,10 @@ export const US_FIRES_LAYER = {
   legend: {
     kind: 'swatches',
     items: [
-      { c: COL_UNCONTAINED, l: 'Uncontained perimeter' },
-      { c: COL_PARTIAL, l: 'Partly contained' },
-      { c: COL_CONTAINED, l: 'Contained (recent)' },
+      { c: '#ff3b30', l: 'Active — less than half contained' },
+      { c: '#ff9500', l: 'Active — half contained' },
+      { c: '#8e959c', l: 'Mostly contained' },
+      { c: '#9aa0a6', l: 'Fully contained' },
       { c: COL_INCIWEB, l: 'Named incident (no perimeter yet)' },
     ],
   },
@@ -102,17 +104,16 @@ const containmentColorExpr = () => ['case',
 // (red uncontained → orange partly → gray contained; rose = named/no perimeter).
 // One canvas image per state, baked with a white halo + inner highlight, added
 // as a Mapbox symbol icon. `iconKey` on each point picks the image.
+// Containment tiers (shared flame glyph): red fighting it, orange half
+// held, gray with a warm core mostly contained, all-gray fully contained.
 const FLAME_STATE = (source, contained) =>
-  source === 'inciweb' ? 'named'
-    : contained != null && contained >= 100 ? 'contained'
-      : contained != null && contained > 0 ? 'partial'
-        : 'uncontained'
+  source === 'inciweb' ? 'named' : flameStateOf(contained)
 
-// [fill, inner-highlight] per state — matches the approved mockup.
 const FLAME_ICONS = {
-  uncontained: [COL_UNCONTAINED, '#ffd98a'],
-  partial: [COL_PARTIAL, '#ffe6b0'],
-  contained: [COL_CONTAINED, '#e6e9ec'],
+  uncontained: [FLAME_STATES.uncontained.fill, FLAME_STATES.uncontained.inner],
+  partial: [FLAME_STATES.partial.fill, FLAME_STATES.partial.inner],
+  mostly: [FLAME_STATES.mostly.fill, FLAME_STATES.mostly.inner],
+  contained: [FLAME_STATES.contained.fill, FLAME_STATES.contained.inner],
   named: [COL_INCIWEB, '#ffc2d1'],
 }
 // Graduated size multiplier by fire acreage (range-graded, powers-of-ten breaks).
@@ -126,23 +127,21 @@ const ACRE_SIZE_MUL = ['step', ['coalesce', ['get', 'acres'], -1],
   10000, 1.55, // 10k – 100k
   100000, 1.9, // ≥ 100k ac (megafire)
 ]
-const FLAME_PATH = 'M24 3 C 31 13 43 19 40.5 32 C 39 40.6 32.6 46 24 46 C 15.4 46 9 40.6 7.5 32 C 5 19 17 13 24 3 Z'
-const FLAME_INNER = 'M24 20 C 28 25 34 28 32 35 C 31 39.6 27.6 43 24 43 C 20.4 43 17 39.6 16 35 C 14 28 20 25 24 20 Z'
-
 // Draw one flame into an offscreen canvas → {width,height,data,pixelRatio}.
+// The glyph itself lives in src/components/flameGlyph.js — one icon family
+// across every earthatlas fire surface.
 function makeFlameImage(fill, inner) {
-  const S = 2, W = 52, H = 56 // logical box (flame ~48 tall + halo pad); S = supersample
+  const S = 2, W = 60, H = 60
   const cv = document.createElement('canvas')
   cv.width = W * S; cv.height = H * S
   const ctx = cv.getContext('2d')
   ctx.scale(S, S)
-  ctx.translate((W - 48) / 2, (H - 50) / 2)
-  const flame = new Path2D(FLAME_PATH)
-  const glint = new Path2D(FLAME_INNER)
-  ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3
-  ctx.stroke(flame); ctx.stroke(flame) // white halo (doubled = solid)
-  ctx.fillStyle = fill; ctx.fill(flame)
-  ctx.globalAlpha = 0.8; ctx.fillStyle = inner; ctx.fill(glint); ctx.globalAlpha = 1
+  // drawFlame reads its palette from the state key; for the InciWeb 'named'
+  // rose variant we patch a temp state through the shared drawing.
+  const key = Object.keys(FLAME_STATES).find((k) => FLAME_STATES[k].fill === fill) || '_custom'
+  if (key === '_custom') FLAME_STATES._custom = { fill, inner }
+  drawFlame(ctx, W / 2, H / 2, 50, key)
+  if (key === '_custom') delete FLAME_STATES._custom
   const img = ctx.getImageData(0, 0, cv.width, cv.height)
   return { width: cv.width, height: cv.height, data: img.data, pixelRatio: S }
 }

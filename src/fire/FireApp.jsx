@@ -1437,6 +1437,7 @@ export default function FireApp() {
         return { url }
       },
     })
+    if (import.meta.env.DEV) window.__fireMap = map // dev-only QA handle
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(

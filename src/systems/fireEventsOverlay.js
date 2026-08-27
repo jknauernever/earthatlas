@@ -11,18 +11,16 @@
 import { CanvasFreezer } from './canvasFreeze.js'
 import { getGlobeGeometry } from './globeGeom.js'
 import { RAW_DETAIL_ZOOM } from './fireRawDetections.js'
+import { drawFlame, flameStateOf } from '../components/flameGlyph.js'
 
 const MIN_DRAW_ZOOM = 3.2
-// Quiet NIFC incidents (type 'incident': official record, no fresh
-// detections) have no glow to carry them. Two gates keep them honest
-// without carpeting a bad fire season in rings (a severe Western August has
-// ~90 quiet fires over 1,000 acres in one regional view): a zoom-laddered
-// acreage floor, then a per-view top-K by acreage — the biggest fires in
-// view always show, the long tail appears as you zoom in.
-const incidentAcresFloor = (zoom) =>
-  zoom >= 6.5 ? 0 : zoom >= 5.5 ? 100 : 1000
-const incidentMaxInView = (zoom) =>
-  zoom >= 6.5 ? Infinity : zoom >= 5.5 ? 30 : 15
+// Every named NIFC fire wears its flame marker at every zoom (matching
+// /fire); markers shrink at continental scale so a bad season reads as a
+// field of small flames, not a wall. Fire SHAPES (official perimeters,
+// derived hulls) only appear once you're close enough for them to mean
+// something on screen.
+const SHAPES_MIN_ZOOM = 6.5
+const flameZoomScale = (zoom) => (zoom >= 6 ? 1 : zoom >= 4 ? 0.8 : 0.6)
 const MAX_LABELS = 25
 const PROJ_TOLERANCE = 2
 const MAX_DPR = 2
@@ -134,7 +132,8 @@ export class FireEventsOverlay {
     ctx.clearRect(0, 0, w, h)
     this._drawn = []
     this._freeze.capture()
-    if (map.getZoom() < MIN_DRAW_ZOOM) return
+    // Flame markers draw at EVERY zoom (like /fire); hulls and labels wait
+    // for MIN_DRAW_ZOOM where they stop being subpixel noise.
 
     // Same behind-globe test the ping renderer uses: exact limb test when
     // the horizon is on screen, unproject round-trip when zoomed in.
@@ -153,24 +152,17 @@ export class FireEventsOverlay {
 
     const zoomNow = map.getZoom()
     const candidates = []
-    const incidentCandidates = []
     for (const e of this.events) {
-      if (e.type === 'incident' && (e.acres || 0) < incidentAcresFloor(zoomNow)) continue
+      // Below MIN_DRAW_ZOOM only flame-marked (named) fires draw; unnamed
+      // detection clusters are carried by their glows alone down there.
+      if (zoomNow < MIN_DRAW_ZOOM && e.name_src !== 'nifc') continue
       let pt
       try { pt = map.project([e.lng, e.lat]) } catch { continue }
       if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) continue
       if (pt.x < -80 || pt.y < -80 || pt.x > w + 80 || pt.y > h + 80) continue
       if (!onFace(e.lng, e.lat, pt)) continue
-      const c = { e, cx: pt.x, cy: pt.y }
-      if (e.type === 'incident') incidentCandidates.push(c)
-      else candidates.push(c)
+      candidates.push({ e, cx: pt.x, cy: pt.y })
     }
-    const maxInc = incidentMaxInView(zoomNow)
-    if (incidentCandidates.length > maxInc) {
-      incidentCandidates.sort((a, b) => (b.e.acres || 0) - (a.e.acres || 0))
-      incidentCandidates.length = maxInc
-    }
-    candidates.push(...incidentCandidates)
 
     // Shapes for everything in view; labels only for the biggest. Events with
     // an OFFICIAL perimeter (NIFC join) draw its real geometry — solid and
@@ -198,37 +190,19 @@ export class FireEventsOverlay {
       ctx.stroke()
       ctx.setLineDash([])
     }
-    // At mid-zoom, outlines earn their place too: official perimeters,
-    // regional-burning envelopes, and the biggest fires in view. Everything
-    // gets its outline once you're zoomed close (z ≥ 6.5); the rest of the
-    // time small events are carried by their glows alone.
-    const drawAll = map.getZoom() >= 6.5
-    const outlineSet = new Set(
-      drawAll ? candidates : [...candidates].sort((a, b) => eventSignificance(b.e) - eventSignificance(a.e)).slice(0, 30),
-    )
-    // Quiet incidents: an ember marker (dot + ring) — visibly NOT a glow,
-    // because glows mean "satellites see it burning right now" and these are
-    // official records with no fresh detections. Ring radius scales with the
-    // fire's OFFICIAL size so a 15,000-acre fire reads bigger than a spot
-    // fire; a dark under-halo keeps it legible over bright terrain.
-    const emberR = (e) => Math.min(13, 3 + Math.log10((e.acres || 0) + 1) * 2.2)
-    const drawEmber = (x, y, r) => {
-      ctx.setLineDash([])
-      ctx.beginPath()
-      ctx.arc(x, y, Math.max(2.5, r * 0.45), 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(255,165,70,0.95)'
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.lineWidth = 1.5
-      ctx.strokeStyle = 'rgba(255,160,65,0.7)'
-      ctx.stroke()
-    }
+    // Named-fire markers: the shared flame glyph (same icon family as
+    // /fire), colored by containment — red fighting it, orange half held,
+    // gray with a warm core mostly contained, all-gray fully contained.
+    // Size scales with official acreage, shrunk at continental zooms; every
+    // NIFC fire gets one at every zoom. Fire SHAPES wait for close zoom.
+    const drawAll = zoomNow >= SHAPES_MIN_ZOOM
+    const flameH = (e) => Math.max(11, Math.min(30, Math.max(14, 13 + Math.log10((e.acres || 0) + 1) * 3.5)) * flameZoomScale(zoomNow))
     for (const d of candidates) {
       const polys = []
       const quiet = d.e.type === 'incident'
-      if (quiet) drawEmber(d.cx, d.cy, emberR(d.e))
-      const wantsOutline = drawAll || d.e.perimeter || d.e.type === 'regional' || outlineSet.has(d)
+      const flame = d.e.name_src === 'nifc'
+      if (flame) drawFlame(ctx, d.cx, d.cy, flameH(d.e), flameStateOf(d.e.contained))
+      const wantsOutline = drawAll
       if (!wantsOutline) { d.screenPolys = polys; this._drawn.push(d); continue }
       if (d.e.perimeter) {
         const geoms = d.e.perimeter.type === 'Polygon'
@@ -267,7 +241,9 @@ export class FireEventsOverlay {
     // and only a handful at low zoom. Deduped: neighboring events often
     // geocode to the same nearest town — the biggest of the group keeps it.
     const zoom = map.getZoom()
-    const maxLabels = zoom >= 6 ? MAX_LABELS : zoom >= 4.5 ? 12 : 8
+    // Below MIN_DRAW_ZOOM the flames stand alone — names would smother the
+    // continental view.
+    const maxLabels = zoom < MIN_DRAW_ZOOM ? 0 : zoom >= 6 ? MAX_LABELS : zoom >= 4.5 ? 12 : 8
     const labelWorthy = (d) => {
       if (!d.e.label) return false
       // Looking AT a fire (raw-detection zoom): every named fire in view
@@ -290,14 +266,16 @@ export class FireEventsOverlay {
     ctx.textAlign = 'center'
     for (const d of labeled) {
       const text = `${d.e.label}${d.e.type === 'regional' ? ' (regional burning)' : ''}`
+      // Flame-marked fires get their name above the glyph, not through it.
+      const ly = d.cy - (d.e.name_src === 'nifc' ? flameH(d.e) * 0.62 + 7 : 10)
       if (placed.some((p) => p.text === text && Math.hypot(p.x - d.cx, p.y - d.cy) < 180)) continue
-      if (placed.some((p) => Math.abs(p.y - (d.cy - 10)) < 14 && Math.abs(p.x - d.cx) < 90)) continue
-      placed.push({ text, x: d.cx, y: d.cy - 10 })
+      if (placed.some((p) => Math.abs(p.y - ly) < 14 && Math.abs(p.x - d.cx) < 90)) continue
+      placed.push({ text, x: d.cx, y: ly })
       ctx.lineWidth = 3
       ctx.strokeStyle = 'rgba(10,14,23,0.85)'
-      ctx.strokeText(text, d.cx, d.cy - 10)
+      ctx.strokeText(text, d.cx, ly)
       ctx.fillStyle = 'rgba(255,220,180,0.95)'
-      ctx.fillText(text, d.cx, d.cy - 10)
+      ctx.fillText(text, d.cx, ly)
     }
   }
 }

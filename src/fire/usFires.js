@@ -11,6 +11,7 @@
 import styles from './FireApp.module.css'
 import { renderNifcCard } from './nifc.js'
 import { renderInciwebCard } from './inciweb.js'
+import { loadSystemsJson } from '../systems/windField.js'
 
 const PERIM_SRC = 'fire-usfires-perim-src'
 const PTS_SRC = 'fire-usfires-pts-src'
@@ -304,7 +305,28 @@ export async function getActiveFireContext({ signal } = {}) {
   return { pts: incidentsOnly || [], perims: (cachedPerim && cachedPerim.features) || [] }
 }
 
+// irwin → 24 h VIIRS detection count from the merged fire feed (the same
+// three-satellite FIRMS bake /inmotion renders), so the incident card can say
+// whether satellites currently see this fire burning. Best-effort and lazy:
+// the "Satellite (24 h)" row only renders once the feed has an answer.
+let detFeed = null // { byIrwin: Map<irwin, {n}>, fetched_ms }
+let detFeedStarted = false
+function ensureDetectionFeed() {
+  if (detFeedStarted) return
+  detFeedStarted = true
+  loadSystemsJson('fire-events', 'fire-events')
+    .then((j) => {
+      const byIrwin = new Map()
+      for (const e of j.events || []) {
+        if (e.irwin) byIrwin.set(e.irwin, { n: e.n || 0 })
+      }
+      if (byIrwin.size) detFeed = { byIrwin, fetched_ms: j.fetched_ms }
+    })
+    .catch(() => { /* feed unreachable — the row simply doesn't render */ })
+}
+
 export async function loadUsFires(map, { signal } = {}) {
+  ensureDetectionFeed()
   // A feed "failed" if the request errored, the proxy flagged an upstream error
   // (503 / _upstream / _error), or it isn't a FeatureCollection. NIFC's shared
   // ArcGIS quota rate-limits (429) during fire season, so failures are expected.
@@ -415,5 +437,8 @@ export function queryUsFiresAt(map, point) {
 
 export function renderUsFiresCard(d) {
   if (!d) return ''
+  if (d.source !== 'inciweb' && detFeed && d.irwin && detFeed.byIrwin.has(d.irwin)) {
+    d = { ...d, det_n: detFeed.byIrwin.get(d.irwin).n }
+  }
   return d.source === 'inciweb' ? renderInciwebCard(d) : renderNifcCard(d)
 }

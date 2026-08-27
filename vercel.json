@@ -136,6 +136,18 @@
       "schedule": "10 */3 * * *"
     },
     {
+      "path": "/api/cron/systems-bake?ds=fire-daily",
+      "schedule": "35 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=hrrr-smoke",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=hrrr-smoke&tape=1",
+      "schedule": "25 * * * *"
+    },
+    {
       "path": "/api/cron/systems-bake?ds=aerosol",
       "schedule": "50 */6 * * *"
     },

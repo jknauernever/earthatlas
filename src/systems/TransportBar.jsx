@@ -43,7 +43,8 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   // and weekly fields are dated, not timed (every frame is the 12:00Z field).
   const shownMs = meta.valid_ms
   const fk = meta.frame_kind
-  const kind = meta.event
+  const kind = meta.kindLabel ? meta.kindLabel
+    : meta.event
     ? (meta.live ? 'all quakes of the past 24 h' : c.playing ? 'quakes as they happen' : 'all quakes of this day')
     : meta.live
     ? (daily ? 'latest daily field' : 'forecast valid now')
@@ -58,7 +59,8 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   // reads as flicker. Playback shows a steady description of the tape; the
   // exact frame provenance appears the moment you pause or scrub.
   const stepWord = c.weekly ? 'weekly' : daily ? 'daily' : stepH === 1 ? 'hourly' : `every ${stepH} h`
-  const steady = meta.event ? `${fk} · one day at a time` : `${fk ? fk.replace(/, weekly$/, '') : 'model analyses'}, ${stepWord}`
+  const steady = meta.steadyLabel ? meta.steadyLabel
+    : meta.event ? `${fk} · one day at a time` : `${fk ? fk.replace(/, weekly$/, '') : 'model analyses'}, ${stepWord}`
   const windowOptions = c.windowOptions
   const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : ''
 

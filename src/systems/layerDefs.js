@@ -148,6 +148,25 @@ const DUST_STOPS = [
   [1.5, 'rgba(140,60,15,1)'],
   [3, 'rgba(80,30,5,1)'],
 ]
+// Near-surface smoke concentration (µg/m³) — anchored loosely to the PM2.5
+// health breakpoints people know from air-quality indexes.
+// Low end is a COOL smoke gray, not pale yellow: faint haze has to read
+// over tan desert and green forest alike, and yellow-on-desert vanishes.
+// It warms through amber into deep red as the air gets bad.
+// The low end must fade IN gradually — an opacity cliff near zero renders
+// the "barely any smoke" zone as a solid gray shape with a hard border,
+// which reads as a fake boundary (smoke concentration has no edges).
+const US_SMOKE_STOPS = [
+  [0, 'rgba(150,155,170,0)'],
+  [2, 'rgba(150,155,170,0.15)'],
+  [6, 'rgba(168,162,150,0.35)'],
+  [15, 'rgba(220,175,100,0.6)'],
+  [35, 'rgba(250,135,45,0.82)'],
+  [100, 'rgba(205,75,30,0.95)'],
+  [250, 'rgba(125,30,60,1)'],
+  [600, 'rgba(60,10,60,1)'],
+]
+
 const AOD_STOPS = [
   [0, 'rgba(255,240,200,0)'],
   [0.08, 'rgba(255,235,170,0.12)'],
@@ -321,7 +340,7 @@ export const LAYERS = [
     sourceUrl: 'https://firms.modaps.eosdis.nasa.gov/',
     stops: null,
     legend: null,
-    legendNote: 'Each glow is a cluster of fire detections — bigger and brighter means more detections. Zoom in past the continents and large fires gain outlines and place names (footprints derived from the detections, not official perimeters). Only nominal-and-higher-confidence detections are shown.',
+    legendNote: 'Far out, each glow is a cluster of fire detections from the three VIIRS satellites — bigger and brighter means more fire power (summed radiative megawatts), so one intense fire front outweighs a whole region of small agricultural burns; the most extreme fronts glow white-hot. Mid-zoom, large fires gain outlines and place names (official NIFC perimeters where mapped). Zoomed in on a fire, the glows hand off to the individual detections themselves, driven by the time bar: every circle is one satellite detection (sharp ~375 m VIIRS pixels; over the US, larger faint ~2 km GOES pixels fill the hours between VIIRS passes) that appears at its moment and fades out unless a later pass re-detects fire there — what you see lit is where fire was seen around the time on the clock, burned-out detections leave a faint dark scar (the fire’s cumulative footprint), and the official perimeter carries the mapped boundary. For significant named US fires the timeline reaches back to the fire’s first detection; the bar also scrubs days of global fire history at wider zooms. In the US, named NIFC incidents also appear as ember rings sized by official acreage even when satellites have no detections in the last day — an active fire can smolder unseen between overpasses. Only nominal-and-higher-confidence detections are shown.',
     words: null,
     load: async () => loadHotspotVariant('firms-hotspots'),
     // Resolution ladder — the client swaps to finer-binned bakes (same FIRMS
@@ -336,19 +355,31 @@ export const LAYERS = [
     ping: {
       mode: 'glow',
       glowColor: 'rgba(255,160,60,1)',
+      // White-hot tint for extreme fronts (≥2,000 MW summed radiative power —
+      // p99 of US-East bins is ~600 MW, big Western fires run 10,000+).
+      glowColorHot: 'rgba(255,235,185,1)',
+      hot: (e) => (e.frps || 0) >= 2000,
       maxRender: 3500,
-      maxR: (e) => Math.min(22, 4 + Math.log2(e.n + 1) * 2.2),
+      // Prominence encodes fire INTENSITY (summed radiative power, log10 MW),
+      // not detection count: a median crop-burn bin is ~5 MW while a megafire
+      // bin is ~10,000+, and count-scaling was collapsing that thousandfold
+      // difference into near-equal glows (agricultural belts read as badly as
+      // the destructive fires). Floor keeps lone detections visible.
+      maxR: (e) => Math.min(26, Math.max(8, 3.5 + Math.log10((e.frps || e.frp || 0) + 1) * 4.5)),
+      // Intense fires keep glowing past the geographic size cap (weak ones
+      // stay footprint-bound, so agricultural belts still can't smear).
+      sizeFloor: (e) => Math.min(1, Math.log10((e.frps || e.frp || 0) + 1) / 4.5),
       periodMs: () => 1700,
-      baseAlpha: (e) => Math.min(0.95, 0.55 + Math.log2(e.n + 1) * 0.06),
+      baseAlpha: (e) => Math.min(0.95, 0.38 + Math.log10((e.frps || e.frp || 0) + 1) * 0.14),
     },
     explain:
-      'Each glowing point is a cluster of active-fire detections from NASA satellites in the last day — wildfires, agricultural burning, and gas flares all show up. Fire season moves with the hemispheres: watch the band of burning shift between northern and southern summer.',
+      'Each glowing point is a cluster of active-fire detections from NASA satellites in the last day — wildfires, agricultural burning, and gas flares all show up. In the US, official NIFC incidents appear even without fresh detections (ember markers): an active fire can smolder below what satellites see. Fire season moves with the hemispheres: watch the band of burning shift between northern and southern summer.',
     popupEvent(e) {
       return {
         head: e.n === 1 ? 'Active fire detection' : 'Active fire cluster',
         big: `${e.n.toLocaleString()} ${e.n === 1 ? 'detection' : 'detections'}`,
         alt: `within ~${e.km} km`,
-        meta: `Peak intensity ${e.frp.toLocaleString()} MW · VIIRS satellite, last 24 h`,
+        meta: `${(e.frps || e.frp).toLocaleString()} MW total radiative power (peak ${e.frp.toLocaleString()} MW) · VIIRS satellites, last 24 h`,
       }
     },
   },
@@ -552,7 +583,50 @@ export const LAYERS = [
     },
     // History tape (SYSTEMS_TAPES.smoke).
     tape: { dataset: 'cams-smoke', expectKind: 'cams-smoke-aod550' },
+    legendNote: 'One button, two altitudes: zoomed out you see ALL the smoke in the sky — the whole column, worldwide — with faint outlined washes over North America where NOAA analysts traced smoke in live satellite imagery. Zoom into the US and the layer switches to smoke AT GROUND LEVEL from NOAA’s 3 km model: how much smoke is in the air people are actually breathing, valley by valley. The legend switches with it.',
     legend: { min: 0, max: 2, ticks: ['0', '0.5', '1', '2+ AOD'] },
+    // Zoomed into the US, the same button hands off to NOAA HRRR-Smoke:
+    // near-surface concentration (µg/m³ — what people breathe) at 3 km,
+    // where CAMS shows the whole-sky column at ~44 km. Same ladder idiom as
+    // the fire layer; the panel legend and popups swap with the mode.
+    ground: {
+      dataset: 'hrrr-smoke',
+      expectKind: 'hrrr-smoke-massden',
+      minZoom: 5,
+      name: 'Wildfire smoke — at ground level',
+      sub: 'US 3 km · NOAA HRRR-Smoke',
+      sourceName: 'NOAA HRRR-Smoke',
+      sourceUrl: 'https://rapidrefresh.noaa.gov/hrrr/',
+      // Hourly ground-smoke history (0.1° tape frames baked from the HRRR
+      // archive) — the ground view replays like everything else on the site.
+      tape: { dataset: 'hrrr-smoke', expectKind: 'hrrr-smoke-massden', windowDays: 2 },
+      stops: US_SMOKE_STOPS,
+      legend: { min: 0, max: 250, ticks: ['0', '35', '100', '250+ µg/m³'] },
+      words: [
+        { label: 'Clear', range: 'under 2', max: 2 },
+        { label: 'Faint haze', range: '2–10', max: 10 },
+        { label: 'Noticeable', range: '10–35', max: 35 },
+        { label: 'Unhealthy', range: '35–100', max: 100 },
+        { label: 'Thick', range: '100–250', max: 250 },
+        { label: 'Hazardous', range: 'over 250', max: Infinity },
+      ],
+      stamp: (meta) => `model run ${fmtRun(meta.run_ms)} · US coverage only`,
+      popup(sample, meta) {
+        const word = wordFor(this.words, sample.value).label
+        const breathe = sample.value < 2 ? 'clean air'
+          : sample.value < 10 ? 'a faint smell of smoke at most'
+          : sample.value < 35 ? 'hazy skies; sensitive groups may notice it'
+          : sample.value < 100 ? 'unhealthy air — comparable to a bad air-quality day'
+          : sample.value < 250 ? 'thick smoke — unhealthy for everyone'
+          : 'hazardous, stay-indoors smoke'
+        return {
+          head: `${word} ground-level smoke`,
+          big: `${sample.value < 10 ? sample.value.toFixed(1) : Math.round(sample.value)} µg/m³`,
+          alt: breathe,
+          meta: `Smoke in the air near the ground — what you'd breathe — from NOAA's 3 km smoke-transport model · run ${fmtRun(meta.run_ms)}`,
+        }
+      },
+    },
     words: [
       { label: 'Clear', range: 'under 0.1', max: 0.1 },
       { label: 'Thin', range: '0.1–0.3', max: 0.3 },

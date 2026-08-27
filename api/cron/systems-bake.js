@@ -77,11 +77,15 @@ export default async function handler(req, res) {
     try {
       const result = await entry.fetchGrid()
       if (result.jsons) {
+        // Chunked-parallel puts: the hotspots bake now emits ~200 raw-detection
+        // shard files per run; serial uploads would eat the time budget.
         let bytes = 0
-        for (const f of result.jsons) {
-          const body = JSON.stringify(f.json)
-          await put(f.path, body, putOpts('application/json'))
-          bytes += body.length
+        for (let i = 0; i < result.jsons.length; i += 8) {
+          await Promise.all(result.jsons.slice(i, i + 8).map((f) => {
+            const body = JSON.stringify(f.json)
+            bytes += body.length
+            return put(f.path, body, putOpts('application/json'))
+          }))
         }
         out = { ok: true, ds, valid: new Date(result.jsons[0].json.valid_ms).toISOString(), files: result.jsons.length, bytes }
       } else if (result.json) {

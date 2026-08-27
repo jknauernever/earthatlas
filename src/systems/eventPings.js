@@ -50,7 +50,10 @@ export class EventPingLayer {
     this._destroyed = false
     this._moving = false
     this._ctx = canvas.getContext('2d')
-    if (opts.mode === 'glow') this._sprite = makeGlowSprite(opts.glowColor)
+    if (opts.mode === 'glow') {
+      this._sprite = makeGlowSprite(opts.glowColor)
+      this._spriteHot = opts.glowColorHot ? makeGlowSprite(opts.glowColorHot) : null
+    }
 
     // During a gesture the last frame stays visible, camera-glued by the
     // freezer; the settle rebuild resumes live animation at true positions.
@@ -106,6 +109,12 @@ export class EventPingLayer {
     this.map.off('resize', this._onResize)
     this._freeze.destroy()
     this._clear()
+  }
+
+  /** Swap the event set in place (time-scrubbed fire presence frames). */
+  setEvents(events) {
+    this.events = events
+    this._rebuild()
   }
 
   /** Nearest rendered event within maxPx of a screen point, or null. */
@@ -295,11 +304,18 @@ export class EventPingLayer {
         const phase = ((now / period) + p.phase) % 1
         const breathe = 0.75 + 0.25 * Math.sin(phase * Math.PI * 2)
         const geoCapPx = e.km ? (e.km / 111 / this._degPerPx) * 0.65 : Infinity
-        const allowed = Math.max(2.5, geoCapPx, o.maxR(e) * styleFalloff)
+        // sizeFloor (0..1) lets an event's IMPORTANCE keep a fraction of its
+        // stylized size past the geographic cap — the cap exists to stop
+        // fields of weak events smearing into a false wall, not to shrink a
+        // megafire front to its footprint pixels at regional zoom. A glow is
+        // light, not a footprint claim; the hull outlines carry the truth.
+        const keep = o.sizeFloor ? o.sizeFloor(e) : 0
+        const allowed = Math.max(2.5, geoCapPx, o.maxR(e) * Math.max(styleFalloff, keep))
         const rMax = Math.min(o.maxR(e), allowed)
         const r = Math.max(1.2, rMax * breathe)
         ctx.globalAlpha = o.baseAlpha(e)
-        ctx.drawImage(this._sprite, p.x - r, p.y - r, r * 2, r * 2)
+        const sprite = this._spriteHot && o.hot?.(e) ? this._spriteHot : this._sprite
+        ctx.drawImage(sprite, p.x - r, p.y - r, r * 2, r * 2)
       }
       ctx.globalAlpha = 1
     }

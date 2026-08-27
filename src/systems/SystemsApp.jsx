@@ -38,6 +38,8 @@ import TransportBar from './TransportBar.jsx'
 import { formatAiText } from './aiFormat.js'
 import { EventPingLayer } from './eventPings.js'
 import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
+import { FireRawDetectionsOverlay } from './fireRawDetections.js'
+import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
 import ClipStudio from './ClipStudio.jsx'
@@ -73,7 +75,42 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+
+// ─── Plain-language helpers for the fire popups: the data's job is to tell
+// a story a non-expert can read at a glance — jargon (detections, MW,
+// perimeter registers) stays out of the visible text and rides along in the
+// structured facts handed to the AI narrator instead. ──────────────────────
+const firePlainAge = (ageH) => {
+  if (ageH == null) return 'sometime in the last day'
+  if (ageH < 1) return 'within the last hour'
+  if (ageH < 36) return `about ${Math.round(ageH)} hours ago`
+  return `${Math.round(ageH / 24)} days ago`
+}
+const fireHeatWord = (mw) =>
+  mw >= 100 ? 'an intense burst of heat' : mw >= 25 ? 'strong heat' : mw >= 5 ? 'moderate heat' : 'a faint heat signal'
+const fireGrowthWord = (growth) => {
+  if (growth == null || Math.abs(growth) < 25) return ''
+  if (growth >= 150) return 'It is growing fast. '
+  if (growth > 0) return 'It is still growing. '
+  return 'It appears to be dying down. '
+}
+const fireSizePlain = (acres, areaKm2) => {
+  if (acres != null && acres > 0) return `${acres.toLocaleString()} acres burned`
+  if (areaKm2 > 8) return `roughly ${Math.max(1, Math.round(areaKm2 * 0.386))} square miles of active fire`
+  if (areaKm2 > 0) return `roughly ${Math.max(50, Math.round(areaKm2 * 247 / 50) * 50).toLocaleString()} acres of active fire`
+  return 'Active fire'
+}
+// Deep link to the same spot on the full Fire tool.
+const fireMapLink = (lat, lng) => ({
+  href: `/fire?on=usfires%2Cfirms&lat=${lat.toFixed(3)}&lng=${lng.toFixed(3)}&z=11.5`,
+  label: 'Dig deeper on the Fire map ↗',
+})
+const NIFC_LINK = {
+  href: 'https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-current-interagency-fire-perimeters/about',
+  label: 'Official data: NIFC ↗',
+}
+const FIRMS_LINK = { href: 'https://firms.modaps.eosdis.nasa.gov/', label: 'Source: NASA FIRMS ↗' }
 
 // ─── Shareable URL state ────────────────────────────────────────────────────
 // Required convention (docs/MAP_TOOL_CONVENTIONS.md). Per-layer params come
@@ -209,6 +246,11 @@ export default function SystemsApp() {
   const [replay, setReplay] = useState(null) // same, as state for the TransportBar
   const [replayRange, setReplayRange] = useState({}) // layer id → 'short' | 'year' (layers with a year tape)
   const eventReplayRef = useRef(null) // ReplayController over an EventTape (quakes) when no scalar replay owns the bar
+  const fireReplayRef = useRef(null)  // fire time slider: daily presence wide out, raw detections past the handoff
+  const [fireReplay, setFireReplay] = useState(null)
+  const fireLiveEventsRef = useRef(null) // live hotspot bins, restored when the presence cursor returns to Now
+  const fireDailyLoadRef = useRef(false) // fire-daily rollup fetch state
+  const fireSkipBuildRef = useRef(false) // window-extension recreations land at Now, no build replay
   const [dataEpoch, setDataEpoch] = useState(0) // bumped when a visible layer's data is refreshed
   const resumeRef = useRef({}) // layer id → { t, playing } to restore a replay across a data refresh
   const [eventReplay, setEventReplay] = useState(null)
@@ -263,8 +305,13 @@ export default function SystemsApp() {
   const [styleEpoch, setStyleEpoch] = useState(0)
 
   // Latest layer state for map event handlers (clicks) outside React's cycle.
+  // 'sky' (global CAMS column) or 'ground' (US 3 km HRRR near-surface) —
+  // the smoke button's altitude handoff, set by the scalar effect below.
+  const [smokeMode, setSmokeMode] = useState('sky')
+  const [smokeGroundTick, setSmokeGroundTick] = useState(0)
+  const smokeGroundLoadRef = useRef(false)
   const stateRef = useRef({})
-  stateRef.current = { layerOn, layerStatus, layerMeta }
+  stateRef.current = { layerOn, layerStatus, layerMeta, smokeMode }
 
   // ─── Lazy loading: fetch a layer's data the first time it's turned on ─────
   // Grid layers load the baked meta+bin pair; events/raster layers bring
@@ -357,13 +404,17 @@ export default function SystemsApp() {
       const sections = []
       const aiItems = [] // structured copies of each section, for the popup narration
       const sectionHtml = (p) => {
-        aiItems.push({ what: p.head, value: `${p.big} (${p.alt})`, detail: p.meta })
+        // `ai` carries the full technical facts for the narrator even when
+        // the visible text is plain-language.
+        aiItems.push({ what: p.head, value: `${p.big} (${p.alt})`, detail: p.ai || p.meta })
+        const links = p.links || (p.link ? [p.link] : [])
         return `<div class="${styles.popupSection}">` +
         `<div class="${styles.popupHead}">${escapeHtml(p.head)}</div>` +
         `<div class="${styles.popupSpeed}">${escapeHtml(p.big)} <span>(${escapeHtml(p.alt)})</span></div>` +
         `<div class="${styles.popupMeta}">${escapeHtml(p.meta)}</div>` +
-        (p.link
-          ? `<div class="${styles.popupMeta}"><a href="${escapeHtml(p.link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.link.label)}</a></div>`
+        (links.length
+          ? `<div class="${styles.popupMeta}">${links.map((l) =>
+              `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join(' · ')}</div>`
           : '') +
         `</div>`
       }
@@ -373,7 +424,39 @@ export default function SystemsApp() {
           // Fires: prefer the rich derived event (name, duration, footprint)
           // over the raw cluster when the click lands on one.
           if (def.id === 'hotspots') {
+            // Close zoom: a click on an individual VIIRS detection gets its
+            // own section (time, power, satellite) under the fire's section.
+            const rawInst = instancesRef.current.fireraw
+            const raw = rawInst?.isActive() ? rawInst.hitTest(e.point.x, e.point.y, 14) : null
+            const rawSection = raw && {
+              head: 'Flames seen here',
+              big: firePlainAge(raw.ageH),
+              alt: fireHeatWord(raw.frp),
+              meta: `Spotted by the ${raw.sat} satellite, over ${raw.px === '~2 km' ? 'about a 2-kilometer patch' : 'about a 375-meter patch'} of ground. Drag the time bar to replay the fire's spread; the dark shading is ground that already burned.`,
+              ai: `single satellite fire detection: ${raw.frp.toLocaleString()} MW fire radiative power, ${raw.sat}, ${raw.px} pixel, acquired ${raw.ageH == null ? 'within last day' : raw.ageH.toFixed(1) + ' h ago'}`,
+              link: FIRMS_LINK,
+            }
             const fev = instancesRef.current.fireevents?.hitTest(e.point.x, e.point.y, 18)
+            if (fev && fev.type === 'incident') {
+              // Official NIFC record with NO fresh satellite detections — the
+              // fire is real (acres/containment from the incident system) but
+              // the glows have nothing to show; say both halves plainly.
+              const days = fev.discovered_ms
+                ? Math.max(1, Math.round((Date.now() - fev.discovered_ms) / 8.64e7))
+                : null
+              sections.push(sectionHtml({
+                head: fireEventName(fev),
+                big: fev.acres > 0 ? `${fev.acres.toLocaleString()} acres burned` : 'Active fire',
+                alt: fev.contained != null ? `${fev.contained}% contained` : 'size not yet reported',
+                meta: `${days ? `Started ${fmtDay(fev.discovered_ms)} — ${days === 1 ? 'its first day' : `day ${days}`}. ` : ''}` +
+                  "Satellites haven't spotted active flames here in the past day — it's likely smoldering, mostly contained, or burning too gently to see from space." +
+                  (fev.perimeter_src === 'nifc' ? ' The orange outline is the officially mapped fire boundary.' : ''),
+                ai: `official NIFC incident record: ${fev.acres ?? '?'} acres, ${fev.contained ?? '?'}% contained, discovered ${fev.discovered_ms ? new Date(fev.discovered_ms).toISOString().slice(0, 10) : 'unknown'}, zero VIIRS detections in the last 24 h`,
+                links: [fireMapLink(fev.lat, fev.lng), NIFC_LINK],
+              }))
+              if (rawSection) sections.push(sectionHtml(rawSection))
+              continue
+            }
             if (fev) {
               const nowMs = Date.now()
               // Official discovery date (NIFC join) gives TRUE fire age; our
@@ -381,37 +464,70 @@ export default function SystemsApp() {
               let ageStr
               if (fev.discovered_ms) {
                 const days = Math.max(1, Math.round((nowMs - fev.discovered_ms) / 8.64e7))
-                ageStr = `Burning since ${fmtDay(fev.discovered_ms)} (day ${days}) — NIFC`
+                ageStr = `Started ${fmtDay(fev.discovered_ms)} — ${days === 1 ? 'its first day' : `day ${days}`}.`
               } else {
                 const days = Math.max(1, Math.round((nowMs - fev.first_seen_ms) / 8.64e7))
-                ageStr = days <= 1 ? 'Newly detected in the last 24 h' : `Tracked for ${days}+ days`
+                ageStr = days <= 1 ? 'A new fire, first seen within the last day.' : `Burning for at least ${days} days.`
               }
-              const official = []
-              if (fev.acres != null) official.push(`${fev.acres.toLocaleString()} acres`)
-              if (fev.contained != null) official.push(`${fev.contained}% contained`)
-              const growth = fev.growth != null && Math.abs(fev.growth) >= 25
-                ? ` · ${fev.growth > 0 ? 'growing (+' : 'shrinking ('}${fev.growth} detections vs. previous update)`
-                : ''
-              // Deterministic per-fire emission estimate (same GFAS-style
-              // FRP conversion the Explain card uses).
+              // Plain-language CO₂ line (same GFAS-style FRP conversion the
+              // Explain card uses) — the impact number people can hold onto.
+              let co2 = ''
               if (fev.frp_sum) {
                 const t = (fev.frp_sum / 2) * 86400 * 0.368 * 1.65 / 1000
-                official.push(`releasing roughly ${t >= 1e6 ? (t / 1e6).toFixed(1) + ' Mt' : Math.round(t).toLocaleString() + ' t'} CO₂/day (rough satellite estimate)`)
+                co2 = ` It's putting out roughly ${t >= 1e6 ? (t / 1e6).toFixed(1) + ' million tonnes' : Math.round(t).toLocaleString() + ' tonnes'} of CO₂ a day (a rough satellite estimate).`
               }
               sections.push(sectionHtml({
                 head: fireEventName(fev),
-                big: `${fev.n.toLocaleString()} detections in the last 24 h`,
-                alt: fev.acres != null ? `${fev.acres.toLocaleString()} acres total` : `~${fev.area_km2.toLocaleString()} km² footprint`,
-                meta: `${ageStr}${official.length ? ' · ' + official.join(' · ') : ''} · peak ${fev.frp.toLocaleString()} MW${growth} · ${fev.perimeter_src === 'nifc' ? 'official NIFC perimeter shown; glows are the last 24 h of satellite detections' : 'footprint derived from VIIRS detections, not an official perimeter'}`,
+                big: fireSizePlain(fev.acres, fev.area_km2),
+                alt: fev.contained != null ? `${fev.contained}% contained` : 'actively burning',
+                meta: `${ageStr} ${fireGrowthWord(fev.growth)}Satellites are still seeing active flames.${co2} ${fev.perimeter_src === 'nifc' ? 'The orange outline is the officially mapped fire boundary.' : "The outline is the fire's approximate footprint, drawn from where satellites saw flames."}`,
+                ai: `active fire: ${fev.n.toLocaleString()} VIIRS detections in last 24 h, peak ${fev.frp.toLocaleString()} MW, summed FRP ${fev.frp_sum?.toLocaleString?.() ?? '?'} MW, ${fev.acres != null ? fev.acres + ' acres official' : '~' + fev.area_km2 + ' km² derived footprint'}, ${fev.contained != null ? fev.contained + '% contained' : 'containment unknown'}, growth ${fev.growth ?? 'n/a'} detections vs previous update`,
+                links: [
+                  fireMapLink(fev.lat, fev.lng),
+                  ...(fev.name_src === 'nifc' ? [NIFC_LINK] : [FIRMS_LINK]),
+                ],
               }))
+              if (rawSection) sections.push(sectionHtml(rawSection))
               continue
             }
+            if (rawSection) { sections.push(sectionHtml(rawSection)); continue }
+            // Raw overlay active but nothing hit: the glows are hidden, so
+            // don't answer from their stale screen positions.
+            if (rawInst?.isActive()) continue
           }
           const ev = instancesRef.current[def.id]?.nearest(e.point.x, e.point.y, 16)
           if (ev) sections.push(sectionHtml(def.popupEvent(ev)))
           continue
         }
+        // Analyst-drawn smoke plumes ride the smoke layer: a click inside one
+        // gets its own plain-language section above the modeled value.
+        if (def.id === 'smoke' && stateRef.current.smokeMode === 'sky') {
+          const plume = instancesRef.current.smokeplumes?.hitTest(e.point.x, e.point.y)
+          if (plume) {
+            const p = plume.properties
+            const when = p.end_ms ? new Date(p.end_ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null
+            sections.push(sectionHtml({
+              head: 'Smoke overhead',
+              big: `${p.density[0].toUpperCase()}${p.density.slice(1)} smoke`,
+              alt: 'seen in satellite imagery',
+              meta: `NOAA analysts traced this plume from live satellite photos${when ? `, as of ${when} today` : ''}. It describes smoke in the air column overhead — not necessarily what you'd breathe at ground level.`,
+              ai: `NOAA HMS analyst-drawn smoke polygon: density ${p.density}, traced from ${p.satellite || 'GOES'} imagery, analysis window ${p.start_ms ? new Date(p.start_ms).toISOString() : '?'} → ${p.end_ms ? new Date(p.end_ms).toISOString() : '?'}`,
+              link: { href: 'https://www.ospo.noaa.gov/products/land/hms.html', label: 'Source: NOAA HMS ↗' },
+            }))
+          }
+        }
         if (def.kind === 'raster') continue // raster popups: open the full tool instead
+        // Smoke altitude handoff: in ground mode, sample the HRRR grid with
+        // its own what-you'd-breathe popup instead of the column model.
+        if (def.id === 'smoke' && stateRef.current.smokeMode === 'ground' && fieldsRef.current['smoke:ground']) {
+          // During ground replay, sample the tape's frame at the cursor.
+          const rc2 = replayRef.current
+          const tapeF = rc2 && rc2.layerId === 'smoke' && rc2.tape?.meta?.kind === 'hrrr-smoke-massden-tape' ? rc2.tape : null
+          const gf = tapeF || fieldsRef.current['smoke:ground']
+          const s = gf.sampleScalar(e.lngLat.lng, e.lngLat.lat)
+          if (s) sections.push(sectionHtml(def.ground.popup(s, tapeF ? tapeF.metaAt() : gf.meta)))
+          continue
+        }
         // Replay layers read the frame on screen, stamped with ITS run/time.
         const rc = replayRef.current
         const tapeField = rc && rc.layerId === def.id ? rc.tape : null
@@ -580,17 +696,29 @@ export default function SystemsApp() {
           continue
         }
       }
-      inst[def.id]?.setVisible(!!layerOn[def.id])
+      // Live-only fields (wind, currents) have no history: while ANY replay
+      // is scrubbed into the past they hide — today's motion drawn over
+      // yesterday's data tells a false combined story.
+      const liveOwner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+      inst[def.id]?.setVisible(!!layerOn[def.id] && (!liveOwner || liveOwner.atLive))
     }
 
     // Companion flow animations (e.g. wind particles under Smoke & haze).
+    // ONE shared flow canvas (the 'aerosol:flow' element) serves whichever
+    // flow-bearing scalar layer is on — they're mutually exclusive, but
+    // 'smoke:flow' and 'dust:flow' had no canvas of their own and were
+    // silently never created (Wildfire smoke showed no motion at all).
     for (const def of LAYERS) {
       if (!def.flow) continue
       const fk = `${def.id}:flow`
       const ready = layerOn[def.id] && layerStatus[fk] === 'ok'
-      if (ready && !inst[fk] && canvasEls.current[fk]) {
+      const flowCanvas = canvasEls.current[fk] || canvasEls.current['aerosol:flow']
+      if (ready && !inst[fk] && flowCanvas) {
+        for (const other of Object.keys(inst)) {
+          if (other !== fk && other.endsWith(':flow') && inst[other]) { inst[other].destroy(); inst[other] = null }
+        }
         try {
-          inst[fk] = new ParticleLayer(map, canvasEls.current[fk], fieldsRef.current[fk], {
+          inst[fk] = new ParticleLayer(map, flowCanvas, fieldsRef.current[fk], {
             count: Math.round(densityCount(density) * (def.flow.countScale ?? 1)),
             colorStops: def.flow.stops,
             ...def.flow.vector,
@@ -601,7 +729,14 @@ export default function SystemsApp() {
         }
       }
       const rc = replayRef.current
-      inst[fk]?.setVisible(!!layerOn[def.id] && (!rc || rc.layerId !== def.id || rc.atLive))
+      // Flow particles are a synoptic-scale metaphor: their pixel speed
+      // grows with 2^zoom, so past regional zoom they read as a blizzard —
+      // and the 0.25° wind they trace isn't honest terrain-scale wind
+      // anyway. Thin them out from z6.5 and retire them by z8.5.
+      const flowZoom = mapView?.zoom ?? map.getZoom()
+      const flowFade = Math.max(0, Math.min(1, (8.5 - flowZoom) / 2))
+      inst[fk]?.setVisible(!!layerOn[def.id] && flowFade > 0 && (!rc || rc.layerId !== def.id || rc.atLive))
+      if (inst[fk] && flowFade > 0) inst[fk].setCount(Math.round(densityCount(density) * (def.flow.countScale ?? 1) * flowFade))
     }
 
     // Event layers (quakes, fires): one ping canvas each. Layers with a
@@ -657,14 +792,49 @@ export default function SystemsApp() {
     // Scalar layers share one canvas (they're mutually exclusive) — swap the
     // overlay instance when the active scalar changes.
     const active = LAYERS.find((d) => d.kind === 'scalar' && layerOn[d.id] && layerStatus[d.id] === 'ok')
+    // Altitude handoff (smoke): zoomed into the US, the smoke button swaps
+    // its scalar source from the global column model to HRRR ground-level
+    // concentration. The ground grid lazy-loads the first time the view
+    // qualifies; until it's in (or if it fails), the sky view stands.
+    const groundDef = active?.ground
+    let wantGround = false
+    if (groundDef && !!layerOn[active.id]) {
+      const zoomNow = mapView?.zoom ?? map.getZoom()
+      if (zoomNow >= groundDef.minZoom - 0.5 && !fieldsRef.current['smoke:ground'] && !smokeGroundLoadRef.current) {
+        smokeGroundLoadRef.current = true
+        loadGridField(groundDef.dataset, groundDef.expectKind)
+          .then((f) => { fieldsRef.current['smoke:ground'] = f; setSmokeGroundTick((t) => t + 1) })
+          .catch(() => { smokeGroundLoadRef.current = 'failed' }) // sky view stands
+        // Ground history tape (hourly frames, backfilled from the HRRR
+        // archive) — replay at ground level. Absent tape = Now-only.
+        if (groundDef.tape) {
+          TapeField.load(groundDef.tape.dataset, groundDef.tape.expectKind)
+            .then((tp) => { fieldsRef.current['smoke:ground:tape'] = tp; setSmokeGroundTick((t) => t + 1) })
+            .catch(() => { /* tape not baked yet — the live frame stands */ })
+        }
+      }
+      const gf = fieldsRef.current['smoke:ground']
+      if (gf && zoomNow >= groundDef.minZoom) {
+        const m = gf.meta
+        const c = map.getCenter()
+        const latIn = c.lat >= Math.min(m.lat0, m.lat0 + m.nLat * m.dLat) && c.lat <= Math.max(m.lat0, m.lat0 + m.nLat * m.dLat)
+        const lngIn = ((((c.lng - m.lon0) % 360) + 360) % 360) <= m.nLon * m.dLon
+        wantGround = latIn && lngIn
+      }
+    }
+    setSmokeMode(wantGround ? 'ground' : 'sky')
+
     // Replay-capable layers swap to the tape as soon as it's loaded (the
     // static "now" wash shows in the meantime). Earth's systems are in
     // motion: the tape starts playing the moment it's on screen.
     const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
       : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null
-    const tape = active?.tape && tapeKey ? fieldsRef.current[tapeKey] : null
-    const slotId = active ? (tape ? tapeKey : active.id) : null
+    const tape = active?.tape && tapeKey && !wantGround ? fieldsRef.current[tapeKey] : null
+    const groundTape = wantGround ? fieldsRef.current['smoke:ground:tape'] : null
+    const slotId = active
+      ? (wantGround ? (groundTape ? 'smoke:ground:tape' : 'smoke:ground') : tape ? tapeKey : active.id)
+      : null
     if (inst.scalar && inst.scalar.id !== slotId) {
       inst.scalar.layer.destroy()
       inst.scalar = null
@@ -673,26 +843,38 @@ export default function SystemsApp() {
     if (active && !inst.scalar && canvasEls.current.scalar) {
       try {
         if (tape) tape.appendLive(fieldsRef.current[active.id])
-        const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tape || fieldsRef.current[active.id], {
-          colorStops: active.stops,
-          min: active.legend.min,
-          max: active.legend.max,
+        const view = wantGround ? groundDef : active
+        const tapeSel = wantGround ? groundTape : tape
+        const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tapeSel || (wantGround ? fieldsRef.current['smoke:ground'] : fieldsRef.current[active.id]), {
+          colorStops: view.stops,
+          min: view.legend.min,
+          max: view.legend.max,
           opacity: active.scalar.opacity,
           mask: active.scalar.mask,
-          tape: !!tape,
+          tape: !!tapeSel,
         })
         inst.scalar = { id: slotId, layer }
-        if (tape) {
-          const rc = new ReplayController(tape, { windowDays: active.tape.windowDays }) // pace/window follow the tape cadence
+        if (tapeSel) {
+          const rc = new ReplayController(tapeSel, { windowDays: wantGround ? (groundDef.tape?.windowDays ?? 2) : active.tape.windowDays })
           rc.layerId = active.id
+          // The bar's provenance line must name what's actually playing.
+          if (wantGround) { rc.sourceName = groundDef.sourceName; rc.sourceUrl = groundDef.sourceUrl }
           const resume = resumeRef.current[active.id]
           if (resume) { delete resumeRef.current[active.id]; rc.seek(resume.t); if (resume.playing) rc.play(); else rc.pause() }
+          // Smoke opens at NOW, paused — no auto-replay. The button answers
+          // "where is smoke right now"; history is opt-in via the slider.
+          else if (active.id === 'smoke') rc.toLive()
           rc.attach(layer)
-          // Companion flow particles show today's wind — only honest at "now".
+          // Companion flow particles show today's wind — only honest at
+          // "now", and only below the zoom where they read as a blizzard.
           if (active.flow) {
             const fk = `${active.id}:flow`
-            rc.subscribe((c) => inst[fk]?.setVisible(c.atLive && !!stateRef.current.layerOn[active.id]))
+            rc.subscribe((c) => {
+              const z = mapRef.current?.getZoom() ?? 0
+              inst[fk]?.setVisible(c.atLive && z < 8.5 && !!stateRef.current.layerOn[active.id])
+            })
           }
+          rc.subscribe(syncLiveOnly)
           replayRef.current = rc
           if (import.meta.env.DEV) window.__systemsReplay = rc // dev-only QA handle
           setReplay(rc)
@@ -731,12 +913,13 @@ export default function SystemsApp() {
         const modeOf = (c) => (c.atLive ? 'last24' : c.playing && !c.holding ? 'flow' : 'day')
         rc.attach({ tick: () => ping.setTime(rc.t, modeOf(rc)) })
         rc.subscribe((c) => ping.setTime(c.t, modeOf(c))) // pause → whole day; Now → past 24 h
+        rc.subscribe(syncLiveOnly)
         eventReplayRef.current = rc
         if (import.meta.env.DEV) window.__systemsReplay = rc
         setEventReplay(rc)
       }
     }
-  }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch])
+  }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch, mapView, smokeGroundTick])
 
   // ─── Keep a globe left open current: every 10 min, check each visible
   // layer's source for a newer bake (tiny metadata/index fetch) and, only if
@@ -813,6 +996,9 @@ export default function SystemsApp() {
   // instance is recreated when the active tier changes.
   const [fineTick, setFineTick] = useState(0)
   const fineLoadingRef = useRef({})
+  // Bumped by the raw-detection overlay when its data/active-state changes,
+  // so the glow layer's visibility (below) and popups can react.
+  const [rawTick, setRawTick] = useState(0)
   useEffect(() => {
     if (!mapReady) return
     const map = mapRef.current
@@ -838,6 +1024,7 @@ export default function SystemsApp() {
         if (fieldsRef.current[keyFor(def.variants[i])]) { active = def.variants[i]; break }
       }
       const payload = fieldsRef.current[keyFor(active)]
+      if (def.id === 'hotspots' && payload) fireLiveEventsRef.current = payload.events
       if (inst[def.id] && inst[def.id]._variant !== active.id) {
         inst[def.id].destroy()
         inst[def.id] = null
@@ -854,9 +1041,12 @@ export default function SystemsApp() {
           continue
         }
       }
-      inst[def.id]?.setVisible(on)
+      // Close-zoom handoff: once the raw-detection overlay is carrying the
+      // fire story for this view, the cluster glows step aside entirely.
+      const rawActive = def.id === 'hotspots' && inst.fireraw?.isActive()
+      inst[def.id]?.setVisible(on && !rawActive)
     }
-  }, [mapReady, layerOn, layerStatus, mapView, fineTick])
+  }, [mapReady, layerOn, layerStatus, mapView, fineTick, rawTick])
 
   // ─── Fire events: lazy-load with the fires layer; overlay draws hulls +
   // labels past MIN_DRAW_ZOOM and upgrades fire clicks to rich event popups.
@@ -882,6 +1072,228 @@ export default function SystemsApp() {
     }
     inst.fireevents?.setVisible(on)
   }, [mapReady, layerOn, eventsTick])
+
+  // ─── Raw detections: the close-zoom rung of the fire ladder. Individual
+  // 375 m VIIRS pixels (colored by recency) replace cluster glows and derived
+  // hulls once you're looking AT a fire; shards lazy-load per viewport.
+  useEffect(() => {
+    const on = !!layerOn.hotspots
+    const inst = instancesRef.current
+    if (mapReady && on && !inst.fireraw && canvasEls.current.fireraw) {
+      try {
+        inst.fireraw = new FireRawDetectionsOverlay(mapRef.current, canvasEls.current.fireraw, {
+          loadJson: loadSystemsJson,
+          onChange: () => setRawTick((t) => t + 1),
+        })
+      } catch (err) {
+        console.error('[systems] raw-detections overlay init failed:', err)
+      }
+    }
+    const shardNames = layerMeta.hotspots?.raw_shards
+    if (shardNames) inst.fireraw?.setShardNames(shardNames)
+    // Fires with a since-discovery history file — the overlay deep-loads the
+    // ones in view so the timeline reaches back to first detection.
+    const histFires = (fieldsRef.current.fireevents?.events || [])
+      .filter((e) => e.hist && e.irwin)
+      .map((e) => ({ irwin: e.irwin, lat: e.lat, lng: e.lng }))
+    if (histFires.length) inst.fireraw?.setHistIndex(histFires)
+    inst.fireraw?.setVisible(on)
+  }, [mapReady, layerOn, layerMeta, eventsTick])
+
+  // ─── NOAA analyst smoke plumes ride the Wildfire smoke layer: the model's
+  // forecast wash below, the humans-looked-at-the-imagery outlines above.
+  // Today's plumes only make sense over today's smoke — when the layer's
+  // replay is scrubbed into the past, the outlines step aside.
+  useEffect(() => {
+    const on = !!layerOn.smoke
+    const inst = instancesRef.current
+    if (mapReady && on && !inst.smokeplumes && canvasEls.current.smokeplumes) {
+      try {
+        inst.smokeplumes = new SmokePlumesOverlay(mapRef.current, canvasEls.current.smokeplumes)
+      } catch (err) {
+        console.error('[systems] smoke plumes overlay init failed:', err)
+      }
+    }
+    // Sky view only: the outlines describe smoke seen from above — drawn
+    // over the ground-level view they'd mix altitudes in one frame.
+    const skyOn = on && smokeMode === 'sky'
+    if (replay && replay.layerId === 'smoke') {
+      inst.smokeplumes?.setVisible(skyOn && replay.atLive)
+      return replay.subscribe((c) => inst.smokeplumes?.setVisible(skyOn && c.atLive))
+    }
+    inst.smokeplumes?.setVisible(skyOn)
+  }, [mapReady, layerOn, replay, smokeMode])
+
+  // One cursor, every fire layer: drive the fire displays (raw detections at
+  // close zoom, daily presence bins wide out) to a moment in time. Used by
+  // the fire layer's own transport AND as a follower when another layer's
+  // replay (smoke) owns the bar — one slider moves every active dataset.
+  const applyFireCursor = useCallback((c) => {
+    const inst = instancesRef.current
+    if (!stateRef.current.layerOn.hotspots) return
+    const raw = inst.fireraw
+    if (raw?.isActive()) {
+      raw.setTime(c.atLive ? null : c.t)
+      return
+    }
+    if (c.atLive) {
+      if (fireLiveEventsRef.current && inst.hotspots) inst.hotspots.setEvents(fireLiveEventsRef.current)
+      inst.fireevents?.setVisible(true)
+      raw?.setTime(null)
+      return
+    }
+    // A scrubbed day shows THAT day's satellite picture alone — today's
+    // names/perimeters over last week's glows would mislead.
+    inst.fireevents?.setVisible(false)
+    raw?.setTime(null)
+    const daily = fieldsRef.current.firedaily
+    if (!daily) {
+      if (!fireDailyLoadRef.current) {
+        fireDailyLoadRef.current = true
+        loadSystemsJson('fire-daily', 'fire-daily')
+          .then((j) => { fieldsRef.current.firedaily = j; applyFireCursor(c) })
+          .catch(() => { fireDailyLoadRef.current = 'failed' }) // live bins stay up
+      }
+      return
+    }
+    const date = new Date(c.t).toISOString().slice(0, 10)
+    const day = daily.days.find((d) => d.date === date)
+    const events = (day?.bins || []).map(([lat, lng, n, frp, frps]) => ({ lat, lng, n, frp, frps: frps || 0, km: 28 }))
+    inst.hotspots?.setEvents(events)
+  }, [])
+
+  // Live-only layers (wind/currents particles) sync to whichever replay owns
+  // the bar on every tick: hidden while it's in the past, back at Now.
+  const syncLiveOnly = useCallback((c) => {
+    const inst = instancesRef.current
+    const { layerOn } = stateRef.current
+    for (const d of LAYERS) {
+      if (d.kind !== 'vector') continue
+      inst[d.id]?.setVisible(!!layerOn[d.id] && c.atLive)
+    }
+  }, [])
+
+  // ─── Fire time slider: one transport bar, two regimes by altitude. Wide
+  // out, the cursor scrubs DAYS of global fire presence (baked daily FIRMS
+  // rollup, up to 31 days); past the raw handoff it scrubs the individual
+  // detections' actual time span. Detail auto-plays once — the "build" — then
+  // holds at Now; presence starts paused at Now and scrubbing is opt-in.
+  // A scalar or quake replay owns the bar when present (site convention).
+  useEffect(() => {
+    const inst = instancesRef.current
+    const on = !!layerOn.hotspots && layerStatus.hotspots === 'ok'
+    const raw = inst.fireraw
+    const rawActive = on && !!raw?.isActive()
+    const regime = !on ? null : rawActive ? 'detail' : 'presence'
+    const otherOwns = !!replayRef.current || !!eventReplayRef.current
+    const cur = fireReplayRef.current
+
+    const restoreLive = () => {
+      if (fireLiveEventsRef.current && inst.hotspots) inst.hotspots.setEvents(fireLiveEventsRef.current)
+      inst.fireevents?.setVisible(!!layerOn.hotspots)
+      inst.fireraw?.setTime(null)
+    }
+    if (cur && (otherOwns || !regime || cur.fireRegime !== regime)) {
+      cur.destroy()
+      fireReplayRef.current = null
+      setFireReplay(null)
+      restoreLive()
+    }
+    // A deep history that loads after the controller was created extends the
+    // reachable past — rebuild the transport window once the user is idle at
+    // Now (never mid-scrub), and land at Now instead of replaying the build.
+    if (fireReplayRef.current && regime === 'detail' && !otherOwns) {
+      const span2 = raw.timeSpan()
+      const spanH2 = span2 ? (span2.end_ms - span2.start_ms) / 3.6e6 : 0
+      const cur2 = fireReplayRef.current
+      if (spanH2 > (cur2.spanH || 0) * 1.25 && cur2.atLive && !cur2.playing) {
+        cur2.destroy()
+        fireReplayRef.current = null
+        setFireReplay(null)
+        fireSkipBuildRef.current = true
+      }
+    }
+    // Another layer's replay owns the bar (smoke, quakes): the fire layers
+    // FOLLOW its cursor instead of sitting frozen at Now — one slider moves
+    // every active dataset.
+    const owner = replayRef.current || eventReplayRef.current
+    if (regime && owner && !owner.fireFollower) {
+      owner.fireFollower = true
+      owner.subscribe(applyFireCursor)
+      applyFireCursor(owner)
+    }
+    if (!regime || otherOwns || fireReplayRef.current) return
+
+    if (regime === 'detail') {
+      const span = raw.timeSpan()
+      if (!span) return
+      const spanH = Math.max(6, (span.end_ms - span.start_ms) / 3.6e6)
+      // Deep histories can stretch the window to a fire's whole life: step
+      // in 6 h strides past 3 days. Playback pace scales with the fire's
+      // age — a day-old fire burning fast and intensely gets ~12 s to tell
+      // its story (5 s made it a blink), tapering to ~7 s for multi-week
+      // fires, with an absolute speed cap so a month never flashes past.
+      const tape = new EventTape([], {
+        stepH: spanH > 72 ? 6 : 1,
+        windowDays: spanH / 24,
+        dayLabel: false,
+        frameKind: 'NASA FIRMS + GOES satellite data',
+        kindLabel: 'where fire had been seen by this time',
+        steadyLabel: 'replaying where satellites saw fire',
+      })
+      const buildSecs = Math.max(7, Math.min(12, 16 - spanH / 24))
+      const rc = new ReplayController(tape, { windowDays: spanH / 24, rateHoursPerSec: Math.min(48, spanH / buildSecs) })
+      rc.layerId = 'hotspots'
+      rc.fireRegime = 'detail'
+      const apply = (c) => raw.setTime(c.atLive ? null : c.t)
+      rc.attach({ tick: () => apply(rc) })
+      // One pass only: the arrival build plays through, then lands on Now
+      // and stays — the slider is the user's from there. `holding` MUST be
+      // cleared before toLive(): toLive's pause() emits first, and a
+      // subscriber that still sees holding re-enters itself forever (stack
+      // overflow that poisoned every control until something else cleared
+      // the flag). If the page can't animate right now (hidden tab), skip
+      // straight to Now — a cursor stranded at the window start makes every
+      // back-control a no-op and the bar reads as dead.
+      rc.subscribe((c) => { if (c.holding) { c.holding = false; c.toLive(); return } apply(c) })
+      rc.subscribe(syncLiveOnly)
+      rc.spanH = spanH
+      if (document.hidden || fireSkipBuildRef.current) rc.toLive()
+      fireSkipBuildRef.current = false
+      fireReplayRef.current = rc
+      if (import.meta.env.DEV) window.__fireReplay = rc // dev-only QA handle
+      setFireReplay(rc)
+    } else {
+      const tape = new EventTape([], {
+        stepH: 24,
+        windowDays: 31,
+        dayLabel: true,
+        frameKind: 'NASA FIRMS daily rollup',
+        kindLabel: 'where fires were seen this day',
+        steadyLabel: 'daily fire history, day by day',
+      })
+      const rc = new ReplayController(tape, { windowDays: 14 })
+      rc.layerId = 'hotspots'
+      rc.fireRegime = 'presence'
+      rc.pause()
+      rc.seek(tape.end_ms)
+      // Same one-pass rule when the user plays the presence window: land on
+      // Now instead of loop-restarting (holding cleared first — see above).
+      rc.subscribe((c) => { if (c.holding) { c.holding = false; c.toLive(); return } applyFireCursor(c) })
+      rc.subscribe(syncLiveOnly)
+      fireReplayRef.current = rc
+      if (import.meta.env.DEV) window.__fireReplay = rc // dev-only QA handle
+      setFireReplay(rc)
+    }
+  }, [mapReady, layerOn, layerStatus, rawTick, mapView, replay, eventReplay, fineTick])
+
+  // Destroy the fire transport on unmount — without this an HMR remount
+  // orphans a live controller that keeps driving the overlay against the
+  // new one (dead-feeling transport bar).
+  useEffect(() => () => {
+    fireReplayRef.current?.destroy()
+    fireReplayRef.current = null
+  }, [])
 
   // Destroy all layer instances on unmount.
   useEffect(() => () => {
@@ -1058,6 +1470,14 @@ export default function SystemsApp() {
     const active = LAYERS
       .filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
       .map((d) => {
+        // Smoke altitude handoff: the Explain card must describe what's on
+        // SCREEN — in ground mode that's the HRRR µg/m³ grid, not CAMS.
+        if (d.id === 'smoke' && smokeMode === 'ground' && fieldsRef.current['smoke:ground']) {
+          const rc = replayRef.current
+          const gt = rc && rc.layerId === 'smoke' && rc.tape?.meta?.kind === 'hrrr-smoke-massden-tape' ? rc.tape : null
+          const gf = gt || fieldsRef.current['smoke:ground']
+          return { def: { ...d, ...d.ground, tape: null, flow: null }, payload: gf, meta: gt ? gt.metaAt() : gf.meta }
+        }
         const rc = replayRef.current
         if (rc && rc.layerId === d.id) return { def: d, payload: rc.tape, meta: rc.tape.metaAt() }
         return { def: d, payload: fieldsRef.current[d.id], meta: layerMeta[d.id] }
@@ -1077,7 +1497,7 @@ export default function SystemsApp() {
       .catch(() => {
         if (explainReqRef.current === reqId) setExplain({ status: 'error', facts, text: null })
       })
-  }, [layerOn, layerStatus, layerMeta])
+  }, [layerOn, layerStatus, layerMeta, smokeMode])
 
   // Typewriter reveal for the narration — time-based (not per-tick) so
   // browser timer throttling can't slow it down.
@@ -1118,10 +1538,12 @@ export default function SystemsApp() {
       {/* Overlay stack: scalar color wash below, particle layers above,
           event pings (fires, quakes) on top. */}
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.scalar = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.smokeplumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.hotspots = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireraw = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireevents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.quakes = el }} aria-hidden="true" />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
@@ -1321,6 +1743,9 @@ export default function SystemsApp() {
               const on = layerOn[def.id]
               const status = layerStatus[def.id]
               const meta = layerMeta[def.id]
+              // Smoke altitude handoff: while the ground view is active, the
+              // panel legend/scale/words describe µg/m³, not column AOD.
+              const lens = def.id === 'smoke' && smokeMode === 'ground' && def.ground ? { ...def, ...def.ground } : def
               return (
                 <div key={def.id} className={styles.layerBlock}>
                   <div
@@ -1360,18 +1785,21 @@ export default function SystemsApp() {
                     </div>
                   )}
 
-                  {on && status === 'ok' && def.legend && (
+                  {on && status === 'ok' && lens.legend && (
                     <div className={styles.field}>
+                      {lens !== def && (
+                        <div className={styles.legendNoteText}>Showing smoke at ground level ({lens.sub}) — zoom out for the whole-sky view.</div>
+                      )}
                       <div
                         className={styles.legendBar}
-                        style={{ background: rampGradient(def.stops, def.legend.min, def.legend.max) }}
+                        style={{ background: rampGradient(lens.stops, lens.legend.min, lens.legend.max) }}
                       />
                       <div className={styles.legendScale}>
-                        {def.legend.ticks.map((t) => <span key={t}>{t}</span>)}
+                        {lens.legend.ticks.map((t) => <span key={t}>{t}</span>)}
                       </div>
-                      {def.words && (
+                      {lens.words && (
                         <div className={styles.legendWords}>
-                          {def.words.map((w) => (
+                          {lens.words.map((w) => (
                             <span key={w.label} className={styles.legendWord}>
                               <strong>{w.label}</strong> {w.range}
                             </span>
@@ -1437,11 +1865,11 @@ export default function SystemsApp() {
         )}
       </MapSheet>}
 
-      {(replay || eventReplay) ? (
+      {(replay || eventReplay || fireReplay) ? (
         <TransportBar
-          controller={replay || eventReplay}
-          sourceName={LAYERS.find((d) => d.id === (replay || eventReplay).layerId)?.sourceName}
-          sourceUrl={LAYERS.find((d) => d.id === (replay || eventReplay).layerId)?.sourceUrl}
+          controller={replay || eventReplay || fireReplay}
+          sourceName={(replay || eventReplay || fireReplay).sourceName || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceName}
+          sourceUrl={(replay || eventReplay || fireReplay).sourceUrl || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceUrl}
           shifted={panelOpen && !isMobile}
           mini={isMobile && popupOpen}
           range={replay && LAYERS.find((d) => d.id === replay.layerId)?.tape?.year ? (replayRange[replay.layerId] || 'short') : undefined}

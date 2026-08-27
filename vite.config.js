@@ -502,6 +502,27 @@ function cwfisProxyPlugin() {
 // Dev middleware: serve /api/hms by mirroring the production Edge function
 // (api/hms.js) — NOAA HMS GOES+polar fire detections — so the layer works under
 // `npm run dev`. No key needed.
+// Dev middleware: serve /api/hms-smoke by mirroring the production Edge
+// function (NOAA analyst-drawn smoke plume polygons).
+function hmsSmokeProxyPlugin() {
+  return {
+    name: 'hms-smoke-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/hms-smoke', async (req, res) => {
+        res.setHeader('content-type', 'application/json')
+        const { fetchHmsSmoke } = await import('./api/_hms-smoke-core.js')
+        try {
+          res.statusCode = 200
+          res.end(JSON.stringify(await fetchHmsSmoke()))
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ type: 'FeatureCollection', features: [], _count: 0, _error: String(err).slice(0, 120) }))
+        }
+      })
+    },
+  }
+}
+
 function hmsProxyPlugin() {
   return {
     name: 'hms-proxy',
@@ -664,6 +685,7 @@ export default defineConfig(({ mode }) => {
     nifcProxyPlugin(),
     cwfisProxyPlugin(),
     hmsProxyPlugin(),
+    hmsSmokeProxyPlugin(),
     inciwebProxyPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),

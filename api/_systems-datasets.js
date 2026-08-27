@@ -425,7 +425,7 @@ function titleCaseFireName(raw) {
   return /fire|rx|complex|prescribed|pile|burn|support|season/i.test(raw) ? t : `${t} Fire`
 }
 
-async function nameEventsFromNifc(events) {
+async function nameEventsFromNifc(events, now = Date.now()) {
   try {
     const r = await fetch(`${BLOB_PUBLIC_BASE}/fire/nifc-incidents.json`)
     if (!r.ok) return
@@ -436,6 +436,7 @@ async function nameEventsFromNifc(events) {
         lng: f.geometry.coordinates[0],
         lat: f.geometry.coordinates[1],
         name: f.properties.name,
+        type: f.properties.type || null,
         irwin: f.properties.irwin || null,
         discovered_ms: f.properties.discovered_ms || null,
         acres: f.properties.acres ?? null,
@@ -454,7 +455,7 @@ async function nameEventsFromNifc(events) {
         ev.label = titleCaseFireName(best.name)
         ev.country = 'United States'
         ev.name_src = 'nifc'
-        ev._irwin = best.irwin
+        ev.irwin = best.irwin
         ev._nifcName = best.name
         // Official metadata beats anything we can infer: discovery date gives
         // TRUE fire age (our run-linking only knows when we started tracking).
@@ -465,6 +466,45 @@ async function nameEventsFromNifc(events) {
         if (best.acres != null) ev.acres = best.acres
         if (best.contained != null) ev.contained = best.contained
       }
+    }
+
+    // NIFC incidents with NO fresh detections are still real, ongoing fires
+    // (smoldering, contained, cloud-covered, or between overpasses) — a
+    // 15,000-acre 45%-contained fire must not vanish because satellites
+    // missed a day. Append them as `type:'incident'` events (n=0) so the
+    // map answers "is there a fire here" from the official record, not just
+    // the last 24 h of detections. Eligibility mirrors /fire's usfires
+    // layer exactly (WF/CX only, zero-acre initial attacks age out after
+    // 36 h) so both tools give one answer.
+    const ZERO_ACRE_MAX_AGE_MS = 36 * 60 * 60 * 1000
+    const matchedIrwins = new Set(events.filter((e) => e.irwin).map((e) => e.irwin))
+    for (const inc of incidents) {
+      if (inc.irwin && matchedIrwins.has(inc.irwin)) continue
+      const t = String(inc.type || '').toUpperCase()
+      if (t && t !== 'WF' && t !== 'CX') continue
+      if ((inc.acres == null || inc.acres === 0) && inc.discovered_ms && now - inc.discovered_ms > ZERO_ACRE_MAX_AGE_MS) continue
+      events.push({
+        lat: Math.round(inc.lat * 1e4) / 1e4,
+        lng: Math.round(inc.lng * 1e4) / 1e4,
+        n: 0,
+        frp: 0,
+        frp_sum: 0,
+        cells: 0,
+        area_km2: 0,
+        type: 'incident',
+        hull: null,
+        first_seen_ms: inc.discovered_ms || now,
+        last_seen_ms: now,
+        label: titleCaseFireName(inc.name),
+        country: 'United States',
+        name_src: 'nifc',
+        irwin: inc.irwin,
+        discovered_ms: inc.discovered_ms,
+        acres: inc.acres,
+        contained: inc.contained,
+        growth: null,
+        _nifcName: inc.name,
+      })
     }
 
     // Matched events also get the OFFICIAL mapped perimeter (the simplified
@@ -492,7 +532,7 @@ async function nameEventsFromNifc(events) {
             if (f.properties?.name) byName.set(String(f.properties.name).toUpperCase(), f.geometry)
           }
           for (const ev of matched) {
-            const geom = (ev._irwin && byIrwin.get(ev._irwin))
+            const geom = (ev.irwin && byIrwin.get(ev.irwin))
               || byName.get(String(ev._nifcName).toUpperCase())
             if (geom) {
               ev.perimeter = geom
@@ -502,7 +542,7 @@ async function nameEventsFromNifc(events) {
         }
       } catch { /* perimeters unreachable — derived hulls remain */ }
     }
-    for (const ev of events) { delete ev._irwin; delete ev._nifcName }
+    for (const ev of events) delete ev._nifcName
   } catch { /* snapshot unreachable — geocode fallback covers it */ }
 }
 
@@ -537,8 +577,18 @@ async function geocodeNewEvents(events) {
 // placed at the MEAN position of its detections — never the bin center — so
 // the display shows where fires actually are instead of an artificial
 // lattice. Low-confidence detections are dropped.
-async function fetchHotspots() {
-  const url = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv'
+// All three operational VIIRS platforms. One satellite alone misses fires:
+// each pass sees a strip a few hours apart, and (observed near Los Alamos)
+// a fire's only detection of the day can come from NOAA-20 while Suomi-NPP
+// saw nothing. A transient failure of one feed must not sink the bake —
+// platforms are fetched independently and whatever succeeded is merged.
+const FIRMS_PLATFORMS = [
+  { sat: 'Suomi-NPP', url: 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv' },
+  { sat: 'NOAA-20', url: 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv' },
+  { sat: 'NOAA-21', url: 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_Global_24h.csv' },
+]
+
+async function fetchFirmsPlatform(url, satIdx) {
   const r = await fetch(url)
   if (!r.ok) throw new Error(`firms ${r.status}`)
   const text = await r.text()
@@ -549,7 +599,43 @@ async function fetchHotspots() {
   const iLon = header.indexOf('longitude')
   const iConf = header.indexOf('confidence')
   const iFrp = header.indexOf('frp')
+  const iDate = header.indexOf('acq_date')
+  const iTime = header.indexOf('acq_time')
   if (iLat < 0 || iLon < 0 || iConf < 0 || iFrp < 0) throw new Error('firms csv header changed')
+  const out = []
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',')
+    if (parts.length < 5 || parts[iConf] === 'low') continue
+    const lat = Number(parts[iLat])
+    const lon = Number(parts[iLon])
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
+    // Overpass time (UTC): acq_date "2026-08-22" + acq_time "0016" (HHMM).
+    // Drives the recency coloring of raw detections at close zoom.
+    let acq_ms = null
+    if (iDate >= 0 && iTime >= 0) {
+      const t = String(parts[iTime]).padStart(4, '0')
+      const ms = Date.parse(`${parts[iDate]}T${t.slice(0, 2)}:${t.slice(2)}:00Z`)
+      if (Number.isFinite(ms)) acq_ms = ms
+    }
+    out.push({ lat, lon, frp: Number(parts[iFrp]) || 0, acq_ms, sat: satIdx })
+  }
+  return out
+}
+
+async function fetchHotspots() {
+  const settled = await Promise.allSettled(FIRMS_PLATFORMS.map((p, i) => fetchFirmsPlatform(p.url, i)))
+  const okPlatforms = []
+  const detections = []
+  settled.forEach((s, i) => {
+    if (s.status === 'fulfilled') {
+      okPlatforms.push(FIRMS_PLATFORMS[i].sat)
+      // No spread here: ~200k args per platform overflows the call stack.
+      for (const d of s.value) detections.push(d)
+    } else {
+      console.error(`firms ${FIRMS_PLATFORMS[i].sat} pull failed:`, String(s.reason).slice(0, 120))
+    }
+  })
+  if (!okPlatforms.length) throw new Error('all FIRMS platform pulls failed')
 
   const VARIANTS = [
     { binDeg: 0.5, path: 'systems/firms-hotspots.json', bins: new Map() },
@@ -558,19 +644,9 @@ async function fetchHotspots() {
     // shape (a shaped 50 km² fire is 2 blobs at 0.25°, ~15 at 0.05°).
     { binDeg: 0.05, path: 'systems/firms-hotspots-detail.json', bins: new Map() },
   ]
-  const detections = []
-  let kept = 0
   let totalFrp = 0
-  for (let i = 1; i < lines.length; i++) {
-    const parts = lines[i].split(',')
-    if (parts.length < 5 || parts[iConf] === 'low') continue
-    const lat = Number(parts[iLat])
-    const lon = Number(parts[iLon])
-    const frp = Number(parts[iFrp]) || 0
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
-    kept++
+  for (const { lat, lon, frp } of detections) {
     totalFrp += frp
-    detections.push({ lat, lon, frp })
     for (const v of VARIANTS) {
       const inv = 1 / v.binDeg
       const key = `${Math.round(lat * inv)},${Math.round(lon * inv)}`
@@ -586,9 +662,59 @@ async function fetchHotspots() {
       }
     }
   }
+  const kept = detections.length
   if (kept < 500) throw new Error(`suspiciously few detections (${kept})`)
 
   const now = Date.now()
+
+  // Raw-detection shards (10°×10°): zoomed in on a specific fire, users need
+  // the ACTUAL 375 m detections — position, intensity, and how recent — not
+  // 5 km cluster blobs. The globe is sharded so a viewport only fetches the
+  // few files under it; the shard list rides in each variant's meta, so the
+  // client never references a stale shard from an earlier run (no deletes
+  // needed). Rows: [lat, lng, frpMW, minutesBeforeFetch|null, satIdx].
+  const SHARD_DEG = 10
+  const SHARD_MAX = 20000
+  const shards = new Map()
+  for (const d of detections) {
+    const key = `${Math.floor(d.lat / SHARD_DEG) * SHARD_DEG}_${Math.floor(d.lon / SHARD_DEG) * SHARD_DEG}`
+    let arr = shards.get(key)
+    if (!arr) shards.set(key, (arr = []))
+    arr.push(d)
+  }
+  const rawShardNames = []
+  const shardJsons = []
+  for (const [key, arr] of shards) {
+    // Intensity-sorted so the per-shard cap keeps the detections that matter
+    // (a savanna shard can exceed the cap; a fire being inspected won't).
+    arr.sort((a, b) => b.frp - a.frp)
+    const truncated = arr.length > SHARD_MAX
+    const name = `firms-raw-${key}`
+    rawShardNames.push(name)
+    shardJsons.push({
+      path: `systems/${name}.json`,
+      json: {
+        version: 1,
+        kind: 'firms-raw',
+        fetched_ms: now,
+        valid_ms: now,
+        run_ms: now,
+        window: '24h',
+        total: arr.length,
+        ...(truncated ? { truncated: true } : {}),
+        satellites: FIRMS_PLATFORMS.map((p) => p.sat),
+        source: `NASA FIRMS — individual VIIRS (${okPlatforms.join(', ')}) active-fire detections, last 24 h, ≥nominal confidence`,
+        detections: arr.slice(0, SHARD_MAX).map((d) => [
+          Math.round(d.lat * 1e4) / 1e4,
+          Math.round(d.lon * 1e4) / 1e4,
+          Math.round(d.frp * 10) / 10,
+          Number.isFinite(d.acq_ms) ? Math.max(0, Math.round((now - d.acq_ms) / 60000)) : null,
+          d.sat,
+        ]),
+      },
+    })
+  }
+
   const jsons = VARIANTS.map((v) => ({
     path: v.path,
     json: {
@@ -603,9 +729,13 @@ async function fetchHotspots() {
       // overpasses — the raw input for GFAS-style emission estimates.
       frp_sum_mw: Math.round(totalFrp),
       binDeg: v.binDeg,
-      source: 'NASA FIRMS — VIIRS (Suomi-NPP) active-fire detections, last 24 h, ≥nominal confidence',
-      // Largest clusters first, so any render cap keeps the most significant.
-      bins: [...v.bins.values()].sort((a, b) => b.n - a.n)
+      platforms: okPlatforms,
+      raw_shards: rawShardNames,
+      source: `NASA FIRMS — VIIRS (${okPlatforms.join(', ')}) active-fire detections, last 24 h, ≥nominal confidence`,
+      // Most INTENSE clusters first (total radiative power, not detection
+      // count), so any render cap keeps the fires that matter: 40 scattered
+      // crop burns must not out-rank one megafire front.
+      bins: [...v.bins.values()].sort((a, b) => b.frpSum - a.frpSum)
         .map((b) => [
           Math.round((b.latSum / b.n) * 100) / 100,
           Math.round((b.lonSum / b.n) * 100) / 100,
@@ -615,6 +745,8 @@ async function fetchHotspots() {
         ]),
     },
   }))
+
+  jsons.push(...shardJsons)
 
   // Fire events (same detections, richer product) — guarded so an events
   // failure never blocks the hotspot files; the previous events file simply
@@ -626,8 +758,20 @@ async function fetchHotspots() {
       if (pr.ok) prevEvents = (await pr.json())?.events
     } catch { /* first run / blob unreachable — all events read as new */ }
     const events = buildFireEvents(detections, prevEvents, now)
-    await nameEventsFromNifc(events)
+    await nameEventsFromNifc(events, now)
     await geocodeNewEvents(events)
+
+    // Per-fire histories: route today's rows into each significant fire's
+    // rolling file (plus budgeted backfill to discovery), and mark those
+    // events hist:true BEFORE the feed below is serialized. Guarded so a
+    // history failure never blocks the events feed.
+    try {
+      const { items, route } = prepareHistItems(events)
+      for (const d of detections) route(d.lat, d.lon, d.frp, d.acq_ms, d.sat)
+      jsons.push(...(await finalizeHistItems(items, now, { backfill: true })))
+    } catch (err) {
+      console.error('fire-hist build failed (events feed unaffected):', err)
+    }
     jsons.push({
       path: 'systems/fire-events.json',
       json: {
@@ -638,7 +782,9 @@ async function fetchHotspots() {
         run_ms: now,
         window: '24h',
         events,
-        source: 'Derived by EarthAtlas from NASA FIRMS VIIRS detections (event clustering; footprints are detection hulls, not mapped perimeters)',
+        platforms: okPlatforms,
+        incidents: events.filter((e) => e.type === 'incident').length,
+        source: `Derived by EarthAtlas from NASA FIRMS VIIRS detections (${okPlatforms.join(', ')}; event clustering — footprints are detection hulls unless an official NIFC perimeter is joined) merged with NIFC WFIGS incident records (US)`,
       },
     })
   } catch (err) {
@@ -647,6 +793,469 @@ async function fetchHotspots() {
   return { jsons }
 }
 
+
+// ─── Per-fire detection histories — "since first detection" scrubbing ──────
+// One compact file per significant NIFC fire (fire-hist-<irwin-hex>.json):
+// every VIIRS detection inside the fire's area since discovery. Three feeds
+// keep it filled: the 3-hourly hotspots bake appends the fresh 24 h rows,
+// the fire-daily bake seeds/merges the 7-day files, and a budgeted FIRMS
+// area-API backfill (FIRMS_MAP_KEY) reaches back to the discovery date for
+// fires older than the rolling files. Rows: [lat, lng, frpMW, minutes-from-
+// t0, satIdx], deduped on ~10-minute/position keys so the three feeds can
+// overlap freely. The merged fire-events feed marks these fires hist:true
+// so the client knows a deep timeline exists.
+const HIST_MIN_ACRES = 100
+const HIST_MAX_ROWS = 50000
+const HIST_BBOX_MARGIN = 0.03
+const HIST_BACKFILL_BUDGET = 60      // FIRMS area-API requests per bake run
+const HIST_BACKFILL_PER_FIRE = 15    // give up past this (very long fires)
+
+const histIdOf = (irwin) => `fire-hist-${String(irwin).replace(/[^0-9a-f]/gi, '').toLowerCase()}`
+
+function histBboxOf(e) {
+  let w = Infinity
+  let s = Infinity
+  let e2 = -Infinity
+  let n = -Infinity
+  const eat = (lng, lat) => {
+    if (lng < w) w = lng
+    if (lng > e2) e2 = lng
+    if (lat < s) s = lat
+    if (lat > n) n = lat
+  }
+  if (e.perimeter) {
+    const polys = e.perimeter.type === 'Polygon' ? [e.perimeter.coordinates] : e.perimeter.coordinates
+    for (const poly of polys) for (const ring of poly) for (const c of ring) eat(c[0], c[1])
+  } else if (Array.isArray(e.hull) && e.hull.length >= 3) {
+    for (const c of e.hull) eat(c[0], c[1])
+  }
+  if (!Number.isFinite(w)) { eat(e.lng - 0.12, e.lat - 0.12); eat(e.lng + 0.12, e.lat + 0.12) }
+  const m = HIST_BBOX_MARGIN
+  return [w - m, s - m, e2 + m, n + m]
+}
+
+/**
+ * Candidate fires (NIFC-matched, detection-active or ≥100 acres) with a
+ * 1°-cell index so millions of CSV rows route to their fires cheaply.
+ * route(lat, lng, frp, acq_ms, sat) files a row into every matching fire.
+ */
+export function prepareHistItems(events) {
+  const cands = (events || []).filter((e) => e.irwin && e.name_src === 'nifc' && (e.n > 0 || (e.acres || 0) >= HIST_MIN_ACRES))
+  const items = cands.map((e) => ({ e, id: histIdOf(e.irwin), bbox: histBboxOf(e), add: [] }))
+  const grid = new Map()
+  items.forEach((it, idx) => {
+    const [w, s, e2, n] = it.bbox
+    for (let gy = Math.floor(s); gy <= Math.floor(n); gy++) {
+      for (let gx = Math.floor(w); gx <= Math.floor(e2); gx++) {
+        const k = `${gy},${gx}`
+        let arr = grid.get(k)
+        if (!arr) grid.set(k, (arr = []))
+        arr.push(idx)
+      }
+    }
+  })
+  const route = (lat, lng, frp, acq_ms, sat) => {
+    if (!Number.isFinite(acq_ms)) return
+    const arr = grid.get(`${Math.floor(lat)},${Math.floor(lng)}`)
+    if (!arr) return
+    for (const idx of arr) {
+      const [w, s, e2, n] = items[idx].bbox
+      if (lng >= w && lng <= e2 && lat >= s && lat <= n) items[idx].add.push({ lat, lng, frp, acq_ms, sat })
+    }
+  }
+  return { items, route }
+}
+
+// FIRMS area-API pull for one source/bbox/date-chunk (backfill only).
+async function fetchFirmsArea(key, source, bbox, dayRange, dateStr) {
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/` +
+    `${bbox.map((v) => v.toFixed(3)).join(',')}/${dayRange}/${dateStr}`
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`firms area ${r.status}`)
+  const text = await r.text()
+  if (text.startsWith('Invalid') || text.startsWith('Error')) throw new Error(text.slice(0, 80))
+  const lines = text.split('\n')
+  if (lines.length < 2) return []
+  const header = lines[0].split(',')
+  const iLat = header.indexOf('latitude')
+  const iLon = header.indexOf('longitude')
+  const iConf = header.indexOf('confidence')
+  const iFrp = header.indexOf('frp')
+  const iDate = header.indexOf('acq_date')
+  const iTime = header.indexOf('acq_time')
+  if (iLat < 0 || iLon < 0 || iDate < 0 || iTime < 0) return []
+  const out = []
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',')
+    if (parts.length < 5 || parts[iConf] === 'low' || parts[iConf] === 'l') continue
+    const lat = Number(parts[iLat])
+    const lon = Number(parts[iLon])
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
+    const t = String(parts[iTime]).padStart(4, '0')
+    const ms = Date.parse(`${parts[iDate]}T${t.slice(0, 2)}:${t.slice(2)}:00Z`)
+    if (!Number.isFinite(ms)) continue
+    out.push({ lat, lng: lon, frp: Number(parts[iFrp]) || 0, acq_ms: ms })
+  }
+  return out
+}
+
+const HIST_BACKFILL_SOURCES = [
+  ['VIIRS_SNPP_NRT', 0],
+  ['VIIRS_NOAA20_NRT', 1],
+  ['VIIRS_NOAA21_NRT', 2],
+]
+
+/**
+ * Merge routed rows over each fire's stored file (plus optional area-API
+ * backfill to the discovery date) and return the blob writes. Marks each
+ * written event hist:true so the events feed advertises the deep timeline.
+ */
+export async function finalizeHistItems(items, now, { backfill = false } = {}) {
+  const jsons = []
+  const budget = { left: backfill && process.env.FIRMS_MAP_KEY ? HIST_BACKFILL_BUDGET : 0 }
+  for (let i = 0; i < items.length; i += 8) {
+    await Promise.all(items.slice(i, i + 8).map(async (it) => {
+      let prev = null
+      try {
+        const r = await fetch(`${BLOB_PUBLIC_BASE}/systems/${it.id}.json`)
+        if (r.ok) prev = await r.json()
+      } catch { /* first write */ }
+      // Nothing known AND no way to learn more → skip. A quiet fire (no
+      // fresh rows) still proceeds when backfill could reach its past.
+      if (!prev && !it.add.length && !(backfill && it.e.discovered_ms && budget.left > 0)) return
+
+      const t0 = prev?.t0_ms ?? (it.e.discovered_ms || now)
+      let backfilled_ms = prev?.backfilled_ms ?? null
+
+      // Backfill: reach from the file's earliest row back to discovery via
+      // the FIRMS area API (NRT sources — active fires are weeks old at
+      // most). One attempt per fire; partial coverage still counts as done
+      // so a fire past NRT retention doesn't burn the budget every bake.
+      if (backfill && !backfilled_ms && budget.left > 0 && it.e.discovered_ms) {
+        const key = process.env.FIRMS_MAP_KEY
+        const prevEarliest = prev?.detections?.length ? t0 + prev.detections[0][3] * 60000 : now
+        const addEarliest = it.add.reduce((m, d) => Math.min(m, d.acq_ms), prevEarliest)
+        const gapDays = Math.ceil((addEarliest - it.e.discovered_ms) / 8.64e7)
+        if (gapDays >= 1) {
+          const chunks = Math.min(Math.ceil(gapDays / 5), Math.floor(HIST_BACKFILL_PER_FIRE / HIST_BACKFILL_SOURCES.length))
+          const wanted = chunks * HIST_BACKFILL_SOURCES.length
+          if (budget.left >= wanted) {
+            budget.left -= wanted
+            for (let c = 0; c < chunks; c++) {
+              const startMs = it.e.discovered_ms + c * 5 * 8.64e7
+              const dateStr = new Date(startMs).toISOString().slice(0, 10)
+              const range = Math.min(5, Math.max(1, Math.ceil((addEarliest - startMs) / 8.64e7)))
+              for (const [src, satIdx] of HIST_BACKFILL_SOURCES) {
+                try {
+                  const rows = await fetchFirmsArea(key, src, it.bbox, range, dateStr)
+                  for (const d of rows) it.add.push({ ...d, sat: satIdx })
+                } catch (err) {
+                  console.error(`hist backfill ${it.id} ${src} ${dateStr}:`, String(err).slice(0, 100))
+                }
+              }
+            }
+            backfilled_ms = now
+          }
+        } else {
+          backfilled_ms = now // already reaches discovery
+        }
+      }
+
+      const seen = new Set()
+      const out = []
+      const push = (lat, lng, frp, acqMin, sat) => {
+        const key = `${lat.toFixed(4)}|${lng.toFixed(4)}|${Math.round((t0 / 60000 + acqMin) / 10)}`
+        if (seen.has(key)) return
+        seen.add(key)
+        out.push([Math.round(lat * 1e4) / 1e4, Math.round(lng * 1e4) / 1e4, Math.round(frp * 10) / 10, acqMin, sat ?? 0])
+      }
+      for (const r of prev?.detections || []) push(r[0], r[1], r[2], r[3], r[4])
+      for (const d of it.add) push(d.lat, d.lng, d.frp, Math.round((d.acq_ms - t0) / 60000), d.sat)
+      // A 0-row file is still written once backfill has RUN — it records
+      // backfilled_ms so a perpetually-quiet fire (or one past the NRT
+      // window) doesn't re-drain the request budget every bake. Only files
+      // with rows advertise a timeline to the client.
+      if (!out.length && !backfilled_ms) return
+      out.sort((a, b) => a[3] - b[3])
+      const truncated = out.length > HIST_MAX_ROWS
+      const rows = truncated ? out.slice(out.length - HIST_MAX_ROWS) : out
+
+      if (rows.length) it.e.hist = true
+      jsons.push({
+        path: `systems/${it.id}.json`,
+        json: {
+          version: 1,
+          kind: 'fire-hist',
+          irwin: it.e.irwin,
+          name: it.e.label || null,
+          fetched_ms: now,
+          valid_ms: now,
+          run_ms: now,
+          t0_ms: t0,
+          first_ms: rows.length ? t0 + rows[0][3] * 60000 : null,
+          total: out.length,
+          ...(truncated ? { truncated: true } : {}),
+          backfilled_ms,
+          satellites: FIRMS_PLATFORMS.map((p) => p.sat),
+          bbox: it.bbox.map((v) => Math.round(v * 1000) / 1000),
+          source: 'NASA FIRMS — VIIRS active-fire detections within this fire’s area since discovery, ≥nominal confidence',
+          detections: rows,
+        },
+      })
+    }))
+  }
+  return jsons
+}
+
+// ─── hrrr-smoke — NOAA HRRR near-surface smoke, US at 3 km ─────────────────
+// The CAMS smoke layer is global but ~44 km; HRRR-Smoke models actual plume
+// transport at 3 km AND gives near-surface concentration (µg/m³ — what
+// people breathe), which CAMS can't. We byte-range just the MASSDEN message
+// (~0.7 MB of a 700 MB file) from the latest published cycle's 1-hour
+// forecast, decode it (api/_grib2.js, verified against the same file's 2 m
+// temperature), and resample the native Lambert grid onto a regular 0.05°
+// grid; cells outside the HRRR footprint stay missing so the layer simply
+// ends at the US border.
+async function fetchHrrrSmoke() {
+  const nowMs = Date.now()
+  let url = null
+  let run_ms = null
+  // f01 publishes ~50–70 min after each hourly cycle starts.
+  for (let back = 1; back <= 6; back++) {
+    const t = new Date(nowMs - back * 3.6e6)
+    const day = t.toISOString().slice(0, 10).replace(/-/g, '')
+    const hh = String(t.getUTCHours()).padStart(2, '0')
+    const u = `https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.${day}/conus/hrrr.t${hh}z.wrfsfcf01.grib2`
+    try {
+      const r = await fetch(`${u}.idx`, { method: 'HEAD' })
+      if (r.ok) {
+        url = u
+        run_ms = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), t.getUTCHours())
+        break
+      }
+    } catch { /* keep looking back */ }
+  }
+  if (!url) throw new Error('no recent HRRR cycle published')
+
+  const { fetchGribField } = await import('./_grib2.js')
+  const { values, grid } = await fetchGribField(url, /:MASSDEN:8 m above ground:/)
+  const rg = await hrrrRegularGrid(values, grid, 0.05, 3199)
+  const scale = 10 // 0.1 µg/m³ resolution in int16
+  const meta = buildMeta(
+    'hrrr-smoke-massden',
+    'NOAA HRRR-Smoke — near-surface smoke concentration (µg/m³), 3 km CONUS model, 1-hour forecast',
+    rg.latArr, rg.lonArr, scale, run_ms, run_ms + 3.6e6,
+  )
+  // Outside-footprint cells are ~27% of the lat/lon box — expected missing.
+  const gridBuffer = encodePlanes([rg.plane], scale, 3200, 0.75)
+  return { meta, gridBuffer }
+}
+
+// Resample the native HRRR Lambert grid onto a regular lat/lon grid over its
+// footprint (nearest neighbor; kg/m³ → µg/m³, clamped at `cap`). Shared by
+// the live 0.05° grid bake and the 0.1° history-tape frames.
+async function hrrrRegularGrid(values, grid, step, cap) {
+  const { lambertProjector } = await import('./_grib2.js')
+  const proj = lambertProjector(grid)
+  const LAT0 = 21.1
+  const LON0 = 225.9 // 0–360, like the other bakes
+  const nLat = Math.round(32.5 / step) + 1   // → 53.6 N
+  const nLon = Math.round(73.3 / step)       // → −60.8 W
+  const plane = new Float32Array(nLat * nLon).fill(NaN)
+  for (let r = 0; r < nLat; r++) {
+    const lat = LAT0 + r * step
+    for (let c = 0; c < nLon; c++) {
+      const lng = LON0 + c * step - 360
+      const p = proj(lat, lng)
+      const i = Math.round(p.i)
+      const j = Math.round(p.j)
+      if (i < 0 || j < 0 || i >= grid.nx || j >= grid.ny) continue
+      plane[r * nLon + c] = Math.min(cap, values[j * grid.nx + i] * 1e9)
+    }
+  }
+  return {
+    plane,
+    latArr: Array.from({ length: nLat }, (_, i) => LAT0 + i * step),
+    lonArr: Array.from({ length: nLon }, (_, i) => LON0 + i * step),
+  }
+}
+
+// History tape: hourly ground-smoke frames at 0.1° (PNG-compressed bytes,
+// µg/m³ at 1 µg steps, capped at 254 — the ramp tops out well below). The
+// AWS archive keeps past cycles, so backfill just asks for older days.
+function hrrrSmokeTape() {
+  return {
+    kind: 'hrrr-smoke-massden',
+    source: 'NOAA HRRR-Smoke — near-surface smoke (µg/m³), 3 km CONUS model, hourly 1-hour forecasts',
+    qscale: 1,
+    offset: -1, // byte = µg/m³ + 1, so byte 0 stays the missing sentinel
+    nodata0: true,
+    stepH: 1,
+    latencyH: 2,
+    days: 4,
+    maxMissingFrac: 0.6, // ~27% of the lat/lon box is outside the model
+    frameKind: 'hourly smoke forecast (+1 h)',
+    expectedTimes: (day, now) =>
+      Array.from({ length: 24 }, (_, h) => dayMs(day, h)).filter((t) => now - t >= 2 * H),
+    async fetchDay(day, wanted) {
+      const { fetchGribField } = await import('./_grib2.js')
+      const frames = []
+      let axes = null
+      for (const valid of wanted) {
+        const run = valid - H
+        const d = new Date(run)
+        const dayStr = d.toISOString().slice(0, 10).replace(/-/g, '')
+        const hh = String(d.getUTCHours()).padStart(2, '0')
+        const url = `https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.${dayStr}/conus/hrrr.t${hh}z.wrfsfcf01.grib2`
+        try {
+          const { values, grid } = await fetchGribField(url, /:MASSDEN:8 m above ground:/)
+          const rg = await hrrrRegularGrid(values, grid, 0.1, 254)
+          axes = rg
+          frames.push({ run_ms: run, valid_ms: valid, lead_h: 1, values: rg.plane })
+        } catch (err) {
+          // A missing archive hour (rare cycle gap) skips its frame only.
+          console.error(`hrrr tape ${new Date(valid).toISOString()}:`, String(err).slice(0, 100))
+        }
+      }
+      if (!frames.length) throw new Error('no HRRR frames fetched')
+      return { lat: axes.latArr, lon: axes.lonArr, frames }
+    },
+  }
+}
+
+// ─── fire-daily — rolling daily fire-presence rollup for the time slider ───
+// The 7-day FIRMS CSVs (one per VIIRS platform, ~65 MB each) are binned per
+// UTC day at 0.25°; each bake merges its fresh 7 days over the stored file,
+// so history accumulates toward a 31-day window. Wide-zoom scrubbing swaps
+// the glow layer to a day's bins. Per-day bins are capped by total radiative
+// power (the live layer's significance rule); `total` records the pre-cap
+// count so the truncation is never silent. Separate dataset/cron from the
+// 3-hourly hotspots bake — a ~200 MB pull earns its own slower schedule.
+const FIRE_DAILY_BIN_DEG = 0.25
+const FIRE_DAILY_TOP = 6000
+const FIRE_DAILY_KEEP_DAYS = 31
+
+async function binFirmsDaily(url, days, route, satIdx) {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`firms ${r.status}`)
+  const text = await r.text()
+  const lines = text.split('\n')
+  if (lines.length < 100) throw new Error(`firms 7d csv too small (${lines.length} lines)`)
+  const header = lines[0].split(',')
+  const iLat = header.indexOf('latitude')
+  const iLon = header.indexOf('longitude')
+  const iConf = header.indexOf('confidence')
+  const iFrp = header.indexOf('frp')
+  const iDate = header.indexOf('acq_date')
+  const iTime = header.indexOf('acq_time')
+  if (iLat < 0 || iLon < 0 || iConf < 0 || iFrp < 0 || iDate < 0) throw new Error('firms 7d csv header changed')
+  const inv = 1 / FIRE_DAILY_BIN_DEG
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',')
+    if (parts.length < 5 || parts[iConf] === 'low') continue
+    const lat = Number(parts[iLat])
+    const lon = Number(parts[iLon])
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
+    const date = parts[iDate]
+    if (!date || date.length !== 10) continue
+    const frp = Number(parts[iFrp]) || 0
+    let bins = days.get(date)
+    if (!bins) days.set(date, (bins = new Map()))
+    const key = `${Math.round(lat * inv)},${Math.round(lon * inv)}`
+    const b = bins.get(key)
+    if (b) {
+      b.n++
+      b.latSum += lat
+      b.lonSum += lon
+      b.frpSum += frp
+      if (frp > b.frp) b.frp = frp
+    } else {
+      bins.set(key, { n: 1, latSum: lat, lonSum: lon, frp, frpSum: frp })
+    }
+    // Seed per-fire histories with a week of rows (route is a cheap
+    // grid-indexed bbox check, so this adds little to the 4.5M-row parse).
+    if (route && iTime >= 0) {
+      const t = String(parts[iTime]).padStart(4, '0')
+      const ms = Date.parse(`${date}T${t.slice(0, 2)}:${t.slice(2)}:00Z`)
+      if (Number.isFinite(ms)) route(lat, lon, frp, ms, satIdx)
+    }
+  }
+}
+
+async function fetchFireDaily() {
+  const days = new Map() // 'YYYY-MM-DD' → Map(binKey → bin)
+  const ok = []
+  // Fire-history seeding: the 7-day rows also flow into the per-fire files
+  // (candidates from the current events feed; absent/old feed → no-op).
+  let hist = null
+  try {
+    const er = await fetch(`${BLOB_PUBLIC_BASE}/systems/fire-events.json`)
+    if (er.ok) hist = prepareHistItems((await er.json())?.events)
+  } catch { /* events feed unreachable — skip seeding this run */ }
+  // Sequential on purpose: three ~65 MB text bodies at once is an OOM risk.
+  for (const [i, p] of FIRMS_PLATFORMS.entries()) {
+    try {
+      await binFirmsDaily(p.url.replace('_24h.csv', '_7d.csv'), days, hist?.route, i)
+      ok.push(p.sat)
+    } catch (err) {
+      console.error(`fire-daily ${p.sat} pull failed:`, String(err).slice(0, 120))
+    }
+  }
+  if (!ok.length) throw new Error('all FIRMS 7d pulls failed')
+
+  const now = Date.now()
+  const freshDays = new Map()
+  for (const [date, bins] of days) {
+    const arr = [...bins.values()].sort((a, b) => b.frpSum - a.frpSum)
+    freshDays.set(date, {
+      date,
+      start_ms: Date.parse(`${date}T00:00:00Z`),
+      total: arr.length,
+      bins: arr.slice(0, FIRE_DAILY_TOP).map((b) => [
+        Math.round((b.latSum / b.n) * 100) / 100,
+        Math.round((b.lonSum / b.n) * 100) / 100,
+        b.n,
+        Math.round(b.frp),
+        Math.round(b.frpSum),
+      ]),
+    })
+  }
+
+  // Merge over the stored file: fresh days win (a re-baked day is more
+  // complete), older days persist until they age out of the window.
+  let prevDays = []
+  try {
+    const pr = await fetch(`${BLOB_PUBLIC_BASE}/systems/fire-daily.json`)
+    if (pr.ok) prevDays = (await pr.json())?.days || []
+  } catch { /* first bake */ }
+  const merged = new Map(prevDays.map((d) => [d.date, d]))
+  for (const [date, d] of freshDays) merged.set(date, d)
+  const daysOut = [...merged.values()]
+    .filter((d) => Number.isFinite(d.start_ms) && now - d.start_ms < (FIRE_DAILY_KEEP_DAYS + 1) * 8.64e7)
+    .sort((a, b) => a.start_ms - b.start_ms)
+
+  const jsons = [{
+    path: 'systems/fire-daily.json',
+    json: {
+      version: 1,
+      kind: 'fire-daily',
+      fetched_ms: now,
+      valid_ms: now,
+      run_ms: now,
+      binDeg: FIRE_DAILY_BIN_DEG,
+      days: daysOut,
+      source: `NASA FIRMS — VIIRS (${ok.join(', ')}) active-fire detections binned per UTC day, ≥nominal confidence, up to ${FIRE_DAILY_KEEP_DAYS} days`,
+    },
+  }]
+  if (hist) {
+    try {
+      jsons.push(...(await finalizeHistItems(hist.items, now)))
+    } catch (err) {
+      console.error('fire-hist seeding failed (fire-daily unaffected):', err)
+    }
+  }
+  return { jsons }
+}
 
 // ─── CAMS (Copernicus Atmosphere Data Store) — generic field bake ───────────
 // ADS is an async job queue: submit → poll → download a zipped NetCDF4
@@ -1185,6 +1794,7 @@ export const SYSTEMS_TAPES = {
     }),
   },
 }
+SYSTEMS_TAPES['hrrr-smoke'] = { blobBase: 'systems/hrrr-smoke', tape: hrrrSmokeTape() }
 SYSTEMS_TAPES['sst-year'].tape = weeklyOf(SYSTEMS_TAPES.sst.tape)
 SYSTEMS_TAPES['sstanom-year'].tape = weeklyOf(SYSTEMS_TAPES.sstanom.tape)
 
@@ -1206,6 +1816,8 @@ export const SYSTEMS_DATASETS = {
   airtemp: { blobBase: 'systems/gfs-airtemp', fetchGrid: fetchAirTemp },
   sstanom: { blobBase: 'systems/crw-sstanom', fetchGrid: fetchSstAnom },
   hotspots: { blobBase: 'systems/firms-hotspots', fetchGrid: fetchHotspots },
+  'fire-daily': { blobBase: 'systems/fire-daily', fetchGrid: fetchFireDaily },
+  'hrrr-smoke': { blobBase: 'systems/hrrr-smoke', fetchGrid: fetchHrrrSmoke },
   aerosol: { blobBase: 'systems/cams-aod', fetchGrid: fetchAerosol },
   smoke: { blobBase: 'systems/cams-smoke', fetchGrid: fetchSmoke },
   dust: { blobBase: 'systems/cams-dust', fetchGrid: fetchDust },

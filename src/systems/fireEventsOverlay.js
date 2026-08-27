@@ -10,11 +10,27 @@
 
 import { CanvasFreezer } from './canvasFreeze.js'
 import { getGlobeGeometry } from './globeGeom.js'
+import { RAW_DETAIL_ZOOM } from './fireRawDetections.js'
 
 const MIN_DRAW_ZOOM = 3.2
+// Quiet NIFC incidents (type 'incident': official record, no fresh
+// detections) have no glow to carry them. Two gates keep them honest
+// without carpeting a bad fire season in rings (a severe Western August has
+// ~90 quiet fires over 1,000 acres in one regional view): a zoom-laddered
+// acreage floor, then a per-view top-K by acreage — the biggest fires in
+// view always show, the long tail appears as you zoom in.
+const incidentAcresFloor = (zoom) =>
+  zoom >= 6.5 ? 0 : zoom >= 5.5 ? 100 : 1000
+const incidentMaxInView = (zoom) =>
+  zoom >= 6.5 ? Infinity : zoom >= 5.5 ? 30 : 15
 const MAX_LABELS = 25
 const PROJ_TOLERANCE = 2
 const MAX_DPR = 2
+
+// Label/marker significance: detection count when the satellites see it,
+// official size when they don't (a 15,000-acre quiet fire outranks a
+// 40-detection grass fire).
+const eventSignificance = (e) => e.n || (e.acres || 0) / 25
 
 export const fireEventName = (e) => {
   // Official incident names (NIFC join) stand on their own: "Park Fire".
@@ -135,15 +151,26 @@ export class FireEventsOverlay {
       return dLng * cosLat + Math.abs(rt.lat - lat) <= tolDeg
     }
 
+    const zoomNow = map.getZoom()
     const candidates = []
+    const incidentCandidates = []
     for (const e of this.events) {
+      if (e.type === 'incident' && (e.acres || 0) < incidentAcresFloor(zoomNow)) continue
       let pt
       try { pt = map.project([e.lng, e.lat]) } catch { continue }
       if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) continue
       if (pt.x < -80 || pt.y < -80 || pt.x > w + 80 || pt.y > h + 80) continue
       if (!onFace(e.lng, e.lat, pt)) continue
-      candidates.push({ e, cx: pt.x, cy: pt.y })
+      const c = { e, cx: pt.x, cy: pt.y }
+      if (e.type === 'incident') incidentCandidates.push(c)
+      else candidates.push(c)
     }
+    const maxInc = incidentMaxInView(zoomNow)
+    if (incidentCandidates.length > maxInc) {
+      incidentCandidates.sort((a, b) => (b.e.acres || 0) - (a.e.acres || 0))
+      incidentCandidates.length = maxInc
+    }
+    candidates.push(...incidentCandidates)
 
     // Shapes for everything in view; labels only for the biggest. Events with
     // an OFFICIAL perimeter (NIFC join) draw its real geometry — solid and
@@ -177,10 +204,30 @@ export class FireEventsOverlay {
     // time small events are carried by their glows alone.
     const drawAll = map.getZoom() >= 6.5
     const outlineSet = new Set(
-      drawAll ? candidates : [...candidates].sort((a, b) => b.e.n - a.e.n).slice(0, 30),
+      drawAll ? candidates : [...candidates].sort((a, b) => eventSignificance(b.e) - eventSignificance(a.e)).slice(0, 30),
     )
+    // Quiet incidents: an ember marker (dot + ring) — visibly NOT a glow,
+    // because glows mean "satellites see it burning right now" and these are
+    // official records with no fresh detections. Ring radius scales with the
+    // fire's OFFICIAL size so a 15,000-acre fire reads bigger than a spot
+    // fire; a dark under-halo keeps it legible over bright terrain.
+    const emberR = (e) => Math.min(13, 3 + Math.log10((e.acres || 0) + 1) * 2.2)
+    const drawEmber = (x, y, r) => {
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.arc(x, y, Math.max(2.5, r * 0.45), 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(255,165,70,0.95)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = 'rgba(255,160,65,0.7)'
+      ctx.stroke()
+    }
     for (const d of candidates) {
       const polys = []
+      const quiet = d.e.type === 'incident'
+      if (quiet) drawEmber(d.cx, d.cy, emberR(d.e))
       const wantsOutline = drawAll || d.e.perimeter || d.e.type === 'regional' || outlineSet.has(d)
       if (!wantsOutline) { d.screenPolys = polys; this._drawn.push(d); continue }
       if (d.e.perimeter) {
@@ -190,10 +237,14 @@ export class FireEventsOverlay {
         for (const poly of geoms) {
           const ring = projectRing(poly[0]) // outer ring
           if (!ring || ring.length < 3) continue
-          drawRing(ring, 'rgba(255,120,40,0.10)', 'rgba(255,135,45,0.95)', [], 1.8)
+          if (quiet) drawRing(ring, 'rgba(255,140,50,0.06)', 'rgba(255,150,60,0.6)', [], 1.4)
+          else drawRing(ring, 'rgba(255,120,40,0.10)', 'rgba(255,135,45,0.95)', [], 1.8)
           polys.push(ring)
         }
-      } else if (d.e.hull && d.e.hull.length >= 3) {
+      } else if (d.e.hull && d.e.hull.length >= 3 && zoomNow < RAW_DETAIL_ZOOM) {
+        // Past the raw-detection handoff the derived hull retires — the
+        // actual 375 m detections trace the fire's real shape far better
+        // than a convex hull of 5 km cells. Official perimeters stay.
         const ring = projectRing(d.e.hull)
         if (ring) {
           drawRing(
@@ -219,14 +270,21 @@ export class FireEventsOverlay {
     const maxLabels = zoom >= 6 ? MAX_LABELS : zoom >= 4.5 ? 12 : 8
     const labelWorthy = (d) => {
       if (!d.e.label) return false
+      // Looking AT a fire (raw-detection zoom): every named fire in view
+      // keeps its name — the hull that used to earn the label is retired.
+      if (zoom >= RAW_DETAIL_ZOOM) return true
       if (d.e.n >= 500 || d.e.perimeter) return true
+      // Quiet incidents: big fires always deserve their name; the rest get
+      // it at regional zoom (their ember is the only mark they have — the
+      // maxLabels cap and significance sort still keep the biggest first).
+      if (d.e.type === 'incident') return (d.e.acres || 0) >= 5000 || zoom >= 5.5
       if (!d.screenPolys?.length) return false
       const pts = d.screenPolys.flat()
       const xs = pts.map((p) => p[0])
       const ys = pts.map((p) => p[1])
       return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= 28
     }
-    const labeled = candidates.filter(labelWorthy).sort((a, b) => b.e.n - a.e.n).slice(0, maxLabels)
+    const labeled = candidates.filter(labelWorthy).sort((a, b) => eventSignificance(b.e) - eventSignificance(a.e)).slice(0, maxLabels)
     const placed = []
     ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'

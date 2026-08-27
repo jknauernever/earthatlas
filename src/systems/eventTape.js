@@ -6,7 +6,17 @@
  * drives (frames/locate/setTime/ready/prefetch/metaAt).
  */
 export class EventTape {
-  constructor(events, { stepH = 6, windowDays = 30 } = {}) {
+  constructor(events, {
+    stepH = 6,
+    windowDays = 30,
+    // Presentation of the cursor in the transport bar — quake defaults;
+    // other event feeds (fire detections) pass their own.
+    frameKind = 'USGS catalogue',
+    dayLabel = true,
+    kindLabel = null,
+    steadyLabel = null,
+  } = {}) {
+    this._labels = { frameKind, dayLabel, kindLabel, steadyLabel }
     const step = stepH * 3.6e6
     // The last frame is NOW itself (not a rounded tick), so "Now" means the
     // past 24 h rather than a partial UTC day that may have just begun.
@@ -33,7 +43,19 @@ export class EventTape {
   prefetch() {}
   get useFlow() { return false }
   metaAt(t = this.t) {
-    return { valid_ms: t, run_ms: t, lead_h: 0, live: t >= this.end_ms - 1, frame_kind: 'USGS catalogue', tape: true, event: true, dayLabel: true }
+    const { frameKind, dayLabel, kindLabel, steadyLabel } = this._labels
+    return {
+      valid_ms: t,
+      run_ms: t,
+      lead_h: 0,
+      live: t >= this.end_ms - 1,
+      frame_kind: frameKind,
+      tape: true,
+      event: true,
+      dayLabel,
+      ...(kindLabel ? { kindLabel } : {}),
+      ...(steadyLabel ? { steadyLabel } : {}),
+    }
   }
   /** Events that have happened by time t (the cursor). */
   countAt(t = this.t) { return this.events.reduce((n, e) => n + (e.time <= t ? 1 : 0), 0) }

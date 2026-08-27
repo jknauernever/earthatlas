@@ -91,15 +91,26 @@ export class GridField {
   }
 }
 
+// Dev QA: a locally-baked file in public/dev-data/systems beats the prod blob
+// so new bake output is testable on localhost before it ships — but only
+// while FRESH (24 h), so a forgotten local file can't quietly serve stale
+// data in a later session. Prod never reads dev-data (it isn't deployed).
+const DEV_DATA_MAX_AGE_MS = 24 * 60 * 60 * 1000
+const jsonBases = () =>
+  import.meta.env.DEV ? ['/dev-data/systems', `${BLOB_PUBLIC_BASE}/systems`] : SOURCE_BASES
+
 /** Load a baked JSON dataset (e.g. 'firms-hotspots') with the same fallback. */
 export async function loadSystemsJson(name, expectKind) {
   let lastErr = null
-  for (const base of SOURCE_BASES) {
+  for (const base of jsonBases()) {
     try {
       const r = await fetch(`${base}/${name}.json`)
       if (!r.ok) throw new Error(`json ${r.status}`)
       const j = await r.json()
       if (j?.version !== 1 || (expectKind && j?.kind !== expectKind)) throw new Error('unexpected json')
+      if (base.startsWith('/dev-data') && j?.fetched_ms && Date.now() - j.fetched_ms > DEV_DATA_MAX_AGE_MS) {
+        throw new Error('dev-data file older than 24 h — falling back to blob')
+      }
       return j
     } catch (err) {
       lastErr = err

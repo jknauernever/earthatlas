@@ -175,16 +175,29 @@ export function renderNifcCard(d) {
   const contained = d.contained != null ? `${d.contained}% contained` : null
   const cause = d.cause && d.cause !== 'Undetermined' ? `${d.cause}-caused` : (d.cause === 'Undetermined' ? 'cause undetermined' : null)
 
+  // Set by renderUsFiresCard from the merged fire feed (3-satellite FIRMS +
+  // NIFC bake): whether satellites currently see this fire burning. Absent
+  // (older feed / feed unreachable) → the row is simply omitted.
+  const satellite = d.det_n == null ? null
+    : d.det_n > 0
+      ? `${d.det_n.toLocaleString()} VIIRS detection${d.det_n === 1 ? '' : 's'} (24 h)`
+      : 'none in 24 h — smoldering or contained'
+
   const rows =
     row('Type', TYPE_LABEL[d.type] || d.type) +
     row('Size', acres) +
     row('Containment', contained) +
+    row('Satellite', satellite) +
     row('Duration', discoveredText(d.discovered_ms)) +
     row('Cause', cause) +
     (d.behavior ? row('Behavior', d.behavior) : '')
 
   const src = `<div class="${styles.popupParcelSrc}">Incident data: ` +
-    `<a href="${NIFC_SOURCE_CITATION.url}" target="_blank" rel="noopener noreferrer" title="${esc(NIFC_SOURCE_CITATION.short)}">NIFC WFIGS ↗</a></div>`
+    `<a href="${NIFC_SOURCE_CITATION.url}" target="_blank" rel="noopener noreferrer" title="${esc(NIFC_SOURCE_CITATION.short)}">NIFC WFIGS ↗</a>` +
+    (satellite != null
+      ? ` · Detections: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS ↗</a>`
+      : '') +
+    `</div>`
 
   return `<div class="${styles.popupParcel}">` +
     `<div class="${styles.popupParcelTitle}">${esc(name)}` +

@@ -28,6 +28,7 @@ Write a short, well-structured explanation (about 5–8 sentences total) that he
 - Explain what the numbers mean in plain language and why they look the way they do, using well-established geographic, seasonal, and climatological knowledge (you know the date).
 - If several layers are on, connect them where the connection is real (e.g. fires and vegetation loss, wind and waves).
 - Note anything genuinely striking; if the view is unremarkable, say what normal looks like here.
+- Translate instrument jargon into human terms — never write "detections", "FRP", "radiative power", "MW/megawatts", "pixels", or satellite/product names in the visible text. Say what the measurement MEANS: "satellites spotted flames at 413 places in the past day", "burning hot enough to be seen from space", "putting out heat like a small power plant". The story is what the data tells us, not the sensor that told it.
 
 Impact framing — this matters:
 - "Seasonal" or "expected" must NEVER read as "insignificant". If a large share of global fire activity (or any striking quantity) is in view, say so plainly and explain the consequences: carbon released, regional smoke and air quality, ecosystem effects. Annual agricultural and savanna burning is one of Earth's largest recurring emission events — normal AND consequential are both true; say both.

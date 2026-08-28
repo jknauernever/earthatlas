@@ -410,12 +410,6 @@
 }
 .explain + .explain { margin-top: 8px; }
 
-.comingNext {
-  font-size: 10.5px; line-height: 1.5;
-  color: rgba(255, 255, 255, 0.45);
-  padding-top: 2px;
-}
-
 /* "How this is sourced" link + built-by footer */
 .methodology {
   display: block;

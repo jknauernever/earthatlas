@@ -1356,16 +1356,16 @@ async function readCamsField(ncBuf, varName) {
 }
 
 // Latest CAMS run likely published, with the lead time nearest now.
-function camsRunCandidates() {
+function camsRunCandidates(latencyH = 10, leadStepH = 1) {
   const now = Date.now()
   const out = []
-  for (let back = 0; back < 4; back++) {
+  for (let back = 0; back < 6; back++) {
     const t = new Date(now - back * 12 * 3.6e6)
     const hour = t.getUTCHours() >= 12 ? 12 : 0
     const run = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), hour)
     const ageH = (now - run) / 3.6e6
-    if (ageH < 10) continue // not published yet (observed: 12z run not yet served at +8 h)
-    const lead = Math.min(120, Math.max(0, Math.round(ageH)))
+    if (ageH < latencyH) continue // not published yet (observed: 12z run not yet served at +8 h; GHG runs lag ~a day)
+    const lead = Math.min(120, Math.max(0, Math.round(ageH / leadStepH) * leadStepH))
     const day = new Date(run).toISOString().slice(0, 10)
     out.push({ run, day, time: `${String(hour).padStart(2, '0')}:00`, lead })
   }
@@ -1378,17 +1378,50 @@ function camsRunCandidates() {
  */
 async function fetchCamsField(cfg) {
   let lastErr = null
-  for (const cand of camsRunCandidates()) {
+  for (const cand of camsRunCandidates(cfg.latencyH ?? 10, cfg.leadStepH ?? 1)) {
+    // Some CAMS products (greenhouse gases) run once daily at 00z — skip
+    // the 12z candidates instead of burning a failed ADS job on each.
+    if (cfg.runsPerDay === 1 && !String(cand.time).startsWith('00')) continue
     try {
-      const nc = await adsRetrieve(cfg.dataset, {
+      const inputs = {
         variable: cfg.variables || [cfg.variable],
         date: [`${cand.day}/${cand.day}`],
         time: [cand.time],
         leadtime_hour: [String(cand.lead)],
         type: ['forecast'],
         data_format: 'netcdf_zip',
-      })
-      const fld = await readCamsFieldSum(nc, cfg.varNames || [cfg.varName])
+        ...(cfg.extraInputs || {}),
+      }
+      // The greenhouse-gas dataset has no time-of-day or type dimension (one
+      // 00z forecast run per day) and 400s on unknown keys.
+      for (const k of cfg.omitInputs || []) delete inputs[k]
+      const nc = await adsRetrieve(cfg.dataset, inputs)
+      // Multi-variable configs sum their fields (smoke = OM + BC); single-
+      // variable configs may list several candidate NetCDF names, since the
+      // short name inside the file isn't always predictable from the ADS
+      // variable id — first one present wins.
+      let fld = null
+      if (cfg.varNames) {
+        fld = await readCamsFieldSum(nc, cfg.varNames)
+      } else {
+        let nameErr = null
+        for (const name of cfg.varNameCandidates || [cfg.varName]) {
+          try { fld = await readCamsField(nc, name); break } catch (e) { nameErr = e }
+        }
+        if (!fld) throw nameErr
+      }
+      if (cfg.convert) for (let i = 0; i < fld.values.length; i++) fld.values[i] = cfg.convert(fld.values[i])
+      // The greenhouse-gas product ships at 0.1° — a 13 MB Int16 grid. Stride
+      // it down to match the 0.4° composition grids (~800 KB) at bake.
+      if (cfg.stride > 1) {
+        const S = cfg.stride
+        const nLat = Math.ceil(fld.lat.length / S), nLon = Math.ceil(fld.lon.length / S)
+        const values = new Float32Array(nLat * nLon)
+        for (let j = 0; j < nLat; j++) for (let i = 0; i < nLon; i++) values[j * nLon + i] = fld.values[j * S * fld.lon.length + i * S]
+        fld.values = values
+        fld.lat = Array.from({ length: nLat }, (_, j) => fld.lat[j * S])
+        fld.lon = Array.from({ length: nLon }, (_, i) => fld.lon[i * S])
+      }
       const meta = buildMeta(cfg.kind, cfg.source, fld.lat, fld.lon, cfg.scale,
         fld.run_ms || cand.run, fld.valid_ms || cand.run + cand.lead * 3.6e6)
       return { meta, gridBuffer: encodePlanes([fld.values], cfg.scale, cfg.maxAbs, 0.02) }
@@ -1588,7 +1621,10 @@ function camsTape(cfg) {
         jobs.push(adsRetrieve(cfg.dataset, {
           variable: cfg.variables || [cfg.variable], date: [`${d}/${d}`], time: hours.map((h) => `${String(h).padStart(2, '0')}:00`),
           leadtime_hour: CAMS_FETCH_LEADS, type: ['forecast'], data_format: 'netcdf_zip',
-        }).then((nc) => readCamsFramesSum(nc, cfg.varNames || [cfg.varName])))
+        }).then((nc) => readCamsFramesSum(nc, cfg.varNames || [cfg.varName])).then((p) => {
+          if (cfg.convert) for (const f of p.frames) for (let i = 0; i < f.values.length; i++) f.values[i] = cfg.convert(f.values[i])
+          return p
+        }))
       }
       const parts = await Promise.all(jobs)
       const { lat, lon } = parts[0]
@@ -1749,8 +1785,75 @@ const DUST_CFG = {
   source: 'Copernicus CAMS global atmospheric composition forecast — mineral dust aerosol optical depth at 550 nm (ECMWF)',
   scale: 1000, maxAbs: 30, qscale: 50,
 }
+// ─── CAMS composition gases + particulates ───────────────────────────────────
+// Same forecast product as the AOD fields above, different variables. Units
+// are converted at bake so clients never see kg/m² or kg/kg:
+//   CO   total column  kg/m²  → g/m²   (background ~15–25, big fire plumes 60+)
+//   PM2.5 surface      kg/m³  → µg/m³  (the AQI particulate; WHO 24h guideline 15)
+//   CH₄  total column  kg/m²  → g/m²   (~9.5 everywhere; wetlands/leaks nudge it up)
+const CO_CFG = {
+  dataset: 'cams-global-atmospheric-composition-forecasts',
+  variable: 'total_column_carbon_monoxide',
+  varName: 'tcco',
+  varNameCandidates: ['tcco', 'total_column_carbon_monoxide'],
+  kind: 'cams-co-column',
+  source: 'Copernicus CAMS global atmospheric composition forecast — total column carbon monoxide (ECMWF)',
+  convert: (v) => Math.min(v * 1000, 12), // typical column ~0.6–1 g/m², big plumes 2–7
+  scale: 2000, maxAbs: 16, qscale: 32, // tape byte = g/m² × 32 → 0.03 steps, saturates at 7.97
+}
+const PM25_CFG = {
+  dataset: 'cams-global-atmospheric-composition-forecasts',
+  variable: 'particulate_matter_2.5um',
+  varName: 'pm2p5',
+  varNameCandidates: ['pm2p5', 'particulate_matter_2.5um'],
+  kind: 'cams-pm25',
+  source: 'Copernicus CAMS global atmospheric composition forecast — surface fine particulate matter (PM2.5, ECMWF)',
+  convert: (v) => Math.min(v * 1e9, 1590), // clamp under maxAbs so fire cores saturate, never go missing
+  scale: 20, maxAbs: 1600, qscale: 0.4, // tape byte = µg/m³ × 0.4 → saturates at 637
+}
+// Methane is NOT the column product: total-column CH₄ tracks surface pressure
+// (mountains read as holes), burying the ±2% real signal under topography.
+// Near-surface mixing ratio (ppb) shows wetlands, livestock belts and leaky
+// gas fields honestly.
+const CH4_CFG = {
+  dataset: 'cams-global-greenhouse-gas-forecasts',
+  variable: 'methane',
+  varName: 'ch4',
+  varNameCandidates: ['ch4', 'methane'],
+  kind: 'cams-ch4-surface',
+  source: 'Copernicus CAMS global greenhouse gas forecast — near-surface methane mixing ratio (model level 137, ECMWF)',
+  extraInputs: { model_level: ['137'] },
+  omitInputs: ['time', 'type'],
+  runsPerDay: 1,
+  latencyH: 26, leadStepH: 3, // GHG runs publish ~a day behind; 3-hourly leads
+  convert: (v) => Math.min(v * (28.9647 / 16.0425) * 1e9, 3190), // kg/kg → ppb, clamped under maxAbs
+  stride: 4, // 0.1° → 0.4°, matching the composition grids
+  scale: 10, maxAbs: 3200,
+}
+// CO₂ comes from CAMS's separate greenhouse-gas forecast (daily 00z run), at
+// the lowest model level (137, ~10 m up) so the map shows the breathing
+// biosphere and city/fire plumes rather than a flat well-mixed column.
+const CO2_CFG = {
+  dataset: 'cams-global-greenhouse-gas-forecasts',
+  variable: 'carbon_dioxide',
+  varName: 'co2',
+  varNameCandidates: ['co2', 'carbon_dioxide', 'xco2'],
+  kind: 'cams-co2-surface',
+  source: 'Copernicus CAMS global greenhouse gas forecast — near-surface CO₂ mixing ratio (model level 137, ECMWF)',
+  extraInputs: { model_level: ['137'] },
+  omitInputs: ['time', 'type'],
+  runsPerDay: 1,
+  latencyH: 26, leadStepH: 3, // GHG runs publish ~a day behind; 3-hourly leads
+  convert: (v) => Math.min(v * (28.9647 / 44.0095) * 1e6, 790), // kg/kg → ppm, clamped under maxAbs
+  stride: 4, // 0.1° → 0.4°, matching the composition grids
+  scale: 40, maxAbs: 800,
+}
 async function fetchSmoke() { return fetchCamsField(SMOKE_CFG) }
 async function fetchDust() { return fetchCamsField(DUST_CFG) }
+async function fetchCo() { return fetchCamsField(CO_CFG) }
+async function fetchPm25() { return fetchCamsField(PM25_CFG) }
+async function fetchCh4() { return fetchCamsField(CH4_CFG) }
+async function fetchCo2() { return fetchCamsField(CO2_CFG) }
 
 async function fetchAerosol() {
   return fetchCamsField(AEROSOL_CFG)
@@ -1761,6 +1864,10 @@ export const SYSTEMS_TAPES = {
   aerosol: { blobBase: 'systems/cams-aod', tape: camsTape(AEROSOL_CFG) },
   smoke: { blobBase: 'systems/cams-smoke', tape: camsTape(SMOKE_CFG) },
   dust: { blobBase: 'systems/cams-dust', tape: camsTape(DUST_CFG) },
+  co: { blobBase: 'systems/cams-co', tape: camsTape(CO_CFG) },
+  pm25: { blobBase: 'systems/cams-pm25', tape: camsTape(PM25_CFG) },
+  // no methane/co2 tapes: the GHG product runs once daily, which doesn't fit
+  // camsTape's 00z/12z increment-smoothing scheme — static now-fields for v1
   airtemp: {
     blobBase: 'systems/gfs-airtemp',
     tape: gfsTape({
@@ -1821,6 +1928,10 @@ export const SYSTEMS_DATASETS = {
   aerosol: { blobBase: 'systems/cams-aod', fetchGrid: fetchAerosol },
   smoke: { blobBase: 'systems/cams-smoke', fetchGrid: fetchSmoke },
   dust: { blobBase: 'systems/cams-dust', fetchGrid: fetchDust },
+  co: { blobBase: 'systems/cams-co', fetchGrid: fetchCo },
+  pm25: { blobBase: 'systems/cams-pm25', fetchGrid: fetchPm25 },
+  methane: { blobBase: 'systems/cams-ch4', fetchGrid: fetchCh4 },
+  co2: { blobBase: 'systems/cams-co2', fetchGrid: fetchCo2 },
 }
 
 // Test hook for scripts (shape probes); not used by the app.

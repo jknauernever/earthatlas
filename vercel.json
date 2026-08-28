@@ -194,6 +194,30 @@
     {
       "path": "/api/cron/systems-bake?ds=sstanom&tape=1",
       "schedule": "35 19 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=co",
+      "schedule": "56 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=pm25",
+      "schedule": "58 */6 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=co&tape=1",
+      "schedule": "50 1,13 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=pm25&tape=1",
+      "schedule": "55 1,13 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=co2",
+      "schedule": "5 3,9 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=methane",
+      "schedule": "10 3,9 * * *"
     }
   ]
 }

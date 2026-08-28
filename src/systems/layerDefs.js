@@ -177,6 +177,59 @@ const AOD_STOPS = [
   [3, 'rgba(60,10,60,1)'],
 ]
 
+// Column CO in g/m². Background is ~0.6–1 everywhere, so the ramp only starts
+// speaking above that; teal → violet → magenta keeps it visually distinct from
+// the warm smoke/dust ramps it will often be compared against.
+const CO_STOPS = [
+  [0.55, 'rgba(120,210,205,0)'],
+  [0.8, 'rgba(120,210,205,0.15)'],
+  [1.2, 'rgba(95,170,225,0.45)'],
+  [1.8, 'rgba(110,120,235,0.68)'],
+  [2.8, 'rgba(160,85,225,0.85)'],
+  [4.5, 'rgba(220,60,170,0.95)'],
+  [7, 'rgba(255,80,120,1)'],
+]
+
+// Global PM2.5 shares the US ground-smoke hues and health anchors, but its
+// low end must be far fainter: unlike US smoke (≈0 when clean), global PM2.5
+// has a real everywhere-baseline — sea salt over oceans runs 5–15 µg/m³ —
+// and painting that at smoke-ramp opacity muddies the whole planet.
+const PM25_STOPS = [
+  [0, 'rgba(150,155,170,0)'],
+  [5, 'rgba(150,155,170,0.05)'],
+  [9, 'rgba(158,158,160,0.16)'],
+  [15, 'rgba(180,168,140,0.34)'],
+  [35, 'rgba(230,175,90,0.62)'],
+  [100, 'rgba(230,110,40,0.88)'],
+  [250, 'rgba(150,40,65,1)'],
+  [600, 'rgba(60,10,60,1)'],
+]
+
+// Near-surface CO₂ in ppm, diverging around the ~425 global average: green =
+// drawn down (photosynthesis), transparent = average, orange→red = pushed up
+// (cities, fires, nighttime respiration).
+const CO2_STOPS = [
+  [395, 'rgba(70,200,140,0.75)'],
+  [408, 'rgba(90,205,160,0.5)'],
+  [418, 'rgba(120,190,170,0.2)'],
+  [425, 'rgba(128,128,128,0)'],
+  [433, 'rgba(245,160,70,0.45)'],
+  [445, 'rgba(240,100,50,0.75)'],
+  [470, 'rgba(200,40,60,0.95)'],
+  [520, 'rgba(130,10,60,1)'],
+]
+
+// Near-surface methane in ppb; ~1,950 is today's well-mixed background.
+const CH4_STOPS = [
+  [1880, 'rgba(165,150,230,0)'],
+  [1950, 'rgba(165,150,230,0.04)'],
+  [2000, 'rgba(160,125,235,0.15)'],
+  [2060, 'rgba(170,105,230,0.4)'],
+  [2130, 'rgba(195,85,225,0.65)'],
+  [2250, 'rgba(230,65,190,0.85)'],
+  [2450, 'rgba(255,70,140,1)'],
+]
+
 // ─── Layer definitions ──────────────────────────────────────────────────────
 
 // Panel ontology — every layer declares one of these groups.
@@ -703,6 +756,174 @@ export const LAYERS = [
         big: `AOD ${sample.value.toFixed(2)}`,
         alt: sample.value < 0.1 ? 'clear of dust' : sample.value < 0.3 ? 'light dust' : sample.value < 0.7 ? 'dust plume' : 'dense dust storm',
         meta: `Dust optical depth (mineral dust at 550 nm) · ${tapeStamp(meta, `forecast valid now · run ${fmtRun(meta.run_ms)} +${meta.lead_h} h`) || `model run ${fmtRun(meta.run_ms)}`}`,
+      }
+    },
+  },
+  {
+    id: 'pm25',
+    hue: '#fda45c',
+    iconSvg: '<g fill="currentColor" stroke="none"><circle cx="6" cy="8" r="1.6"></circle><circle cx="12" cy="5.5" r="1.1"></circle><circle cx="17" cy="9" r="1.9"></circle><circle cx="8.5" cy="14" r="1.2"></circle><circle cx="14.5" cy="15.5" r="1.5"></circle><circle cx="19" cy="17" r="1"></circle><circle cx="5" cy="18.5" r="1"></circle><circle cx="11" cy="19.5" r="1.8"></circle></g>',
+    group: 'air',
+    kind: 'scalar',
+    param: 'p',
+    defaultOn: false,
+    dataset: 'cams-pm25',
+    expectKind: 'cams-pm25',
+    name: 'Air quality (PM2.5)',
+    sub: 'fine particles · CAMS',
+    sourceName: 'Copernicus CAMS',
+    sourceUrl: 'https://atmosphere.copernicus.eu/global-forecast-plots',
+    stops: PM25_STOPS,
+    scalar: { opacity: 0.85 },
+    flow: {
+      dataset: 'gfs-wind',
+      expectKind: 'gfs-wind-10m',
+      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
+      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
+      countScale: 0.6,
+    },
+    tape: { dataset: 'cams-pm25', expectKind: 'cams-pm25' },
+    legend: { min: 0, max: 250, ticks: ['0', '35', '150', '250+ µg/m³'] },
+    words: [
+      { label: 'Good', range: 'under 9 µg/m³', max: 9 },
+      { label: 'Moderate', range: '9–35', max: 35 },
+      { label: 'Unhealthy for sensitive groups', range: '35–55', max: 55 },
+      { label: 'Unhealthy', range: '55–150', max: 150 },
+      { label: 'Hazardous', range: 'over 150', max: Infinity },
+    ],
+    stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
+    explain:
+      'The fine particles small enough to reach deep into your lungs — the number behind air-quality alerts. Smoke, pollution haze, and desert dust all count, and the colors follow the same health thresholds as the US Air Quality Index.',
+    popup(sample, meta) {
+      const w = wordFor(this.words, sample.value)
+      const breathe = sample.value < 9 ? 'clean air' : sample.value < 35 ? 'fine for most people'
+        : sample.value < 55 ? 'sensitive groups should take it easy outside'
+        : sample.value < 150 ? 'unhealthy to breathe for long' : 'stay indoors if you can'
+      return {
+        head: `${w.label} air`,
+        big: `${sample.value.toFixed(sample.value < 10 ? 1 : 0)} µg/m³`,
+        alt: breathe,
+        meta: `Fine particulate matter (PM2.5) at ground level · ${tapeStamp(meta, `forecast valid now · run ${fmtRun(meta.run_ms)} +${meta.lead_h} h`) || `model run ${fmtRun(meta.run_ms)}`}`,
+      }
+    },
+  },
+  {
+    id: 'co',
+    hue: '#a78bfa',
+    iconSvg: '<circle cx="8.5" cy="12" r="3"></circle><circle cx="16" cy="12" r="2.3"></circle><path d="M3 5.5c4 1.6 14-1.6 18 0"></path><path d="M3 18.5c4 1.6 14-1.6 18 0"></path>',
+    group: 'air',
+    kind: 'scalar',
+    param: 'o',
+    defaultOn: false,
+    dataset: 'cams-co',
+    expectKind: 'cams-co-column',
+    name: 'Carbon monoxide',
+    sub: 'fire & city tracer · CAMS',
+    sourceName: 'Copernicus CAMS',
+    sourceUrl: 'https://atmosphere.copernicus.eu/global-forecast-plots',
+    stops: CO_STOPS,
+    scalar: { opacity: 0.85 },
+    flow: {
+      dataset: 'gfs-wind',
+      expectKind: 'gfs-wind-10m',
+      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
+      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
+      countScale: 0.6,
+    },
+    tape: { dataset: 'cams-co', expectKind: 'cams-co-column' },
+    legend: { min: 0.55, max: 7, ticks: ['bkgd', '2', '7+ g/m²'] },
+    words: [
+      { label: 'Background', range: 'under 0.9 g/m²', max: 0.9 },
+      { label: 'Slightly elevated', range: '0.9–1.2', max: 1.2 },
+      { label: 'Elevated', range: '1.2–2', max: 2 },
+      { label: 'High', range: '2–3.5', max: 3.5 },
+      { label: 'Extreme', range: 'over 3.5', max: Infinity },
+    ],
+    stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
+    explain:
+      'Carbon monoxide is fire’s chemical fingerprint — wildfires, crop burning, and traffic all release it, and it lingers in the air for weeks. That makes it a tracer: any plume you see here started at a fire or a city, often thousands of kilometers upwind.',
+    popup(sample, meta) {
+      const w = wordFor(this.words, sample.value)
+      return {
+        head: `${w.label} carbon monoxide`,
+        big: `${sample.value.toFixed(1)} g/m²`,
+        alt: sample.value < 0.9 ? 'normal clean-air levels' : sample.value < 2 ? 'a plume passing overhead' : 'a strong fire or pollution plume',
+        meta: `All the CO in the air column above this spot · ${tapeStamp(meta, `forecast valid now · run ${fmtRun(meta.run_ms)} +${meta.lead_h} h`) || `model run ${fmtRun(meta.run_ms)}`}`,
+      }
+    },
+  },
+  {
+    id: 'co2',
+    hue: '#f4736e',
+    iconSvg: '<circle cx="5.5" cy="12" r="2.2"></circle><circle cx="12" cy="12" r="3"></circle><circle cx="18.5" cy="12" r="2.2"></circle><path d="M7.7 12h1.3"></path><path d="M15 12h1.3"></path>',
+    group: 'air',
+    kind: 'scalar',
+    param: 'x',
+    defaultOn: false,
+    dataset: 'cams-co2',
+    expectKind: 'cams-co2-surface',
+    name: 'Carbon dioxide',
+    sub: 'near-surface ppm · CAMS',
+    sourceName: 'Copernicus CAMS',
+    sourceUrl: 'https://atmosphere.copernicus.eu/ghg-services',
+    stops: CO2_STOPS,
+    scalar: { opacity: 0.7 },
+    legend: { min: 395, max: 470, ticks: ['395', '~425 avg', '470+ ppm'] },
+    words: [
+      { label: 'Drawn down', range: 'under 415 ppm', max: 415 },
+      { label: 'Below average', range: '415–421', max: 421 },
+      { label: 'Global average', range: '421–429', max: 429 },
+      { label: 'Elevated', range: '429–445', max: 445 },
+      { label: 'Plume', range: 'over 445', max: Infinity },
+    ],
+    stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
+    explain:
+      'Near-surface CO₂ — the planet breathing. Green patches are forests and crops drawing carbon down in the growing season; orange and red are cities, fires, and nighttime respiration pushing it up. The swings look small around the ~425 ppm global average, but this is the number driving long-term warming.',
+    popup(sample, meta) {
+      const w = wordFor(this.words, sample.value)
+      const d = sample.value - 425
+      return {
+        head: w.label === 'Global average' ? 'Around the global average' : `${w.label}`,
+        big: `${sample.value.toFixed(0)} ppm`,
+        alt: `${d >= 0 ? '+' : ''}${d.toFixed(0)} vs the ~425 ppm global average`,
+        meta: `CO₂ in the air near the ground · ${`model run ${fmtRun(meta.run_ms)}`}`,
+      }
+    },
+  },
+  {
+    id: 'methane',
+    hue: '#e879f9',
+    iconSvg: '<circle cx="12" cy="12" r="2.8"></circle><circle cx="12" cy="5" r="1.6"></circle><circle cx="5" cy="16" r="1.6"></circle><circle cx="19" cy="16" r="1.6"></circle><circle cx="12" cy="19.5" r="1.6"></circle><path d="M12 8.8V6.9"></path><path d="M9.6 13.4l-2.8 1.7"></path><path d="M14.4 13.4l2.8 1.7"></path>',
+    group: 'air',
+    kind: 'scalar',
+    param: 'm',
+    defaultOn: false,
+    dataset: 'cams-ch4',
+    expectKind: 'cams-ch4-surface',
+    name: 'Methane',
+    sub: 'near-surface ppb · CAMS',
+    sourceName: 'Copernicus CAMS',
+    sourceUrl: 'https://atmosphere.copernicus.eu/ghg-services',
+    stops: CH4_STOPS,
+    scalar: { opacity: 0.75 },
+    legend: { min: 1880, max: 2450, ticks: ['bkgd', '2100', '2450+ ppb'] },
+    words: [
+      { label: 'Below background', range: 'under 1,920 ppb', max: 1920 },
+      { label: 'Background', range: '1,920–2,000', max: 2000 },
+      { label: 'Elevated', range: '2,000–2,100', max: 2100 },
+      { label: 'High', range: '2,100–2,300', max: 2300 },
+      { label: 'Hotspot', range: 'over 2,300', max: Infinity },
+    ],
+    stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
+    explain:
+      'Near-surface methane — a greenhouse gas over 80× stronger than CO₂ in its first 20 years. Wetlands, rice paddies, livestock, and leaky oil & gas fields all lift it above the ~1,950 ppb background, so the bright patches map where it escapes. It also pools near the ground on calm nights, so the pattern shifts with time of day.',
+    popup(sample, meta) {
+      const w = wordFor(this.words, sample.value)
+      return {
+        head: `${w.label} methane`,
+        big: `${Math.round(sample.value).toLocaleString()} ppb`,
+        alt: sample.value < 2000 ? 'normal background air' : 'a source region or plume upwind',
+        meta: `Methane in the air near the ground · ${`model run ${fmtRun(meta.run_ms)}`}`,
       }
     },
   },

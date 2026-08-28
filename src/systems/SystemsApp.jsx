@@ -1873,10 +1873,6 @@ export default function SystemsApp() {
               )}
             </div>
 
-            <div className={styles.comingNext}>
-              Coming next: carbon monoxide · CO₂ &amp; methane · air quality (PM2.5)
-            </div>
-
             <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>
               ⓘ How this is sourced
             </button>

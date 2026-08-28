@@ -241,10 +241,13 @@ def build_tape_index(kind, source, meta_like, step_h, days, frames):
     }
 
 
-def bake_tape(days_back=2):
+def bake_tape(days_back=13):
     """LiveOcean tidal tape: every 4-hourly PH_surface step up to now, from
     today's forecast file plus up to `days_back` previous days' files (each
-    file contributes only its own first day — closest to analysis)."""
+    file contributes only its own first day — closest to analysis). UW keeps
+    ~15 days of files on the share bucket, so a fresh environment can
+    backfill a full 14-day loop; on routine runs the per-day guard below
+    skips files whose frames are all in the index already."""
     import numpy as np
     import fsspec
     import h5py
@@ -275,6 +278,12 @@ def bake_tape(days_back=2):
     today = dt.datetime.now(dt.timezone.utc).date()
     for back in range(days_back, -1, -1):
         day = today - dt.timedelta(days=back)
+        # Steps are 4-hourly on the hour: skip a past day's (large) file
+        # entirely when all six of its frames are already in the index.
+        day0 = dt.datetime(day.year, day.month, day.day, tzinfo=dt.timezone.utc)
+        predicted = [int((day0 + dt.timedelta(hours=4 * k)).timestamp() * 1000) for k in range(6)]
+        if back > 0 and all(v in have for v in predicted):
+            continue
         url = f"{BUCKET}/f{day.strftime('%Y.%m.%d')}/layers.nc"
         try:
             h = h5py.File(fsspec.open(url, mode="rb", block_size=2 * 1024 * 1024).open(), "r")
@@ -313,11 +322,11 @@ def bake_tape(days_back=2):
         prev = by_valid.get(f["valid_ms"])
         if not prev or f["lead_h"] <= prev["lead_h"]:
             by_valid[f["valid_ms"]] = f
-    cutoff = (now - 7 * 86400) * 1000
+    cutoff = (now - 14 * 86400) * 1000
     merged = sorted((f for f in by_valid.values() if f["valid_ms"] >= cutoff),
                     key=lambda f: f["valid_ms"])
     index = build_tape_index("liveocean-ph-surface", SOURCE.format(long="pH (total scale)"),
-                             meta_like, 4, 7, merged)
+                             meta_like, 4, 14, merged)
     files.append({"path": f"systems/{base}-tape.json", "contentType": "application/json",
                   "bytes": json.dumps(index).encode()})
     return files, {"new_frames": len(new_frames), "total_frames": len(merged)}

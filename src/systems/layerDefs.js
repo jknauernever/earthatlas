@@ -1026,7 +1026,7 @@ export const LAYERS = [
       stops: PH_STOPS,
       // Tidal tape: 4-hourly steps — pH swinging with tides and day/night
       // photosynthesis, the Sound literally breathing.
-      tape: { dataset: 'liveocean-ph', expectKind: 'liveocean-ph-surface', windowDays: 3, tapeKind: 'liveocean-ph-surface-tape' },
+      tape: { dataset: 'liveocean-ph', expectKind: 'liveocean-ph-surface', windowDays: 14, tapeKind: 'liveocean-ph-surface-tape' },
       legend: { min: 7.4, max: 8.3, ticks: ['7.4 acidic', '7.9', '8.3 pH'] },
       explain:
         'You’re seeing UW’s LiveOcean forecast — the ~500 m model built after acidified water wiped out Northwest oyster hatcheries. Deep water that upwells along this coast arrives extra-corrosive, and the Salish Sea’s own respiration pushes pH lower still. Click anywhere for pH plus the aragonite number shellfish live or die by.',

@@ -32,7 +32,32 @@ export const SPECIES_COLORS = {
   minke_whale: '#fbbf24',
   southern_right_whale: '#fb7185',
 }
-export const speciesColor = (key) => SPECIES_COLORS[key] || '#38bdf8'
+
+// The live taxonomy has dozens of species (orca ecotypes, dolphins, seals…) —
+// far more than the hand-picked palette. Everything else gets a stable,
+// visually distinct color from this wheel (hashed by species key, so a
+// species keeps its color across sessions and views). Hues chosen to stay
+// legible on the dark satellite basemap and apart from the hand-picked set.
+const FALLBACK_PALETTE = [
+  '#f472b6', // pink
+  '#a3e635', // lime
+  '#fb923c', // orange
+  '#2dd4bf', // teal
+  '#e879f9', // fuchsia
+  '#facc15', // yellow
+  '#4ade80', // green
+  '#f87171', // red
+  '#a5b4fc', // periwinkle
+  '#fda4af', // light rose
+  '#67e8f9', // light cyan
+  '#d8b4fe', // lavender
+]
+export const speciesColor = (key) => {
+  if (SPECIES_COLORS[key]) return SPECIES_COLORS[key]
+  let h = 0
+  for (let i = 0; i < (key || '').length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
+  return FALLBACK_PALETTE[h % FALLBACK_PALETTE.length]
+}
 
 /** Public HappyWhale page for an identified individual. */
 export const individualUrl = (id) => `https://happywhale.com/individual/${id}`
@@ -126,8 +151,11 @@ export async function fetchEncounters({ circle, from, to, signal } = {}) {
 
 /**
  * One identified individual + every encounter of it worldwide (for journey
- * views). Returns { individual, encounters, path } — path is null: real
- * encounters carry no routing info, so the app draws point-to-point legs.
+ * views). Returns { individual, encounters }. NOTE: no path/track geometry —
+ * real encounters carry no routing info, and drawing straight lines between
+ * them sends "journeys" across peninsulas and continents. The app renders a
+ * journey as chronologically NUMBERED stops instead: honest about what we
+ * know (where and when), silent about what we don't (the route between).
  */
 export async function fetchIndividualTrack({ id, signal } = {}) {
   const data = await proxyJSON(`individual&id=${encodeURIComponent(id)}`, { signal })
@@ -135,56 +163,5 @@ export async function fetchIndividualTrack({ id, signal } = {}) {
   return {
     individual: { ...data.individual, avatar: normMedia(data.individual.avatar) },
     encounters: (data.encs || []).map(normEncounter).filter(Boolean).sort((a, b) => a.time - b.time),
-    path: null,
   }
-}
-
-// ─── Journey arrow sampling ──────────────────────────────────────────────────
-const havKm = (lat1, lng1, lat2, lng2) => {
-  const r = Math.PI / 180
-  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
-    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lng2 - lng1) * r) / 2) ** 2
-  return 2 * 6371 * Math.asin(Math.sqrt(a))
-}
-
-/**
- * Sample arrow markers along journey legs: a point every ~stepKm carrying the
- * local direction of travel as `rot` (degrees clockwise; 0 = the '→' glyph's
- * native east) and a power-of-two LOD `rank` (arrow i gets the largest k≤7
- * with i % 2^k === 0). Deterministic point symbols, NOT Mapbox line
- * placement — line placement silently drops symbols (curvature, tile
- * clipping, overlapping geometry), which read as random gaps in the arrow
- * chain. The layer's zoom-interpolated size expression shows rank ≥ r(zoom),
- * so the chain keeps an even ~45px rhythm at every zoom with no collision
- * logic involved.
- * Legs: [{ side, coords: [[lng,lat],…] }] → [{ lng, lat, rot, rank }].
- */
-export function sampleArrowPoints(legs, stepKm = 10) {
-  const out = []
-  for (const leg of legs) {
-    const c = leg.coords
-    let carry = stepKm / 2 // start half a step in so chains don't sit on the dots
-    let i = 0
-    for (let s = 1; s < c.length; s++) {
-      const [lngA, latA] = c[s - 1]
-      const [lngB, latB] = c[s]
-      const segKm = havKm(latA, lngA, latB, lngB)
-      if (segKm <= 0) continue
-      // Mercator-plane angle (not true bearing) so the glyph aligns with the
-      // on-screen line direction even at high latitudes.
-      const latMid = ((latA + latB) / 2) * (Math.PI / 180)
-      const rot = (Math.atan2((lngB - lngA) * Math.cos(latMid), latB - latA) * 180) / Math.PI - 90
-      let d = carry
-      while (d <= segKm) {
-        const t = d / segKm
-        let rank = 0
-        while (rank < 7 && i % (1 << (rank + 1)) === 0) rank++
-        out.push({ lng: lngA + (lngB - lngA) * t, lat: latA + (latB - latA) * t, rot, rank })
-        i++
-        d += stepKm
-      }
-      carry = d - segKm
-    }
-  }
-  return out
 }

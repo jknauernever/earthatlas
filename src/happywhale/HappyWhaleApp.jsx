@@ -25,7 +25,6 @@ import {
   fetchSpeciesConfig,
   fetchEncounters,
   fetchIndividualTrack,
-  sampleArrowPoints,
   speciesColor,
   individualUrl,
 } from './happywhaleService.js'
@@ -175,6 +174,7 @@ export default function HappyWhaleApp() {
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
   const [showMethodology, setShowMethodology] = useState(false)
+  const [speciesExpanded, setSpeciesExpanded] = useState(false)
   const [mapView, setMapView] = useState(initialCamera)
   const suppressFlyRef = useRef(!!(initialCamera || initialCenter))
   // Read by the camera effect without re-triggering it on journey changes.
@@ -252,6 +252,23 @@ export default function HappyWhaleApp() {
     return { count: filteredEncounters.length, individuals: inds.size, species: sps.size }
   }, [filteredEncounters])
 
+  // A species filter can leave every match outside the current viewport (e.g.
+  // sei whales all in Tierra del Fuego while the camera sits over North
+  // America) — the map then LOOKS empty/broken. Detect it so the status area
+  // can offer a "zoom to them" nudge without ever moving the camera uninvited.
+  const noneInView = useMemo(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !filteredEncounters.length) return false
+    try {
+      const b = map.getBounds()
+      return !filteredEncounters.some((e) => b.contains([e.lng, e.lat]))
+    } catch {
+      return false
+    }
+    // mapView (updated on moveend) is what keeps this fresh as the user pans.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredEncounters, mapView, mapReady])
+
   // ─── Map init (once) ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
@@ -280,41 +297,6 @@ export default function HappyWhaleApp() {
         map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius-circle', paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.08 } })
         map.addLayer({ id: 'radius-line', type: 'line', source: 'radius-circle', paint: { 'line-color': '#38bdf8', 'line-width': 1.5, 'line-opacity': 0.7 } })
       }
-      if (!map.getSource('hw-track')) {
-        map.addSource('hw-track', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-        // The journey is drawn as a chain of stem-and-head arrows — the arrows
-        // ARE the line (no separate stroke underneath), like a classic dotted
-        // travel-route illustration. Each arrow is a pre-sampled POINT with
-        // its own rotation (see sampleArrowPoints): Mapbox's line placement
-        // silently drops symbols, which read as random gaps in the chain.
-        // Collision (allow-overlap off + padding) thins the dense samples to
-        // an even chain at every zoom.
-        // LOD via zoom-interpolated size: at each zoom only arrows whose rank
-        // clears the threshold render (others size 0), keeping an even ~45px
-        // chain. Samples are 10 km apart; rank k = every 10·2^k km.
-        const rankGate = (minRank) => ['case', ['>=', ['get', 'rank'], minRank], 34, 0]
-        map.addLayer({
-          id: 'hw-track-arrows',
-          type: 'symbol',
-          source: 'hw-track',
-          layout: {
-            'text-field': '→',
-            'text-size': ['interpolate', ['linear'], ['zoom'],
-              2, rankGate(7), 3, rankGate(6), 4, rankGate(5), 5, rankGate(4),
-              6, rankGate(3), 7, rankGate(2), 8, rankGate(1), 9, rankGate(0),
-            ],
-            'text-rotate': ['get', 'rot'],
-            'text-rotation-alignment': 'map',
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-          },
-          paint: {
-            'text-color': ['get', 'color'],
-            'text-halo-color': 'rgba(0,0,0,0.55)',
-            'text-halo-width': 1.5,
-          },
-        })
-      }
       if (!map.getSource('hw-encounters')) {
         map.addSource('hw-encounters', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({
@@ -322,17 +304,42 @@ export default function HappyWhaleApp() {
           type: 'circle',
           source: 'hw-encounters',
           paint: {
-            'circle-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              1, ['case', ['get', 'identified'], 4.5, 3],
-              6, ['case', ['get', 'identified'], 8, 5.5],
-              10, ['case', ['get', 'identified'], 12, 8],
+            // Journey stops (seq set) render larger so the numbered badges
+            // fit. NB: a zoom interpolate must be the OUTERMOST expression —
+            // wrapping it in ['+', …] silently rejects the whole layer.
+            'circle-radius': ['interpolate', ['linear'], ['zoom'],
+              1, ['case', ['to-boolean', ['get', 'seq']], 8, ['case', ['get', 'identified'], 4.5, 3]],
+              6, ['case', ['to-boolean', ['get', 'seq']], 11, ['case', ['get', 'identified'], 8, 5.5]],
+              10, ['case', ['to-boolean', ['get', 'seq']], 15, ['case', ['get', 'identified'], 12, 8]],
             ],
             'circle-color': ['get', 'color'],
-            // Journey mode dims everything that isn't the selected individual.
-            'circle-opacity': ['case', ['get', 'dim'], 0.18, 0.85],
-            'circle-stroke-width': ['case', ['get', 'identified'], 1.5, 0.5],
-            'circle-stroke-color': ['case', ['get', 'dim'], 'rgba(255,255,255,0.15)', ['case', ['get', 'identified'], '#ffffff', 'rgba(0,0,0,0.35)']],
+            // Journey mode GHOSTS everything that isn't the selected whale —
+            // in dense areas (Salish Sea!) a mild dim still drowns the 8 dots
+            // that matter under thousands that don't.
+            'circle-opacity': ['case', ['get', 'dim'], 0.07, 0.85],
+            'circle-stroke-width': ['case', ['get', 'dim'], 0, ['case', ['get', 'identified'], 1.5, 0.5]],
+            'circle-stroke-color': ['case', ['get', 'identified'], '#ffffff', 'rgba(0,0,0,0.35)'],
+          },
+        })
+        // Chronological stop numbers for the active journey (1 = oldest).
+        // Numbered stops replace path lines entirely: real encounters carry no
+        // route information, and straight connectors send whales over land.
+        map.addLayer({
+          id: 'hw-journey-seq',
+          type: 'symbol',
+          source: 'hw-encounters',
+          filter: ['to-boolean', ['get', 'seq']],
+          layout: {
+            'text-field': ['to-string', ['get', 'seq']],
+            'text-size': 11,
+            'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': 'rgba(0,0,0,0.7)',
+            'text-halo-width': 1.2,
           },
         })
 
@@ -405,15 +412,16 @@ export default function HappyWhaleApp() {
     if (!src) return
     // A journey is a full-history view: the selected whale's own encounters
     // always render as dots even when the time-range/species filters would
-    // hide them — otherwise its track arrows appear to come from empty water.
+    // hide them. Each carries its chronological stop number (1 = oldest).
+    const seqById = new Map((track?.encounters || []).map((e, i) => [e.id, i + 1]))
     const shown = new Set(filteredEncounters.map((e) => e.id))
     const journeyEncounters = (track?.encounters || [])
       .filter((e) => !shown.has(e.id))
       .map((e) => ({ ...e, individual: e.individual || { id: selectedInd } }))
     // Identified encounters go last so they render ON TOP of unidentified ones
-    // in dense clusters — they're the clickable stars of this tool.
+    // in dense clusters — and journey stops last of all.
     const ordered = [...filteredEncounters, ...journeyEncounters]
-      .sort((a, b) => (a.individual ? 1 : 0) - (b.individual ? 1 : 0))
+      .sort((a, b) => ((seqById.has(a.id) ? 2 : a.individual ? 1 : 0) - (seqById.has(b.id) ? 2 : b.individual ? 1 : 0)))
     src.setData({
       type: 'FeatureCollection',
       features: ordered.map((e) => ({
@@ -422,7 +430,8 @@ export default function HappyWhaleApp() {
           color: speciesColor(e.speciesKey),
           speciesName: speciesName(e.speciesKey),
           identified: !!e.individual,
-          dim: selectedInd != null && e.individual?.id !== selectedInd,
+          seq: seqById.get(e.id) ?? null,
+          dim: selectedInd != null && !seqById.has(e.id),
           date: e.date,
           region: e.region,
           location: e.location,
@@ -464,33 +473,15 @@ export default function HappyWhaleApp() {
     return () => ac.abort()
   }, [selectedInd])
 
-  // Draw (or clear) the journey track.
+  // Frame the active journey (the numbered stops render via the encounters
+  // source — see the seq property above).
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
-    if (!track) {
-      map.getSource('hw-track')?.setData({ type: 'FeatureCollection', features: [] })
-      return
-    }
-    const pts = track.encounters
-    const color = speciesColor(track.individual.speciesKey)
-    // Real encounters carry no ocean-routing info, so the journey draws
-    // encounter-to-encounter legs (chronological order = direction of travel).
-    const legs = (track.path && track.path.length)
-      ? track.path
-      : (pts.length > 1 ? [{ side: 0, coords: pts.map((e) => [e.lng, e.lat]) }] : [])
-    map.getSource('hw-track')?.setData({
-      type: 'FeatureCollection',
-      features: sampleArrowPoints(legs).map((p) => ({
-        type: 'Feature',
-        properties: { color, rot: p.rot, rank: p.rank },
-        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-      })),
-    })
+    if (!map || !mapReady || !track) return
     if (suppressTrackFitRef.current) { suppressTrackFitRef.current = false; return }
-    if (legs.length) {
+    if (track.encounters.length) {
       const b = new mapboxgl.LngLatBounds()
-      for (const l of legs) for (const c of l.coords) b.extend(c)
+      for (const e of track.encounters) b.extend([e.lng, e.lat])
       map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1400 })
     }
   }, [track, mapReady])
@@ -594,6 +585,14 @@ export default function HappyWhaleApp() {
   const handleClearLocation = useCallback(() => { setCenter(null) }, [])
   const handleClearJourney = useCallback(() => { setSelectedInd(null) }, [])
 
+  const handleZoomToResults = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !filteredEncounters.length) return
+    const b = new mapboxgl.LngLatBounds()
+    for (const e of filteredEncounters) b.extend([e.lng, e.lat])
+    map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1200, essential: true })
+  }, [filteredEncounters])
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className={styles.container}>
@@ -682,6 +681,12 @@ export default function HappyWhaleApp() {
               )}
             </div>
 
+            {!loading && !error && noneInView && (
+              <button className={styles.zoomToResults} onClick={handleZoomToResults}>
+                ⟶ None in this view — zoom to the encounters
+              </button>
+            )}
+
             {!isGlobal && (
               <button className={styles.clearLoc} onClick={handleClearLocation}>
                 ✕ Clear location · back to worldwide
@@ -708,6 +713,9 @@ export default function HappyWhaleApp() {
                   {track.encounters.length} encounters
                   {trackSpan ? ` · ${fmtDate(trackSpan[0])} → ${fmtDate(trackSpan[1])}` : ''}
                 </div>
+                <div className={styles.journeyMeta}>
+                  Stops numbered on the map, ① oldest → newest
+                </div>
                 {trackInd.bio && <div className={styles.journeyBio}>{trackInd.bio}</div>}
                 <a className={styles.journeyLink} href={individualUrl(trackInd.id)} target="_blank" rel="noopener noreferrer">
                   View on HappyWhale ↗
@@ -715,19 +723,33 @@ export default function HappyWhaleApp() {
               </div>
             )}
 
-            {/* Species filter */}
+            {/* Species filter — long live taxonomy, so cap the list at 10
+                (plus the active selection, which must never hide). */}
             <div className={styles.field}>
               <label className={styles.fieldLabel}>Species</label>
               <div className={styles.chipRow}>
                 <button className={species === 'all' ? styles.chipActive : styles.chip} onClick={() => setSpecies('all')}>
                   All
                 </button>
-                {speciesCounts.map(([key, n]) => (
-                  <button key={key} className={species === key ? styles.chipActive : styles.chip} onClick={() => setSpecies(key)}>
-                    <span className={styles.chipDot} style={{ background: speciesColor(key) }} />
-                    {speciesName(key)} · {n}
+                {(() => {
+                  const CHIP_LIMIT = 10
+                  let visible = speciesExpanded ? speciesCounts : speciesCounts.slice(0, CHIP_LIMIT)
+                  if (!speciesExpanded && species !== 'all' && !visible.some(([k]) => k === species)) {
+                    const active = speciesCounts.find(([k]) => k === species)
+                    if (active) visible = [...visible, active]
+                  }
+                  return visible.map(([key, n]) => (
+                    <button key={key} className={species === key ? styles.chipActive : styles.chip} onClick={() => setSpecies(key)}>
+                      <span className={styles.chipDot} style={{ background: speciesColor(key) }} />
+                      {speciesName(key)} · {n}
+                    </button>
+                  ))
+                })()}
+                {speciesCounts.length > 10 && (
+                  <button className={styles.chipMore} onClick={() => setSpeciesExpanded((o) => !o)}>
+                    {speciesExpanded ? '− Show fewer' : `+ ${speciesCounts.length - 10} more`}
                   </button>
-                ))}
+                )}
               </div>
             </div>
 

@@ -33,7 +33,7 @@ const SNAP_RIGHT_GAP = 56
 const TAP_SLOP = 8        // px of movement still counted as a tap, not a drag
 const TAP_MS = 500
 
-export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange }) {
+export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange, desktopCollapsible = true }) {
   const isMobile = useIsMobile()
   const [snap, setSnap] = useState('peek')
   // Desktop: the floating panel can be minimized to a small titled pill so the
@@ -169,18 +169,23 @@ export default function MapSheet({ title, summary, className, children, id, coll
     }
     return (
       <aside className={className} aria-label={title} id={id}>
-        <button
-          type="button"
-          className={styles.deskCollapse}
-          onClick={() => setDeskCollapsed(true)}
-          aria-expanded="true"
-          aria-label={`Minimize ${title}`}
-          title={`Minimize ${title}`}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="18 15 12 9 6 15" />
-          </svg>
-        </button>
+        {/* Tools with their own collapse affordance (e.g. /inmotion's
+            back-to-icon-dock button) opt out — two stacked collapse
+            controls in one corner read as one broken icon. */}
+        {desktopCollapsible && (
+          <button
+            type="button"
+            className={styles.deskCollapse}
+            onClick={() => setDeskCollapsed(true)}
+            aria-expanded="true"
+            aria-label={`Minimize ${title}`}
+            title={`Minimize ${title}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="18 15 12 9 6 15" />
+            </svg>
+          </button>
+        )}
         {children}
       </aside>
     )

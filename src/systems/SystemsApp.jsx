@@ -1727,12 +1727,17 @@ export default function SystemsApp() {
         summary={summary}
         className={`${styles.panel} ${!isMobile && !panelOpen ? styles.panelHidden : ''}`}
         expandSignal={drawerSignal}
+        desktopCollapsible={false}
         onSnapChange={(snap) => { if (isMobile && snap === 'peek' && mobileView === 'drawer') setMobileView('dock') }}
       >
         <div className={styles.panelHead}>
           <span className={styles.dockTitle}>I want to see…</span>
           <span className={styles.countChip}>{activeDefs.length} on</span>
-          <button className={styles.panelCollapse} onClick={() => { if (isMobile) setMobileView('dock'); else setPanelOpen(false) }} aria-label="Collapse to icons">◂</button>
+          <button className={styles.panelCollapse} onClick={() => { if (isMobile) setMobileView('dock'); else setPanelOpen(false) }} aria-label="Back to icon bar" title="Back to icon bar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         </div>
 
         {(panelOpen || isMobile) && (

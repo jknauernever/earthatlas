@@ -381,7 +381,7 @@ export const LAYERS = [
       baseAlpha: (e) => Math.min(0.95, 0.38 + Math.log10((e.frps || e.frp || 0) + 1) * 0.14),
     },
     explain:
-      'Each glowing point is a cluster of active-fire detections from NASA satellites in the last day — wildfires, agricultural burning, and gas flares all show up. In the US, official NIFC incidents appear even without fresh detections (ember markers): an active fire can smolder below what satellites see. Fire season moves with the hemispheres: watch the band of burning shift between northern and southern summer.',
+      'Each glow is a cluster of satellite fire detections from the last day — wildfires, crop burning, and gas flares all show up. Named US fires wear a flame marker colored by containment, even when satellites can’t currently see them burning.',
     popupEvent(e) {
       return {
         head: e.n === 1 ? 'Active fire detection' : 'Active fire cluster',
@@ -550,7 +550,7 @@ export const LAYERS = [
     ],
     stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
     explain:
-      'The haze shows aerosol optical depth — how much sunlight the particles in the whole air column block. Wildfire smoke, Saharan dust, industrial pollution and sea salt all show up; watch plumes stream downwind of the fire belts and dust ride the trade winds across the Atlantic. Above ~0.5 the sky visibly dims and air becomes unhealthy to breathe.',
+      'The haze is everything floating in the air — wildfire smoke, desert dust, pollution, sea salt — shown by how much sunlight it blocks. Watch plumes stream downwind of the fire belts and dust cross oceans on the trade winds.',
     popup(sample, meta) {
       const word = wordFor(this.words, sample.value).label
       return {
@@ -644,7 +644,7 @@ export const LAYERS = [
     ],
     stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
     explain:
-      'Only the biomass-burning aerosols: organic matter and black carbon (soot) — the part of the haze that comes from fires. Turn on Active fires to see the sources; the plumes stream downwind for days and can cross oceans. Caveat: organic aerosol also includes some urban and forest-biogenic haze, so over big cities this is not purely fire smoke.',
+      'Just the fire part of the haze: smoke streaming downwind of active burns, sometimes for days and across oceans. Turn on Active fires to see the sources. Over big cities a little urban haze sneaks in too.',
     popup(sample, meta) {
       const word = wordFor(this.words, sample.value).label
       return {

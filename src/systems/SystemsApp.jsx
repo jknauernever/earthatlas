@@ -862,9 +862,10 @@ export default function SystemsApp() {
           if (wantGround) { rc.sourceName = groundDef.sourceName; rc.sourceUrl = groundDef.sourceUrl }
           const resume = resumeRef.current[active.id]
           if (resume) { delete resumeRef.current[active.id]; rc.seek(resume.t); if (resume.playing) rc.play(); else rc.pause() }
-          // Smoke opens at NOW, paused — no auto-replay. The button answers
-          // "where is smoke right now"; history is opt-in via the slider.
-          else if (active.id === 'smoke') rc.toLive()
+          // Air-quality layers open at NOW, paused — no auto-replay. The
+          // button answers "what's in the air right now"; history is opt-in
+          // via the slider.
+          else if (['smoke', 'co', 'pm25'].includes(active.id)) rc.toLive()
           rc.attach(layer)
           // Companion flow particles show today's wind — only honest at
           // "now", and only below the zoom where they read as a blizzard.

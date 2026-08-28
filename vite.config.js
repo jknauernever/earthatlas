@@ -9,6 +9,7 @@ import { resolveFireHistoryRequest, normalizeFireHistory } from './api/_fire-his
 import { resolveCwfisRequest, normalizeCwfis } from './api/_cwfis-core.js'
 import { resolveHmsRequest, normalizeHms } from './api/_hms-core.js'
 import { INCIWEB_RSS, parseInciwebRss } from './api/_inciweb-core.js'
+import { HWX_DEFAULT_BASE, HWX_OPS, createHwxTokenManager, hwxFetch } from './api/_happywhale-core.js'
 
 // Dev middleware: serve /api/news locally by fetching Google News RSS server-side
 function newsProxyPlugin() {
@@ -298,6 +299,57 @@ function birdweatherProxyPlugin() {
         } catch (err) {
           res.statusCode = 200
           res.end(JSON.stringify({ data: empty, _upstream_status: 0, _upstream_error: String(err) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/happywhale by mirroring the production Edge
+// function (api/happywhale.js) — same shared core, same OAuth token dance —
+// so /happywhale shows real HappyWhale data under `npm run dev`. Needs
+// HAPPYWHALE_CLIENT_ID/SECRET (and HAPPYWHALE_API_BASE for beta) in
+// .env.local; without them the proxy signals `_upstream_status` and the tool
+// shows its couldn't-load state, same as a missing-creds prod deploy.
+function happywhaleProxyPlugin({ base, clientId, clientSecret, scope }) {
+  const tokens = createHwxTokenManager({ base, clientId, clientSecret, scope })
+  return {
+    name: 'happywhale-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/happywhale', async (req, res) => {
+        const { searchParams } = new URL(req.url, 'http://localhost')
+        res.setHeader('content-type', 'application/json')
+        const op = HWX_OPS[searchParams.get('op')]
+        if (!op) {
+          res.statusCode = 400
+          res.end(JSON.stringify({ error: 'unknown op' }))
+          return
+        }
+        if (!clientId || !clientSecret) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ _upstream_status: 0, _error: 'credentials not configured' }))
+          return
+        }
+        let body = ''
+        if (op.method === 'POST') {
+          for await (const chunk of req) body += chunk
+        }
+        try {
+          const { res: r, badParams } = await hwxFetch({ base, tokens, op, searchParams, body })
+          if (badParams) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'bad params' }))
+            return
+          }
+          res.statusCode = 200
+          if (!r.ok) {
+            res.end(JSON.stringify({ _upstream_status: r.status }))
+            return
+          }
+          res.end(await r.text())
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ _upstream_status: err.status || 0, _error: String(err.message || err).slice(0, 120) }))
         }
       })
     },
@@ -674,6 +726,14 @@ export default defineConfig(({ mode }) => {
   const firmsKey = env.FIRMS_MAP_KEY || process.env.FIRMS_MAP_KEY || ''
   // Server-side only — never bundled. Powers the /systems explain dev proxy.
   const anthropicKey = env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || ''
+  // Server-side only — never bundled. Powers the /happywhale dev proxy (OAuth
+  // creds from Ken Southerland; base points at beta until prod API ships).
+  const happywhale = {
+    base: env.HAPPYWHALE_API_BASE || process.env.HAPPYWHALE_API_BASE || HWX_DEFAULT_BASE,
+    clientId: env.HAPPYWHALE_CLIENT_ID || process.env.HAPPYWHALE_CLIENT_ID || '',
+    clientSecret: env.HAPPYWHALE_CLIENT_SECRET || process.env.HAPPYWHALE_CLIENT_SECRET || '',
+    scope: env.HAPPYWHALE_SCOPE || process.env.HAPPYWHALE_SCOPE || 'hwx',
+  }
   return {
   plugins: [
     react(),
@@ -681,6 +741,7 @@ export default defineConfig(({ mode }) => {
     inatProxyPlugin(),
     birdweatherProxyPlugin(),
     ebirdProxyPlugin(ebirdKey),
+    happywhaleProxyPlugin(happywhale),
     firmsProxyPlugin(firmsKey),
     nifcProxyPlugin(),
     cwfisProxyPlugin(),

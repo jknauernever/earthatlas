@@ -8,11 +8,9 @@
  * encounter of that one animal worldwide, drawn as a track.
  *
  * Data flow: one POST /encounters per (location, time window) via the
- * /api/happywhale proxy; species filtering happens client-side (the API has no
- * species parameter). Individual journeys come from /individual/info/{id}.
- * Until HappyWhale ships the API (next release cycle, ~mid-2026), the service
- * layer serves a deterministic spec-shaped demo dataset and the UI shows a
- * "demo data" notice — see happywhaleService.js.
+ * /api/happywhale proxy (which owns the OAuth dance server-side); species
+ * filtering happens client-side (the API has no species parameter).
+ * Individual journeys come from /individual/info/{id}.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -42,13 +40,18 @@ const DEFAULT_RADIUS = 250
 const MILES_TO_METERS = 1609.34
 
 const DAY = 86400e3
+// The API caps a search at 10,000 encounters and truncation keeps the OLDEST
+// rows, so very wide windows surface stale data. 9 months is the widest
+// worldwide window that stays under the cap on today's beta dataset (~5.5k);
+// Year works fine for location-scoped searches.
 const TIME_PRESETS = [
   { id: '30d', label: '30 days', days: 30 },
   { id: '90d', label: '90 days', days: 90 },
+  { id: '6m', label: '6 months', days: 183 },
+  { id: '9m', label: '9 months', days: 274 },
   { id: '1y', label: 'Year', days: 365 },
-  { id: '2y', label: '2 years', days: 730 },
 ]
-const DEFAULT_PRESET = '90d'
+const DEFAULT_PRESET = '9m'
 
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
@@ -157,7 +160,6 @@ export default function HappyWhaleApp() {
   // Data
   const [speciesConfig, setSpeciesConfig] = useState([])
   const [encounters, setEncounters] = useState([])
-  const [live, setLive] = useState(null) // null = unknown until first fetch
   const [limitExceeded, setLimitExceeded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -216,7 +218,6 @@ export default function HappyWhaleApp() {
       .then((res) => {
         if (ac.signal.aborted) return
         setEncounters(res.encounters)
-        setLive(res.live)
         setLimitExceeded(res.limitExceeded)
         setLoading(false)
       })
@@ -359,8 +360,8 @@ export default function HappyWhaleApp() {
             .setLngLat(coords)
             .setHTML(
               `<div class="${styles.popup}">` +
-              (str(p.thumbUrl)
-                ? `<img class="${styles.popupPhoto}" src="${escapeHtml(str(p.thumbUrl))}" alt="" loading="lazy" />`
+              (str(p.photoUrl)
+                ? `<img class="${styles.popupPhoto}" src="${escapeHtml(str(p.photoUrl))}" alt="" loading="lazy" />`
                 : '') +
               `<div class="${styles.popupSpecies}"><span class="${styles.popupDot}" style="background:${escapeHtml(p.color)}"></span>${escapeHtml(p.speciesName)}</div>` +
               (identified
@@ -370,7 +371,7 @@ export default function HappyWhaleApp() {
               (placeBits.length ? `<div class="${styles.popupMeta}">${escapeHtml(placeBits.join(' · '))}</div>` : '') +
               (seaBits.length ? `<div class="${styles.popupMeta}">${escapeHtml(seaBits.join(' · '))}</div>` : '') +
               (identified ? `<button class="${styles.popupTrackBtn}" data-hw-ind="${escapeHtml(p.indId)}">⟶ Show this whale's journey</button>` : '') +
-              (identified && p.live === 'true'
+              (identified
                 ? `<a class="${styles.popupLink}" href="${escapeHtml(individualUrl(p.indId))}" target="_blank" rel="noopener noreferrer">View on HappyWhale ↗</a>`
                 : '') +
               `</div>`,
@@ -429,17 +430,18 @@ export default function HappyWhaleApp() {
           ocean: e.ocean,
           minCount: e.minCount,
           maxCount: e.maxCount,
-          thumbUrl: e.media?.thumbUrl || null,
+          // Prefer the 1200px medium variant for the popup photo; the 100px
+          // thumbUrl turns to mush in a ~250px-wide slot.
+          photoUrl: e.media?.url || e.media?.thumbUrl || null,
           indId: e.individual?.id ?? null,
           nickname: e.individual?.nickname || null,
           primaryId: e.individual?.primaryId || null,
           sex: e.individual?.sex || null,
-          live: String(!!live),
         },
         geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
       })),
     })
-  }, [filteredEncounters, track, selectedInd, live, mapReady, speciesName])
+  }, [filteredEncounters, track, selectedInd, mapReady, speciesName])
 
   // ─── Journey mode: fetch the selected individual's track ──────────────────
   // Deliberately NOT keyed on mapReady — a second fetch after map init would
@@ -472,11 +474,8 @@ export default function HappyWhaleApp() {
     }
     const pts = track.encounters
     const color = speciesColor(track.individual.speciesKey)
-    // Demo data ships water-routed, curve-smoothed legs (whales can't cross
-    // land), each tagged with its corridor travel direction (`side`) so the
-    // arrow layer can offset opposing directions into separate screen-space
-    // lanes. Live data has no routing info — fall back to one plain
-    // encounter-to-encounter leg.
+    // Real encounters carry no ocean-routing info, so the journey draws
+    // encounter-to-encounter legs (chronological order = direction of travel).
     const legs = (track.path && track.path.length)
       ? track.path
       : (pts.length > 1 ? [{ side: 0, coords: pts.map((e) => [e.lng, e.lat]) }] : [])
@@ -671,14 +670,6 @@ export default function HappyWhaleApp() {
         </div>
 
           <div className={styles.panelBody}>
-            {/* Demo-data notice — shown until HappyWhale's API goes live */}
-            {live === false && (
-              <div className={styles.demoNotice}>
-                <strong>Demo data.</strong> The HappyWhale API launches with their
-                next release — until then this map shows a realistic sample dataset.
-              </div>
-            )}
-
             {/* Status line */}
             <div className={styles.status}>
               {loading ? 'Loading encounters…'
@@ -718,11 +709,9 @@ export default function HappyWhaleApp() {
                   {trackSpan ? ` · ${fmtDate(trackSpan[0])} → ${fmtDate(trackSpan[1])}` : ''}
                 </div>
                 {trackInd.bio && <div className={styles.journeyBio}>{trackInd.bio}</div>}
-                {live && (
-                  <a className={styles.journeyLink} href={individualUrl(trackInd.id)} target="_blank" rel="noopener noreferrer">
-                    View on HappyWhale ↗
-                  </a>
-                )}
+                <a className={styles.journeyLink} href={individualUrl(trackInd.id)} target="_blank" rel="noopener noreferrer">
+                  View on HappyWhale ↗
+                </a>
               </div>
             )}
 
@@ -795,13 +784,13 @@ export default function HappyWhaleApp() {
 
       <div className={styles.tip}>Click an encounter for details · ringed dots are identified whales with journeys</div>
 
-      {showMethodology && <MethodologyModal live={live} onClose={() => setShowMethodology(false)} />}
+      {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} />}
     </div>
   )
 }
 
 // ─── "How this is sourced" modal ────────────────────────────────────────────
-function MethodologyModal({ live, onClose }) {
+function MethodologyModal({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -831,9 +820,10 @@ function MethodologyModal({ live, onClose }) {
           <h3>Where the data comes from</h3>
           <ul>
             <li>
-              <strong>Encounters &amp; individuals — HappyWhale.</strong> Served by HappyWhale's
-              external API through an EarthAtlas proxy. HappyWhale's photo-ID matching is what
-              links sightings of the same animal years and oceans apart.
+              <strong>Encounters &amp; individuals — HappyWhale.</strong> Live data from
+              HappyWhale's external API, served through an EarthAtlas proxy. HappyWhale's
+              photo-ID matching is what links sightings of the same animal years and oceans
+              apart. Photos are © their contributing photographers, via HappyWhale.
             </li>
             <li>
               <strong>Location &amp; radius.</strong> Picking a place searches encounters within
@@ -844,22 +834,6 @@ function MethodologyModal({ live, onClose }) {
             </li>
           </ul>
         </section>
-
-        {live === false && (
-          <section className={styles.modalSection}>
-            <h3>About the demo data</h3>
-            <p>
-              HappyWhale's public API ships with their next release. Until it's live, this map
-              shows a <strong>realistic sample dataset</strong> — invented encounters and
-              individuals placed in real whale hotspots with real seasonality — so you can
-              explore how the tool will work. None of the whales shown here are real records,
-              though the photos are <strong>real HappyWhale contributor images</strong>{' '}
-              (© their photographers via{' '}
-              <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">happywhale.com</a>),
-              shown as placeholders for what the live feed will look like.
-            </p>
-          </section>
-        )}
 
         <section className={styles.modalSection}>
           <h3>Caveats</h3>

@@ -2,44 +2,32 @@
  * HappyWhale external API (hwx) proxy — powers the /happywhale tool.
  *
  * POST /api/happywhale?op=encounters        → POST {BASE}/encounters
- * POST /api/happywhale?op=individual&id=N   → POST {BASE}/individual/info/{id}
+ * GET  /api/happywhale?op=individual&id=N   → GET  {BASE}/individual/info/{id}
  * POST /api/happywhale?op=individualsByLoc  → POST {BASE}/individuals/byloc
  * GET  /api/happywhale?op=species           → GET  {BASE}/config/species
  *
- * Spec: docs/happywhale/openapi.yml (https://animal.us/apis/hwx/). The proxy
- * exists for the same two reasons as /api/ebird: any future API key stays
- * server-side, and the edge can cache what's cacheable (species config).
+ * Thin Edge wrapper over the shared core (api/_happywhale-core.js), which owns
+ * the OAuth token dance — credentials (HAPPYWHALE_CLIENT_ID/SECRET) stay
+ * server-side, tokens are cached per isolate, and the edge CDN caches what's
+ * cacheable (species config for a week, searches briefly).
  *
- * Status (2026-06-11): the upstream API is NOT deployed yet — both prod and
- * beta return 500 until HappyWhale's next release. The client (happywhaleService)
- * treats an in-body `_upstream_status` as "not live" and falls back to its demo
- * dataset, so this proxy can ship ahead of the upstream. To point at beta when
- * Ken enables it: set HAPPYWHALE_API_BASE=https://api.beta.happywhale.com/v1/hwx.
- *
- * Auth: the spec defines no auth scheme (open question with Ken Southerland).
- * If a key materializes, set HAPPYWHALE_API_KEY and adjust the header below to
- * whatever scheme they confirm.
+ * Env: HAPPYWHALE_API_BASE (beta vs prod; auth endpoint derives from it),
+ * HAPPYWHALE_CLIENT_ID, HAPPYWHALE_CLIENT_SECRET, HAPPYWHALE_SCOPE (default
+ * 'hwx'). Missing credentials or upstream failures are signalled in-body
+ * (`_upstream_status`) with HTTP 200, so the client degrades gracefully
+ * instead of surfacing network errors (mirrors /api/ebird).
  */
+
+import { HWX_DEFAULT_BASE, HWX_OPS, createHwxTokenManager, hwxFetch } from './_happywhale-core.js'
 
 export const config = { runtime: 'edge' }
 
-const BASE = process.env.HAPPYWHALE_API_BASE || 'https://api.happywhale.com/v1/hwx'
-const API_KEY = process.env.HAPPYWHALE_API_KEY || ''
+const BASE = process.env.HAPPYWHALE_API_BASE || HWX_DEFAULT_BASE
+const CLIENT_ID = process.env.HAPPYWHALE_CLIENT_ID || ''
+const CLIENT_SECRET = process.env.HAPPYWHALE_CLIENT_SECRET || ''
+const SCOPE = process.env.HAPPYWHALE_SCOPE || 'hwx'
 
-// op → upstream request shape. `path` may be a function of the query params.
-const OPS = {
-  species: { method: 'GET', path: () => '/config/species', cacheControl: 'public, s-maxage=604800, stale-while-revalidate=86400' },
-  encounters: { method: 'POST', path: () => '/encounters', cacheControl: 'public, s-maxage=300' },
-  individualsByLoc: { method: 'POST', path: () => '/individuals/byloc', cacheControl: 'public, s-maxage=300' },
-  individual: {
-    method: 'POST',
-    path: (sp) => {
-      const id = sp.get('id')
-      return /^\d+$/.test(id || '') ? `/individual/info/${id}` : null
-    },
-    cacheControl: 'public, s-maxage=3600',
-  },
-}
+const tokens = createHwxTokenManager({ base: BASE, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, scope: SCOPE })
 
 function corsHeaders() {
   return {
@@ -66,10 +54,11 @@ export default async function handler(req) {
   if (req.method !== 'GET' && req.method !== 'POST') return json({ error: 'method not allowed' }, { status: 405 })
 
   const { searchParams } = new URL(req.url)
-  const op = OPS[searchParams.get('op')]
+  const op = HWX_OPS[searchParams.get('op')]
   if (!op) return json({ error: 'unknown op' }, { status: 400 })
-  const path = op.path(searchParams)
-  if (!path) return json({ error: 'bad params' }, { status: 400 })
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    return json({ _upstream_status: 0, _error: 'credentials not configured' }, { status: 200, headers: { 'cache-control': 'no-store' } })
+  }
 
   let body
   if (op.method === 'POST') {
@@ -82,35 +71,24 @@ export default async function handler(req) {
   }
 
   try {
-    const r = await fetch(`${BASE}${path}`, {
-      method: op.method,
-      headers: {
-        accept: 'application/json',
-        ...(op.method === 'POST' ? { 'content-type': 'application/json' } : {}),
-        ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
-      },
-      body: op.method === 'POST' ? (body || '{}') : undefined,
-    })
+    const { res, badParams } = await hwxFetch({ base: BASE, tokens, op, searchParams, body })
+    if (badParams) return json({ error: 'bad params' }, { status: 400 })
 
-    if (r.ok) {
-      const text = await r.text()
+    if (res.ok) {
+      const text = await res.text()
       return new Response(text, {
         status: 200,
         headers: {
-          'content-type': r.headers.get('content-type') || 'application/json; charset=utf-8',
+          'content-type': res.headers.get('content-type') || 'application/json; charset=utf-8',
           'cache-control': op.cacheControl,
           ...corsHeaders(),
         },
       })
     }
-
-    // Upstream failure (including "API not released yet" 500s). Always 200 with
-    // the status in-body — the client reads _upstream_status and degrades to
-    // its demo dataset instead of surfacing a network error.
-    return json({ _upstream_status: r.status }, { status: 200, headers: { 'cache-control': 'no-store' } })
+    return json({ _upstream_status: res.status }, { status: 200, headers: { 'cache-control': 'no-store' } })
   } catch (err) {
     return json(
-      { _upstream_status: 0, _error: String(err).slice(0, 120) },
+      { _upstream_status: err.status || 0, _error: String(err.message || err).slice(0, 120) },
       { status: 200, headers: { 'cache-control': 'no-store' } },
     )
   }

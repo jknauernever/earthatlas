@@ -358,6 +358,17 @@ export default function SystemsApp() {
             .catch(() => setLayerStatus((s) => ({ ...s, [fk]: 'error' })))
         }
       }
+      // Companion grid sampled only for popups (e.g. acidity shows pH but
+      // also cites aragonite saturation from a second LiveOcean field).
+      if (def.extraGrid) {
+        const xk = `${def.id}:extra`
+        if (!layerStatus[xk]) {
+          setLayerStatus((s) => ({ ...s, [xk]: 'loading' }))
+          loadGridField(def.extraGrid.dataset, def.extraGrid.expectKind)
+            .then((payload) => { fieldsRef.current[xk] = payload; setLayerStatus((s) => ({ ...s, [xk]: 'ok' })) })
+            .catch(() => setLayerStatus((s) => ({ ...s, [xk]: 'error' })))
+        }
+      }
       loading
         .then((payload) => {
           fieldsRef.current[def.id] = payload
@@ -538,7 +549,9 @@ export default function SystemsApp() {
           ? field.sample(e.lngLat.lng, e.lngLat.lat)
           : field.sampleScalar(e.lngLat.lng, e.lngLat.lat)
         if (!sample) continue
-        sections.push(sectionHtml(def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id])))
+        const extraField = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
+        const extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+        sections.push(sectionHtml(def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)))
         // Companion flow: cite the wind that's carrying the haze (skipped if
         // the Wind layer itself is on — it already prints the same run).
         if (def.flow && !layerOn.wind && (!rc || rc.layerId !== def.id || rc.atLive)) {

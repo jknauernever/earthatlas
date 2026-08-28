@@ -14,7 +14,7 @@ import { put } from '@vercel/blob'
 
 export const maxDuration = 60
 
-const ALLOWED = /^systems\/liveocean-[a-z0-9-]+-(grid\.bin|meta\.json)$/
+const ALLOWED = /^systems\/(liveocean|cmems)-[a-z0-9-]+-(grid\.bin|meta\.json)$/
 
 const putOpts = (contentType) => ({
   access: 'public',

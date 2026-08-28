@@ -22,7 +22,15 @@ jobs:
           cache: pip
           cache-dependency-path: scripts/liveocean-requirements.txt
       - run: pip install -r scripts/liveocean-requirements.txt
-      - run: python scripts/bake-liveocean.py
+      - name: Bake LiveOcean pH + aragonite (Salish Sea)
+        run: python scripts/bake-liveocean.py
         env:
           LIVEOCEAN_INGEST_URL: https://earthatlas.org/api/cron/liveocean-ingest
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Bake CMEMS global surface pH
+        run: python scripts/bake-cmems-ph.py
+        env:
+          LIVEOCEAN_INGEST_URL: https://earthatlas.org/api/cron/liveocean-ingest
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+          CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}

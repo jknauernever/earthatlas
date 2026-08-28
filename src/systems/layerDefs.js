@@ -129,6 +129,14 @@ const AIRTEMP_STOPS = [
 // Surface pH from LiveOcean. Open-ocean surface water sits near 8.05–8.1;
 // upwelled and respiration-rich water in the Salish Sea dips far lower. Warm
 // = acidified (the danger direction), cool = typical.
+const ACIDITY_WORDS = [
+  { label: 'Corrosive', range: 'under pH 7.6', max: 7.6 },
+  { label: 'Very acidified', range: '7.6–7.8', max: 7.8 },
+  { label: 'Acidified', range: '7.8–7.95', max: 7.95 },
+  { label: 'Typical ocean', range: '7.95–8.15', max: 8.15 },
+  { label: 'Bloom-raised', range: 'over 8.15', max: Infinity },
+]
+
 const PH_STOPS = [
   [7.4, 'rgb(150,15,55)'],
   [7.6, 'rgb(205,55,35)'],
@@ -674,7 +682,7 @@ export const LAYERS = [
       sourceUrl: 'https://rapidrefresh.noaa.gov/hrrr/',
       // Hourly ground-smoke history (0.1° tape frames baked from the HRRR
       // archive) — the ground view replays like everything else on the site.
-      tape: { dataset: 'hrrr-smoke', expectKind: 'hrrr-smoke-massden', windowDays: 2 },
+      tape: { dataset: 'hrrr-smoke', expectKind: 'hrrr-smoke-massden', windowDays: 2, tapeKind: 'hrrr-smoke-massden-tape' },
       stops: US_SMOKE_STOPS,
       legend: { min: 0, max: 250, ticks: ['0', '35', '100', '250+ µg/m³'] },
       words: [
@@ -989,32 +997,57 @@ export const LAYERS = [
     kind: 'scalar',
     param: 'd',
     defaultOn: false,
-    dataset: 'liveocean-ph',
-    expectKind: 'liveocean-ph-surface',
+    dataset: 'cmems-ph',
+    expectKind: 'cmems-ph-surface',
     name: 'Ocean acidity',
-    sub: 'Salish Sea & NW coast · UW LiveOcean',
-    sourceName: 'UW LiveOcean',
-    sourceUrl: 'https://faculty.washington.edu/pmacc/LO/LiveOcean.html',
+    sub: 'surface pH · Copernicus + UW LiveOcean',
+    sourceName: 'Copernicus Marine',
+    sourceUrl: 'https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_BGC_001_028/description',
     stops: PH_STOPS,
     scalar: { opacity: 0.8, mask: 'water' },
-    // Second LiveOcean field, sampled for the popup only: aragonite
-    // saturation state (Ω) — the number shellfish larvae live or die by.
+    // Second field, sampled for popups only: LiveOcean aragonite saturation
+    // (Ω) — the number shellfish larvae live or die by. Regional; the popup
+    // simply omits it where the LiveOcean domain doesn't reach.
     extraGrid: { dataset: 'liveocean-arag', expectKind: 'liveocean-arag-surface' },
+    // Zoom into the Pacific Northwest and the global 25 km model hands off
+    // to UW LiveOcean's ~500 m forecast (same handoff smoke does to HRRR).
+    ground: {
+      dataset: 'liveocean-ph',
+      expectKind: 'liveocean-ph-surface',
+      minZoom: 5,
+      name: 'Ocean acidity — Salish Sea detail',
+      sub: 'Salish Sea & NW coast · UW LiveOcean',
+      sourceName: 'UW LiveOcean',
+      sourceUrl: 'https://faculty.washington.edu/pmacc/LO/LiveOcean.html',
+      stops: PH_STOPS,
+      legend: { min: 7.4, max: 8.3, ticks: ['7.4 acidic', '7.9', '8.3 pH'] },
+      explain:
+        'You’re seeing UW’s LiveOcean forecast — the ~500 m model built after acidified water wiped out Northwest oyster hatcheries. Deep water that upwells along this coast arrives extra-corrosive, and the Salish Sea’s own respiration pushes pH lower still. Click anywhere for pH plus the aragonite number shellfish live or die by.',
+      popup(sample, meta, arag) {
+        const w = wordFor(ACIDITY_WORDS, sample.value)
+        const omega = arag ? arag.value : null
+        const shell = omega == null ? 'typical for the open ocean is pH 8.0–8.1'
+          : omega < 1 ? `Ω ${omega.toFixed(1)} — corrosive to shellfish larvae`
+          : omega < 1.7 ? `Ω ${omega.toFixed(1)} — marginal for shell-building`
+          : `Ω ${omega.toFixed(1)} — shell-friendly water`
+        return {
+          head: `${w.label} water`,
+          big: `pH ${sample.value.toFixed(2)}`,
+          alt: shell,
+          meta: `Sea-surface pH · UW LiveOcean forecast (~500 m grid), valid ${fmtRun(meta.valid_ms)}`,
+          ai: `SEA-SURFACE pH ${sample.value.toFixed(2)}${omega != null ? ` and aragonite saturation state Omega ${omega.toFixed(2)}` : ''} from the UW LiveOcean ROMS forecast. IMPORTANT: this is a SURFACE value; "~500 m" is the model's HORIZONTAL grid spacing, not a depth. Aragonite Omega below 1 is corrosive to shellfish larvae; 1-1.7 is marginal; above 1.7 supports shell-building. Open-ocean surface pH is typically 8.0-8.1; Salish Sea water runs lower from upwelled deep water plus respiration.`,
+        }
+      },
+    },
     legend: { min: 7.4, max: 8.3, ticks: ['7.4 acidic', '7.9', '8.3 pH'] },
-    words: [
-      { label: 'Corrosive', range: 'under pH 7.6', max: 7.6 },
-      { label: 'Very acidified', range: '7.6–7.8', max: 7.8 },
-      { label: 'Acidified', range: '7.8–7.95', max: 7.95 },
-      { label: 'Typical ocean', range: '7.95–8.15', max: 8.15 },
-      { label: 'Bloom-raised', range: 'over 8.15', max: Infinity },
-    ],
+    words: ACIDITY_WORDS,
     stamp: (meta) => `forecast valid ${fmtRun(meta.valid_ms)}`,
     explain:
-      'How acidic the sea surface is, at ~500 m detail from UW’s LiveOcean model — built after acidified water wiped out Northwest oyster hatcheries. The ocean absorbs about a quarter of our CO₂, and the deep water that upwells here arrives extra-corrosive; click anywhere for pH plus the aragonite number shellfish live or die by. Covers the Salish Sea and the WA–OR–BC coast (the model’s domain).',
+      'How acidic the sea surface is. The ocean has absorbed about a quarter of the CO₂ we’ve emitted, dropping its pH ~0.1 since preindustrial times — a 30% rise in acidity that makes shell-building harder for corals, oysters, and plankton. Zoom into the Pacific Northwest and the view sharpens to UW LiveOcean’s ~500 m Salish Sea forecast, with the aragonite number shellfish care about in every click.',
     popup(sample, meta, arag) {
       const w = wordFor(this.words, sample.value)
       const omega = arag ? arag.value : null
-      const shell = omega == null ? 'aragonite data still loading'
+      const shell = omega == null ? 'typical for the open ocean is pH 8.0–8.1'
         : omega < 1 ? `Ω ${omega.toFixed(1)} — corrosive to shellfish larvae`
         : omega < 1.7 ? `Ω ${omega.toFixed(1)} — marginal for shell-building`
         : `Ω ${omega.toFixed(1)} — shell-friendly water`
@@ -1022,8 +1055,8 @@ export const LAYERS = [
         head: `${w.label} water`,
         big: `pH ${sample.value.toFixed(2)}`,
         alt: shell,
-        meta: `Sea-surface pH · UW LiveOcean forecast (~500 m grid), valid ${fmtRun(meta.valid_ms)}`,
-        ai: `SEA-SURFACE pH ${sample.value.toFixed(2)}${omega != null ? ` and aragonite saturation state Omega ${omega.toFixed(2)}` : ''} from the UW LiveOcean ROMS forecast. IMPORTANT: this is a SURFACE value; "~500 m" is the model's HORIZONTAL grid spacing, not a depth. Aragonite Omega below 1 is corrosive to shellfish larvae; 1-1.7 is marginal; above 1.7 supports shell-building. Open-ocean surface pH is typically 8.0-8.1; Salish Sea water runs lower from upwelled deep water plus respiration.`,
+        meta: `Sea-surface pH · Copernicus Marine global forecast (~25 km grid) · model run ${fmtRun(meta.run_ms)}`,
+        ai: `SEA-SURFACE pH ${sample.value.toFixed(2)} from the Copernicus Marine global biogeochemistry forecast (0.25 degree, ~25 km). SURFACE value. Open-ocean surface pH is typically 8.0-8.1; preindustrial was ~8.2 — the drop is ocean acidification from absorbed CO2. Aragonite Omega below 1 is corrosive to shellfish larvae.`,
       }
     },
   },

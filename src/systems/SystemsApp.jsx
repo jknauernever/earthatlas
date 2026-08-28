@@ -310,7 +310,7 @@ export default function SystemsApp() {
   // the smoke button's altitude handoff, set by the scalar effect below.
   const [smokeMode, setSmokeMode] = useState('sky')
   const [smokeGroundTick, setSmokeGroundTick] = useState(0)
-  const smokeGroundLoadRef = useRef(false)
+  const smokeGroundLoadRef = useRef({}) // per-layer: false | true | 'failed'
   const stateRef = useRef({})
   stateRef.current = { layerOn, layerStatus, layerMeta, smokeMode }
 
@@ -531,13 +531,15 @@ export default function SystemsApp() {
         if (def.kind === 'raster') continue // raster popups: open the full tool instead
         // Smoke altitude handoff: in ground mode, sample the HRRR grid with
         // its own what-you'd-breathe popup instead of the column model.
-        if (def.id === 'smoke' && stateRef.current.smokeMode === 'ground' && fieldsRef.current['smoke:ground']) {
+        if (def.ground && stateRef.current.smokeMode === 'ground' && fieldsRef.current[`${def.id}:ground`]) {
           // During ground replay, sample the tape's frame at the cursor.
           const rc2 = replayRef.current
-          const tapeF = rc2 && rc2.layerId === 'smoke' && rc2.tape?.meta?.kind === 'hrrr-smoke-massden-tape' ? rc2.tape : null
-          const gf = tapeF || fieldsRef.current['smoke:ground']
+          const tapeF = rc2 && rc2.layerId === def.id && rc2.tape?.meta?.kind === def.ground.tape?.tapeKind ? rc2.tape : null
+          const gf = tapeF || fieldsRef.current[`${def.id}:ground`]
           const s = gf.sampleScalar(e.lngLat.lng, e.lngLat.lat)
-          if (s) sections.push(sectionHtml(def.ground.popup(s, tapeF ? tapeF.metaAt() : gf.meta)))
+          const gx = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
+          const gxs = gx ? gx.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+          if (s) sections.push(sectionHtml(def.ground.popup(s, tapeF ? tapeF.metaAt() : gf.meta, gxs)))
           continue
         }
         // Replay layers read the frame on screen, stamped with ITS run/time.
@@ -814,20 +816,20 @@ export default function SystemsApp() {
     let wantGround = false
     if (groundDef && !!layerOn[active.id]) {
       const zoomNow = mapView?.zoom ?? map.getZoom()
-      if (zoomNow >= groundDef.minZoom - 0.5 && !fieldsRef.current['smoke:ground'] && !smokeGroundLoadRef.current) {
-        smokeGroundLoadRef.current = true
+      if (zoomNow >= groundDef.minZoom - 0.5 && !fieldsRef.current[`${active.id}:ground`] && !smokeGroundLoadRef.current[active.id]) {
+        smokeGroundLoadRef.current[active.id] = true
         loadGridField(groundDef.dataset, groundDef.expectKind)
-          .then((f) => { fieldsRef.current['smoke:ground'] = f; setSmokeGroundTick((t) => t + 1) })
-          .catch(() => { smokeGroundLoadRef.current = 'failed' }) // sky view stands
+          .then((f) => { fieldsRef.current[`${active.id}:ground`] = f; setSmokeGroundTick((t) => t + 1) })
+          .catch(() => { smokeGroundLoadRef.current[active.id] = 'failed' }) // global view stands
         // Ground history tape (hourly frames, backfilled from the HRRR
         // archive) — replay at ground level. Absent tape = Now-only.
         if (groundDef.tape) {
           TapeField.load(groundDef.tape.dataset, groundDef.tape.expectKind)
-            .then((tp) => { fieldsRef.current['smoke:ground:tape'] = tp; setSmokeGroundTick((t) => t + 1) })
+            .then((tp) => { fieldsRef.current[`${active.id}:ground:tape`] = tp; setSmokeGroundTick((t) => t + 1) })
             .catch(() => { /* tape not baked yet — the live frame stands */ })
         }
       }
-      const gf = fieldsRef.current['smoke:ground']
+      const gf = fieldsRef.current[`${active.id}:ground`]
       if (gf && zoomNow >= groundDef.minZoom) {
         const m = gf.meta
         const c = map.getCenter()
@@ -845,9 +847,9 @@ export default function SystemsApp() {
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
       : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null
     const tape = active?.tape && tapeKey && !wantGround ? fieldsRef.current[tapeKey] : null
-    const groundTape = wantGround ? fieldsRef.current['smoke:ground:tape'] : null
+    const groundTape = wantGround ? fieldsRef.current[`${active.id}:ground:tape`] : null
     const slotId = active
-      ? (wantGround ? (groundTape ? 'smoke:ground:tape' : 'smoke:ground') : tape ? tapeKey : active.id)
+      ? (wantGround ? (groundTape ? `${active.id}:ground:tape` : `${active.id}:ground`) : tape ? tapeKey : active.id)
       : null
     if (inst.scalar && inst.scalar.id !== slotId) {
       inst.scalar.layer.destroy()
@@ -859,7 +861,7 @@ export default function SystemsApp() {
         if (tape) tape.appendLive(fieldsRef.current[active.id])
         const view = wantGround ? groundDef : active
         const tapeSel = wantGround ? groundTape : tape
-        const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tapeSel || (wantGround ? fieldsRef.current['smoke:ground'] : fieldsRef.current[active.id]), {
+        const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tapeSel || (wantGround ? fieldsRef.current[`${active.id}:ground`] : fieldsRef.current[active.id]), {
           colorStops: view.stops,
           min: view.legend.min,
           max: view.legend.max,
@@ -1487,10 +1489,10 @@ export default function SystemsApp() {
       .map((d) => {
         // Smoke altitude handoff: the Explain card must describe what's on
         // SCREEN — in ground mode that's the HRRR µg/m³ grid, not CAMS.
-        if (d.id === 'smoke' && smokeMode === 'ground' && fieldsRef.current['smoke:ground']) {
+        if (d.ground && smokeMode === 'ground' && fieldsRef.current[`${d.id}:ground`]) {
           const rc = replayRef.current
           const gt = rc && rc.layerId === 'smoke' && rc.tape?.meta?.kind === 'hrrr-smoke-massden-tape' ? rc.tape : null
-          const gf = gt || fieldsRef.current['smoke:ground']
+          const gf = gt || fieldsRef.current[`${d.id}:ground`]
           return { def: { ...d, ...d.ground, tape: null, flow: null }, payload: gf, meta: gt ? gt.metaAt() : gf.meta }
         }
         const rc = replayRef.current
@@ -1765,7 +1767,7 @@ export default function SystemsApp() {
               const meta = layerMeta[def.id]
               // Smoke altitude handoff: while the ground view is active, the
               // panel legend/scale/words describe µg/m³, not column AOD.
-              const lens = def.id === 'smoke' && smokeMode === 'ground' && def.ground ? { ...def, ...def.ground } : def
+              const lens = def.ground && smokeMode === 'ground' ? { ...def, ...def.ground } : def
               return (
                 <div key={def.id} className={styles.layerBlock}>
                   <div

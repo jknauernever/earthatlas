@@ -38,7 +38,15 @@ export class GridField {
     if (!Number.isFinite(lng) || !Number.isFinite(lat) || !(Math.abs(lat) <= 90)) return null
     const rf = (lat - m.lat0) / m.dLat
     if (rf < -0.5 || rf > m.nLat - 0.5) return null
-    const cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+    let cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+    // Regional grids (narrower than the full globe) must NOT wrap: without
+    // this cut, `% nLon` in the bilinear repeats an 8°-wide field (LiveOcean)
+    // around the entire planet. Half a cell of slack keeps the true edges.
+    if (m.nLon * m.dLon < 359 && cf > m.nLon - 0.5) {
+      cf -= 360 / m.dLon // just west of lon0 lands near the wrap point
+      if (cf < -0.5) return null
+      cf = Math.max(0, cf)
+    }
     return { rf: Math.min(m.nLat - 1, Math.max(0, rf)), cf }
   }
 

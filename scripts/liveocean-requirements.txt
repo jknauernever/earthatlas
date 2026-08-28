@@ -2,3 +2,5 @@ h5py>=3.10
 fsspec>=2024.2
 aiohttp>=3.9
 numpy>=1.26
+copernicusmarine>=2.0
+xarray>=2024.1

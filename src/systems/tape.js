@@ -190,7 +190,13 @@ export class TapeField {
     const rf0 = (lat - m.lat0) / m.dLat
     if (rf0 < -0.5 || rf0 > m.nLat - 0.5) return null
     const rf = Math.min(m.nLat - 1, Math.max(0, rf0))
-    const cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+    let cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+    // Regional grids must not wrap (see GridField._locate).
+    if (m.nLon * m.dLon < 359 && cf > m.nLon - 0.5) {
+      cf -= 360 / m.dLon
+      if (cf < -0.5) return null
+      cf = Math.max(0, cf)
+    }
     const { i, j, mix } = this.locate()
     const a = this._bytes.get(i)
     const b = this._bytes.get(j)
@@ -267,9 +273,18 @@ export class TapeField {
     const nodata0 = m.nodata0
     // Column tables (same for every row).
     const c0s = new Int32Array(size), c1s = new Int32Array(size), fcs = new Float32Array(size), lngs = new Float32Array(size)
+    const cOk = new Uint8Array(size)
+    const regional = m.nLon * m.dLon < 359
     for (let x = 0; x < size; x++) {
       const lng = -180 + (360 * (x + 0.5)) / size
-      const cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+      let cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+      // Regional grids must not wrap (see GridField._locate).
+      if (regional && cf > m.nLon - 0.5) {
+        cf -= 360 / m.dLon
+        if (cf < -0.5) { cOk[x] = 0; continue }
+        cf = Math.max(0, cf)
+      }
+      cOk[x] = 1
       const c0 = Math.floor(cf) % m.nLon
       c0s[x] = c0; c1s[x] = (c0 + 1) % m.nLon; fcs[x] = cf - Math.floor(cf); lngs[x] = lng
     }
@@ -282,6 +297,7 @@ export class TapeField {
       const fr = Math.min(1, Math.max(0, rf - r0))
       const o0 = r0 * m.nLon, o1 = o0 + m.nLon
       for (let x = 0; x < size; x++) {
+        if (!cOk[x]) continue
         if (bits && isLand(bits, lngs[x], lat)) continue
         const fc = fcs[x]
         const b00 = bytes[o0 + c0s[x]], b01 = bytes[o0 + c1s[x]], b10 = bytes[o1 + c0s[x]], b11 = bytes[o1 + c1s[x]]

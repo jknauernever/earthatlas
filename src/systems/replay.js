@@ -41,6 +41,8 @@ export class ReplayController {
     this.tape.prefetch(this.t, 4)
     this._loop = this._loop.bind(this)
     this._raf = requestAnimationFrame(this._loop)
+    if (import.meta.env.DEV) window.__rc = this // dev-only QA handle
+
   }
 
   get start_ms() { return this.tape.start_ms }

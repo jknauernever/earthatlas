@@ -676,6 +676,7 @@ export const LAYERS = [
       dataset: 'hrrr-smoke',
       expectKind: 'hrrr-smoke-massden',
       minZoom: 5,
+      zoomNote: 'Showing smoke at ground level (near-surface µg/m³, NOAA HRRR 3 km) — zoom out for the whole-sky view.',
       name: 'Wildfire smoke — at ground level',
       sub: 'US 3 km · NOAA HRRR-Smoke',
       sourceName: 'NOAA HRRR-Smoke',
@@ -1009,17 +1010,23 @@ export const LAYERS = [
     // (Ω) — the number shellfish larvae live or die by. Regional; the popup
     // simply omits it where the LiveOcean domain doesn't reach.
     extraGrid: { dataset: 'liveocean-arag', expectKind: 'liveocean-arag-surface' },
+    // History tape: one global field per day, last 31 days.
+    tape: { dataset: 'cmems-ph', expectKind: 'cmems-ph-surface', windowDays: 31 },
     // Zoom into the Pacific Northwest and the global 25 km model hands off
     // to UW LiveOcean's ~500 m forecast (same handoff smoke does to HRRR).
     ground: {
       dataset: 'liveocean-ph',
       expectKind: 'liveocean-ph-surface',
       minZoom: 5,
+      zoomNote: 'Showing UW LiveOcean’s ~500 m Salish Sea & NW-coast forecast — zoom out for the global (25 km) view.',
       name: 'Ocean acidity — Salish Sea detail',
       sub: 'Salish Sea & NW coast · UW LiveOcean',
       sourceName: 'UW LiveOcean',
       sourceUrl: 'https://faculty.washington.edu/pmacc/LO/LiveOcean.html',
       stops: PH_STOPS,
+      // Tidal tape: 4-hourly steps — pH swinging with tides and day/night
+      // photosynthesis, the Sound literally breathing.
+      tape: { dataset: 'liveocean-ph', expectKind: 'liveocean-ph-surface', windowDays: 3, tapeKind: 'liveocean-ph-surface-tape' },
       legend: { min: 7.4, max: 8.3, ticks: ['7.4 acidic', '7.9', '8.3 pH'] },
       explain:
         'You’re seeing UW’s LiveOcean forecast — the ~500 m model built after acidified water wiped out Northwest oyster hatcheries. Deep water that upwells along this coast arrives extra-corrosive, and the Salish Sea’s own respiration pushes pH lower still. Click anywhere for pH plus the aragonite number shellfish live or die by.',

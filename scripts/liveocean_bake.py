@@ -139,26 +139,38 @@ def bake():
     }
 
 
-def upload_via_ingest(outputs, url, secret):
-    """POST the grid pair to the site's node ingest endpoint (CRON_SECRET
-    auth), which writes to Blob with the runtime's own token — CI never
-    holds a Blob credential."""
+def upload_files_via_ingest(files, url, secret, batch=6):
+    """POST raw {path, contentType, bytes} files to the site's node ingest
+    endpoint (CRON_SECRET auth), which writes to Blob with the runtime's own
+    token — CI never holds a Blob credential. Batched: tape bakes ship dozens
+    of PNG frames and one POST must stay under the 4.5 MB body limit."""
     import base64
     import urllib.request
-    files = []
-    for base, buf, meta in outputs:
-        files.append({"path": f"systems/{base}-grid.bin", "contentType": "application/octet-stream",
-                      "b64": base64.b64encode(buf).decode()})
-        files.append({"path": f"systems/{base}-meta.json", "contentType": "application/json",
-                      "b64": base64.b64encode(json.dumps(meta).encode()).decode()})
-    req = urllib.request.Request(url, data=json.dumps({"files": files}).encode(), method="POST",
-                                 headers={"Authorization": f"Bearer {secret}",
-                                          "content-type": "application/json"})
-    body = urllib.request.urlopen(req, timeout=120).read().decode()
-    resp = json.loads(body)
-    if not resp.get("ok"):
-        raise RuntimeError(f"ingest rejected: {body[:300]}")
-    return resp
+    written = []
+    for i in range(0, len(files), batch):
+        payload = [{"path": f["path"], "contentType": f["contentType"],
+                    "b64": base64.b64encode(f["bytes"]).decode()} for f in files[i:i + batch]]
+        req = urllib.request.Request(url, data=json.dumps({"files": payload}).encode(), method="POST",
+                                     headers={"Authorization": f"Bearer {secret}",
+                                              "content-type": "application/json"})
+        body = urllib.request.urlopen(req, timeout=120).read().decode()
+        resp = json.loads(body)
+        if not resp.get("ok"):
+            raise RuntimeError(f"ingest rejected: {body[:300]}")
+        written += resp.get("written", [])
+    return {"ok": True, "written": written}
+
+
+def grid_pair_files(outputs):
+    return [f for base, buf, meta in outputs for f in (
+        {"path": f"systems/{base}-grid.bin", "contentType": "application/octet-stream", "bytes": buf},
+        {"path": f"systems/{base}-meta.json", "contentType": "application/json",
+         "bytes": json.dumps(meta).encode()},
+    )]
+
+
+def upload_via_ingest(outputs, url, secret):
+    return upload_files_via_ingest(grid_pair_files(outputs), url, secret)
 
 
 def upload_to_blob(outputs, token):
@@ -180,3 +192,132 @@ def upload_to_blob(outputs, token):
                 },
             )
             urllib.request.urlopen(req, timeout=60).read()
+
+
+# ─── History tapes (python side of the node bakeTapeDay format) ─────────────
+# 8-bit grayscale PNGs, byte = (value - offset) * qscale (0 = missing when
+# nodata0), plus a rolling JSON index the client's TapeField reads. Kind must
+# be "<grid expectKind>-tape".
+
+TAPE_OFFSET = 6.5   # pH tape encoding: byte spans 6.5…8.62 at ~0.008 steps
+TAPE_QSCALE = 120
+BLOB_PUBLIC = "https://fxj3imydg9misw9w.public.blob.vercel-storage.com"
+
+
+def encode_gray_png(bytes2d):
+    import io
+    from PIL import Image
+    img = Image.fromarray(bytes2d, mode="L")
+    out = io.BytesIO()
+    img.save(out, format="PNG", optimize=True)
+    return out.getvalue()
+
+
+def encode_tape_frame(grid, offset=TAPE_OFFSET, qscale=TAPE_QSCALE):
+    import numpy as np
+    b = np.where(np.isfinite(grid),
+                 np.clip(np.round((grid - offset) * qscale), 1, 255), 0).astype("uint8")
+    return encode_gray_png(b)
+
+
+def fetch_existing_index(base):
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"{BLOB_PUBLIC}/systems/{base}-tape.json", timeout=30) as r:
+            return json.loads(r.read().decode())
+    except Exception:  # noqa: BLE001 - first bake, or blob briefly unreachable
+        return None
+
+
+def build_tape_index(kind, source, meta_like, step_h, days, frames):
+    return {
+        "version": 1, "kind": f"{kind}-tape", "source": source, "fetched_ms": int(time.time() * 1000),
+        "nLat": meta_like["nLat"], "nLon": meta_like["nLon"],
+        "lat0": meta_like["lat0"], "dLat": meta_like["dLat"],
+        "lon0": meta_like["lon0"], "dLon": meta_like["dLon"],
+        "qscale": TAPE_QSCALE, "offset": TAPE_OFFSET, "nodata0": True,
+        "step_ms": step_h * 3600 * 1000, "days": days, "frame_kind": "analysis",
+        "frames": frames,
+    }
+
+
+def bake_tape(days_back=2):
+    """LiveOcean tidal tape: every 4-hourly PH_surface step up to now, from
+    today's forecast file plus up to `days_back` previous days' files (each
+    file contributes only its own first day — closest to analysis)."""
+    import numpy as np
+    import fsspec
+    import h5py
+
+    now = time.time()
+    base = "liveocean-ph"
+    existing = fetch_existing_index(base)
+    have = {f["valid_ms"] for f in (existing or {}).get("frames", [])}
+
+    n_lat = int(round((LAT1 - LAT0) / DLAT)) + 1
+    n_lon = int(round((LON1 - LON0) / DLON)) + 1
+    tgt_lat = LAT0 + DLAT * np.arange(n_lat)
+    tgt_lon = LON0 + DLON * np.arange(n_lon)
+    meta_like = {"nLat": n_lat, "nLon": n_lon, "lat0": float(tgt_lat[0]), "dLat": DLAT,
+                 "lon0": float(tgt_lon[0]), "dLon": DLON}
+
+    def nearest_idx(src, tgt):
+        idx = np.searchsorted(src, tgt)
+        idx = np.clip(idx, 1, len(src) - 1)
+        left, right = src[idx - 1], src[idx]
+        idx = np.where(np.abs(tgt - left) <= np.abs(right - tgt), idx - 1, idx)
+        half = max(float(np.abs(np.diff(src)).max()), 1e-6)
+        idx[np.abs(src[idx] - tgt) > half] = -1
+        return idx
+
+    files = []
+    new_frames = []
+    today = dt.datetime.now(dt.timezone.utc).date()
+    for back in range(days_back, -1, -1):
+        day = today - dt.timedelta(days=back)
+        url = f"{BUCKET}/f{day.strftime('%Y.%m.%d')}/layers.nc"
+        try:
+            h = h5py.File(fsspec.open(url, mode="rb", block_size=2 * 1024 * 1024).open(), "r")
+        except Exception:  # noqa: BLE001 - that day's file never appeared
+            continue
+        times = h["ocean_time"][:]
+        day_end = (dt.datetime(day.year, day.month, day.day, tzinfo=dt.timezone.utc)
+                   + dt.timedelta(days=1)).timestamp()
+        limit = min(now, day_end) if back > 0 else now
+        want = [i for i, t in enumerate(times)
+                if t <= limit and int(t * 1000) not in have
+                and (back == 0 or t >= day_end - 86400)]
+        if not want:
+            continue
+        src_lon = h["lon_rho"][0, :]
+        src_lat = h["lat_rho"][:, 0]
+        mask = h["mask_rho"][:] > 0
+        la_i, lo_i = nearest_idx(src_lat, tgt_lat), nearest_idx(src_lon, tgt_lon)
+        ok_la, ok_lo = la_i >= 0, lo_i >= 0
+        run_ms = int(dt.datetime(day.year, day.month, day.day, tzinfo=dt.timezone.utc).timestamp() * 1000)
+        for ti in want:
+            field = h["PH_surface"][ti]
+            field = np.where(mask & np.isfinite(field) & (np.abs(field) < 1e19), field, np.nan)
+            grid = np.full((n_lat, n_lon), np.nan)
+            grid[np.ix_(ok_la, ok_lo)] = field[np.ix_(la_i[ok_la], lo_i[ok_lo])]
+            grid = fill_coastal_gaps(grid)
+            valid_ms = int(times[ti] * 1000)
+            stamp = dt.datetime.fromtimestamp(times[ti], dt.timezone.utc).strftime("%Y-%m-%d-%H")
+            path = f"systems/{base}-tape/{stamp}.png"
+            files.append({"path": path, "contentType": "image/png", "bytes": encode_tape_frame(grid)})
+            new_frames.append({"valid_ms": valid_ms, "run_ms": run_ms,
+                               "lead_h": round((valid_ms - run_ms) / 3.6e6), "path": path})
+
+    by_valid = {}
+    for f in (existing or {}).get("frames", []) + new_frames:
+        prev = by_valid.get(f["valid_ms"])
+        if not prev or f["lead_h"] <= prev["lead_h"]:
+            by_valid[f["valid_ms"]] = f
+    cutoff = (now - 7 * 86400) * 1000
+    merged = sorted((f for f in by_valid.values() if f["valid_ms"] >= cutoff),
+                    key=lambda f: f["valid_ms"])
+    index = build_tape_index("liveocean-ph-surface", SOURCE.format(long="pH (total scale)"),
+                             meta_like, 4, 7, merged)
+    files.append({"path": f"systems/{base}-tape.json", "contentType": "application/json",
+                  "bytes": json.dumps(index).encode()})
+    return files, {"new_frames": len(new_frames), "total_frames": len(merged)}

@@ -20,24 +20,29 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
+def write_dev(files):
+    out_dir = os.path.join(root, "public", "dev-data", "systems")
+    for f in files:
+        rel = f["path"].removeprefix("systems/")
+        dest = os.path.join(out_dir, rel)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        open(dest, "wb").write(f["bytes"])
+
+
 def main():
     result = mod.bake()
     print(json.dumps(result["summary"], indent=2))
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+    files = mod.grid_pair_files(result["outputs"])
+    tape_files, tape_summary = mod.bake_tape()
+    print("tidal tape:", json.dumps(tape_summary))
+    files += tape_files
     ingest = os.environ.get("LIVEOCEAN_INGEST_URL")
     secret = os.environ.get("CRON_SECRET")
     if ingest and secret:
-        resp = mod.upload_via_ingest(result["outputs"], ingest, secret)
-        print("uploaded via ingest:", json.dumps(resp))
-    elif token:
-        mod.upload_to_blob(result["outputs"], token)
-        print("uploaded to Vercel Blob")
+        resp = mod.upload_files_via_ingest(files, ingest, secret)
+        print(f"uploaded via ingest: {len(resp['written'])} files")
     else:
-        out_dir = os.path.join(root, "public", "dev-data", "systems")
-        os.makedirs(out_dir, exist_ok=True)
-        for base, buf, meta in result["outputs"]:
-            open(os.path.join(out_dir, f"{base}-grid.bin"), "wb").write(buf)
-            open(os.path.join(out_dir, f"{base}-meta.json"), "w").write(json.dumps(meta))
+        write_dev(files)
         print("wrote public/dev-data/systems/")
 
 

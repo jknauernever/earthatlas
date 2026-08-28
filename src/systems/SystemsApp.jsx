@@ -880,7 +880,7 @@ export default function SystemsApp() {
           // Air-quality layers open at NOW, paused — no auto-replay. The
           // button answers "what's in the air right now"; history is opt-in
           // via the slider.
-          else if (['smoke', 'co', 'pm25'].includes(active.id)) rc.toLive()
+          else if (['smoke', 'co', 'pm25', 'acidity'].includes(active.id)) rc.toLive()
           rc.attach(layer)
           // Companion flow particles show today's wind — only honest at
           // "now", and only below the zoom where they read as a blizzard.
@@ -1810,7 +1810,7 @@ export default function SystemsApp() {
                   {on && status === 'ok' && lens.legend && (
                     <div className={styles.field}>
                       {lens !== def && (
-                        <div className={styles.legendNoteText}>Showing smoke at ground level ({lens.sub}) — zoom out for the whole-sky view.</div>
+                        <div className={styles.legendNoteText}>{lens.zoomNote || `Showing ${lens.name || 'regional detail'} (${lens.sub}) — zoom out for the wider view.`}</div>
                       )}
                       <div
                         className={styles.legendBar}

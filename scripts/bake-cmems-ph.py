@@ -95,6 +95,53 @@ def bake():
     return [(BASE, enc.tobytes(), meta)], summary
 
 
+def bake_tape(mod, days=31):
+    """Global daily tape: one frame per day for the last `days`, one toolbox
+    subset call. Frames older than yesterday that already exist in the blob
+    index are reused (analysis fields don't change) — only their index rows
+    are kept; fresh PNGs are shipped for new/recent days."""
+    import copernicusmarine as cm
+    import numpy as np
+    import xarray as xr
+
+    base = "cmems-ph"
+    today = dt.datetime.now(dt.timezone.utc).date()
+    start = today - dt.timedelta(days=days - 1)
+    tmp = tempfile.mkdtemp()
+    cm.subset(
+        dataset_id="cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+        variables=["ph"],
+        start_datetime=str(start), end_datetime=str(today),
+        minimum_depth=0, maximum_depth=1,
+        output_filename="ph-tape.nc", output_directory=tmp, overwrite=True,
+    )
+    ds = xr.open_dataset(os.path.join(tmp, "ph-tape.nc"))
+    lat, lon = ds.latitude.values, ds.longitude.values
+    meta_like = {"nLat": len(lat), "nLon": len(lon),
+                 "lat0": float(lat[0]), "dLat": float((lat[-1] - lat[0]) / (len(lat) - 1)),
+                 "lon0": float(lon[0]), "dLon": float((lon[-1] - lon[0]) / (len(lon) - 1))}
+    existing = mod.fetch_existing_index(base)
+    have = {f["valid_ms"] for f in (existing or {}).get("frames", [])}
+    keep_before = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=1)).timestamp() * 1000
+
+    files, frames = [], []
+    for ti in range(ds.time.size):
+        valid_ms = int(ds.time.values[ti].astype("datetime64[ms]").astype("int64"))
+        stamp = dt.datetime.fromtimestamp(valid_ms / 1000, dt.timezone.utc).strftime("%Y-%m-%d-%H")
+        path = f"systems/{base}-tape/{stamp}.png"
+        frames.append({"valid_ms": valid_ms, "run_ms": valid_ms, "lead_h": 0, "path": path})
+        if valid_ms in have and valid_ms < keep_before:
+            continue  # stable analysis day already in blob
+        grid = ds.ph.values[ti].squeeze().astype("float64")
+        files.append({"path": path, "contentType": "image/png",
+                      "bytes": mod.encode_tape_frame(grid)})
+    index = mod.build_tape_index("cmems-ph-surface", SOURCE, meta_like, 24, days,
+                                 sorted(frames, key=lambda f: f["valid_ms"]))
+    files.append({"path": f"systems/{base}-tape.json", "contentType": "application/json",
+                  "bytes": json.dumps(index).encode()})
+    return files, {"frames": len(frames), "png_uploads": len(files) - 1}
+
+
 def main():
     outputs, summary = bake()
     print(json.dumps(summary, indent=2))
@@ -104,20 +151,22 @@ def main():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
+    files = mod.grid_pair_files(outputs)
+    tape_files, tape_summary = bake_tape(mod)
+    print("daily tape:", json.dumps(tape_summary))
+    files += tape_files
     ingest = os.environ.get("LIVEOCEAN_INGEST_URL")
     secret = os.environ.get("CRON_SECRET")
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
     if ingest and secret:
-        print("uploaded via ingest:", json.dumps(mod.upload_via_ingest(outputs, ingest, secret)))
-    elif token:
-        mod.upload_to_blob(outputs, token)
-        print("uploaded to Vercel Blob")
+        resp = mod.upload_files_via_ingest(files, ingest, secret)
+        print(f"uploaded via ingest: {len(resp['written'])} files")
     else:
         out_dir = os.path.join(root, "public", "dev-data", "systems")
-        os.makedirs(out_dir, exist_ok=True)
-        for base, buf, meta in outputs:
-            open(os.path.join(out_dir, f"{base}-grid.bin"), "wb").write(buf)
-            open(os.path.join(out_dir, f"{base}-meta.json"), "w").write(json.dumps(meta))
+        for f in files:
+            rel = f["path"].removeprefix("systems/")
+            dest = os.path.join(out_dir, rel)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            open(dest, "wb").write(f["bytes"])
         print("wrote public/dev-data/systems/")
 
 

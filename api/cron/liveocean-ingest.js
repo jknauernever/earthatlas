@@ -14,7 +14,7 @@ import { put } from '@vercel/blob'
 
 export const maxDuration = 60
 
-const ALLOWED = /^systems\/(liveocean|cmems)-[a-z0-9-]+-(grid\.bin|meta\.json)$/
+const ALLOWED = /^systems\/(liveocean|cmems)-[a-z0-9-]+-(grid\.bin|meta\.json|tape\.json|tape\/\d{4}-\d{2}-\d{2}-\d{2}\.png)$/
 
 const putOpts = (contentType) => ({
   access: 'public',
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     const chunks = []
     for await (const c of req) chunks.push(c)
     const { files } = JSON.parse(Buffer.concat(chunks).toString())
-    if (!Array.isArray(files) || !files.length || files.length > 8) throw new Error('bad files array')
+    if (!Array.isArray(files) || !files.length || files.length > 12) throw new Error('bad files array')
     const written = []
     for (const f of files) {
       if (!ALLOWED.test(f.path)) throw new Error(`path not allowed: ${f.path}`)

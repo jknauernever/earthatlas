@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Local runner for the LiveOcean ocean-acidity bake (the logic lives in
-api/cron/liveocean-bake.py, which is also the Vercel python cron).
+scripts/liveocean_bake.py, which the GitHub Actions cron also runs).
 
   python3 scripts/bake-liveocean.py            # writes public/dev-data/systems/
   BLOB_READ_WRITE_TOKEN=... python3 ...        # uploads to Vercel Blob instead
 
-Deps: pip install -r api/cron/requirements.txt
+Deps: pip install -r scripts/liveocean-requirements.txt
 """
 import importlib.util
 import json
@@ -15,7 +15,7 @@ import sys
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 spec = importlib.util.spec_from_file_location(
-    "liveocean_bake", os.path.join(root, "api", "cron", "liveocean-bake.py"))
+    "liveocean_bake", os.path.join(root, "scripts", "liveocean_bake.py"))
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

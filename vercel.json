@@ -5,9 +5,6 @@
       "**": false
     }
   },
-  "functions": {
-    "api/cron/liveocean-bake.py": { "maxDuration": 300 }
-  },
   "rewrites": [
     {
       "source": "/forestmonitor",
@@ -221,10 +218,6 @@
     {
       "path": "/api/cron/systems-bake?ds=methane",
       "schedule": "10 3,9 * * *"
-    },
-    {
-      "path": "/api/cron/liveocean-bake",
-      "schedule": "50 1,7,13,19 * * *"
     }
   ]
 }

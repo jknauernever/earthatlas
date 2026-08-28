@@ -1,16 +1,18 @@
 """
-Cron: bake LiveOcean (UW) surface pH + aragonite for the /inmotion
-ocean-acidity layer. Python (not node) because the source is a 3.1 GB daily
-HDF5 file on UW's public kopah S3 — h5py + fsspec range-read just the
-metadata and the two "now" chunks (~5 MB moved per run).
+Bake LiveOcean (UW) surface pH + aragonite for the /inmotion ocean-acidity
+layer. Python (not node) because the source is a 3.1 GB daily HDF5 file on
+UW's public kopah S3 — h5py + fsspec range-read just the metadata and the
+two "now" chunks (~5 MB moved per run).
 
 Source file: https://s3.kopah.uw.edu/liveocean-share/f<YYYY.MM.DD>/layers.nc
 (the LiveOcean "layers1" post-processing product; PH/ARAG computed by their
 pipeline with PyCO2SYS). Publishes ~12:45 UTC daily; we fall back up to 3
 days so a late run never kills the layer.
 
-Local dev runner: scripts/bake-liveocean.py (imports this module).
-Deps: api/cron/requirements.txt
+Runs as a GitHub Actions cron (.github/workflows/liveocean-bake.yml) — the
+Vercel project's Vite framework preset refuses to build python functions in
+api/, so this bake lives in CI instead. Local runner: scripts/bake-liveocean.py.
+Deps: scripts/liveocean-requirements.txt
 """
 import datetime as dt
 import json
@@ -156,33 +158,3 @@ def upload_to_blob(outputs, token):
                 },
             )
             urllib.request.urlopen(req, timeout=60).read()
-
-
-try:
-    from http.server import BaseHTTPRequestHandler
-
-    class handler(BaseHTTPRequestHandler):  # noqa: N801 - Vercel python convention
-        def do_GET(self):  # noqa: N802
-            auth = self.headers.get("authorization", "")
-            secret = os.environ.get("CRON_SECRET", "")
-            if not secret or auth != f"Bearer {secret}":
-                self._send(401, {"ok": False, "error": "unauthorized"})
-                return
-            try:
-                result = bake()
-                token = os.environ.get("BLOB_READ_WRITE_TOKEN")
-                if not token:
-                    raise RuntimeError("BLOB_READ_WRITE_TOKEN not configured")
-                upload_to_blob(result["outputs"], token)
-                self._send(200, {"ok": True, **result["summary"]})
-            except Exception as e:  # noqa: BLE001 - report, cron retries next slot
-                self._send(200, {"ok": False, "error": str(e)[:300]})
-
-        def _send(self, code, obj):
-            body = json.dumps(obj).encode()
-            self.send_response(code)
-            self.send_header("content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(body)
-except ImportError:  # imported by the local dev runner outside a server context
-    pass

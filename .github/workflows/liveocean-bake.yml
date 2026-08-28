@@ -1,0 +1,27 @@
+# Bakes UW LiveOcean surface pH + aragonite to Vercel Blob for the /inmotion
+# ocean-acidity layer. Lives in Actions because the Vercel project's Vite
+# framework preset won't build python functions in api/. The bake range-reads
+# ~5 MB from LiveOcean's public 3.1 GB daily forecast file and finishes in
+# ~1-2 minutes. Schedule matches the layer's 4-hourly forecast steps; the
+# 13:50 UTC run catches the fresh daily file (published ~12:45 UTC).
+name: liveocean-bake
+on:
+  schedule:
+    - cron: '50 1,7,13,19 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/liveocean-requirements.txt
+      - run: pip install -r scripts/liveocean-requirements.txt
+      - run: python scripts/bake-liveocean.py
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}

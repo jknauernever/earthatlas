@@ -38,6 +38,7 @@ import TransportBar from './TransportBar.jsx'
 import { formatAiText } from './aiFormat.js'
 import { EventPingLayer } from './eventPings.js'
 import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
+import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
 import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
@@ -1806,6 +1807,26 @@ export default function SystemsApp() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+                  {on && status === 'ok' && def.legendRows && (
+                    <div className={styles.legendRows}>
+                      {def.legendRows.map((row) => (
+                        <div key={row.label} className={styles.legendRow}>
+                          {row.flame ? (
+                            <svg className={styles.legendGlyph} viewBox="0 0 48 48" aria-hidden="true">
+                              <path d={FLAME_PATH} fill={FLAME_STATES[row.flame].fill} stroke="#fff" strokeWidth="2.5" />
+                              <path d={FLAME_INNER} fill={FLAME_STATES[row.flame].inner} opacity="0.85" />
+                            </svg>
+                          ) : (
+                            <span
+                              className={styles.legendGlow}
+                              style={{ background: `radial-gradient(circle, ${row.glow} 0%, transparent 72%)` }}
+                            />
+                          )}
+                          <span>{row.label}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {on && status === 'ok' && !def.legend && def.legendNote && (

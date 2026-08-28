@@ -340,7 +340,15 @@ export const LAYERS = [
     sourceUrl: 'https://firms.modaps.eosdis.nasa.gov/',
     stops: null,
     legend: null,
-    legendNote: 'Far out, each glow is a cluster of fire detections from the three VIIRS satellites — bigger and brighter means more fire power (summed radiative megawatts), so one intense fire front outweighs a whole region of small agricultural burns; the most extreme fronts glow white-hot. Mid-zoom, large fires gain outlines and place names (official NIFC perimeters where mapped). Zoomed in on a fire, the glows hand off to the individual detections themselves, driven by the time bar: every circle is one satellite detection (sharp ~375 m VIIRS pixels; over the US, larger faint ~2 km GOES pixels fill the hours between VIIRS passes) that appears at its moment and fades out unless a later pass re-detects fire there — what you see lit is where fire was seen around the time on the clock, burned-out detections leave a faint dark scar (the fire’s cumulative footprint), and the official perimeter carries the mapped boundary. For significant named US fires the timeline reaches back to the fire’s first detection; the bar also scrubs days of global fire history at wider zooms. In the US, named NIFC incidents also appear as ember rings sized by official acreage even when satellites have no detections in the last day — an active fire can smolder unseen between overpasses. Only nominal-and-higher-confidence detections are shown.',
+    legendRows: [
+      { flame: 'uncontained', label: 'Named fire — less than half contained' },
+      { flame: 'partial', label: 'Half contained' },
+      { flame: 'mostly', label: 'Mostly contained' },
+      { flame: 'contained', label: 'Fully contained' },
+      { glow: 'rgba(255,160,60,1)', label: 'Satellite heat — bigger + brighter = more fire' },
+      { glow: 'rgba(255,235,185,1)', label: 'Extreme fire front' },
+    ],
+    legendNote: 'Zoom in to a fire: circles replay each satellite sighting on the time bar, dark spots are ground that already burned, and the orange outline is the official fire boundary.',
     words: null,
     load: async () => loadHotspotVariant('firms-hotspots'),
     // Resolution ladder — the client swaps to finer-binned bakes (same FIRMS
@@ -583,7 +591,7 @@ export const LAYERS = [
     },
     // History tape (SYSTEMS_TAPES.smoke).
     tape: { dataset: 'cams-smoke', expectKind: 'cams-smoke-aod550' },
-    legendNote: 'One button, two altitudes: zoomed out you see ALL the smoke in the sky — the whole column, worldwide — with faint outlined washes over North America where NOAA analysts traced smoke in live satellite imagery. Zoom into the US and the layer switches to smoke AT GROUND LEVEL from NOAA’s 3 km model: how much smoke is in the air people are actually breathing, valley by valley. The legend switches with it.',
+    legendNote: 'Zoomed out: all smoke in the sky, worldwide (outlined veils over North America = smoke analysts saw in live imagery). Zoomed into the US: smoke at ground level — what people are breathing. The legend follows.',
     legend: { min: 0, max: 2, ticks: ['0', '0.5', '1', '2+ AOD'] },
     // Zoomed into the US, the same button hands off to NOAA HRRR-Smoke:
     // near-surface concentration (µg/m³ — what people breathe) at 3 km,

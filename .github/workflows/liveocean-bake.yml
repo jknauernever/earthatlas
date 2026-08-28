@@ -24,4 +24,5 @@ jobs:
       - run: pip install -r scripts/liveocean-requirements.txt
       - run: python scripts/bake-liveocean.py
         env:
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          LIVEOCEAN_INGEST_URL: https://earthatlas.org/api/cron/liveocean-ingest
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

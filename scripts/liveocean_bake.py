@@ -139,6 +139,28 @@ def bake():
     }
 
 
+def upload_via_ingest(outputs, url, secret):
+    """POST the grid pair to the site's node ingest endpoint (CRON_SECRET
+    auth), which writes to Blob with the runtime's own token — CI never
+    holds a Blob credential."""
+    import base64
+    import urllib.request
+    files = []
+    for base, buf, meta in outputs:
+        files.append({"path": f"systems/{base}-grid.bin", "contentType": "application/octet-stream",
+                      "b64": base64.b64encode(buf).decode()})
+        files.append({"path": f"systems/{base}-meta.json", "contentType": "application/json",
+                      "b64": base64.b64encode(json.dumps(meta).encode()).decode()})
+    req = urllib.request.Request(url, data=json.dumps({"files": files}).encode(), method="POST",
+                                 headers={"Authorization": f"Bearer {secret}",
+                                          "content-type": "application/json"})
+    body = urllib.request.urlopen(req, timeout=120).read().decode()
+    resp = json.loads(body)
+    if not resp.get("ok"):
+        raise RuntimeError(f"ingest rejected: {body[:300]}")
+    return resp
+
+
 def upload_to_blob(outputs, token):
     import urllib.request
     for base, buf, meta in outputs:

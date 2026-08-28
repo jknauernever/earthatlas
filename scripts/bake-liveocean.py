@@ -24,7 +24,12 @@ def main():
     result = mod.bake()
     print(json.dumps(result["summary"], indent=2))
     token = os.environ.get("BLOB_READ_WRITE_TOKEN")
-    if token:
+    ingest = os.environ.get("LIVEOCEAN_INGEST_URL")
+    secret = os.environ.get("CRON_SECRET")
+    if ingest and secret:
+        resp = mod.upload_via_ingest(result["outputs"], ingest, secret)
+        print("uploaded via ingest:", json.dumps(resp))
+    elif token:
         mod.upload_to_blob(result["outputs"], token)
         print("uploaded to Vercel Blob")
     else:

@@ -331,7 +331,14 @@ function happywhaleProxyPlugin({ base, clientId, clientSecret, scope }) {
           return
         }
         let body = ''
-        if (op.method === 'POST') {
+        if (op.bodyFromParams) {
+          body = op.bodyFromParams(searchParams)
+          if (body == null) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'bad params' }))
+            return
+          }
+        } else if (op.method === 'POST') {
           for await (const chunk of req) body += chunk
         }
         try {

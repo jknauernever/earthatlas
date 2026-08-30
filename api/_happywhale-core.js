@@ -24,9 +24,28 @@ export const HWX_OPS = {
     cacheControl: 'public, s-maxage=604800, stale-while-revalidate=86400',
   },
   encounters: {
-    method: 'POST',
+    method: 'POST', // upstream method — the CLIENT calls this op as a GET
     path: () => '/encounters',
-    cacheControl: 'public, s-maxage=300',
+    cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+    // The search arrives as query params (GET) and is rebuilt into the
+    // upstream POST body here. Why: Vercel's edge CDN only caches GETs, so a
+    // POSTed search would hit HappyWhale once per visitor; as a GET, all
+    // visitors in a region share one upstream call per 5 minutes. Param order
+    // is fixed client-side so identical searches produce identical cache keys.
+    bodyFromParams: (sp) => {
+      const from = sp.get('from')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '')) return null
+      const body = { date: { from } }
+      const to = sp.get('to')
+      if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) body.date.to = to
+      const clat = parseFloat(sp.get('clat'))
+      const clng = parseFloat(sp.get('clng'))
+      const r = parseInt(sp.get('r'), 10)
+      if (Number.isFinite(clat) && Number.isFinite(clng) && Number.isFinite(r) && r > 0) {
+        body.area = { circle: { center: { lat: clat, lng: clng }, radius: r } }
+      }
+      return JSON.stringify(body)
+    },
   },
   individualsByLoc: {
     method: 'POST',

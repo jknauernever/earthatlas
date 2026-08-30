@@ -25,9 +25,11 @@ import {
   fetchSpeciesConfig,
   fetchEncounters,
   fetchIndividualTrack,
+  sampleArrowPoints,
   speciesColor,
   individualUrl,
 } from './happywhaleService.js'
+import { routeJourney } from './oceanRouting.js'
 import styles from './HappyWhaleApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 
@@ -39,10 +41,11 @@ const DEFAULT_RADIUS = 250
 const MILES_TO_METERS = 1609.34
 
 const DAY = 86400e3
-// The API caps a search at 10,000 encounters and truncation keeps the OLDEST
-// rows, so very wide windows surface stale data. 9 months is the widest
-// worldwide window that stays under the cap on today's beta dataset (~5.5k);
-// Year works fine for location-scoped searches.
+// The API caps a search at 10,000 encounters; since HappyWhale's 2026-08-28
+// fix, a capped result keeps the NEWEST rows (verified on beta), so wide
+// windows degrade gracefully into "the most recent 10,000". Default is
+// 9 months — the widest worldwide window that currently stays under the cap,
+// i.e. genuinely complete rather than truncated.
 const TIME_PRESETS = [
   { id: '30d', label: '30 days', days: 30 },
   { id: '90d', label: '90 days', days: 90 },
@@ -70,6 +73,45 @@ function fmtDate(d) {
   return new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// HappyWhale individual bios arrive as markdown ("Mother of [**Scuba**](url)").
+// Render just the subset they actually use — links and bold — as React nodes:
+// text stays escaped, and hrefs are regex-limited to http(s), so nothing a
+// bio author writes can inject markup.
+function renderBoldRuns(text, keyBase) {
+  const out = []
+  const re = /\*\*([^*]+)\*\*/g
+  let last = 0
+  let m
+  let i = 0
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push(<strong key={`${keyBase}b${i++}`}>{m[1]}</strong>)
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
+function renderMarkdownLite(text) {
+  const nodes = []
+  const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g
+  let last = 0
+  let m
+  let i = 0
+  while ((m = linkRe.exec(text))) {
+    if (m.index > last) nodes.push(...renderBoldRuns(text.slice(last, m.index), `t${i}`))
+    nodes.push(
+      <a key={`a${i}`} href={m[2]} target="_blank" rel="noopener noreferrer">
+        {renderBoldRuns(m[1], `l${i}`)}
+      </a>,
+    )
+    last = m.index + m[0].length
+    i++
+  }
+  if (last < text.length) nodes.push(...renderBoldRuns(text.slice(last), 'tail'))
+  return nodes
+}
+
 function countLabel(min, max) {
   if (min == null && max == null) return null
   if (min != null && max != null && min !== max) return `${min}–${max} animals`
@@ -93,6 +135,23 @@ function radiusCircleGeoJSON(centerLat, centerLng, radiusMiles, points = 96) {
     coords.push([(lng * 180) / Math.PI, (lat * 180) / Math.PI])
   }
   return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
+}
+
+// Wrap-aware bounds: shift each longitude to within 180° of the first point,
+// so a set of points spanning the antimeridian fits the short way around
+// instead of stretching the bounds across the whole globe (which zooms the
+// camera out to z≈1 centered somewhere meaningless).
+function lngLatBoundsFor(coords) {
+  if (!coords.length) return null
+  const ref = coords[0][0]
+  const b = new mapboxgl.LngLatBounds()
+  for (const [lng, lat] of coords) {
+    let L = lng
+    while (L - ref > 180) L -= 360
+    while (L - ref < -180) L += 360
+    b.extend([L, lat])
+  }
+  return b
 }
 
 function zoomForRadius(miles) {
@@ -170,6 +229,7 @@ export default function HappyWhaleApp() {
   const [radius, setRadius] = useState(() => (RADIUS_OPTIONS.includes(initial.r) ? initial.r : DEFAULT_RADIUS))
   const [selectedInd, setSelectedInd] = useState(() => (Number.isFinite(initial.ind) ? initial.ind : null))
   const [track, setTrack] = useState(null) // { individual, encounters } | null
+  const [journeyLegs, setJourneyLegs] = useState(null) // water-routed [[lng,lat],…] legs
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
@@ -182,6 +242,13 @@ export default function HappyWhaleApp() {
   // A shared link with both a camera and a journey shouldn't fit-bounds away
   // from the shared camera on load.
   const suppressTrackFitRef = useRef(!!(initialCamera && Number.isFinite(initial.ind)))
+  // Lets the (once-registered) map popup listener re-zoom to the current
+  // journey without stale closures.
+  const fitTrackRef = useRef(null)
+  // Camera as it was just before a journey zoom, so closing the journey card
+  // returns the user to the view they were browsing (null when the journey
+  // came from a shared URL — then there is no "prior" view to restore).
+  const preJourneyCameraRef = useRef(null)
 
   const isGlobal = !center
   selectedIndRef.current = selectedInd
@@ -297,6 +364,50 @@ export default function HappyWhaleApp() {
         map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius-circle', paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.08 } })
         map.addLayer({ id: 'radius-line', type: 'line', source: 'radius-circle', paint: { 'line-color': '#38bdf8', 'line-width': 1.5, 'line-opacity': 0.7 } })
       }
+      if (!map.getSource('hw-track')) {
+        map.addSource('hw-track', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+        // Water-routed journey legs (see oceanRouting.js): a dotted sea path
+        // between consecutive stops…
+        map.addLayer({
+          id: 'hw-track-line',
+          type: 'line',
+          source: 'hw-track',
+          filter: ['==', ['geometry-type'], 'LineString'],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 1.5,
+            'line-opacity': 0.65,
+            'line-dasharray': [1.5, 2.2],
+          },
+        })
+        // …with direction-of-travel arrows sampled along it. Pre-sampled
+        // point glyphs with a zoom-LOD rank (Mapbox line placement drops
+        // symbols unpredictably; see sampleArrowPoints).
+        const rankGate = (minRank) => ['case', ['>=', ['get', 'rank'], minRank], 26, 0]
+        map.addLayer({
+          id: 'hw-track-arrows',
+          type: 'symbol',
+          source: 'hw-track',
+          filter: ['==', ['geometry-type'], 'Point'],
+          layout: {
+            'text-field': '→',
+            'text-size': ['interpolate', ['linear'], ['zoom'],
+              2, rankGate(7), 3, rankGate(6), 4, rankGate(5), 5, rankGate(4),
+              6, rankGate(3), 7, rankGate(2), 8, rankGate(1), 9, rankGate(0),
+            ],
+            'text-rotate': ['get', 'rot'],
+            'text-rotation-alignment': 'map',
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: {
+            'text-color': ['get', 'color'],
+            'text-halo-color': 'rgba(0,0,0,0.55)',
+            'text-halo-width': 1.4,
+          },
+        })
+      }
       if (!map.getSource('hw-encounters')) {
         map.addSource('hw-encounters', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({
@@ -385,10 +496,21 @@ export default function HappyWhaleApp() {
             )
             .addTo(map)
 
-          // The popup is plain HTML (setHTML), so wire the journey button by hand.
+          // The popup is plain HTML (setHTML), so wire the journey button by
+          // hand. Re-clicking for the already-selected whale re-zooms (the
+          // state doesn't change, so the fit effect alone would never re-run).
           popupRef.current.getElement()?.querySelector('[data-hw-ind]')?.addEventListener('click', (ev) => {
             const id = Number(ev.currentTarget.getAttribute('data-hw-ind'))
-            if (Number.isFinite(id)) setSelectedInd(id)
+            if (Number.isFinite(id)) {
+              // Entering journey mode from browsing? Remember where the user
+              // was, so closing the journey card can take them back.
+              if (selectedIndRef.current == null) {
+                const c = map.getCenter()
+                preJourneyCameraRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() }
+              }
+              setSelectedInd(id)
+              fitTrackRef.current?.(id)
+            }
             popupRef.current?.remove()
           })
         })
@@ -475,16 +597,59 @@ export default function HappyWhaleApp() {
 
   // Frame the active journey (the numbered stops render via the encounters
   // source — see the seq property above).
+  const fitToTrack = useCallback((id) => {
+    const map = mapRef.current
+    if (!map || !track || (id != null && track.individual?.id !== id)) return
+    const b = lngLatBoundsFor(track.encounters.map((e) => [e.lng, e.lat]))
+    if (b) map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1400, essential: true })
+  }, [track])
+  useEffect(() => { fitTrackRef.current = fitToTrack }, [fitToTrack])
+
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !track) return
     if (suppressTrackFitRef.current) { suppressTrackFitRef.current = false; return }
-    if (track.encounters.length) {
-      const b = new mapboxgl.LngLatBounds()
-      for (const e of track.encounters) b.extend([e.lng, e.lat])
-      map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1400 })
-    }
+    fitTrackRef.current?.()
   }, [track, mapReady])
+
+  // Route the journey's legs through water (async: lazy-loads the land mask
+  // on the first journey, then A* per leg).
+  useEffect(() => {
+    if (!track || track.encounters.length < 2) { setJourneyLegs(null); return }
+    let cancelled = false
+    routeJourney(track.encounters)
+      .then((legs) => { if (!cancelled) setJourneyLegs(legs) })
+      .catch(() => { if (!cancelled) setJourneyLegs(null) })
+    return () => { cancelled = true }
+  }, [track])
+
+  // Draw (or clear) the routed legs + direction arrows.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const src = map.getSource('hw-track')
+    if (!src) return
+    if (!journeyLegs || !track) {
+      src.setData({ type: 'FeatureCollection', features: [] })
+      return
+    }
+    const color = speciesColor(track.individual?.speciesKey)
+    src.setData({
+      type: 'FeatureCollection',
+      features: [
+        ...journeyLegs.map((l) => ({
+          type: 'Feature',
+          properties: { color },
+          geometry: { type: 'LineString', coordinates: l.coords },
+        })),
+        ...sampleArrowPoints(journeyLegs).map((p) => ({
+          type: 'Feature',
+          properties: { color, rot: p.rot, rank: p.rank },
+          geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        })),
+      ],
+    })
+  }, [journeyLegs, track, mapReady])
 
   // ─── Radius circle overlay ────────────────────────────────────────────────
   useEffect(() => {
@@ -583,14 +748,21 @@ export default function HappyWhaleApp() {
   }, [])
 
   const handleClearLocation = useCallback(() => { setCenter(null) }, [])
-  const handleClearJourney = useCallback(() => { setSelectedInd(null) }, [])
+  const handleClearJourney = useCallback(() => {
+    setSelectedInd(null)
+    // The effects clear these too; doing it here as well guarantees no
+    // leftover route/stop artifacts even if a state update is interrupted.
+    mapRef.current?.getSource('hw-track')?.setData({ type: 'FeatureCollection', features: [] })
+    const cam = preJourneyCameraRef.current
+    preJourneyCameraRef.current = null
+    if (cam) mapRef.current?.flyTo({ center: cam.center, zoom: cam.zoom, duration: 1000, essential: true })
+  }, [])
 
   const handleZoomToResults = useCallback(() => {
     const map = mapRef.current
     if (!map || !filteredEncounters.length) return
-    const b = new mapboxgl.LngLatBounds()
-    for (const e of filteredEncounters) b.extend([e.lng, e.lat])
-    map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1200, essential: true })
+    const b = lngLatBoundsFor(filteredEncounters.map((e) => [e.lng, e.lat]))
+    if (b) map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1200, essential: true })
   }, [filteredEncounters])
 
   if (!MAPBOX_TOKEN) {
@@ -677,7 +849,7 @@ export default function HappyWhaleApp() {
                   ? `${stats.count.toLocaleString()} encounters worldwide`
                   : `${stats.count.toLocaleString()} encounters within ${radius} mi of ${center.name}`}
               {limitExceeded && !loading && !error && (
-                <span className={styles.statusNote}> · showing the first 10,000 — narrow the search for full coverage</span>
+                <span className={styles.statusNote}> · showing the 10,000 most recent — narrow the time range or location for full coverage</span>
               )}
             </div>
 
@@ -716,7 +888,10 @@ export default function HappyWhaleApp() {
                 <div className={styles.journeyMeta}>
                   Stops numbered on the map, ① oldest → newest
                 </div>
-                {trackInd.bio && <div className={styles.journeyBio}>{trackInd.bio}</div>}
+                {trackInd.bio && <div className={styles.journeyBio}>{renderMarkdownLite(trackInd.bio)}</div>}
+                <button type="button" className={styles.journeyZoom} onClick={() => fitToTrack()}>
+                  ⟶ Zoom to journey
+                </button>
                 <a className={styles.journeyLink} href={individualUrl(trackInd.id)} target="_blank" rel="noopener noreferrer">
                   View on HappyWhale ↗
                 </a>

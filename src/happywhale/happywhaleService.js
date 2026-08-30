@@ -14,9 +14,10 @@
  *  - media/avatar carry BOTH thumbUrl (100px -t bucket) and url (1200px -m
  *    bucket), plus a licenseLevel (e.g. PUBLIC_DOMAIN). Popups want `url`;
  *    the tiny thumbUrl suits avatars.
- *  - /encounters caps at 10,000 results (limitExceeded=true) and truncation
- *    keeps the OLDEST rows, so wide date windows surface stale data — the UI
- *    nudges users to narrow the search.
+ *  - /encounters caps at 10,000 results (limitExceeded=true); since
+ *    HappyWhale's 2026-08-28 fix a capped result keeps the NEWEST rows, so
+ *    wide windows degrade into "the most recent 10,000" — the UI still
+ *    nudges users to narrow the search for complete coverage.
  */
 
 const API = '/api/happywhale'
@@ -139,9 +140,16 @@ export async function fetchSpeciesConfig({ signal } = {}) {
  * Note: the API has no species parameter — species filtering is client-side.
  */
 export async function fetchEncounters({ circle, from, to, signal } = {}) {
-  const body = { date: { from: toDateStr(from), ...(to ? { to: toDateStr(to) } : {}) } }
-  if (circle) body.area = { circle: { center: { lat: circle.lat, lng: circle.lng }, radius: circle.radiusMeters } }
-  const data = await proxyJSON('encounters', { body, signal })
+  // GET with a FIXED param order (not POST): identical searches from
+  // different visitors then share one edge-cached response for 5 minutes
+  // instead of each hitting HappyWhale (the CDN only caches GETs). Dates are
+  // day-granular and circle params rounded, so cache keys stay stable.
+  let q = `encounters&from=${toDateStr(from)}`
+  if (to) q += `&to=${toDateStr(to)}`
+  if (circle) {
+    q += `&clat=${circle.lat.toFixed(4)}&clng=${circle.lng.toFixed(4)}&r=${Math.round(circle.radiusMeters)}`
+  }
+  const data = await proxyJSON(q, { signal })
   if (!data || !Array.isArray(data.results)) throw new Error('unexpected encounters payload')
   return {
     encounters: data.results.map(normEncounter).filter(Boolean),
@@ -164,4 +172,53 @@ export async function fetchIndividualTrack({ id, signal } = {}) {
     individual: { ...data.individual, avatar: normMedia(data.individual.avatar) },
     encounters: (data.encs || []).map(normEncounter).filter(Boolean).sort((a, b) => a.time - b.time),
   }
+}
+
+// ─── Journey arrow sampling ──────────────────────────────────────────────────
+const havKm = (lat1, lng1, lat2, lng2) => {
+  const r = Math.PI / 180
+  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lng2 - lng1) * r) / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(a))
+}
+
+/**
+ * Sample arrow markers along journey legs: a point every ~stepKm carrying the
+ * local direction of travel as `rot` (degrees clockwise; 0 = the '→' glyph's
+ * native east) and a power-of-two LOD `rank` (arrow i gets the largest k≤7
+ * with i % 2^k === 0). Deterministic point symbols, NOT Mapbox line
+ * placement — line placement silently drops symbols (curvature, tile
+ * clipping, overlapping geometry), which read as random gaps in the arrow
+ * chain. The layer's zoom-interpolated size expression shows rank ≥ r(zoom),
+ * so the chain keeps an even rhythm at every zoom with no collision logic.
+ * Legs: [{ coords: [[lng,lat],…] }] → [{ lng, lat, rot, rank }].
+ */
+export function sampleArrowPoints(legs, stepKm = 10) {
+  const out = []
+  for (const leg of legs) {
+    const c = leg.coords
+    let carry = stepKm / 2 // start half a step in so chains don't sit on the dots
+    let i = 0
+    for (let s = 1; s < c.length; s++) {
+      const [lngA, latA] = c[s - 1]
+      const [lngB, latB] = c[s]
+      const segKm = havKm(latA, lngA, latB, lngB)
+      if (segKm <= 0) continue
+      // Mercator-plane angle (not true bearing) so the glyph aligns with the
+      // on-screen line direction even at high latitudes.
+      const latMid = ((latA + latB) / 2) * (Math.PI / 180)
+      const rot = (Math.atan2((lngB - lngA) * Math.cos(latMid), latB - latA) * 180) / Math.PI - 90
+      let d = carry
+      while (d <= segKm) {
+        const t = d / segKm
+        let rank = 0
+        while (rank < 7 && i % (1 << (rank + 1)) === 0) rank++
+        out.push({ lng: lngA + (lngB - lngA) * t, lat: latA + (latB - latA) * t, rot, rank })
+        i++
+        d += stepKm
+      }
+      carry = d - segKm
+    }
+  }
+  return out
 }

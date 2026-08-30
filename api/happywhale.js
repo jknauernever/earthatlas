@@ -61,7 +61,12 @@ export default async function handler(req) {
   }
 
   let body
-  if (op.method === 'POST') {
+  if (op.bodyFromParams) {
+    // Cacheable op: the search arrives as GET query params and is rebuilt
+    // into the upstream POST body (GETs are what the edge CDN caches).
+    body = op.bodyFromParams(searchParams)
+    if (body == null) return json({ error: 'bad params' }, { status: 400 })
+  } else if (op.method === 'POST') {
     try {
       body = await req.text()
       JSON.parse(body || '{}') // forward only well-formed JSON

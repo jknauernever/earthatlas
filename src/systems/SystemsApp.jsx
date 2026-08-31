@@ -41,6 +41,7 @@ import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
 import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
 import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
+import { MethanePlumesOverlay } from './methanePlumesOverlay.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
 import ClipStudio from './ClipStudio.jsx'
@@ -76,7 +77,7 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
 
 // ─── Plain-language helpers for the fire popups: the data's job is to tell
 // a story a non-expert can read at a glance — jargon (detections, MW,
@@ -525,6 +526,21 @@ export default function SystemsApp() {
               meta: `NOAA analysts traced this plume from live satellite photos${when ? `, as of ${when} today` : ''}. It describes smoke in the air column overhead — not necessarily what you'd breathe at ground level.`,
               ai: `NOAA HMS analyst-drawn smoke polygon: density ${p.density}, traced from ${p.satellite || 'GOES'} imagery, analysis window ${p.start_ms ? new Date(p.start_ms).toISOString() : '?'} → ${p.end_ms ? new Date(p.end_ms).toISOString() : '?'}`,
               link: { href: 'https://www.ospo.noaa.gov/products/land/hms.html', label: 'Source: NOAA HMS ↗' },
+            }))
+          }
+        }
+        if (def.id === 'methane') {
+          const pl = instancesRef.current.methaneplumes?.hitTest(e.point.x, e.point.y)
+          if (pl) {
+            const when = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const tph = pl.kgh >= 1000 ? `${(pl.kgh / 1000).toFixed(1)} tonnes/hour` : `${pl.kgh} kg/hour`
+            sections.push(sectionHtml({
+              head: 'Methane plume observed here',
+              big: tph,
+              alt: `±${pl.unc} kg/h · imaged by ${pl.platform || 'Carbon Mapper'} on ${when}`,
+              meta: 'One directly observed plume from a specific source (gas infrastructure, landfill, agriculture…), imaged at ~30–60 m. These are targeted snapshots — an empty area means unsurveyed, not clean.',
+              ai: `Carbon Mapper observed CH4 point-source plume: ${pl.kgh} kg/hr (uncertainty ${pl.unc}), platform ${pl.platform}, date ${new Date(pl.t_ms).toISOString()}, plume_id ${pl.plume_id}. This is a DIRECT OBSERVATION of a single facility-scale source, unlike the modeled background field.`,
+              link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
             }))
           }
         }
@@ -1141,6 +1157,22 @@ export default function SystemsApp() {
     inst.smokeplumes?.setVisible(skyOn)
   }, [mapReady, layerOn, replay, smokeMode])
 
+  // ─── Carbon Mapper methane plumes ride the Methane layer: the modeled
+  // near-surface field below, individually observed point-source plumes
+  // above (dots from mid zoom — the overlay handles its own zoom gate).
+  useEffect(() => {
+    const on = !!layerOn.methane
+    const inst = instancesRef.current
+    if (mapReady && on && !inst.methaneplumes && canvasEls.current.methaneplumes) {
+      try {
+        inst.methaneplumes = new MethanePlumesOverlay(mapRef.current, canvasEls.current.methaneplumes)
+      } catch (err) {
+        console.error('[systems] methane plumes overlay init failed:', err)
+      }
+    }
+    inst.methaneplumes?.setVisible(on)
+  }, [mapReady, layerOn])
+
   // One cursor, every fire layer: drive the fire displays (raw detections at
   // close zoom, daily presence bins wide out) to a moment in time. Used by
   // the fire layer's own transport AND as a follower when another layer's
@@ -1556,6 +1588,7 @@ export default function SystemsApp() {
           event pings (fires, quakes) on top. */}
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.scalar = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.smokeplumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />
@@ -1850,7 +1883,7 @@ export default function SystemsApp() {
                       ))}
                     </div>
                   )}
-                  {on && status === 'ok' && !def.legend && def.legendNote && (
+                  {on && status === 'ok' && def.legendNote && (
                     <div className={styles.field}>
                       <div className={styles.legendNoteText}>{def.legendNote}</div>
                     </div>

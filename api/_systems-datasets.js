@@ -1827,7 +1827,7 @@ const CH4_CFG = {
   runsPerDay: 1,
   latencyH: 26, leadStepH: 3, // GHG runs publish ~a day behind; 3-hourly leads
   convert: (v) => Math.min(v * (28.9647 / 16.0425) * 1e9, 3190), // kg/kg → ppb, clamped under maxAbs
-  stride: 4, // 0.1° → 0.4°, matching the composition grids
+  stride: 2, // 0.1° → 0.2° (~20 km): methane keeps more of the native detail (3.2 MB grid)
   scale: 10, maxAbs: 3200,
 }
 // CO₂ comes from CAMS's separate greenhouse-gas forecast (daily 00z run), at
@@ -1848,6 +1848,48 @@ const CO2_CFG = {
   stride: 4, // 0.1° → 0.4°, matching the composition grids
   scale: 40, maxAbs: 800,
 }
+// ─── Carbon Mapper methane plumes ────────────────────────────────────────────
+// Observational companion to the modeled methane layer: individual CH₄
+// plumes imaged at ~30–60 m by Carbon Mapper's Tanager satellites and
+// aircraft campaigns, with quantified emission rates. Their catalog API is
+// public and unauthenticated. Snapshots, not a survey: coverage is targeted
+// revisits of known source regions — an empty area means unsurveyed, never
+// clean. Rows: [lat, lng, kg_per_hr, uncertainty, t_ms, platform, plume_id].
+const CM_PLUMES_URL = 'https://api.carbonmapper.org/api/v1/catalog/plumes/annotated'
+const CM_WINDOW_DAYS = 365
+const CM_MAX_PLUMES = 9000
+
+async function fetchMethanePlumes() {
+  const since = new Date(Date.now() - CM_WINDOW_DAYS * 8.64e7).toISOString().slice(0, 19) + 'Z'
+  const rows = []
+  for (let offset = 0; offset < 30000; offset += 1000) {
+    const u = `${CM_PLUMES_URL}?plume_gas=CH4&limit=1000&offset=${offset}&datetime=${encodeURIComponent(`${since}/..`)}`
+    const r = await fetch(u, { headers: { accept: 'application/json' } })
+    if (!r.ok) throw new Error(`carbonmapper ${r.status}`)
+    const j = await r.json()
+    for (const it of j.items || []) {
+      const c = it.geometry_json?.coordinates
+      if (!c || it.emission_auto == null) continue
+      rows.push([
+        Math.round(c[1] * 1e4) / 1e4, Math.round(c[0] * 1e4) / 1e4,
+        Math.round(it.emission_auto), Math.round(it.emission_uncertainty_auto || 0),
+        Date.parse(it.scene_timestamp), it.platform || it.instrument || '', it.plume_id,
+      ])
+    }
+    if (!j.items || j.items.length < 1000) break
+  }
+  rows.sort((a, b) => b[4] - a[4])
+  const plumes = rows.slice(0, CM_MAX_PLUMES)
+  return {
+    json: {
+      version: 1, kind: 'methane-plumes', fetched_ms: Date.now(),
+      window_days: CM_WINDOW_DAYS, count: plumes.length, total_matched: rows.length,
+      source: 'Carbon Mapper public catalog — individual CH₄ plumes with quantified emission rates (Tanager satellites + aircraft; ~30–60 m)',
+      plumes,
+    },
+  }
+}
+
 async function fetchSmoke() { return fetchCamsField(SMOKE_CFG) }
 async function fetchDust() { return fetchCamsField(DUST_CFG) }
 async function fetchCo() { return fetchCamsField(CO_CFG) }
@@ -1931,6 +1973,7 @@ export const SYSTEMS_DATASETS = {
   co: { blobBase: 'systems/cams-co', fetchGrid: fetchCo },
   pm25: { blobBase: 'systems/cams-pm25', fetchGrid: fetchPm25 },
   methane: { blobBase: 'systems/cams-ch4', fetchGrid: fetchCh4 },
+  'methane-plumes': { blobBase: 'systems/methane-plumes', fetchGrid: fetchMethanePlumes },
   co2: { blobBase: 'systems/cams-co2', fetchGrid: fetchCo2 },
 }
 

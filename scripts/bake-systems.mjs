@@ -23,7 +23,7 @@ for (const ds of which) {
   try {
     const result = await entry.fetchGrid()
     const meta = result.jsons?.[0]?.json || result.json || result.meta
-    const stamp = `valid ${new Date(meta.valid_ms).toISOString()}`
+    const stamp = `valid ${new Date(meta.valid_ms ?? meta.fetched_ms).toISOString()}`
     const files = result.jsons
       ? result.jsons.map((f) => [basename(f.path), JSON.stringify(f.json), 'application/json'])
       : result.json

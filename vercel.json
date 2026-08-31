@@ -218,6 +218,10 @@
     {
       "path": "/api/cron/systems-bake?ds=methane",
       "schedule": "10 3,9 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=methane-plumes",
+      "schedule": "25 4 * * *"
     }
   ]
 }

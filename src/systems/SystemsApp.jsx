@@ -579,21 +579,23 @@ export default function SystemsApp() {
             const what = SECTOR_WORDS[pl.sector] || 'an unclassified source'
             const escName = pl.name ? pl.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : null
             const lastSeen = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            const firstSeen = new Date(pl.t_first).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const firstYear = new Date(pl.t_first).getFullYear()
             const tph = pl.kgh >= 1000 ? `${(pl.kgh / 1000).toFixed(1)} tonnes/hour` : `${pl.kgh} kg/hour`
-            const uncTxt = pl.unc >= 1000 ? `±${(pl.unc / 1000).toFixed(1)} t/h` : `±${pl.unc} kg/h`
-            const visits = pl.obs > 1
-              ? `seen emitting on ${pl.det} of ${pl.obs} satellite visits`
-              : 'seen emitting on its only satellite visit so far'
             const gasWord = gasDef.product === 'co2' ? 'CO₂' : 'Methane'
+            // Make the number mean something: near-term climate impact in
+            // cars' worth of exhaust (CH₄ at 20-yr GWP ≈82; average car
+            // ≈4.6 t CO₂/yr). Rounded hard — it's an anchor, not a metric.
+            const cars = Math.round((pl.kgh * (gasDef.product === 'co2' ? 1.9 : 157)) / 1000) * 1000
+            const carsTxt = cars >= 1e6 ? `${(cars / 1e6).toFixed(1)} million cars` : `${cars.toLocaleString()} cars`
+            const story = pl.obs > 1
+              ? `Satellites have caught it leaking on ${pl.det} of ${pl.obs} passes — most recently ${lastSeen}${new Date(pl.t_first).getFullYear() < new Date(pl.t_ms).getFullYear() ? `, going back to ${firstYear}` : ''}.`
+              : `Spotted from space on ${lastSeen} — the first satellite pass over this site.`
             sections.push(sectionHtml({
               head: escName ? `${gasWord} source: ${escName}` : `${gasWord} leak from ${what}`,
               big: tph,
-              alt: `${uncTxt} · ${visits}`,
-              meta: `A persistent observed source (${what}, sector ${pl.sector || 'n/a'}), imaged at ~30–60 m — latest detection ${lastSeen}${pl.t_first !== pl.t_ms ? `, first ${firstSeen}` : ''}.` +
-                (escName ? ` Facility name from Climate TRACE (${pl.distKm < 1 ? 'at this location' : `${pl.distKm} km away`}).` : '') +
-                ' Targeted snapshots — an empty area means unsurveyed, not clean.',
-              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field.`,
+              alt: cars >= 1000 ? `≈ the climate impact of ${carsTxt} while it leaks at this rate` : `measured from space, ±${pl.unc} kg/h`,
+              meta: story,
+              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE ${pl.distKm} km away` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; do not use jargon like sector codes, GSD, persistence, or data-provider names.`,
               link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
             }))
             if (!escName) sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
@@ -710,8 +712,8 @@ export default function SystemsApp() {
             if (!el) return
             if (j?.ok) {
               el.innerHTML = j.count > 0
-                ? `Carbon Mapper's satellites have imaged this area ${j.count === 1 ? 'once' : `${j.count} times`}${j.latest ? ` (latest ${j.latest})` : ''} with no leak detected at this spot — observed sources appear as green markers.`
-                : 'Carbon Mapper has never surveyed this spot — no observation exists either way. Empty means unsurveyed, not clean.'
+                ? `Leak-hunting satellites have checked this area ${j.count === 1 ? 'once' : `${j.count} times`}${j.latest ? ` (last ${j.latest})` : ''} and found nothing here. Leaks they do find show up as green markers.`
+                : `Leak-hunting satellites haven't checked this exact spot yet, so no one knows either way.`
               el.classList.add(styles.popupAnalysisDone)
               try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
             } else el.remove()
@@ -2172,6 +2174,22 @@ function MethodologyModal({ onClose, layerMeta }) {
                 {layerMeta[def.id] && <> Currently: <strong>{def.stamp(layerMeta[def.id])}</strong>.</>}
               </li>
             ))}
+            <li>
+              <strong>Observed emission sources (green markers on Methane and CO₂) — </strong>
+              <a href="https://carbonmapper.org" target="_blank" rel="noopener noreferrer">Carbon Mapper</a>
+              {'. '}
+              Individual leaks imaged at ~30–60 m by the Tanager satellites and partner
+              aircraft, clustered into persistent sources with measured rates (± an
+              uncertainty shown in each marker&apos;s details) and how often each site was
+              seen emitting. Facility names come from the{' '}
+              <a href="https://climatetrace.org" target="_blank" rel="noopener noreferrer">Climate TRACE</a>{' '}
+              global facility inventory (nearest matching facility within 3 km; CC-BY), with
+              OpenStreetMap as a fallback. Coverage is targeted, not global: these
+              satellites revisit known emitting regions, so an area without markers may
+              simply never have been surveyed — clicking an empty spot reports whether it
+              was. The &quot;cars&quot; comparison uses methane&apos;s 20-year warming
+              power (~82× CO₂) against a typical car&apos;s ~4.6 t CO₂/year.
+            </li>
             <li>
               <strong>Rendering.</strong> In-house renderers built for EarthAtlas — no
               third-party weather service in between. Basemap: Mapbox satellite, dark,

@@ -242,14 +242,18 @@ const CO2_STOPS = [
 ]
 
 // Near-surface methane in ppb; ~1,950 is today's well-mixed background.
+// Swamp-gas palette: dull yellow-green souring into rot-brown — the
+// universal shorthand for toxic/heavy air (Josh, 2026-08-31). Kept murky
+// and desaturated on purpose: the vivid lime detection reticles must pop
+// on top of it by brightness alone.
 const CH4_STOPS = [
-  [1880, 'rgba(165,150,230,0)'],
-  [1950, 'rgba(165,150,230,0.04)'],
-  [2000, 'rgba(160,125,235,0.15)'],
-  [2060, 'rgba(170,105,230,0.4)'],
-  [2130, 'rgba(195,85,225,0.65)'],
-  [2250, 'rgba(230,65,190,0.85)'],
-  [2450, 'rgba(255,70,140,1)'],
+  [1880, 'rgba(150,148,95,0)'],
+  [1950, 'rgba(150,148,95,0.06)'],
+  [2000, 'rgba(152,150,72,0.2)'],
+  [2060, 'rgba(146,142,48,0.45)'],
+  [2130, 'rgba(148,120,34,0.68)'],
+  [2250, 'rgba(128,92,26,0.86)'],
+  [2450, 'rgba(84,58,16,1)'],
 ]
 
 // ─── Layer definitions ──────────────────────────────────────────────────────
@@ -916,7 +920,7 @@ export const LAYERS = [
   },
   {
     id: 'methane',
-    hue: '#e879f9',
+    hue: '#b5ad4a',
     iconSvg: '<circle cx="12" cy="12" r="2.8"></circle><circle cx="12" cy="5" r="1.6"></circle><circle cx="5" cy="16" r="1.6"></circle><circle cx="19" cy="16" r="1.6"></circle><circle cx="12" cy="19.5" r="1.6"></circle><path d="M12 8.8V6.9"></path><path d="M9.6 13.4l-2.8 1.7"></path><path d="M14.4 13.4l2.8 1.7"></path>',
     group: 'air',
     kind: 'scalar',

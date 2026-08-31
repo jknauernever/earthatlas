@@ -707,3 +707,11 @@
 }
 @keyframes modeToastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes modeToastOut { to { opacity: 0; } }
+
+@media (max-width: 768px) {
+  /* Explain button sits lower on phones (below the branding row) — the
+     cue follows it down, and the chip shrinks a touch. */
+  .modeCueWrap { top: calc(102px + env(safe-area-inset-top, 0px)); }
+  .modeToast { font-size: 12px; padding: 6px 12px; }
+  .modeChip { font-size: 10px; }
+}

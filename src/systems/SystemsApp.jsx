@@ -263,9 +263,12 @@ function fitPopupToMap(popup) {
   const rect = el.getBoundingClientRect()
   // Space from the card's top edge to the map bottom (top-anchored cards
   // grow downward) or from the map top to its bottom edge (bottom-anchored
-  // cards grow upward); centered anchors use the smaller of the two.
+  // cards grow upward); centered anchors use the smaller of the two. The
+  // top ~64px belongs to the Explain button and mode cues — cards stop
+  // short of it instead of sliding underneath.
+  const TOP_RESERVE = 64
   const down = mapRect.bottom - rect.top - 16
-  const up = rect.bottom - mapRect.top - 16
+  const up = rect.bottom - (mapRect.top + TOP_RESERVE) - 16
   const room = anchor.includes('top') ? down : anchor.includes('bottom') ? up : Math.min(down, up)
   const cap = Math.max(160, Math.min(420, Math.floor(room)))
   scroller.style.maxHeight = `${cap}px`
@@ -781,6 +784,7 @@ export default function SystemsApp() {
                 ? `Leak-hunting satellites have checked this area ${j.count === 1 ? 'once' : `${j.count} times`}${j.latest ? ` (last ${j.latest})` : ''} and found nothing here. Leaks they do find show up as green markers.`
                 : `Leak-hunting satellites haven't checked this exact spot yet, so no one knows either way.`
               el.classList.add(styles.popupAnalysisDone)
+              fitPopupToMap(pp)
               try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
               fitPopupToMap(pp)
             } else el.remove()
@@ -805,6 +809,7 @@ export default function SystemsApp() {
             if (html) {
               el.innerHTML = html
               el.classList.add(styles.popupAnalysisDone)
+              fitPopupToMap(pp)
               try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
               fitPopupToMap(pp)
             } else el.remove()
@@ -866,6 +871,7 @@ export default function SystemsApp() {
             // card — the anchor was picked while the popup still said
             // "Adding context…", and without this the added text runs off the
             // top of the map.
+            fitPopupToMap(popup) // cap BEFORE re-anchoring: a full-height card overshoots for a frame
             try { popup.setLngLat(popup.getLngLat()) } catch { /* popup closed */ }
             fitPopupToMap(popup)
             attachPopupScrollHint(popup, styles)

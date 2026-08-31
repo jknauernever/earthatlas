@@ -550,7 +550,9 @@
 .popupAnalysisDone strong { color: #111827; font-weight: 700; }
 
 /* Popups sit above the replay bar (bar is z 6). */
-:global(.mapboxgl-popup) { z-index: 8 !important; }
+:global(.mapboxgl-popup) { z-index: 14 !important; } /* above the Explain
+  button and cues while open — an ephemeral card the user just asked for
+  beats persistent chrome; it closes on X or any map click */
 :global(.mapboxgl-popup-content) {
   padding: 0 !important;
   background: #fff !important;

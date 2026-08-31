@@ -593,9 +593,9 @@ export default function SystemsApp() {
             sections.push(sectionHtml({
               head: escName ? `${gasWord} source: ${escName}` : `${gasWord} leak from ${what}`,
               big: tph,
-              alt: cars >= 1000 ? `≈ the climate impact of ${carsTxt} while it leaks at this rate` : `measured from space, ±${pl.unc} kg/h`,
+              alt: cars >= 1000 ? `≈ the climate impact of ${carsTxt}, at the rate last measured` : `measured from space, ±${pl.unc} kg/h`,
               meta: story,
-              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE ${pl.distKm} km away` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; do not use jargon like sector codes, GSD, persistence, or data-provider names.`,
+              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE ${pl.distKm} km away` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; do not use jargon like sector codes, GSD, persistence, or data-provider names. The visible popup ALREADY shows the rate, the cars comparison, and the visit history — do not restate any of them. The rate is from the LATEST DETECTION DATE, not live: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
               link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
             }))
             if (!escName) sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
@@ -633,7 +633,11 @@ export default function SystemsApp() {
         if (!sample) continue
         const extraField = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
         const extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
-        sections.push(sectionHtml(def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)))
+        const modeled = def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)
+        // Under an identified source, "(a source region or plume upwind)" is
+        // dead weight — the marker section above IS the source.
+        if (plumeHit && GAS_SOURCE_DEFS.some((g) => g.id === def.id)) modeled.alt = 'the wider air around this site'
+        sections.push(sectionHtml(modeled))
         // Correlation, stated plainly: wildfires emit these gases (and CAMS
         // assimilates satellite fire emissions), so when an active fire sits
         // near the click, say so — even if the fire layer is off.

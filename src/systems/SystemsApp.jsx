@@ -100,9 +100,14 @@ const FIRE_CORRELATED = new Set(['methane', 'co', 'co2', 'pm25', 'smoke'])
 // basemap (below all our canvas overlays) lets the data read first, the
 // standard move in serious data viewers. Only while a wash is on.
 const DIMMER_LAYER = 'systems-basemap-dimmer'
-function setBasemapDimmer(map, on) {
+// Streets is already light and low-contrast — a heavy veil makes it murky
+// (Josh, 2026-08-31). Imagery basemaps carry the full veil.
+const DIMMER_OPACITY = { streets: 0.22, light: 0.22 }
+function setBasemapDimmer(map, on, basemapId) {
+  const opacity = DIMMER_OPACITY[basemapId] ?? 0.42
   try {
     const has = map.getLayer(DIMMER_LAYER)
+    if (on && has) map.setPaintProperty(DIMMER_LAYER, 'background-opacity', opacity)
     if (on && !has) {
       // Slot the veil under the first label layer: terrain and colors dim,
       // place names and roads stay legible for wayfinding.
@@ -110,7 +115,7 @@ function setBasemapDimmer(map, on) {
       map.addLayer({
         id: DIMMER_LAYER,
         type: 'background',
-        paint: { 'background-color': '#0a0d12', 'background-opacity': 0.42 },
+        paint: { 'background-color': '#0a0d12', 'background-opacity': opacity },
       }, firstSymbol)
     } else if (!on && has) {
       map.removeLayer(DIMMER_LAYER)
@@ -1064,7 +1069,7 @@ export default function SystemsApp() {
     // Replay-capable layers swap to the tape as soon as it's loaded (the
     // static "now" wash shows in the meantime). Earth's systems are in
     // motion: the tape starts playing the moment it's on screen.
-    setBasemapDimmer(map, !!active)
+    setBasemapDimmer(map, !!active, basemap)
     const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
       : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null

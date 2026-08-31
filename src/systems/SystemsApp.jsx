@@ -94,6 +94,30 @@ const FIRE_CORRELATED = new Set(['methane', 'co', 'co2', 'pm25', 'smoke'])
 // the clicked source's newest scene (public Carbon Mapper XYZ endpoint —
 // absolute URL, per the house Mapbox rule). One at a time; removed with the
 // popup.
+// Basemap dimmer: when a scalar wash is active, the basemap fights it —
+// warm smoke tans vanish on arid terrain, pH blues sink into ocean imagery,
+// street colors shout over everything. A translucent dark veil over the
+// basemap (below all our canvas overlays) lets the data read first, the
+// standard move in serious data viewers. Only while a wash is on.
+const DIMMER_LAYER = 'systems-basemap-dimmer'
+function setBasemapDimmer(map, on) {
+  try {
+    const has = map.getLayer(DIMMER_LAYER)
+    if (on && !has) {
+      // Slot the veil under the first label layer: terrain and colors dim,
+      // place names and roads stay legible for wayfinding.
+      const firstSymbol = (map.getStyle().layers || []).find((l) => l.type === 'symbol')?.id
+      map.addLayer({
+        id: DIMMER_LAYER,
+        type: 'background',
+        paint: { 'background-color': '#0a0d12', 'background-opacity': 0.42 },
+      }, firstSymbol)
+    } else if (!on && has) {
+      map.removeLayer(DIMMER_LAYER)
+    }
+  } catch { /* style mid-swap; the next epoch re-applies */ }
+}
+
 const CM_SCENE_LAYER = 'cm-scene-tiles'
 function showSceneOverlay(map, sceneId, product) {
   removeSceneOverlay(map)
@@ -360,6 +384,7 @@ export default function SystemsApp() {
   const [showMethodology, setShowMethodology] = useState(false)
   const isMobile = useIsMobile()
   if (import.meta.env.DEV) window.__systemsNav = { panelOpen, mobileView, isMobile } // dev-only QA handle
+  if (import.meta.env.DEV) window.__sys = { fields: fieldsRef, instances: instancesRef, replay: replayRef, layerOn, layerStatus } // dev-only QA handle
   const [mapView, setMapView] = useState(initialCamera)
   // Bumped on every style.load; raster overlays live inside the style and
   // must be re-added after basemap switches.
@@ -1039,6 +1064,7 @@ export default function SystemsApp() {
     // Replay-capable layers swap to the tape as soon as it's loaded (the
     // static "now" wash shows in the meantime). Earth's systems are in
     // motion: the tape starts playing the moment it's on screen.
+    setBasemapDimmer(map, !!active)
     const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
       : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null

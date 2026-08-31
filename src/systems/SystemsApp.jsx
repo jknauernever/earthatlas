@@ -42,6 +42,7 @@ import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.
 import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
 import { MethanePlumesOverlay } from './methanePlumesOverlay.js'
+import { identifyPlumeSource } from './plumeSourceLookup.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
 import ClipStudio from './ClipStudio.jsx'
@@ -415,6 +416,7 @@ export default function SystemsApp() {
     map.on('click', (e) => {
       const { layerOn, layerStatus, layerMeta } = stateRef.current
       const sections = []
+      let plumeHit = null
       const aiItems = [] // structured copies of each section, for the popup narration
       const sectionHtml = (p) => {
         // `ai` carries the full technical facts for the narrator even when
@@ -532,16 +534,25 @@ export default function SystemsApp() {
         if (def.id === 'methane') {
           const pl = instancesRef.current.methaneplumes?.hitTest(e.point.x, e.point.y)
           if (pl) {
+            plumeHit = pl
+            // Carbon Mapper attributes each plume to an IPCC source sector.
+            const SECTOR_WORDS = {
+              '1B2': 'oil & gas infrastructure', '6A': 'a landfill / waste site',
+              '1B1a': 'a coal mine', '1B1': 'a coal mine', '4B': 'a livestock operation',
+              '1A1': 'a power plant', '1A2': 'an industrial facility', '6B': 'wastewater treatment',
+            }
+            const what = SECTOR_WORDS[pl.sector] || 'an unclassified source'
             const when = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
             const tph = pl.kgh >= 1000 ? `${(pl.kgh / 1000).toFixed(1)} tonnes/hour` : `${pl.kgh} kg/hour`
             sections.push(sectionHtml({
-              head: 'Methane plume observed here',
+              head: `Methane leak from ${what}`,
               big: tph,
               alt: `±${pl.unc} kg/h · imaged by ${pl.platform || 'Carbon Mapper'} on ${when}`,
-              meta: 'One directly observed plume from a specific source (gas infrastructure, landfill, agriculture…), imaged at ~30–60 m. These are targeted snapshots — an empty area means unsurveyed, not clean.',
-              ai: `Carbon Mapper observed CH4 point-source plume: ${pl.kgh} kg/hr (uncertainty ${pl.unc}), platform ${pl.platform}, date ${new Date(pl.t_ms).toISOString()}, plume_id ${pl.plume_id}. This is a DIRECT OBSERVATION of a single facility-scale source, unlike the modeled background field.`,
+              meta: `One directly observed plume, attributed by Carbon Mapper to ${what} (sector ${pl.sector || 'n/a'}) and imaged at ~30–60 m. Targeted snapshots — an empty area means unsurveyed, not clean.`,
+              ai: `Carbon Mapper observed CH4 point-source plume: ${pl.kgh} kg/hr (uncertainty ${pl.unc}), IPCC sector ${pl.sector} (${what}), platform ${pl.platform}, date ${new Date(pl.t_ms).toISOString()}, plume_id ${pl.plume_id}. DIRECT OBSERVATION of a single facility-scale source, unlike the modeled background field.`,
               link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
             }))
+            sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
           }
         }
         if (def.kind === 'raster') continue // raster popups: open the full tool instead
@@ -596,6 +607,25 @@ export default function SystemsApp() {
       // two never overlap; restored on close.
       setPopupOpen(true)
       popupRef.current.once('close', () => setPopupOpen(false))
+
+      // Named-facility lookup for an observed plume: deterministic (OSM +
+      // reverse geocode), patched in when it lands — "This is almost
+      // certainly the Vancouver Landfill."
+      if (plumeHit) {
+        const pp = popupRef.current
+        identifyPlumeSource(plumeHit.lat, plumeHit.lng, plumeHit.sector)
+          .then((html) => {
+            if (popupRef.current !== pp) return
+            const el = pp.getElement()?.querySelector('[data-plume-src]')
+            if (!el) return
+            if (html) {
+              el.innerHTML = html
+              el.classList.add(styles.popupAnalysisDone)
+              try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+            } else el.remove()
+          })
+          .catch(() => {})
+      }
 
       // Same facts→narration pipeline as "Explain this view", popup-sized.
       // Click point rounded to ~10 km so repeat clicks on the same feature
@@ -871,6 +901,7 @@ export default function SystemsApp() {
       inst.scalar.layer.destroy()
       inst.scalar = null
       if (replayRef.current) { replayRef.current.destroy(); replayRef.current = null; setReplay(null) }
+      inst.methaneplumes?.setTime(null) // cursor gone → markers back to live view
     }
     if (active && !inst.scalar && canvasEls.current.scalar) {
       try {
@@ -896,8 +927,16 @@ export default function SystemsApp() {
           // Air-quality layers open at NOW, paused — no auto-replay. The
           // button answers "what's in the air right now"; history is opt-in
           // via the slider.
-          else if (['smoke', 'co', 'pm25', 'acidity'].includes(active.id)) rc.toLive()
+          else if (['smoke', 'co', 'pm25', 'acidity', 'methane'].includes(active.id)) rc.toLive()
           rc.attach(layer)
+          // Observed plume markers follow the methane cursor: scrub into the
+          // past and only plumes already observed by then are on the map —
+          // ones imaged near the cursor time ping at full strength.
+          if (active.id === 'methane') {
+            const applyPlumes = (c) => instancesRef.current.methaneplumes?.setTime(c.atLive ? null : c.t)
+            rc.subscribe((c) => { if (!c.holding) applyPlumes(c) })
+            applyPlumes(rc)
+          }
           // Companion flow particles show today's wind — only honest at
           // "now", and only below the zoom where they read as a blizzard.
           if (active.flow) {

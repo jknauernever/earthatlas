@@ -929,6 +929,9 @@ export const LAYERS = [
     sourceUrl: 'https://atmosphere.copernicus.eu/ghg-services',
     stops: CH4_STOPS,
     scalar: { opacity: 0.75 },
+    // History tape: 3-hourly frames from the daily GHG run — the nocturnal
+    // boundary layer breathing; observed plume markers follow the cursor.
+    tape: { dataset: 'cams-ch4', expectKind: 'cams-ch4-surface', windowDays: 14 },
     legend: { min: 1880, max: 2450, ticks: ['bkgd', '2100', '2450+ ppb'] },
     words: [
       { label: 'Below background', range: 'under 1,920 ppb', max: 1920 },
@@ -938,7 +941,7 @@ export const LAYERS = [
       { label: 'Hotspot', range: 'over 2,300', max: Infinity },
     ],
     stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
-    legendNote: 'Dots: individual plumes observed by Carbon Mapper (~30–60 m) with measured kg/hour — appear from mid zoom. Targeted snapshots, not a survey: empty means unsurveyed, never clean.',
+    legendNote: 'Pulsing green rings: individual plumes observed by Carbon Mapper (~30–60 m) with measured kg/hour — appear from mid zoom. Targeted snapshots, not a survey: empty means unsurveyed, never clean.',
     explain:
       'Two views in one: the wash is modeled near-surface methane — wetlands, rice paddies, livestock, and leaky oil & gas fields lifting it above the ~1,950 ppb background. Zoom in and dots appear: real plumes from specific facilities, imaged by Carbon Mapper with measured leak rates. Methane is over 80× stronger than CO₂ in its first 20 years, so those dots are some of the cheapest climate fixes on Earth.',
     popup(sample, meta) {

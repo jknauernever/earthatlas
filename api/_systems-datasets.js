@@ -1654,6 +1654,43 @@ function camsTape(cfg) {
   }
 }
 
+// GHG tape: the greenhouse-gas product runs once daily at 00z with 3-hourly
+// leads — one ADS job per day yields 8 frames of near-surface gas, which for
+// methane animates the nocturnal boundary layer breathing in and out. Frames
+// are strided like the grid bake so a 0.1° day stays ~1-2 MB.
+function ghgTape(cfg, { qscale, offset, days = 14 }) {
+  const leads = ['0', '3', '6', '9', '12', '15', '18', '21']
+  return {
+    kind: cfg.kind, source: cfg.source, qscale, offset, nodata0: false, stepH: 3, latencyH: 30, days,
+    frameKind: 'forecast',
+    expectedTimes: (day, now) => (now - dayMs(day, 0) >= 30 * H ? leads.map((l) => dayMs(day, 0) + Number(l) * H) : []),
+    async fetchDay(day) {
+      const inputs = {
+        variable: [cfg.variable], date: [`${day}/${day}`], time: ['00:00'],
+        leadtime_hour: leads, type: ['forecast'], data_format: 'netcdf_zip',
+        ...(cfg.extraInputs || {}),
+      }
+      for (const k of cfg.omitInputs || []) delete inputs[k]
+      const nc = await adsRetrieve(cfg.dataset, inputs)
+      let { lat, lon, frames } = await readCamsFramesSum(nc, [cfg.varName])
+      if (cfg.convert) for (const fr of frames) { const v = fr.values; for (let i = 0; i < v.length; i++) v[i] = cfg.convert(v[i]) }
+      const S = cfg.stride || 1
+      if (S > 1) {
+        const nLat = Math.ceil(lat.length / S)
+        const nLon = Math.ceil(lon.length / S)
+        for (const fr of frames) {
+          const out = new Float32Array(nLat * nLon)
+          for (let j = 0; j < nLat; j++) for (let i = 0; i < nLon; i++) out[j * nLon + i] = fr.values[j * S * lon.length + i * S]
+          fr.values = out
+        }
+        lat = Array.from({ length: nLat }, (_, j) => lat[j * S])
+        lon = Array.from({ length: nLon }, (_, i) => lon[i * S])
+      }
+      return { lat, lon, frames }
+    },
+  }
+}
+
 // GFS (Unidata THREDDS Best series): 3-hourly analyses/short leads, ~1 week back.
 function gfsTape({ kind, source, varName, vertCoord, qscale, offset, convert, stepH = 3 }) {
   const everyStep = (day) => Array.from({ length: 24 / stepH }, (_, k) => dayMs(day, k * stepH))
@@ -1854,7 +1891,9 @@ const CO2_CFG = {
 // aircraft campaigns, with quantified emission rates. Their catalog API is
 // public and unauthenticated. Snapshots, not a survey: coverage is targeted
 // revisits of known source regions — an empty area means unsurveyed, never
-// clean. Rows: [lat, lng, kg_per_hr, uncertainty, t_ms, platform, plume_id].
+// clean. Rows: [lat, lng, kg_per_hr, uncertainty, t_ms, platform, plume_id,
+// sector] — sector is Carbon Mapper's IPCC attribution code (1B2 oil & gas,
+// 6A landfill, 1B1a coal mine, …), translated to words client-side.
 const CM_PLUMES_URL = 'https://api.carbonmapper.org/api/v1/catalog/plumes/annotated'
 const CM_WINDOW_DAYS = 365
 const CM_MAX_PLUMES = 9000
@@ -1874,6 +1913,7 @@ async function fetchMethanePlumes() {
         Math.round(c[1] * 1e4) / 1e4, Math.round(c[0] * 1e4) / 1e4,
         Math.round(it.emission_auto), Math.round(it.emission_uncertainty_auto || 0),
         Date.parse(it.scene_timestamp), it.platform || it.instrument || '', it.plume_id,
+        it.sector || '',
       ])
     }
     if (!j.items || j.items.length < 1000) break
@@ -1908,8 +1948,8 @@ export const SYSTEMS_TAPES = {
   dust: { blobBase: 'systems/cams-dust', tape: camsTape(DUST_CFG) },
   co: { blobBase: 'systems/cams-co', tape: camsTape(CO_CFG) },
   pm25: { blobBase: 'systems/cams-pm25', tape: camsTape(PM25_CFG) },
-  // no methane/co2 tapes: the GHG product runs once daily, which doesn't fit
-  // camsTape's 00z/12z increment-smoothing scheme — static now-fields for v1
+  // byte = (ppb - 1800) × 0.17 → 6 ppb steps, saturating at 3300
+  methane: { blobBase: 'systems/cams-ch4', tape: ghgTape(CH4_CFG, { qscale: 0.17, offset: 1800 }) },
   airtemp: {
     blobBase: 'systems/gfs-airtemp',
     tape: gfsTape({

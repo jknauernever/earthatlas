@@ -34,10 +34,15 @@ export class MethanePlumesOverlay {
     this._loading = false
     this._drawn = [] // { p, x, y, r } for hit tests
 
+    // Gesture behavior matches the scalar wash underneath: freeze the canvas
+    // and let the freezer slide it as one image, repainting on settle. A
+    // per-frame live repaint here made the markers visibly detach from the
+    // (frozen) raster during pan/zoom — they'd "swim" instead of sitting on
+    // the field they annotate.
     this._freeze = new CanvasFreezer(map, canvas)
-    this._onMoveStart = () => { this._moving = true }
-    this._onMove = () => { if (this.visible) this._paint() }
-    this._onMoveEnd = () => { this._moving = false; this._paint() }
+    this._onMoveStart = () => { this._moving = true; this._freeze.begin() }
+    this._onMove = () => {}
+    this._onMoveEnd = () => { this._moving = false; this._paint(); this._freeze.end() }
     this._onResize = () => this._paint()
     map.on('movestart', this._onMoveStart)
     map.on('move', this._onMove)
@@ -59,6 +64,14 @@ export class MethanePlumesOverlay {
     }
     this._pulseRaf = requestAnimationFrame(this._pulseLoop)
     this._ensureData()
+    this._paint()
+  }
+
+  /** Replay cursor (ms) or null for the live view: only plumes observed by
+   * the cursor time draw, and ones imaged shortly before it ping brightest. */
+  setTime(t_ms) {
+    if (this._cursor === t_ms) return
+    this._cursor = t_ms
     this._paint()
   }
 
@@ -99,8 +112,8 @@ export class MethanePlumesOverlay {
     loadSystemsJson('methane-plumes', 'methane-plumes')
       .then((j) => {
         if (this._destroyed) return
-        // rows: [lat, lng, kgh, unc, t_ms, platform, plume_id]
-        this._data = j.plumes.map((r) => ({ lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], platform: r[5], plume_id: r[6] }))
+        // rows: [lat, lng, kgh, unc, t_ms, platform, plume_id, sector]
+        this._data = j.plumes.map((r) => ({ lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], platform: r[5], plume_id: r[6], sector: r[7] || '' }))
         this._fetchedAt = Date.now()
         this._paint()
       })
@@ -135,44 +148,80 @@ export class MethanePlumesOverlay {
     this._ensureData()
 
     const geo = getGlobeGeometry(map, w, h)
-    const now = Date.now()
+    const clock = Date.now() // animation clock — always wall time
+    const now = this._cursor ?? clock // reference time for filtering/freshness
     // Ease dots in over the first half-zoom so the handoff doesn't pop.
     const zoomAlpha = Math.min(1, (zoom - MIN_DRAW_ZOOM) / 0.5)
-    // Shared breathing phase (0…1…0, ~2.4 s): halo swells and brightens.
-    const pulse = 0.5 + 0.5 * Math.sin((now % 2400) / 2400 * Math.PI * 2)
+    // Sonar-ping phase (0→1, ~2 s): an expanding, fading detection ring —
+    // deliberately unlike every other marker on the site (fire = warm glows,
+    // quakes = magnitude circles), and in lime, the complement of the
+    // magenta methane wash, so it pops hardest where the field saturates.
+    const phase = (clock % 2000) / 2000
+    // Distance guard independent of getGlobeGeometry: far-side points
+    // project into the view during the globe↔mercator transition, world-copy
+    // wrap can slide the far hemisphere on screen in mercator, and even
+    // front-side points near the globe's limb compress into a band that
+    // reads as "dots over the ocean". At the zooms where dots draw (z3.6+),
+    // nothing beyond ~60° of arc from the map center is useful — cull it.
+    const c = map.getCenter()
+    const d2r = Math.PI / 180
+    const cLat = c.lat * d2r
+    const sinC = Math.sin(cLat)
+    const cosC = Math.cos(cLat)
     for (const p of this._data) {
+      if (p.t_ms > now + 12 * 3.6e6) continue // not yet observed at the cursor
+      const pLat = p.lat * d2r
+      const cosArc = sinC * Math.sin(pLat) + cosC * Math.cos(pLat) * Math.cos((p.lng - c.lng) * d2r)
+      if (cosArc < 0.5) continue // > 60° of arc away
       if (geo && !geo.isVisible(p.lng, p.lat)) continue
       let pt
       try { pt = map.project([p.lng, p.lat]) } catch { continue }
       if (!pt || !Number.isFinite(pt.x)) continue
       if (pt.x < -20 || pt.y < -20 || pt.x > w + 20 || pt.y > h + 20) continue
       // Size by emission rate (log): ~100 kg/h → 4 px, 1 t/h → 6.5, 10 t/h → 9;
-      // grows gently past z6 so single dots stay findable over a saturated wash.
+      // grows gently past z6 so single markers stay findable.
       const zScale = 1 + Math.min(1, Math.max(0, zoom - 6) * 0.18)
       const r = (3 + 2.5 * Math.log10(Math.max(1, p.kgh / 30))) * zScale
       const fresh = now - p.t_ms < FRESH_MS
-      const alpha = (fresh ? 1 : 0.65) * zoomAlpha
-      const haloR = r * (2.0 + 0.9 * pulse)
-      const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, haloR)
-      grad.addColorStop(0, `rgba(232,121,249,${(0.42 + 0.22 * pulse) * alpha})`)
-      grad.addColorStop(1, 'rgba(232,121,249,0)')
-      ctx.fillStyle = grad
+      // Age never dims the reticle itself — a translucent lime ring over the
+      // saturated magenta wash bleeds pink and gets lost (the Vancouver
+      // plume, observed months back, was nearly invisible). Every marker
+      // draws full strength; freshness shows in the ping instead (fresh =
+      // two rings, older = one).
+      const alpha = zoomAlpha
+      // Expanding sonar ping; fresh plumes get a second, offset ring so the
+      // pulse never fully rests.
+      const LIME = '163,230,53'
+      const ping = (ph, strength) => {
+        if (ph <= 0.02 || ph >= 1) return
+        const pr = r + 2 + (r * 2.6 + 6) * ph
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, pr, 0, Math.PI * 2)
+        ctx.lineWidth = 2 * (1 - ph) + 0.5
+        ctx.strokeStyle = `rgba(${LIME},${(1 - ph) * strength * alpha})`
+        ctx.stroke()
+      }
+      ping(phase, 0.9)
+      if (fresh) ping((phase + 0.5) % 1, 0.55)
+      // Target reticle: lime ring + four ticks around a white core — reads
+      // as "detected at this exact spot", unlike any other marker here.
       ctx.beginPath()
-      ctx.arc(pt.x, pt.y, haloR, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(240,171,252,${0.85 * alpha})`
-      ctx.fill()
-      ctx.lineWidth = 1.2
-      ctx.strokeStyle = `rgba(134,25,143,${0.9 * alpha})`
+      ctx.arc(pt.x, pt.y, r + 2, 0, Math.PI * 2)
+      ctx.lineWidth = 1.6
+      ctx.strokeStyle = `rgba(${LIME},${0.95 * alpha})`
       ctx.stroke()
-      // Thin white contrast ring: the modeled wash saturates near source
-      // regions, and a magenta dot on magenta needs an edge to be findable.
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        ctx.beginPath()
+        ctx.moveTo(pt.x + dx * (r + 2), pt.y + dy * (r + 2))
+        ctx.lineTo(pt.x + dx * (r + 5), pt.y + dy * (r + 5))
+        ctx.stroke()
+      }
       ctx.beginPath()
-      ctx.arc(pt.x, pt.y, r + 1.4, 0, Math.PI * 2)
+      ctx.arc(pt.x, pt.y, Math.max(2, r * 0.55), 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,255,255,${0.95 * alpha})`
+      ctx.fill()
       ctx.lineWidth = 1
-      ctx.strokeStyle = `rgba(255,255,255,${(0.45 + 0.25 * pulse) * alpha})`
+      ctx.strokeStyle = `rgba(20,45,10,${0.85 * alpha})`
       ctx.stroke()
       this._drawn.push({ p, x: pt.x, y: pt.y, r })
     }

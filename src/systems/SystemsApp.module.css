@@ -682,3 +682,28 @@
   .chipRow { gap: 6px; }
   .chip, .chipActive { font-size: 13px; padding: 8px 13px; }
   }
+
+/* Mode-switch cue under the Explain button: a transient toast when the
+   layer's zoomed-in view engages/disengages, and a quiet persistent chip
+   while it's active. Dark pills — readable over any basemap. */
+.modeCueWrap {
+  position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+  z-index: 11; display: flex; justify-content: center; pointer-events: none;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.modeToast {
+  padding: 7px 14px; border-radius: 999px;
+  background: rgba(10, 14, 23, 0.9); border: 1px solid rgba(163, 230, 53, 0.35);
+  color: #f3f7ee; font-size: 12.5px; line-height: 1.45; text-align: center;
+  backdrop-filter: blur(8px);
+  animation: modeToastIn 0.25s ease, modeToastOut 0.4s ease 4.1s forwards;
+}
+.modeChip {
+  padding: 4px 11px; border-radius: 999px;
+  background: rgba(10, 14, 23, 0.72); border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(243, 247, 238, 0.85); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+@keyframes modeToastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes modeToastOut { to { opacity: 0; } }

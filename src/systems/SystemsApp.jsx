@@ -399,6 +399,12 @@ export default function SystemsApp() {
   // 'sky' (global CAMS column) or 'ground' (US 3 km HRRR near-surface) —
   // the smoke button's altitude handoff, set by the scalar effect below.
   const [smokeMode, setSmokeMode] = useState('sky')
+  // Mode-switch toast under the Explain button + a persistent chip while a
+  // layer's zoomed-in view is active (the altitude/detail handoff was
+  // invisible outside the panel — even Josh read it as data vanishing).
+  const [modeToast, setModeToast] = useState(null) // { text, key }
+  const modeToastTimer = useRef(0)
+  const prevGroundRef = useRef({ mode: 'sky', id: null })
   const [smokeGroundTick, setSmokeGroundTick] = useState(0)
   const smokeGroundLoadRef = useRef({}) // per-layer: false | true | 'failed'
   const stateRef = useRef({})
@@ -1065,6 +1071,19 @@ export default function SystemsApp() {
       }
     }
     setSmokeMode(wantGround ? 'ground' : 'sky')
+    {
+      const mode = wantGround ? 'ground' : 'sky'
+      const prev = prevGroundRef.current
+      if (active?.ground && prev.id === active.id && prev.mode !== mode) {
+        const text = mode === 'ground' ? active.ground.toastIn : active.ground.toastOut
+        if (text) {
+          setModeToast({ text, key: Date.now() })
+          clearTimeout(modeToastTimer.current)
+          modeToastTimer.current = setTimeout(() => setModeToast(null), 4500)
+        }
+      }
+      prevGroundRef.current = { mode, id: active?.id || null }
+    }
 
     // Replay-capable layers swap to the tape as soon as it's loaded (the
     // static "now" wash shows in the meantime). Earth's systems are in
@@ -1866,6 +1885,18 @@ export default function SystemsApp() {
         <span className={styles.explainSpark} aria-hidden="true">✦</span>
         Explain this view
       </button>
+
+      {(() => {
+        const grounded = LAYERS.find((d2) => d2.ground && layerOn[d2.id] && smokeMode === 'ground')
+        return (
+          <div className={styles.modeCueWrap} aria-live="polite">
+            {grounded?.ground.chip && !modeToast && (
+              <div className={styles.modeChip}>{grounded.ground.chip}</div>
+            )}
+            {modeToast && <div key={modeToast.key} className={styles.modeToast}>{modeToast.text}</div>}
+          </div>
+        )
+      })()}
 
       {explain && (
         <div className={styles.explainCard}>

@@ -217,6 +217,31 @@ const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
 // reloads the page instead.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 
+// Keep the popup card on screen no matter where the user clicked: the CSS
+// cap (min(55vh, 420px)) is position-blind, so a click low on the map can
+// anchor a fully-capped card off the bottom edge (Mapbox's auto-anchor
+// gives up when neither side fits the full height). Measure the space the
+// current anchor actually has and shrink the card's max-height to it —
+// content scrolls inside instead of flowing off the map. Re-run after every
+// async growth (AI text, source naming, coverage lines).
+function fitPopupToMap(popup) {
+  const el = popup.getElement()
+  const scroller = el?.querySelector('.mapboxgl-popup-content > div')
+  const mapEl = el?.closest('.mapboxgl-map')
+  if (!el || !scroller || !mapEl) return
+  const mapRect = mapEl.getBoundingClientRect()
+  const anchor = [...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || ''
+  const rect = el.getBoundingClientRect()
+  // Space from the card's top edge to the map bottom (top-anchored cards
+  // grow downward) or from the map top to its bottom edge (bottom-anchored
+  // cards grow upward); centered anchors use the smaller of the two.
+  const down = mapRect.bottom - rect.top - 16
+  const up = rect.bottom - mapRect.top - 16
+  const room = anchor.includes('top') ? down : anchor.includes('bottom') ? up : Math.min(down, up)
+  const cap = Math.max(160, Math.min(420, Math.floor(room)))
+  scroller.style.maxHeight = `${cap}px`
+}
+
 // Scroll affordance for tall popups: a subtle ▾ pinned at the card's bottom,
 // shown only while more content is below the fold (the card itself scrolls).
 function attachPopupScrollHint(popup, styles) {
@@ -698,6 +723,7 @@ export default function SystemsApp() {
           `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div></div>`,
         )
         .addTo(map)
+      fitPopupToMap(popupRef.current)
       attachPopupScrollHint(popupRef.current, styles)
       // Phones: the replay bar shrinks to a pill while a popup is open so the
       // two never overlap; restored on close.
@@ -720,6 +746,7 @@ export default function SystemsApp() {
                 : `Leak-hunting satellites haven't checked this exact spot yet, so no one knows either way.`
               el.classList.add(styles.popupAnalysisDone)
               try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+              fitPopupToMap(pp)
             } else el.remove()
           })
           .catch(() => {
@@ -743,6 +770,7 @@ export default function SystemsApp() {
               el.innerHTML = html
               el.classList.add(styles.popupAnalysisDone)
               try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+              fitPopupToMap(pp)
             } else el.remove()
           })
           .catch(() => {})
@@ -803,6 +831,7 @@ export default function SystemsApp() {
             // "Adding context…", and without this the added text runs off the
             // top of the map.
             try { popup.setLngLat(popup.getLngLat()) } catch { /* popup closed */ }
+            fitPopupToMap(popup)
             attachPopupScrollHint(popup, styles)
           } else {
             el.remove()

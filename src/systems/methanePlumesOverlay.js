@@ -1,16 +1,21 @@
 /**
- * Carbon Mapper methane-plume overlay for /inmotion — observational companion
- * to the modeled Methane layer. Each dot is one individual CH₄ plume imaged
- * at ~30–60 m by Carbon Mapper's Tanager satellites or aircraft, with a
- * quantified emission rate — real point sources (leaky gas fields, landfills,
- * feedlots) under the smooth modeled field. Canvas overlay in the
- * smokePlumesOverlay mold: repaints with the camera, answers click hit-tests
- * so popups can cite the plume. Dots appear from mid zoom (the layer's
- * "appropriate zoom" handoff: modeled field global, observed sources as you
- * come closer); recent plumes draw brighter than year-old ones.
+ * Carbon Mapper observed-emission-SOURCE overlay for /inmotion — the
+ * observational companion to the modeled gas layers (methane, CO₂).
  *
- * Coverage honesty: these are targeted snapshots, not a survey — an empty
- * region means unsurveyed, never clean. The panel and popups say so.
+ * Each reticle is a persistent SOURCE: a cluster of individual plume
+ * detections at one location, carrying how often the site was seen emitting
+ * across all overflights (persistence), a source-level rate ± uncertainty,
+ * the facility name joined at bake from Climate TRACE, and its observation
+ * history. See docs/CARBONMAPPER_API.md for the full upstream study.
+ *
+ * Visual language: lime target-reticles with expanding sonar pings — the
+ * complement of the magenta gas wash and deliberately unlike every other
+ * marker on the site. Full strength at every age (translucent lime over
+ * saturated magenta bleeds pink); recency shows as a second ping. Top of
+ * the z-order. Freezes and slides with the raster during gestures.
+ *
+ * Coverage honesty: targeted snapshots, not a survey — panel + popups say
+ * an empty area means unsurveyed, never clean.
  */
 
 import { CanvasFreezer } from './canvasFreeze.js'
@@ -20,25 +25,26 @@ import { loadSystemsJson } from './windField.js'
 const MIN_DRAW_ZOOM = 3.6
 const REFRESH_MS = 6 * 60 * 60e3
 const MAX_DPR = 2
-const FRESH_MS = 45 * 8.64e7 // plumes newer than ~45 days draw at full strength
+const FRESH_MS = 45 * 8.64e7 // sources detected within ~45 days of the reference time ping harder
 
 export class MethanePlumesOverlay {
-  constructor(map, canvas) {
+  /** opts: { dataset, expectKind } — e.g. ('methane-plumes', 'ch4-sources') */
+  constructor(map, canvas, opts = {}) {
     this.map = map
     this.canvas = canvas
+    this.dataset = opts.dataset || 'methane-plumes'
+    this.expectKind = opts.expectKind || 'ch4-sources'
     this.visible = true
     this._destroyed = false
     this._ctx = canvas.getContext('2d')
     this._data = null
     this._fetchedAt = 0
     this._loading = false
+    this._cursor = null
     this._drawn = [] // { p, x, y, r } for hit tests
 
-    // Gesture behavior matches the scalar wash underneath: freeze the canvas
-    // and let the freezer slide it as one image, repainting on settle. A
-    // per-frame live repaint here made the markers visibly detach from the
-    // (frozen) raster during pan/zoom — they'd "swim" instead of sitting on
-    // the field they annotate.
+    // Gesture behavior matches the scalar wash underneath: freeze + slide,
+    // repaint on settle — live per-frame repaints made markers "swim".
     this._freeze = new CanvasFreezer(map, canvas)
     this._onMoveStart = () => { this._moving = true; this._freeze.begin() }
     this._onMove = () => {}
@@ -48,10 +54,7 @@ export class MethanePlumesOverlay {
     map.on('move', this._onMove)
     map.on('moveend', this._onMoveEnd)
     map.on('resize', this._onResize)
-    // Gentle attention pulse: repaint on a throttled rAF while dots are on
-    // screen so they breathe (~2.4 s period). Skipped while hidden, while
-    // the camera moves (the move handler already repaints), and below the
-    // draw zoom — so the loop costs nothing when nothing is showing.
+    // Attention pulse: throttled rAF repaint while markers are on screen.
     this._lastPulse = 0
     this._pulseLoop = (now) => {
       if (this._destroyed) return
@@ -67,8 +70,8 @@ export class MethanePlumesOverlay {
     this._paint()
   }
 
-  /** Replay cursor (ms) or null for the live view: only plumes observed by
-   * the cursor time draw, and ones imaged shortly before it ping brightest. */
+  /** Replay cursor (ms) or null for live: only sources first detected by the
+   * cursor time draw; ones with detections near it ping brightest. */
   setTime(t_ms) {
     if (this._cursor === t_ms) return
     this._cursor = t_ms
@@ -91,7 +94,7 @@ export class MethanePlumesOverlay {
     this._clear()
   }
 
-  /** Nearest drawn plume within tap range of the screen point, or null. */
+  /** Nearest drawn source within tap range of the screen point, or null. */
   hitTest(x, y) {
     let best = null
     let bestD = 14 * 14
@@ -109,15 +112,20 @@ export class MethanePlumesOverlay {
     if (this._destroyed || !this.visible || this._loading) return
     if (this._data && Date.now() - this._fetchedAt < REFRESH_MS) return
     this._loading = true
-    loadSystemsJson('methane-plumes', 'methane-plumes')
+    loadSystemsJson(this.dataset, this.expectKind)
       .then((j) => {
         if (this._destroyed) return
-        // rows: [lat, lng, kgh, unc, t_ms, platform, plume_id, sector]
-        this._data = j.plumes.map((r) => ({ lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], platform: r[5], plume_id: r[6], sector: r[7] || '' }))
+        // rows: [lat, lng, kgh, unc, t_last, sector, name, dist_km,
+        //        persist_pct, det_days, obs_days, t_first, plume_id, scene_id]
+        this._data = j.sources.map((r) => ({
+          lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], sector: r[5],
+          name: r[6] || null, distKm: r[7], persist: r[8], det: r[9], obs: r[10],
+          t_first: r[11], plume_id: r[12], scene_id: r[13] || null,
+        }))
         this._fetchedAt = Date.now()
         this._paint()
       })
-      .catch(() => { /* dots are an enhancement — the modeled layer stands alone */ })
+      .catch(() => { /* markers are an enhancement — the modeled layer stands alone */ })
       .finally(() => { this._loading = false })
   }
 
@@ -149,27 +157,19 @@ export class MethanePlumesOverlay {
 
     const geo = getGlobeGeometry(map, w, h)
     const clock = Date.now() // animation clock — always wall time
-    const now = this._cursor ?? clock // reference time for filtering/freshness
-    // Ease dots in over the first half-zoom so the handoff doesn't pop.
+    const refT = this._cursor ?? clock // reference time for filtering/recency
+    // Ease markers in over the first half-zoom so the handoff doesn't pop.
     const zoomAlpha = Math.min(1, (zoom - MIN_DRAW_ZOOM) / 0.5)
-    // Sonar-ping phase (0→1, ~2 s): an expanding, fading detection ring —
-    // deliberately unlike every other marker on the site (fire = warm glows,
-    // quakes = magnitude circles), and in lime, the complement of the
-    // magenta methane wash, so it pops hardest where the field saturates.
+    // Sonar-ping phase (0→1, ~2 s).
     const phase = (clock % 2000) / 2000
-    // Distance guard independent of getGlobeGeometry: far-side points
-    // project into the view during the globe↔mercator transition, world-copy
-    // wrap can slide the far hemisphere on screen in mercator, and even
-    // front-side points near the globe's limb compress into a band that
-    // reads as "dots over the ocean". At the zooms where dots draw (z3.6+),
-    // nothing beyond ~60° of arc from the map center is useful — cull it.
+    // Distance guard: far-side, limb, and world-copy positions never draw —
+    // nothing beyond 60° of arc from the map center is a useful marker.
     const c = map.getCenter()
     const d2r = Math.PI / 180
-    const cLat = c.lat * d2r
-    const sinC = Math.sin(cLat)
-    const cosC = Math.cos(cLat)
+    const sinC = Math.sin(c.lat * d2r)
+    const cosC = Math.cos(c.lat * d2r)
     for (const p of this._data) {
-      if (p.t_ms > now + 12 * 3.6e6) continue // not yet observed at the cursor
+      if (p.t_first > refT + 12 * 3.6e6) continue // not yet observed at the cursor
       const pLat = p.lat * d2r
       const cosArc = sinC * Math.sin(pLat) + cosC * Math.cos(pLat) * Math.cos((p.lng - c.lng) * d2r)
       if (cosArc < 0.5) continue // > 60° of arc away
@@ -178,19 +178,13 @@ export class MethanePlumesOverlay {
       try { pt = map.project([p.lng, p.lat]) } catch { continue }
       if (!pt || !Number.isFinite(pt.x)) continue
       if (pt.x < -20 || pt.y < -20 || pt.x > w + 20 || pt.y > h + 20) continue
-      // Size by emission rate (log): ~100 kg/h → 4 px, 1 t/h → 6.5, 10 t/h → 9;
-      // grows gently past z6 so single markers stay findable.
+      // Size by source rate (log); grows gently past z6 so single markers
+      // stay findable over a saturated wash.
       const zScale = 1 + Math.min(1, Math.max(0, zoom - 6) * 0.18)
       const r = (3 + 2.5 * Math.log10(Math.max(1, p.kgh / 30))) * zScale
-      const fresh = now - p.t_ms < FRESH_MS
-      // Age never dims the reticle itself — a translucent lime ring over the
-      // saturated magenta wash bleeds pink and gets lost (the Vancouver
-      // plume, observed months back, was nearly invisible). Every marker
-      // draws full strength; freshness shows in the ping instead (fresh =
-      // two rings, older = one).
+      const recent = Math.abs(refT - p.t_ms) < FRESH_MS || (refT >= p.t_first && refT - p.t_first < FRESH_MS)
       const alpha = zoomAlpha
-      // Expanding sonar ping; fresh plumes get a second, offset ring so the
-      // pulse never fully rests.
+      // Expanding sonar ping; recently-detected sources get a second ring.
       const LIME = '163,230,53'
       const ping = (ph, strength) => {
         if (ph <= 0.02 || ph >= 1) return
@@ -202,7 +196,7 @@ export class MethanePlumesOverlay {
         ctx.stroke()
       }
       ping(phase, 0.9)
-      if (fresh) ping((phase + 0.5) % 1, 0.55)
+      if (recent) ping((phase + 0.5) % 1, 0.55)
       // Target reticle: lime ring + four ticks around a white core — reads
       // as "detected at this exact spot", unlike any other marker here.
       ctx.beginPath()

@@ -43,6 +43,20 @@ import {
 } from '../lib/eaGeoSearch.js'
 import styles from './GeoSearch.module.css'
 
+// People typing a name want the PLACE first — "Tilbury" should list the
+// town/neighborhood before Tilbury Tire Depot and Tilbury Road. Stable
+// re-sort by administrative tier; Mapbox's own relevance order is kept
+// within each tier (so business searches still work naturally).
+const TYPE_TIER = {
+  country: 0, region: 1, district: 2, place: 3, locality: 4,
+  neighborhood: 5, postcode: 6, street: 7, address: 8, poi: 9,
+}
+function rankPlacesFirst(results) {
+  return [...results].sort(
+    (a, b) => (TYPE_TIER[a.feature_type ?? a.featureType] ?? 9) - (TYPE_TIER[b.feature_type ?? b.featureType] ?? 9),
+  )
+}
+
 function resolveProximity(proximity) {
   if (!proximity) return undefined
   if (typeof proximity === 'function') {
@@ -112,7 +126,7 @@ export default function GeoSearch({
           signal: ac.signal,
         })
         if (ac.signal.aborted) return
-        setSuggestions(results)
+        setSuggestions(rankPlacesFirst(results))
         setOpen(true)
         setActiveIdx(-1)
       } catch (err) {

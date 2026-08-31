@@ -78,7 +78,40 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'co2plumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+
+// Gas layers with a Carbon Mapper observed-sources companion.
+const GAS_SOURCE_DEFS = [
+  { id: 'methane', dataset: 'methane-plumes', expectKind: 'ch4-sources', product: 'ch4' },
+  { id: 'co2', dataset: 'co2-plumes', expectKind: 'co2-sources', product: 'co2' },
+]
+// Gas layers whose popups get the deterministic fire-proximity line
+// (wildfires emit CH4, CO, CO2 and particulates; CAMS even assimilates
+// satellite fire emissions, so the correlation users see is real).
+const FIRE_CORRELATED = new Set(['methane', 'co', 'co2', 'pm25', 'smoke'])
+
+// The actual imaged gas plume, draped as raster tiles over the basemap for
+// the clicked source's newest scene (public Carbon Mapper XYZ endpoint —
+// absolute URL, per the house Mapbox rule). One at a time; removed with the
+// popup.
+const CM_SCENE_LAYER = 'cm-scene-tiles'
+function showSceneOverlay(map, sceneId, product) {
+  removeSceneOverlay(map)
+  try {
+    map.addSource(CM_SCENE_LAYER, {
+      type: 'raster',
+      tiles: [`https://api.carbonmapper.org/api/v1/layers/scene/${sceneId}/${product}/{z}/{x}/{y}.png`],
+      tileSize: 256,
+    })
+    map.addLayer({ id: CM_SCENE_LAYER, type: 'raster', source: CM_SCENE_LAYER, paint: { 'raster-opacity': 0.85 } })
+  } catch { /* style mid-swap — the reticle still tells the story */ }
+}
+function removeSceneOverlay(map) {
+  try {
+    if (map.getLayer(CM_SCENE_LAYER)) map.removeLayer(CM_SCENE_LAYER)
+    if (map.getSource(CM_SCENE_LAYER)) map.removeSource(CM_SCENE_LAYER)
+  } catch { /* noop */ }
+}
 
 // ─── Plain-language helpers for the fire popups: the data's job is to tell
 // a story a non-expert can read at a glance — jargon (detections, MW,
@@ -417,6 +450,8 @@ export default function SystemsApp() {
       const { layerOn, layerStatus, layerMeta } = stateRef.current
       const sections = []
       let plumeHit = null
+      let coverageWanted = false
+      let fireLineDone = false
       const aiItems = [] // structured copies of each section, for the popup narration
       const sectionHtml = (p) => {
         // `ai` carries the full technical facts for the narrator even when
@@ -531,28 +566,44 @@ export default function SystemsApp() {
             }))
           }
         }
-        if (def.id === 'methane') {
-          const pl = instancesRef.current.methaneplumes?.hitTest(e.point.x, e.point.y)
+        const gasDef = GAS_SOURCE_DEFS.find((g) => g.id === def.id)
+        if (gasDef) {
+          const pl = instancesRef.current[`${gasDef.id}plumes`]?.hitTest(e.point.x, e.point.y)
           if (pl) {
-            plumeHit = pl
-            // Carbon Mapper attributes each plume to an IPCC source sector.
+            plumeHit = { ...pl, product: gasDef.product }
             const SECTOR_WORDS = {
               '1B2': 'oil & gas infrastructure', '6A': 'a landfill / waste site',
               '1B1a': 'a coal mine', '1B1': 'a coal mine', '4B': 'a livestock operation',
               '1A1': 'a power plant', '1A2': 'an industrial facility', '6B': 'wastewater treatment',
             }
             const what = SECTOR_WORDS[pl.sector] || 'an unclassified source'
-            const when = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const escName = pl.name ? pl.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : null
+            const lastSeen = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const firstSeen = new Date(pl.t_first).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
             const tph = pl.kgh >= 1000 ? `${(pl.kgh / 1000).toFixed(1)} tonnes/hour` : `${pl.kgh} kg/hour`
+            const uncTxt = pl.unc >= 1000 ? `±${(pl.unc / 1000).toFixed(1)} t/h` : `±${pl.unc} kg/h`
+            const visits = pl.obs > 1
+              ? `seen emitting on ${pl.det} of ${pl.obs} satellite visits`
+              : 'seen emitting on its only satellite visit so far'
+            const gasWord = gasDef.product === 'co2' ? 'CO₂' : 'Methane'
             sections.push(sectionHtml({
-              head: `Methane leak from ${what}`,
+              head: escName ? `${gasWord} source: ${escName}` : `${gasWord} leak from ${what}`,
               big: tph,
-              alt: `±${pl.unc} kg/h · imaged by ${pl.platform || 'Carbon Mapper'} on ${when}`,
-              meta: `One directly observed plume, attributed by Carbon Mapper to ${what} (sector ${pl.sector || 'n/a'}) and imaged at ~30–60 m. Targeted snapshots — an empty area means unsurveyed, not clean.`,
-              ai: `Carbon Mapper observed CH4 point-source plume: ${pl.kgh} kg/hr (uncertainty ${pl.unc}), IPCC sector ${pl.sector} (${what}), platform ${pl.platform}, date ${new Date(pl.t_ms).toISOString()}, plume_id ${pl.plume_id}. DIRECT OBSERVATION of a single facility-scale source, unlike the modeled background field.`,
+              alt: `${uncTxt} · ${visits}`,
+              meta: `A persistent observed source (${what}, sector ${pl.sector || 'n/a'}), imaged at ~30–60 m — latest detection ${lastSeen}${pl.t_first !== pl.t_ms ? `, first ${firstSeen}` : ''}.` +
+                (escName ? ` Facility name from Climate TRACE (${pl.distKm < 1 ? 'at this location' : `${pl.distKm} km away`}).` : '') +
+                ' Targeted snapshots — an empty area means unsurveyed, not clean.',
+              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field.`,
               link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
             }))
-            sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
+            if (!escName) sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
+            // Drape the actual imaged plume for this source's newest scene.
+            if (pl.scene_id && map.getZoom() >= 8) showSceneOverlay(map, pl.scene_id, gasDef.product)
+          } else {
+            // No marker here: answer the coverage question honestly —
+            // has Carbon Mapper ever actually looked at this spot?
+            sections.push(`<div class="${styles.popupAnalysis}" data-cm-coverage>Checking survey coverage…</div>`)
+            coverageWanted = true
           }
         }
         if (def.kind === 'raster') continue // raster popups: open the full tool instead
@@ -581,6 +632,45 @@ export default function SystemsApp() {
         const extraField = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
         const extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
         sections.push(sectionHtml(def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)))
+        // Correlation, stated plainly: wildfires emit these gases (and CAMS
+        // assimilates satellite fire emissions), so when an active fire sits
+        // near the click, say so — even if the fire layer is off.
+        if (FIRE_CORRELATED.has(def.id) && !fireLineDone) {
+          fireLineDone = true
+          const fe = fieldsRef.current.fireevents
+          if (fe?.events) {
+            // Materiality gate: a 1-acre spot fire 35 km away moves nothing.
+            // Fires must be big enough for their distance to plausibly touch
+            // the field under the click; wording scales with confidence.
+            let best = null
+            for (const ev of fe.events) {
+              if (!ev.label) continue
+              const acres = ev.acres || 0
+              const dLat = (ev.lat - e.lngLat.lat) * 111
+              const dLng = (ev.lng - e.lngLat.lng) * 111 * Math.cos((e.lngLat.lat * Math.PI) / 180)
+              const km = Math.sqrt(dLat * dLat + dLng * dLng)
+              const material = (acres >= 5000 && km <= 80) || (acres >= 300 && km <= 40)
+              if (!material) continue
+              if (!best || km < best.km) best = { ev, km, strong: acres >= 5000 && km <= 50 }
+            }
+            if (best) {
+              const gasName = { methane: 'methane', co: 'carbon monoxide', co2: 'CO₂', pm25: 'fine particles', smoke: 'smoke' }[def.id]
+              const escLabel = String(best.ev.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              const size = ` (${Math.round(best.ev.acres).toLocaleString()} acres)`
+              const claim = best.strong
+                ? `wildfires release ${gasName}, and a fire this size this close is likely part of what you're seeing`
+                : `wildfires release ${gasName} and may be adding to what you're seeing`
+              sections.push(`<div class="${styles.popupAnalysis} ${styles.popupAnalysisDone}">🔥 The ${escLabel}${size} is ~${Math.round(best.km)} km from here — ${claim}.</div>`)
+              aiItems.push({ layer: 'fire-context', note: `Active fire "${best.ev.label}" ${Math.round(best.km)} km away, ${Math.round(best.ev.acres)} acres. Wildfires emit CH4/CO/CO2/PM2.5; weigh size and distance before attributing the gas values to it.` })
+            }
+          } else if (!fireEventsLoadRef.current) {
+            // Lazy-load the fire feed for next click (fire layer may be off).
+            fireEventsLoadRef.current = true
+            loadSystemsJson('fire-events', 'fire-events')
+              .then((j) => { fieldsRef.current.fireevents = j })
+              .catch(() => { fireEventsLoadRef.current = 'failed' })
+          }
+        }
         // Companion flow: cite the wind that's carrying the haze (skipped if
         // the Wind layer itself is on — it already prints the same run).
         if (def.flow && !layerOn.wind && (!rc || rc.layerId !== def.id || rc.atLive)) {
@@ -607,6 +697,31 @@ export default function SystemsApp() {
       // two never overlap; restored on close.
       setPopupOpen(true)
       popupRef.current.once('close', () => setPopupOpen(false))
+
+      // Coverage answer for empty clicks on gas layers: our edge proxy asks
+      // Carbon Mapper how many scenes ever imaged this spot.
+      if (coverageWanted) {
+        const pp = popupRef.current
+        fetch(`/api/geo/cm-coverage?lat=${e.lngLat.lat.toFixed(3)}&lng=${e.lngLat.lng.toFixed(3)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (popupRef.current !== pp) return
+            const el = pp.getElement()?.querySelector('[data-cm-coverage]')
+            if (!el) return
+            if (j?.ok) {
+              el.innerHTML = j.count > 0
+                ? `Carbon Mapper's satellites have imaged this area ${j.count === 1 ? 'once' : `${j.count} times`}${j.latest ? ` (latest ${j.latest})` : ''} with no leak detected at this spot — observed sources appear as green markers.`
+                : 'Carbon Mapper has never surveyed this spot — no observation exists either way. Empty means unsurveyed, not clean.'
+              el.classList.add(styles.popupAnalysisDone)
+              try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+            } else el.remove()
+          })
+          .catch(() => {
+            if (popupRef.current === pp) pp.getElement()?.querySelector('[data-cm-coverage]')?.remove()
+          })
+      }
+      // The draped scene imagery lives only as long as its popup.
+      popupRef.current.once('close', () => removeSceneOverlay(map))
 
       // Named-facility lookup for an observed plume: deterministic (OSM +
       // reverse geocode), patched in when it lands — "This is almost
@@ -901,7 +1016,7 @@ export default function SystemsApp() {
       inst.scalar.layer.destroy()
       inst.scalar = null
       if (replayRef.current) { replayRef.current.destroy(); replayRef.current = null; setReplay(null) }
-      inst.methaneplumes?.setTime(null) // cursor gone → markers back to live view
+      for (const g of GAS_SOURCE_DEFS) inst[`${g.id}plumes`]?.setTime(null) // cursor gone → live view
     }
     if (active && !inst.scalar && canvasEls.current.scalar) {
       try {
@@ -929,13 +1044,14 @@ export default function SystemsApp() {
           // via the slider.
           else if (['smoke', 'co', 'pm25', 'acidity', 'methane'].includes(active.id)) rc.toLive()
           rc.attach(layer)
-          // Observed plume markers follow the methane cursor: scrub into the
-          // past and only plumes already observed by then are on the map —
-          // ones imaged near the cursor time ping at full strength.
-          if (active.id === 'methane') {
-            const applyPlumes = (c) => instancesRef.current.methaneplumes?.setTime(c.atLive ? null : c.t)
-            rc.subscribe((c) => { if (!c.holding) applyPlumes(c) })
-            applyPlumes(rc)
+          // Observed source markers follow the gas layer's cursor: scrub
+          // into the past and only sources already observed by then exist;
+          // ones detected near the cursor time ping at full strength.
+          const gasFollow = GAS_SOURCE_DEFS.find((g) => g.id === active.id)
+          if (gasFollow) {
+            const applySources = (c) => instancesRef.current[`${gasFollow.id}plumes`]?.setTime(c.atLive ? null : c.t)
+            rc.subscribe((c) => { if (!c.holding) applySources(c) })
+            applySources(rc)
           }
           // Companion flow particles show today's wind — only honest at
           // "now", and only below the zoom where they read as a blizzard.
@@ -1196,20 +1312,32 @@ export default function SystemsApp() {
     inst.smokeplumes?.setVisible(skyOn)
   }, [mapReady, layerOn, replay, smokeMode])
 
-  // ─── Carbon Mapper methane plumes ride the Methane layer: the modeled
-  // near-surface field below, individually observed point-source plumes
-  // above (dots from mid zoom — the overlay handles its own zoom gate).
+  // ─── Carbon Mapper observed emission sources ride the gas layers: the
+  // modeled field below, persistent observed sources above (reticles from
+  // mid zoom — the overlay handles its own zoom gate). Same machinery for
+  // methane and CO₂; see docs/CARBONMAPPER_API.md.
   useEffect(() => {
-    const on = !!layerOn.methane
     const inst = instancesRef.current
-    if (mapReady && on && !inst.methaneplumes && canvasEls.current.methaneplumes) {
-      try {
-        inst.methaneplumes = new MethanePlumesOverlay(mapRef.current, canvasEls.current.methaneplumes)
-      } catch (err) {
-        console.error('[systems] methane plumes overlay init failed:', err)
-      }
+    // Fire feed warms up with any fire-correlated layer so popup correlation
+    // lines are ready on the first click.
+    if ([...FIRE_CORRELATED].some((id) => layerOn[id]) && !fieldsRef.current.fireevents && !fireEventsLoadRef.current) {
+      fireEventsLoadRef.current = true
+      loadSystemsJson('fire-events', 'fire-events')
+        .then((j) => { fieldsRef.current.fireevents = j })
+        .catch(() => { fireEventsLoadRef.current = 'failed' })
     }
-    inst.methaneplumes?.setVisible(on)
+    for (const g of GAS_SOURCE_DEFS) {
+      const on = !!layerOn[g.id]
+      const key = `${g.id}plumes`
+      if (mapReady && on && !inst[key] && canvasEls.current[key]) {
+        try {
+          inst[key] = new MethanePlumesOverlay(mapRef.current, canvasEls.current[key], { dataset: g.dataset, expectKind: g.expectKind })
+        } catch (err) {
+          console.error(`[systems] ${g.id} sources overlay init failed:`, err)
+        }
+      }
+      inst[key]?.setVisible(on)
+    }
   }, [mapReady, layerOn])
 
   // One cursor, every fire layer: drive the fire displays (raw detections at
@@ -1630,6 +1758,7 @@ export default function SystemsApp() {
       {/* Observed-plume dots ride ABOVE every other overlay: they're the
           attention layer — direct observations of live leaks. */}
       <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.co2plumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />

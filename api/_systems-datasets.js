@@ -1659,7 +1659,11 @@ function camsTape(cfg) {
 // methane animates the nocturnal boundary layer breathing in and out. Frames
 // are strided like the grid bake so a 0.1° day stays ~1-2 MB.
 function ghgTape(cfg, { qscale, offset, days = 14 }) {
-  const leads = ['0', '3', '6', '9', '12', '15', '18', '21']
+  // Leads run 45 h out: each day's bake also lays down FORECAST frames for
+  // the next ~two days, so the tape reaches "now" despite the product's
+  // ~30 h publication lag. The merge prefers lower leads, so tomorrow's
+  // real run silently replaces today's forecast frames.
+  const leads = Array.from({ length: 16 }, (_, i) => String(i * 3))
   return {
     kind: cfg.kind, source: cfg.source, qscale, offset, nodata0: false, stepH: 3, latencyH: 30, days,
     frameKind: 'forecast',
@@ -1885,47 +1889,164 @@ const CO2_CFG = {
   stride: 4, // 0.1° → 0.4°, matching the composition grids
   scale: 40, maxAbs: 800,
 }
-// ─── Carbon Mapper methane plumes ────────────────────────────────────────────
-// Observational companion to the modeled methane layer: individual CH₄
-// plumes imaged at ~30–60 m by Carbon Mapper's Tanager satellites and
-// aircraft campaigns, with quantified emission rates. Their catalog API is
-// public and unauthenticated. Snapshots, not a survey: coverage is targeted
-// revisits of known source regions — an empty area means unsurveyed, never
-// clean. Rows: [lat, lng, kg_per_hr, uncertainty, t_ms, platform, plume_id,
-// sector] — sector is Carbon Mapper's IPCC attribution code (1B2 oil & gas,
-// 6A landfill, 1B1a coal mine, …), translated to words client-side.
-const CM_PLUMES_URL = 'https://api.carbonmapper.org/api/v1/catalog/plumes/annotated'
-const CM_WINDOW_DAYS = 365
-const CM_MAX_PLUMES = 9000
+// ─── Carbon Mapper observed emission sources (CH₄ + CO₂) ────────────────────
+// Persistent SOURCES (DBSCAN clusters of individual plume detections), not
+// raw plumes: each carries how often the site was seen emitting across all
+// overflights (persistence), a source-level rate ± uncertainty, and its
+// observation history — see docs/CARBONMAPPER_API.md for the full API study.
+// Facility names are joined at bake from the Climate TRACE global inventory
+// (systems/facilities-ch4.json, scripts/build-facilities-index.mjs) — the
+// sector-matched nearest named facility within 3 km.
+// Rows: [lat, lng, kg_per_hr, uncertainty, t_last_ms, sector, name, dist_km,
+//        persist_pct, detection_days, observation_days, t_first_ms,
+//        newest_plume_id, newest_scene_uuid]
+const CM_SOURCES_URL = 'https://api.carbonmapper.org/api/v1/catalog/sources.geojson'
+const FACILITIES_URL = `${BLOB_PUBLIC_BASE}/systems/facilities-ch4.json`
 
-async function fetchMethanePlumes() {
-  const since = new Date(Date.now() - CM_WINDOW_DAYS * 8.64e7).toISOString().slice(0, 19) + 'Z'
-  const rows = []
-  for (let offset = 0; offset < 30000; offset += 1000) {
-    const u = `${CM_PLUMES_URL}?plume_gas=CH4&limit=1000&offset=${offset}&datetime=${encodeURIComponent(`${since}/..`)}`
-    const r = await fetch(u, { headers: { accept: 'application/json' } })
-    if (!r.ok) throw new Error(`carbonmapper ${r.status}`)
-    const j = await r.json()
-    for (const it of j.items || []) {
-      const c = it.geometry_json?.coordinates
-      if (!c || it.emission_auto == null) continue
-      rows.push([
-        Math.round(c[1] * 1e4) / 1e4, Math.round(c[0] * 1e4) / 1e4,
-        Math.round(it.emission_auto), Math.round(it.emission_uncertainty_auto || 0),
-        Date.parse(it.scene_timestamp), it.platform || it.instrument || '', it.plume_id,
-        it.sector || '',
-      ])
+// Carbon Mapper IPCC sector → facility classes it may match.
+const SECTOR_TO_CLASS = {
+  '6A': ['landfill', 'compost', 'incineration'],
+  '6B': ['wastewater'],
+  '1B2': ['oilgas'],
+  '1B1a': ['coal'], '1B1': ['coal'],
+  '1A1': ['power'],
+  '1A2': ['power', 'oilgas'],
+  '4B': ['livestock'],
+}
+
+// The index itself is a registry dataset: the cron rebuilds it weekly from
+// Climate TRACE's public API (curated subsectors only — livestock assets are
+// synthetic IDs and O&G production/transport are basin regions, not
+// facilities; see scripts/build-facilities-index.mjs history).
+const CT_SUBSECTORS = {
+  'solid-waste-disposal': 'landfill',
+  'biological-treatment-of-solid-waste-and-biogenic': 'compost',
+  'incineration-and-open-burning-of-waste': 'incineration',
+  'domestic-wastewater-treatment-and-discharge': 'wastewater',
+  'industrial-wastewater-treatment-and-discharge': 'wastewater',
+  'coal-mining': 'coal',
+  'oil-and-gas-refining': 'oilgas',
+  'petrochemical-steam-cracking': 'oilgas',
+  'electricity-generation': 'power',
+}
+
+async function fetchFacilitiesIndex() {
+  const all = []
+  for (const [sub, cls] of Object.entries(CT_SUBSECTORS)) {
+    for (let offset = 0; ; offset += 1000) {
+      const r = await fetch(`https://api.climatetrace.org/v6/assets?subsectors=${sub}&limit=1000&offset=${offset}`)
+      if (!r.ok) throw new Error(`climatetrace ${sub} ${r.status}`)
+      const j = await r.json()
+      const assets = j.assets || []
+      for (const a of assets) {
+        const c = a.Centroid?.Geometry
+        if (!c || !a.Name || /^unknown( name)?$/i.test(a.Name.trim())) continue
+        all.push([Math.round(c[1] * 1e4) / 1e4, Math.round(c[0] * 1e4) / 1e4, a.Name, cls])
+      }
+      if (assets.length < 1000) break
+      if (offset > 400000) break
     }
-    if (!j.items || j.items.length < 1000) break
   }
-  rows.sort((a, b) => b[4] - a[4])
-  const plumes = rows.slice(0, CM_MAX_PLUMES)
+  const seen = new Set()
+  const rows = all.filter((r) => {
+    const k = `${r[0]},${r[1]},${r[2]}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
   return {
     json: {
-      version: 1, kind: 'methane-plumes', fetched_ms: Date.now(),
-      window_days: CM_WINDOW_DAYS, count: plumes.length, total_matched: rows.length,
-      source: 'Carbon Mapper public catalog — individual CH₄ plumes with quantified emission rates (Tanager satellites + aircraft; ~30–60 m)',
-      plumes,
+      version: 1, kind: 'facilities-ch4', fetched_ms: Date.now(), count: rows.length,
+      source: 'Climate TRACE (climatetrace.org) global facility inventory, CC-BY — names, coordinates, and facility types for methane-relevant sectors',
+      rows,
+    },
+  }
+}
+
+let facilitiesCache = null
+async function loadFacilities() {
+  if (facilitiesCache) return facilitiesCache
+  let j = null
+  const r = await fetch(FACILITIES_URL).catch(() => null)
+  if (r?.ok) j = await r.json()
+  else {
+    // Local bakes before the index reaches Blob: read the dev-data copy.
+    try {
+      const { readFileSync } = await import('node:fs')
+      j = JSON.parse(readFileSync(new URL('../public/dev-data/systems/facilities-ch4.json', import.meta.url)))
+    } catch { return null } // no index anywhere — bake without names
+  }
+  // 0.1° grid buckets for nearest-neighbor joins.
+  const grid = new Map()
+  for (const row of j.rows) {
+    const key = `${Math.floor(row[0] * 10)},${Math.floor(row[1] * 10)}`
+    if (!grid.has(key)) grid.set(key, [])
+    grid.get(key).push(row)
+  }
+  facilitiesCache = { grid }
+  return facilitiesCache
+}
+
+function nearestFacility(fac, lat, lng, sector) {
+  if (!fac) return null
+  const classes = SECTOR_TO_CLASS[sector] || null
+  const la = Math.floor(lat * 10)
+  const lo = Math.floor(lng * 10)
+  let best = null
+  for (let dla = -1; dla <= 1; dla++) {
+    for (let dlo = -1; dlo <= 1; dlo++) {
+      for (const f of fac.grid.get(`${la + dla},${lo + dlo}`) || []) {
+        const dLat = (f[0] - lat) * 111
+        const dLng = (f[1] - lng) * 111 * Math.cos((lat * Math.PI) / 180)
+        const km = Math.sqrt(dLat * dLat + dLng * dLng)
+        const matched = classes ? classes.includes(f[3]) : true
+        // Sector-matched within 3 km; cross-class only when very close.
+        if (matched ? km > 3 : km > 1.2) continue
+        const score = km - (matched ? 10 : 0)
+        if (!best || score < best.score) best = { name: f[2], km, score }
+      }
+    }
+  }
+  return best
+}
+
+async function fetchGasSources(gas) {
+  const r = await fetch(`${CM_SOURCES_URL}?plume_gas=${gas}`, { headers: { accept: 'application/json' } })
+  if (!r.ok) throw new Error(`carbonmapper sources ${r.status}`)
+  const gj = await r.json()
+  const fac = await loadFacilities().catch(() => null)
+  const rows = []
+  for (const f of gj.features || []) {
+    const c = f.geometry?.coordinates
+    const p = f.properties || {}
+    if (!c || p.emission_auto == null) continue
+    const lat = Math.round(c[1] * 1e4) / 1e4
+    const lng = Math.round(c[0] * 1e4) / 1e4
+    const hit = nearestFacility(fac, lat, lng, p.sector)
+    const newestPlume = (p.plume_ids || [])[p.plume_ids?.length - 1] || ''
+    // Colloquial plume ids embed the scene name; map it to the scene UUID
+    // (observation_scenes_names entries are "uuid:name") for imagery tiles.
+    const sceneName = newestPlume.replace(/-[A-Z]$/, '')
+    const scenePair = (p.observation_scenes_names || []).find((x) => x.endsWith(`:${sceneName}`))
+    rows.push([
+      lat, lng,
+      Math.round(p.emission_auto), Math.round(p.emission_uncertainty_auto || 0),
+      Date.parse(p.timestamp_max), p.sector || '',
+      hit ? hit.name : '', hit ? Math.round(hit.km * 10) / 10 : -1,
+      Math.round((p.persistence || 0) * 100),
+      p.detection_date_count || 0, p.observation_date_count || 0,
+      Date.parse(p.timestamp_min),
+      newestPlume, scenePair ? scenePair.split(':')[0] : '',
+    ])
+  }
+  rows.sort((a, b) => b[4] - a[4])
+  const named = rows.filter((x) => x[6]).length
+  return {
+    json: {
+      version: 1, kind: `${gas.toLowerCase()}-sources`, fetched_ms: Date.now(),
+      count: rows.length, named,
+      source: `Carbon Mapper public catalog — persistent ${gas} emission sources (clustered plume detections with persistence + rates); facility names joined from Climate TRACE`,
+      sources: rows,
     },
   }
 }
@@ -2013,7 +2134,9 @@ export const SYSTEMS_DATASETS = {
   co: { blobBase: 'systems/cams-co', fetchGrid: fetchCo },
   pm25: { blobBase: 'systems/cams-pm25', fetchGrid: fetchPm25 },
   methane: { blobBase: 'systems/cams-ch4', fetchGrid: fetchCh4 },
-  'methane-plumes': { blobBase: 'systems/methane-plumes', fetchGrid: fetchMethanePlumes },
+  'methane-plumes': { blobBase: 'systems/methane-plumes', fetchGrid: () => fetchGasSources('CH4') },
+  'co2-plumes': { blobBase: 'systems/co2-plumes', fetchGrid: () => fetchGasSources('CO2') },
+  'facilities-ch4': { blobBase: 'systems/facilities-ch4', fetchGrid: fetchFacilitiesIndex },
   co2: { blobBase: 'systems/cams-co2', fetchGrid: fetchCo2 },
 }
 

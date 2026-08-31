@@ -226,6 +226,14 @@
     {
       "path": "/api/cron/systems-bake?ds=methane&tape=1",
       "schedule": "40 7 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=co2-plumes",
+      "schedule": "35 4 * * *"
+    },
+    {
+      "path": "/api/cron/systems-bake?ds=facilities-ch4",
+      "schedule": "15 2 * * 1"
     }
   ]
 }

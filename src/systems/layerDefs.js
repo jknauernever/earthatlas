@@ -247,13 +247,13 @@ const CO2_STOPS = [
 // and desaturated on purpose: the vivid lime detection reticles must pop
 // on top of it by brightness alone.
 const CH4_STOPS = [
-  [1880, 'rgba(150,148,95,0)'],
-  [1950, 'rgba(150,148,95,0.06)'],
-  [2000, 'rgba(152,150,72,0.2)'],
-  [2060, 'rgba(146,142,48,0.45)'],
-  [2130, 'rgba(148,120,34,0.68)'],
-  [2250, 'rgba(128,92,26,0.86)'],
-  [2450, 'rgba(84,58,16,1)'],
+  [1880, 'rgba(196,205,80,0)'],
+  [1950, 'rgba(202,210,82,0.12)'],
+  [2000, 'rgba(214,216,58,0.35)'],
+  [2060, 'rgba(224,202,40,0.58)'],
+  [2130, 'rgba(212,160,30,0.78)'],
+  [2250, 'rgba(168,112,25,0.92)'],
+  [2450, 'rgba(108,72,20,1)'],
 ]
 
 // ─── Layer definitions ──────────────────────────────────────────────────────
@@ -920,7 +920,7 @@ export const LAYERS = [
   },
   {
     id: 'methane',
-    hue: '#b5ad4a',
+    hue: '#d3d94f',
     iconSvg: '<circle cx="12" cy="12" r="2.8"></circle><circle cx="12" cy="5" r="1.6"></circle><circle cx="5" cy="16" r="1.6"></circle><circle cx="19" cy="16" r="1.6"></circle><circle cx="12" cy="19.5" r="1.6"></circle><path d="M12 8.8V6.9"></path><path d="M9.6 13.4l-2.8 1.7"></path><path d="M14.4 13.4l2.8 1.7"></path>',
     group: 'air',
     kind: 'scalar',

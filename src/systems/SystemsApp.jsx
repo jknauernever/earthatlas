@@ -1588,7 +1588,9 @@ export default function SystemsApp() {
           event pings (fires, quakes) on top. */}
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.scalar = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.smokeplumes = el }} aria-hidden="true" />
-      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
+      {/* Observed-plume dots ride ABOVE every other overlay: they're the
+          attention layer — direct observations of live leaks. */}
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />

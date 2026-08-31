@@ -91,7 +91,7 @@ export default async function handler(req, res) {
       } else if (result.json) {
         const body = JSON.stringify(result.json)
         await put(`${entry.blobBase}.json`, body, putOpts('application/json'))
-        out = { ok: true, ds, valid: new Date(result.json.valid_ms).toISOString(), bytes: body.length }
+        out = { ok: true, ds, valid: new Date(result.json.valid_ms ?? result.json.fetched_ms).toISOString(), bytes: body.length }
       } else {
         const { meta, gridBuffer } = result
         await put(`${entry.blobBase}-grid.bin`, gridBuffer, putOpts('application/octet-stream'))

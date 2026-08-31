@@ -43,6 +43,21 @@ export class MethanePlumesOverlay {
     map.on('move', this._onMove)
     map.on('moveend', this._onMoveEnd)
     map.on('resize', this._onResize)
+    // Gentle attention pulse: repaint on a throttled rAF while dots are on
+    // screen so they breathe (~2.4 s period). Skipped while hidden, while
+    // the camera moves (the move handler already repaints), and below the
+    // draw zoom — so the loop costs nothing when nothing is showing.
+    this._lastPulse = 0
+    this._pulseLoop = (now) => {
+      if (this._destroyed) return
+      this._pulseRaf = requestAnimationFrame(this._pulseLoop)
+      if (!this.visible || document.hidden || this._moving || !this._data) return
+      if (this.map.getZoom() < MIN_DRAW_ZOOM) return
+      if (now - this._lastPulse < 50) return // ~20 fps is plenty for a slow pulse
+      this._lastPulse = now
+      this._paint()
+    }
+    this._pulseRaf = requestAnimationFrame(this._pulseLoop)
     this._ensureData()
     this._paint()
   }
@@ -54,6 +69,7 @@ export class MethanePlumesOverlay {
 
   destroy() {
     this._destroyed = true
+    cancelAnimationFrame(this._pulseRaf)
     this.map.off('movestart', this._onMoveStart)
     this.map.off('move', this._onMove)
     this.map.off('moveend', this._onMoveEnd)
@@ -122,6 +138,8 @@ export class MethanePlumesOverlay {
     const now = Date.now()
     // Ease dots in over the first half-zoom so the handoff doesn't pop.
     const zoomAlpha = Math.min(1, (zoom - MIN_DRAW_ZOOM) / 0.5)
+    // Shared breathing phase (0…1…0, ~2.4 s): halo swells and brightens.
+    const pulse = 0.5 + 0.5 * Math.sin((now % 2400) / 2400 * Math.PI * 2)
     for (const p of this._data) {
       if (geo && !geo.isVisible(p.lng, p.lat)) continue
       let pt
@@ -134,12 +152,13 @@ export class MethanePlumesOverlay {
       const r = (3 + 2.5 * Math.log10(Math.max(1, p.kgh / 30))) * zScale
       const fresh = now - p.t_ms < FRESH_MS
       const alpha = (fresh ? 1 : 0.65) * zoomAlpha
-      const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 2.2)
-      grad.addColorStop(0, `rgba(232,121,249,${0.5 * alpha})`)
+      const haloR = r * (2.0 + 0.9 * pulse)
+      const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, haloR)
+      grad.addColorStop(0, `rgba(232,121,249,${(0.42 + 0.22 * pulse) * alpha})`)
       grad.addColorStop(1, 'rgba(232,121,249,0)')
       ctx.fillStyle = grad
       ctx.beginPath()
-      ctx.arc(pt.x, pt.y, r * 2.2, 0, Math.PI * 2)
+      ctx.arc(pt.x, pt.y, haloR, 0, Math.PI * 2)
       ctx.fill()
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
@@ -153,7 +172,7 @@ export class MethanePlumesOverlay {
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, r + 1.4, 0, Math.PI * 2)
       ctx.lineWidth = 1
-      ctx.strokeStyle = `rgba(255,255,255,${0.55 * alpha})`
+      ctx.strokeStyle = `rgba(255,255,255,${(0.45 + 0.25 * pulse) * alpha})`
       ctx.stroke()
       this._drawn.push({ p, x: pt.x, y: pt.y, r })
     }

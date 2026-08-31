@@ -835,12 +835,12 @@ export default function HappyWhaleApp() {
         )}
       </div>
 
-      <MapSheet title="Whale encounters" className={styles.panel}>
-        <div className={styles.panelHead}>
-          <span className={styles.panelTitle}>Whale encounters</span>
-        </div>
-
-          <div className={styles.panelBody}>
+      <MapSheet
+        title="Whale encounters"
+        summary={loading ? 'loading…' : `${stats.count.toLocaleString()} shown`}
+        className={styles.panel}
+      >
+        <div className={styles.panelTitle}>Whale encounters</div>
             {/* Status line */}
             <div className={styles.status}>
               {loading ? 'Loading encounters…'
@@ -887,6 +887,9 @@ export default function HappyWhaleApp() {
                 </div>
                 <div className={styles.journeyMeta}>
                   Stops numbered on the map, ① oldest → newest
+                </div>
+                <div className={styles.journeyDisclaimer}>
+                  Exact routes of whales between points are not known, but estimated.
                 </div>
                 {trackInd.bio && <div className={styles.journeyBio}>{renderMarkdownLite(trackInd.bio)}</div>}
                 <button type="button" className={styles.journeyZoom} onClick={() => fitToTrack()}>
@@ -976,7 +979,6 @@ export default function HappyWhaleApp() {
                 KnauerNever.com
               </a>
             </div>
-          </div>
       </MapSheet>
 
       <div className={styles.tip}>Click an encounter for details · ringed dots are identified whales with journeys</div>

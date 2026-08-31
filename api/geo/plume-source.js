@@ -119,16 +119,17 @@ export default async function handler(req) {
   } else if (place) {
     html = `No named facility is mapped here — it's near ${esc(place)}.`
   }
-  // Identifications never change: cache hard at the edge; brief client cache.
-  // Failures (html null) cache only a minute so a throttled upstream retries.
+  // Real identifications never change: cache hard at the edge. The "no
+  // named facility" fallback often means Overpass was throttled, not that
+  // nothing is there — cache it briefly so the answer can improve. Nulls
+  // barely cache at all.
+  const sMax = hit ? 2592000 : html ? 3600 : 60
   return new Response(JSON.stringify({ ok: !!html, html }), {
     status: 200,
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'access-control-allow-origin': '*',
-      'cache-control': html
-        ? 'public, max-age=3600, s-maxage=2592000'
-        : 'public, max-age=0, s-maxage=60',
+      'cache-control': `public, max-age=${html ? 3600 : 0}, s-maxage=${sMax}`,
     },
   })
 }

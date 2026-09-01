@@ -48,7 +48,7 @@ import { buildViewFacts } from './viewFacts.js'
 import ClipStudio from './ClipStudio.jsx'
 import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
 import ShareControl from '../components/ShareControl.jsx'
-import { scheduleViewCard } from '../lib/shareCard.js'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import styles from './SystemsApp.module.css'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
@@ -1696,7 +1696,13 @@ export default function SystemsApp() {
   const captureShareImage = useCallback(() => {
     const map = mapRef.current
     if (!map) return Promise.resolve(null)
+    // Composite capture (basemap + overlay canvases + branding) first; if it
+    // fails or times out (mobile Safari is the usual suspect), fall back to
+    // a plain basemap grab — a card without overlays still beats the
+    // site-generic image a missing card falls through to.
     return captureStill({ basemap: mapboxBasemapSource(map), overlays: getClipOverlays(), getBrand: getClipBrand })
+      .then((blob) => blob || captureMapImage(map))
+      .catch(() => captureMapImage(map))
   }, [getClipOverlays, getClipBrand])
 
   // ─── Persist the full view to the URL (shareable links) ───────────────────

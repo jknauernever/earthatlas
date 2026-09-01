@@ -25,16 +25,21 @@ export default function ShareControl({ capture, className }) {
   const timerRef = useRef(0)
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
-  const share = useCallback(() => {
+  const share = useCallback(async () => {
     const url = window.location.href
-    // Fire-and-forget: the card is usually already uploaded by the debounced
-    // auto-capture; this guarantees it for views shared immediately.
-    ensureViewCard(capture)
+    // The card must exist BEFORE the share sheet opens on phones: iMessage
+    // (and friends) build their link preview instantly on the sender's
+    // device, racing a fire-and-forget upload — and losing means the
+    // recipient sees the generic site card forever. Wait for the upload,
+    // briefly capped: Safari's transient user activation survives a short
+    // await, and a card that misses the cap still lands for later fetchers.
+    const ready = ensureViewCard(capture)
     // Native share sheet on touch devices (what users expect there); on
     // desktop — where navigator.share also exists but feels foreign —
     // copy the link with a toast, like every content site does.
     const touch = window.matchMedia('(pointer: coarse)').matches
     if (touch && navigator.share) {
+      await Promise.race([ready.catch(() => {}), new Promise((r) => setTimeout(r, 1800))])
       navigator.share({ url, title: document.title }).catch(() => { /* user dismissed */ })
       return
     }

@@ -105,9 +105,10 @@ const ROUTES = [
     title: 'In Motion — Earth’s systems, animated · EarthAtlas',
     description:
       'Watch Earth’s systems in motion — global winds animated as flowing particles on a live globe, with plain-language explanations of what you’re seeing and where every value comes from. An EarthAtlas tool.',
-    // TODO: dedicated systems-social.png; generic EarthAtlas card as stopgap.
-    image: 'https://earthatlas.org/earthatlas-social.jpg',
-    imageAlt: 'EarthAtlas In Motion — animated global wind particles flowing over a 3D globe',
+    image: 'https://earthatlas.org/inmotion-social.jpg',
+    imageWidth: 1920,
+    imageHeight: 1080,
+    imageAlt: 'EarthAtlas In Motion — live global wind streams flowing over a 3D globe seen from space',
     keywords:
       'global wind map, animated wind map, earth wind visualization, NOAA GFS winds, jet stream map, trade winds, wind particle animation, earth systems, live globe, weather globe',
   },
@@ -133,6 +134,10 @@ function patchHead(html, r) {
   html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${r.description}" />`)
   html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${r.image}" />`)
   html = html.replace(/<meta\s+property="og:image:alt"\s+content="[^"]*"\s*\/?>/, `<meta property="og:image:alt" content="${r.imageAlt}" />`)
+  // Dimensions default to the template's 1200×630; routes with differently
+  // sized cards must say so or Facebook mis-renders the first share.
+  html = html.replace(/<meta\s+property="og:image:width"\s+content="[^"]*"\s*\/?>/, `<meta property="og:image:width" content="${r.imageWidth || 1200}" />`)
+  html = html.replace(/<meta\s+property="og:image:height"\s+content="[^"]*"\s*\/?>/, `<meta property="og:image:height" content="${r.imageHeight || 630}" />`)
 
   // Twitter card
   html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${r.title}" />`)

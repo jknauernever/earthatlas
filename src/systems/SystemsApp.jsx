@@ -1704,6 +1704,7 @@ export default function SystemsApp() {
       .then((blob) => blob || captureMapImage(map))
       .catch(() => captureMapImage(map))
   }, [getClipOverlays, getClipBrand])
+  if (import.meta.env.DEV && window.__sys) window.__sys.capture = captureShareImage // dev-only QA handle
 
   // ─── Persist the full view to the URL (shareable links) ───────────────────
   useEffect(() => {

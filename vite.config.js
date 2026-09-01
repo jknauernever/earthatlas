@@ -636,6 +636,7 @@ function inciwebProxyPlugin() {
 // working the same under `npm run dev` as in prod.
 function geoProxyPlugin(mapboxToken) {
   const SUGGEST_PARAMS = new Set(['q', 'session_token', 'limit', 'types', 'proximity', 'language'])
+  const reverseCache = new Map() // "lat,lng" (2dp) → body; dev stand-in for prod's s-maxage
   return {
     name: 'geo-proxy',
     configureServer(server) {
@@ -646,6 +647,32 @@ function geoProxyPlugin(mapboxToken) {
         if (!mapboxToken) {
           res.statusCode = 500
           res.end(JSON.stringify({ error: 'MAPBOX_TOKEN not configured' }))
+          return
+        }
+        if (op === '/reverse') {
+          const lat = Number(url.searchParams.get('lat'))
+          const lng = Number(url.searchParams.get('lng'))
+          if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'valid lat and lng required' }))
+            return
+          }
+          const rLat = Math.round(lat * 100) / 100
+          const rLng = Math.round(lng * 100) / 100
+          const cacheKey = `${rLat},${rLng}`
+          const hit = reverseCache.get(cacheKey)
+          if (hit) { res.statusCode = 200; res.end(hit); return }
+          try {
+            const { resolveReverse } = await import('./api/_geo-reverse-core.js')
+            const out = await resolveReverse({ lat: rLat, lng: rLng, token: mapboxToken })
+            const body = JSON.stringify(out)
+            reverseCache.set(cacheKey, body)
+            res.statusCode = 200
+            res.end(body)
+          } catch (err) {
+            res.statusCode = 502
+            res.end(JSON.stringify({ error: 'reverse geocode failed', detail: String(err) }))
+          }
           return
         }
         let upstreamUrl
@@ -666,7 +693,7 @@ function geoProxyPlugin(mapboxToken) {
           upstreamUrl = `https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(id)}?${upstream}`
         } else {
           res.statusCode = 404
-          res.end(JSON.stringify({ error: 'unknown geo op; expected /suggest or /retrieve' }))
+          res.end(JSON.stringify({ error: 'unknown geo op; expected /suggest, /retrieve, or /reverse' }))
           return
         }
         try {

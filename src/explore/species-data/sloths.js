@@ -27,7 +27,7 @@ export const SPECIES_META = {
     common: 'Brown-throated Three-toed Sloth', scientific: 'Bradypus variegatus',
     color: '#8B7355', emoji: '🦥',
     fact: 'The most widespread sloth species — they move so slowly that algae grows on their fur, providing camouflage and a miniature ecosystem of moths and beetles.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/200780839/medium.jpg',
+    photoUrl: 'https://static.inaturalist.org/photos/73892662/medium.jpg',
     iucn: 'LC',
   },
   2436361: {
@@ -48,7 +48,7 @@ export const SPECIES_META = {
     common: 'Maned Sloth', scientific: 'Bradypus torquatus',
     color: '#6B4226', emoji: '🦥',
     fact: 'Endemic to Brazil\'s Atlantic Forest — named for the mane of long black hair running down their neck and shoulders, which is more prominent in males.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/109226411/medium.jpg',
+    photoUrl: 'https://static.inaturalist.org/photos/108111759/medium.jpg',
     iucn: 'VU',
   },
 
@@ -57,7 +57,7 @@ export const SPECIES_META = {
     common: "Hoffmann's Two-toed Sloth", scientific: 'Choloepus hoffmanni',
     color: '#7B6B5A', emoji: '🦥',
     fact: 'Nocturnal and solitary — they sleep up to 20 hours a day and descend from the canopy only once a week to defecate, risking predation each time.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/233750668/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/706407040/medium.jpg',
     iucn: 'LC',
   },
   5219519: {

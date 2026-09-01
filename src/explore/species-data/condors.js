@@ -34,7 +34,7 @@ export const SPECIES_META = {
     common: 'Andean Condor', scientific: 'Vultur gryphus',
     color: '#2c3e50', emoji: '🦅',
     fact: 'The Andean Condor has the largest wing area of any flying bird and can soar for over 100 miles without a single wingbeat, riding thermal currents above the Andes.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/110654286/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/90906598/medium.jpg',
     iucn: 'VU',
   },
 }

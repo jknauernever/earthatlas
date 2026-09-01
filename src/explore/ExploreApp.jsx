@@ -24,9 +24,30 @@ import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
-import FeedPanel from '../components/FeedPanel'
 
 import { reverseGeocode, fmtDate } from './utils'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+const SOURCE_URLS = {
+  GBIF: 'https://www.gbif.org',
+  iNaturalist: 'https://www.inaturalist.org',
+  eBird: 'https://ebird.org',
+}
+
+// View-local species colors: the species visible right now get distinct hues
+// (in count order), overflow goes neutral gray. Guarantees the on-screen set
+// is distinguishable without hand-assigning colors to every species config.
+const SPECIES_PALETTE = ['#e74c3c', '#2e86de', '#27ae60', '#8e44ad', '#e67e22', '#16a085', '#d81b60', '#6d4c41']
+const SPECIES_OVERFLOW_COLOR = '#7a8ba0'
+
+// "2026-08-29" → "Today" / "Yesterday" / "3d ago"
+function relDay(dateStr) {
+  const days = Math.round((Date.now() - new Date(dateStr + 'T12:00:00')) / 86400000)
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  return `${days}d ago`
+}
 
 const QP_SCHEMA = {
   lat:     { type: 'number' },
@@ -35,7 +56,8 @@ const QP_SCHEMA = {
   mode:    { type: 'string', default: 'now' },
   month:   { type: 'number' },
   species: { type: 'string' },
-  panel:   { type: 'string', default: 'latest' }, // 'species' | 'latest' — sidebar tab
+  from:    { type: 'string' }, // time-slider range start (YYYY-MM-DD), absent = data min
+  to:      { type: 'string' }, // time-slider range end (YYYY-MM-DD), absent = data max
   z:       { type: 'number' }, // map zoom — lat/lng already track the map center
 }
 
@@ -87,13 +109,15 @@ export default function ExploreApp({ config }) {
   const [dataError, setDataError]         = useState(null)
   const [openInfoKey, setOpenInfoKey]     = useState(null)
   const [totalCount, setTotalCount]       = useState(0)
-  const panelTab = qp.panel
-  const setPanelTab = (tab) => setQP({ panel: tab })
-  const [feedExpanded, setFeedExpanded]   = useState(false)
 
   // Interaction
   const [activeSighting, setActiveSighting] = useState(null)
-  const [timeRange, setTimeRange]         = useState({ start: null, end: null })
+  // Time-slider range lives in the URL (from/to) so shared links reproduce it
+  const timeRange = useMemo(() => ({ start: qp.from, end: qp.to }), [qp.from, qp.to])
+  const setTimeRange = useCallback(
+    ({ start, end }) => setQP({ from: start || null, to: end || null }),
+    [setQP]
+  )
   const [tooManyResults, setTooManyResults] = useState(false)
   const MAX_SIGHTINGS = config.defaults.maxSightings
 
@@ -102,16 +126,18 @@ export default function ExploreApp({ config }) {
   const mapBoundsRef = useRef(null)
   const abortRef = useRef(null)
 
-  // Compute approximate viewport bounds from center + zoom (for initial load)
+  // Compute approximate viewport bounds from center + zoom (for initial load).
+  // Clamped to valid coordinates — at world zooms the raw span exceeds ±90/±180
+  // and GBIF rejects the bbox.
   function boundsFromZoom(lat, lng, zoom) {
     const z = zoom || config.defaults.zoom || 6
     const latSpan = 180 / Math.pow(2, z)
     const lngSpan = 360 / Math.pow(2, z)
     return {
-      minLat: lat - latSpan,
-      maxLat: lat + latSpan,
-      minLng: lng - lngSpan,
-      maxLng: lng + lngSpan,
+      minLat: Math.max(-90, lat - latSpan),
+      maxLat: Math.min(90, lat + latSpan),
+      minLng: Math.max(-180, lng - lngSpan),
+      maxLng: Math.min(180, lng + lngSpan),
     }
   }
 
@@ -127,7 +153,6 @@ export default function ExploreApp({ config }) {
     if (!silent) setLoadingData(true)
     setFetching(true)
     setDataError(null)
-    if (!silent) setTimeRange({ start: null, end: null })
 
     try {
       // Use viewport bounds when available, otherwise estimate from default zoom
@@ -194,7 +219,9 @@ export default function ExploreApp({ config }) {
           if (name) setQP({ name })
         })
       }
-      loadData(loc)
+      // Scope the fetch to the zoom the shared URL encodes — the map opens at
+      // that view, so the data must cover it (not the default-zoom box).
+      loadData(loc, qp.z != null ? { bounds: boundsFromZoom(qp.lat, qp.lng, qp.z) } : undefined)
     }
   }, [hasUrlCoords, qp.lat, qp.lng, qp.name, loadData, setQP])
 
@@ -210,13 +237,13 @@ export default function ExploreApp({ config }) {
         lng: location.lng,
         month: monthIdx + 1, // 1-based for API
         speciesKey: activeSpecies ? Number(activeSpecies) : null,
-        ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng) }),
+        ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng, mapZoomRef.current ?? qp.z) }),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
       setTotalCount(result.total)
     } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location, activeSpecies, setQP, fetchMonthSightings, aggregateSpecies])
+  }, [mode, location, activeSpecies, qp.z, setQP, fetchMonthSightings, aggregateSpecies])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)
@@ -257,7 +284,7 @@ export default function ExploreApp({ config }) {
         const name = await reverseGeocode(lat, lng) || 'Your location'
         const loc = { lat, lng, name }
         setLocalLocation(loc)
-        setQP({ lat, lng, name })
+        setQP({ lat, lng, name, from: null, to: null })
         setPhase('loading')
         await loadData(loc)
       },
@@ -272,7 +299,7 @@ export default function ExploreApp({ config }) {
   async function handleLocationSelect({ name, lat, lng }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
-    setQP({ lat, lng, name })
+    setQP({ lat, lng, name, from: null, to: null })
     setPhase('loading')
     await loadData(loc)
   }
@@ -294,14 +321,18 @@ export default function ExploreApp({ config }) {
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
   const handleChangeLocation = useCallback(() => {
-    setQP({ lat: null, lng: null, name: null, mode: 'now', month: null, species: null })
+    setQP({ lat: null, lng: null, name: null, mode: 'now', month: null, species: null, from: null, to: null })
     setLocalLocation(null)
     setPhase('hero')
   }, [setQP])
 
   // ─── Filtered sightings (time slider) ────────────────────────────────────
+  // The slider is a recent-mode concept: patterns mode shows historical
+  // records across all years, so a from/to range (still in the URL for the
+  // trip back to recent mode) must not filter them.
   const filteredSightings = useMemo(() => {
     const { start, end } = timeRange
+    if (mode === 'patterns') return sightings
     if (!start && !end) return sightings
     return sightings.filter(s => {
       if (!s.date) return false
@@ -309,10 +340,54 @@ export default function ExploreApp({ config }) {
       if (end && s.date > end) return false
       return true
     })
-  }, [sightings, timeRange])
+  }, [sightings, timeRange, mode])
 
   const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings, aggregateSpecies])
   const filteredCount = filteredSightings.length
+
+  // View-local color assignment (see SPECIES_PALETTE)
+  const speciesColorMap = useMemo(() => {
+    const map = {}
+    filteredSpecies.forEach((sp, i) => {
+      map[sp.speciesKey] = i < SPECIES_PALETTE.length ? SPECIES_PALETTE[i] : SPECIES_OVERFLOW_COLOR
+    })
+    return map
+  }, [filteredSpecies])
+
+  const coloredSightings = useMemo(
+    () => filteredSightings.map(s => ({ ...s, color: speciesColorMap[s.speciesKey] || SPECIES_OVERFLOW_COLOR })),
+    [filteredSightings, speciesColorMap]
+  )
+  const coloredSpecies = useMemo(
+    () => filteredSpecies.map(sp => ({ ...sp, color: speciesColorMap[sp.speciesKey] })),
+    [filteredSpecies, speciesColorMap]
+  )
+
+  // Nearest sighting to the searched point — "could I see one from here?"
+  const nearest = useMemo(() => {
+    if (!location) return null
+    let best = null
+    for (const s of filteredSightings) {
+      if (s.lat == null || s.lng == null) continue
+      const dLat = (s.lat - location.lat) * Math.PI / 180
+      const dLng = (s.lng - location.lng) * Math.PI / 180
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(location.lat * Math.PI / 180) * Math.cos(s.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+      const km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+      if (!best || km < best.km) best = { km, sighting: s }
+    }
+    return best
+  }, [filteredSightings, location])
+  const timeFilterActive = !!(timeRange.start || timeRange.end)
+
+  // Effective displayed date range: explicit slider bounds, falling back to
+  // the data's own min/max when only one end is set.
+  const filteredRangeLabel = useMemo(() => {
+    if (!timeFilterActive) return null
+    const start = timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null)
+    const end = timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null)
+    return `${fmtDate(start)} – ${fmtDate(end)}`
+  }, [timeFilterActive, timeRange, sightings])
 
   // ─── Theme CSS custom properties ──────────────────────────────────────────
   const themeVars = {
@@ -450,7 +525,9 @@ export default function ExploreApp({ config }) {
           <div className={styles.topbarLeft}>
             <button className={styles.backBtn} onClick={handleChangeLocation}>&larr; Change location</button>
             <div className={styles.locationLabel}>
-              Near <span>{location?.name || 'your location'}</span>
+              {/^\d+ km from /.test(location?.name || '')
+                ? <span>{location.name}</span>
+                : <>Near <span>{location?.name || 'your location'}</span></>}
             </div>
           </div>
           <div className={styles.topbarRight}>
@@ -471,24 +548,63 @@ export default function ExploreApp({ config }) {
           </div>
         </div>
 
-        {/* Status strip */}
+        {/* Stat tiles \u2014 the one place counts/window/provenance appear */}
         {!loadingData && (
-          <div className={styles.statusStrip}>
-            <div className={`${styles.statusDot} ${mode === 'patterns' ? styles.statusDotAmber : ''}`} />
-            {mode === 'now'
-              ? <>
-                  {totalCount > filteredCount
-                    ? `${totalCount.toLocaleString()} ${config.taxonLabel} sightings`
-                    : `${filteredCount} ${config.taxonLabel} sightings`
-                  }
-                  {timeRange.start || timeRange.end
-                    ? ` \u00b7 ${fmtDate(timeRange.start || sightings.reduce((m, s) => s.date && (!m || s.date < m) ? s.date : m, null))} \u2013 ${fmtDate(timeRange.end || sightings.reduce((m, s) => s.date && (!m || s.date > m) ? s.date : m, null))}`
-                    : ` in the past ${config.defaults.days} days`
-                  }
-                  {` \u00b7 ${filteredSpecies.length} species`}
-                </>
-              : `${totalCount.toLocaleString()} historical sightings for ${['January','February','March','April','May','June','July','August','September','October','November','December'][displayedMonth]} across all years`
-            }
+          <div className={styles.statRow}>
+            <div className={styles.statTile}>
+              <div className={styles.statVal}>
+                {(mode === 'patterns' ? totalCount : filteredCount).toLocaleString()}
+              </div>
+              <div className={styles.statLabel}>
+                {fetching ? 'Updating\u2026'
+                  : mode === 'patterns' ? 'Historical sightings'
+                  : 'Sightings in view'}
+              </div>
+              <div className={styles.statSub}>
+                {['iNaturalist', 'eBird', 'GBIF']
+                  .map(src => ({ src, n: filteredSightings.filter(s => s.source === src).length }))
+                  .filter(({ n }) => n > 0)
+                  .map(({ src, n }, i) => (
+                    <span key={src}>
+                      {i > 0 && ' \u00b7 '}
+                      <a href={SOURCE_URLS[src]} target="_blank" rel="noopener">{src === 'iNaturalist' ? 'iNat' : src}</a> {n.toLocaleString()}
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            <div className={styles.statTile}>
+              <div className={styles.statVal}>{filteredSpecies.length}</div>
+              <div className={styles.statLabel}>Species observed</div>
+              <div className={styles.statSub}>
+                {filteredSpecies.slice(0, 2).map(sp => sp.common).join(' \u00b7 ') || '\u2014'}
+              </div>
+            </div>
+
+            <div className={styles.statTile}>
+              <div className={`${styles.statVal} ${styles.statValSm}`}>
+                {mode === 'patterns'
+                  ? MONTH_NAMES[displayedMonth]
+                  : timeFilterActive ? filteredRangeLabel : `Past ${config.defaults.days} days`}
+              </div>
+              <div className={styles.statLabel}>Date range</div>
+              <div className={styles.statSub}>
+                {mode === 'patterns' ? 'All years combined' : (location?.name || '\u2014')}
+              </div>
+            </div>
+
+            {mode === 'now' && nearest && (
+              <div className={styles.statTile}>
+                <div className={styles.statVal}>
+                  {nearest.km < 1 ? '< 1 km' : `${Math.round(nearest.km)} km`}
+                </div>
+                <div className={styles.statLabel}>Nearest sighting</div>
+                <div className={styles.statSub}>
+                  {`${relDay(nearest.sighting.date)} \u00b7 `}<a href={SOURCE_URLS[nearest.sighting.source]} target="_blank" rel="noopener">{nearest.sighting.source}</a>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -505,29 +621,12 @@ export default function ExploreApp({ config }) {
         )}
 
         {/* Content grid */}
-        <div className={`${styles.contentGrid} ${feedExpanded ? styles.contentGridExpanded : ''}`}>
+        <div className={styles.contentGrid}>
           {/* Map + time slider */}
           <div className={styles.mapBlock}>
             <div className={styles.mapWrap}>
-              <div className={styles.mapOverlay}>
-                <div className={styles.mapBadge}>
-                  {fetching
-                    ? <div className={styles.mapBadgeSpinner} />
-                    : <div className={styles.mapBadgeDot} />
-                  }
-                  {fetching
-                    ? 'Updating\u2026'
-                    : mode === 'now' ? `Past ${config.defaults.days} days` : 'Historical'
-                  }
-                </div>
-                {!loadingData && (
-                  <div className={styles.mapSightingCount}>
-                    {filteredCount.toLocaleString()} sightings shown{tooManyResults ? ` of ${totalCount.toLocaleString()}` : ''}
-                  </div>
-                )}
-              </div>
               <ExploreMap
-                sightings={filteredSightings}
+                sightings={coloredSightings}
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
@@ -551,6 +650,38 @@ export default function ExploreApp({ config }) {
             )}
           </div>
 
+          {/* Species visible on the map */}
+          <aside className={styles.speciesBox}>
+            <div className={styles.speciesBoxHead}>
+              Species on the map
+              {filteredSpecies.length > 0 && (
+                <span className={styles.speciesBoxCount}>{filteredSpecies.length}</span>
+              )}
+            </div>
+            <div className={styles.speciesBoxList}>
+              {loadingData && filteredSpecies.length === 0 ? (
+                [0, 1, 2].map(i => (
+                  <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
+                ))
+              ) : filteredSpecies.length === 0 ? (
+                <div className={styles.speciesBoxEmpty}>No sightings in this view</div>
+              ) : (
+                coloredSpecies.map((sp, i) => (
+                  <SpeciesListItem
+                    key={sp.speciesKey || sp.common}
+                    species={sp}
+                    active={activeSpecies == sp.speciesKey}
+                    onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
+                    style={{ animationDelay: `${i * 0.03}s` }}
+                    styles={styles}
+                    openInfoKey={openInfoKey}
+                    setOpenInfoKey={setOpenInfoKey}
+                  />
+                ))
+              )}
+            </div>
+          </aside>
+
           {/* Season chart (below map in grid) */}
           <div className={styles.seasonSection}>
             <div className={styles.sectionLabel}>Seasonal patterns</div>
@@ -567,96 +698,6 @@ export default function ExploreApp({ config }) {
             />
           </div>
 
-          {/* Species / Latest panel */}
-          <div className={styles.speciesPanel}>
-            <div className={styles.panelTabsRow}>
-              <div className={styles.panelTabs}>
-                <button
-                  className={`${styles.panelTab} ${panelTab === 'species' ? styles.panelTabActive : ''}`}
-                  onClick={() => setPanelTab('species')}
-                >
-                  Species
-                  {filteredSpecies.length > 0 && (
-                    <span className={styles.panelTabCount}>{filteredSpecies.length}</span>
-                  )}
-                </button>
-                <button
-                  className={`${styles.panelTab} ${panelTab === 'latest' ? styles.panelTabActive : ''}`}
-                  onClick={() => setPanelTab('latest')}
-                >
-                  Latest
-                </button>
-              </div>
-              {panelTab === 'latest' && !feedExpanded && (
-                <button
-                  className={styles.expandFeedBtn}
-                  onClick={() => setFeedExpanded(true)}
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M1 5h5V1M13 9H8v4M1 5l4-4M13 9l-4 4" />
-                  </svg>
-                  Expand
-                </button>
-              )}
-            </div>
-
-            {panelTab === 'species' ? (
-              <>
-                {loadingData && filteredSpecies.length === 0 ? (
-                  [0, 1, 2, 3].map(i => (
-                    <div key={i} className={styles.shimmerCard} style={{ animationDelay: `${i * 0.12}s` }} />
-                  ))
-                ) : filteredSpecies.length === 0 && !loadingData ? (
-                  <div className={styles.emptyState}>
-                    <div className={styles.emptyStateEmoji}>{config.empty.emoji}</div>
-                    <div className={styles.emptyStateText}>{config.empty.text}</div>
-                    <div
-                      className={styles.emptyStateSub}
-                      dangerouslySetInnerHTML={{ __html: config.empty.sub }}
-                    />
-                    {config.localizable === false && config.hotspots && config.hotspots.length > 0 && (
-                      <div className={styles.emptyHotspots}>
-                        <div className={styles.emptyHotspotsLabel}>Try a known habitat:</div>
-                        <div className={styles.hotspotChips}>
-                          {config.hotspots.slice(0, 3).map(hs => (
-                            <button
-                              key={hs.name}
-                              className={styles.hotspotChipSmall}
-                              onClick={() => handleLocationSelect({ name: hs.name, lat: hs.lat, lng: hs.lng })}
-                            >
-                              {hs.emoji || '📍'} {hs.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  filteredSpecies.map((sp, i) => (
-                    <SpeciesListItem
-                      key={sp.speciesKey || sp.common}
-                      species={sp}
-                      active={activeSpecies == sp.speciesKey}
-                      onClick={() => setQP({ species: sp.speciesKey == activeSpecies ? null : sp.speciesKey })}
-                      style={{ animationDelay: `${i * 0.03}s` }}
-                      styles={styles}
-                      openInfoKey={openInfoKey}
-                      setOpenInfoKey={setOpenInfoKey}
-                    />
-                  ))
-                )}
-              </>
-            ) : (
-              <FeedPanel
-                inatTaxonId={config.inatTaxonId}
-                newsQuery={config.newsQuery}
-                speciesSlug={config.slug}
-                accentColor={config.hero.accentColor}
-                expanded={feedExpanded}
-                onToggleExpand={() => setFeedExpanded(prev => !prev)}
-              />
-            )}
-          </div>
         </div>
 
       </div>{/* end mainLayout */}

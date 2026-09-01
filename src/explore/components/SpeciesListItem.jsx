@@ -4,7 +4,9 @@ export default function SpeciesListItem({ species, active, onClick, style, style
   const color = species.color || '#1a5276'
   const infoKey = species.speciesKey || species.common
   const popupOpen = openInfoKey === infoKey
-  const photo = (species.photos && species.photos[0]) || species.meta?.photoUrl || null
+  // Curated site photo for the species — not whatever the latest observation
+  // happened to capture (those are often blurry silhouettes).
+  const photo = species.meta?.photoUrl || (species.photos && species.photos[0]) || null
 
   return (
     <div
@@ -19,6 +21,7 @@ export default function SpeciesListItem({ species, active, onClick, style, style
       <div className={styles.speciesRowThumbPlaceholder} style={{ display: photo ? 'none' : 'flex', borderColor: color }}>
         {species.meta?.emoji || ''}
       </div>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 0 0 1px rgba(0,0,0,0.12)' }} />
       <div className={styles.speciesRowName}>
         {species.common}
         {species.scientific && (

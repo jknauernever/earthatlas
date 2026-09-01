@@ -44,7 +44,7 @@ export const SPECIES_META = {
     common: 'Siberian Tiger', scientific: 'Panthera tigris altaica',
     color: '#e88d30', emoji: '🐯',
     fact: 'The largest of all tiger subspecies — males can weigh over 600 pounds and patrol territories of up to 400 square miles in the Russian Far East.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/622483394/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/65783557/medium.jpg',
     iucn: 'EN',
   },
   5219425: {

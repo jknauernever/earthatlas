@@ -172,17 +172,12 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   `
 }
 
-// Crossfade zone: heatmap fades out, circles fade in
-const XFADE_LO = 7   // heatmap starts fading, circles start appearing
-const XFADE_HI = 10  // heatmap gone, circles fully visible
-
 /**
  * ExploreMap — unified Mapbox GL map for all EarthAtlas subsites.
  *
- * Rendering tiers (all GL-native, GPU-rendered):
- *   z < 7   — heatmap layer (from sighting GeoJSON)
- *   z 7–10  — smooth crossfade (heatmap fading out, circle dots fading in)
- *   z > 10  — circle dot layer with click-to-popup
+ * Recent-sightings rendering (all GL-native, GPU-rendered): one dot per
+ * record, colored by species, newest sorted on top (circle-sort-key), with
+ * click-to-popup. Patterns mode swaps in GBIF adhoc hex-bin density tiles.
  */
 export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, patternsMonth = null, radiusKm = null, searchId = 0, initialView = null, config = {} }) {
   const {
@@ -192,10 +187,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     gbifTaxonKey = null,
   } = config
 
-  // GBIF's v2 map API takes a single taxonKey per tile URL, so a multi-key
-  // config (e.g. condors: two species keys) gets one density source/layer per key.
+  // Taxon keys for GBIF adhoc map tiles (patterns mode) — repeated taxonKey
+  // params OR together like the occurrence search API.
   const gbifTaxonKeys = gbifTaxonKey == null ? [] : (Array.isArray(gbifTaxonKey) ? gbifTaxonKey : [gbifTaxonKey])
-  const gbifDensityLayerIds = gbifTaxonKeys.map(k => `gbif-density-heat-${k}`)
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
@@ -261,8 +255,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
-    // Globe-style fog — match space color to page background
-    map.on('load', () => {
+    // Layer/fog setup on style.load, NOT the one-shot 'load' event — 'load'
+    // waits for tiles and can be missed entirely (isStyleLoaded() can stay
+    // false on a rendered map), leaving the map with no sighting layers.
+    // See docs/MAP_TOOL_CONVENTIONS.md §4. style.load fires at style parse
+    // and again after any future style switch. __eaStyleReady lets later
+    // effects know setup already happened.
+    map.on('style.load', () => {
+      map.__eaStyleReady = true
+      addSightingLayers()
       try {
         map.setFog({
           color: '#f5f0e8',
@@ -274,149 +275,35 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       } catch (e) { /* fog not supported */ }
     })
 
-    // ── Native GL layers (heatmap + circles) from sighting GeoJSON ─────────
+    // ── Native GL layers (clusters + dots) from sighting GeoJSON ───────────
     function addSightingLayers() {
       if (map.getSource('sighting-src')) return
-
-      // GBIF vector tile density heatmap — covers the entire globe
-      for (const key of gbifTaxonKeys) {
-        map.addSource(`gbif-density-${key}`, {
-          type: 'vector',
-          tiles: [
-            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}.mvt?taxonKey=${key}&basisOfRecord=HUMAN_OBSERVATION`,
-          ],
-          maxzoom: 14,
-        })
-        map.addLayer({
-          id: `gbif-density-heat-${key}`,
-          type: 'heatmap',
-          source: `gbif-density-${key}`,
-          'source-layer': 'occurrence',
-          paint: {
-            'heatmap-weight': [
-              'interpolate', ['linear'],
-              ['get', 'total'],
-              0, 0,
-              1, 0.05,
-              10, 0.15,
-              100, 0.4,
-              1000, 0.8,
-              10000, 1,
-            ],
-            'heatmap-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 2,
-              3, 6,
-              5, 14,
-              XFADE_LO, 22,
-              XFADE_HI, 30,
-            ],
-            'heatmap-intensity': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 0.15,
-              3, 0.25,
-              5, 0.4,
-              XFADE_LO, 0.7,
-              XFADE_HI, 1.0,
-            ],
-            'heatmap-color': [
-              'interpolate', ['linear'], ['heatmap-density'],
-              0,    'rgba(0, 0, 0, 0)',
-              0.1,  'rgba(255, 200, 0, 0.1)',
-              0.25, 'rgba(255, 190, 0, 0.2)',
-              0.4,  'rgba(255, 180, 0, 0.35)',
-              0.55, 'rgba(255, 160, 0, 0.45)',
-              0.7,  'rgba(255, 130, 0, 0.55)',
-              0.85, 'rgba(255, 100, 0, 0.65)',
-              1.0,  'rgba(255, 60, 0, 0.75)',
-            ],
-            'heatmap-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO - 1, 0.85,
-              XFADE_LO, 0.6,
-              XFADE_HI, 0,
-            ],
-          },
-        })
-      }
 
       map.addSource('sighting-src', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       })
 
-      // Heatmap layer — bright glowing blobs at low zoom, crossfades out
-      map.addLayer({
-        id: 'sighting-heat',
-        type: 'heatmap',
-        source: 'sighting-src',
-        paint: {
-          'heatmap-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 30,
-            3, 40,
-            5, 35,
-            XFADE_LO, 30,
-            XFADE_HI, 40,
-          ],
-          'heatmap-intensity': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 0.6,
-            4, 0.8,
-            XFADE_LO, 1.2,
-            XFADE_HI, 1.5,
-          ],
-          'heatmap-color': [
-            'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(0, 0, 0, 0)',
-            0.05, 'rgba(255, 180, 0, 0.25)',
-            0.15, 'rgba(255, 190, 0, 0.5)',
-            0.3,  'rgba(255, 200, 20, 0.7)',
-            0.5,  'rgba(255, 190, 0, 0.8)',
-            0.7,  'rgba(255, 160, 0, 0.85)',
-            0.85, 'rgba(255, 120, 0, 0.9)',
-            1.0,  'rgba(255, 80, 0, 0.95)',
-          ],
-          'heatmap-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO - 1, 0.85,
-            XFADE_LO, 0.75,
-            XFADE_HI, 0,
-          ],
-        },
-      })
-
-      // Circle layer — crossfades in as heatmap fades out
+      // Sighting dots — every record its own dot, colored by species.
+      // Newest render on top (circle-sort-key), so where dots overlap the
+      // freshest sighting wins the pixel.
       map.addLayer({
         id: 'sighting-circles',
         type: 'circle',
         source: 'sighting-src',
+        layout: {
+          'circle-sort-key': ['get', 'ts'],
+        },
         paint: {
           'circle-radius': [
             'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 3,
-            XFADE_HI, 6,
+            0, 4,
+            10, 6,
             14, 8,
           ],
-          'circle-color': '#ff6a00',
+          'circle-color': ['get', 'color'],
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 1,
-            XFADE_HI, 2,
-          ],
-          'circle-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 0,
-            XFADE_LO + 1, 0.7,
-            XFADE_HI, 1,
-          ],
-          'circle-stroke-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 0,
-            XFADE_LO + 1, 0.8,
-            XFADE_HI, 1,
-          ],
+          'circle-stroke-width': 1.5,
         },
       })
 
@@ -431,10 +318,26 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         if (popupRef.current) popupRef.current.remove()
 
         const isMobile = window.innerWidth <= 600
+
+        // The map's box can extend past the browser fold, so "fits in the
+        // map" isn't "visible". Anchor the popup toward the bigger VISIBLE
+        // half: dot in the lower half of the on-screen map → popup opens
+        // upward, and vice versa.
+        const mapRect0 = map.getContainer().getBoundingClientRect()
+        const visTop = Math.max(mapRect0.top, 0)
+        const visBottom = Math.min(mapRect0.bottom, window.innerHeight)
+        const dotClientY = mapRect0.top + map.project([s.lng, s.lat]).y
+        const anchor = dotClientY > (visTop + visBottom) / 2 ? 'bottom' : 'top'
+
         const popup = new mapboxgl.Popup({
           offset: isMobile ? 0 : 12,
-          closeButton: isMobile,
+          closeButton: true,
           maxWidth: isMobile ? '100%' : '280px',
+          // Default focus-on-open makes the BROWSER scroll the page to the
+          // popup, yanking the map to the top. The panBy below keeps the
+          // popup visible within the map instead.
+          focusAfterOpen: false,
+          ...(isMobile ? {} : { anchor }),
         })
           .setLngLat([s.lng, s.lat])
           .setHTML(buildPopupHTML(s, {
@@ -458,15 +361,23 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             const mapRect = map.getContainer().getBoundingClientRect()
             const popupRect = popupEl.getBoundingClientRect()
             const pad = 20
+            // Fit against the VISIBLE map region — the intersection of the
+            // map's box and the browser viewport — not the full container.
+            const box = {
+              left: Math.max(mapRect.left, 0),
+              right: Math.min(mapRect.right, window.innerWidth),
+              top: Math.max(mapRect.top, 0),
+              bottom: Math.min(mapRect.bottom, window.innerHeight),
+            }
             let dx = 0, dy = 0
-            if (popupRect.left < mapRect.left + pad)
-              dx = popupRect.left - (mapRect.left + pad)
-            else if (popupRect.right > mapRect.right - pad)
-              dx = popupRect.right - (mapRect.right - pad)
-            if (popupRect.top < mapRect.top + pad)
-              dy = popupRect.top - (mapRect.top + pad)
-            else if (popupRect.bottom > mapRect.bottom - pad)
-              dy = popupRect.bottom - (mapRect.bottom - pad)
+            if (popupRect.left < box.left + pad)
+              dx = popupRect.left - (box.left + pad)
+            else if (popupRect.right > box.right - pad)
+              dx = popupRect.right - (box.right - pad)
+            if (popupRect.top < box.top + pad)
+              dy = popupRect.top - (box.top + pad)
+            else if (popupRect.bottom > box.bottom - pad)
+              dy = popupRect.bottom - (box.bottom - pad)
             if (dx !== 0 || dy !== 0) {
               markFlying(500)
               map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
@@ -484,8 +395,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       })
     }
 
-    if (map.isStyleLoaded()) addSightingLayers()
-    else map.on('load', addSightingLayers)
+    if (map.isStyleLoaded()) addSightingLayers() // style.load handler is the primary path
 
     // Track zoom for display
     map.on('zoom', () => {
@@ -516,6 +426,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     })
 
     mapRef.current = map
+    if (import.meta.env.DEV) window.__eaMap = map // dev-only debugging handle
 
     // Resize map when container dimensions change (e.g. feed expand/collapse)
     const ro = new ResizeObserver(() => {
@@ -630,6 +541,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
               properties: {
                 idx: i,
                 color: s.color || fallbackColor,
+                ts: s.date ? Date.parse(s.date) : 0, // newest-on-top sort key
                 speciesKey: String(s.speciesKey || ''),
                 scientific: (s.scientific || '').toLowerCase(),
                 binomial: (s.scientific || '').toLowerCase().split(/\s+/).slice(0, 2).join(' '),
@@ -643,11 +555,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       return true
     }
 
-    // Source may not exist yet if style is still loading
+    // Source may not exist yet if style is still loading (style.load creates it)
     if (!updateSource()) {
-      const onLoad = () => { updateSource(); map.off('load', onLoad) }
-      map.on('load', onLoad)
-      return () => map.off('load', onLoad)
+      const onStyle = () => { updateSource(); map.off('style.load', onStyle) }
+      map.on('style.load', onStyle)
+      return () => map.off('style.load', onStyle)
     }
   }, [sightings])
 
@@ -660,46 +572,39 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       // Reset to defaults
       map.setPaintProperty('sighting-circles', 'circle-radius', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 3,
-        XFADE_HI, 6,
+        0, 4,
+        10, 6,
         14, 8,
       ])
-      map.setPaintProperty('sighting-circles', 'circle-color', '#ff6a00')
-      map.setPaintProperty('sighting-circles', 'circle-opacity', [
-        'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 0,
-        XFADE_LO + 1, 0.7,
-        XFADE_HI, 1,
-      ])
-      map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-        'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 1,
-        XFADE_HI, 2,
-      ])
+      map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
+      map.setPaintProperty('sighting-circles', 'circle-opacity', 1)
+      map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
-      map.setFilter('sighting-heat', null)
+      map.setLayoutProperty('sighting-circles', 'circle-sort-key', ['get', 'ts'])
     } else {
-      const key = String(activeSpecies).toLowerCase()
-      // Determine if filtering by binomial (parent species) or exact scientific name (subspecies)
-      const isBinomial = key.split(/\s+/).length <= 2
-      const matchProp = isBinomial ? 'binomial' : 'scientific'
-      const matchExpr = ['==', ['get', matchProp], key]
+      // Accept any identity the two callers use: explore subsites pass the
+      // speciesKey (numeric GBIF key, or binomial fallback); the homepage
+      // sidebar passes a lowercased scientific name (binomial for species,
+      // trinomial for its subspecies rows). Features carry all three.
+      const key = String(activeSpecies)
+      const keyLower = key.toLowerCase()
+      const matchExpr = ['any',
+        ['==', ['get', 'speciesKey'], key],
+        ['==', ['get', 'binomial'], keyLower],
+        ['==', ['get', 'scientific'], keyLower],
+      ]
 
-      // Highlight matching, dim non-matching
+      // Selected species: full brightness, bigger, yellow ring, above
+      // everything. Others: dimmed context.
       map.setPaintProperty('sighting-circles', 'circle-radius', [
         'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, ['case', matchExpr, 5, 2],
-        XFADE_HI, ['case', matchExpr, 9, 4],
-        14, ['case', matchExpr, 11, 5],
+        0, ['case', matchExpr, 6, 3],
+        10, ['case', matchExpr, 9, 4.5],
+        14, ['case', matchExpr, 11, 5.5],
       ])
-      map.setPaintProperty('sighting-circles', 'circle-color', [
-        'case', matchExpr, '#ff4400', '#ff6a00',
-      ])
+      map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
-        'interpolate', ['linear'], ['zoom'],
-        XFADE_LO, 0,
-        XFADE_LO + 1, ['case', matchExpr, 1, 0.25],
-        XFADE_HI, ['case', matchExpr, 1, 0.25],
+        'case', matchExpr, 1, 0.3,
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
         'case', matchExpr, 2.5, 0.5,
@@ -707,147 +612,99 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
         'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
       ])
-      // Focus heatmap on selected species
-      map.setFilter('sighting-heat', matchExpr)
+      // Selected dots always paint over dimmed neighbors (newest-first within each group)
+      map.setLayoutProperty('sighting-circles', 'circle-sort-key', [
+        'case', matchExpr, ['+', ['get', 'ts'], 1e15], ['get', 'ts'],
+      ])
 
-      // Fly to the densest cluster for this species
-      const matching = sightingsRef.current.filter(s => {
-        const sci = (s.scientific || '').toLowerCase()
-        const bin = sci.split(/\s+/).slice(0, 2).join(' ')
-        return (isBinomial ? bin === key : sci === key) && s.lat != null && s.lng != null
-      })
-      if (matching.length > 0) {
-        const GRID = 5
-        const cells = {}
-        for (const s of matching) {
-          const ck = `${Math.round(s.lat / GRID)},${Math.round(s.lng / GRID)}`
-          if (!cells[ck]) cells[ck] = { sumLat: 0, sumLng: 0, count: 0 }
-          cells[ck].sumLat += s.lat
-          cells[ck].sumLng += s.lng
-          cells[ck].count++
-        }
-        const densest = Object.values(cells).sort((a, b) => b.count - a.count)[0]
-        const tLat = densest.sumLat / densest.count
-        const tLng = densest.sumLng / densest.count
-
-        const bounds = new mapboxgl.LngLatBounds()
-        for (const s of matching) bounds.extend([s.lng, s.lat])
-        const span = Math.max(bounds.getNorth() - bounds.getSouth(), bounds.getEast() - bounds.getWest())
-        const zoom = span > 100 ? 2.5 : span > 40 ? 3.5 : span > 15 ? 4.5 : span > 5 ? 6 : 8
-
-        markFlying(1800)
-        map.flyTo({ center: [tLng, tLat], zoom, duration: 1500, essential: true })
-      }
+      // No camera movement on selection — the map stays where the user put it;
+      // highlighting alone tells the story.
     }
   }, [activeSpecies])
 
-  // ─── Seasonal heatmap layer (patterns mode) ──────────────────────────────
+  // ─── Seasonal density layer (patterns mode) ──────────────────────────────
+  // GBIF adhoc map tiles: server-side binned occurrence counts honoring the
+  // month filter — EVERY record across all years, no fetch cap. Tiles carry
+  // polygon bins (layer "occurrence") with a `total` count per bin.
+  // Requires srs=EPSG:3857; the {z}/{x}/{y} template must stay unencoded in
+  // the path, and the tile URL must be absolute (relative URLs throw in the
+  // Mapbox worker).
+  const seasonalUrlRef = useRef(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
-    const sourceId = 'seasonal-heat-points'
-    const layerId = 'seasonal-heat-layer'
+    const sourceId = 'seasonal-bins'
+    const layerId = 'seasonal-bins-fill'
+
+    const sightingLayerIds = ['sighting-circles']
+
+    function removeSeasonal() {
+      if (map.getLayer(layerId)) map.removeLayer(layerId)
+      if (map.getSource(sourceId)) map.removeSource(sourceId)
+      seasonalUrlRef.current = null
+    }
 
     function update() {
       if (!patternsMonth) {
-        // Remove seasonal heatmap, restore sighting layers
-        if (map.getLayer(layerId)) map.removeLayer(layerId)
-        if (map.getSource(sourceId)) map.removeSource(sourceId)
-        for (const id of gbifDensityLayerIds) {
-          if (map.getLayer(id)) {
-            map.setPaintProperty(id, 'heatmap-opacity', [
-              'interpolate', ['linear'], ['zoom'],
-              XFADE_LO - 1, 0.85,
-              XFADE_LO, 0.6,
-              XFADE_HI, 0,
-            ])
-          }
-        }
-        if (map.getLayer('sighting-heat')) {
-          map.setPaintProperty('sighting-heat', 'heatmap-opacity', [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO - 1, 0.85,
-            XFADE_LO, 0.75,
-            XFADE_HI, 0,
-          ])
-        }
-        if (map.getLayer('sighting-circles')) {
-          map.setPaintProperty('sighting-circles', 'circle-opacity', [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 0,
-            XFADE_HI, 0.9,
-          ])
-          map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', [
-            'interpolate', ['linear'], ['zoom'],
-            XFADE_LO, 0,
-            XFADE_HI, 0.85,
-          ])
+        // Remove seasonal bins, restore sighting layers
+        removeSeasonal()
+        for (const id of sightingLayerIds) {
+          if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
         }
         return
       }
 
-      // Hide sighting layers during patterns mode
-      for (const id of gbifDensityLayerIds) {
-        if (map.getLayer(id)) map.setPaintProperty(id, 'heatmap-opacity', 0)
-      }
-      if (map.getLayer('sighting-heat')) map.setPaintProperty('sighting-heat', 'heatmap-opacity', 0)
-      if (map.getLayer('sighting-circles')) {
-        map.setPaintProperty('sighting-circles', 'circle-opacity', 0)
-        map.setPaintProperty('sighting-circles', 'circle-stroke-opacity', 0)
+      // Hide sighting layers during patterns mode (visibility, not opacity —
+      // an opacity-0 layer still catches clicks)
+      for (const id of sightingLayerIds) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
       }
 
-      // Build seasonal heatmap from sightings
-      const geojson = {
-        type: 'FeatureCollection',
-        features: sightings
-          .filter(s => s.lat && s.lng)
-          .map(s => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-            properties: {},
-          })),
-      }
+      // Hex bins read as organic density; raw square bins look like giant
+      // pixel blocks at low zoom. hexPerTile sets the visual grain (hex
+      // columns per 512px tile) — screen-constant across zooms since tiles
+      // are screen-constant. ~19 → ~27px hexes.
+      const qs = new URLSearchParams({ srs: 'EPSG:3857', month: String(patternsMonth), occurrenceStatus: 'PRESENT', bin: 'hex', hexPerTile: '19' })
+      for (const k of gbifTaxonKeys) qs.append('taxonKey', k)
+      const tilesUrl = `https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}.mvt?${qs.toString()}`
 
-      if (map.getSource(sourceId)) {
-        map.getSource(sourceId).setData(geojson)
-      } else {
-        map.addSource(sourceId, { type: 'geojson', data: geojson })
-        map.addLayer({
-          id: layerId,
-          type: 'heatmap',
-          source: sourceId,
-          paint: {
-            'heatmap-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 4, 2, 8, 4, 16, 6, 24, 9, 32,
-            ],
-            'heatmap-intensity': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 0.4, 2, 0.6, 4, 1, 8, 1.5,
-            ],
-            'heatmap-color': [
-              'interpolate', ['linear'], ['heatmap-density'],
-              0,    'rgba(0, 0, 0, 0)',
-              0.05, 'rgba(65, 105, 225, 0.4)',
-              0.15, 'rgb(0, 180, 120)',
-              0.35, 'rgb(255, 200, 0)',
-              0.55, 'rgb(255, 120, 0)',
-              0.75, 'rgb(230, 50, 20)',
-              1.0,  'rgb(180, 0, 30)',
-            ],
-            'heatmap-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 0.6, 12, 0.6,
-            ],
-          },
-        })
-      }
+      if (seasonalUrlRef.current === tilesUrl) return // same month — keep the source
+      removeSeasonal()
+      seasonalUrlRef.current = tilesUrl
+
+      map.addSource(sourceId, {
+        type: 'vector',
+        tiles: [tilesUrl],
+        minzoom: 0,
+        maxzoom: 16,
+      })
+      map.addLayer({
+        id: layerId,
+        type: 'fill',
+        source: sourceId,
+        'source-layer': 'occurrence',
+        paint: {
+          'fill-color': [
+            'interpolate', ['linear'], ['get', 'total'],
+            1,    'rgba(255, 185, 0, 0.5)',
+            10,   'rgba(255, 145, 0, 0.62)',
+            100,  'rgba(255, 90, 0, 0.75)',
+            1000, 'rgba(220, 40, 20, 0.85)',
+          ],
+          'fill-outline-color': 'rgba(255, 255, 255, 0.25)',
+        },
+      })
     }
 
-    if (map.isStyleLoaded()) update()
-    else map.on('load', update)
-  }, [patternsMonth, sightings])
+    if (map.__eaStyleReady || map.isStyleLoaded()) {
+      update()
+    } else {
+      const onStyle = () => { update(); map.off('style.load', onStyle) }
+      map.on('style.load', onStyle)
+      return () => map.off('style.load', onStyle)
+    }
+  }, [patternsMonth, gbifTaxonKeys.join(',')])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

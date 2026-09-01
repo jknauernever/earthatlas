@@ -94,13 +94,17 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     const coords = obs.geojson?.coordinates // [lng, lat]
     if (!coords) return null
     const sciName = obs.taxon?.name || ''
-    const speciesKey = gbifKeyFromScientific(sciName)
+    // Roll subspecies/varieties up to the parent species: group by the
+    // binomial so "Megaptera novaeangliae kuzira" counts with the Humpbacks
+    // instead of fragmenting the species list.
+    const binomial = sciName.split(/\s+/).slice(0, 2).join(' ')
+    const speciesKey = gbifKeyFromScientific(sciName) || gbifKeyFromScientific(binomial)
     const meta = speciesKey ? getSpeciesMeta(speciesKey) : null
     const photo = obs.photos?.[0]?.url?.replace('square', 'medium') || null
     return {
       id: `inat-${obs.id}`,
-      speciesKey: speciesKey || sciName || null,
-      common: obs.taxon?.preferred_common_name || meta?.common || sciName || defaultCommon,
+      speciesKey: speciesKey || binomial || null,
+      common: meta?.common || obs.taxon?.preferred_common_name || sciName || defaultCommon,
       scientific: sciName,
       color: meta?.color || defaultColor,
       emoji: meta?.emoji || defaultEmoji,
@@ -357,12 +361,14 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
   function normalizeEBirdObs(obs) {
     const sciName = obs.sciName || ''
-    const speciesKey = gbifKeyFromScientific(sciName)
+    // Same subspecies rollup as iNat: group by binomial
+    const binomial = sciName.split(/\s+/).slice(0, 2).join(' ')
+    const speciesKey = gbifKeyFromScientific(sciName) || gbifKeyFromScientific(binomial)
     const meta = speciesKey ? getSpeciesMeta(speciesKey) : null
     return {
       id: `ebird-${obs.subId}-${obs.speciesCode}`,
-      speciesKey: speciesKey || sciName || null,
-      common: obs.comName || meta?.common || sciName || defaultCommon,
+      speciesKey: speciesKey || binomial || null,
+      common: meta?.common || obs.comName || sciName || defaultCommon,
       scientific: sciName,
       color: meta?.color || defaultColor,
       emoji: meta?.emoji || defaultEmoji,
@@ -411,13 +417,16 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     for (const s of sightings) {
       const key = s.speciesKey || s.scientific || s.common
       if (!map[key]) {
+        const meta = getSpeciesMeta(s.speciesKey)
         map[key] = {
           speciesKey: s.speciesKey || key,
           common: s.common,
-          scientific: s.scientific,
+          // Prefer the curated species binomial — a rolled-up subspecies
+          // record would otherwise label the whole group with its trinomial
+          scientific: meta?.scientific || s.scientific,
           color: s.color,
           iucn: s.iucn,
-          meta: getSpeciesMeta(s.speciesKey),
+          meta,
           count: 0,
           lastSeen: null,
           photos: [],

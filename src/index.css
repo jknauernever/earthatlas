@@ -243,6 +243,33 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
   border-bottom-color: #ffffff;
 }
 
+/* Desktop popup close button — dark circular scrim so the × reads on both a
+   photo header and a plain white card. (Mobile bottom-sheet popups restyle
+   their own close button in the max-width block below.) */
+@media (min-width: 601px) {
+  .mapboxgl-popup .mapboxgl-popup-close-button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(15, 18, 28, 0.45);
+    color: #ffffff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .mapboxgl-popup .mapboxgl-popup-close-button:hover {
+    background: rgba(15, 18, 28, 0.68);
+  }
+}
+
 /* ─── Mobile: bottom-sheet popups ─── */
 @media (max-width: 600px) {
   .mapboxgl-popup {

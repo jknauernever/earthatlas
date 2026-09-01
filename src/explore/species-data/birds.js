@@ -7,7 +7,7 @@ export const SPECIES_META = {
     common: 'Bald Eagle', scientific: 'Haliaeetus leucocephalus',
     color: '#4a3728', emoji: '🦅',
     fact: 'The national bird of the United States was once endangered due to DDT pesticide thinning its eggshells. After a ban on DDT and decades of conservation, populations rebounded from 417 breeding pairs in 1963 to over 71,400 by 2021.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/261608792/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/341016703/medium.jpeg',
     iucn: 'LC',
   },
 
@@ -25,7 +25,7 @@ export const SPECIES_META = {
     common: 'Snowy Owl', scientific: 'Bubo scandiacus',
     color: '#f5f5f0', emoji: '🦉',
     fact: 'One of the few owl species active during the day, snowy owls breed in the Arctic tundra and can eat over 1,600 lemmings per year. In irruption years, they migrate far south, thrilling birdwatchers across North America.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/105395238/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/150549757/medium.jpg',
     iucn: 'VU',
   },
 
@@ -34,7 +34,7 @@ export const SPECIES_META = {
     common: 'Peregrine Falcon', scientific: 'Falco peregrinus',
     color: '#4a5568', emoji: '🦅',
     fact: 'The fastest animal on Earth, reaching speeds over 380 km/h (240 mph) in a hunting dive called a stoop. Found on every continent except Antarctica, they have adapted to city life by nesting on skyscrapers and bridges.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/200723553/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/212499566/medium.jpg',
     iucn: 'LC',
   },
 
@@ -52,7 +52,7 @@ export const SPECIES_META = {
     common: 'Northern Cardinal', scientific: 'Cardinalis cardinalis',
     color: '#c0392b', emoji: '🐦',
     fact: 'One of the most recognizable backyard birds in North America, the male\'s brilliant red plumage comes from carotenoid pigments in its diet. Cardinals are one of few songbirds where both males and females sing.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/240009067/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/189434971/medium.jpg',
     iucn: 'LC',
   },
 
@@ -61,7 +61,7 @@ export const SPECIES_META = {
     common: 'Blue Jay', scientific: 'Cyanocitta cristata',
     color: '#2980b9', emoji: '🐦',
     fact: 'Blue jays aren\'t actually blue — their feathers contain no blue pigment. The color comes from light scattering through modified cells, a phenomenon called structural coloration. Crush a feather and the blue vanishes.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/240011234/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/530721418/medium.jpg',
     iucn: 'LC',
   },
 
@@ -79,7 +79,7 @@ export const SPECIES_META = {
     common: 'Greater Flamingo', scientific: 'Phoenicopterus roseus',
     color: '#ff69b4', emoji: '🦩',
     fact: 'Flamingos are born grey-white and turn pink from carotenoid pigments in the algae and crustaceans they eat. They feed with their heads upside down, using lamellae in their bills to filter tiny organisms from the water.',
-    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/161894419/medium.jpg',
+    photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/187242272/medium.jpg',
     iucn: 'LC',
   },
 

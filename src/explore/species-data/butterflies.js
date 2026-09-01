@@ -12,7 +12,7 @@ export const SPECIES_META = {
   5119887: { common: 'Giant Swallowtail', scientific: 'Papilio cresphontes', color: '#5a3e28', emoji: '🦋', wingspanMm: 160, fact: 'The largest butterfly in North America — its caterpillar masquerades as a fresh bird dropping.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/83941810/medium.jpg' },
   5119800: { common: 'Old World Swallowtail', scientific: 'Papilio machaon', color: '#5a3e28', emoji: '🦋', wingspanMm: 88, fact: 'One of the most widely distributed swallowtails — found from Arctic tundra to the Sahara desert margins.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/84864834/medium.jpg' },
   5119907: { common: 'Pipevine Swallowtail', scientific: 'Battus philenor', color: '#5a3e28', emoji: '🦋', wingspanMm: 100, fact: 'Feeding on pipevine plants makes adults toxic to birds — at least five other species mimic their iridescent blue wings.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/25875295/medium.jpg' },
-  5120067: { common: 'Zebra Swallowtail', scientific: 'Eurytides marcellus', color: '#5a3e28', emoji: '🦋', wingspanMm: 88, fact: 'Completely dependent on pawpaw trees — the only plants its caterpillars can eat.', photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Eurytides_marcellus_1.jpg/640px-Eurytides_marcellus_1.jpg' },
+  5120067: { common: 'Zebra Swallowtail', scientific: 'Eurytides marcellus', color: '#5a3e28', emoji: '🦋', wingspanMm: 88, fact: 'Completely dependent on pawpaw trees — the only plants its caterpillars can eat.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/21045016/medium.jpg' },
   1890955: { common: 'Black Swallowtail', scientific: 'Papilio polyxenes', color: '#5a3e28', emoji: '🦋', wingspanMm: 95, fact: 'Its caterpillar feeds on parsley and dill — a common and welcome guest in herb gardens.', photoUrl: 'https://static.inaturalist.org/photos/71573494/medium.jpeg' },
 
   // ─── Whites and Sulphurs (Pieridae) ──────────────────────────────────────
@@ -42,7 +42,7 @@ export const SPECIES_META = {
   5130348: { common: 'European Peacock', scientific: 'Aglais io', color: '#5a3e28', emoji: '🦋', wingspanMm: 65, fact: 'Produces a loud hissing sound by rubbing its wings together — startling predators with a combination of sight and sound.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/4710619/medium.jpg' },
 
   // ─── Skippers (Hesperiidae) ───────────────────────────────────────────────
-  5128855: { common: 'Silver-spotted Skipper', scientific: 'Epargyreus clarus', color: '#5a3e28', emoji: '🦋', wingspanMm: 54, fact: 'The most recognizable skipper in North America — its caterpillar stitches leaves into a shelter, sleeping inside by day.', photoUrl: 'https://static.inaturalist.org/photos/60570/medium.jpg' },
+  5128855: { common: 'Silver-spotted Skipper', scientific: 'Epargyreus clarus', color: '#5a3e28', emoji: '🦋', wingspanMm: 54, fact: 'The most recognizable skipper in North America — its caterpillar stitches leaves into a shelter, sleeping inside by day.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/60570/medium.jpg' },
   5128925: { common: 'Fiery Skipper', scientific: 'Hylephila phyleus', color: '#5a3e28', emoji: '🦋', wingspanMm: 30, fact: 'A frequent lawn visitor that thrives in disturbed urban environments — one of the most adaptable skippers.', photoUrl: 'https://inaturalist-open-data.s3.amazonaws.com/photos/2611412/medium.jpg' },
 
   // ─── Moths ───────────────────────────────────────────────────────────────

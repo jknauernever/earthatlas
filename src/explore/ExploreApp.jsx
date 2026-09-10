@@ -174,8 +174,11 @@ export default function ExploreApp({ config }) {
       const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
 
 
-      // Merge sources (GBIF already filters out iNat-sourced records to avoid duplicates)
+      // Merge sources (GBIF already filters out iNat-sourced records to avoid
+      // duplicates), newest first so the MAX_SIGHTINGS cap below always keeps
+      // the most recent sightings rather than an arbitrary sample.
       const allSightings = [...recentData.sightings, ...inatSightings, ...ebirdSightings]
+        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
 
       // Use the GBIF estimated total as the "real" total for display
       const apiTotal = Math.max(recentData.total, allSightings.length)

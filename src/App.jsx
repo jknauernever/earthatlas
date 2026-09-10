@@ -397,6 +397,13 @@ export default function App() {
         totalCount = data.total_results || 0
       }
 
+      // Newest sightings first, whatever the source mix: iNat pages arrive in
+      // upload order, GBIF in arbitrary index order, and the merge above
+      // interleaves sources — so without this the visible set under any cap
+      // is not the most recent. Each source shape carries its date under a
+      // different key.
+      const obsDate = (r) => String(r.observed_on || r.eventDate || r.obsDt || '')
+      allResults.sort((a, b) => obsDate(b).localeCompare(obsDate(a)))
       setObservations(allResults)
       setTotalResults(totalCount)
       // Push the full search state into the URL every time a search completes,

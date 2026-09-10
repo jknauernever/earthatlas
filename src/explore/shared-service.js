@@ -148,6 +148,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
     const PAGE_SIZE = 300
     const maxPages = Math.ceil(Math.min(limit, 1500) / PAGE_SIZE)  // up to 5 pages
+    const pageBudget = maxPages * PAGE_SIZE
 
     const baseParams = {
       hasCoordinate: 'true',
@@ -167,9 +168,51 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     const totalAvailable = data.count || 0
     let allResults = data.results || []
 
+    // GBIF's search has NO server-side sort (verified — sort params are
+    // ignored), so when an area holds more records than we can page through,
+    // whichever ones arrive are an arbitrary sample and "recent" is luck.
+    // Guarantee recency instead: shrink the rolling window (halving `days`,
+    // floor 7) until everything in it fits the page budget, then fetch THAT
+    // window completely and keep the newest. Skipped for explicit eventDate
+    // ranges (historical views want the whole span). Each probe is a
+    // limit=1 count request; the full-window count above still reports the
+    // true total.
+    let windowAvailable = totalAvailable
+    if (!eventDate && totalAvailable > pageBudget) {
+      let winDays = days
+      let winCount = totalAvailable
+      while (winCount > pageBudget && winDays > 7) {
+        winDays = Math.max(7, Math.floor(winDays / 2))
+        const probeRange = `${fmt(new Date(d2 - winDays * 86400000))},${fmt(d2)}`
+        try {
+          const pr = await fetch(
+            `${GBIF_API}/occurrence/search?${gbifSearchParams({ ...baseParams, eventDate: probeRange, limit: 1 })}`,
+            { signal },
+          )
+          if (!pr.ok) break
+          winCount = (await pr.json()).count || 0
+        } catch { break }
+      }
+      if (winDays < days) {
+        // Keep the full-window page as backfill: GBIF indexes many sources
+        // weeks late, so a recent window can be sparse — the newest records
+        // stay guaranteed (sorted first), older ones fill the map to `limit`.
+        const backfill = allResults
+        baseParams.eventDate = `${fmt(new Date(d2 - winDays * 86400000))},${fmt(d2)}`
+        const r0 = await fetch(`${GBIF_API}/occurrence/search?${gbifSearchParams(baseParams)}`, { signal })
+        if (r0.ok) {
+          const d0 = await r0.json()
+          const fresh = d0.results || []
+          const seen = new Set(fresh.map(o => o.key))
+          allResults = fresh.concat(backfill.filter(o => !seen.has(o.key)))
+          windowAvailable = d0.count || winCount
+        }
+      }
+    }
+
     // Fetch additional pages in parallel if more results are available
-    if (totalAvailable > PAGE_SIZE && maxPages > 1 && !signal?.aborted) {
-      const pageCount = Math.min(maxPages, Math.ceil(totalAvailable / PAGE_SIZE))
+    if (windowAvailable > PAGE_SIZE && maxPages > 1 && !signal?.aborted) {
+      const pageCount = Math.min(maxPages, Math.ceil(windowAvailable / PAGE_SIZE))
       const pagePromises = []
       for (let page = 1; page < pageCount; page++) {
         const p = gbifSearchParams({ ...baseParams, offset: page * PAGE_SIZE })
@@ -185,6 +228,8 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       }
     }
 
+    // Newest first, so the cap below keeps the most recent sightings.
+    allResults.sort((a, b) => String(b.eventDate || '').localeCompare(String(a.eventDate || '')))
     let results = allResults
       .filter(o => o.decimalLatitude && o.decimalLongitude)
       .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
@@ -199,7 +244,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
     if (postFilter) results = results.filter(postFilter)
 
-    const sightings = results.map(normalizeOccurrence)
+    const sightings = results.slice(0, limit).map(normalizeOccurrence)
 
     // Estimate true total by applying the same filter ratio to GBIF's count
     // (GBIF's count includes iNat records we filter out, so raw count is inflated)

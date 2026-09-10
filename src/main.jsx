@@ -64,6 +64,14 @@ if (sentryDsn && import.meta.env.PROD) {
       }),
       Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
     ],
+    // Browser extensions (MetaMask etc.) inject scripts into every page and
+    // their internal errors land in our global handlers. Drop any event whose
+    // stack originates inside an extension — none of it is our code.
+    denyUrls: [
+      /^chrome-extension:\/\//,
+      /^moz-extension:\/\//,
+      /^safari-(web-)?extension:\/\//,
+    ],
     // Drop low-signal noise (browser extensions, third-party script errors).
     ignoreErrors: [
       'ResizeObserver loop limit exceeded',

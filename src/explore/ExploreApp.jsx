@@ -21,7 +21,6 @@ import styles from './ExploreApp.module.css'
 
 import ExploreMap from './components/ExploreMap'
 import SpeciesListItem from './components/SpeciesListItem'
-import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
 import SeasonRibbon from './components/SeasonRibbon'
@@ -282,6 +281,8 @@ export default function ExploreApp({ config }) {
   }, [playing, mode, handleSeasonChange])
   const seasonRef = useRef(season)
   seasonRef.current = season
+  const modeRef = useRef(mode)
+  modeRef.current = mode
   useEffect(() => { if (mode !== 'patterns') setPlaying(false) }, [mode])
 
   // ─── Per-species season strips (patterns mode) ────────────────────────────
@@ -374,8 +375,12 @@ export default function ExploreApp({ config }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name, z: zoom })
-    loadData(loc, { bounds, silent: true })
-  }, [loadData, setQP])
+    // Patterns mode refetches the SEASON's sightings for the new viewport —
+    // loadData is the recent-mode fetch and would silently swap the list to
+    // last-90-days data (the "double load" feel on pan/zoom).
+    if (modeRef.current === 'patterns') handleSeasonChange(seasonRef.current)
+    else loadData(loc, { bounds, silent: true })
+  }, [loadData, setQP, handleSeasonChange])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
   const handleChangeLocation = useCallback(() => {
@@ -699,16 +704,30 @@ export default function ExploreApp({ config }) {
                   gbifTaxonKey: config.gbifTaxonKey,
                 }}
               />
-              {mode === 'patterns' && (
-                <SeasonRibbon
-                  pattern={seasonPattern}
-                  season={season}
-                  onChange={(sel) => { setPlaying(false); handleSeasonChange(sel) }}
-                  playing={playing}
-                  onPlayToggle={() => setPlaying((p) => !p)}
-                  styles={styles}
-                />
-              )}
+              <SeasonRibbon
+                pattern={seasonPattern}
+                season={season}
+                onChange={(sel) => {
+                  setPlaying(false)
+                  if (mode !== 'patterns') {
+                    // From Recent mode the ribbon is the door into patterns:
+                    // switch modes carrying the selection; the mode-change
+                    // effect runs the fetch.
+                    const patch = sel.type === 'all' ? { months: 'all' }
+                      : sel.type === 'range' ? { months: `${sel.from + 1}-${sel.to + 1}`, month: null }
+                      : { month: sel.month + 1, months: null }
+                    setQP({ mode: 'patterns', ...patch })
+                  } else {
+                    handleSeasonChange(sel)
+                  }
+                }}
+                playing={playing}
+                onPlayToggle={() => {
+                  if (mode !== 'patterns') { setQP({ mode: 'patterns' }); setPlaying(true) }
+                  else setPlaying((p) => !p)
+                }}
+                styles={styles}
+              />
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (
               <TimeSlider
@@ -754,25 +773,6 @@ export default function ExploreApp({ config }) {
             </div>
           </aside>
 
-          {/* Season chart (below map) — recent mode only; in patterns mode the
-              histogram lives ON the map as the SeasonRibbon control. Clicking
-              a month here jumps straight into patterns mode at that month. */}
-          {mode === 'now' && (
-            <div className={styles.seasonSection}>
-              <div className={styles.sectionLabel}>Seasonal patterns</div>
-              <div className={styles.sectionTitle}>When are they here?</div>
-              <div className={styles.sectionSub}>
-                Historical sighting density by month, all years combined — click a month to explore it
-              </div>
-              <SeasonChart
-                pattern={seasonPattern}
-                activeMonth={activeMonth}
-                onMonthChange={(i) => setQP({ mode: 'patterns', month: i + 1, months: null })}
-                loading={loadingData}
-                styles={styles}
-              />
-            </div>
-          )}
 
         </div>
 

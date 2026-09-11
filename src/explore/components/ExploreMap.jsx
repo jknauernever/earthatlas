@@ -661,11 +661,13 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
       }
 
-      // Graduated circles over un-binned point tiles (each feature is a
-      // pixel-aggregated point with a `total` count) — clusters read as
-      // "they concentrate here" while the basemap stays visible; the old
-      // hex fill painted the whole ocean at low zoom. `patternsMonth` is a
-      // single month, a GBIF range "5,9", or 'all' (no month filter).
+      // Kernel-density heatmap over un-binned point tiles (each feature is
+      // a pixel-aggregated point with a `total` count). Overlapping kernels
+      // merge into organic blobs — "they concentrate here" — with no grid
+      // artifact (raw points snap to GBIF's pixel grid) and the basemap
+      // stays visible. Still OBSERVATION density: where people see and
+      // report, not modeled likelihood. `patternsMonth` is a single month,
+      // a GBIF range "5,9", or 'all' (no month filter).
       const qs = new URLSearchParams({ srs: 'EPSG:3857', occurrenceStatus: 'PRESENT' })
       if (patternsMonth !== 'all') qs.set('month', String(patternsMonth))
       for (const k of gbifTaxonKeys) qs.append('taxonKey', k)
@@ -683,43 +685,54 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       })
       map.addLayer({
         id: layerId,
-        type: 'circle',
+        type: 'heatmap',
         source: sourceId,
         'source-layer': 'occurrence',
         paint: {
-          'circle-color': 'rgba(230, 90, 25, 0.5)',
-          'circle-stroke-color': 'rgba(255, 255, 255, 0.8)',
-          'circle-stroke-width': 1,
-          // Placeholder scale until the first normalization pass below.
-          'circle-radius': ['interpolate', ['linear'], ['sqrt', ['get', 'total']], 0, 2, 40, 22],
+          // Weight placeholder until the first normalization pass below.
+          'heatmap-weight': ['interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]], 0, 0.015, 5, 1],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.7, 4, 1.0, 9, 1.6],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 8, 4, 14, 9, 28],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,    'rgba(240, 180, 60, 0)',
+            0.2,  'rgba(240, 195, 90, 0.28)',
+            0.5,  'rgba(238, 150, 45, 0.5)',
+            0.8,  'rgba(228, 95, 28, 0.66)',
+            0.93, 'rgba(205, 50, 18, 0.78)',
+            1,    'rgba(165, 20, 10, 0.85)',
+          ],
         },
       })
     }
 
-    // Re-fit the circle scale to what's actually on screen: area ∝ count,
-    // largest visible cluster pinned to ~22px. Keeps sparse months readable
-    // and dense months from saturating — absolute scales can't do both.
+    // Re-fit the density weighting to what's actually on screen: the
+    // heaviest visible cluster maps to weight 1. Keeps sparse months
+    // readable and dense months from saturating — absolute scales can't
+    // do both.
     function normalize() {
       if (!map.getLayer(layerId)) return
       const feats = map.querySourceFeatures(sourceId, { sourceLayer: 'occurrence' })
       let mx = 0
       for (const f of feats) { const t = f.properties?.total || 0; if (t > mx) mx = t }
       if (mx < 1) return
-      map.setPaintProperty(layerId, 'circle-radius', [
-        'interpolate', ['linear'], ['sqrt', ['get', 'total']],
-        0, 2,
-        Math.sqrt(mx), 22,
+      // Log scale: sighting counts are long-tailed (one harbor cell can be
+      // 1000× the open-ocean cells) — linear weighting collapses everything
+      // but the single hottest spot.
+      map.setPaintProperty(layerId, 'heatmap-weight', [
+        'interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]],
+        0, 0.015,
+        Math.log(1 + mx), 1,
       ])
     }
     map.on('idle', normalize)
 
     if (map.__eaStyleReady || map.isStyleLoaded()) {
       update()
-      return () => map.off('idle', normalize)
     } else {
       const onStyle = () => { update(); map.off('style.load', onStyle) }
       map.on('style.load', onStyle)
-      return () => { map.off('style.load', onStyle); map.off('idle', normalize) }
+      return () => map.off('style.load', onStyle)
     }
   }, [patternsMonth, gbifTaxonKeys.join(',')])
 

@@ -24,6 +24,7 @@ import SpeciesListItem from './components/SpeciesListItem'
 import SeasonChart from './components/SeasonChart'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
+import SeasonRibbon from './components/SeasonRibbon'
 
 import { reverseGeocode, fmtDate } from './utils'
 
@@ -55,6 +56,7 @@ const QP_SCHEMA = {
   name:    { type: 'string' },
   mode:    { type: 'string', default: 'now' },
   month:   { type: 'number' },
+  months:  { type: 'string' }, // patterns span: 'a-b' (1-based) or 'all'; absent = single month
   species: { type: 'string' },
   from:    { type: 'string' }, // time-slider range start (YYYY-MM-DD), absent = data min
   to:      { type: 'string' }, // time-slider range end (YYYY-MM-DD), absent = data max
@@ -89,6 +91,17 @@ export default function ExploreApp({ config }) {
   const activeMonth = qp.month != null ? qp.month - 1 : null  // URL is 1-based, display is 0-based
   const activeSpecies = qp.species
   const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
+  // Patterns-mode season selection: single month, span, or the whole year
+  const season = useMemo(() => {
+    if (qp.months === 'all') return { type: 'all' }
+    const m = /^(\d+)-(\d+)$/.exec(qp.months || '')
+    if (m) return { type: 'range', from: Number(m[1]) - 1, to: Number(m[2]) - 1 }
+    return { type: 'month', month: displayedMonth }
+  }, [qp.months, displayedMonth])
+  // As the service/tiles expect it: 1-based single, "a,b" range, or 'all'
+  const seasonParam = season.type === 'all' ? 'all'
+    : season.type === 'range' ? `${season.from + 1},${season.to + 1}`
+    : season.month + 1
 
   // Derive location from URL params or local state
   const [localLocation, setLocalLocation] = useState(null)
@@ -231,17 +244,23 @@ export default function ExploreApp({ config }) {
     }
   }, [hasUrlCoords, qp.lat, qp.lng, qp.name, loadData, setQP])
 
-  // ─── Handle month selection in patterns mode ──────────────────────────────
-  const handleMonthChange = useCallback(async (monthIdx) => {
-    setQP({ month: monthIdx + 1 }) // store 1-based in URL
+  // ─── Handle season selection in patterns mode ─────────────────────────────
+  const handleSeasonChange = useCallback(async (sel) => {
+    // URL: single month → month=N; span → months=a-b; all → months=all
+    if (sel.type === 'all') setQP({ months: 'all' })
+    else if (sel.type === 'range') setQP({ months: `${sel.from + 1}-${sel.to + 1}`, month: null })
+    else setQP({ month: sel.month + 1, months: null })
     if (mode !== 'patterns' || !location) return
 
+    const monthParam = sel.type === 'all' ? 'all'
+      : sel.type === 'range' ? `${sel.from + 1},${sel.to + 1}`
+      : sel.month + 1
     try {
       const bounds = mapBoundsRef.current
       const result = await fetchMonthSightings({
         lat: location.lat,
         lng: location.lng,
-        month: monthIdx + 1, // 1-based for API
+        month: monthParam,
         speciesKey: activeSpecies ? Number(activeSpecies) : null,
         ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng, mapZoomRef.current ?? qp.z) }),
       })
@@ -250,6 +269,39 @@ export default function ExploreApp({ config }) {
       setTotalCount(result.total)
     } catch { /* fail silently, keep existing sightings */ }
   }, [mode, location, activeSpecies, qp.z, setQP, fetchMonthSightings, aggregateSpecies])
+  const handleMonthChange = useCallback((monthIdx) => handleSeasonChange({ type: 'month', month: monthIdx }), [handleSeasonChange])
+
+  // ─── Month animation (▶ on the ribbon) ────────────────────────────────────
+  const [playing, setPlaying] = useState(false)
+  useEffect(() => {
+    if (!playing || mode !== 'patterns') return
+    const t = setInterval(() => {
+      handleSeasonChange({ type: 'month', month: (seasonRef.current.type === 'month' ? seasonRef.current.month + 1 : 0) % 12 })
+    }, 1400)
+    return () => clearInterval(t)
+  }, [playing, mode, handleSeasonChange])
+  const seasonRef = useRef(season)
+  seasonRef.current = season
+  useEffect(() => { if (mode !== 'patterns') setPlaying(false) }, [mode])
+
+  // ─── Per-species season strips (patterns mode) ────────────────────────────
+  const [speciesStrips, setSpeciesStrips] = useState({})
+  useEffect(() => {
+    if (mode !== 'patterns' || !location) return
+    const keys = species.slice(0, 12).map((sp) => sp.speciesKey).filter(Boolean)
+      .filter((k) => !speciesStrips[k])
+    if (!keys.length) return
+    let dead = false
+    Promise.all(keys.map((k) =>
+      fetchSeasonalPattern({ lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current, speciesKey: k })
+        .then((p) => [k, p]).catch(() => null)
+    )).then((rs) => {
+      if (dead) return
+      const got = rs.filter(Boolean)
+      if (got.length) setSpeciesStrips((prev) => ({ ...prev, ...Object.fromEntries(got) }))
+    })
+    return () => { dead = true }
+  }, [mode, species, location, fetchSeasonalPattern])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)
@@ -257,13 +309,13 @@ export default function ExploreApp({ config }) {
     if (prevModeRef.current === mode) return
     prevModeRef.current = mode
     if (mode === 'now' && location) loadData(location, { bounds: mapBoundsRef.current, silent: true })
-    if (mode === 'patterns' && location) handleMonthChange(displayedMonth)
-  }, [mode, location, loadData, handleMonthChange, displayedMonth])
+    if (mode === 'patterns' && location) handleSeasonChange(season)
+  }, [mode, location, loadData, handleSeasonChange, season])
 
   // Re-fetch month sightings when species selection changes in patterns mode
   useEffect(() => {
     if (mode !== 'patterns' || !location) return
-    handleMonthChange(displayedMonth)
+    handleSeasonChange(season)
   }, [activeSpecies])
 
   // Fetch per-species seasonal pattern when a species card is clicked
@@ -590,7 +642,9 @@ export default function ExploreApp({ config }) {
             <div className={styles.statTile}>
               <div className={`${styles.statVal} ${styles.statValSm}`}>
                 {mode === 'patterns'
-                  ? MONTH_NAMES[displayedMonth]
+                  ? (season.type === 'all' ? 'All months'
+                    : season.type === 'range' ? `${MONTH_NAMES[season.from].slice(0, 3)}–${MONTH_NAMES[season.to].slice(0, 3)}`
+                    : MONTH_NAMES[season.month])
                   : timeFilterActive ? filteredRangeLabel : `Past ${config.defaults.days} days`}
               </div>
               <div className={styles.statLabel}>Date range</div>
@@ -636,7 +690,7 @@ export default function ExploreApp({ config }) {
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
-                patternsMonth={mode === 'patterns' ? displayedMonth + 1 : null}
+                patternsMonth={mode === 'patterns' ? seasonParam : null}
                 initialView={qp.z != null ? { zoom: qp.z } : null}
                 config={{
                   fallbackColor: config.fallback.color,
@@ -645,6 +699,16 @@ export default function ExploreApp({ config }) {
                   gbifTaxonKey: config.gbifTaxonKey,
                 }}
               />
+              {mode === 'patterns' && (
+                <SeasonRibbon
+                  pattern={seasonPattern}
+                  season={season}
+                  onChange={(sel) => { setPlaying(false); handleSeasonChange(sel) }}
+                  playing={playing}
+                  onPlayToggle={() => setPlaying((p) => !p)}
+                  styles={styles}
+                />
+              )}
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (
               <TimeSlider
@@ -682,27 +746,33 @@ export default function ExploreApp({ config }) {
                     styles={styles}
                     openInfoKey={openInfoKey}
                     setOpenInfoKey={setOpenInfoKey}
+                    strip={mode === 'patterns' ? speciesStrips[sp.speciesKey] : null}
+                    stripMonth={mode === 'patterns' && season.type === 'month' ? season.month : null}
                   />
                 ))
               )}
             </div>
           </aside>
 
-          {/* Season chart (below map in grid) */}
-          <div className={styles.seasonSection}>
-            <div className={styles.sectionLabel}>Seasonal patterns</div>
-            <div className={styles.sectionTitle}>When are they here?</div>
-            <div className={styles.sectionSub}>
-              Historical sighting density by month, all years combined
+          {/* Season chart (below map) — recent mode only; in patterns mode the
+              histogram lives ON the map as the SeasonRibbon control. Clicking
+              a month here jumps straight into patterns mode at that month. */}
+          {mode === 'now' && (
+            <div className={styles.seasonSection}>
+              <div className={styles.sectionLabel}>Seasonal patterns</div>
+              <div className={styles.sectionTitle}>When are they here?</div>
+              <div className={styles.sectionSub}>
+                Historical sighting density by month, all years combined — click a month to explore it
+              </div>
+              <SeasonChart
+                pattern={seasonPattern}
+                activeMonth={activeMonth}
+                onMonthChange={(i) => setQP({ mode: 'patterns', month: i + 1, months: null })}
+                loading={loadingData}
+                styles={styles}
+              />
             </div>
-            <SeasonChart
-              pattern={seasonPattern}
-              activeMonth={activeMonth}
-              onMonthChange={handleMonthChange}
-              loading={loadingData}
-              styles={styles}
-            />
-          </div>
+          )}
 
         </div>
 

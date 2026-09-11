@@ -661,15 +661,17 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
       }
 
-      // Hex bins read as organic density; raw square bins look like giant
-      // pixel blocks at low zoom. hexPerTile sets the visual grain (hex
-      // columns per 512px tile) — screen-constant across zooms since tiles
-      // are screen-constant. ~19 → ~27px hexes.
-      const qs = new URLSearchParams({ srs: 'EPSG:3857', month: String(patternsMonth), occurrenceStatus: 'PRESENT', bin: 'hex', hexPerTile: '19' })
+      // Graduated circles over un-binned point tiles (each feature is a
+      // pixel-aggregated point with a `total` count) — clusters read as
+      // "they concentrate here" while the basemap stays visible; the old
+      // hex fill painted the whole ocean at low zoom. `patternsMonth` is a
+      // single month, a GBIF range "5,9", or 'all' (no month filter).
+      const qs = new URLSearchParams({ srs: 'EPSG:3857', occurrenceStatus: 'PRESENT' })
+      if (patternsMonth !== 'all') qs.set('month', String(patternsMonth))
       for (const k of gbifTaxonKeys) qs.append('taxonKey', k)
       const tilesUrl = `https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}.mvt?${qs.toString()}`
 
-      if (seasonalUrlRef.current === tilesUrl) return // same month — keep the source
+      if (seasonalUrlRef.current === tilesUrl) return // same selection — keep the source
       removeSeasonal()
       seasonalUrlRef.current = tilesUrl
 
@@ -681,28 +683,43 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       })
       map.addLayer({
         id: layerId,
-        type: 'fill',
+        type: 'circle',
         source: sourceId,
         'source-layer': 'occurrence',
         paint: {
-          'fill-color': [
-            'interpolate', ['linear'], ['get', 'total'],
-            1,    'rgba(255, 185, 0, 0.5)',
-            10,   'rgba(255, 145, 0, 0.62)',
-            100,  'rgba(255, 90, 0, 0.75)',
-            1000, 'rgba(220, 40, 20, 0.85)',
-          ],
-          'fill-outline-color': 'rgba(255, 255, 255, 0.25)',
+          'circle-color': 'rgba(230, 90, 25, 0.5)',
+          'circle-stroke-color': 'rgba(255, 255, 255, 0.8)',
+          'circle-stroke-width': 1,
+          // Placeholder scale until the first normalization pass below.
+          'circle-radius': ['interpolate', ['linear'], ['sqrt', ['get', 'total']], 0, 2, 40, 22],
         },
       })
     }
 
+    // Re-fit the circle scale to what's actually on screen: area ∝ count,
+    // largest visible cluster pinned to ~22px. Keeps sparse months readable
+    // and dense months from saturating — absolute scales can't do both.
+    function normalize() {
+      if (!map.getLayer(layerId)) return
+      const feats = map.querySourceFeatures(sourceId, { sourceLayer: 'occurrence' })
+      let mx = 0
+      for (const f of feats) { const t = f.properties?.total || 0; if (t > mx) mx = t }
+      if (mx < 1) return
+      map.setPaintProperty(layerId, 'circle-radius', [
+        'interpolate', ['linear'], ['sqrt', ['get', 'total']],
+        0, 2,
+        Math.sqrt(mx), 22,
+      ])
+    }
+    map.on('idle', normalize)
+
     if (map.__eaStyleReady || map.isStyleLoaded()) {
       update()
+      return () => map.off('idle', normalize)
     } else {
       const onStyle = () => { update(); map.off('style.load', onStyle) }
       map.on('style.load', onStyle)
-      return () => map.off('style.load', onStyle)
+      return () => { map.off('style.load', onStyle); map.off('idle', normalize) }
     }
   }, [patternsMonth, gbifTaxonKeys.join(',')])
 

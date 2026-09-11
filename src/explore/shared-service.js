@@ -257,8 +257,22 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
   }
 
+  // `month` accepts a single month (1-12), a GBIF range string "5,9"
+  // (May through September), or null/'all' for no month constraint.
+  function inatMonthList(month) {
+    if (month == null || month === 'all') return null
+    const m = /^(\d+),(\d+)$/.exec(String(month))
+    if (!m) return String(month)
+    const from = Number(m[1]); const to = Number(m[2])
+    const list = []
+    for (let x = from; x <= to; x++) list.push(x)
+    return list.join(',')
+  }
+
   async function fetchMonthSightings({ lat, lng, radiusKm = 400, bounds, month, speciesKey = null, limit = 200, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
+    const gbifMonth = month == null || month === 'all' ? null : String(month)
+    const inatMonth = inatMonthList(month)
 
     // Fetch GBIF and iNaturalist in parallel
     const [gbifResult, inatResult] = await Promise.allSettled([
@@ -268,7 +282,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
           occurrenceStatus: 'PRESENT',
           decimalLatitude: `${bb.minLat},${bb.maxLat}`,
           decimalLongitude: `${bb.minLng},${bb.maxLng}`,
-          month,
+          ...(gbifMonth ? { month: gbifMonth } : {}),
           limit: Math.min(limit, 300),
         }, speciesKey ? [speciesKey] : gbifTaxonKeys)
         const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
@@ -298,7 +312,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         const params = new URLSearchParams({
           taxon_id: taxonId,
           ...geoParams,
-          month,
+          ...(inatMonth ? { month: inatMonth } : {}),
           order_by: 'observed_on',
           per_page: Math.min(limit, 200),
           geo: 'true',

@@ -376,26 +376,38 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         ? { nelat: bounds.maxLat, nelng: bounds.maxLng, swlat: bounds.minLat, swlng: bounds.minLng }
         : { lat, lng, radius: radiusKm }
 
-      const params = new URLSearchParams({
+      // iNat caps per_page at 200 — page through (newest first, so
+      // concatenated pages stay in order) until `limit` or the results
+      // run out. Sequential fetches: iNat rate-limits aggressive parallelism.
+      const baseParams = {
         taxon_id: inatTaxonIds,
         ...geoParams,
         d1: fmt(d1),
         d2: fmt(d2),
         order_by: 'observed_on',
-        per_page: Math.min(limit, 200),
+        per_page: 200,
         geo: 'true',
         captive: 'false',
-      })
-
-      const res = await fetch(`${INAT_API}/observations?${params}`, {
-        headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
-        signal,
-      })
-      if (!res.ok) return []
-      const data = await res.json()
-      return (data.results || []).map(normalizeINatObservation).filter(Boolean)
+      }
+      const maxPages = Math.ceil(Math.min(limit, 600) / 200)
+      let results = []
+      let total = 0
+      for (let page = 1; page <= maxPages; page++) {
+        const params = new URLSearchParams({ ...baseParams, page })
+        const res = await fetch(`${INAT_API}/observations?${params}`, {
+          headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
+          signal,
+        })
+        if (!res.ok) break
+        const data = await res.json()
+        total = data.total_results || total
+        const batch = data.results || []
+        results = results.concat(batch)
+        if (batch.length < 200 || results.length >= limit) break
+      }
+      return { sightings: results.slice(0, limit).map(normalizeINatObservation).filter(Boolean), total }
     } catch {
-      return []
+      return { sightings: [], total: 0 }
     }
   }
 

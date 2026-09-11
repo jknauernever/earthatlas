@@ -162,14 +162,15 @@ export default function ExploreApp({ config }) {
       const [recentResult, patternResult, inatResult, ebirdResult] = await Promise.allSettled([
         fetchRecentSightings({ ...geo, days: config.defaults.days, limit: MAX_SIGHTINGS, signal }),
         fetchSeasonalPattern({ ...geo, signal }),
-        fetchINatSightings({ ...geo, days: config.defaults.days, signal }),
+        fetchINatSightings({ ...geo, days: config.defaults.days, limit: MAX_SIGHTINGS, signal }),
         fetchEBirdSightings({ ...geo, days: config.defaults.days, signal }),
       ])
 
       if (signal.aborted) return
 
       const recentData      = recentResult.status === 'fulfilled' ? recentResult.value : { sightings: [], total: 0 }
-      const inatSightings   = inatResult.status === 'fulfilled'   ? inatResult.value : []
+      const inatData        = inatResult.status === 'fulfilled'   ? inatResult.value : { sightings: [], total: 0 }
+      const inatSightings   = inatData.sightings
       const ebirdSightings  = ebirdResult.status === 'fulfilled'  ? ebirdResult.value : []
       const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
 
@@ -180,8 +181,10 @@ export default function ExploreApp({ config }) {
       const allSightings = [...recentData.sightings, ...inatSightings, ...ebirdSightings]
         .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
 
-      // Use the GBIF estimated total as the "real" total for display
-      const apiTotal = Math.max(recentData.total, allSightings.length)
+      // GBIF's estimated total excludes iNat-sourced records (deduped away
+      // above) and iNat reports its own total — their sum is the honest
+      // "available" figure for display.
+      const apiTotal = Math.max(recentData.total + inatData.total, allSightings.length)
 
       if (allSightings.length > MAX_SIGHTINGS) {
         setTooManyResults(true)

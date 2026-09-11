@@ -22,7 +22,10 @@ export default function SpeciesListItem({ species, active, onClick, style, style
         {species.meta?.emoji || ''}
       </div>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 0 0 1px rgba(0,0,0,0.12)' }} />
-      <div className={styles.speciesRowName}>
+      <div
+        className={styles.speciesRowName}
+        title={species.scientific ? `${species.common} (${species.scientific})` : species.common}
+      >
         {species.common}
         {species.scientific && (
           <span className={styles.speciesRowSci}>{species.scientific}</span>

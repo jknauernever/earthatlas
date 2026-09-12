@@ -301,21 +301,32 @@ export default function ExploreApp({ config }) {
 
   // ─── Per-species season strips (patterns mode) ────────────────────────────
   const [speciesStrips, setSpeciesStrips] = useState({})
+  const stripFailedAt = useRef({}) // key → ts of last failure (429 backoff)
   useEffect(() => {
     if (mode !== 'patterns' || !location) return
+    const now = Date.now()
     const keys = species.slice(0, 12).map((sp) => sp.speciesKey)
       .filter((k) => /^\d+$/.test(String(k))) // numeric GBIF keys only — some rows carry name strings
       .filter((k) => !speciesStrips[k])
+      .filter((k) => now - (stripFailedAt.current[k] || 0) > 60000)
     if (!keys.length) return
     let dead = false
-    Promise.all(keys.map((k) =>
-      fetchSeasonalPattern({ lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current, speciesKey: k })
-        .then((p) => [k, p]).catch(() => null)
-    )).then((rs) => {
-      if (dead) return
-      const got = rs.filter(Boolean)
-      if (got.length) setSpeciesStrips((prev) => ({ ...prev, ...Object.fromEntries(got) }))
-    })
+    // SEQUENTIAL with spacing — a dozen parallel facet queries on every
+    // species-list reshuffle trips GBIF's per-IP rate limit (429s), and
+    // failed keys would retry on the next effect pass, compounding it.
+    ;(async () => {
+      for (const k of keys) {
+        if (dead) return
+        try {
+          const p = await fetchSeasonalPattern({ lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current, speciesKey: k })
+          if (dead) return
+          setSpeciesStrips((prev) => ({ ...prev, [k]: p }))
+        } catch {
+          stripFailedAt.current[k] = Date.now()
+        }
+        await new Promise((r) => setTimeout(r, 300))
+      }
+    })()
     return () => { dead = true }
   }, [mode, species, location, fetchSeasonalPattern])
 

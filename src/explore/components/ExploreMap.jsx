@@ -426,6 +426,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     })
 
     mapRef.current = map
+    if (import.meta.env.DEV) window.__exploreMap = map // dev-only QA handle
     if (import.meta.env.DEV) window.__eaMap = map // dev-only debugging handle
 
     // Resize map when container dimensions change (e.g. feed expand/collapse)
@@ -634,20 +635,83 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     const map = mapRef.current
     if (!map) return
 
+    // GBIF adhoc tiles encode aggregated occurrences as tiny square POLYGONS
+    // (one per aggregated pixel, `total` = count) — heatmap layers need
+    // points. So: load the tiles through an invisible probe layer, convert
+    // visible features to centroid points on idle, and run the heatmap on
+    // that GeoJSON. Dedupe by coordinate (tile borders duplicate features).
     const sourceId = 'seasonal-bins'
-    const layerId = 'seasonal-bins-fill'
+    const probeLayerId = 'seasonal-bins-probe'
+    const heatSourceId = 'seasonal-heat'
+    const layerId = 'seasonal-heat-blobs'
 
     const sightingLayerIds = ['sighting-circles']
 
     function removeSeasonal() {
-      if (map.getLayer(layerId)) map.removeLayer(layerId)
-      if (map.getSource(sourceId)) map.removeSource(sourceId)
+      for (const id of [layerId, probeLayerId]) if (map.getLayer(id)) map.removeLayer(id)
+      for (const id of [heatSourceId, sourceId]) if (map.getSource(id)) map.removeSource(id)
+      map.off('idle', rebuildPoints)
+      map.off('sourcedata', onSourceData)
       seasonalUrlRef.current = null
+    }
+
+    function rebuildPoints() {
+      if (!map.getSource(heatSourceId) || !map.getSource(sourceId)) return
+      const feats = map.querySourceFeatures(sourceId, { sourceLayer: 'occurrence' })
+      const seen = new Set()
+      const points = []
+      for (const ft of feats) {
+        const ring = ft.geometry?.coordinates?.[0]
+        if (!ring || !ring.length) continue
+        // Ring positions are usually [lng, lat] arrays, but this query path
+        // can surface mapbox Point objects ({x, y}) — handle both, skip junk.
+        let x = 0; let y = 0; let n = 0
+        for (let j = 0; j < ring.length; j++) {
+          const pt = ring[j]
+          const plng = Array.isArray(pt) ? pt[0] : pt?.x
+          const plat = Array.isArray(pt) ? pt[1] : pt?.y
+          if (!Number.isFinite(plng) || !Number.isFinite(plat)) continue
+          x += plng; y += plat; n++
+        }
+        if (!n) continue
+        const lng = x / n
+        const lat = y / n
+        const key = lng.toFixed(4) + ',' + lat.toFixed(4)
+        if (seen.has(key)) continue
+        seen.add(key)
+        points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: { total: ft.properties.total || 1 } })
+      }
+      map.getSource(heatSourceId).setData({ type: 'FeatureCollection', features: points })
+      // Measure the hottest 0.35° cell and recalibrate the ramp top.
+      const cells = {}
+      let peak = 0
+      for (const p of points) {
+        const w = Math.min(1, Math.log(1 + p.properties.total) / 7)
+        const ck = Math.round(p.geometry.coordinates[0] / 0.35) + ':' + Math.round(p.geometry.coordinates[1] / 0.35)
+        const v = (cells[ck] = (cells[ck] || 0) + w)
+        if (v > peak) peak = v
+      }
+      if (peak > ratchet) {
+        ratchet = peak
+        if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'heatmap-intensity', intensityExpr())
+      }
+    }
+
+    // Density scale is MEASURED, not guessed: rebuildPoints tallies log
+    // weights into fixed 0.35° geographic cells and pins the hottest cell
+    // seen so far (ratchet — so the scale never flickers while exploring;
+    // it resets when the selection changes) to the top of the color ramp.
+    // Same selection → same scale wherever you pan or zoom, and "All
+    // months" vs a sparse February each get a scale that shows structure.
+    let ratchet = 0
+    function intensityExpr() {
+      const k = Math.min(6, Math.max(0.15, 1.1 / Math.max(0.05, ratchet)))
+      return ['interpolate', ['exponential', 2], ['zoom'], 3, 0.55 * k, 8, 2.9 * k]
     }
 
     function update() {
       if (!patternsMonth) {
-        // Remove seasonal bins, restore sighting layers
+        // Remove seasonal layers, restore sighting layers
         removeSeasonal()
         for (const id of sightingLayerIds) {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
@@ -661,78 +725,87 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
       }
 
-      // Kernel-density heatmap over un-binned point tiles (each feature is
-      // a pixel-aggregated point with a `total` count). Overlapping kernels
-      // merge into organic blobs — "they concentrate here" — with no grid
-      // artifact (raw points snap to GBIF's pixel grid) and the basemap
-      // stays visible. Still OBSERVATION density: where people see and
-      // report, not modeled likelihood. `patternsMonth` is a single month,
-      // a GBIF range "5,9", or 'all' (no month filter).
+      // `patternsMonth` is a single month, a GBIF range "5,9", or 'all'.
       const qs = new URLSearchParams({ srs: 'EPSG:3857', occurrenceStatus: 'PRESENT' })
       if (patternsMonth !== 'all') qs.set('month', String(patternsMonth))
       for (const k of gbifTaxonKeys) qs.append('taxonKey', k)
+      // Observation records only — matches gbifSearchParams in the service.
+      // Machine observations (acoustic arrays etc.) carry grid-estimated
+      // positions that render as literal stripes.
+      for (const b of ['HUMAN_OBSERVATION', 'OBSERVATION', 'OCCURRENCE']) qs.append('basisOfRecord', b)
       const tilesUrl = `https://api.gbif.org/v2/map/occurrence/adhoc/{z}/{x}/{y}.mvt?${qs.toString()}`
 
-      if (seasonalUrlRef.current === tilesUrl) return // same selection — keep the source
+      if (seasonalUrlRef.current === tilesUrl) {
+        // Same tiles — re-arm listeners (a prior cleanup detached them).
+        map.on('sourcedata', onSourceData)
+        map.on('idle', rebuildPoints)
+        rebuildPoints()
+        return
+      }
       removeSeasonal()
       seasonalUrlRef.current = tilesUrl
 
-      map.addSource(sourceId, {
-        type: 'vector',
-        tiles: [tilesUrl],
-        minzoom: 0,
-        maxzoom: 16,
+      map.addSource(sourceId, { type: 'vector', tiles: [tilesUrl], minzoom: 0, maxzoom: 16 })
+      map.addSource(heatSourceId, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      // Invisible probe: a source only loads tiles while some layer uses it.
+      map.addLayer({
+        id: probeLayerId,
+        type: 'fill',
+        source: sourceId,
+        'source-layer': 'occurrence',
+        paint: { 'fill-opacity': 0 },
       })
       map.addLayer({
         id: layerId,
         type: 'heatmap',
-        source: sourceId,
-        'source-layer': 'occurrence',
+        source: heatSourceId,
         paint: {
-          // Weight placeholder until the first normalization pass below.
-          'heatmap-weight': ['interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]], 0, 0.015, 5, 1],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.7, 4, 1.0, 9, 1.6],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 8, 4, 14, 9, 28],
+          // ONE fixed spatial scale at every zoom and viewport. Log weight
+          // (counts are long-tailed). The kernel is GEOGRAPHIC — exponential
+          // base 2 doubles the pixel radius per zoom, so a blob is anchored
+          // to a place and scales with the map instead of decomposing into
+          // dots; sized ~0.7° so gridded data (iNat obscures threatened
+          // species to ~0.2°; survey transects sit ~0.5° apart) merges into
+          // a field instead of striping.
+          'heatmap-weight': ['interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]], 0, 0.008, 7, 1],
+          'heatmap-intensity': intensityExpr(),
+          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 3, 10, 8, 260],
+          // Low end stays transparent until real density — the kernel's
+          // faint outer tail otherwise paints a misleading fringe well
+          // inland/offshore of the actual sightings.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0,    'rgba(240, 180, 60, 0)',
-            0.2,  'rgba(240, 195, 90, 0.28)',
-            0.5,  'rgba(238, 150, 45, 0.5)',
-            0.8,  'rgba(228, 95, 28, 0.66)',
-            0.93, 'rgba(205, 50, 18, 0.78)',
+            0.12, 'rgba(240, 195, 90, 0.18)',
+            0.35, 'rgba(238, 150, 45, 0.42)',
+            0.65, 'rgba(228, 95, 28, 0.62)',
+            0.88, 'rgba(205, 50, 18, 0.76)',
             1,    'rgba(165, 20, 10, 0.85)',
           ],
         },
       })
+      // Rebuild as tiles arrive (fresh loads race a single idle event) and
+      // after every settle (pan/zoom loads new tiles).
+      map.on('sourcedata', onSourceData)
+      map.on('idle', rebuildPoints)
     }
 
-    // Re-fit the density weighting to what's actually on screen: the
-    // heaviest visible cluster maps to weight 1. Keeps sparse months
-    // readable and dense months from saturating — absolute scales can't
-    // do both.
-    function normalize() {
-      if (!map.getLayer(layerId)) return
-      const feats = map.querySourceFeatures(sourceId, { sourceLayer: 'occurrence' })
-      let mx = 0
-      for (const f of feats) { const t = f.properties?.total || 0; if (t > mx) mx = t }
-      if (mx < 1) return
-      // Log scale: sighting counts are long-tailed (one harbor cell can be
-      // 1000× the open-ocean cells) — linear weighting collapses everything
-      // but the single hottest spot.
-      map.setPaintProperty(layerId, 'heatmap-weight', [
-        'interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]],
-        0, 0.015,
-        Math.log(1 + mx), 1,
-      ])
+    function onSourceData(e) {
+      if (e.sourceId === sourceId && map.isSourceLoaded(sourceId)) rebuildPoints()
     }
-    map.on('idle', normalize)
+
+    function teardownListeners() {
+      map.off('idle', rebuildPoints)
+      map.off('sourcedata', onSourceData)
+    }
 
     if (map.__eaStyleReady || map.isStyleLoaded()) {
       update()
+      return teardownListeners
     } else {
       const onStyle = () => { update(); map.off('style.load', onStyle) }
       map.on('style.load', onStyle)
-      return () => map.off('style.load', onStyle)
+      return () => { map.off('style.load', onStyle); teardownListeners() }
     }
   }, [patternsMonth, gbifTaxonKeys.join(',')])
 

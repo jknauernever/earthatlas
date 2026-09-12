@@ -44,9 +44,17 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   const gbifTaxonKeys = Array.isArray(gbifTaxonKey) ? gbifTaxonKey : [gbifTaxonKey]
   const inatTaxonIds = Array.isArray(inatTaxonId) ? inatTaxonId.join(',') : inatTaxonId
 
+  // Observation records only, everywhere GBIF is queried (search, facets —
+  // the map tiles apply the same list). MACHINE_OBSERVATION is excluded on
+  // purpose: e.g. gray-whale acoustic detections report grid-estimated
+  // positions that paint literal stripes on density views, and a sensor
+  // detection isn't a "sighting". Specimens/fossils aren't sightings either.
+  const GBIF_BASES = ['HUMAN_OBSERVATION', 'OBSERVATION', 'OCCURRENCE']
+
   function gbifSearchParams(base, taxonKeys = gbifTaxonKeys) {
     const p = new URLSearchParams(base)
     for (const k of taxonKeys) p.append('taxonKey', k)
+    for (const b of GBIF_BASES) p.append('basisOfRecord', b)
     return p
   }
 

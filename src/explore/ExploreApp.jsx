@@ -407,6 +407,9 @@ export default function ExploreApp({ config }) {
 
   const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings, aggregateSpecies])
   const filteredCount = filteredSightings.length
+  // More available than shown (the fetch cap) — the first stat tile tells
+  // this story; there is no separate banner.
+  const capped = tooManyResults && filteredCount < totalCount
 
   // View-local color assignment (see SPECIES_PALETTE)
   const speciesColorMap = useMemo(() => {
@@ -616,21 +619,26 @@ export default function ExploreApp({ config }) {
           <div className={styles.statRow}>
             <div className={styles.statTile}>
               <div className={styles.statVal}>
-                {(mode === 'patterns' ? totalCount : filteredCount).toLocaleString()}
+                {capped
+                  ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
+                  : (mode === 'patterns' ? totalCount : filteredCount).toLocaleString()}
               </div>
               <div className={styles.statLabel}>
-                {fetching ? 'Updating\u2026'
+                {fetching ? 'Updating…'
+                  : capped ? (mode === 'patterns' ? 'Historical sightings shown' : 'Most recent shown')
                   : mode === 'patterns' ? 'Historical sightings'
                   : 'Sightings in view'}
               </div>
               <div className={styles.statSub}>
+                {capped && <span>Zoom in to see all · </span>}
+                from{' '}
                 {['iNaturalist', 'eBird', 'GBIF']
                   .map(src => ({ src, n: filteredSightings.filter(s => s.source === src).length }))
                   .filter(({ n }) => n > 0)
-                  .map(({ src, n }, i) => (
+                  .map(({ src, n }, i, arr) => (
                     <span key={src}>
-                      {i > 0 && ' \u00b7 '}
-                      <a href={SOURCE_URLS[src]} target="_blank" rel="noopener">{src === 'iNaturalist' ? 'iNat' : src}</a> {n.toLocaleString()}
+                      {i > 0 && (i === arr.length - 1 ? ' & ' : ', ')}
+                      <a href={SOURCE_URLS[src]} target="_blank" rel="noopener">{src}</a>
                     </span>
                   ))}
               </div>
@@ -673,11 +681,6 @@ export default function ExploreApp({ config }) {
           </div>
         )}
 
-        {tooManyResults && !loadingData && (
-          <div style={{ padding: '12px 20px', background: 'rgba(212,160,23,0.1)', border: '1px solid rgba(212,160,23,0.25)', borderRadius: 10, fontSize: 13, color: '#b8842a', marginBottom: 8 }}>
-            Showing {filteredCount.toLocaleString()} of {totalCount.toLocaleString()} sightings — zoom in for a more detailed view.
-          </div>
-        )}
 
         {dataError && (
           <div style={{ padding: '12px 20px', background: 'rgba(220,80,80,0.1)', border: '1px solid rgba(220,80,80,0.25)', borderRadius: 10, fontSize: 13, color: '#e08080', marginBottom: 20 }}>

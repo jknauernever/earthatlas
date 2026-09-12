@@ -6,17 +6,15 @@ const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 /**
  * SeasonRibbon — the month histogram as a control, docked on the map in
  * patterns mode. Click a bar for a single month, drag across bars for a
- * span, "All months" for the unfiltered view, ▶ to animate month by month.
+ * span, "All months" for the unfiltered view.
  *
  * Props:
  *   pattern   — [{ month: 1..12, count }] (fetchSeasonalPattern)
  *   season    — { type:'month', month } | { type:'range', from, to } | { type:'all' }  (0-based)
  *   onChange  — (season) => void
- *   playing   — boolean
- *   onPlayToggle — () => void
  *   styles    — CSS module from parent
  */
-export default function SeasonRibbon({ pattern = [], season, onChange, playing, onPlayToggle, styles, context = 'patterns', selectedTotal = null }) {
+export default function SeasonRibbon({ pattern = [], season, onChange, styles, context = 'patterns', selectedTotal = null }) {
   const dragFrom = useRef(null)
   const [dragTo, setDragTo] = useState(null)
 
@@ -60,15 +58,6 @@ export default function SeasonRibbon({ pattern = [], season, onChange, playing, 
   return (
     <div className={styles.ribbon} onPointerLeave={() => { dragFrom.current = null; setDragTo(null) }}>
       <div className={styles.ribbonHead}>
-        <button
-          type="button"
-          className={styles.ribbonPlay}
-          onClick={onPlayToggle}
-          aria-label={playing ? 'Pause month animation' : 'Animate months'}
-          title={playing ? 'Pause' : 'Play the year month by month'}
-        >
-          {playing ? '⏸' : '▶'}
-        </button>
         <div className={styles.ribbonTitle}>
           {title}
           <small>{total.toLocaleString()} sightings · all years combined</small>

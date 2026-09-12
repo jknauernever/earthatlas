@@ -284,20 +284,10 @@ export default function ExploreApp({ config }) {
     }
   }, [mode, location, loadingData, phase, handleSeasonChange, season])
 
-  // ─── Month animation (▶ on the ribbon) ────────────────────────────────────
-  const [playing, setPlaying] = useState(false)
-  useEffect(() => {
-    if (!playing || mode !== 'patterns') return
-    const t = setInterval(() => {
-      handleSeasonChange({ type: 'month', month: (seasonRef.current.type === 'month' ? seasonRef.current.month + 1 : 0) % 12 })
-    }, 1400)
-    return () => clearInterval(t)
-  }, [playing, mode, handleSeasonChange])
   const seasonRef = useRef(season)
   seasonRef.current = season
   const modeRef = useRef(mode)
   modeRef.current = mode
-  useEffect(() => { if (mode !== 'patterns') setPlaying(false) }, [mode])
 
   // ─── Per-species season strips (patterns mode) ────────────────────────────
   const [speciesStrips, setSpeciesStrips] = useState({})
@@ -759,7 +749,6 @@ export default function ExploreApp({ config }) {
                 pattern={seasonPattern}
                 season={season}
                 onChange={(sel) => {
-                  setPlaying(false)
                   if (mode !== 'patterns') {
                     // From Recent mode the ribbon is the door into patterns:
                     // switch modes carrying the selection; the mode-change
@@ -771,11 +760,6 @@ export default function ExploreApp({ config }) {
                   } else {
                     handleSeasonChange(sel)
                   }
-                }}
-                playing={playing}
-                onPlayToggle={() => {
-                  if (mode !== 'patterns') { setQP({ mode: 'patterns' }); setPlaying(true) }
-                  else setPlaying((p) => !p)
                 }}
                 styles={styles}
                 context={mode === 'patterns' ? 'patterns' : 'now'}

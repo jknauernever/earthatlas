@@ -688,11 +688,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       // capped above) and pin the hottest spot to the top of the ramp.
       // O(n²) on ≤~1k points — microseconds, and exact at every zoom.
       const z = map.getZoom()
-      const kernelPx = z <= 3 ? 10 : z >= 6 ? 80 : 10 + ((Math.pow(2, z - 3) - 1) / 7) * 70
+      const kernelPx = z >= 6 ? 84 : 26 + ((Math.pow(2, Math.max(0, z)) - 1) / 63) * 58
       const rDeg = Math.max(0.02, kernelPx * 360 / (512 * Math.pow(2, z)))
       const r2 = rDeg * rDeg
       const coslat = Math.cos((map.getCenter().lat * Math.PI) / 180)
-      const ws = points.map((p) => Math.min(1, Math.log(1 + p.properties.total) / 7))
+      const ws = points.map((p) => Math.min(1, 0.25 + 0.107 * Math.log(1 + p.properties.total)))
       let peak = 0
       for (let i = 0; i < points.length; i++) {
         const [xi, yi] = points[i].geometry.coordinates
@@ -724,12 +724,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     let ratchetBand = null
     function intensityExpr() {
       const k = Math.min(6, Math.max(0.1, 3.2 / Math.max(0.05, ratchet)))
-      return ['interpolate', ['exponential', 2], ['zoom'], 3, 0.55 * k, 6, 2.0 * k]
+      return ['interpolate', ['exponential', 2], ['zoom'], 0, 0.45 * k, 6, 2.0 * k]
     }
 
     function update() {
       if (!patternsMonth) {
         // Remove seasonal layers, restore sighting layers
+        // (and the globe: heatmap layers don't render on v3's globe
+        // projection at world zooms, so patterns mode runs on mercator)
+        if (map.getProjection()?.name !== 'globe') map.setProjection('globe')
         removeSeasonal()
         for (const id of sightingLayerIds) {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
@@ -737,6 +740,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         return
       }
 
+      if (map.getProjection()?.name !== 'mercator') map.setProjection('mercator')
       // Hide sighting layers during patterns mode (visibility, not opacity —
       // an opacity-0 layer still catches clicks)
       for (const id of sightingLayerIds) {
@@ -746,7 +750,10 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       // `patternsMonth` is a single month, a GBIF range "5,9", or 'all'.
       const qs = new URLSearchParams({ srs: 'EPSG:3857', occurrenceStatus: 'PRESENT' })
       if (patternsMonth !== 'all') qs.set('month', String(patternsMonth))
-      for (const k of gbifTaxonKeys) qs.append('taxonKey', k)
+      // A selected species narrows the density to THAT species — "where are
+      // Minke Whales typically in August" needs Minke tiles, not all whales.
+      const taxa = activeSpecies ? [String(activeSpecies)] : gbifTaxonKeys
+      for (const k of taxa) qs.append('taxonKey', k)
       // Observation records only — matches gbifSearchParams in the service.
       // Machine observations (acoustic arrays etc.) carry grid-estimated
       // positions that render as literal stripes.
@@ -785,24 +792,32 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           // dots; sized ~0.7° so gridded data (iNat obscures threatened
           // species to ~0.2°; survey transects sit ~0.5° apart) merges into
           // a field instead of striping.
-          'heatmap-weight': ['interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]], 0, 0.008, 7, 1],
+          // Presence floor: ANY real record carries ≥quarter weight, log
+          // above it. Pure log made a lone sighting 2% of a harbor
+          // cluster — invisible — but "typically here" is first of all a
+          // presence question.
+          'heatmap-weight': ['min', 1, ['+', 0.25, ['*', 0.107, ['ln', ['+', 1, ['get', 'total']]]]]],
           'heatmap-intensity': intensityExpr(),
           // Geographic below z6 (blobs anchor to places; grids melt), then
           // screen-capped: past z6 you are inside the regional blob and an
           // ever-growing kernel drowns local structure — capping lets the
           // Channel-Islands-scale detail re-emerge as you zoom.
-          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 3, 10, 6, 80],
+          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 0, 26, 6, 84],
           // Low end stays transparent until real density — the kernel's
           // faint outer tail otherwise paints a misleading fringe well
           // inland/offshore of the actual sightings.
+          // Log-shaped ramp over peak-normalized density: a lone sighting
+          // (~2% of the regional peak) still earns a visible presence mark,
+          // the middle decades carry the structure, and the top caps
+          // without painting walls.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0,    'rgba(240, 180, 60, 0)',
-            0.12, 'rgba(240, 195, 90, 0.18)',
-            0.35, 'rgba(238, 150, 45, 0.42)',
-            0.65, 'rgba(228, 95, 28, 0.62)',
-            0.88, 'rgba(205, 50, 18, 0.76)',
-            1,    'rgba(165, 20, 10, 0.76)',
+            0,     'rgba(240, 180, 60, 0)',
+            0.025, 'rgba(240, 195, 90, 0.20)',
+            0.10,  'rgba(238, 165, 55, 0.38)',
+            0.30,  'rgba(233, 120, 35, 0.55)',
+            0.65,  'rgba(215, 65, 22, 0.70)',
+            1,     'rgba(165, 20, 10, 0.78)',
           ],
         },
       })
@@ -829,7 +844,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       map.on('style.load', onStyle)
       return () => { map.off('style.load', onStyle); teardownListeners() }
     }
-  }, [patternsMonth, gbifTaxonKeys.join(',')])
+  }, [patternsMonth, activeSpecies, gbifTaxonKeys.join(',')])
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>

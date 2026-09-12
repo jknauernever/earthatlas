@@ -261,14 +261,28 @@ export default function ExploreApp({ config }) {
         lng: location.lng,
         month: monthParam,
         speciesKey: activeSpecies ? Number(activeSpecies) : null,
+        limit: MAX_SIGHTINGS,
         ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng, mapZoomRef.current ?? qp.z) }),
       })
       setSightings(result.sightings)
       setSpecies(aggregateSpecies(result.sightings))
       setTotalCount(result.total)
+      setTooManyResults(result.sightings.length < result.total)
     } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location, activeSpecies, qp.z, setQP, fetchMonthSightings, aggregateSpecies])
+  }, [mode, location, activeSpecies, qp.z, setQP, fetchMonthSightings, aggregateSpecies, MAX_SIGHTINGS])
   const handleMonthChange = useCallback((monthIdx) => handleSeasonChange({ type: 'month', month: monthIdx }), [handleSeasonChange])
+
+  // Cold-loading a shared URL straight into patterns mode: the mode-change
+  // effect below only fires on CHANGES, so without this one-shot kick the
+  // page would sit on recent-mode data (wrong list, wrong counts) forever.
+  const coldPatternsKicked = useRef(qp.mode !== 'patterns')
+  useEffect(() => {
+    if (coldPatternsKicked.current) return
+    if (mode === 'patterns' && location && !loadingData && phase === 'explore') {
+      coldPatternsKicked.current = true
+      handleSeasonChange(season)
+    }
+  }, [mode, location, loadingData, phase, handleSeasonChange, season])
 
   // ─── Month animation (▶ on the ribbon) ────────────────────────────────────
   const [playing, setPlaying] = useState(false)
@@ -327,7 +341,8 @@ export default function ExploreApp({ config }) {
       return
     }
     let cancelled = false
-    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, speciesKey: Number(activeSpecies) })
+    const bounds = mapBoundsRef.current || boundsFromZoom(location.lat, location.lng, mapZoomRef.current ?? qp.z)
+    fetchSeasonalPattern({ lat: location.lat, lng: location.lng, bounds, speciesKey: Number(activeSpecies) })
       .then(pattern => { if (!cancelled) setSeasonPattern(pattern) })
       .catch(() => {})
     return () => { cancelled = true }
@@ -731,6 +746,7 @@ export default function ExploreApp({ config }) {
                 }}
                 styles={styles}
                 context={mode === 'patterns' ? 'patterns' : 'now'}
+                selectedTotal={mode === 'patterns' && !fetching ? totalCount : null}
               />
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (

@@ -351,8 +351,14 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
     const allSightings = [...gbifSightings, ...inatSightings]
 
+    // True total, not the fetched page: GBIF's count scaled by the ratio the
+    // dedup/basis filters kept, plus iNat's own reported total.
+    const gbifRaw = (gbifData.results || []).length
+    const gbifKeptRatio = gbifRaw > 0 ? gbifResults.length / gbifRaw : 1
+    const gbifTotal = Math.round((gbifData.count || 0) * gbifKeptRatio)
+    const inatTotal = inatData.total_results || inatSightings.length
     return {
-      total: allSightings.length,
+      total: Math.max(gbifTotal + inatTotal, allSightings.length),
       sightings: allSightings,
     }
   }

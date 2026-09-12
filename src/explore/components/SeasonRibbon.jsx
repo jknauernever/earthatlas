@@ -16,7 +16,7 @@ const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  *   onPlayToggle — () => void
  *   styles    — CSS module from parent
  */
-export default function SeasonRibbon({ pattern = [], season, onChange, playing, onPlayToggle, styles, context = 'patterns' }) {
+export default function SeasonRibbon({ pattern = [], season, onChange, playing, onPlayToggle, styles, context = 'patterns', selectedTotal = null }) {
   const dragFrom = useRef(null)
   const [dragTo, setDragTo] = useState(null)
 
@@ -48,11 +48,14 @@ export default function SeasonRibbon({ pattern = [], season, onChange, playing, 
     : season.type === 'range'
       ? `${MONTHS[season.from]}–${MONTHS[season.to]}`
       : MONTHS_FULL[season.month]
-  const total = season.type === 'all'
+  // Prefer the fetched total (GBIF + iNaturalist) so this number always
+  // matches the stat tile — the facet-derived bar sum is GBIF-only and
+  // can drift by a few records.
+  const total = selectedTotal ?? (season.type === 'all'
     ? pattern.reduce((s, p) => s + p.count, 0)
     : season.type === 'range'
       ? pattern.slice(season.from, season.to + 1).reduce((s, p) => s + p.count, 0)
-      : (pattern[season.month]?.count || 0)
+      : (pattern[season.month]?.count || 0))
 
   return (
     <div className={styles.ribbon} onPointerLeave={() => { dragFrom.current = null; setDragTo(null) }}>

@@ -19,14 +19,11 @@ import { useSearchParams } from 'react-router-dom'
 export function useQueryParams(schema) {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Always read the latest searchParams via a ref. react-router's internal
-  // setSearchParams captures `searchParams` by closure — if a caller holds a
-  // stale reference (e.g. from a useCallback whose deps list doesn't include
-  // setQP), its functional updater sees pre-update state and overwrites
-  // concurrently-written params. Reading from a ref and passing a concrete
-  // URLSearchParams (never a function) sidesteps that entirely.
-  const searchParamsRef = useRef(searchParams)
-  searchParamsRef.current = searchParams
+  // Merging base must be the LIVE URL, not React state: a ref refreshed on
+  // render still goes stale when two setQP calls land in the same tick
+  // (write z, then write month — the second rebuilds from a pre-first-call
+  // snapshot and silently drops z). react-router pushes history
+  // synchronously, so window.location.search is always current.
 
   const params = useMemo(() => {
     const result = {}
@@ -47,7 +44,7 @@ export function useQueryParams(schema) {
   }, [searchParams, schema])
 
   const setQP = useCallback((updates) => {
-    const next = new URLSearchParams(searchParamsRef.current)
+    const next = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(updates)) {
       if (value == null) {
         next.delete(key)

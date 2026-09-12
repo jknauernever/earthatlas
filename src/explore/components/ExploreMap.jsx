@@ -688,11 +688,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       // capped above) and pin the hottest spot to the top of the ramp.
       // O(n²) on ≤~1k points — microseconds, and exact at every zoom.
       const z = map.getZoom()
-      const kernelPx = z >= 6 ? 84 : 26 + ((Math.pow(2, Math.max(0, z)) - 1) / 63) * 58
+      const kernelPx = z >= 6 ? 84 : 16 + ((Math.pow(2, Math.max(0, z)) - 1) / 63) * 68
       const rDeg = Math.max(0.02, kernelPx * 360 / (512 * Math.pow(2, z)))
       const r2 = rDeg * rDeg
       const coslat = Math.cos((map.getCenter().lat * Math.PI) / 180)
-      const ws = points.map((p) => Math.min(1, 0.25 + 0.107 * Math.log(1 + p.properties.total)))
+      const zz = map.getZoom()
+      const blend = Math.max(0, Math.min(1, (zz - 3) / 2)) // 0 = world (presence), 1 = regional (density)
+      const wFloor = 0.6 + (0.25 - 0.6) * blend
+      const wSlope = 0.057 + (0.107 - 0.057) * blend
+      const ws = points.map((p) => Math.min(1, wFloor + wSlope * Math.log(1 + p.properties.total)))
       let peak = 0
       for (let i = 0; i < points.length; i++) {
         const [xi, yi] = points[i].geometry.coordinates
@@ -796,13 +800,20 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           // above it. Pure log made a lone sighting 2% of a harbor
           // cluster — invisible — but "typically here" is first of all a
           // presence question.
-          'heatmap-weight': ['min', 1, ['+', 0.25, ['*', 0.107, ['ln', ['+', 1, ['get', 'total']]]]]],
+          // Zoom-blended semantics: at world zooms this is a RANGE map —
+          // presence weighs nearly flat so every region with records shows
+          // clearly — and by regional zooms it's a density surface (log
+          // weights, quarter-weight presence floor).
+          'heatmap-weight': ['interpolate', ['linear'], ['zoom'],
+            3, ['min', 1, ['+', 0.6, ['*', 0.057, ['ln', ['+', 1, ['get', 'total']]]]]],
+            5, ['min', 1, ['+', 0.25, ['*', 0.107, ['ln', ['+', 1, ['get', 'total']]]]]],
+          ],
           'heatmap-intensity': intensityExpr(),
           // Geographic below z6 (blobs anchor to places; grids melt), then
           // screen-capped: past z6 you are inside the regional blob and an
           // ever-growing kernel drowns local structure — capping lets the
           // Channel-Islands-scale detail re-emerge as you zoom.
-          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 0, 26, 6, 84],
+          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 0, 16, 6, 84],
           // Low end stays transparent until real density — the kernel's
           // faint outer tail otherwise paints a misleading fringe well
           // inland/offshore of the actual sightings.
@@ -813,11 +824,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0,     'rgba(240, 180, 60, 0)',
-            0.025, 'rgba(240, 195, 90, 0.20)',
-            0.10,  'rgba(238, 165, 55, 0.38)',
-            0.30,  'rgba(233, 120, 35, 0.55)',
-            0.65,  'rgba(215, 65, 22, 0.70)',
-            1,     'rgba(165, 20, 10, 0.78)',
+            0.025, 'rgba(242, 190, 75, 0.30)',
+            0.10,  'rgba(240, 160, 48, 0.48)',
+            0.30,  'rgba(233, 115, 32, 0.62)',
+            0.65,  'rgba(215, 62, 20, 0.74)',
+            1,     'rgba(165, 20, 10, 0.82)',
           ],
         },
       })

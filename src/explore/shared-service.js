@@ -15,9 +15,11 @@ const DEV = import.meta.env.DEV
 const gbifSearchUrl = (params) => DEV
   ? `https://api.gbif.org/v1/occurrence/search?${params}`
   : `/api/gbif-proxy?${params}`
+// slim=1: the proxy strips observations to the fields we render — a full
+// 200-result iNat page is ~28 MB and uncacheable; slimmed it's ~100 KB.
 const inatObsUrl = (params) => DEV
   ? `https://api.inaturalist.org/v1/observations?${params}`
-  : `/api/inat-proxy?${params}`
+  : `/api/inat-proxy?${params}&slim=1`
 const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
 
 function getBoundingBox(lat, lng, radiusKm) {

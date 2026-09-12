@@ -80,7 +80,7 @@ function warmUrls(origin, loc) {
   return [
     `${origin}/api/gbif-proxy?${recent}`,
     `${origin}/api/gbif-proxy?${pattern}`,
-    `${origin}/api/inat-proxy?${inat}`,
+    `${origin}/api/inat-proxy?${inat}&slim=1`,
   ]
 }
 

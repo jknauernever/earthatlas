@@ -125,6 +125,7 @@ export default async function handler(req) {
   const { searchParams } = new URL(req.url)
   if (searchParams.get('agg') === 'place_counts') return placeCounts(searchParams)
 
+  const slim = searchParams.get('slim') === '1'
   const upstream = new URLSearchParams()
 
   for (const [key, value] of searchParams) {
@@ -152,6 +153,39 @@ export default async function handler(req) {
     // load. We signal upstream failures via `_upstream_status` in the body
     // instead; the client checks that to trigger its negative cache.
     if (r.ok) {
+      // slim=1 (explore subsites): strip each observation to the handful of
+      // fields the client actually renders. A 200-result page of full iNat
+      // objects is ~28 MB — too big for the edge cache to store at all, and
+      // an absurd transfer per visitor. Slimmed it's ~100 KB, cacheable,
+      // and byte-stable for the warm cron. Full payloads stay available to
+      // /live and the main page, which use richer fields.
+      if (slim) {
+        const data = JSON.parse(await r.text())
+        const slimmed = {
+          total_results: data.total_results,
+          page: data.page,
+          per_page: data.per_page,
+          results: (data.results || []).map((o) => ({
+            id: o.id,
+            observed_on: o.observed_on,
+            place_guess: o.place_guess,
+            geojson: o.geojson ? { coordinates: o.geojson.coordinates } : null,
+            taxon: o.taxon ? { name: o.taxon.name, preferred_common_name: o.taxon.preferred_common_name } : null,
+            user: o.user ? { login: o.user.login } : null,
+            photos: o.photos?.[0]?.url ? [{ url: o.photos[0].url }] : [],
+          })),
+        }
+        return new Response(JSON.stringify(slimmed), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': upstream.has('d1')
+              ? 'public, s-maxage=3600, stale-while-revalidate=7200'
+              : 'public, s-maxage=60, stale-while-revalidate=300',
+            ...corsHeaders(),
+          },
+        })
+      }
       const body = await r.text()
       return new Response(body, {
         status: 200,

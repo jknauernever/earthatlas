@@ -304,7 +304,7 @@ export default function ExploreApp({ config }) {
   const stripFailedAt = useRef({}) // key → ts of last failure (429 backoff)
   const [stripRetryTick, setStripRetryTick] = useState(0)
   useEffect(() => {
-    if (mode !== 'patterns' || !location) return
+    if (phase !== 'explore' || !location) return
     const now = Date.now()
     const wanted = species.slice(0, 12).map((sp) => sp.speciesKey)
       .filter((k) => /^\d+$/.test(String(k))) // numeric GBIF keys only — some rows carry name strings
@@ -338,7 +338,7 @@ export default function ExploreApp({ config }) {
       }
     })()
     return () => { dead = true }
-  }, [mode, species, location, fetchSeasonalPattern, stripRetryTick])
+  }, [phase, species, location, fetchSeasonalPattern, stripRetryTick])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)
@@ -807,7 +807,7 @@ export default function ExploreApp({ config }) {
                     styles={styles}
                     openInfoKey={openInfoKey}
                     setOpenInfoKey={setOpenInfoKey}
-                    strip={mode === 'patterns' ? speciesStrips[sp.speciesKey] : null}
+                    strip={speciesStrips[sp.speciesKey]}
                     stripMonth={mode === 'patterns' && season.type === 'month' ? season.month : null}
                   />
                 ))

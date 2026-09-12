@@ -7,11 +7,9 @@
  * Phases:
  *   'hero'    — full-bleed entry screen, user has not yet chosen a location
  *   'loading' — location granted/entered, fetching initial data
- *   'explore' — main explore view with map, species cards, season chart
- *
- * Mode (within 'explore'):
- *   'now'      — recent sightings (past N days)
- *   'patterns' — historical monthly view, scrubbed by month
+ *   'explore' — main explore view: recent sightings on the map, species
+ *               list, and the seasonal ribbon ("which months are they
+ *               here?" — all species, or the clicked one)
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
@@ -26,8 +24,6 @@ import TimeSlider from './components/TimeSlider'
 import SeasonRibbon from './components/SeasonRibbon'
 
 import { reverseGeocode, fmtDate } from './utils'
-
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const SOURCE_URLS = {
   GBIF: 'https://www.gbif.org',
@@ -53,9 +49,6 @@ const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
   name:    { type: 'string' },
-  mode:    { type: 'string', default: 'now' },
-  month:   { type: 'number' },
-  months:  { type: 'string' }, // patterns span: 'a-b' (1-based) or 'all'; absent = single month
   species: { type: 'string' },
   from:    { type: 'string' }, // time-slider range start (YYYY-MM-DD), absent = data min
   to:      { type: 'string' }, // time-slider range end (YYYY-MM-DD), absent = data max
@@ -66,7 +59,6 @@ export default function ExploreApp({ config }) {
   const { service } = config
   const {
     fetchRecentSightings,
-    fetchMonthSightings,
     fetchSeasonalPattern,
     fetchINatSightings,
     fetchEBirdSightings,
@@ -86,21 +78,7 @@ export default function ExploreApp({ config }) {
   const hasUrlCoords = qp.lat != null && qp.lng != null
   const [phase, setPhase] = useState(hasUrlCoords ? 'loading' : 'hero')
 
-  const mode = qp.mode
-  const activeMonth = qp.month != null ? qp.month - 1 : null  // URL is 1-based, display is 0-based
   const activeSpecies = qp.species
-  const displayedMonth = activeMonth !== null ? activeMonth : new Date().getMonth()
-  // Patterns-mode season selection: single month, span, or the whole year
-  const season = useMemo(() => {
-    if (qp.months === 'all') return { type: 'all' }
-    const m = /^(\d+)-(\d+)$/.exec(qp.months || '')
-    if (m) return { type: 'range', from: Number(m[1]) - 1, to: Number(m[2]) - 1 }
-    return { type: 'month', month: displayedMonth }
-  }, [qp.months, displayedMonth])
-  // As the service/tiles expect it: 1-based single, "a,b" range, or 'all'
-  const seasonParam = season.type === 'all' ? 'all'
-    : season.type === 'range' ? `${season.from + 1},${season.to + 1}`
-    : season.month + 1
 
   // Derive location from URL params or local state
   const [localLocation, setLocalLocation] = useState(null)
@@ -243,67 +221,6 @@ export default function ExploreApp({ config }) {
     }
   }, [hasUrlCoords, qp.lat, qp.lng, qp.name, loadData, setQP])
 
-  // ─── Handle season selection in patterns mode ─────────────────────────────
-  const handleSeasonChange = useCallback(async (sel) => {
-    // URL: single month → month=N; span → months=a-b; all → months=all
-    if (sel.type === 'all') setQP({ months: 'all' })
-    else if (sel.type === 'range') setQP({ months: `${sel.from + 1}-${sel.to + 1}`, month: null })
-    else setQP({ month: sel.month + 1, months: null })
-    if (mode !== 'patterns' || !location) return
-
-    const monthParam = sel.type === 'all' ? 'all'
-      : sel.type === 'range' ? `${sel.from + 1},${sel.to + 1}`
-      : sel.month + 1
-    try {
-      const bounds = mapBoundsRef.current
-      const result = await fetchMonthSightings({
-        lat: location.lat,
-        lng: location.lng,
-        month: monthParam,
-        speciesKey: activeSpecies ? Number(activeSpecies) : null,
-        limit: MAX_SIGHTINGS,
-        ...(bounds ? { bounds } : { bounds: boundsFromZoom(location.lat, location.lng, mapZoomRef.current ?? qp.z) }),
-      })
-      setSightings(result.sightings)
-      setSpecies(aggregateSpecies(result.sightings))
-      setTotalCount(result.total)
-      setTooManyResults(result.sightings.length < result.total)
-    } catch { /* fail silently, keep existing sightings */ }
-  }, [mode, location, activeSpecies, qp.z, setQP, fetchMonthSightings, aggregateSpecies, MAX_SIGHTINGS])
-  const handleMonthChange = useCallback((monthIdx) => handleSeasonChange({ type: 'month', month: monthIdx }), [handleSeasonChange])
-
-  // Cold-loading a shared URL straight into patterns mode: the mode-change
-  // effect below only fires on CHANGES, so without this one-shot kick the
-  // page would sit on recent-mode data (wrong list, wrong counts) forever.
-  const coldPatternsKicked = useRef(qp.mode !== 'patterns')
-  useEffect(() => {
-    if (coldPatternsKicked.current) return
-    if (mode === 'patterns' && location && !loadingData && phase === 'explore') {
-      coldPatternsKicked.current = true
-      handleSeasonChange(season)
-    }
-  }, [mode, location, loadingData, phase, handleSeasonChange, season])
-
-  const seasonRef = useRef(season)
-  seasonRef.current = season
-  const modeRef = useRef(mode)
-  modeRef.current = mode
-
-
-  // Only reload when mode *changes* (not on mount — coldLoaded handles that)
-  const prevModeRef = useRef(mode)
-  useEffect(() => {
-    if (prevModeRef.current === mode) return
-    prevModeRef.current = mode
-    if (mode === 'now' && location) loadData(location, { bounds: mapBoundsRef.current, silent: true })
-    if (mode === 'patterns' && location) handleSeasonChange(season)
-  }, [mode, location, loadData, handleSeasonChange, season])
-
-  // Re-fetch month sightings when species selection changes in patterns mode
-  useEffect(() => {
-    if (mode !== 'patterns' || !location) return
-    handleSeasonChange(season)
-  }, [activeSpecies])
 
   // Fetch per-species seasonal pattern when a species card is clicked
   useEffect(() => {
@@ -362,27 +279,19 @@ export default function ExploreApp({ config }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name, z: zoom })
-    // Patterns mode refetches the SEASON's sightings for the new viewport —
-    // loadData is the recent-mode fetch and would silently swap the list to
-    // last-90-days data (the "double load" feel on pan/zoom).
-    if (modeRef.current === 'patterns') handleSeasonChange(seasonRef.current)
-    else loadData(loc, { bounds, silent: true })
-  }, [loadData, setQP, handleSeasonChange])
+    loadData(loc, { bounds, silent: true })
+  }, [loadData, setQP])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
   const handleChangeLocation = useCallback(() => {
-    setQP({ lat: null, lng: null, name: null, mode: 'now', month: null, species: null, from: null, to: null })
+    setQP({ lat: null, lng: null, name: null, species: null, from: null, to: null })
     setLocalLocation(null)
     setPhase('hero')
   }, [setQP])
 
   // ─── Filtered sightings (time slider) ────────────────────────────────────
-  // The slider is a recent-mode concept: patterns mode shows historical
-  // records across all years, so a from/to range (still in the URL for the
-  // trip back to recent mode) must not filter them.
   const filteredSightings = useMemo(() => {
     const { start, end } = timeRange
-    if (mode === 'patterns') return sightings
     if (!start && !end) return sightings
     return sightings.filter(s => {
       if (!s.date) return false
@@ -390,7 +299,7 @@ export default function ExploreApp({ config }) {
       if (end && s.date > end) return false
       return true
     })
-  }, [sightings, timeRange, mode])
+  }, [sightings, timeRange])
 
   const filteredSpecies = useMemo(() => aggregateSpecies(filteredSightings), [filteredSightings, aggregateSpecies])
   const filteredCount = filteredSightings.length
@@ -583,22 +492,6 @@ export default function ExploreApp({ config }) {
                 : <>Near <span>{location?.name || 'your location'}</span></>}
             </div>
           </div>
-          <div className={styles.topbarRight}>
-            <div className={styles.modeBar}>
-              <button
-                className={`${styles.modeBtn} ${mode === 'now' ? styles.modeBtnActive : ''}`}
-                onClick={() => setQP({ mode: 'now', month: null })}
-              >
-                Recent sightings
-              </button>
-              <button
-                className={`${styles.modeBtn} ${mode === 'patterns' ? styles.modeBtnActive : ''}`}
-                onClick={() => setQP({ mode: 'patterns' })}
-              >
-                Seasonal patterns
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Stat tiles \u2014 the one place counts/window/provenance appear */}
@@ -608,12 +501,11 @@ export default function ExploreApp({ config }) {
               <div className={styles.statVal}>
                 {capped
                   ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
-                  : (mode === 'patterns' ? totalCount : filteredCount).toLocaleString()}
+                  : filteredCount.toLocaleString()}
               </div>
               <div className={styles.statLabel}>
                 {fetching ? 'Updating…'
-                  : capped ? (mode === 'patterns' ? 'Historical sightings shown' : 'Most recent shown')
-                  : mode === 'patterns' ? 'Historical sightings'
+                  : capped ? 'Most recent shown'
                   : 'Sightings in view'}
               </div>
               <div className={styles.statSub}>
@@ -641,19 +533,15 @@ export default function ExploreApp({ config }) {
 
             <div className={styles.statTile}>
               <div className={`${styles.statVal} ${styles.statValSm}`}>
-                {mode === 'patterns'
-                  ? (season.type === 'all' ? 'All months'
-                    : season.type === 'range' ? `${MONTH_NAMES[season.from].slice(0, 3)}–${MONTH_NAMES[season.to].slice(0, 3)}`
-                    : MONTH_NAMES[season.month])
-                  : timeFilterActive ? filteredRangeLabel : `Past ${config.defaults.days} days`}
+                {timeFilterActive ? filteredRangeLabel : `Past ${config.defaults.days} days`}
               </div>
               <div className={styles.statLabel}>Date range</div>
               <div className={styles.statSub}>
-                {mode === 'patterns' ? 'All years combined' : (location?.name || '\u2014')}
+                {location?.name || '\u2014'}
               </div>
             </div>
 
-            {mode === 'now' && nearest && (
+            {nearest && (
               <div className={styles.statTile}>
                 <div className={styles.statVal}>
                   {nearest.km < 1 ? '< 1 km' : `${Math.round(nearest.km)} km`}
@@ -685,7 +573,6 @@ export default function ExploreApp({ config }) {
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
-                patternsMonth={mode === 'patterns' ? seasonParam : null}
                 initialView={qp.z != null ? { zoom: qp.z } : null}
                 config={{
                   fallbackColor: config.fallback.color,
@@ -696,26 +583,13 @@ export default function ExploreApp({ config }) {
               />
               <SeasonRibbon
                 pattern={seasonPattern}
-                season={season}
-                onChange={(sel) => {
-                  if (mode !== 'patterns') {
-                    // From Recent mode the ribbon is the door into patterns:
-                    // switch modes carrying the selection; the mode-change
-                    // effect runs the fetch.
-                    const patch = sel.type === 'all' ? { months: 'all' }
-                      : sel.type === 'range' ? { months: `${sel.from + 1}-${sel.to + 1}`, month: null }
-                      : { month: sel.month + 1, months: null }
-                    setQP({ mode: 'patterns', ...patch })
-                  } else {
-                    handleSeasonChange(sel)
-                  }
-                }}
                 styles={styles}
-                context={mode === 'patterns' ? 'patterns' : 'now'}
-                selectedTotal={mode === 'patterns' && !fetching ? totalCount : null}
+                subjectLabel={activeSpecies
+                  ? (species.find((sp) => String(sp.speciesKey) === String(activeSpecies))?.common || 'Selected species')
+                  : null}
               />
             </div>
-            {mode === 'now' && !loadingData && sightings.length > 0 && (
+            {!loadingData && sightings.length > 0 && (
               <TimeSlider
                 sightings={sightings}
                 value={timeRange}

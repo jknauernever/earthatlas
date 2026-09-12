@@ -268,104 +268,6 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
   }
 
-  // `month` accepts a single month (1-12), a GBIF range string "5,9"
-  // (May through September), or null/'all' for no month constraint.
-  function inatMonthList(month) {
-    if (month == null || month === 'all') return null
-    const m = /^(\d+),(\d+)$/.exec(String(month))
-    if (!m) return String(month)
-    const from = Number(m[1]); const to = Number(m[2])
-    const list = []
-    for (let x = from; x <= to; x++) list.push(x)
-    return list.join(',')
-  }
-
-  async function fetchMonthSightings({ lat, lng, radiusKm = 400, bounds, month, speciesKey = null, limit = 200, signal }) {
-    const bb = resolveBB({ lat, lng, radiusKm, bounds })
-    const gbifMonth = month == null || month === 'all' ? null : String(month)
-    const inatMonth = inatMonthList(month)
-
-    // Fetch GBIF and iNaturalist in parallel
-    const [gbifResult, inatResult] = await Promise.allSettled([
-      (async () => {
-        const params = gbifSearchParams({
-          hasCoordinate: 'true',
-          occurrenceStatus: 'PRESENT',
-          decimalLatitude: `${bb.minLat},${bb.maxLat}`,
-          decimalLongitude: `${bb.minLng},${bb.maxLng}`,
-          ...(gbifMonth ? { month: gbifMonth } : {}),
-          limit: Math.min(limit, 300),
-        }, speciesKey ? [speciesKey] : gbifTaxonKeys)
-        const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
-        if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
-        return res.json()
-      })(),
-      (async () => {
-        // Look up iNat taxon ID: use species scientific name if filtering by species, else group ID(s)
-        let taxonId = inatTaxonIds
-        if (speciesKey) {
-          const meta = getSpeciesMeta(speciesKey)
-          if (meta?.scientific) {
-            // Query iNat for the taxon ID by scientific name
-            const tRes = await fetch(`${INAT_API}/taxa?q=${encodeURIComponent(meta.scientific)}&per_page=1`, {
-              headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
-              signal,
-            })
-            if (tRes.ok) {
-              const tData = await tRes.json()
-              if (tData.results?.[0]?.id) taxonId = tData.results[0].id
-            }
-          }
-        }
-        const geoParams = bounds
-          ? { nelat: bb.maxLat, nelng: bb.maxLng, swlat: bb.minLat, swlng: bb.minLng }
-          : { lat, lng, radius: radiusKm }
-        const params = new URLSearchParams({
-          taxon_id: taxonId,
-          ...geoParams,
-          ...(inatMonth ? { month: inatMonth } : {}),
-          order_by: 'observed_on',
-          per_page: Math.min(limit, 200),
-          geo: 'true',
-          captive: 'false',
-        })
-        const res = await fetch(`${INAT_API}/observations?${params}`, {
-          headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
-          signal,
-        })
-        if (!res.ok) return { results: [], total_results: 0 }
-        return res.json()
-      })(),
-    ])
-
-    const gbifData = gbifResult.status === 'fulfilled' ? gbifResult.value : { results: [], count: 0 }
-    const inatData = inatResult.status === 'fulfilled' ? inatResult.value : { results: [], total_results: 0 }
-
-    let gbifResults = (gbifData.results || [])
-      .filter(o => o.decimalLatitude && o.decimalLongitude)
-      .filter(o => o.datasetKey !== GBIF_INAT_DATASET) // avoid duplicates with iNat
-      .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
-    if (postFilter) gbifResults = gbifResults.filter(postFilter)
-
-    const gbifSightings = gbifResults.map(normalizeOccurrence)
-    let inatSightings = (inatData.results || []).map(normalizeINatObservation).filter(Boolean)
-    // Apply postFilter to iNat results too (e.g. condors: filter out non-condor vultures)
-    if (postFilter) inatSightings = inatSightings.filter(s => postFilter(s))
-
-    const allSightings = [...gbifSightings, ...inatSightings]
-
-    // True total, not the fetched page: GBIF's count scaled by the ratio the
-    // dedup/basis filters kept, plus iNat's own reported total.
-    const gbifRaw = (gbifData.results || []).length
-    const gbifKeptRatio = gbifRaw > 0 ? gbifResults.length / gbifRaw : 1
-    const gbifTotal = Math.round((gbifData.count || 0) * gbifKeptRatio)
-    const inatTotal = inatData.total_results || inatSightings.length
-    return {
-      total: Math.max(gbifTotal + inatTotal, allSightings.length),
-      sightings: allSightings,
-    }
-  }
-
   async function fetchSeasonalPattern({ lat, lng, radiusKm = 500, bounds, speciesKey = null, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
 
@@ -531,7 +433,6 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
   return {
     fetchRecentSightings,
-    fetchMonthSightings,
     fetchSeasonalPattern,
     fetchINatSightings,
     fetchEBirdSightings,

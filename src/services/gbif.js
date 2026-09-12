@@ -171,7 +171,12 @@ export async function fetchGBIFOccurrences({
     if (keys) keys.forEach(k => params.append('taxonKey', k))
   }
 
-  const res = await fetchWithTimeout(`${GBIF_API}/occurrence/search?${params}`)
+  // Production routes through our edge proxy so all visitors share cached
+  // upstream calls (see api/gbif-proxy.js); dev hits GBIF directly.
+  const searchUrl = import.meta.env.DEV
+    ? `${GBIF_API}/occurrence/search?${params}`
+    : `/api/gbif-proxy?${params}`
+  const res = await fetchWithTimeout(searchUrl)
   if (!res.ok) throw new Error(`GBIF API error: ${res.status} ${res.statusText}`)
 
   const data = await res.json()

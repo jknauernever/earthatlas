@@ -6,9 +6,18 @@
  */
 
 import { fetchEBirdRecentRaw, fetchEBirdSpeciesRecentRaw } from '../services/eBird'
+import { quantizeBounds, inBounds, recentWindow } from './wildQuery'
 
-const GBIF_API = 'https://api.gbif.org/v1'
-const INAT_API = 'https://api.inaturalist.org/v1'
+// All GBIF/iNat traffic routes through our edge proxies in production so
+// every visitor shares one cached upstream call per unique (quantized)
+// query. Dev hits upstream directly — vite serves no /api.
+const DEV = import.meta.env.DEV
+const gbifSearchUrl = (params) => DEV
+  ? `https://api.gbif.org/v1/occurrence/search?${params}`
+  : `/api/gbif-proxy?${params}`
+const inatObsUrl = (params) => DEV
+  ? `https://api.inaturalist.org/v1/observations?${params}`
+  : `/api/inat-proxy?${params}`
 const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
 
 function getBoundingBox(lat, lng, radiusKm) {
@@ -152,11 +161,16 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   // that overrides the rolling `days` window — lets callers query a fixed
   // historical span (e.g. a selected month/year) instead of "last N days".
   async function fetchRecentSightings({ lat, lng, radiusKm = 300, bounds, days = 90, eventDate, limit = 200, signal }) {
-    const bb = resolveBB({ lat, lng, radiusKm, bounds })
-    const d2 = new Date()
-    const d1 = new Date(d2 - days * 86400000)
-    const fmt = d => d.toISOString().split('T')[0]
+    // Exact bounds filter the rows; the FETCH uses the enclosing grid cell so
+    // users looking at roughly the same place share one edge-cache entry.
+    const exact = resolveBB({ lat, lng, radiusKm, bounds })
+    const bb = quantizeBounds(exact)
+    // Day-stamped window: stable cache keys within a day (see wildQuery).
+    const { d1, d2 } = recentWindow(days)
 
+    const dayMs = 86400000
+    const d2ms = Date.parse(d2 + 'T00:00:00Z')
+    const fmtBack = (nDays) => new Date(d2ms - nDays * dayMs).toISOString().split('T')[0]
     const PAGE_SIZE = 300
     const maxPages = Math.ceil(Math.min(limit, 1500) / PAGE_SIZE)  // up to 5 pages
     const pageBudget = maxPages * PAGE_SIZE
@@ -166,13 +180,13 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       occurrenceStatus: 'PRESENT',
       decimalLatitude: `${bb.minLat},${bb.maxLat}`,
       decimalLongitude: `${bb.minLng},${bb.maxLng}`,
-      eventDate: eventDate || `${fmt(d1)},${fmt(d2)}`,
+      eventDate: eventDate || `${d1},${d2}`,
       limit: PAGE_SIZE,
     }
 
     // Fetch first page to get the total count
     const params = gbifSearchParams(baseParams)
-    const url = `${GBIF_API}/occurrence/search?${params}`
+    const url = gbifSearchUrl(params)
     const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`GBIF error: ${res.status}`)
     const data = await res.json()
@@ -194,10 +208,10 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       let winCount = totalAvailable
       while (winCount > pageBudget && winDays > 7) {
         winDays = Math.max(7, Math.floor(winDays / 2))
-        const probeRange = `${fmt(new Date(d2 - winDays * 86400000))},${fmt(d2)}`
+        const probeRange = `${fmtBack(winDays)},${d2}`
         try {
           const pr = await fetch(
-            `${GBIF_API}/occurrence/search?${gbifSearchParams({ ...baseParams, eventDate: probeRange, limit: 1 })}`,
+            gbifSearchUrl(gbifSearchParams({ ...baseParams, eventDate: probeRange, limit: 1 })),
             { signal },
           )
           if (!pr.ok) break
@@ -209,8 +223,8 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         // weeks late, so a recent window can be sparse — the newest records
         // stay guaranteed (sorted first), older ones fill the map to `limit`.
         const backfill = allResults
-        baseParams.eventDate = `${fmt(new Date(d2 - winDays * 86400000))},${fmt(d2)}`
-        const r0 = await fetch(`${GBIF_API}/occurrence/search?${gbifSearchParams(baseParams)}`, { signal })
+        baseParams.eventDate = `${fmtBack(winDays)},${d2}`
+        const r0 = await fetch(gbifSearchUrl(gbifSearchParams(baseParams)), { signal })
         if (r0.ok) {
           const d0 = await r0.json()
           const fresh = d0.results || []
@@ -228,7 +242,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       for (let page = 1; page < pageCount; page++) {
         const p = gbifSearchParams({ ...baseParams, offset: page * PAGE_SIZE })
         pagePromises.push(
-          fetch(`${GBIF_API}/occurrence/search?${p}`, { signal })
+          fetch(gbifSearchUrl(p), { signal })
             .then(r => r.ok ? r.json() : { results: [] })
             .catch(() => ({ results: [] }))
         )
@@ -243,6 +257,8 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     allResults.sort((a, b) => String(b.eventDate || '').localeCompare(String(a.eventDate || '')))
     let results = allResults
       .filter(o => o.decimalLatitude && o.decimalLongitude)
+      // The fetch covered the quantized cell — keep only the caller's view.
+      .filter(o => inBounds({ lat: o.decimalLatitude, lng: o.decimalLongitude }, exact))
       .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
     // Exclude iNat-sourced records from GBIF only when a caller fetches iNat
     // SEPARATELY (the /explore apps do, to avoid double-counting). Callers that
@@ -303,7 +319,10 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
   }
 
   async function fetchSeasonalPattern({ lat, lng, radiusKm = 500, bounds, speciesKey = null, signal }) {
-    const bb = resolveBB({ lat, lng, radiusKm, bounds })
+    // Quantized: the ribbon describes "this area", and grid-snapped bounds
+    // mean pans within a cell — and other users nearby — share one answer
+    // (both in the session cache below and at the edge).
+    const bb = quantizeBounds(resolveBB({ lat, lng, radiusKm, bounds }))
     const cacheKey = `${gbifTaxonKeys.join('+')}|${speciesKey || 'all'}|${bb.minLat},${bb.minLng},${bb.maxLat},${bb.maxLng}`
     const cached = patternCacheGet(cacheKey)
     if (cached) return cached
@@ -318,7 +337,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       'month.facetLimit': '12',
     }, speciesKey ? [speciesKey] : gbifTaxonKeys)
 
-    const res = await fetch(`${GBIF_API}/occurrence/search?${params}`, { signal })
+    const res = await fetch(gbifSearchUrl(params), { signal })
     if (!res.ok) throw new Error(`GBIF facets error: ${res.status}`)
     const data = await res.json()
 
@@ -339,15 +358,17 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     // Fetch only the last 30 days from iNat to fill the recency gap.
     if (useEBird) days = 30
     try {
-      const d2 = new Date()
-      const d1 = new Date(d2 - days * 86400000)
-      const fmt = d => d.toISOString().split('T')[0]
+      const { d1, d2 } = recentWindow(days)
 
-      // iNat uses nelat/nelng/swlat/swlng when bounds are provided, otherwise
-      // lat/lng/radius. Clamp: world views report wrapped longitudes.
+      // Quantized cell for shared cache keys (exact filter after fetch);
+      // clamp first — world views report wrapped longitudes.
       const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v)))
-      const geoParams = bounds
-        ? { nelat: cl(bounds.maxLat, -90, 90), nelng: cl(bounds.maxLng, -180, 180), swlat: cl(bounds.minLat, -90, 90), swlng: cl(bounds.minLng, -180, 180) }
+      const exact = bounds
+        ? { minLat: cl(bounds.minLat, -90, 90), maxLat: cl(bounds.maxLat, -90, 90), minLng: cl(bounds.minLng, -180, 180), maxLng: cl(bounds.maxLng, -180, 180) }
+        : null
+      const qbb = exact ? quantizeBounds(exact) : null
+      const geoParams = qbb
+        ? { nelat: qbb.maxLat, nelng: qbb.maxLng, swlat: qbb.minLat, swlng: qbb.minLng }
         : { lat, lng, radius: radiusKm }
 
       // iNat caps per_page at 200 — page through (newest first, so
@@ -356,8 +377,8 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       const baseParams = {
         taxon_id: inatTaxonIds,
         ...geoParams,
-        d1: fmt(d1),
-        d2: fmt(d2),
+        d1,
+        d2,
         order_by: 'observed_on',
         per_page: 200,
         geo: 'true',
@@ -368,7 +389,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       let total = 0
       for (let page = 1; page <= maxPages; page++) {
         const params = new URLSearchParams({ ...baseParams, page })
-        const res = await fetch(`${INAT_API}/observations?${params}`, {
+        const res = await fetch(inatObsUrl(params), {
           headers: { 'User-Agent': 'EarthAtlas/1.0 (https://earthatlas.org)' },
           signal,
         })
@@ -379,7 +400,15 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         results = results.concat(batch)
         if (batch.length < 200 || results.length >= limit) break
       }
-      return { sightings: results.slice(0, limit).map(normalizeINatObservation).filter(Boolean), total }
+      let sightings = results.slice(0, limit).map(normalizeINatObservation).filter(Boolean)
+      if (exact) {
+        const before = sightings.length
+        sightings = sightings.filter((r) => inBounds(r, exact))
+        // total reported by iNat covers the quantized cell; scale it to the
+        // kept fraction so "of N" stays honest for the actual view.
+        if (before > 0) total = Math.round(total * (sightings.length / before))
+      }
+      return { sightings, total }
     } catch {
       return { sightings: [], total: 0 }
     }

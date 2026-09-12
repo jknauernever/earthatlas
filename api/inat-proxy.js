@@ -35,6 +35,7 @@ const ALLOWED_PARAMS = new Set([
   'taxon_id',
   'iconic_taxa',
   'd1', 'd2',
+  'geo',
 ])
 
 function corsHeaders() {
@@ -156,10 +157,13 @@ export default async function handler(req) {
         status: 200,
         headers: {
           'content-type': r.headers.get('content-type') || 'application/json; charset=utf-8',
-          // Edge cache 60s, stale-while-revalidate 5min. Live observations
-          // don't change minute-to-minute, and cache hits dramatically reduce
-          // upstream iNat pressure across all visitors.
-          'cache-control': 'public, s-maxage=60, stale-while-revalidate=300',
+          // Live-ish queries cache 60s; a day-stamped d1/d2 window (the
+          // explore subsites' "past N days", stable keys within a day)
+          // caches 1h — freshness within the hour is immaterial there and
+          // shared hits are what keep iNat off our backs at scale.
+          'cache-control': upstream.has('d1')
+            ? 'public, s-maxage=3600, stale-while-revalidate=7200'
+            : 'public, s-maxage=60, stale-while-revalidate=300',
           ...corsHeaders(),
         },
       })

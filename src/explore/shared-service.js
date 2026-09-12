@@ -268,8 +268,45 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     }
   }
 
+  // Seasonal patterns are the closest thing we fetch to a static answer —
+  // "Humpbacks by month in this area, all years combined" changes when GBIF
+  // ingests new data, not between clicks. Cache per exact area + species in
+  // memory and sessionStorage (survives reloads; same URL → same computed
+  // bounds → same key) for a day, capped FIFO so storage stays small.
+  const PATTERN_TTL_MS = 24 * 3600 * 1000
+  const PATTERN_CACHE_MAX = 150
+  const patternCache = new Map()
+  const patternStorageKey = (k) => `ea-pattern:${k}`
+
+  function patternCacheGet(key) {
+    const hit = patternCache.get(key)
+    if (hit && Date.now() - hit.t < PATTERN_TTL_MS) return hit.p
+    try {
+      const raw = sessionStorage.getItem(patternStorageKey(key))
+      if (raw) {
+        const { t, p } = JSON.parse(raw)
+        if (Date.now() - t < PATTERN_TTL_MS) { patternCache.set(key, { t, p }); return p }
+        sessionStorage.removeItem(patternStorageKey(key))
+      }
+    } catch { /* storage unavailable */ }
+    return null
+  }
+
+  function patternCachePut(key, p) {
+    patternCache.set(key, { t: Date.now(), p })
+    if (patternCache.size > PATTERN_CACHE_MAX) {
+      const oldest = patternCache.keys().next().value
+      patternCache.delete(oldest)
+      try { sessionStorage.removeItem(patternStorageKey(oldest)) } catch { /* ok */ }
+    }
+    try { sessionStorage.setItem(patternStorageKey(key), JSON.stringify({ t: Date.now(), p })) } catch { /* ok */ }
+  }
+
   async function fetchSeasonalPattern({ lat, lng, radiusKm = 500, bounds, speciesKey = null, signal }) {
     const bb = resolveBB({ lat, lng, radiusKm, bounds })
+    const cacheKey = `${gbifTaxonKeys.join('+')}|${speciesKey || 'all'}|${bb.minLat},${bb.minLng},${bb.maxLat},${bb.maxLng}`
+    const cached = patternCacheGet(cacheKey)
+    if (cached) return cached
 
     const params = gbifSearchParams({
       hasCoordinate: 'true',
@@ -288,11 +325,13 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     const monthFacet = (data.facets || []).find(f => f.field === 'MONTH')
     const counts = monthFacet?.counts || []
 
-    return Array.from({ length: 12 }, (_, i) => {
+    const pattern = Array.from({ length: 12 }, (_, i) => {
       const m = i + 1
       const found = counts.find(c => Number(c.name) === m)
       return { month: m, count: found ? found.count : 0 }
     })
+    patternCachePut(cacheKey, pattern)
+    return pattern
   }
 
   async function fetchINatSightings({ lat, lng, radiusKm = 300, bounds, days = 90, limit = 200, signal }) {

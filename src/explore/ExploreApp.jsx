@@ -630,7 +630,7 @@ export default function ExploreApp({ config }) {
                   : 'Sightings in view'}
               </div>
               <div className={styles.statSub}>
-                {capped && <span>Zoom in to see all · </span>}
+                {capped ? <span>Zoom in to see all · </span> : <span>complete for this view · </span>}
                 from{' '}
                 {['iNaturalist', 'eBird', 'GBIF']
                   .map(src => ({ src, n: filteredSightings.filter(s => s.source === src).length }))
@@ -730,6 +730,7 @@ export default function ExploreApp({ config }) {
                   else setPlaying((p) => !p)
                 }}
                 styles={styles}
+                context={mode === 'patterns' ? 'patterns' : 'now'}
               />
             </div>
             {mode === 'now' && !loadingData && sightings.length > 0 && (

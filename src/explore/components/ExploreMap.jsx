@@ -682,15 +682,32 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: { total: ft.properties.total || 1 } })
       }
       map.getSource(heatSourceId).setData({ type: 'FeatureCollection', features: points })
-      // Measure the hottest 0.35° cell and recalibrate the ramp top.
-      const cells = {}
+      // Recalibrate the ramp top from the TRUE kernel-density peak: for the
+      // loaded points, evaluate the same Gaussian-falloff sum the GPU will
+      // draw (kernel size tracks the paint: geographic below z6, screen-
+      // capped above) and pin the hottest spot to the top of the ramp.
+      // O(n²) on ≤~1k points — microseconds, and exact at every zoom.
+      const z = map.getZoom()
+      const kernelPx = z <= 3 ? 10 : z >= 6 ? 80 : 10 + ((Math.pow(2, z - 3) - 1) / 7) * 70
+      const rDeg = Math.max(0.02, kernelPx * 360 / (512 * Math.pow(2, z)))
+      const r2 = rDeg * rDeg
+      const coslat = Math.cos((map.getCenter().lat * Math.PI) / 180)
+      const ws = points.map((p) => Math.min(1, Math.log(1 + p.properties.total) / 7))
       let peak = 0
-      for (const p of points) {
-        const w = Math.min(1, Math.log(1 + p.properties.total) / 7)
-        const ck = Math.round(p.geometry.coordinates[0] / 0.35) + ':' + Math.round(p.geometry.coordinates[1] / 0.35)
-        const v = (cells[ck] = (cells[ck] || 0) + w)
-        if (v > peak) peak = v
+      for (let i = 0; i < points.length; i++) {
+        const [xi, yi] = points[i].geometry.coordinates
+        let d = 0
+        for (let j = 0; j < points.length; j++) {
+          const [xj, yj] = points[j].geometry.coordinates
+          const dx = (xi - xj) * coslat
+          const dy = yi - yj
+          const q = (dx * dx + dy * dy) / r2
+          if (q < 1) d += ws[j] * (1 - q) * (1 - q) // Epanechnikov-ish falloff
+        }
+        if (d > peak) peak = d
       }
+      const band = Math.round(z)
+      if (band !== ratchetBand) { ratchetBand = band; ratchet = 0 }
       if (peak > ratchet) {
         ratchet = peak
         if (map.getLayer(layerId)) map.setPaintProperty(layerId, 'heatmap-intensity', intensityExpr())
@@ -704,9 +721,10 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     // Same selection → same scale wherever you pan or zoom, and "All
     // months" vs a sparse February each get a scale that shows structure.
     let ratchet = 0
+    let ratchetBand = null
     function intensityExpr() {
-      const k = Math.min(6, Math.max(0.15, 1.1 / Math.max(0.05, ratchet)))
-      return ['interpolate', ['exponential', 2], ['zoom'], 3, 0.55 * k, 8, 2.9 * k]
+      const k = Math.min(6, Math.max(0.1, 3.2 / Math.max(0.05, ratchet)))
+      return ['interpolate', ['exponential', 2], ['zoom'], 3, 0.55 * k, 6, 2.0 * k]
     }
 
     function update() {
@@ -769,7 +787,11 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           // a field instead of striping.
           'heatmap-weight': ['interpolate', ['linear'], ['ln', ['+', 1, ['get', 'total']]], 0, 0.008, 7, 1],
           'heatmap-intensity': intensityExpr(),
-          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 3, 10, 8, 260],
+          // Geographic below z6 (blobs anchor to places; grids melt), then
+          // screen-capped: past z6 you are inside the regional blob and an
+          // ever-growing kernel drowns local structure — capping lets the
+          // Channel-Islands-scale detail re-emerge as you zoom.
+          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 3, 10, 6, 80],
           // Low end stays transparent until real density — the kernel's
           // faint outer tail otherwise paints a misleading fringe well
           // inland/offshore of the actual sightings.
@@ -780,7 +802,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             0.35, 'rgba(238, 150, 45, 0.42)',
             0.65, 'rgba(228, 95, 28, 0.62)',
             0.88, 'rgba(205, 50, 18, 0.76)',
-            1,    'rgba(165, 20, 10, 0.85)',
+            1,    'rgba(165, 20, 10, 0.76)',
           ],
         },
       })

@@ -16,7 +16,7 @@ const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  *   onPlayToggle — () => void
  *   styles    — CSS module from parent
  */
-export default function SeasonRibbon({ pattern = [], season, onChange, playing, onPlayToggle, styles }) {
+export default function SeasonRibbon({ pattern = [], season, onChange, playing, onPlayToggle, styles, context = 'patterns' }) {
   const dragFrom = useRef(null)
   const [dragTo, setDragTo] = useState(null)
 
@@ -101,7 +101,9 @@ export default function SeasonRibbon({ pattern = [], season, onChange, playing, 
         })}
       </div>
       <div className={styles.ribbonProv}>
-        Historical sighting density by month, all years combined — drag across months for a span ·{' '}
+        {context === 'now'
+          ? 'The typical year — all years of records by month. Pick a month to explore it · '
+          : 'Historical sighting density by month, all years combined — drag across months for a span · '}
         <a href="https://www.gbif.org" target="_blank" rel="noreferrer">GBIF</a>
       </div>
     </div>

@@ -303,7 +303,8 @@ export default function ExploreApp({ config }) {
   const [speciesStrips, setSpeciesStrips] = useState({})
   useEffect(() => {
     if (mode !== 'patterns' || !location) return
-    const keys = species.slice(0, 12).map((sp) => sp.speciesKey).filter(Boolean)
+    const keys = species.slice(0, 12).map((sp) => sp.speciesKey)
+      .filter((k) => /^\d+$/.test(String(k))) // numeric GBIF keys only — some rows carry name strings
       .filter((k) => !speciesStrips[k])
     if (!keys.length) return
     let dead = false

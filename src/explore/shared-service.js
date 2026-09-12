@@ -133,11 +133,14 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
   function resolveBB({ lat, lng, radiusKm, bounds }) {
     if (bounds) {
+      // Clamp to valid ranges: world views report wrapped longitudes
+      // (west of -180) and over-poles latitudes, which GBIF 400s.
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v)))
       return {
-        minLat: Number(bounds.minLat).toFixed(5),
-        maxLat: Number(bounds.maxLat).toFixed(5),
-        minLng: Number(bounds.minLng).toFixed(5),
-        maxLng: Number(bounds.maxLng).toFixed(5),
+        minLat: clamp(bounds.minLat, -90, 90).toFixed(5),
+        maxLat: clamp(bounds.maxLat, -90, 90).toFixed(5),
+        minLng: clamp(bounds.minLng, -180, 180).toFixed(5),
+        maxLng: clamp(bounds.maxLng, -180, 180).toFixed(5),
       }
     }
     return getBoundingBox(lat, lng, radiusKm)
@@ -315,7 +318,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
           }
         }
         const geoParams = bounds
-          ? { nelat: bounds.maxLat, nelng: bounds.maxLng, swlat: bounds.minLat, swlng: bounds.minLng }
+          ? { nelat: bb.maxLat, nelng: bb.maxLng, swlat: bb.minLat, swlng: bb.minLng }
           : { lat, lng, radius: radiusKm }
         const params = new URLSearchParams({
           taxon_id: taxonId,
@@ -399,9 +402,11 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       const d1 = new Date(d2 - days * 86400000)
       const fmt = d => d.toISOString().split('T')[0]
 
-      // iNat uses nelat/nelng/swlat/swlng when bounds are provided, otherwise lat/lng/radius
+      // iNat uses nelat/nelng/swlat/swlng when bounds are provided, otherwise
+      // lat/lng/radius. Clamp: world views report wrapped longitudes.
+      const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v)))
       const geoParams = bounds
-        ? { nelat: bounds.maxLat, nelng: bounds.maxLng, swlat: bounds.minLat, swlng: bounds.minLng }
+        ? { nelat: cl(bounds.maxLat, -90, 90), nelng: cl(bounds.maxLng, -180, 180), swlat: cl(bounds.minLat, -90, 90), swlng: cl(bounds.minLng, -180, 180) }
         : { lat, lng, radius: radiusKm }
 
       // iNat caps per_page at 200 — page through (newest first, so

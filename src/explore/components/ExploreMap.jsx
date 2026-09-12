@@ -648,8 +648,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     const sightingLayerIds = ['sighting-circles']
 
     function removeSeasonal() {
-      for (const id of [layerId, probeLayerId]) if (map.getLayer(id)) map.removeLayer(id)
-      for (const id of [heatSourceId, sourceId]) if (map.getSource(id)) map.removeSource(id)
+      for (const id of [layerId, probeLayerId]) { try { if (map.getLayer(id)) map.removeLayer(id) } catch { /* teardown race */ } }
+      for (const id of [heatSourceId, sourceId]) { try { if (map.getSource(id)) map.removeSource(id) } catch { /* teardown race */ } }
       map.off('idle', rebuildPoints)
       map.off('sourcedata', onSourceData)
       seasonalUrlRef.current = null
@@ -733,11 +733,12 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     function update() {
       if (!patternsMonth) {
-        // Remove seasonal layers, restore sighting layers
-        // (and the globe: heatmap layers don't render on v3's globe
-        // projection at world zooms, so patterns mode runs on mercator)
-        if (map.getProjection()?.name !== 'globe') map.setProjection('globe')
+        // Remove seasonal layers FIRST, then restore the globe — v3's
+        // globe internals throw on removeSource mid-projection-swap.
+        // (Patterns runs on mercator: heatmap layers don't render on the
+        // globe projection at world zooms.)
         removeSeasonal()
+        if (map.getProjection()?.name !== 'globe') map.setProjection('globe')
         for (const id of sightingLayerIds) {
           if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
         }

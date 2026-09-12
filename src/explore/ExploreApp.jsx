@@ -302,13 +302,23 @@ export default function ExploreApp({ config }) {
   // ─── Per-species season strips (patterns mode) ────────────────────────────
   const [speciesStrips, setSpeciesStrips] = useState({})
   const stripFailedAt = useRef({}) // key → ts of last failure (429 backoff)
+  const [stripRetryTick, setStripRetryTick] = useState(0)
   useEffect(() => {
     if (mode !== 'patterns' || !location) return
     const now = Date.now()
-    const keys = species.slice(0, 12).map((sp) => sp.speciesKey)
+    const wanted = species.slice(0, 12).map((sp) => sp.speciesKey)
       .filter((k) => /^\d+$/.test(String(k))) // numeric GBIF keys only — some rows carry name strings
       .filter((k) => !speciesStrips[k])
-      .filter((k) => now - (stripFailedAt.current[k] || 0) > 60000)
+    const keys = wanted.filter((k) => now - (stripFailedAt.current[k] || 0) > 60000)
+    // Keys skipped only because their backoff hasn't expired: retry once it
+    // has — otherwise a 429 burst leaves rows stripless until the list
+    // happens to change.
+    const backedOff = wanted.filter((k) => now - (stripFailedAt.current[k] || 0) <= 60000)
+    if (backedOff.length && !keys.length) {
+      const soonest = Math.min(...backedOff.map((k) => stripFailedAt.current[k] + 61000 - now))
+      const t = setTimeout(() => setStripRetryTick((x) => x + 1), Math.max(1000, soonest))
+      return () => clearTimeout(t)
+    }
     if (!keys.length) return
     let dead = false
     // SEQUENTIAL with spacing — a dozen parallel facet queries on every
@@ -328,7 +338,7 @@ export default function ExploreApp({ config }) {
       }
     })()
     return () => { dead = true }
-  }, [mode, species, location, fetchSeasonalPattern])
+  }, [mode, species, location, fetchSeasonalPattern, stripRetryTick])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)

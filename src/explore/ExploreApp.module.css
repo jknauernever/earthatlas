@@ -1679,16 +1679,3 @@
   .ribbonProv { display: none; }
 }
 
-/* ─── Per-species 12-month strip (patterns mode) ───────────────────────────── */
-.seasonStrip {
-  display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5px;
-  height: 14px; margin-top: 4px; align-items: end; max-width: 140px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 1px;
-}
-.seasonStrip i {
-  display: block; border-radius: 1.5px 1.5px 0 0; background: currentColor;
-  opacity: 0.55; min-height: 3px;
-}
-.seasonStrip i.seasonStripPk { opacity: 1; }
-.seasonStrip i.seasonStripCur { opacity: 1; outline: 1.5px solid #f5c518; outline-offset: 0.5px; }

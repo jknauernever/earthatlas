@@ -289,57 +289,6 @@ export default function ExploreApp({ config }) {
   const modeRef = useRef(mode)
   modeRef.current = mode
 
-  // ─── Per-species season strips (patterns mode) ────────────────────────────
-  const [speciesStrips, setSpeciesStrips] = useState({})
-  const stripFailedAt = useRef({}) // key → ts of last failure (429 backoff)
-  const [stripRetryTick, setStripRetryTick] = useState(0)
-  useEffect(() => {
-    if (phase !== 'explore' || !location) return
-    const now = Date.now()
-    const wanted = species.slice(0, 8).map((sp) => sp.speciesKey)
-      .filter((k) => /^\d+$/.test(String(k))) // numeric GBIF keys only — some rows carry name strings
-      .filter((k) => !speciesStrips[k])
-    const keys = wanted.filter((k) => now - (stripFailedAt.current[k] || 0) > 60000)
-    // Keys skipped only because their backoff hasn't expired: retry once it
-    // has — otherwise a 429 burst leaves rows stripless until the list
-    // happens to change.
-    const backedOff = wanted.filter((k) => now - (stripFailedAt.current[k] || 0) <= 60000)
-    if (backedOff.length && !keys.length) {
-      const soonest = Math.min(...backedOff.map((k) => stripFailedAt.current[k] + 61000 - now))
-      const t = setTimeout(() => setStripRetryTick((x) => x + 1), Math.max(1000, soonest))
-      return () => clearTimeout(t)
-    }
-    if (!keys.length) return
-    let dead = false
-    // SEQUENTIAL with spacing — a dozen parallel facet queries on every
-    // species-list reshuffle trips GBIF's per-IP rate limit (429s), and
-    // failed keys would retry on the next effect pass, compounding it.
-    ;(async () => {
-      for (const k of keys) {
-        if (dead) return
-        let done = false
-        for (let attempt = 0; attempt < 2 && !done; attempt++) {
-          try {
-            const p = await fetchSeasonalPattern({ lat: location.lat, lng: location.lng, bounds: mapBoundsRef.current, speciesKey: k })
-            if (dead) return
-            setSpeciesStrips((prev) => ({ ...prev, [k]: p }))
-            done = true
-          } catch (err) {
-            // Rate-limited: wait it out once inline — a strip that fails
-            // into the 60s backoff looks like a missing feature.
-            if (attempt === 0 && String(err).includes('429')) {
-              await new Promise((r) => setTimeout(r, 2500))
-            } else {
-              stripFailedAt.current[k] = Date.now()
-              break
-            }
-          }
-        }
-        await new Promise((r) => setTimeout(r, 450))
-      }
-    })()
-    return () => { dead = true }
-  }, [phase, species, location, fetchSeasonalPattern, stripRetryTick])
 
   // Only reload when mode *changes* (not on mount — coldLoaded handles that)
   const prevModeRef = useRef(mode)
@@ -802,8 +751,6 @@ export default function ExploreApp({ config }) {
                     styles={styles}
                     openInfoKey={openInfoKey}
                     setOpenInfoKey={setOpenInfoKey}
-                    strip={speciesStrips[sp.speciesKey]}
-                    stripMonth={mode === 'patterns' && season.type === 'month' ? season.month : null}
                   />
                 ))
               )}

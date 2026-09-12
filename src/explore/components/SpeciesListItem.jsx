@@ -1,7 +1,6 @@
 import SpeciesInfoPopup from '../../components/SpeciesInfoPopup'
 
-export default function SpeciesListItem({ species, active, onClick, style, styles, openInfoKey, setOpenInfoKey, strip = null, stripMonth = null }) {
-  const stripMax = strip ? Math.max(...strip.map((p) => p.count), 1) : 1
+export default function SpeciesListItem({ species, active, onClick, style, styles, openInfoKey, setOpenInfoKey }) {
   const color = species.color || '#1a5276'
   const infoKey = species.speciesKey || species.common
   const popupOpen = openInfoKey === infoKey
@@ -30,17 +29,6 @@ export default function SpeciesListItem({ species, active, onClick, style, style
         {species.common}
         {species.scientific && (
           <span className={styles.speciesRowSci}>{species.scientific}</span>
-        )}
-        {strip && (
-          <div className={styles.seasonStrip} style={{ color }} aria-hidden="true">
-            {strip.map((p, i) => (
-              <i
-                key={p.month}
-                className={i === stripMonth ? styles.seasonStripCur : (p.count / stripMax > 0.6 ? styles.seasonStripPk : undefined)}
-                style={{ height: `${Math.max(16, (p.count / stripMax) * 100)}%` }}
-              />
-            ))}
-          </div>
         )}
       </div>
       <SpeciesInfoPopup species={species} styles={styles} openInfoKey={openInfoKey} setOpenInfoKey={setOpenInfoKey} />

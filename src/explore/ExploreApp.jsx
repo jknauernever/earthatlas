@@ -24,6 +24,7 @@ import TimeSlider from './components/TimeSlider'
 import SeasonRibbon from './components/SeasonRibbon'
 
 import { reverseGeocode, fmtDate } from './utils'
+import { inBounds } from './wildQuery'
 
 const SOURCE_URLS = {
   GBIF: 'https://www.gbif.org',
@@ -131,6 +132,39 @@ export default function ExploreApp({ config }) {
     }
   }
 
+  // ─── Held cell inventories → derive any contained view without network ───
+  // loadData fetches whole quantized grid cells (see shared-service); the raw
+  // per-source rows live here so pans/zooms that stay inside the fetched cell
+  // re-derive the visible set client-side with ZERO new requests.
+  const heldRef = useRef(null)
+
+  if (import.meta.env.DEV) window.__explore = { heldRef } // dev-only QA handle
+
+  const applyView = useCallback((viewBB) => {
+    const h = heldRef.current
+    if (!h) return
+    const g = h.gbif.rows.filter((r) => inBounds(r, viewBB))
+    const i = h.inat.rows.filter((r) => inBounds(r, viewBB))
+    const e = h.ebird.filter((r) => inBounds(r, viewBB))
+
+    // Merge sources (GBIF already excludes iNat-sourced records), newest
+    // first so the MAX_SIGHTINGS cap keeps the most recent.
+    const all = [...g, ...i, ...e]
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+
+    // Cell totals scaled by the in-view fraction of held rows — the honest
+    // "available here" figure for display.
+    const gFrac = h.gbif.rows.length ? g.length / h.gbif.rows.length : 1
+    const iFrac = h.inat.rows.length ? i.length / h.inat.rows.length : 1
+    const apiTotal = Math.max(Math.round(h.gbif.total * gFrac) + Math.round(h.inat.total * iFrac), all.length)
+
+    const shown = all.length > MAX_SIGHTINGS ? all.slice(0, MAX_SIGHTINGS) : all
+    setTooManyResults(shown.length < apiTotal)
+    setSightings(shown)
+    setSpecies(aggregateSpecies(shown))
+    setTotalCount(apiTotal)
+  }, [aggregateSpecies, MAX_SIGHTINGS])
+
   // ─── Load data for a location ─────────────────────────────────────────────
   const loadData = useCallback(async (loc, { bounds, silent = false } = {}) => {
     // Cancel any in-flight requests
@@ -165,29 +199,15 @@ export default function ExploreApp({ config }) {
       const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
 
 
-      // Merge sources (GBIF already filters out iNat-sourced records to avoid
-      // duplicates), newest first so the MAX_SIGHTINGS cap below always keeps
-      // the most recent sightings rather than an arbitrary sample.
-      const allSightings = [...recentData.sightings, ...inatSightings, ...ebirdSightings]
-        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-
-      // GBIF's estimated total excludes iNat-sourced records (deduped away
-      // above) and iNat reports its own total — their sum is the honest
-      // "available" figure for display.
-      const apiTotal = Math.max(recentData.total + inatData.total, allSightings.length)
-
-      if (allSightings.length > MAX_SIGHTINGS) {
-        setTooManyResults(true)
-        setSightings(allSightings.slice(0, MAX_SIGHTINGS))
-        setSpecies(aggregateSpecies(allSightings.slice(0, MAX_SIGHTINGS)))
-      } else {
-        setTooManyResults(allSightings.length < apiTotal)
-        setSightings(allSightings)
-        setSpecies(aggregateSpecies(allSightings))
+      heldRef.current = {
+        cell: recentData.cell || inatData.cell || geo.bounds,
+        gbif: { rows: recentData.sightings, total: recentData.total, capped: !!recentData.capped },
+        inat: { rows: inatSightings, total: inatData.total, capped: !!inatData.capped },
+        ebird: ebirdSightings,
       }
+      applyView(geo.bounds)
       setSeasonPattern(pattern)
       setBaselinePattern(pattern)
-      setTotalCount(apiTotal)
       setPhase('explore')
       initialLoadDone.current = true
     } catch (err) {
@@ -201,7 +221,7 @@ export default function ExploreApp({ config }) {
         setFetching(false)
       }
     }
-  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, fetchEBirdSightings, aggregateSpecies, config.defaults.days, MAX_SIGHTINGS])
+  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, fetchEBirdSightings, applyView, config.defaults.days, MAX_SIGHTINGS])
 
   // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
@@ -279,8 +299,20 @@ export default function ExploreApp({ config }) {
     const loc = { lat, lng, name }
     setLocalLocation(loc)
     setQP({ lat, lng, name, z: zoom })
+    // Contained move: the new viewport sits inside the fetched cell and the
+    // held rows are the cell's COMPLETE inventory — re-derive the view
+    // client-side, zero requests. Anything else (left the cell, or a capped
+    // inventory that can't answer for sub-views) refetches.
+    const h = heldRef.current
+    const contained = h && h.cell && bounds
+      && bounds.minLat >= h.cell.minLat && bounds.maxLat <= h.cell.maxLat
+      && bounds.minLng >= h.cell.minLng && bounds.maxLng <= h.cell.maxLng
+    if (contained && !h.gbif.capped && !h.inat.capped) {
+      applyView(bounds)
+      return
+    }
     loadData(loc, { bounds, silent: true })
-  }, [loadData, setQP])
+  }, [loadData, setQP, applyView])
 
   // ─── "Change location" — clear URL and go back to hero ──────────────────
   const handleChangeLocation = useCallback(() => {

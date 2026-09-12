@@ -6,7 +6,7 @@
  */
 
 import { fetchEBirdRecentRaw, fetchEBirdSpeciesRecentRaw } from '../services/eBird'
-import { quantizeBounds, inBounds, recentWindow } from './wildQuery'
+import { quantizeBounds, recentWindow } from './wildQuery'
 
 // All GBIF/iNat traffic routes through our edge proxies in production so
 // every visitor shares one cached upstream call per unique (quantized)
@@ -257,10 +257,11 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
 
     // Newest first, so the cap below keeps the most recent sightings.
     allResults.sort((a, b) => String(b.eventDate || '').localeCompare(String(a.eventDate || '')))
+    // Rows stay CELL-wide (the caller filters to its viewport): holding the
+    // whole quantized cell is what lets pans and zoom-ins inside it re-derive
+    // the view with zero new requests.
     let results = allResults
       .filter(o => o.decimalLatitude && o.decimalLongitude)
-      // The fetch covered the quantized cell — keep only the caller's view.
-      .filter(o => inBounds({ lat: o.decimalLatitude, lng: o.decimalLongitude }, exact))
       .filter(o => o.basisOfRecord !== 'LIVING_SPECIMEN')
     // Exclude iNat-sourced records from GBIF only when a caller fetches iNat
     // SEPARATELY (the /explore apps do, to avoid double-counting). Callers that
@@ -283,6 +284,11 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     return {
       total: postFilter ? sightings.length : estimatedTotal,
       sightings,
+      cell: bb,
+      // capped = the held rows are NOT the cell's complete inventory (fetch
+      // cap hit, or the window was narrowed): sub-views can't be derived
+      // client-side and must refetch.
+      capped: results.length > sightings.length || estimatedTotal > sightings.length,
     }
   }
 
@@ -402,17 +408,12 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
         results = results.concat(batch)
         if (batch.length < 200 || results.length >= limit) break
       }
-      let sightings = results.slice(0, limit).map(normalizeINatObservation).filter(Boolean)
-      if (exact) {
-        const before = sightings.length
-        sightings = sightings.filter((r) => inBounds(r, exact))
-        // total reported by iNat covers the quantized cell; scale it to the
-        // kept fraction so "of N" stays honest for the actual view.
-        if (before > 0) total = Math.round(total * (sightings.length / before))
-      }
-      return { sightings, total }
+      const sightings = results.slice(0, limit).map(normalizeINatObservation).filter(Boolean)
+      // Cell-wide rows; the caller filters to its viewport (see the note in
+      // fetchRecentSightings). total covers the cell.
+      return { sightings, total, cell: qbb, capped: total > sightings.length }
     } catch {
-      return { sightings: [], total: 0 }
+      return { sightings: [], total: 0, cell: null, capped: false }
     }
   }
 

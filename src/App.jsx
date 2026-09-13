@@ -611,7 +611,7 @@ export default function App() {
                 initialView={(qp.mlat != null && qp.mlng != null && qp.z != null)
                   ? { center: { lat: qp.mlat, lng: qp.mlng }, zoom: qp.z }
                   : null}
-                config={{ fallbackColor: '#e67e22', fallbackEmoji: '' }}
+                config={{ fallbackColor: '#e67e22', fallbackEmoji: '', defaultZoom: 10 }}
               />
             </div>
             <div className="species-sidebar">

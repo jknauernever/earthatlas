@@ -58,10 +58,18 @@ const photoCache = new Map()
 async function fetchBirdPhoto(sciName) {
   if (photoCache.has(sciName)) return photoCache.get(sciName)
   try {
-    const res = await fetchWithTimeout(`${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(sciName)}&per_page=1`)
+    // Via our proxy's week-cached taxa lookup — direct autocomplete calls
+    // (one per species, in parallel) reliably tripped iNat's throttle.
+    // Dev has no /api: hit iNat directly there.
+    const url0 = import.meta.env.DEV
+      ? `${INAT_API}/taxa/autocomplete?q=${encodeURIComponent(sciName)}&per_page=1`
+      : `/api/inat-proxy?taxa_q=${encodeURIComponent(sciName)}`
+    const res = await fetchWithTimeout(url0)
     if (!res.ok) { photoCache.set(sciName, null); return null }
     const data = await res.json()
-    const url = data.results?.[0]?.default_photo?.square_url || null
+    const url = import.meta.env.DEV
+      ? (data.results?.[0]?.default_photo?.square_url || null)
+      : (data.photo_url || null)
     photoCache.set(sciName, url)
     return url
   } catch {

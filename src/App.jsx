@@ -14,8 +14,6 @@ import { track } from './utils/analytics'
 import Header           from './components/Header'
 import Controls         from './components/Controls'
 import TaxonFilter      from './components/TaxonFilter'
-import SpeciesGrid      from './components/SpeciesGrid'
-import SpeciesList      from './components/SpeciesList'
 import ExploreMap       from './explore/components/ExploreMap'
 import SpeciesListItem  from './explore/components/SpeciesListItem'
 import exploreStyles    from './explore/ExploreApp.module.css'
@@ -23,58 +21,17 @@ import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
 import GlobalStats      from './components/GlobalStats'
-import EBirdStats       from './components/EBirdStats'
-import GBIFStats        from './components/GBIFStats'
-import InsightsDashboard from './components/insights/InsightsDashboard'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
-
-// ─── View toggle icons ───────────────────────────────────────────
-const GridIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <rect x="3"  y="3"  width="7" height="7" rx="1"/>
-    <rect x="14" y="3"  width="7" height="7" rx="1"/>
-    <rect x="3"  y="14" width="7" height="7" rx="1"/>
-    <rect x="14" y="14" width="7" height="7" rx="1"/>
-  </svg>
-)
-const ListIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="8" y1="6"  x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-    <line x1="8" y1="18" x2="21" y2="18"/>
-    <circle cx="3" cy="6"  r="1" fill="currentColor"/>
-    <circle cx="3" cy="12" r="1" fill="currentColor"/>
-    <circle cx="3" cy="18" r="1" fill="currentColor"/>
-  </svg>
-)
-const MapIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
-    <line x1="8" y1="2" x2="8" y2="18"/>
-    <line x1="16" y1="6" x2="16" y2="22"/>
-  </svg>
-)
-const InsightsIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/>
-  </svg>
-)
 
 // ─── Query param schema (stable reference) ────────────────────────
 const QP_SCHEMA = {
   lat:     { type: 'number' },
   lng:     { type: 'number' },
   loc:     { type: 'string' },  // reverse-geocoded place name; shared links skip the re-geocode flicker
-  source:  { type: 'string', default: 'All' },
-  // Search area mode. 'map' (default) queries the visible map bounding box;
-  // 'narrow' constrains to a fixed-km radius around lat/lng (using `radius`);
-  // 'worldwide' drops the geographic filter entirely.
-  area:    { type: 'string', default: 'map' },
-  radius:  { type: 'number', default: 10 },  // only used when area === 'narrow'
   time:    { type: 'string', default: 'week' },
   taxon:   { type: 'string', default: 'all' },
   species: { type: 'string' },
-  view:    { type: 'string', default: 'map' },
   // Map view — where the map is currently looking. Diverges from lat/lng
   // (the search origin) when the user pans/zooms.
   z:       { type: 'number' },
@@ -94,21 +51,16 @@ export default function App() {
   // ─── URL state ──────────────────────────────────────────────────
   const [qp, setQP] = useQueryParams(QP_SCHEMA)
 
-  const dataSource = qp.source
-  const radius     = qp.radius
   const timeWindow = qp.time
   const activeTaxon = qp.taxon
-  const view       = qp.view
-  // Backward compat: legacy URLs with `radius=0` (no `area` param) meant
-  // worldwide. Treat them as such; new URLs use `area=worldwide` explicitly.
-  const area       = qp.area === 'map' && qp.radius === 0 ? 'worldwide' : qp.area
-  const isAnywhere = area === 'worldwide'
+  // Pre-map cold starts (lat/lng but no viewport yet) fall back to a fixed
+  // radius; every settled query uses the visible map area.
+  const FALLBACK_RADIUS_KM = 50
 
   // Approximate viewport bbox from the URL's map center + zoom. Used when
   // area='map' so the query follows what the user is actually looking at,
   // not the radius circle around the original search origin.
   const urlMapBounds = useMemo(() => {
-    if (area !== 'map') return null
     if (qp.mlat == null || qp.mlng == null || qp.z == null) return null
     const latSpan = 180 / Math.pow(2, qp.z)
     const lngSpan = 360 / Math.pow(2, qp.z)
@@ -118,7 +70,7 @@ export default function App() {
       minLng: qp.mlng - lngSpan,
       maxLng: qp.mlng + lngSpan,
     }
-  }, [area, qp.mlat, qp.mlng, qp.z])
+  }, [qp.mlat, qp.mlng, qp.z])
 
   // ─── Geo ───────────────────────────────────────────────────────
   const { coords: geoCoords, status: geoStatus, error: geoError, locate } = useGeolocation()
@@ -173,32 +125,6 @@ export default function App() {
     }
   }, [geoCoords, geoStatus, locationName, urlCoords, setQP])
 
-  // ─── Handle source switch ────────────────────────────────────
-  const handleSourceChange = useCallback((source) => {
-    if (source === dataSource) return
-    setSelectedSpecies(null)
-    setObservations([])
-    setTotalResults(null)
-    setError(null)
-
-    const updates = { source, species: null, taxon: 'all' }
-    // Set GBIF defaults
-    if (source === 'GBIF') {
-      updates.radius = 5
-      updates.time = 'all'
-    }
-    // Clamp params for eBird limits
-    if (source === 'eBird') {
-      if (radius > 50) updates.radius = 50
-      if (timeWindow === 'year' || timeWindow === 'all') updates.time = 'month'
-    }
-    // "All" uses iNaturalist-friendly defaults
-    if (source === 'All') {
-      updates.time = 'week'
-    }
-    setQP(updates)
-    track(posthog, 'source_changed', { source })
-  }, [dataSource, posthog, radius, timeWindow, setQP])
 
   // ─── Handle locate ─────────────────────────────────────────────
   const handleLocate = useCallback(async () => {
@@ -314,7 +240,7 @@ export default function App() {
     // No location and no species — nothing to search
     if (!coords && !selectedSpecies) return
     // Treat as worldwide when no location is set and no bounds provided
-    const effectiveAnywhere = (isAnywhere || !coords) && !searchBounds
+    const effectiveAnywhere = !coords && !searchBounds
     // Only show full loading state for initial searches, not map-move re-queries
     if (!searchBounds) {
       setLoading(true)
@@ -333,9 +259,9 @@ export default function App() {
       // Location params — use map bounds if available, radius if location set, or omit for worldwide
       const locParams = searchBounds
         ? { bounds: searchBounds }
-        : effectiveAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: radius }
+        : effectiveAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: FALLBACK_RADIUS_KM }
 
-      if (dataSource === 'All') {
+      {
         const hasSpeciesFilter = !!selectedSpecies
         // eBird needs either a search center (lat/lng) or map bounds. The
         // service now accepts both — bbox is preferred when present.
@@ -356,7 +282,7 @@ export default function App() {
             ? fetchEBirdObservations({
                 lat: coords?.lat, lng: coords?.lng,
                 bounds: searchBounds,
-                radiusKm: Math.min(radius, 50),
+                radiusKm: FALLBACK_RADIUS_KM,
                 timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
                 perPage,
                 speciesCode: selectedSpecies?.speciesCode || undefined,
@@ -390,42 +316,6 @@ export default function App() {
         const gbifUniqueCount = gbifFiltered.length // already deduplicated against iNat/eBird datasets
         totalCount = inatTotal + ebirdTotal + gbifUniqueCount
 
-      } else if (dataSource === 'eBird') {
-        if (effectiveAnywhere) {
-          // eBird requires lat/lng — can't do worldwide searches
-          allResults = []
-          totalCount = 0
-        } else {
-          const data = await fetchEBirdObservations({
-            lat: coords?.lat, lng: coords?.lng,
-            bounds: searchBounds,
-            radiusKm: radius,
-            timeWindow, perPage,
-            speciesCode: selectedSpecies?.speciesCode || selectedSpecies?.id,
-          })
-          allResults = data.results || []
-          totalCount = data.total_results || 0
-        }
-
-      } else if (dataSource === 'GBIF') {
-        const data = await fetchGBIFOccurrences({
-          ...locParams,
-          d1, d2: d1 ? d2 : undefined, perPage,
-          taxonKey: selectedSpecies?.gbifKey || selectedSpecies?.id,
-          iconicTaxa: iconicFilter,
-        })
-        allResults = data.results || []
-        totalCount = data.total_results || 0
-
-      } else {
-        const data = await fetchObservations({
-          ...locParams,
-          d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
-          taxonId: selectedSpecies?.id,
-          iconicTaxa: iconicFilter,
-        })
-        allResults = data.results || []
-        totalCount = data.total_results || 0
       }
 
       // Newest sightings first, whatever the source mix: iNat pages arrive in
@@ -447,18 +337,14 @@ export default function App() {
       // so shared links always reproduce the exact view. Passing null clears
       // the param when the filter isn't active.
       const urlParams = {
-        radius,
         time: timeWindow,
-        source: dataSource,
         species: selectedSpecies?.id || null,
         taxon: activeTaxon !== 'all' ? activeTaxon : null,
       }
       if (coords) { urlParams.lat = coords.lat; urlParams.lng = coords.lng }
       setQP(urlParams)
       track(posthog, 'search_performed', {
-        source: dataSource,
         location: locationName,
-        radius_km: radius,
         time_window: timeWindow,
         species_filter: selectedSpecies?.name || null,
         taxon_filter: activeTaxon,
@@ -472,7 +358,7 @@ export default function App() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource, isAnywhere, applyHomeView])
+  }, [coords, timeWindow, perPage, selectedSpecies, activeTaxon, applyHomeView])
 
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
@@ -485,7 +371,7 @@ export default function App() {
   useEffect(() => {
     if (!coords && !selectedSpecies) return
     // Allow immediate search if URL had coords (cold load) or manual/geo set or species selected
-    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere && !selectedSpecies) return
+    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !selectedSpecies) return
     hasSearched.current = true
     handleSearch(urlMapBoundsRef.current)
   }, [handleSearch])
@@ -620,11 +506,10 @@ export default function App() {
     })).sort((a, b) => b.count - a.count)
   }, [mapSightings])
 
-  const filtered = observations
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
-  const sourceName = dataSource === 'All' ? 'iNaturalist, eBird & GBIF' : dataSource === 'eBird' ? 'eBird' : dataSource === 'GBIF' ? 'GBIF' : 'iNaturalist'
+  const sourceName = 'iNaturalist, eBird & GBIF'
   const displayedCount = observations.length
   const isSampled = totalResults !== null && displayedCount > 0 && displayedCount < totalResults
   const countPhrase = totalResults !== null
@@ -635,12 +520,10 @@ export default function App() {
   const statusText = loading
     ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
-    ? (isAnywhere || !coords)
+    ? !coords
       ? `${countPhrase} worldwide — ${TIME_LABELS[timeWindow]}. Zoom in to see individual observations.`
       : urlMapBounds
       ? `${countPhrase} in the visible map area near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
-      : area === 'narrow'
-      ? `${countPhrase} within ${radius} km of ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
       : `${countPhrase} near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
     ? `Error: ${error}`
@@ -656,34 +539,6 @@ export default function App() {
     <>
       <Header />
 
-      {/* Source row */}
-      <div className="source-row">
-        <span className="source-label">Source ›</span>
-        <button
-          className={`source-chip ${dataSource === 'All' ? 'active' : ''}`}
-          onClick={() => handleSourceChange('All')}
-        >
-          <span className={`source-dot ${dataSource === 'All' ? 'dot-active' : ''}`} />All
-        </button>
-        <button
-          className={`source-chip ${dataSource === 'iNaturalist' ? 'active' : ''}`}
-          onClick={() => handleSourceChange('iNaturalist')}
-        >
-          <span className={`source-dot ${dataSource === 'All' || dataSource === 'iNaturalist' ? 'dot-active' : ''}`} />iNaturalist
-        </button>
-        <button
-          className={`source-chip ${dataSource === 'eBird' ? 'active' : ''}`}
-          onClick={() => handleSourceChange('eBird')}
-        >
-          <span className={`source-dot ${dataSource === 'All' || dataSource === 'eBird' ? 'dot-active' : ''}`} />eBird
-        </button>
-        <button
-          className={`source-chip ${dataSource === 'GBIF' ? 'active' : ''}`}
-          onClick={() => handleSourceChange('GBIF')}
-        >
-          <span className={`source-dot ${dataSource === 'All' || dataSource === 'GBIF' ? 'dot-active' : ''}`} />GBIF
-        </button>
-      </div>
 
       <Controls
         locationName={locationName}
@@ -692,14 +547,12 @@ export default function App() {
         onLocationSelect={handleLocationSelect}
         selectedSpecies={selectedSpecies}
         onSpeciesSelect={handleSpeciesSelect}
-        area={area}               radius={radius}           onAreaSelect={({ area: a, radius: r }) => setQP({ area: a, ...(r != null ? { radius: r } : {}) })}
         timeWindow={timeWindow}   onTimeChange={(t) => setQP({ time: t })}
         canSearch={canSearch}
         onSearch={() => handleSearch(urlMapBounds)}
-        dataSource={dataSource}
       />
 
-      {(dataSource === 'iNaturalist' || dataSource === 'GBIF' || dataSource === 'All') && totalResults !== null && !selectedSpecies && (
+      {totalResults !== null && !selectedSpecies && (
         <TaxonFilter activeTaxon={activeTaxon} onChange={(t) => setQP({ taxon: t })} />
       )}
 
@@ -712,32 +565,6 @@ export default function App() {
               <span className="status-updating" aria-hidden="true"> · Updating…</span>
             )}
           </span>
-          <div className="status-right">
-            <div className="view-toggle">
-              <button
-                className={`view-btn ${view === 'grid' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'grid' }); track(posthog, 'view_changed', { view: 'grid' }) }}
-                title="Grid view"
-              ><GridIcon /></button>
-              <button
-                className={`view-btn ${view === 'list' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'list' }); track(posthog, 'view_changed', { view: 'list' }) }}
-                title="List view"
-              ><ListIcon /></button>
-              <button
-                className={`view-btn ${view === 'map' ? 'active' : ''}`}
-                onClick={() => { setQP({ view: 'map' }); track(posthog, 'view_changed', { view: 'map' }) }}
-                title="Map view"
-              ><MapIcon /></button>
-              {totalResults !== null && (
-                <button
-                  className={`view-btn ${view === 'insights' ? 'active' : ''}`}
-                  onClick={() => { setQP({ view: 'insights' }); track(posthog, 'view_changed', { view: 'insights' }) }}
-                  title="Insights"
-                ><InsightsIcon /></button>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Indeterminate progress bar — visible whenever observations are being fetched */}
@@ -765,28 +592,13 @@ export default function App() {
         ) : totalResults === null && !error ? (
           // A shared link with a species filter or coordinates will start a
           // search as soon as its species id hydrates — show the loading state
-          // for that gap rather than mounting a stats dashboard. EBirdStats
-          // alone fires 12 region-stat requests on mount, all wasted (and
-          // visually jarring) when a scoped search is about to replace it.
+          // for that gap rather than mounting the stats panel it will replace.
           (qp.species != null || coords) ? <LoadingState /> :
-          dataSource === 'eBird' ? <EBirdStats /> : dataSource === 'GBIF' ? <GBIFStats /> : <GlobalStats dataSource={dataSource} />
+          <GlobalStats dataSource="All" />
         ) : observations.length === 0 && !error ? (
           <EmptyState variant="noResults" />
         ) : error ? (
           <EmptyState variant="error" message={error} />
-        ) : view === 'insights' ? (
-          <InsightsDashboard
-            coords={coords}
-            radiusKm={radius}
-            timeWindow={timeWindow}
-            activeTaxon={activeTaxon}
-            selectedSpecies={selectedSpecies}
-            dataSource={dataSource}
-          />
-        ) : view === 'grid' ? (
-          <SpeciesGrid observations={filtered} onSelect={setSelectedObs} />
-        ) : view === 'list' ? (
-          <SpeciesList observations={filtered} onSelect={setSelectedObs} />
         ) : (
           <div className="map-layout">
             <div className="map-container">
@@ -795,7 +607,6 @@ export default function App() {
                 center={coords}
                 activeSpecies={activeMapSpecies}
                 onCenterChange={handleMapMove}
-                radiusKm={isAnywhere ? undefined : radius}
                 searchId={searchId}
                 initialView={(qp.mlat != null && qp.mlng != null && qp.z != null)
                   ? { center: { lat: qp.mlat, lng: qp.mlng }, zoom: qp.z }

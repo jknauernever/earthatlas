@@ -123,6 +123,29 @@ export default async function handler(req) {
   if (req.method !== 'GET') return json({ error: 'method not allowed' }, { status: 405 })
 
   const { searchParams } = new URL(req.url)
+
+  // Taxa photo lookup: ?taxa_q=<scientific name> → { id, name, photo_url }.
+  // Backs the per-species bird thumbnails (eBird rows have no photos) that
+  // used to hit iNat's autocomplete directly — dozens of parallel calls per
+  // visitor, reliably tripping iNat's throttle. Species photos are static:
+  // cache a week at the edge, so upstream sees ~one call per species per
+  // week across ALL visitors.
+  const taxaQ = searchParams.get('taxa_q')
+  if (taxaQ) {
+    try {
+      const r = await fetch(`https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(taxaQ)}&per_page=1`, {
+        headers: { accept: 'application/json' },
+      })
+      if (!r.ok) return json({ photo_url: null, _upstream_status: r.status }, { headers: { 'cache-control': 'public, s-maxage=300' } })
+      const t = (await r.json()).results?.[0]
+      return json(
+        { id: t?.id || null, name: t?.name || null, photo_url: t?.default_photo?.square_url || null },
+        { headers: { 'cache-control': 'public, s-maxage=604800, stale-while-revalidate=86400' } },
+      )
+    } catch (err) {
+      return json({ photo_url: null, _upstream_error: String(err).slice(0, 120) }, { headers: { 'cache-control': 'public, s-maxage=300' } })
+    }
+  }
   if (searchParams.get('agg') === 'place_counts') return placeCounts(searchParams)
 
   const slim = searchParams.get('slim')

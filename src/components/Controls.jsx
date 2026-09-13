@@ -2,17 +2,6 @@ import LocationSearch from './LocationSearch'
 import SpeciesSearch from './SpeciesSearch'
 import styles from './Controls.module.css'
 
-// Search-area dropdown options. The 'narrow' choices stay capped at 50 km
-// regardless of source so eBird (max 50) is always representable.
-const AREA_OPTIONS = [
-  { value: 'map',         label: 'Visible map area' },
-  { value: 'narrow:1',    label: 'Within 1 km of center' },
-  { value: 'narrow:5',    label: 'Within 5 km of center' },
-  { value: 'narrow:10',   label: 'Within 10 km of center' },
-  { value: 'narrow:25',   label: 'Within 25 km of center' },
-  { value: 'narrow:50',   label: 'Within 50 km of center' },
-  { value: 'worldwide',   label: 'Worldwide' },
-]
 
 const TIME_OPTIONS_FULL = [
   { value: 'hour',  label: 'Past hour'  },
@@ -22,14 +11,7 @@ const TIME_OPTIONS_FULL = [
   { value: 'year',  label: 'Past year'  },
   { value: 'all',   label: 'All time'   },
 ]
-const TIME_OPTIONS_EBIRD = [
-  { value: 'hour',  label: 'Past hour'  },
-  { value: 'day',   label: 'Past day'   },
-  { value: 'week',  label: 'Past week'  },
-  { value: 'month', label: 'Past month' },
-] // eBird max 30 days
 
-const TIME_OPTIONS_GBIF = TIME_OPTIONS_FULL // GBIF supports full date range
 
 
 const LocateIcon = ({ spinning }) => (
@@ -58,40 +40,21 @@ const PinIcon = () => (
 export default function Controls({
   locationName, geoStatus, onLocate, onLocationSelect,
   selectedSpecies, onSpeciesSelect,
-  area, radius, onAreaSelect,
   timeWindow, onTimeChange,
   canSearch, onSearch,
-  dataSource,
 }) {
   const locating = geoStatus === 'loading'
-  const isEBird = dataSource === 'eBird'
-  const isGBIF  = dataSource === 'GBIF'
-  const timeOptions   = isEBird ? TIME_OPTIONS_EBIRD   : isGBIF ? TIME_OPTIONS_GBIF   : TIME_OPTIONS_FULL
-
-  // Current dropdown value: 'map' / 'worldwide' / 'narrow:<km>'
-  const areaValue = area === 'narrow' ? `narrow:${radius}` : (area || 'map')
-
-  const handleAreaChange = (e) => {
-    const v = e.target.value
-    if (v === 'map' || v === 'worldwide') {
-      onAreaSelect({ area: v })
-    } else if (v.startsWith('narrow:')) {
-      onAreaSelect({ area: 'narrow', radius: parseInt(v.split(':')[1], 10) })
-    }
-  }
-
-  const hasLocation = !!locationName || geoStatus === 'loading'
+  const timeOptions = TIME_OPTIONS_FULL
 
   return (
     <div className={styles.bar}>
       <div className={styles.inner}>
         {/* Species search — primary action */}
         <div className={styles.group} style={{ flex: '1.5', minWidth: '220px', maxWidth: '360px' }}>
-          <label className={styles.label}>{isEBird ? 'Bird Species' : 'Species'}</label>
+          <label className={styles.label}>Species</label>
           <SpeciesSearch
             selectedSpecies={selectedSpecies}
             onSpeciesSelect={onSpeciesSelect}
-            dataSource={dataSource}
           />
         </div>
 
@@ -117,20 +80,6 @@ export default function Controls({
           </button>
         </div>
 
-        {/* Search area — visible map by default; user can narrow to a fixed
-            radius around the search center, or open up to a worldwide query.
-            Only shown once a location is set (worldwide doesn't need one but
-            the bbox/narrow modes do). */}
-        {hasLocation && (
-          <div className={styles.group}>
-            <label className={styles.label}>Search area</label>
-            <select value={areaValue} onChange={handleAreaChange}>
-              {AREA_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Time window */}
         <div className={styles.group}>

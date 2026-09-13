@@ -546,6 +546,44 @@ async function nameEventsFromNifc(events, now = Date.now()) {
   } catch { /* snapshot unreachable — geocode fallback covers it */ }
 }
 
+// Per-incident 24 h detection count, measured DIRECTLY against each fire's own
+// area — official perimeter bbox (else hull, else a box around the incident
+// point), padded by HIST_BBOX_MARGIN so detections on the edges or just
+// outside the mapped line still count (spotting, growth since the last
+// perimeter flight, and the point-vs-line offset are all real fire). This is
+// deliberately independent of the global event clustering: that list is
+// capped (EVENT_MAX_COUNT, by cluster size), and in peak savanna season a
+// modest US wildfire's cluster falls below the worldwide cut — leaving its
+// NIFC event at n=0 ("none in 24 h") while VIIRS plainly sees its flanks.
+// `det_n` is what "do satellites see THIS fire" should read from.
+function countIncidentDetections(events, detections) {
+  const items = (events || [])
+    .filter((e) => e.irwin && e.name_src === 'nifc')
+    .map((e) => ({ e, bbox: histBboxOf(e), n: 0 }))
+  if (!items.length) return
+  const grid = new Map()
+  items.forEach((it, idx) => {
+    const [w, s, e2, n] = it.bbox
+    for (let gy = Math.floor(s); gy <= Math.floor(n); gy++) {
+      for (let gx = Math.floor(w); gx <= Math.floor(e2); gx++) {
+        const k = `${gy},${gx}`
+        let arr = grid.get(k)
+        if (!arr) grid.set(k, (arr = []))
+        arr.push(idx)
+      }
+    }
+  })
+  for (const d of detections) {
+    const arr = grid.get(`${Math.floor(d.lat)},${Math.floor(d.lon)}`)
+    if (!arr) continue
+    for (const idx of arr) {
+      const [w, s, e2, n] = items[idx].bbox
+      if (d.lon >= w && d.lon <= e2 && d.lat >= s && d.lat <= n) items[idx].n++
+    }
+  }
+  for (const it of items) it.e.det_n = it.n
+}
+
 async function geocodeNewEvents(events) {
   const token = process.env.MAPBOX_TOKEN || process.env.VITE_MAPBOX_TOKEN
   if (!token) return
@@ -759,6 +797,7 @@ async function fetchHotspots() {
     } catch { /* first run / blob unreachable — all events read as new */ }
     const events = buildFireEvents(detections, prevEvents, now)
     await nameEventsFromNifc(events, now)
+    countIncidentDetections(events, detections)
     await geocodeNewEvents(events)
 
     // Per-fire histories: route today's rows into each significant fire's

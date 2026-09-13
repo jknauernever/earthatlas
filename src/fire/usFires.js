@@ -11,6 +11,9 @@
 import styles from './FireApp.module.css'
 import { renderNifcCard } from './nifc.js'
 import { renderInciwebCard } from './inciweb.js'
+// Circular with firms.js (it imports getActiveFireContext from here) — safe:
+// both sides only touch the import inside function bodies, never at eval.
+import { countLiveViirsIn } from './firms.js'
 import { loadSystemsJson } from '../systems/windField.js'
 import { drawFlame, flameStateOf, FLAME_STATES } from '../components/flameGlyph.js'
 
@@ -317,7 +320,14 @@ function ensureDetectionFeed() {
     .then((j) => {
       const byIrwin = new Map()
       for (const e of j.events || []) {
-        if (e.irwin) byIrwin.set(e.irwin, { n: e.n || 0 })
+        if (!e.irwin) continue
+        // det_n (newer bakes) counts detections inside the FIRE'S OWN padded
+        // area, so edge/spot hits count even when the global cluster list
+        // capped this fire out; e.n is the older cluster count. Two events
+        // can carry one irwin — keep the larger answer.
+        const n = e.det_n != null ? e.det_n : (e.n || 0)
+        const prev = byIrwin.get(e.irwin)
+        if (!prev || n > prev.n) byIrwin.set(e.irwin, { n })
       }
       if (byIrwin.size) detFeed = { byIrwin, fetched_ms: j.fetched_ms }
     })
@@ -434,10 +444,40 @@ export function queryUsFiresAt(map, point) {
   return null
 }
 
+// Bbox of a fire's own area for detection counting: mapped perimeter bbox
+// padded ~3 km (matching the bake's HIST_BBOX_MARGIN) — detections on the
+// edges or just outside the official line are still that fire (spotting,
+// growth since the last perimeter flight). No perimeter → null (the baked
+// feed answers instead).
+function fireBboxOf(d) {
+  if (!d.irwin || !cachedPerim) return null
+  const f = (cachedPerim.features || []).find((x) => x.properties && x.properties.irwin === d.irwin)
+  if (!f || !f.geometry) return null
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity
+  const walk = (c) => {
+    if (typeof c[0] === 'number') { if (c[0] < w) w = c[0]; if (c[0] > e) e = c[0]; if (c[1] < s) s = c[1]; if (c[1] > n) n = c[1] }
+    else for (const y of c) walk(y)
+  }
+  walk(f.geometry.coordinates)
+  if (!Number.isFinite(w)) return null
+  const PAD = 0.03
+  return [w - PAD, s - PAD, e + PAD, n + PAD]
+}
+
 export function renderUsFiresCard(d) {
   if (!d) return ''
-  if (d.source !== 'inciweb' && detFeed && d.irwin && detFeed.byIrwin.has(d.irwin)) {
-    d = { ...d, det_n: detFeed.byIrwin.get(d.irwin).n }
+  if (d.source !== 'inciweb') {
+    // Satellite row: prefer a LIVE answer — count the VIIRS detections
+    // currently drawn on the map inside this fire's padded area, the same
+    // dots the user can see. The baked feed covers the rest (hotspots layer
+    // off, or no mapped perimeter): det_n (newer bakes) is the same per-area
+    // count computed at bake time; e.n is the old capped-cluster count that
+    // could falsely read 0 in heavy global fire seasons.
+    const feedN = (detFeed && d.irwin && detFeed.byIrwin.has(d.irwin)) ? detFeed.byIrwin.get(d.irwin).n : null
+    const bbox = fireBboxOf(d)
+    const liveN = bbox ? countLiveViirsIn(bbox) : null
+    const det_n = liveN != null ? Math.max(liveN, feedN ?? 0) : feedN
+    if (det_n != null) d = { ...d, det_n }
   }
   return d.source === 'inciweb' ? renderInciwebCard(d) : renderNifcCard(d)
 }

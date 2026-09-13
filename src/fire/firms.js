@@ -370,11 +370,35 @@ function mergeWithHms(firmsFeats, hmsFC) {
   return kept
 }
 
+// The last FeatureCollection pushed to the map — kept so other cards (the
+// NIFC incident popup's Satellite row) can answer from the SAME detections
+// the user is looking at, instead of a baked feed that may lag or cap.
+let lastFirmsFC = null
+
 function setFirmsData(map, kept, { truncated, error }) {
   const src = map.getSource(SRC)
   if (!src) return null
-  src.setData({ type: 'FeatureCollection', features: kept })
+  lastFirmsFC = { type: 'FeatureCollection', features: kept }
+  src.setData(lastFirmsFC)
   return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated, error }
+}
+
+// Live VIIRS count inside a [w,s,e,n] bbox from the detections currently on
+// the map (last 24 h only; GOES/HMS excluded so the number matches the
+// "VIIRS detections (24 h)" claim). null when the layer holds no data —
+// callers fall back to the baked per-fire feed.
+export function countLiveViirsIn(bbox) {
+  if (!lastFirmsFC) return null
+  const [w, s, e, n] = bbox
+  let c = 0
+  for (const f of lastFirmsFC.features) {
+    const p = f.properties
+    if (p.geo || p.src === 'HMS') continue
+    if (p.hours_ago != null && p.hours_ago > 24) continue
+    const [lng, lat] = f.geometry.coordinates
+    if (lng >= w && lng <= e && lat >= s && lat <= n) c++
+  }
+  return c
 }
 
 // Background completion of the 2-day window: the shards cover 24 h, so pull
@@ -457,6 +481,7 @@ export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0,
 }
 
 export function clearFirms(map) {
+  lastFirmsFC = null
   const src = map.getSource(SRC)
   if (src) src.setData(EMPTY_FC)
 }

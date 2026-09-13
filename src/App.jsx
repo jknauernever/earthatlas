@@ -312,9 +312,16 @@ export default function App() {
 
           canFilterEBird
             ? fetchEBirdObservations({
-                lat: coords?.lat, lng: coords?.lng,
-                bounds: searchBounds,
-                radiusKm: FALLBACK_RADIUS_KM,
+                // Center + radius, NOT bounds: bounds route eBird onto the
+                // region-historic path (7+ sequential daily-region calls —
+                // the "3+ minute page load" path). /geo/recent is one call;
+                // rows get bounds-filtered client-side in applyHomeView
+                // anyway. Radius covers the viewport up to eBird's 50km cap.
+                lat: searchBounds ? (searchBounds.minLat + searchBounds.maxLat) / 2 : coords?.lat,
+                lng: searchBounds ? (searchBounds.minLng + searchBounds.maxLng) / 2 : coords?.lng,
+                radiusKm: searchBounds
+                  ? Math.max(2, Math.min(50, Math.round(((searchBounds.maxLat - searchBounds.minLat) / 2) * 111)))
+                  : FALLBACK_RADIUS_KM,
                 timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
                 perPage,
                 speciesCode: selectedSpecies?.speciesCode || undefined,

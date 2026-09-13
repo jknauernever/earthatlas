@@ -16,7 +16,6 @@ const INAT_API = 'https://api.inaturalist.org/v1'
 // even though the upstream is just rate-limiting. Server-side proxying makes
 // those failures clean HTTP responses (and lets the edge cache absorb load).
 const INAT_OBS_PROXY = '/api/inat-proxy'
-const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
 // ─── Observations ────────────────────────────────────────────────
 export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa, bounds }) {
@@ -213,17 +212,10 @@ export async function fetchSpeciesObservations({ taxonId, d1, d2, perPage = 200 
   return res.json()
 }
 
-// ─── Reverse geocode via Nominatim (no key needed) ───────────────
-export async function reverseGeocode(lat, lng) {
-  const res = await fetch(
-    `${NOMINATIM}/reverse?lat=${lat}&lon=${lng}&format=json`,
-    { headers: { 'Accept-Language': 'en' } }
-  )
-  if (!res.ok) throw new Error('Geocoding failed')
-  const data = await res.json()
-  const { city, town, village, county, state, country_code } = data.address || {}
-  const place = city || town || village || county || ''
-  const region = state || ''
-  const country = country_code?.toUpperCase() || ''
-  return [place, region, country].filter(Boolean).join(', ')
-}
+// ─── Reverse geocode ─────────────────────────────────────────────
+// One geocoder site-wide: the explore wrapper hits our own cached
+// /api/geo/reverse (Mapbox token server-side, CDN-cached, client-side
+// memo + coordinate fallback). The old direct-Nominatim path was a scale
+// landmine — OSM's policy is ONE request/second for the whole app, all
+// users combined, enforced by blocking.
+export { reverseGeocode } from '../explore/utils'

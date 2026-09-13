@@ -616,8 +616,6 @@ export default function App() {
           // for that gap rather than mounting the stats panel it will replace.
           (qp.species != null || coords) ? <LoadingState /> :
           <GlobalStats dataSource="All" />
-        ) : observations.length === 0 && !error ? (
-          <EmptyState variant="noResults" />
         ) : error ? (
           <EmptyState variant="error" message={error} />
         ) : (
@@ -639,6 +637,11 @@ export default function App() {
               <div className={exploreStyles.speciesPanelHead} style={{ padding: '8px 12px 4px' }}>
                 <div className={exploreStyles.speciesPanelTitle}>Recent observations in view</div>
               </div>
+              {mapSpeciesList.length === 0 && (
+                <div style={{ padding: '14px 12px', fontSize: 13, color: '#8a8577', lineHeight: 1.5 }}>
+                  No observations in this view — zoom out, widen the time window, or pan to explore nearby.
+                </div>
+              )}
               {mapSpeciesList.map(sp => {
                 const isActive = activeMapSpecies?.toLowerCase() === sp.scientific?.toLowerCase()
                 return (

@@ -15,10 +15,25 @@
 
 export const GRID_DEG = 0.25
 
+// Hierarchical grid: the step subdivides by 4 as views get smaller, so a
+// deep zoom fetches a SMALL cell whose inventory is complete (a z17
+// viewport inside a fixed 0.25-degree cell always hit the fetch cap, so
+// every pan refetched the same capped rows — visible churn for nothing).
+// Steps are exact quarters of the base, keeping keys shared across users
+// at every scale.
+function stepFor({ minLat, maxLat, minLng, maxLng }) {
+  const span = Math.max(Number(maxLat) - Number(minLat), Number(maxLng) - Number(minLng))
+  if (span >= 0.15) return GRID_DEG          // regional and wider
+  if (span >= 0.04) return GRID_DEG / 4      // neighborhood (~z12-14)
+  return GRID_DEG / 16                       // block scale (~z15+)
+}
+
 // Snap a bounds object OUTWARD to the grid (superset of the request).
-export function quantizeBounds({ minLat, maxLat, minLng, maxLng }, step = GRID_DEG) {
-  const down = (v) => Math.floor(v / step) * step
-  const up = (v) => Math.ceil(v / step) * step
+export function quantizeBounds(bounds, step = null) {
+  const { minLat, maxLat, minLng, maxLng } = bounds
+  const st = step || stepFor(bounds)
+  const down = (v) => Math.floor(v / st) * st
+  const up = (v) => Math.ceil(v / st) * st
   return {
     minLat: Math.max(-90, down(Number(minLat))),
     maxLat: Math.min(90, up(Number(maxLat))),

@@ -446,20 +446,6 @@
   gap: 14px;
 }
 
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-family: var(--sans);
-  padding: 6px 0;
-  transition: color 0.15s;
-}
-.backBtn:hover { color: var(--glow); }
 
 .locationLabel {
   font-family: var(--serif);

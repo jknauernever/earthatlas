@@ -51,7 +51,7 @@ function deriveIconicTaxon(gbifClass, gbifKingdom) {
 // ─── Map iconic taxon filter → GBIF backbone taxonKey(s) ─────────────────────
 // GBIF uses numeric backbone taxonomy keys, not text names.
 // Reptilia is paraphyletic in GBIF — use Squamata + Testudines + Crocodylia.
-const ICONIC_TO_TAXON_KEYS = {
+export const ICONIC_TO_TAXON_KEYS = {
   Aves:           [212],
   Mammalia:       [359],
   Reptilia:       [11592253, 11418114, 11493978], // Squamata, Testudines, Crocodylia
@@ -63,6 +63,35 @@ const ICONIC_TO_TAXON_KEYS = {
   Plantae:        [6],
   Fungi:          [5],
   Chromista:      [4],
+}
+
+// Month-facet seasonality for the homepage ribbon — same query shape (and
+// observation-bases whitelist) as the explore subsites' fetchSeasonalPattern,
+// so cache classes align (facet=month: 24h edge / 1h browser).
+const OBS_BASES = ['HUMAN_OBSERVATION', 'OBSERVATION', 'OCCURRENCE']
+export async function fetchSeasonalFacet({ bounds, taxonKeys }) {
+  const params = new URLSearchParams({
+    hasCoordinate: 'true',
+    occurrenceStatus: 'PRESENT',
+    decimalLatitude: `${bounds.minLat},${bounds.maxLat}`,
+    decimalLongitude: `${bounds.minLng},${bounds.maxLng}`,
+    limit: '0',
+    facet: 'month',
+    'month.facetLimit': '12',
+  })
+  for (const k of taxonKeys) params.append('taxonKey', k)
+  for (const b of OBS_BASES) params.append('basisOfRecord', b)
+  const url = import.meta.env.DEV
+    ? `${GBIF_API}/occurrence/search?${params}`
+    : `/api/gbif-proxy?${params}`
+  const res = await fetchWithTimeout(url)
+  if (!res.ok) throw new Error(`GBIF facets error: ${res.status}`)
+  const data = await res.json()
+  const counts = (data.facets || []).find(f => f.field === 'MONTH')?.counts || []
+  return Array.from({ length: 12 }, (_, i) => {
+    const found = counts.find(c => Number(c.name) === i + 1)
+    return { month: i + 1, count: found ? found.count : 0 }
+  })
 }
 
 // ─── Bounding box helper ─────────────────────────────────────────────────────

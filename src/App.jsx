@@ -4,7 +4,7 @@ import { usePostHog } from 'posthog-js/react'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useQueryParams } from './hooks/useQueryParams'
 import { fetchObservations, reverseGeocode } from './services/iNaturalist'
-import { fetchGBIFOccurrences } from './services/gbif'
+import { fetchGBIFOccurrences, fetchSeasonalFacet, ICONIC_TO_TAXON_KEYS } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
 import { resolveSpecies } from './services/taxonCrosswalk'
 import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
@@ -16,6 +16,7 @@ import Controls         from './components/Controls'
 import TaxonFilter      from './components/TaxonFilter'
 import ExploreMap       from './explore/components/ExploreMap'
 import SpeciesListItem  from './explore/components/SpeciesListItem'
+import SeasonRibbon     from './explore/components/SeasonRibbon'
 import exploreStyles    from './explore/ExploreApp.module.css'
 import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
@@ -207,6 +208,26 @@ export default function App() {
 
   const rowLat = (r) => r.geojson?.coordinates?.[1] ?? r.decimalLatitude
   const rowLng = (r) => r.geojson?.coordinates?.[0] ?? r.decimalLongitude
+
+  // ─── "When are they here?" ribbon — only when there's a WHO ──────────────
+  // The ribbon appears when a species or taxon chip narrows the subject
+  // (all-life seasonality is just an observer-effort curve — no referent,
+  // no ribbon). Same facet class the subsites use: 24h edge / 1h browser.
+  const [seasonPattern, setSeasonPattern] = useState(null)
+  useEffect(() => {
+    const taxonKeys = selectedSpecies?.gbifKey
+      ? [selectedSpecies.gbifKey]
+      : (activeTaxon !== 'all' ? ICONIC_TO_TAXON_KEYS[activeTaxon] : null)
+    if (!taxonKeys || !taxonKeys.length) { setSeasonPattern(null); return }
+    const cell = heldRef.current?.cell
+      || (lastRealBoundsRef.current ? quantizeBounds(lastRealBoundsRef.current) : null)
+    if (!cell) { setSeasonPattern(null); return }
+    let dead = false
+    fetchSeasonalFacet({ bounds: cell, taxonKeys })
+      .then((p) => { if (!dead) setSeasonPattern(p) })
+      .catch(() => { if (!dead) setSeasonPattern(null) })
+    return () => { dead = true }
+  }, [selectedSpecies, activeTaxon, totalResults])
 
   const applyHomeView = useCallback((viewBB) => {
     const h = heldRef.current
@@ -644,7 +665,7 @@ export default function App() {
           <EmptyState variant="error" message={error} />
         ) : (
           <div className="map-layout">
-            <div className="map-container">
+            <div className="map-container" style={{ position: 'relative' }}>
               <ExploreMap
                 sightings={mapSightings}
                 center={coords}
@@ -656,6 +677,15 @@ export default function App() {
                   : null}
                 config={{ fallbackColor: '#e67e22', fallbackEmoji: '', defaultZoom: 10 }}
               />
+              {seasonPattern && (
+                <SeasonRibbon
+                  pattern={seasonPattern}
+                  styles={exploreStyles}
+                  question={selectedSpecies?.name
+                    ? `When is the ${selectedSpecies.name} here?`
+                    : `When are ${getTaxonMeta(activeTaxon).label.toLowerCase()} here?`}
+                />
+              )}
             </div>
             <div className="species-sidebar">
               <div className={exploreStyles.speciesPanelHead} style={{ padding: '8px 12px 4px' }}>

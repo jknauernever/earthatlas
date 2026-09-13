@@ -22,6 +22,7 @@ import SpeciesListItem from './components/SpeciesListItem'
 import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
 import SeasonRibbon from './components/SeasonRibbon'
+import Controls from '../components/Controls'
 
 import { reverseGeocode, fmtDate } from './utils'
 import { inBounds } from './wildQuery'
@@ -314,12 +315,40 @@ export default function ExploreApp({ config }) {
     loadData(loc, { bounds, silent: true })
   }, [loadData, setQP, applyView])
 
-  // ─── "Change location" — clear URL and go back to hero ──────────────────
-  const handleChangeLocation = useCallback(() => {
-    setQP({ lat: null, lng: null, name: null, species: null, from: null, to: null })
-    setLocalLocation(null)
-    setPhase('hero')
-  }, [setQP])
+  // ─── Unified search bar (same bar as the homepage) ───────────────────────
+  // Species options: the subsite's curated catalog, scoped and instant.
+  const speciesOptions = useMemo(() => {
+    const meta = service.speciesMeta || {}
+    return Object.entries(meta)
+      .map(([key, m]) => ({ value: String(key), label: m.common || m.scientific || key }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [service.speciesMeta])
+
+  // Time options drive the CLIENT-side range filter (same machinery as the
+  // slider presets) — the fetch stays the shared 90-day window so cache
+  // keys keep colliding across users.
+  const SUBSITE_TIME_OPTIONS = [
+    { value: 'day', label: 'Past 24h' },
+    { value: 'week', label: 'Past week' },
+    { value: 'month', label: 'Past month' },
+    { value: 'window', label: `Past ${config.defaults.days} days` },
+  ]
+  const timeWindowValue = useMemo(() => {
+    if (!timeRange.start && !timeRange.end) return 'window'
+    const days = { day: 1, week: 7, month: 30 }
+    for (const [k, n] of Object.entries(days)) {
+      const expected = new Date(Date.now() - n * 86400000).toISOString().split('T')[0]
+      if (timeRange.start === expected && !timeRange.end) return k
+    }
+    return 'window'
+  }, [timeRange])
+  const handleTimeWindowChange = useCallback((v) => {
+    const days = { day: 1, week: 7, month: 30 }[v]
+    if (!days) { setTimeRange({ start: null, end: null }); return }
+    setTimeRange({ start: new Date(Date.now() - days * 86400000).toISOString().split('T')[0], end: null })
+  }, [setTimeRange])
+
+  const handleBarLocate = useCallback(() => { handleLocate() }, [])
 
   // ─── Filtered sightings (time slider) ────────────────────────────────────
   const filteredSightings = useMemo(() => {
@@ -517,7 +546,6 @@ export default function ExploreApp({ config }) {
         {/* Topbar */}
         <div className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <button className={styles.backBtn} onClick={handleChangeLocation}>&larr; Change location</button>
             <div className={styles.locationLabel}>
               {/^\d+ km from /.test(location?.name || '')
                 ? <span>{location.name}</span>
@@ -525,6 +553,21 @@ export default function ExploreApp({ config }) {
             </div>
           </div>
         </div>
+
+        {/* Unified search bar — identical to the homepage's */}
+        <Controls
+          locationName={location?.name}
+          geoStatus={'idle'}
+          onLocate={handleBarLocate}
+          onLocationSelect={handleLocationSelect}
+          selectedSpecies={activeSpecies ? String(activeSpecies) : null}
+          onSpeciesSelect={(key) => setQP({ species: key || null })}
+          speciesOptions={speciesOptions}
+          timeWindow={timeWindowValue}
+          onTimeChange={handleTimeWindowChange}
+          timeOptions={SUBSITE_TIME_OPTIONS}
+          showSearchButton={false}
+        />
 
         {/* Stat tiles \u2014 the one place counts/window/provenance appear */}
         {!loadingData && (

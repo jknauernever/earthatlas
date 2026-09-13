@@ -13,7 +13,7 @@ const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  *   subjectLabel — species common name when one is selected, else null
  *   styles       — CSS module from parent
  */
-export default function SeasonRibbon({ pattern = [], subjectLabel = null, styles }) {
+export default function SeasonRibbon({ pattern = [], subjectLabel = null, question = null, styles }) {
   const maxCount = Math.max(...pattern.map((p) => p.count), 1)
   const total = pattern.reduce((s, p) => s + p.count, 0)
   const thisMonth = new Date().getMonth()
@@ -22,7 +22,7 @@ export default function SeasonRibbon({ pattern = [], subjectLabel = null, styles
     <div className={styles.ribbon}>
       <div className={styles.ribbonHead}>
         <div className={styles.ribbonTitle}>
-          {subjectLabel ? `When is the ${subjectLabel} here?` : 'When are they here?'}
+          {question || (subjectLabel ? `When is the ${subjectLabel} here?` : 'When are they here?')}
           <small>{total.toLocaleString()} sightings · all years combined</small>
         </div>
       </div>

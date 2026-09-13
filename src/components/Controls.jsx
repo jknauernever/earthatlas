@@ -42,9 +42,16 @@ export default function Controls({
   selectedSpecies, onSpeciesSelect,
   timeWindow, onTimeChange,
   canSearch, onSearch,
+  // Subsite mode: a curated species catalog replaces the global
+  // autocomplete (scoped, instant, zero network), custom time options
+  // replace the fetch-window ones, and the Search button hides (subsites
+  // search on selection).
+  speciesOptions = null,
+  timeOptions: timeOptionsProp = null,
+  showSearchButton = true,
 }) {
   const locating = geoStatus === 'loading'
-  const timeOptions = TIME_OPTIONS_FULL
+  const timeOptions = timeOptionsProp || TIME_OPTIONS_FULL
 
   return (
     <div className={styles.bar}>
@@ -52,10 +59,22 @@ export default function Controls({
         {/* Species search — primary action */}
         <div className={styles.group} style={{ flex: '1.5', minWidth: '220px', maxWidth: '360px' }}>
           <label className={styles.label}>Species</label>
-          <SpeciesSearch
-            selectedSpecies={selectedSpecies}
-            onSpeciesSelect={onSpeciesSelect}
-          />
+          {speciesOptions ? (
+            <select
+              value={selectedSpecies || ''}
+              onChange={(e) => onSpeciesSelect(e.target.value || null)}
+            >
+              <option value="">All species</option>
+              {speciesOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          ) : (
+            <SpeciesSearch
+              selectedSpecies={selectedSpecies}
+              onSpeciesSelect={onSpeciesSelect}
+            />
+          )}
         </div>
 
         {/* Location search */}
@@ -91,18 +110,19 @@ export default function Controls({
           </select>
         </div>
 
-        {/* Search */}
-        <div className={styles.group}>
-          <label className={styles.label}>&nbsp;</label>
-          <button
-            className="btn btn-secondary"
-            onClick={onSearch}
-            disabled={!canSearch}
-          >
-            <SearchIcon />
-            Search
-          </button>
-        </div>
+        {showSearchButton && (
+          <div className={styles.group}>
+            <label className={styles.label}>&nbsp;</label>
+            <button
+              className="btn btn-secondary"
+              onClick={onSearch}
+              disabled={!canSearch}
+            >
+              <SearchIcon />
+              Search
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

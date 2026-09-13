@@ -509,5 +509,6 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     fetchEBirdSightings,
     aggregateSpecies,
     getSpeciesMeta,
+    speciesMeta, // curated catalog — powers the unified bar's species select
   }
 }

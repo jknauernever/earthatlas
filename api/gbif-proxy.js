@@ -71,11 +71,14 @@ export default async function handler(req) {
     upstream.set('limit', String(Number.isFinite(n) ? Math.max(0, Math.min(300, n)) : 100))
   }
 
+  // max-age adds BROWSER caching on top of the edge cache: a user reloading
+  // the exact same view serves from disk with zero requests. Kept shorter
+  // than s-maxage so freshness is bounded by the user's own session scale.
   const cacheControl = upstream.get('facet') === 'month'
-    ? 'public, s-maxage=86400, stale-while-revalidate=43200'
+    ? 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200'
     : upstream.has('eventDate')
-      ? 'public, s-maxage=3600, stale-while-revalidate=7200'
-      : 'public, s-maxage=1800, stale-while-revalidate=3600'
+      ? 'public, max-age=900, s-maxage=3600, stale-while-revalidate=7200'
+      : 'public, max-age=600, s-maxage=1800, stale-while-revalidate=3600'
 
   try {
     const r = await fetch(`${GBIF_BASE}?${upstream}`, {

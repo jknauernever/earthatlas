@@ -271,10 +271,27 @@ export default function App() {
       let allResults = []
       let totalCount = 0
 
-      // Location params — use map bounds if available, radius if location set, or omit for worldwide
-      const locParams = searchBounds
-        ? { bounds: searchBounds }
-        : effectiveAnywhere ? {} : { lat: coords.lat, lng: coords.lng, radiusKm: FALLBACK_RADIUS_KM }
+      // Location params — use map bounds when available. With coords but no
+      // map yet (Locate Me / typed location before the map mounts), don't
+      // guess with a radius circle the map will never show: compute the
+      // viewport the map WILL mount at (default zoom) and take the normal
+      // quantized-cell path — the map's mount report then lands inside the
+      // held cell and refines client-side instead of firing a second search.
+      let locParams
+      if (searchBounds) locParams = { bounds: searchBounds }
+      else if (effectiveAnywhere) locParams = {}
+      else {
+        const z = 10 // mirror of the map's homepage defaultZoom
+        const latSpan = 180 / Math.pow(2, z)
+        const lngSpan = 360 / Math.pow(2, z)
+        searchBounds = quantizeBounds({
+          minLat: Math.max(-90, coords.lat - latSpan),
+          maxLat: Math.min(90, coords.lat + latSpan),
+          minLng: Math.max(-180, coords.lng - lngSpan),
+          maxLng: Math.min(180, coords.lng + lngSpan),
+        })
+        locParams = { bounds: searchBounds }
+      }
 
       {
         const hasSpeciesFilter = !!selectedSpecies

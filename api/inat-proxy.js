@@ -140,7 +140,7 @@ export default async function handler(req) {
       const t = (await r.json()).results?.[0]
       return json(
         { id: t?.id || null, name: t?.name || null, photo_url: t?.default_photo?.square_url || null },
-        { headers: { 'cache-control': 'public, s-maxage=604800, stale-while-revalidate=86400' } },
+        { headers: { 'cache-control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400' } },
       )
     } catch (err) {
       return json({ photo_url: null, _upstream_error: String(err).slice(0, 120) }, { headers: { 'cache-control': 'public, s-maxage=300' } })
@@ -221,8 +221,8 @@ export default async function handler(req) {
           headers: {
             'content-type': 'application/json; charset=utf-8',
             'cache-control': upstream.has('d1')
-              ? 'public, s-maxage=3600, stale-while-revalidate=7200'
-              : 'public, s-maxage=60, stale-while-revalidate=300',
+              ? 'public, max-age=900, s-maxage=3600, stale-while-revalidate=7200'
+              : 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
             ...corsHeaders(),
           },
         })
@@ -237,8 +237,8 @@ export default async function handler(req) {
           // caches 1h — freshness within the hour is immaterial there and
           // shared hits are what keep iNat off our backs at scale.
           'cache-control': upstream.has('d1')
-            ? 'public, s-maxage=3600, stale-while-revalidate=7200'
-            : 'public, s-maxage=60, stale-while-revalidate=300',
+            ? 'public, max-age=900, s-maxage=3600, stale-while-revalidate=7200'
+            : 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
           ...corsHeaders(),
         },
       })

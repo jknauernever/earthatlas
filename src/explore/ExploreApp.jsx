@@ -327,6 +327,15 @@ export default function ExploreApp({ config }) {
   // Time options drive the CLIENT-side range filter (same machinery as the
   // slider presets) — the fetch stays the shared 90-day window so cache
   // keys keep colliding across users.
+  // "All Cetaceans" / "All Fungi" / ... — the box leads with the subsite's
+  // own group, not a generic "All species". Irregular plurals handled.
+  const TAXON_PLURALS = { fungus: 'Fungi', wolf: 'Wolves', lepidoptera: 'Butterflies & Moths' }
+  const allLabel = useMemo(() => {
+    const t = config.taxonLabel || 'species'
+    const plural = TAXON_PLURALS[t] || (t.charAt(0).toUpperCase() + t.slice(1) + 's')
+    return `All ${plural.charAt(0).toUpperCase() + plural.slice(1)}`
+  }, [config.taxonLabel])
+
   const SUBSITE_TIME_OPTIONS = [
     { value: 'day', label: 'Past 24h' },
     { value: 'week', label: 'Past week' },
@@ -563,6 +572,7 @@ export default function ExploreApp({ config }) {
           selectedSpecies={activeSpecies ? String(activeSpecies) : null}
           onSpeciesSelect={(key) => setQP({ species: key || null })}
           speciesOptions={speciesOptions}
+          allSpeciesLabel={allLabel}
           timeWindow={timeWindowValue}
           onTimeChange={handleTimeWindowChange}
           timeOptions={SUBSITE_TIME_OPTIONS}

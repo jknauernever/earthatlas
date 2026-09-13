@@ -47,6 +47,7 @@ export default function Controls({
   // replace the fetch-window ones, and the Search button hides (subsites
   // search on selection).
   speciesOptions = null,
+  allSpeciesLabel = 'All species',
   timeOptions: timeOptionsProp = null,
   showSearchButton = true,
 }) {
@@ -64,7 +65,7 @@ export default function Controls({
               value={selectedSpecies || ''}
               onChange={(e) => onSpeciesSelect(e.target.value || null)}
             >
-              <option value="">All species</option>
+              <option value="">{allSpeciesLabel}</option>
               {speciesOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}

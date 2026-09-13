@@ -97,24 +97,21 @@ export function renderNewsCard({ articles, loading, named, place }) {
     ? `News about the ${esc(named)} Fire`
     : 'Recent wildfire news near here'
 
-  if (loading) {
-    return `<div class="${styles.popupParcel}">` +
-      `<div class="${styles.popupParcelTitle}">${heading}</div>` +
-      `<div class="${styles.popupRow}"><span class="${styles.popupRowValue}">Looking for recent news…</span></div></div>`
-  }
+  // No placeholder while loading either: a "Looking for news…" card that
+  // then vanishes (the common no-coverage case) reads as breakage. The
+  // section simply appears when there is something to show.
+  if (loading) return ''
 
-  if (!articles || !articles.length) {
-    // Always show the empty state (this section only renders on an active-fire
-    // click) so "no coverage" reads as exactly that, not a broken lookup.
-    return `<div class="${styles.popupParcel}">` +
-      `<div class="${styles.popupParcelTitle}">${heading}</div>` +
-      `<div class="${styles.popupRow}"><span class="${styles.popupRowValue}">${named ? 'No recent news found for this fire.' : 'No recent wildfire news found nearby.'}</span></div></div>`
-  }
+  // No coverage → no block. An empty-state card taught users to expect news
+  // everywhere; absence of the section reads cleaner (Josh, 2026-09-14).
+  if (!articles || !articles.length) return ''
 
   const linkStyle = 'display:block;padding:4px 0;text-decoration:none;color:inherit;border-top:1px solid rgba(255,255,255,0.08)'
   const titleStyle = 'font-weight:600;line-height:1.25'
   const metaStyle = 'opacity:0.7;font-size:0.85em;margin-top:1px'
-  const items = articles.slice(0, 4).map((a) => {
+  const sorted = [...articles].sort((a, b) =>
+    String(b.published_date || '').localeCompare(String(a.published_date || '')))
+  const items = sorted.slice(0, 4).map((a) => {
     const meta = [a.source, dateText(a.published_date)].filter(Boolean).map(esc).join(' · ')
     return `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">` +
       `<div style="${titleStyle}">${esc(a.title)}</div>` +

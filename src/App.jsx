@@ -146,23 +146,54 @@ export default function App() {
     setQP({ lat, lng })
   }, [setQP])
 
-  // ─── Handle species select ────────────────────────────────────
-  const handleSpeciesSelect = useCallback(async (species) => {
+  // ─── The SUBJECT — one species concept, any door in ───────────
+  // Whatever species the user indicated (typed in the box, or clicked in
+  // the sidebar) is the subject: the box names it, the map highlights it,
+  // the ribbon answers for it, the URL records it. HOW it was indicated
+  // only decides whether we fetch: box selections deep-search immediately
+  // (that's how you ask for something not on screen); sidebar clicks don't
+  // (it's already on screen) — but the subject becomes the filter at the
+  // next search boundary (Search, location, or time change).
+  const selectedSpeciesRef = useRef(null)
+  selectedSpeciesRef.current = selectedSpecies
+
+  const handleSpeciesSelect = useCallback(async (species, { search = true } = {}) => {
     if (!species) {
       setSelectedSpecies(null)
+      setActiveMapSpecies(null)
       setQP({ species: null })
+      if (search) setTimeout(() => handleSearchRef.current?.(urlMapBoundsRef.current), 0)
       return
     }
     // Enrich with cross-source IDs via the taxon crosswalk
     const resolved = await resolveSpecies(species.scientificName || species.name)
     const enriched = {
       ...species,
+      // Rows aggregated from eBird members have no iNat id — the crosswalk
+      // supplies it so the URL (?species=<iNat id>) always hydrates.
+      id: species.id || resolved.inatTaxonId || null,
       gbifKey: species.gbifKey || resolved.gbifTaxonKey || null,
       speciesCode: species.speciesCode || resolved.eBirdSpeciesCode || null,
     }
     setSelectedSpecies(enriched)
+    selectedSpeciesRef.current = enriched
+    setActiveMapSpecies((enriched.scientificName || enriched.name || '').toLowerCase() || null)
     setQP({ species: enriched.id || null })
+    if (search) handleSearchRef.current?.(urlMapBoundsRef.current)
   }, [setQP])
+
+  // Sidebar row → subject WITHOUT a fetch (spec above).
+  const handleRowSubject = useCallback((sp, currentlyActive) => {
+    if (currentlyActive) {
+      handleSpeciesSelect(null, { search: false })
+      return
+    }
+    handleSpeciesSelect({
+      id: /^\d+$/.test(String(sp.speciesKey)) ? Number(sp.speciesKey) : null,
+      name: sp.common,
+      scientificName: sp.scientific || sp.common,
+    }, { search: false })
+  }, [handleSpeciesSelect])
 
   // ─── Cold-load: hydrate selectedSpecies from ?species=<iNat-id> ────
   // When a shared link has a species filter but the page reloads fresh,
@@ -258,6 +289,8 @@ export default function App() {
 
   const handleSearch = useCallback(async (searchBounds) => {
     const seq = ++searchSeqRef.current
+    hasSearched.current = true
+    const selSp = selectedSpeciesRef.current
     // Guard: some callers (notably the Search button's onClick) pass a click
     // event as the first arg. Coerce anything that's not a properly-shaped
     // bounds object to null so the radius path is used instead.
@@ -274,7 +307,7 @@ export default function App() {
     const exactBounds = searchBounds
     if (searchBounds) searchBounds = quantizeBounds(searchBounds)
     // No location and no species — nothing to search
-    if (!coords && !selectedSpecies) return
+    if (!coords && !selSp) return
     // Treat as worldwide when no location is set and no bounds provided
     const effectiveAnywhere = !coords && !searchBounds
     // Only show full loading state for initial searches, not map-move re-queries
@@ -315,19 +348,19 @@ export default function App() {
       }
 
       {
-        const hasSpeciesFilter = !!selectedSpecies
+        const hasSpeciesFilter = !!selSp
         // eBird needs either a search center (lat/lng) or map bounds. The
         // service now accepts both — bbox is preferred when present.
         const canFilterEBird = (!effectiveAnywhere && (!!coords || !!searchBounds))
-          && (!hasSpeciesFilter || !!selectedSpecies?.speciesCode)
+          && (!hasSpeciesFilter || !!selSp?.speciesCode)
           && (!iconicFilter || iconicFilter === 'Aves')
-        const canFilterGBIF = !hasSpeciesFilter || !!selectedSpecies?.gbifKey
+        const canFilterGBIF = !hasSpeciesFilter || !!selSp?.gbifKey
 
         const [inatData, ebirdData, gbifData] = await Promise.all([
           fetchObservations({
             ...locParams,
             d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
-            taxonId: selectedSpecies?.id,
+            taxonId: selSp?.id,
             iconicTaxa: iconicFilter,
           }).catch(() => ({ results: [], total_results: 0 })),
 
@@ -345,7 +378,7 @@ export default function App() {
                   : FALLBACK_RADIUS_KM,
                 timeWindow: (timeWindow === 'year' || timeWindow === 'all') ? 'month' : timeWindow,
                 perPage,
-                speciesCode: selectedSpecies?.speciesCode || undefined,
+                speciesCode: selSp?.speciesCode || undefined,
               }).catch(() => ({ results: [], total_results: 0 }))
             : Promise.resolve({ results: [], total_results: 0 }),
 
@@ -353,7 +386,7 @@ export default function App() {
             ? fetchGBIFOccurrences({
                 ...locParams,
                 d1, d2: d1 ? d2 : undefined, perPage,
-                taxonKey: selectedSpecies?.gbifKey || undefined,
+                taxonKey: selSp?.gbifKey || undefined,
                 iconicTaxa: iconicFilter,
               }).catch(() => ({ results: [], total_results: 0 }))
             : Promise.resolve({ results: [], total_results: 0 }),
@@ -399,7 +432,7 @@ export default function App() {
       // the param when the filter isn't active.
       const urlParams = {
         time: timeWindow,
-        species: selectedSpecies?.id || null,
+        species: selSp?.id || null,
         taxon: activeTaxon !== 'all' ? activeTaxon : null,
       }
       if (coords) { urlParams.lat = coords.lat; urlParams.lng = coords.lng }
@@ -407,7 +440,7 @@ export default function App() {
       track(posthog, 'search_performed', {
         location: locationName,
         time_window: timeWindow,
-        species_filter: selectedSpecies?.name || null,
+        species_filter: selSp?.name || null,
         taxon_filter: activeTaxon,
         total_results: totalCount,
       })
@@ -419,7 +452,7 @@ export default function App() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [coords, timeWindow, perPage, selectedSpecies, activeTaxon, applyHomeView])
+  }, [coords, timeWindow, perPage, activeTaxon, applyHomeView])
 
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
@@ -430,10 +463,10 @@ export default function App() {
   const urlMapBoundsRef = useRef(urlMapBounds)
   urlMapBoundsRef.current = urlMapBounds
   useEffect(() => {
-    if (!coords && !selectedSpecies) return
+    const selSp = selectedSpeciesRef.current
+    if (!coords && !selSp) return
     // Allow immediate search if URL had coords (cold load) or manual/geo set or species selected
-    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !selectedSpecies) return
-    hasSearched.current = true
+    if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !selSp) return
     handleSearch(urlMapBoundsRef.current)
   }, [handleSearch])
 
@@ -703,7 +736,7 @@ export default function App() {
                     <SpeciesListItem
                       species={sp}
                       active={isActive}
-                      onClick={() => setActiveMapSpecies(isActive ? null : sp.scientific?.toLowerCase())}
+                      onClick={() => handleRowSubject(sp, isActive)}
                       styles={exploreStyles}
                       openInfoKey={openInfoKey}
                       setOpenInfoKey={setOpenInfoKey}
@@ -718,7 +751,8 @@ export default function App() {
                           active={subActive}
                           onClick={(e) => {
                             e?.stopPropagation?.()
-                            setActiveMapSpecies(subActive ? sp.scientific?.toLowerCase() : sub.scientific?.toLowerCase())
+                            if (subActive) handleRowSubject(sp, false)
+                            else handleRowSubject({ ...sub, common: sub.common || sp.common }, false)
                           }}
                           styles={exploreStyles}
                           style={{ paddingLeft: 28, opacity: subActive ? 1 : 0.75, fontSize: '0.9em' }}

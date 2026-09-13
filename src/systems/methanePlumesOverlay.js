@@ -10,9 +10,14 @@
  *
  * Visual language: lime target-reticles with expanding sonar pings — the
  * complement of the magenta gas wash and deliberately unlike every other
- * marker on the site. Full strength at every age (translucent lime over
- * saturated magenta bleeds pink); recency shows as a second ping. Top of
- * the z-order. Freezes and slides with the raster during gestures.
+ * marker on the site. Age is graded into the marker (the archive reaches to
+ * 2016, and at any moment most sources were last seen months-to-years ago —
+ * drawing them all at full strength read as "detected now"): sources seen
+ * within ~45 days of the reference time get full strength + sonar pings,
+ * within a year they dim and stop pinging, older ones draw as faint hollow
+ * archive reticles. Everything stays visible and clickable — the history is
+ * the value — it just can't masquerade as current. Top of the z-order.
+ * Freezes and slides with the raster during gestures.
  *
  * Coverage honesty: targeted snapshots, not a survey — panel + popups say
  * an empty area means unsurveyed, never clean.
@@ -26,6 +31,7 @@ const MIN_DRAW_ZOOM = 3.6
 const REFRESH_MS = 6 * 60 * 60e3
 const MAX_DPR = 2
 const FRESH_MS = 45 * 8.64e7 // sources detected within ~45 days of the reference time ping harder
+const YEAR_MS = 365 * 8.64e7 // beyond this since last detection → faint archive style
 
 export class MethanePlumesOverlay {
   /** opts: { dataset, expectKind } — e.g. ('methane-plumes', 'ch4-sources') */
@@ -98,7 +104,10 @@ export class MethanePlumesOverlay {
   hitTest(x, y) {
     let best = null
     let bestD = 14 * 14
-    for (const d of this._drawn) {
+    // Reverse order: drawn newest-last, so co-located sources resolve to the
+    // most recently detected one.
+    for (let i = this._drawn.length - 1; i >= 0; i--) {
+      const d = this._drawn[i]
       const dx = x - d.x
       const dy = y - d.y
       const dist = dx * dx + dy * dy
@@ -122,6 +131,10 @@ export class MethanePlumesOverlay {
           name: r[6] || null, distKm: r[7], persist: r[8], det: r[9], obs: r[10],
           t_first: r[11], plume_id: r[12], scene_id: r[13] || null,
         }))
+        // Oldest-last-seen first, so recently-detected sources paint (and
+        // hit-test preferentially) ON TOP of the faint archive in dense
+        // basins like Four Corners / Permian.
+        this._data.sort((a, b) => (a.t_ms || 0) - (b.t_ms || 0))
         this._fetchedAt = Date.now()
         this._paint()
       })
@@ -183,8 +196,17 @@ export class MethanePlumesOverlay {
       const zScale = 1 + Math.min(1, Math.max(0, zoom - 6) * 0.18)
       const r = (3 + 2.5 * Math.log10(Math.max(1, p.kgh / 30))) * zScale
       const recent = Math.abs(refT - p.t_ms) < FRESH_MS || (refT >= p.t_first && refT - p.t_first < FRESH_MS)
-      const alpha = zoomAlpha
-      // Expanding sonar ping; recently-detected sources get a second ring.
+      // Age tier: how long before the reference time this site was LAST seen
+      // emitting. The archive reaches to 2016 and overflights are sporadic —
+      // most sources' last look is months-to-years old — so age must be
+      // legible on the map itself, not only in the popup date.
+      const lastAge = Math.max(0, refT - (p.t_ms || 0))
+      const fresh = recent || lastAge <= FRESH_MS
+      const archive = !fresh && lastAge > YEAR_MS
+      const ageFactor = fresh ? 1 : archive ? 0.3 : 0.55
+      const alpha = zoomAlpha * ageFactor
+      // Expanding sonar ping — only sources seen recently (relative to the
+      // reference time) ping; a 2019 snapshot must not pulse like live news.
       const LIME = '163,230,53'
       const ping = (ph, strength) => {
         if (ph <= 0.02 || ph >= 1) return
@@ -192,16 +214,19 @@ export class MethanePlumesOverlay {
         ctx.beginPath()
         ctx.arc(pt.x, pt.y, pr, 0, Math.PI * 2)
         ctx.lineWidth = 2 * (1 - ph) + 0.5
-        ctx.strokeStyle = `rgba(${LIME},${(1 - ph) * strength * alpha})`
+        ctx.strokeStyle = `rgba(${LIME},${(1 - ph) * strength * zoomAlpha})`
         ctx.stroke()
       }
-      ping(phase, 0.9)
-      if (recent) ping((phase + 0.5) % 1, 0.55)
+      if (fresh) {
+        ping(phase, 0.9)
+        if (recent) ping((phase + 0.5) % 1, 0.55)
+      }
       // Target reticle: lime ring + four ticks around a white core — reads
-      // as "detected at this exact spot", unlike any other marker here.
+      // as "detected at this exact spot". Archive sources draw hollow (no
+      // white core) and faint: still there, still clickable, clearly old.
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, r + 2, 0, Math.PI * 2)
-      ctx.lineWidth = 1.6
+      ctx.lineWidth = archive ? 1.2 : 1.6
       ctx.strokeStyle = `rgba(${LIME},${0.95 * alpha})`
       ctx.stroke()
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -210,13 +235,15 @@ export class MethanePlumesOverlay {
         ctx.lineTo(pt.x + dx * (r + 5), pt.y + dy * (r + 5))
         ctx.stroke()
       }
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, Math.max(2, r * 0.55), 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255,255,255,${0.95 * alpha})`
-      ctx.fill()
-      ctx.lineWidth = 1
-      ctx.strokeStyle = `rgba(20,45,10,${0.85 * alpha})`
-      ctx.stroke()
+      if (!archive) {
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, Math.max(2, r * 0.55), 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,255,255,${0.95 * alpha})`
+        ctx.fill()
+        ctx.lineWidth = 1
+        ctx.strokeStyle = `rgba(20,45,10,${0.85 * alpha})`
+        ctx.stroke()
+      }
       this._drawn.push({ p, x: pt.x, y: pt.y, r })
     }
   }

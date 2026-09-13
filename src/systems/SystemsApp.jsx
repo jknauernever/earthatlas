@@ -666,7 +666,7 @@ export default function SystemsApp() {
               head: `Methane leak from ${typeWord ? `a ${typeWord}` : what} (${pl.source_name || 'MARS'})`,
               big: tph,
               alt: kgh
-                ? (cars >= 1000 ? `≈ the climate impact of ${carsTxt}, at the rate last measured` : `measured from space${pl.unc ? `, ±${pl.unc} kg/h` : ''}`)
+                ? (cars >= 1000 ? `each day ≈ a day's driving by ${carsTxt}, at the rate last measured` : `measured from space${pl.unc ? `, ±${pl.unc} kg/h` : ''}`)
                 : 'satellite-confirmed emission site',
               meta: story,
               ai: `UNEP IMEO MARS detected methane source ${pl.source_name} (${pl.country}): sector ${pl.sector}${pl.srcType ? `, analyst-identified type ${pl.srcType}` : ''}, ${pl.det} plumes on record, latest ${new Date(pl.t_ms).toISOString()} at ${kgh ?? 'unquantified'} kg/hr${pl.unc ? ` (±${pl.unc})` : ''} seen by ${pl.sat || 'satellite'}${pl.persist != null ? `, 6-month persistency ${pl.persist}%` : ''}${pl.notified ? '; government/operator notified through MARS' : ''}. DIRECT OBSERVATION of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; no jargon, no data-provider names beyond "UN methane monitoring". The visible popup ALREADY shows the rate, the cars comparison and the visit history — do not restate them. The public MARS feed lags about a month behind observation: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
@@ -687,7 +687,9 @@ export default function SystemsApp() {
             const gasWord = gasDef.product === 'co2' ? 'CO₂' : 'Methane'
             // Make the number mean something: near-term climate impact in
             // cars' worth of exhaust (CH₄ at 20-yr GWP ≈82; average car
-            // ≈4.6 t CO₂/yr). Rounded hard — it's an anchor, not a metric.
+            // ≈4.6 t CO₂/yr). Both sides are RATES, so the count is the same
+            // over any window — worded as day-for-day so the timeframe is
+            // explicit. Rounded hard — it's an anchor, not a metric.
             const cars = Math.round((pl.kgh * (gasDef.product === 'co2' ? 1.9 : 157)) / 1000) * 1000
             const carsTxt = cars >= 1e6 ? `${(cars / 1e6).toFixed(1)} million cars` : `${cars.toLocaleString()} cars`
             const story = pl.obs > 1
@@ -696,7 +698,7 @@ export default function SystemsApp() {
             sections.push(sectionHtml({
               head: escName ? `${gasWord} source: ${escName}` : `${gasWord} leak from ${what}`,
               big: tph,
-              alt: cars >= 1000 ? `≈ the climate impact of ${carsTxt}, at the rate last measured` : `measured from space, ±${pl.unc} kg/h`,
+              alt: cars >= 1000 ? `each day ≈ a day's driving by ${carsTxt}, at the rate last measured` : `measured from space, ±${pl.unc} kg/h`,
               meta: story,
               ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE ${pl.distKm} km away` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; do not use jargon like sector codes, GSD, persistence, or data-provider names. The visible popup ALREADY shows the rate, the cars comparison, and the visit history — do not restate any of them. The rate is from the LATEST DETECTION DATE, not live: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
               link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },

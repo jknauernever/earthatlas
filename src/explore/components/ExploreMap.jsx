@@ -67,6 +67,37 @@ function observationUrl(s) {
   return 'https://www.gbif.org/occurrence/' + id
 }
 
+// Stack-aware dot radius: dots holding >1 record grow with their count
+// (capped) so a 13-record obscured stack reads bigger than a single.
+// `boost` inflates matched dots when a species is selected.
+function radiusExpr(boost = 0) {
+  const grow = ['case', ['>', ['get', 'count'], 1], ['min', 6, ['*', 0.45, ['get', 'count']]], 0]
+  const at = (base) => ['+', base + boost, grow]
+  return ['interpolate', ['linear'], ['zoom'], 0, at(4), 10, at(6), 14, at(8)]
+}
+
+// Roster popup for stacked records: every record at this exact spot,
+// clickable through to the normal single-record card.
+function buildRosterHTML(members, { fallbackColor, fallbackEmoji }) {
+  const rows = members.map((m, i) => `
+    <div data-roster-idx="${m.idx}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid #f0ece3;cursor:pointer">
+      <span style="width:9px;height:9px;border-radius:50%;background:${m.color || fallbackColor};flex-shrink:0;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;color:#1a2332;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.emoji ? m.emoji + ' ' : ''}${m.common}</div>
+        <div style="font-size:10.5px;color:#8a8577">${m.date || ''}${m.observer ? ' · ' + m.observer : ''} · ${m.source}</div>
+      </div>
+      <span style="color:#b5ad9c;font-size:14px">›</span>
+    </div>`).join('')
+  return `
+    <div style="font-family:'DM Sans',system-ui,sans-serif;background:#fff;color:#1a2332;width:250px;border-radius:12px;overflow:hidden;line-height:1.4">
+      <div style="padding:12px 14px 8px">
+        <div style="font-family:'Fraunces',Georgia,serif;font-size:16px">${members.length} records at this spot</div>
+        <div style="font-size:10.5px;color:#8a8577;margin-top:1px">shared or approximate location — some sources round coordinates to protect species</div>
+      </div>
+      <div style="max-height:216px;overflow-y:auto;padding:0 12px 10px">${rows}</div>
+    </div>`
+}
+
 function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
   const iucn = s.iucn || s.meta?.iucn || null
@@ -292,27 +323,50 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         type: 'circle',
         source: 'sighting-src',
         layout: {
-          'circle-sort-key': ['get', 'ts'],
+          // Stacks sort above singles (a fresh single would otherwise cover
+          // a stack and steal its clicks), newest-first within each tier.
+          'circle-sort-key': ['+', ['get', 'ts'], ['*', ['get', 'count'], 1e12]],
         },
         paint: {
-          'circle-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 4,
-            10, 6,
-            14, 8,
-          ],
+          'circle-radius': radiusExpr(),
           'circle-color': ['get', 'color'],
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 1.5,
         },
       })
 
+      // Count badges on stacks (>1 record at the exact coordinate)
+      map.addLayer({
+        id: 'sighting-counts',
+        type: 'symbol',
+        source: 'sighting-src',
+        filter: ['>', ['get', 'count'], 1],
+        layout: {
+          'text-field': ['to-string', ['get', 'count']],
+          'text-size': 10,
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+          'symbol-sort-key': ['-', 0, ['get', 'ts']],
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      })
+
       // Click handler — popup on circle click
       map.on('click', 'sighting-circles', (e) => {
         if (!e.features || !e.features[0]) return
-        const idx = e.features[0].properties.idx
+        // Several dots can share the pixel — prefer the biggest stack.
+        const props = e.features.reduce((a, f) => (f.properties.count > a.properties.count ? f : a), e.features[0]).properties
+        const idx = props.idx
         const s = sightingsRef.current[idx]
         if (!s) return
+        // A stacked dot opens the roster; rows click through to the normal
+        // card (and back). `members` arrives JSON-encoded from the tile.
+        let memberIdxs = []
+        try { memberIdxs = typeof props.members === 'string' ? JSON.parse(props.members) : (props.members || []) } catch { memberIdxs = [] }
+        const isStack = props.count > 1 && memberIdxs.length > 1
 
         // Remove existing popup
         if (popupRef.current) popupRef.current.remove()
@@ -340,13 +394,29 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
           ...(isMobile ? {} : { anchor }),
         })
           .setLngLat([s.lng, s.lat])
-          .setHTML(buildPopupHTML(s, {
-            fallbackColor: fallbackColorRef.current,
-            fallbackEmoji: fallbackEmojiRef.current,
-          }))
+          .setHTML(isStack
+            ? buildRosterHTML(
+                memberIdxs.filter((i) => sightingsRef.current[i]).map((i) => ({ ...sightingsRef.current[i], idx: i })),
+                { fallbackColor: fallbackColorRef.current, fallbackEmoji: fallbackEmojiRef.current },
+              )
+            : buildPopupHTML(s, {
+                fallbackColor: fallbackColorRef.current,
+                fallbackEmoji: fallbackEmojiRef.current,
+              }))
           .addTo(map)
 
         popupRef.current = popup
+
+        if (isStack) {
+          // Roster row → that record's card; simple, no back-stack needed —
+          // clicking the dot again reopens the roster.
+          popup.getElement()?.addEventListener('click', (ev) => {
+            const row = ev.target.closest('[data-roster-idx]')
+            if (!row) return
+            const m = sightingsRef.current[Number(row.dataset.rosterIdx)]
+            if (m) popup.setHTML(buildPopupHTML(m, { fallbackColor: fallbackColorRef.current, fallbackEmoji: fallbackEmojiRef.current }))
+          })
+        }
 
         // Pan to fit popup
         popup.on('open', () => {
@@ -568,25 +638,47 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       const src = map.getSource('sighting-src')
       if (!src) return false
 
+      // One feature per exact coordinate STACK (iNat obscuration and shared
+      // eBird hotspots pile many records on one point): the newest record
+      // represents the dot; `count` drives the size + badge; member
+      // identities ride along for species-highlight matching and the
+      // click-roster.
+      const stacks = new Map()
+      sightings.forEach((s, i) => {
+        if (!s.lat || !s.lng) return
+        const k = s.lat.toFixed(5) + ',' + s.lng.toFixed(5)
+        const arr = stacks.get(k)
+        if (arr) arr.push(i); else stacks.set(k, [i])
+      })
       const geojson = {
         type: 'FeatureCollection',
-        features: sightings
-          .map((s, i) => {
-            if (!s.lat || !s.lng) return null
-            return {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-              properties: {
-                idx: i,
-                color: s.color || fallbackColor,
-                ts: s.date ? Date.parse(s.date) : 0, // newest-on-top sort key
-                speciesKey: String(s.speciesKey || ''),
-                scientific: (s.scientific || '').toLowerCase(),
-                binomial: (s.scientific || '').toLowerCase().split(/\s+/).slice(0, 2).join(' '),
-              },
-            }
-          })
-          .filter(Boolean),
+        features: [...stacks.values()].map((idxs) => {
+          let rep = idxs[0]
+          for (const i of idxs) {
+            if ((sightings[i].date || '') > (sightings[rep].date || '')) rep = i
+          }
+          const s = sightings[rep]
+          const sci = (x) => (x.scientific || '').toLowerCase()
+          const bin = (x) => sci(x).split(/\s+/).slice(0, 2).join(' ')
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+            properties: {
+              idx: rep,
+              count: idxs.length,
+              members: idxs,
+              color: s.color || fallbackColor,
+              ts: s.date ? Date.parse(s.date) : 0, // newest-on-top sort key
+              speciesKey: String(s.speciesKey || ''),
+              scientific: sci(s),
+              binomial: bin(s),
+              // Delimited member identity strings — expression-matchable
+              // ("does this stack CONTAIN the selected species?")
+              binomials: '|' + [...new Set(idxs.map((i) => bin(sightings[i])))].join('|') + '|',
+              speciesKeys: '|' + [...new Set(idxs.map((i) => String(sightings[i].speciesKey || '')))].join('|') + '|',
+            },
+          }
+        }),
       }
 
       src.setData(geojson)
@@ -608,17 +700,13 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     if (!activeSpecies) {
       // Reset to defaults
-      map.setPaintProperty('sighting-circles', 'circle-radius', [
-        'interpolate', ['linear'], ['zoom'],
-        0, 4,
-        10, 6,
-        14, 8,
-      ])
+      map.setPaintProperty('sighting-circles', 'circle-radius', radiusExpr())
       map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
       map.setPaintProperty('sighting-circles', 'circle-opacity', 1)
+      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', 1)
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
-      map.setLayoutProperty('sighting-circles', 'circle-sort-key', ['get', 'ts'])
+      map.setLayoutProperty('sighting-circles', 'circle-sort-key', ['+', ['get', 'ts'], ['*', ['get', 'count'], 1e12]])
     } else {
       // Accept any identity the two callers use: explore subsites pass the
       // speciesKey (numeric GBIF key, or binomial fallback); the homepage
@@ -630,15 +718,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         ['==', ['get', 'speciesKey'], key],
         ['==', ['get', 'binomial'], keyLower],
         ['==', ['get', 'scientific'], keyLower],
+        // Stack contains the selected species (delimited member strings)
+        ['in', '|' + key + '|', ['get', 'speciesKeys']],
+        ['in', '|' + keyLower + '|', ['get', 'binomials']],
       ]
 
       // Selected species: full brightness, bigger, yellow ring, above
       // everything. Others: dimmed context.
       map.setPaintProperty('sighting-circles', 'circle-radius', [
-        'interpolate', ['linear'], ['zoom'],
-        0, ['case', matchExpr, 6, 3],
-        10, ['case', matchExpr, 9, 4.5],
-        14, ['case', matchExpr, 11, 5.5],
+        'case', matchExpr, radiusExpr(2.5), radiusExpr(-1.5),
       ])
       map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
@@ -652,8 +740,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       ])
       // Selected dots always paint over dimmed neighbors (newest-first within each group)
       map.setLayoutProperty('sighting-circles', 'circle-sort-key', [
-        'case', matchExpr, ['+', ['get', 'ts'], 1e15], ['get', 'ts'],
+        '+', ['case', matchExpr, 1e15, 0], ['get', 'ts'], ['*', ['get', 'count'], 1e12],
       ])
+      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ['case', matchExpr, 1, 0.35])
 
       // No camera movement on selection — the map stays where the user put it;
       // highlighting alone tells the story.

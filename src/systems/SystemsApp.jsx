@@ -78,12 +78,17 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'co2plumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
 
-// Gas layers with a Carbon Mapper observed-sources companion.
+// Gas layers with observed-emission-source companions. A gas can carry more
+// than one provider: Carbon Mapper (lime reticles) and, for methane, UNEP
+// IMEO's MARS detected sources (cyan) — multi-satellite, all sectors, baked
+// from the public export by scripts/bake-mars.js (CC BY-NC-SA, attribution
+// in the popup). Each def owns one canvas/overlay instance, keyed by `key`.
 const GAS_SOURCE_DEFS = [
-  { id: 'methane', dataset: 'methane-plumes', expectKind: 'ch4-sources', product: 'ch4' },
-  { id: 'co2', dataset: 'co2-plumes', expectKind: 'co2-sources', product: 'co2' },
+  { id: 'methane', key: 'methaneplumes', dataset: 'methane-plumes', expectKind: 'ch4-sources', product: 'ch4', provider: 'carbonmapper' },
+  { id: 'methane', key: 'methanemars', dataset: 'mars-sources', expectKind: 'mars-sources', product: 'ch4', provider: 'mars', color: '34,211,238' },
+  { id: 'co2', key: 'co2plumes', dataset: 'co2-plumes', expectKind: 'co2-sources', product: 'co2', provider: 'carbonmapper' },
 ]
 // Gas layers whose popups get the deterministic fire-proximity line
 // (wildfires emit CH4, CO, CO2 and particulates; CAMS even assimilates
@@ -630,10 +635,44 @@ export default function SystemsApp() {
             }))
           }
         }
-        const gasDef = GAS_SOURCE_DEFS.find((g) => g.id === def.id)
+        const gasDefsHere = GAS_SOURCE_DEFS.filter((g) => g.id === def.id)
+        const gasDef = gasDefsHere[0]
         if (gasDef) {
-          const pl = instancesRef.current[`${gasDef.id}plumes`]?.hitTest(e.point.x, e.point.y)
-          if (pl) {
+          let pl = null
+          for (const g of gasDefsHere) {
+            pl = instancesRef.current[g.key]?.hitTest(e.point.x, e.point.y)
+            if (pl) break
+          }
+          if (pl && pl.mars) {
+            // UNEP MARS detected source — different provenance and fields
+            // than the Carbon Mapper card below.
+            plumeHit = { ...pl, product: gasDef.product }
+            const MARS_SECTOR_WORDS = {
+              'Oil and Gas': 'oil & gas infrastructure', 'Waste': 'a landfill / waste site',
+              'Met Coal': 'a coal mine', 'Thermal Coal': 'a coal mine',
+              'Thermal and Met Coal': 'a coal mine', 'Steel': 'a steel plant', 'Other': 'an industrial source',
+            }
+            const what = MARS_SECTOR_WORDS[pl.sector] || 'an unclassified source'
+            const lastSeen = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const firstYear = pl.t_first ? new Date(pl.t_first).getFullYear() : null
+            const kgh = Number.isFinite(pl.kgh) && pl.kgh > 0 ? pl.kgh : null
+            const tph = kgh ? (kgh >= 1000 ? `${(kgh / 1000).toFixed(1)} tonnes/hour` : `${kgh} kg/hour`) : `${pl.det} plume${pl.det === 1 ? '' : 's'} detected`
+            const cars = kgh ? Math.round((kgh * 157) / 1000) * 1000 : 0
+            const carsTxt = cars >= 1e6 ? `${(cars / 1e6).toFixed(1)} million cars` : `${cars.toLocaleString()} cars`
+            const typeWord = pl.srcType ? pl.srcType.toLowerCase() : null
+            const story = `UN methane watchdogs have logged ${pl.det} plume${pl.det === 1 ? '' : 's'} from this site — most recently ${lastSeen}${firstYear && firstYear < new Date(pl.t_ms).getFullYear() ? `, going back to ${firstYear}` : ''}.` +
+              (pl.notified ? ' The government or operator has been formally notified.' : '')
+            sections.push(sectionHtml({
+              head: `Methane leak from ${typeWord ? `a ${typeWord}` : what} (${pl.source_name || 'MARS'})`,
+              big: tph,
+              alt: kgh
+                ? (cars >= 1000 ? `≈ the climate impact of ${carsTxt}, at the rate last measured` : `measured from space${pl.unc ? `, ±${pl.unc} kg/h` : ''}`)
+                : 'satellite-confirmed emission site',
+              meta: story,
+              ai: `UNEP IMEO MARS detected methane source ${pl.source_name} (${pl.country}): sector ${pl.sector}${pl.srcType ? `, analyst-identified type ${pl.srcType}` : ''}, ${pl.det} plumes on record, latest ${new Date(pl.t_ms).toISOString()} at ${kgh ?? 'unquantified'} kg/hr${pl.unc ? ` (±${pl.unc})` : ''} seen by ${pl.sat || 'satellite'}${pl.persist != null ? `, 6-month persistency ${pl.persist}%` : ''}${pl.notified ? '; government/operator notified through MARS' : ''}. DIRECT OBSERVATION of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; no jargon, no data-provider names beyond "UN methane monitoring". The visible popup ALREADY shows the rate, the cars comparison and the visit history — do not restate them. The public MARS feed lags about a month behind observation: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
+              link: { href: 'https://methanedata.unep.org/map', label: 'Source: UNEP IMEO MARS ↗' },
+            }))
+          } else if (pl) {
             plumeHit = { ...pl, product: gasDef.product }
             const SECTOR_WORDS = {
               '1B2': 'oil & gas infrastructure', '6A': 'a landfill / waste site',
@@ -1107,7 +1146,7 @@ export default function SystemsApp() {
       inst.scalar.layer.destroy()
       inst.scalar = null
       if (replayRef.current) { replayRef.current.destroy(); replayRef.current = null; setReplay(null) }
-      for (const g of GAS_SOURCE_DEFS) inst[`${g.id}plumes`]?.setTime(null) // cursor gone → live view
+      for (const g of GAS_SOURCE_DEFS) inst[g.key]?.setTime(null) // cursor gone → live view
     }
     if (active && !inst.scalar && canvasEls.current.scalar) {
       try {
@@ -1138,9 +1177,9 @@ export default function SystemsApp() {
           // Observed source markers follow the gas layer's cursor: scrub
           // into the past and only sources already observed by then exist;
           // ones detected near the cursor time ping at full strength.
-          const gasFollow = GAS_SOURCE_DEFS.find((g) => g.id === active.id)
-          if (gasFollow) {
-            const applySources = (c) => instancesRef.current[`${gasFollow.id}plumes`]?.setTime(c.atLive ? null : c.t)
+          const gasFollowers = GAS_SOURCE_DEFS.filter((g) => g.id === active.id)
+          if (gasFollowers.length) {
+            const applySources = (c) => { for (const g of gasFollowers) instancesRef.current[g.key]?.setTime(c.atLive ? null : c.t) }
             rc.subscribe((c) => { if (!c.holding) applySources(c) })
             applySources(rc)
           }
@@ -1419,10 +1458,10 @@ export default function SystemsApp() {
     }
     for (const g of GAS_SOURCE_DEFS) {
       const on = !!layerOn[g.id]
-      const key = `${g.id}plumes`
+      const key = g.key
       if (mapReady && on && !inst[key] && canvasEls.current[key]) {
         try {
-          inst[key] = new MethanePlumesOverlay(mapRef.current, canvasEls.current[key], { dataset: g.dataset, expectKind: g.expectKind })
+          inst[key] = new MethanePlumesOverlay(mapRef.current, canvasEls.current[key], { dataset: g.dataset, expectKind: g.expectKind, color: g.color })
         } catch (err) {
           console.error(`[systems] ${g.id} sources overlay init failed:`, err)
         }
@@ -1856,6 +1895,7 @@ export default function SystemsApp() {
       {/* Observed-plume dots ride ABOVE every other overlay: they're the
           attention layer — direct observations of live leaks. */}
       <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methanemars = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.co2plumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />

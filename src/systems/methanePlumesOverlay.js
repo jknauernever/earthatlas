@@ -34,12 +34,16 @@ const FRESH_MS = 45 * 8.64e7 // sources detected within ~45 days of the referenc
 const YEAR_MS = 365 * 8.64e7 // beyond this since last detection → faint archive style
 
 export class MethanePlumesOverlay {
-  /** opts: { dataset, expectKind } — e.g. ('methane-plumes', 'ch4-sources') */
+  /** opts: { dataset, expectKind, color } — e.g. ('methane-plumes',
+   * 'ch4-sources'). Also renders UNEP MARS source artifacts (kind
+   * 'mars-sources', see scripts/bake-mars.js) — same reticle language,
+   * usually with a distinct `color` ('r,g,b') so provenance is separable. */
   constructor(map, canvas, opts = {}) {
     this.map = map
     this.canvas = canvas
     this.dataset = opts.dataset || 'methane-plumes'
     this.expectKind = opts.expectKind || 'ch4-sources'
+    this.color = opts.color || '163,230,53' // lime unless told otherwise
     this.visible = true
     this._destroyed = false
     this._ctx = canvas.getContext('2d')
@@ -124,13 +128,27 @@ export class MethanePlumesOverlay {
     loadSystemsJson(this.dataset, this.expectKind)
       .then((j) => {
         if (this._destroyed) return
-        // rows: [lat, lng, kgh, unc, t_last, sector, name, dist_km,
-        //        persist_pct, det_days, obs_days, t_first, plume_id, scene_id]
-        this._data = j.sources.map((r) => ({
-          lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], sector: r[5],
-          name: r[6] || null, distKm: r[7], persist: r[8], det: r[9], obs: r[10],
-          t_first: r[11], plume_id: r[12], scene_id: r[13] || null,
-        }))
+        if (j.kind === 'mars-sources') {
+          // UNEP MARS artifact — rows per scripts/bake-mars.js `columns`:
+          // [lat, lng, kgh, kgh_std, t_last_ms, sector, source_type,
+          //  persist_pct, n_plumes, t_first_ms, source_name, country,
+          //  actionable, notified, sat_idx]
+          this._data = j.sources.map((r) => ({
+            lat: r[0], lng: r[1], kgh: r[2] ?? 0, unc: r[3], t_ms: r[4] || 0, sector: r[5] || '',
+            srcType: r[6] || null, persist: r[7], det: r[8] || 0, obs: null,
+            t_first: r[9] || r[4] || 0, source_name: r[10] || null, country: r[11] || null,
+            actionable: !!r[12], notified: !!r[13], sat: (j.satellites || [])[r[14]] || null,
+            mars: true, name: null, plume_id: null, scene_id: null,
+          }))
+        } else {
+          // Carbon Mapper rows: [lat, lng, kgh, unc, t_last, sector, name,
+          // dist_km, persist_pct, det_days, obs_days, t_first, plume_id, scene_id]
+          this._data = j.sources.map((r) => ({
+            lat: r[0], lng: r[1], kgh: r[2], unc: r[3], t_ms: r[4], sector: r[5],
+            name: r[6] || null, distKm: r[7], persist: r[8], det: r[9], obs: r[10],
+            t_first: r[11], plume_id: r[12], scene_id: r[13] || null,
+          }))
+        }
         // Oldest-last-seen first, so recently-detected sources paint (and
         // hit-test preferentially) ON TOP of the faint archive in dense
         // basins like Four Corners / Permian.
@@ -207,7 +225,7 @@ export class MethanePlumesOverlay {
       const alpha = zoomAlpha * ageFactor
       // Expanding sonar ping — only sources seen recently (relative to the
       // reference time) ping; a 2019 snapshot must not pulse like live news.
-      const LIME = '163,230,53'
+      const LIME = this.color
       const ping = (ph, strength) => {
         if (ph <= 0.02 || ph >= 1) return
         const pr = r + 2 + (r * 2.6 + 6) * ph

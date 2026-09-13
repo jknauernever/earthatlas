@@ -18,7 +18,7 @@ const INAT_API = 'https://api.inaturalist.org/v1'
 const INAT_OBS_PROXY = '/api/inat-proxy'
 
 // ─── Observations ────────────────────────────────────────────────
-export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa, bounds }) {
+export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 50, taxonId, iconicTaxa, bounds, slim }) {
   const params = new URLSearchParams({
     per_page: Math.min(perPage, 200),
     order: 'desc',
@@ -44,6 +44,10 @@ export async function fetchObservations({ lat, lng, radiusKm, d1, d2, perPage = 
     params.set('d1', d1)
     params.set('d2', d2 || new Date().toISOString().split('T')[0])
   }
+  // slim profiles: the proxy strips observations to only the fields the
+  // caller renders (full 200-row pages are ~14 MB — uncacheable at the edge
+  // and a huge transfer). Callers that need full objects simply omit it.
+  if (slim) params.set('slim', slim)
 
   // iNat caps at 200 per request — fetch multiple pages in parallel if needed.
   // perPage=0 is a valid "count only" request (used by the Insights dashboard)

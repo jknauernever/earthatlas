@@ -125,7 +125,7 @@ export default async function handler(req) {
   const { searchParams } = new URL(req.url)
   if (searchParams.get('agg') === 'place_counts') return placeCounts(searchParams)
 
-  const slim = searchParams.get('slim') === '1'
+  const slim = searchParams.get('slim')
   const upstream = new URLSearchParams()
 
   for (const [key, value] of searchParams) {
@@ -159,21 +159,39 @@ export default async function handler(req) {
       // an absurd transfer per visitor. Slimmed it's ~100 KB, cacheable,
       // and byte-stable for the warm cron. Full payloads stay available to
       // /live and the main page, which use richer fields.
-      if (slim) {
+      if (slim === '1' || slim === 'card') {
         const data = JSON.parse(await r.text())
+        // 'card' = the homepage Species Explorer profile: everything its
+        // cards, map popups, and ObservationModal read — still ~50x smaller
+        // than full objects. '1' = the leaner explore-subsite profile.
+        const pick = slim === 'card'
+          ? (o) => ({
+              id: o.id,
+              observed_on: o.observed_on,
+              time_observed_at: o.time_observed_at,
+              place_guess: o.place_guess,
+              quality_grade: o.quality_grade,
+              num_identification_agreements: o.num_identification_agreements,
+              num_identification_disagreements: o.num_identification_disagreements,
+              geojson: o.geojson ? { coordinates: o.geojson.coordinates } : null,
+              taxon: o.taxon ? { id: o.taxon.id, name: o.taxon.name, preferred_common_name: o.taxon.preferred_common_name, iconic_taxon_name: o.taxon.iconic_taxon_name, rank: o.taxon.rank, wikipedia_url: o.taxon.wikipedia_url } : null,
+              user: o.user ? { login: o.user.login } : null,
+              photos: (o.photos || []).map((p) => ({ url: p.url })).slice(0, 6),
+            })
+          : (o) => ({
+              id: o.id,
+              observed_on: o.observed_on,
+              place_guess: o.place_guess,
+              geojson: o.geojson ? { coordinates: o.geojson.coordinates } : null,
+              taxon: o.taxon ? { name: o.taxon.name, preferred_common_name: o.taxon.preferred_common_name } : null,
+              user: o.user ? { login: o.user.login } : null,
+              photos: o.photos?.[0]?.url ? [{ url: o.photos[0].url }] : [],
+            })
         const slimmed = {
           total_results: data.total_results,
           page: data.page,
           per_page: data.per_page,
-          results: (data.results || []).map((o) => ({
-            id: o.id,
-            observed_on: o.observed_on,
-            place_guess: o.place_guess,
-            geojson: o.geojson ? { coordinates: o.geojson.coordinates } : null,
-            taxon: o.taxon ? { name: o.taxon.name, preferred_common_name: o.taxon.preferred_common_name } : null,
-            user: o.user ? { login: o.user.login } : null,
-            photos: o.photos?.[0]?.url ? [{ url: o.photos[0].url }] : [],
-          })),
+          results: (data.results || []).map(pick),
         }
         return new Response(JSON.stringify(slimmed), {
           status: 200,

@@ -8,6 +8,7 @@ import { fetchGBIFOccurrences } from './services/gbif'
 import { fetchEBirdObservations } from './services/eBird'
 import { resolveSpecies } from './services/taxonCrosswalk'
 import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
+import { quantizeBounds } from './explore/wildQuery'
 import { track } from './utils/analytics'
 
 import Header           from './components/Header'
@@ -267,6 +268,33 @@ export default function App() {
   const GBIF_INAT_DATASET = '50c9509d-22c7-4a22-a47d-8c48425ef4a7'
   const GBIF_EBIRD_DATASET = '4fa7b334-ce0d-4e88-aaae-2e0c138d049e'
 
+  // ─── Held cell inventory → derive contained views without refetching ─────
+  // Searches fetch the enclosing quantized grid cell (shared edge-cache keys
+  // — see wildQuery). The raw merged rows live here so pans/zooms that stay
+  // inside the cell re-derive the visible set client-side, zero requests.
+  const heldRef = useRef(null)
+
+  const rowLat = (r) => r.geojson?.coordinates?.[1] ?? r.decimalLatitude
+  const rowLng = (r) => r.geojson?.coordinates?.[0] ?? r.decimalLongitude
+
+  const applyHomeView = useCallback((viewBB) => {
+    const h = heldRef.current
+    if (!h) return
+    let rows = h.rows
+    if (viewBB) {
+      rows = h.rows.filter((r) => {
+        const la = rowLat(r); const ln = rowLng(r)
+        return la != null && la >= viewBB.minLat && la <= viewBB.maxLat && ln >= viewBB.minLng && ln <= viewBB.maxLng
+      })
+    }
+    // Cell total scaled by the in-view fraction — honest "available here".
+    const frac = h.rows.length ? rows.length / h.rows.length : 1
+    setObservations(rows)
+    setTotalResults(Math.max(Math.round(h.total * frac), rows.length))
+  }, [])
+
+  if (import.meta.env.DEV) window.__home = { heldRef } // dev-only QA handle
+
   const handleSearch = useCallback(async (searchBounds) => {
     // Guard: some callers (notably the Search button's onClick) pass a click
     // event as the first arg. Coerce anything that's not a properly-shaped
@@ -280,6 +308,9 @@ export default function App() {
     )) {
       searchBounds = null
     }
+    // Fetch the enclosing grid cell; display filters back to the exact view.
+    const exactBounds = searchBounds
+    if (searchBounds) searchBounds = quantizeBounds(searchBounds)
     // No location and no species — nothing to search
     if (!coords && !selectedSpecies) return
     // Treat as worldwide when no location is set and no bounds provided
@@ -316,7 +347,7 @@ export default function App() {
         const [inatData, ebirdData, gbifData] = await Promise.all([
           fetchObservations({
             ...locParams,
-            d1, d2: d1 ? d2 : undefined, perPage,
+            d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
             taxonId: selectedSpecies?.id,
             iconicTaxa: iconicFilter,
           }).catch(() => ({ results: [], total_results: 0 })),
@@ -389,7 +420,7 @@ export default function App() {
       } else {
         const data = await fetchObservations({
           ...locParams,
-          d1, d2: d1 ? d2 : undefined, perPage,
+          d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
           taxonId: selectedSpecies?.id,
           iconicTaxa: iconicFilter,
         })
@@ -404,8 +435,14 @@ export default function App() {
       // different key.
       const obsDate = (r) => String(r.observed_on || r.eventDate || r.obsDt || '')
       allResults.sort((a, b) => obsDate(b).localeCompare(obsDate(a)))
-      setObservations(allResults)
-      setTotalResults(totalCount)
+      heldRef.current = {
+        cell: searchBounds || null,
+        rows: allResults,
+        total: totalCount,
+        // capped = more matched than we hold; sub-views can't be derived.
+        capped: totalCount > allResults.length,
+      }
+      applyHomeView(exactBounds)
       // Push the full search state into the URL every time a search completes,
       // so shared links always reproduce the exact view. Passing null clears
       // the param when the filter isn't active.
@@ -435,21 +472,23 @@ export default function App() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource, isAnywhere])
+  }, [coords, radius, timeWindow, perPage, selectedSpecies, activeTaxon, dataSource, isAnywhere, applyHomeView])
 
   // ─── Auto-search when any parameter changes ──────────────────
   const hasSearched = useRef(false)
+  // Read the URL-derived viewport through a ref: pure map moves must NOT
+  // re-run this effect (handleMapMove owns those, with the held-cell skip) —
+  // it exists for cold start and for parameter changes (source/time/taxon/
+  // species recreate handleSearch), which query at the CURRENT view.
+  const urlMapBoundsRef = useRef(urlMapBounds)
+  urlMapBoundsRef.current = urlMapBounds
   useEffect(() => {
     if (!coords && !selectedSpecies) return
     // Allow immediate search if URL had coords (cold load) or manual/geo set or species selected
     if (!hasSearched.current && !manualCoords && !urlCoords && geoStatus !== 'success' && !isAnywhere && !selectedSpecies) return
     hasSearched.current = true
-    // Prefer the URL-derived viewport bbox over a radius circle: the user's
-    // map view is what they're looking at, even if it differs from the
-    // original search center. This also fixes the initial load case where
-    // the map hasn't yet fired moveend.
-    handleSearch(urlMapBounds)
-  }, [handleSearch, urlMapBounds])
+    handleSearch(urlMapBoundsRef.current)
+  }, [handleSearch])
 
   // ─── Re-fetch when map view changes ─────────────────────────
   const mapMoveTimer = useRef(null)
@@ -469,11 +508,28 @@ export default function App() {
     if (!hasSearched.current) return
     clearTimeout(mapMoveTimer.current)
     mapMoveTimer.current = setTimeout(() => {
-      if (viewState.bounds) {
-        handleSearchRef.current(viewState.bounds)
-      }
+      if (!viewState.bounds) return
+      // Contained move: derive the view from held rows, zero requests.
+      // Unlike the subsites, a homepage inventory is nearly ALWAYS capped
+      // (all-taxa totals dwarf the 400-row fetch), so capped reuse is
+      // allowed as long as the sub-view stays well-populated — the newest-
+      // first ordering remains correct and totals scale honestly. Thin
+      // corners (deep zooms past our rows) and cell exits refetch.
+      const h = heldRef.current
+      const b = viewState.bounds
+      const contained = h && h.cell
+        && b.minLat >= h.cell.minLat && b.maxLat <= h.cell.maxLat
+        && b.minLng >= h.cell.minLng && b.maxLng <= h.cell.maxLng
+      const inView = contained
+        ? h.rows.reduce((n, r) => {
+            const la = rowLat(r); const ln = rowLng(r)
+            return n + (la != null && la >= b.minLat && la <= b.maxLat && ln >= b.minLng && ln <= b.maxLng ? 1 : 0)
+          }, 0)
+        : 0
+      if (contained && (!h.capped || inView >= 60)) applyHomeView(b)
+      else handleSearchRef.current(b)
     }, 400)
-  }, [setQP])
+  }, [setQP, applyHomeView])
 
   // ─── Map species state ──────────────────────────────────────
   const [activeMapSpecies, setActiveMapSpecies] = useState(null)

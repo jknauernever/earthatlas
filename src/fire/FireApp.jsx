@@ -1309,8 +1309,9 @@ export default function FireApp() {
   }, [addRaster, addEeLayer, restack])
 
   // ─── FIRMS active-fire: debounced viewport refetch ────────────────────────
-  // Fetches the current map bbox from /api/firms and pushes it into the GeoJSON
-  // source. No-ops unless the layer is on and we're zoomed in enough (below
+  // Assembles the viewport's detections (baked Blob shards fast path, /api/firms
+  // fallback + tail — see firms.js) into the GeoJSON source. No-ops unless the
+  // layer is on and we're zoomed in enough (below
   // FIRMS_MIN_ZOOM the bbox is near-global and the pull gets large). Coalesces
   // rapid pans (250 ms) and aborts the previous request so only the latest view
   // resolves into the source.
@@ -1328,7 +1329,16 @@ export default function FireApp() {
       setFirmsMeta((p) => ({ ...p, loading: true, error: false }))
       try {
         const minFrp = firmsAllSourcesRef.current ? 0 : FIRMS_WILDFIRE_MIN_FRP
-        const res = await refreshFirms(m, { minFrp, signal: ctrl.signal })
+        const res = await refreshFirms(m, {
+          minFrp, signal: ctrl.signal,
+          // The shard fast path paints the 24 h picture immediately and merges
+          // the proxy's 24–48 h tail in the background — this keeps the panel
+          // count honest when that late merge lands.
+          onUpdate: (u) => {
+            if (ctrl.signal.aborted) return
+            setFirmsMeta({ loading: false, count: u.count, geo: u.geo || 0, truncated: !!u.truncated, error: u.error || false })
+          },
+        })
         if (ctrl.signal.aborted) return
         setFirmsMeta({ loading: false, count: res ? res.count : 0, geo: res ? (res.geo || 0) : 0, truncated: !!(res && res.truncated), error: !res ? true : (res.error || false) })
       } catch (err) {

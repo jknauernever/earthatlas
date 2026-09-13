@@ -36,7 +36,7 @@ export function resolveHmsRequest(searchParams) {
   })
   // GOES refreshes sub-hourly; HMS republishes a few times a day. A few minutes
   // of edge staleness is invisible and shares the upstream pull across visitors.
-  return { url: `${HMS_URL}?${qs}`, cacheControl: 'public, s-maxage=300, stale-while-revalidate=900' }
+  return { url: `${HMS_URL}?${qs}`, cacheControl: 'public, max-age=180, s-maxage=300, stale-while-revalidate=900' }
 }
 
 // GOES-EAST / GOES-WEST → geostationary (the fast ones); everything else (NOAA-20,

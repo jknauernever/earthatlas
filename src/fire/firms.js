@@ -1,9 +1,10 @@
 // ─── Active fires: NASA FIRMS satellite hotspots (GeoJSON points) ───────────
 // Unlike the raster risk layers (ArcGIS ImageServers) and the parcels vector
-// layer (PMTiles), FIRMS is a viewport-driven GeoJSON point layer: on each pan/
-// zoom we fetch the current map bbox from /api/firms (which proxies NASA FIRMS,
-// keeps the MAP_KEY server-side, and returns detections as GeoJSON with an
-// `hours_ago` computed server-side — see api/_firms-core.js). The map just
+// layer (PMTiles), FIRMS is a viewport-driven GeoJSON point layer. VIIRS
+// detections come primarily from the cron-baked 10° Blob shards (fast, CDN-
+// shared, held in-module — see "Baked VIIRS shards" below); /api/firms (which
+// proxies NASA FIRMS with the MAP_KEY server-side — see api/_firms-core.js)
+// backfills the 24–48 h tail and covers views the shards can't. The map just
 // styles points by detection age, newest = hottest.
 //
 // One catalog entry, `kind:'firms'`, slots into the same panel/legend/URL-state/
@@ -13,6 +14,7 @@
 import styles from './FireApp.module.css'
 import { wildfireLikelyKeeper } from '../../api/_firms-core.js'
 import { getActiveFireContext, kmBetween } from './usFires.js'
+import { loadSystemsJson } from '../systems/windField.js'
 
 const SRC = 'fire-firms-src'
 const GLOW = 'fire-firms-glow'   // soft halo under each point (the "heat" look)
@@ -54,6 +56,129 @@ export const FIRMS_DEFAULT_DAYS = 2
 // Same-origin serverless endpoint; can be repointed for plain-vite QA that lacks
 // /api (parity with the parcels VITE_PARCEL_TILES_BASE escape hatch).
 const API_BASE = ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIRE_API_BASE) || '').trim()
+
+// ─── Baked VIIRS shards: the fast path ──────────────────────────────────────
+// /inmotion's hotspots bake (api/cron/systems-bake, every 3 h) already writes
+// exactly what this layer needs: firms-raw-<lat>_<lon>.json — 10°×10° shards
+// of individual VIIRS detections from the last 24 h on the public Blob CDN,
+// rows [lat, lng, frpMW, minutesBeforeFetch|null, satIdx]. One shard is ~20 KB
+// over a typical fire region and is the SAME file for every user, so a
+// regional view paints from one or two cached CDN fetches instead of waiting
+// seconds on a per-viewport NASA round-trip (whose ~1 m-precision bbox meant
+// no two pans ever shared an edge-cache key). Shards are held in-module, so
+// panning inside already-fetched shards refetches nothing. The binned
+// firms-hotspots.json carries a `raw_shards` list of the shards that exist
+// this run, so we never probe for absent files.
+//
+// The /api/firms proxy path is NOT dead: it still serves views too wide to
+// shard-fetch, any bake/CDN outage, and the 24–48 h tail of the 2-day window
+// (the bake covers 24 h), which merges in the background after the shards
+// have painted.
+const SHARD_DEG = 10
+const SHARD_HOLD_MS = 30 * 60 * 1000 // bake refreshes every 3 h; revalidate held files half-hourly
+const SHARD_MAX_FETCH = 8            // more shards in view than this → proxy path
+
+let shardIndexHeld = null            // { at, promise → Set<name> | null }
+const shardsHeld = new Map()         // name → { at, promise → {feats, truncated} | null }
+
+function heldShardIndex() {
+  const now = Date.now()
+  if (shardIndexHeld && now - shardIndexHeld.at < SHARD_HOLD_MS) return shardIndexHeld.promise
+  const promise = loadSystemsJson('firms-hotspots', 'firms-hotspots')
+    .then((j) => (Array.isArray(j.raw_shards) && j.raw_shards.length ? new Set(j.raw_shards) : null))
+    .catch(() => null)
+    .then((set) => {
+      if (!set) shardIndexHeld = null // failures aren't held — retry next refresh
+      return set
+    })
+  shardIndexHeld = { at: now, promise }
+  return promise
+}
+
+function heldShard(name) {
+  const now = Date.now()
+  const h = shardsHeld.get(name)
+  if (h && now - h.at < SHARD_HOLD_MS) return h.promise
+  const promise = loadSystemsJson(name, 'firms-raw')
+    .then((j) => {
+      const sats = Array.isArray(j.satellites) ? j.satellites : []
+      const feats = (j.detections || []).map(([lat, lng, frp, ageMin, si]) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        // Same property contract as the /api/firms features (paint + popup
+        // read these; the bake doesn't carry conf/brightness/footprint, and
+        // the popup already omits empty ones). hours_ago is stamped at
+        // assembly time, not here, so a held shard keeps aging honestly.
+        properties: {
+          src: 'FIRMS', sat: sats[si] || '', geo: false, conf: '',
+          frp: Number.isFinite(frp) ? frp : null, bright: null, dn: '', footprint_m: null,
+          acq_ms: Number.isFinite(ageMin) ? j.fetched_ms - ageMin * 60000 : null,
+          hours_ago: null,
+        },
+      }))
+      return { feats, truncated: !!j.truncated }
+    })
+    .catch(() => { shardsHeld.delete(name); return null })
+  shardsHeld.set(name, { at: now, promise })
+  return promise
+}
+
+const normLon = (x) => (((x + 180) % 360) + 360) % 360 - 180
+
+// The 10° shard keys a viewport touches. Longitude handles the map's
+// antimeridian unwrapping (getWest() can be < -180) by normalizing each cell.
+function shardNamesFor(west, south, east, north) {
+  const names = new Set()
+  const s0 = Math.max(-90, Math.floor(south / SHARD_DEG) * SHARD_DEG)
+  const n0 = Math.min(80, Math.floor(Math.min(north, 89.99) / SHARD_DEG) * SHARD_DEG)
+  const w0 = Math.floor(west / SHARD_DEG) * SHARD_DEG
+  const e0 = Math.floor(east / SHARD_DEG) * SHARD_DEG
+  for (let lat = s0; lat <= n0; lat += SHARD_DEG) {
+    for (let lon = w0; lon <= e0 && names.size <= 720; lon += SHARD_DEG) {
+      names.add(`firms-raw-${lat}_${normLon(lon)}`)
+    }
+  }
+  return [...names]
+}
+
+// Longitude-wrap-aware viewport test, slightly padded so dots right at the
+// edge survive a nudge-pan without waiting on the next refresh.
+function viewClipper(west, south, east, north, pad = 0.1) {
+  const world = east - west >= 360
+  return ([lng, lat]) => {
+    if (lat < south - pad || lat > north + pad) return false
+    if (world) return true
+    let x = lng
+    while (x < west - pad) x += 360
+    return x <= east + pad
+  }
+}
+
+// Assemble the shard-path FIRMS features for a viewport, or null when shards
+// can't serve it (index/shard fetch failed, or the view is too wide). Empty
+// feats is a REAL answer: no VIIRS detections in view.
+async function collectShardFeats({ west, south, east, north }) {
+  const index = await heldShardIndex()
+  if (!index) return null
+  const wanted = shardNamesFor(west, south, east, north).filter((n) => index.has(n))
+  if (wanted.length > SHARD_MAX_FETCH) return null
+  const loaded = await Promise.all(wanted.map(heldShard))
+  if (loaded.some((s) => !s)) return null
+  const inView = viewClipper(west, south, east, north)
+  const now = Date.now()
+  const feats = []
+  let truncated = false
+  for (const sh of loaded) {
+    if (sh.truncated) truncated = true
+    for (const f of sh.feats) {
+      if (!inView(f.geometry.coordinates)) continue
+      const p = f.properties
+      p.hours_ago = p.acq_ms == null ? null : Math.max(0, Math.round(((now - p.acq_ms) / 3.6e6) * 10) / 10)
+      feats.push(f)
+    }
+  }
+  return { feats, truncated }
+}
 
 // ─── Catalog entry ──────────────────────────────────────────────────────────
 // Always present (global coverage), unlike parcels which appears only when a
@@ -219,7 +344,66 @@ function bboxOf(f) {
   return Number.isFinite(w) ? [w, s, e, n] : null
 }
 
-export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0, signal } = {}) {
+// Merge FIRMS features with the HMS/GOES feed, then dedup near-coincident
+// detections (~100 m) keeping the newest — so two satellites (or the baked
+// shard and the proxy tail) don't double-plot the same pixel without thinning
+// the fire.
+function mergeWithHms(firmsFeats, hmsFC) {
+  const feats = [...firmsFeats]
+  if (hmsFC && hmsFC.type === 'FeatureCollection') {
+    for (const f of hmsFC.features) {
+      const p = f.properties
+      feats.push({
+        type: 'Feature', geometry: f.geometry,
+        properties: { src: p.geo ? 'GOES' : 'HMS', sat: p.sat, geo: !!p.geo, conf: '', frp: p.frp, bright: null, dn: '', footprint_m: null, acq_ms: p.acq_ms, hours_ago: p.hours_ago },
+      })
+    }
+  }
+  feats.sort((a, b) => (b.properties.acq_ms || 0) - (a.properties.acq_ms || 0))
+  const seen = new Set(); const kept = []
+  for (const f of feats) {
+    const [lng, lat] = f.geometry.coordinates
+    const k = `${Math.round(lat * 1000)},${Math.round(lng * 1000)}`
+    if (seen.has(k)) continue
+    seen.add(k); kept.push(f)
+  }
+  return kept
+}
+
+function setFirmsData(map, kept, { truncated, error }) {
+  const src = map.getSource(SRC)
+  if (!src) return null
+  src.setData({ type: 'FeatureCollection', features: kept })
+  return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated, error }
+}
+
+// Background completion of the 2-day window: the shards cover 24 h, so pull
+// the proxy for the full window and merge in what they didn't have (mostly
+// 24–48 h-old detections). Never blocks the shard paint. The bbox is snapped
+// OUTWARD to a coarse grid so nearby pans — and nearby users — collide on one
+// edge-cache key; the old ~1 m-precision keys made the proxy cache useless.
+async function mergeProxyTail(map, { west, south, east, north, days, minFrp, signal, baseFeats, hmsFC, fireCtx, shardTruncated, onUpdate }) {
+  const span = Math.max(east - west, north - south)
+  const st = span < 2 ? 0.5 : span < 8 ? 1 : 2
+  const qw = Math.floor(west / st) * st
+  const qs = Math.max(-90, Math.floor(south / st) * st)
+  const qe = Math.ceil(east / st) * st
+  const qn = Math.min(90, Math.ceil(north / st) * st)
+  const url = `${API_BASE}/api/firms?bbox=${[qw, qs, qe, qn].join(',')}&days=${days}`
+  const fc = await fetch(url, { signal }).then((r) => r.json()).catch(() => null)
+  if (!fc || fc.type !== 'FeatureCollection' || (signal && signal.aborted)) return
+  const inView = viewClipper(west, south, east, north)
+  let tail = fc.features.filter((f) => inView(f.geometry.coordinates))
+  // Keeper context comes from the UNCLIPPED fetch — a hot peak just offscreen
+  // still legitimizes its cool neighbours inside the view.
+  if (minFrp > 0) tail = tail.filter(wildfireLikelyFilter(fc.features, minFrp, fireCtx))
+  const meta = setFirmsData(map, mergeWithHms([...baseFeats, ...tail], hmsFC), {
+    truncated: shardTruncated || !!fc._truncated, error: null,
+  })
+  if (meta && onUpdate) onUpdate(meta)
+}
+
+export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0, signal, onUpdate } = {}) {
   const b = map.getBounds()
   // ~1m precision. At high zoom the viewport can be narrower than the rounding
   // step, collapsing west==east (or south==north) into a zero-area bbox that
@@ -233,52 +417,43 @@ export async function refreshFirms(map, { days = FIRMS_DEFAULT_DAYS, minFrp = 0,
   // "Active Hotspots" = ALL satellite heat, user-first: raw FIRMS VIIRS (fine,
   // near-real-time) + NOAA HMS (adds the fast geostationary GOES + analyst QC).
   // Users don't care which satellite saw it — they want where the heat is — so
-  // both feeds are merged into this one layer.
-  // Always pull every detection (one edge-cache key per view) and apply the
-  // wildfire-likely filter here, where we also know what NIFC knows.
-  const firmsUrl = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}`
+  // both feeds are merged into this one layer. VIIRS comes from the baked
+  // shards when they cover the view (fast path above), and the wildfire-likely
+  // filter is applied here, where we also know what NIFC knows.
   const hmsUrl = `${API_BASE}/api/hms?bbox=${bbox}`
-  const [firmsFC, hmsFC, fireCtx] = await Promise.all([
-    fetch(firmsUrl, { signal }).then((r) => r.json()).catch(() => null),
+  const [shard, hmsFC, fireCtx] = await Promise.all([
+    collectShardFeats({ west, south, east, north }).catch(() => null),
     fetch(hmsUrl, { signal }).then((r) => r.json()).catch(() => null),
     minFrp > 0 ? getActiveFireContext({ signal }).catch(() => ({ pts: [], perims: [] })) : null,
   ])
+  if (signal && signal.aborted) return null
+
+  if (shard) {
+    let feats = shard.feats
+    if (minFrp > 0) feats = feats.filter(wildfireLikelyFilter(feats, minFrp, fireCtx))
+    const meta = setFirmsData(map, mergeWithHms(feats, hmsFC), { truncated: shard.truncated, error: null })
+    if (meta && days > 1) {
+      mergeProxyTail(map, { west, south, east, north, days, minFrp, signal, baseFeats: feats, hmsFC, fireCtx, shardTruncated: shard.truncated, onUpdate })
+        .catch(() => { /* tail is best-effort; the 24 h shard paint stands */ })
+    }
+    return meta
+  }
+
+  // ─── Proxy path: wide views, bake/CDN outage, or shard fetch failure ──────
+  const firmsUrl = `${API_BASE}/api/firms?bbox=${bbox}&days=${days}`
+  const firmsFC = await fetch(firmsUrl, { signal }).then((r) => r.json()).catch(() => null)
+  if (signal && signal.aborted) return null
   if (firmsFC && firmsFC.type === 'FeatureCollection' && minFrp > 0) {
     firmsFC.features = firmsFC.features.filter(wildfireLikelyFilter(firmsFC.features, minFrp, fireCtx))
   }
-  const feats = []
-  let truncated = false
   // Upstream failure is NOT an empty sky. The proxy always answers 200 (so a
   // throttled NASA never looks like a CORS error) but flags `_error` when every
   // source failed; a network-level failure leaves firmsFC null. Either way we
   // report it so the panel can say "couldn't load" instead of "no detections".
   const firmsError = !firmsFC ? 'no response from /api/firms' : (firmsFC._error || null)
-  if (firmsFC && firmsFC.type === 'FeatureCollection') { feats.push(...firmsFC.features); truncated = !!firmsFC._truncated }
-  if (hmsFC && hmsFC.type === 'FeatureCollection') {
-    for (const f of hmsFC.features) {
-      const p = f.properties
-      feats.push({
-        type: 'Feature', geometry: f.geometry,
-        properties: { src: p.geo ? 'GOES' : 'HMS', sat: p.sat, geo: !!p.geo, conf: '', frp: p.frp, bright: null, dn: '', footprint_m: null, acq_ms: p.acq_ms, hours_ago: p.hours_ago },
-      })
-    }
-  }
-  // Dedup only near-coincident detections (~100 m) keeping the newest, so FIRMS
-  // and GOES don't double-plot the exact same pixel without thinning the fire.
-  feats.sort((a, b) => (b.properties.acq_ms || 0) - (a.properties.acq_ms || 0))
-  const seen = new Set(); const kept = []
-  for (const f of feats) {
-    const [lng, lat] = f.geometry.coordinates
-    const k = `${Math.round(lat * 1000)},${Math.round(lng * 1000)}`
-    if (seen.has(k)) continue
-    seen.add(k); kept.push(f)
-  }
-  const src = map.getSource(SRC)
-  if (src) {
-    src.setData({ type: 'FeatureCollection', features: kept })
-    return { count: kept.length, geo: kept.filter((f) => f.properties.geo).length, truncated, error: firmsError }
-  }
-  return null
+  const feats = (firmsFC && firmsFC.type === 'FeatureCollection') ? firmsFC.features : []
+  const truncated = !!(firmsFC && firmsFC._truncated)
+  return setFirmsData(map, mergeWithHms(feats, hmsFC), { truncated, error: firmsError })
 }
 
 export function clearFirms(map) {

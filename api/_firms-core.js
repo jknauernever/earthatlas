@@ -97,7 +97,7 @@ export function resolveFirmsRequest(searchParams, mapKey) {
 
   // Detections refresh on satellite overpass cadence; a few minutes of edge
   // staleness is invisible and keeps us well under the 5000-per-10-min cap.
-  const cacheControl = 'public, s-maxage=300, stale-while-revalidate=600'
+  const cacheControl = 'public, max-age=180, s-maxage=300, stale-while-revalidate=600'
   return { urls, sources, na, bbox, days, maxHours, minFrp, cacheControl }
 }
 

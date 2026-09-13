@@ -727,24 +727,29 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
       // Selected species: full brightness, bigger, yellow ring, above
       // everything. Others: dimmed context.
+      // Selection must POP: matched dots grow substantially and keep their
+      // species color + yellow ring; everything else drops to uniform gray
+      // context (color, not just opacity — dimmed reds still read as data).
       map.setPaintProperty('sighting-circles', 'circle-radius', [
-        'case', matchExpr, radiusExpr(2.5), radiusExpr(-1.5),
+        'case', matchExpr, radiusExpr(6), radiusExpr(-1.5),
       ])
-      map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
+      map.setPaintProperty('sighting-circles', 'circle-color', [
+        'case', matchExpr, ['get', 'color'], '#b6bdc4',
+      ])
       map.setPaintProperty('sighting-circles', 'circle-opacity', [
-        'case', matchExpr, 1, 0.3,
+        'case', matchExpr, 1, 0.55,
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-        'case', matchExpr, 2.5, 0.5,
+        'case', matchExpr, 3, 0.5,
       ])
       map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
-        'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.3)',
+        'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.4)',
       ])
       // Selected dots always paint over dimmed neighbors (newest-first within each group)
       map.setLayoutProperty('sighting-circles', 'circle-sort-key', [
         '+', ['case', matchExpr, 1e15, 0], ['get', 'ts'], ['*', ['get', 'count'], 1e12],
       ])
-      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ['case', matchExpr, 1, 0.35])
+      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ['case', matchExpr, 1, 0.25])
 
       // No camera movement on selection — the map stays where the user put it;
       // highlighting alone tells the story.

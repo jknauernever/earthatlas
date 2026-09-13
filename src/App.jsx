@@ -130,8 +130,13 @@ export default function App() {
   const handleLocate = useCallback(async () => {
     setManualCoords(null)
     setLocationName(null)
+    // Clear EVERY URL location trace: coords resolve urlCoords-first, so a
+    // stale lat/lng silently outranks the fresh geolocation (Locate Me
+    // "did nothing"), and stale mlat/mlng/z would aim the next search at
+    // the previous map view instead of the user's position.
+    setQP({ lat: null, lng: null, loc: null, mlat: null, mlng: null, z: null })
     locate()
-  }, [locate])
+  }, [locate, setQP])
 
   // ─── Handle manual location select ────────────────────────────
   const handleLocationSelect = useCallback(({ lat, lng, name }) => {

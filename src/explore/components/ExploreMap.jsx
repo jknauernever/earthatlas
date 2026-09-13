@@ -564,7 +564,9 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     userCenterRef.current = null
     initialFitDone.current = false
     markFlying(1500)
-    mapRef.current.flyTo({ center: [center.lng, center.lat], duration: 1200 })
+    // New origin, fresh framing: restore the default zoom too — arriving
+    // "home" at whatever deep zoom the user left elsewhere feels broken.
+    mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: defaultZoom, duration: 1200 })
   }, [center?.lat, center?.lng])
 
   // ─── Reset fit flag when a new search starts ────────────────────────────

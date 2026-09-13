@@ -405,25 +405,62 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     // ── Fire onCenterChange after user-initiated moves ─────────────────────
     let debounceTimer = null
+    const emitViewport = ({ pin = true } = {}) => {
+      const c = map.getCenter()
+      const z = map.getZoom()
+      const b = map.getBounds()
+      if (pin) userCenterRef.current = { lat: c.lat, lng: c.lng }
+      onCenterChangeRef.current?.({
+        lat: c.lat, lng: c.lng, zoom: z,
+        bounds: {
+          minLat: b.getSouth(),
+          maxLat: b.getNorth(),
+          minLng: b.getWest(),
+          maxLng: b.getEast(),
+        },
+      })
+    }
     map.on('moveend', () => {
       if (isFlying()) return
       clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(() => {
-        const c = map.getCenter()
-        const z = map.getZoom()
-        const b = map.getBounds()
-        userCenterRef.current = { lat: c.lat, lng: c.lng }
-        onCenterChangeRef.current?.({
-          lat: c.lat, lng: c.lng, zoom: z,
-          bounds: {
-            minLat: b.getSouth(),
-            maxLat: b.getNorth(),
-            minLng: b.getWest(),
-            maxLng: b.getEast(),
-          },
-        })
-      }, 600)
+      debounceTimer = setTimeout(emitViewport, 600)
     })
+    // Once early in life, report the TRUE viewport: cold loads scope data
+    // with an approximate formula bbox (fixed spans per zoom, blind to the
+    // real canvas aspect — ~1.7x wider than what's on screen), so counts and
+    // the species list would describe a larger region than the visible map.
+    // This emit routes through the same contained-move logic (zero extra
+    // requests); `pin:false` keeps auto-fit behavior unchanged. 'idle' is
+    // the fast path but needs a rendered frame — hidden/prerendered tabs
+    // never fire it — so a timer guarantees the emit either way
+    // (getBounds() is camera math; no rendering required).
+    // The mount can be mid-flight (auto-fit / initial center); don't give
+    // up — retry past the flight window so the emit happens even where
+    // 'idle' never fires (hidden/prerendered tabs render no frames).
+    let initialEmitDone = false
+    let initialEmitTries = 0
+    let initialEmitTimer = null
+    const initialEmit = () => {
+      if (initialEmitDone) return
+      if (isFlying()) {
+        if (initialEmitTries++ < 20) initialEmitTimer = setTimeout(initialEmit, 400)
+        return
+      }
+      initialEmitDone = true
+      emitViewport({ pin: false })
+    }
+    map.once('idle', initialEmit)
+    initialEmitTimer = setTimeout(initialEmit, 1200)
+    // Layout settling arrives as map 'resize' events (the 1.2s snapshot can
+    // predate the final container size) — and a window resize changes what
+    // "in view" means regardless: re-emit, debounced, so counts always
+    // describe the map as it actually is.
+    let resizeTimer = null
+    map.on('resize', () => {
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(initialEmit, 350)
+    })
+    map.once('remove', () => { clearTimeout(initialEmitTimer); clearTimeout(resizeTimer) })
 
     mapRef.current = map
     if (import.meta.env.DEV) window.__exploreMap = map // dev-only QA handle

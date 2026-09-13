@@ -219,9 +219,19 @@ export default function App() {
     setTotalResults(Math.max(Math.round(h.total * frac), rows.length))
   }, [])
 
-  if (import.meta.env.DEV) window.__home = { heldRef } // dev-only QA handle
+  if (import.meta.env.DEV) window.__home = { heldRef, applyHomeView } // dev-only QA handle
+
+  // Searches have no upstream abort; overlapping runs (cold-load race, rapid
+  // param changes) must not let a stale response overwrite a newer one.
+  const searchSeqRef = useRef(0)
+  // The truest viewport we've seen (from the map's own moveend/load emits).
+  // Cold loads scope their FETCH with an approximate formula bbox; when the
+  // results land we display against these real bounds instead — no matter
+  // which finishes first.
+  const lastRealBoundsRef = useRef(null)
 
   const handleSearch = useCallback(async (searchBounds) => {
+    const seq = ++searchSeqRef.current
     // Guard: some callers (notably the Search button's onClick) pass a click
     // event as the first arg. Coerce anything that's not a properly-shaped
     // bounds object to null so the radius path is used instead.
@@ -325,6 +335,7 @@ export default function App() {
       // different key.
       const obsDate = (r) => String(r.observed_on || r.eventDate || r.obsDt || '')
       allResults.sort((a, b) => obsDate(b).localeCompare(obsDate(a)))
+      if (seq !== searchSeqRef.current) return // a newer search superseded this one
       heldRef.current = {
         cell: searchBounds || null,
         rows: allResults,
@@ -332,7 +343,7 @@ export default function App() {
         // capped = more matched than we hold; sub-views can't be derived.
         capped: totalCount > allResults.length,
       }
-      applyHomeView(exactBounds)
+      applyHomeView(lastRealBoundsRef.current || exactBounds)
       // Push the full search state into the URL every time a search completes,
       // so shared links always reproduce the exact view. Passing null clears
       // the param when the filter isn't active.
@@ -384,6 +395,7 @@ export default function App() {
     // Record the map's new center/zoom in the URL so shared links
     // reproduce the exact view. Fires on the debounced moveend from
     // ExploreMap (already 600ms idle), so no additional throttling needed.
+    if (viewState.bounds) lastRealBoundsRef.current = viewState.bounds
     if (viewState.lat != null && viewState.lng != null && viewState.zoom != null) {
       setQP({
         mlat: viewState.lat,
@@ -402,6 +414,10 @@ export default function App() {
       // first ordering remains correct and totals scale honestly. Thin
       // corners (deep zooms past our rows) and cell exits refetch.
       const h = heldRef.current
+      // Nothing held yet = the initial search is still in flight; don't race
+      // it with a second uncancellable fetch — it will display against the
+      // real bounds recorded above when it lands.
+      if (!h) return
       const b = viewState.bounds
       const contained = h && h.cell
         && b.minLat >= h.cell.minLat && b.maxLat <= h.cell.maxLat

@@ -1171,7 +1171,17 @@ function hrrrSmokeTape() {
 // count so the truncation is never silent. Separate dataset/cron from the
 // 3-hourly hotspots bake — a ~200 MB pull earns its own slower schedule.
 const FIRE_DAILY_BIN_DEG = 0.25
-const FIRE_DAILY_TOP = 6000
+// Keep every cell whose day's total radiative power clears a FIXED floor.
+// The old rule kept the 6,000 most intense cells WORLDWIDE per day, so the
+// cutoff moved with how hard the whole planet was burning (17–66 MW across
+// one month): a Cerrado cell steady at 40 MW showed one day and vanished
+// the next because Africa outcompeted it for slots — the map "flickered"
+// day to day for reasons that had nothing to do with that fire. A fixed
+// floor makes a cell's visibility depend only on its own fire. The cap is
+// a file-size guard that a normal day never reaches (typical days keep
+// 6–9k cells at 25 MW).
+const FIRE_DAILY_MIN_FRP = 25
+const FIRE_DAILY_MAX = 15000
 const FIRE_DAILY_KEEP_DAYS = 31
 
 async function binFirmsDaily(url, days, route, satIdx) {
@@ -1245,12 +1255,22 @@ async function fetchFireDaily() {
   const now = Date.now()
   const freshDays = new Map()
   for (const [date, bins] of days) {
-    const arr = [...bins.values()].sort((a, b) => b.frpSum - a.frpSum)
+    const arr = [...bins.values()].filter((b) => b.frpSum >= FIRE_DAILY_MIN_FRP).sort((a, b) => b.frpSum - a.frpSum)
+    const start_ms = Date.parse(`${date}T00:00:00Z`)
+    // The current UTC day is baked mid-day, so its cell count is a fraction
+    // of a complete day's — without a flag the "Now" frame reads as a lull.
+    // (VIIRS NRT rows arrive ~3 h behind; yesterday completes at the next
+    // bake, which is why fresh days overwrite stored ones below.)
+    const elapsedH = (now - start_ms) / 3.6e6
+    const partial = elapsedH < 24
     freshDays.set(date, {
       date,
-      start_ms: Date.parse(`${date}T00:00:00Z`),
-      total: arr.length,
-      bins: arr.slice(0, FIRE_DAILY_TOP).map((b) => [
+      start_ms,
+      total: bins.size,
+      kept: Math.min(arr.length, FIRE_DAILY_MAX),
+      min_frp: FIRE_DAILY_MIN_FRP,
+      ...(partial ? { partial: true, hours: Math.max(1, Math.round(elapsedH)) } : {}),
+      bins: arr.slice(0, FIRE_DAILY_MAX).map((b) => [
         Math.round((b.latSum / b.n) * 100) / 100,
         Math.round((b.lonSum / b.n) * 100) / 100,
         b.n,

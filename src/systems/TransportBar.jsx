@@ -43,13 +43,15 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   // and weekly fields are dated, not timed (every frame is the 12:00Z field).
   const shownMs = meta.valid_ms
   const fk = meta.frame_kind
-  const kind = meta.kindLabel ? meta.kindLabel
+  const kindBase = meta.kindLabel ? meta.kindLabel
     : meta.event
     ? (meta.live ? 'all quakes of the past 24 h' : c.playing ? 'quakes as they happen' : 'all quakes of this day')
     : meta.live
     ? (daily ? 'latest daily field' : 'forecast valid now')
     : fk ? (meta.lead_h > 0 ? `${fk} (+${meta.lead_h} h)` : fk)
       : meta.lead_h === 0 ? 'analysis' : `short-range analysis (+${meta.lead_h} h)`
+  // A frame's caveat rides with its description (e.g. a partial day).
+  const kind = meta.note ? `${kindBase} — ${meta.note}` : kindBase
   // "model run" only where a run exists (forecast leads, live, CAMS/GFS analyses).
   const stepH = Math.round(c.stepMs / 3.6e6)
   const showRun = !meta.event && (meta.live || meta.lead_h > 0 || !fk || fk === 'analysis')
@@ -62,7 +64,9 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   const steady = meta.steadyLabel ? meta.steadyLabel
     : meta.event ? `${fk} · one day at a time` : `${fk ? fk.replace(/, weekly$/, '') : 'model analyses'}, ${stepWord}`
   const windowOptions = c.windowOptions
-  const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : ''
+  // The status slot after the date is the one visible caveat line: transient
+  // states first, else the frame's own note (a partial day's "so far today").
+  const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : (meta.note || '')
 
   if (mini) {
     // Compact pill (phones, while a popup is open): date + play/pause only.

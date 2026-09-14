@@ -42,8 +42,11 @@ export class EventTape {
   ready() { return true }
   prefetch() {}
   get useFlow() { return false }
+  /** Per-frame caveat resolver, e.g. "so far today" on a partial day. */
+  setNoteFor(fn) { this._noteFor = fn || null }
   metaAt(t = this.t) {
     const { frameKind, dayLabel, kindLabel, steadyLabel } = this._labels
+    const note = this._noteFor ? this._noteFor(t) : null
     return {
       valid_ms: t,
       run_ms: t,
@@ -55,6 +58,7 @@ export class EventTape {
       dayLabel,
       ...(kindLabel ? { kindLabel } : {}),
       ...(steadyLabel ? { steadyLabel } : {}),
+      ...(note ? { note } : {}),
     }
   }
   /** Events that have happened by time t (the cursor). */

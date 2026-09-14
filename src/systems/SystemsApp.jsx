@@ -1598,6 +1598,12 @@ export default function SystemsApp() {
         kindLabel: 'where fires were seen this day',
         steadyLabel: 'daily fire history, day by day',
       })
+      // The current UTC day is baked mid-day: say so on its frame instead
+      // of letting "Now" read as a lull (the bake stamps partial + hours).
+      tape.setNoteFor((t) => {
+        const d = fieldsRef.current.firedaily?.days?.find((x) => x.date === new Date(t).toISOString().slice(0, 10))
+        return d?.partial ? `so far today (${d.hours} h of satellite passes)` : null
+      })
       const rc = new ReplayController(tape, { windowDays: 14 })
       rc.layerId = 'hotspots'
       rc.fireRegime = 'presence'

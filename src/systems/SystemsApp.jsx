@@ -251,12 +251,14 @@ const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
 // reloads the page instead.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 
-// Keep the popup card on screen no matter where the user clicked: the CSS
-// cap (min(55vh, 420px)) is position-blind, so a click low on the map can
-// anchor a fully-capped card off the bottom edge (Mapbox's auto-anchor
-// gives up when neither side fits the full height). Measure the space the
-// current anchor actually has and shrink the card's max-height to it —
-// content scrolls inside instead of flowing off the map. Re-run after every
+// Keep the popup card on screen AND let it use the screen: hang it off
+// whichever side of the click has more room, then cap its height to that
+// room (content scrolls inside instead of flowing off the map). Measured
+// from the anchor POINT, never from the card's current box — the old
+// version measured the side Mapbox had already picked and shrank the card
+// to it, and once shrunk, Mapbox saw a small card that "fit" and never
+// flipped: a click near the top got a 150px card jammed into the sliver
+// above it while the whole lower screen sat empty. Re-run after every
 // async growth (AI text, source naming, coverage lines).
 function fitPopupToMap(popup) {
   const el = popup.getElement()
@@ -264,19 +266,28 @@ function fitPopupToMap(popup) {
   const mapEl = el?.closest('.mapboxgl-map')
   if (!el || !scroller || !mapEl) return
   const mapRect = mapEl.getBoundingClientRect()
-  const anchor = [...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || ''
-  const rect = el.getBoundingClientRect()
-  // Space from the card's top edge to the map bottom (top-anchored cards
-  // grow downward) or from the map top to its bottom edge (bottom-anchored
-  // cards grow upward); centered anchors use the smaller of the two. The
-  // top ~64px belongs to the Explain button and mode cues — cards stop
+  let pt
+  try { pt = popup._map.project(popup.getLngLat()) } catch { return }
+  // The top ~64px belongs to the Explain button and mode cues — cards stop
   // short of it instead of sliding underneath.
   const TOP_RESERVE = 64
-  const down = mapRect.bottom - rect.top - 16
-  const up = rect.bottom - (mapRect.top + TOP_RESERVE) - 16
-  const room = anchor.includes('top') ? down : anchor.includes('bottom') ? up : Math.min(down, up)
-  const cap = Math.max(160, Math.min(420, Math.floor(room)))
-  scroller.style.maxHeight = `${cap}px`
+  const TIP = 10 + 12 // popup offset + arrow
+  const PAD = 16
+  const down = mapRect.height - pt.y - TIP - PAD
+  const up = pt.y - TOP_RESERVE - TIP - PAD
+  const ceiling = Math.floor(mapRect.height * 0.75)
+  const cur = ([...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || '').replace('mapboxgl-popup-anchor-', '')
+  const curVert = cur.startsWith('top') ? 'top' : cur.startsWith('bottom') ? 'bottom' : null
+  // Stay put only if the current side already offers all the card could use.
+  const want = curVert && (curVert === 'top' ? down : up) >= ceiling ? curVert : (down >= up ? 'top' : 'bottom')
+  if (want !== curVert) {
+    // Keep Mapbox's horizontal choice (edge clicks shift the card sideways).
+    const horiz = cur.includes('-left') ? '-left' : cur.includes('-right') ? '-right' : ''
+    popup.options.anchor = want + horiz
+    try { popup.setLngLat(popup.getLngLat()) } catch { return } // re-lays out with the new anchor
+  }
+  const room = want === 'top' ? down : up
+  scroller.style.maxHeight = `${Math.max(160, Math.min(ceiling, Math.floor(room)))}px`
 }
 
 // Scroll affordance for tall popups: a subtle ▾ pinned at the card's bottom,
@@ -794,8 +805,8 @@ export default function SystemsApp() {
       }
       if (!sections.length) return
       popupRef.current?.remove()
-      // No fixed anchor: Mapbox picks the side with room so the card stays
-      // on screen; content itself is height-capped and scrolls (CSS).
+      // No fixed anchor at birth: fitPopupToMap re-anchors to the roomier
+      // side right after mount and caps the height to that room.
       popupRef.current = new mapboxgl.Popup({ offset: 10, maxWidth: '290px' })
         .setLngLat(e.lngLat)
         .setHTML(

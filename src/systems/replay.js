@@ -59,7 +59,17 @@ export class ReplayController {
   /** Window choices worth offering: only when the tape has ≥2× the frames of the shorter window. */
   get windowOptions() {
     if (this.weekly) return []
-    if (this.daily) return this.tapeDays > 8 ? [31] : []
+    if (this.daily) {
+      // Same 7 / 14 / month ladder the 3-hourly layers get, trimmed to the
+      // history this tape actually holds (the fire rollup keeps ~25 days) —
+      // a lone option used to render as no selector at all, so the daily
+      // fire slider looked like a different, poorer control.
+      if (this.tapeDays <= 8) return []
+      const opts = [7, 14, 31].filter((d) => d < this.tapeDays)
+      const all = Math.round(this.tapeDays)
+      if (all > opts[opts.length - 1]) opts.push(all)
+      return opts
+    }
     if (this.tapeDays <= 8) return []
     const per7 = Math.round((7 * 8.64e7) / this.stepMs)
     return this.tape.frames.length >= 2 * per7 ? [7, 14, 31] : []

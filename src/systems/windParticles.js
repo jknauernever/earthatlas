@@ -35,7 +35,17 @@ const PROJ_TOLERANCE = 2      // px round-trip error ⇒ off-globe
 const FADE = 0.94             // trail persistence per 60fps-frame
 const MAX_DPR = 2
 const BASE_ZOOM = 1.9
-const MIN_ZOOM_SCALE = 0.05
+// Screen speed is normalized to the globe view's feel at EVERY zoom. The
+// old floor of 0.05 let normalization stop at z≈6.2, so past that screen
+// speed doubled per level — ~25× the intended feel at a fire-scale z11
+// ("absurdly fast"). A vanishing floor only guards the arithmetic.
+const MIN_ZOOM_SCALE = 1e-4
+// Zoomed in, the 0.25° field is one uniform vector across the whole screen,
+// and thousands of parallel identical streaks read as a blizzard at any
+// speed. Thin the particle count from THIN_ZOOM, halving every two levels,
+// never below THIN_FLOOR of the requested density.
+const THIN_ZOOM = 7
+const THIN_FLOOR = 0.3
 
 export class ParticleLayer {
   /**
@@ -231,7 +241,10 @@ export class ParticleLayer {
   }
 
   _spawnAll() {
-    const n = this.count
+    const z = this.map.getZoom()
+    const thin = Math.max(THIN_FLOOR, Math.min(1, Math.pow(2, -(z - THIN_ZOOM) / 2)))
+    const n = Math.max(0, Math.round(this.count * thin))
+    this._n = n
     this._px = new Float32Array(n)
     this._py = new Float32Array(n)
     this._age = new Float32Array(n)
@@ -298,7 +311,7 @@ export class ParticleLayer {
     const sample = { vx: 0, vy: 0, spd: 0 }
     const tail = this._speedFactor * 6
     const bits = this._maskKind === 'water' ? getLandMaskSync() : null
-    for (let i = 0; i < this.count; i++) {
+    for (let i = 0; i < this._n; i++) {
       const x = this._px[i], y = this._py[i]
       if (!this._fieldAt(x, y, sample)) continue
       const a = g0.unproject(x, y)
@@ -350,7 +363,7 @@ export class ParticleLayer {
 
     const paths = this._stops.map(() => new Path2D())
     const sample = { vx: 0, vy: 0, spd: 0 }
-    for (let i = 0; i < this.count; i++) {
+    for (let i = 0; i < this._n; i++) {
       if ((this._age[i] -= k) <= 0) { this._spawn(i); continue }
       const x = this._px[i]
       const y = this._py[i]

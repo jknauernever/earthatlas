@@ -1156,12 +1156,10 @@ export default function SystemsApp() {
           if (wantGround) { rc.sourceName = groundDef.sourceName; rc.sourceUrl = groundDef.sourceUrl }
           const resume = resumeRef.current[active.id]
           if (resume) { delete resumeRef.current[active.id]; rc.seek(resume.t); if (resume.playing) rc.play(); else rc.pause() }
-          // Air-quality layers open at NOW, paused — no auto-replay. The
-          // button answers "what's in the air right now"; history is opt-in
-          // via the slider.
-          // (Methane is deliberately NOT in this list: its story is the
-          // breathing of the field over the window, so it opens in motion.)
-          else if (['smoke', 'co', 'pm25', 'acidity'].includes(active.id)) rc.toLive()
+          // Otherwise every layer opens IN MOTION: three passes over its
+          // window, then parked at Now (ReplayController.maxPasses). The
+          // air-quality layers used to open paused at Now, which left the
+          // Fire button's bundle (fire + smoke + wind) standing still.
           rc.attach(layer)
           // Observed source markers follow the gas layer's cursor: scrub
           // into the past and only sources already observed by then exist;
@@ -1605,8 +1603,10 @@ export default function SystemsApp() {
       const rc = new ReplayController(tape, { windowDays: 14 })
       rc.layerId = 'hotspots'
       rc.fireRegime = 'presence'
-      rc.pause()
-      rc.seek(tape.end_ms)
+      // Opens in motion like every other layer (three passes, then Now);
+      // a hidden tab can't animate, so it skips straight to Now instead of
+      // stranding the cursor at the window start.
+      if (document.hidden) rc.toLive()
       // Playing the presence window follows the site rule: three passes,
       // then parked on Now (ReplayController.maxPasses).
       rc.subscribe(applyFireCursor)

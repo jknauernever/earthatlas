@@ -265,6 +265,20 @@ export const GROUPS = [
   { id: 'land', label: 'Land' },
 ]
 
+// ONE wind, everywhere. Layers that carry a companion wind (haze, smoke,
+// dust, PM2.5, CO) point at this single def, so the particles under a wash
+// are the Wind layer's particles — same speed colors, same density, same
+// physics. They used to be a separate white, 60%-density, zoom-retiring
+// variant, so wind looked like a different dataset depending on which
+// button was pressed. The only remaining difference is ownership: the
+// companion yields to the Wind layer when that is on (never two winds).
+const WIND_FLOW = {
+  dataset: 'gfs-wind',
+  expectKind: 'gfs-wind-10m',
+  stops: WIND_STOPS,
+  vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
+}
+
 export const LAYERS = [
   {
     id: 'wind',
@@ -607,16 +621,11 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // (white) particle flow from the same GFS wind grid the Wind layer uses,
-    // on its own canvas, whenever it's on. Same run stamp rules apply (the
-    // popup cites the wind run alongside the CAMS run).
-    flow: {
-      dataset: 'gfs-wind',
-      expectKind: 'gfs-wind-10m',
-      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
-      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
-      countScale: 0.6,
-    },
+    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
+    // shared flow canvas whenever this layer is on and Wind itself is off.
+    // Same run stamp rules apply (the popup cites the wind run alongside
+    // the CAMS run).
+    flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.aerosol): 3-hourly analysis frames, last 31 days.
     tape: { dataset: 'cams-aod', expectKind: 'cams-aod550' },
     legend: { min: 0, max: 2, ticks: ['0', '0.5', '1', '2+ AOD'] },
@@ -658,16 +667,11 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // (white) particle flow from the same GFS wind grid the Wind layer uses,
-    // on its own canvas, whenever it's on. Same run stamp rules apply (the
-    // popup cites the wind run alongside the CAMS run).
-    flow: {
-      dataset: 'gfs-wind',
-      expectKind: 'gfs-wind-10m',
-      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
-      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
-      countScale: 0.6,
-    },
+    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
+    // shared flow canvas whenever this layer is on and Wind itself is off.
+    // Same run stamp rules apply (the popup cites the wind run alongside
+    // the CAMS run).
+    flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.smoke).
     tape: { dataset: 'cams-smoke', expectKind: 'cams-smoke-aod550' },
     legendNote: 'Zoomed out: all smoke in the sky, worldwide (outlined veils over North America = smoke analysts saw in live imagery). Zoomed into the US: smoke at ground level — what people are breathing. The legend follows.',
@@ -756,16 +760,11 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // (white) particle flow from the same GFS wind grid the Wind layer uses,
-    // on its own canvas, whenever it's on. Same run stamp rules apply (the
-    // popup cites the wind run alongside the CAMS run).
-    flow: {
-      dataset: 'gfs-wind',
-      expectKind: 'gfs-wind-10m',
-      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
-      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
-      countScale: 0.6,
-    },
+    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
+    // shared flow canvas whenever this layer is on and Wind itself is off.
+    // Same run stamp rules apply (the popup cites the wind run alongside
+    // the CAMS run).
+    flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.dust).
     tape: { dataset: 'cams-dust', expectKind: 'cams-dust-aod550' },
     legend: { min: 0, max: 2, ticks: ['0', '0.5', '1', '2+ AOD'] },
@@ -805,13 +804,7 @@ export const LAYERS = [
     sourceUrl: 'https://atmosphere.copernicus.eu/global-forecast-plots',
     stops: PM25_STOPS,
     scalar: { opacity: 0.85 },
-    flow: {
-      dataset: 'gfs-wind',
-      expectKind: 'gfs-wind-10m',
-      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
-      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
-      countScale: 0.6,
-    },
+    flow: WIND_FLOW,
     tape: { dataset: 'cams-pm25', expectKind: 'cams-pm25' },
     legend: { min: 0, max: 250, ticks: ['0', '35', '150', '250+ µg/m³'] },
     words: [
@@ -853,13 +846,7 @@ export const LAYERS = [
     sourceUrl: 'https://atmosphere.copernicus.eu/global-forecast-plots',
     stops: CO_STOPS,
     scalar: { opacity: 0.85 },
-    flow: {
-      dataset: 'gfs-wind',
-      expectKind: 'gfs-wind-10m',
-      stops: [[0, 'rgba(255,255,255,0.28)'], [6, 'rgba(255,255,255,0.5)'], [14, 'rgba(255,255,255,0.75)']],
-      vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
-      countScale: 0.6,
-    },
+    flow: WIND_FLOW,
     tape: { dataset: 'cams-co', expectKind: 'cams-co-column' },
     legend: { min: 0.55, max: 7, ticks: ['bkgd', '2', '7+ g/m²'] },
     words: [

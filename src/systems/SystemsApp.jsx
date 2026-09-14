@@ -1024,8 +1024,9 @@ export default function SystemsApp() {
           if (other !== fk && other.endsWith(':flow') && inst[other]) { inst[other].destroy(); inst[other] = null }
         }
         try {
+          // Identical construction to the Wind layer's — one wind (WIND_FLOW).
           inst[fk] = new ParticleLayer(map, flowCanvas, fieldsRef.current[fk], {
-            count: Math.round(densityCount(density) * (def.flow.countScale ?? 1)),
+            count: densityCount(density),
             colorStops: def.flow.stops,
             ...def.flow.vector,
           })
@@ -1035,14 +1036,11 @@ export default function SystemsApp() {
         }
       }
       const rc = replayRef.current
-      // Flow particles are a synoptic-scale metaphor: their pixel speed
-      // grows with 2^zoom, so past regional zoom they read as a blizzard —
-      // and the 0.25° wind they trace isn't honest terrain-scale wind
-      // anyway. Thin them out from z6.5 and retire them by z8.5.
-      const flowZoom = mapView?.zoom ?? map.getZoom()
-      const flowFade = Math.max(0, Math.min(1, (8.5 - flowZoom) / 2))
-      inst[fk]?.setVisible(!!layerOn[def.id] && flowFade > 0 && (!rc || rc.layerId !== def.id || rc.atLive))
-      if (inst[fk] && flowFade > 0) inst[fk].setCount(Math.round(densityCount(density) * (def.flow.countScale ?? 1) * flowFade))
+      // Visible exactly when the Wind layer would be, minus one rule: the
+      // companion yields when Wind itself is on (never two winds at once),
+      // and like Wind it hides while its layer's replay is in the past.
+      inst[fk]?.setVisible(!!layerOn[def.id] && !layerOn.wind && (!rc || rc.layerId !== def.id || rc.atLive))
+      inst[fk]?.setCount(densityCount(density))
     }
 
     // Event layers (quakes, fires): one ping canvas each. Layers with a
@@ -1198,13 +1196,13 @@ export default function SystemsApp() {
             rc.subscribe((c) => { if (!c.holding) applySources(c) })
             applySources(rc)
           }
-          // Companion flow particles show today's wind — only honest at
-          // "now", and only below the zoom where they read as a blizzard.
+          // Companion wind shows today's wind — only honest at "now" — and
+          // yields to the Wind layer when that is on.
           if (active.flow) {
             const fk = `${active.id}:flow`
             rc.subscribe((c) => {
-              const z = mapRef.current?.getZoom() ?? 0
-              inst[fk]?.setVisible(c.atLive && z < 8.5 && !!stateRef.current.layerOn[active.id])
+              const on = stateRef.current.layerOn
+              inst[fk]?.setVisible(c.atLive && !!on[active.id] && !on.wind)
             })
           }
           rc.subscribe(syncLiveOnly)
@@ -1670,7 +1668,7 @@ export default function SystemsApp() {
   useEffect(() => {
     for (const def of LAYERS) {
       if (def.kind === 'vector') instancesRef.current[def.id]?.setCount(densityCount(density))
-      if (def.flow) instancesRef.current[`${def.id}:flow`]?.setCount(Math.round(densityCount(density) * (def.flow.countScale ?? 1)))
+      if (def.flow) instancesRef.current[`${def.id}:flow`]?.setCount(densityCount(density))
     }
   }, [density])
 

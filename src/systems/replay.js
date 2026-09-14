@@ -28,6 +28,12 @@ export class ReplayController {
     // so a view stays ~17 MB / ~40 s.
     this.rate = opts.rateHoursPerSec ?? (stepMs / 3.6e6) * (this.hourly ? 2 * FRAMES_PER_SEC : FRAMES_PER_SEC)
     this.windowDays = opts.windowDays ?? (this.weekly ? 371 : this.daily ? 31 : this.hourly ? 7 : 14)
+    // Every animation plays its window MAX_PASSES times, then parks at "now"
+    // (paused) — an endless loop kept re-telling the story to someone who has
+    // seen it, and made "now" a moment you could never rest on. Play resets
+    // the count, so the button always buys three fresh passes.
+    this.passes = 0
+    this.maxPasses = opts.maxPasses ?? 3
     this.playing = true
     this.buffering = false
     this.holding = false
@@ -85,7 +91,7 @@ export class ReplayController {
     this.overlay?.tick()
   }
 
-  play() { if (this.atLive) this.t = this.windowStart; this.playing = true; this.holding = false; this._holdUntil = 0; this._apply(); this._emit() }
+  play() { if (this.atLive) { this.t = this.windowStart; this.passes = 0 } this.playing = true; this.holding = false; this._holdUntil = 0; this._apply(); this._emit() }
   pause() { this.playing = false; this._emit() }
   toggle() { this.playing ? this.pause() : this.play() }
   seek(t) { this.t = Math.max(this.start_ms, Math.min(this.end_ms, t)); this.holding = false; this._holdUntil = 0; this.tape.prefetch(this.t, 3); this._apply(); this._emit() }
@@ -128,8 +134,18 @@ export class ReplayController {
     }
     if (this.buffering) { this.buffering = false }
     if (next >= this.end_ms) {
-      // Land on "now", hold there, then (next tick after the hold) loop.
       this.t = this.end_ms
+      this.passes += 1
+      if (this.passes >= this.maxPasses) {
+        // Third landing: park at "now", paused. Never via `holding` — a
+        // subscriber that sees holding while we emit re-enters the loop.
+        this.holding = false
+        this._holdUntil = 0
+        this.playing = false
+        this._apply(); this._emit()
+        return
+      }
+      // Land on "now", hold there, then (next tick after the hold) loop.
       this.holding = true
       this._holdUntil = now + HOLD_AT_END_MS
       this._apply(); this._emit()

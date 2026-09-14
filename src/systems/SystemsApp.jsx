@@ -1573,15 +1573,13 @@ export default function SystemsApp() {
       rc.fireRegime = 'detail'
       const apply = (c) => raw.setTime(c.atLive ? null : c.t)
       rc.attach({ tick: () => apply(rc) })
-      // One pass only: the arrival build plays through, then lands on Now
-      // and stays — the slider is the user's from there. `holding` MUST be
-      // cleared before toLive(): toLive's pause() emits first, and a
-      // subscriber that still sees holding re-enters itself forever (stack
-      // overflow that poisoned every control until something else cleared
-      // the flag). If the page can't animate right now (hidden tab), skip
-      // straight to Now — a cursor stranded at the window start makes every
-      // back-control a no-op and the bar reads as dead.
-      rc.subscribe((c) => { if (c.holding) { c.holding = false; c.toLive(); return } apply(c) })
+      // The arrival build plays through like every other animation: three
+      // passes, then parked on Now (ReplayController.maxPasses) — the
+      // slider is the user's from there. If the page can't animate right
+      // now (hidden tab), skip straight to Now — a cursor stranded at the
+      // window start makes every back-control a no-op and the bar reads as
+      // dead.
+      rc.subscribe(apply)
       rc.subscribe(syncLiveOnly)
       rc.spanH = spanH
       if (document.hidden || fireSkipBuildRef.current) rc.toLive()
@@ -1609,9 +1607,9 @@ export default function SystemsApp() {
       rc.fireRegime = 'presence'
       rc.pause()
       rc.seek(tape.end_ms)
-      // Same one-pass rule when the user plays the presence window: land on
-      // Now instead of loop-restarting (holding cleared first — see above).
-      rc.subscribe((c) => { if (c.holding) { c.holding = false; c.toLive(); return } applyFireCursor(c) })
+      // Playing the presence window follows the site rule: three passes,
+      // then parked on Now (ReplayController.maxPasses).
+      rc.subscribe(applyFireCursor)
       rc.subscribe(syncLiveOnly)
       fireReplayRef.current = rc
       if (import.meta.env.DEV) window.__fireReplay = rc // dev-only QA handle

@@ -17,17 +17,20 @@
  * within a year they dim and stop pinging, older ones draw as faint hollow
  * archive reticles. Everything stays visible and clickable — the history is
  * the value — it just can't masquerade as current. Top of the z-order.
- * Freezes and slides with the raster during gestures.
+ * Repaints live during gestures (points stay glued to their facilities).
  *
  * Coverage honesty: targeted snapshots, not a survey — panel + popups say
  * an empty area means unsurveyed, never clean.
  */
 
-import { CanvasFreezer } from './canvasFreeze.js'
 import { getGlobeGeometry } from './globeGeom.js'
 import { loadSystemsJson } from './windField.js'
 
-const MIN_DRAW_ZOOM = 3.6
+// Below FULL_ZOOM the reticle treatment (ring + ticks + core + pings) is
+// subpixel soup, but the sources must still EXIST on the map — a global
+// view that hides every observed emitter reads as "no data". So low zooms
+// draw compact age-graded dots that grow into the full reticles here.
+const FULL_ZOOM = 3.6
 const REFRESH_MS = 6 * 60 * 60e3
 const MAX_DPR = 2
 const FRESH_MS = 45 * 8.64e7 // sources detected within ~45 days of the reference time ping harder
@@ -53,12 +56,14 @@ export class MethanePlumesOverlay {
     this._cursor = null
     this._drawn = [] // { p, x, y, r } for hit tests
 
-    // Gesture behavior matches the scalar wash underneath: freeze + slide,
-    // repaint on settle — live per-frame repaints made markers "swim".
-    this._freeze = new CanvasFreezer(map, canvas)
-    this._onMoveStart = () => { this._moving = true; this._freeze.begin() }
-    this._onMove = () => {}
-    this._onMoveEnd = () => { this._moving = false; this._paint(); this._freeze.end() }
+    // Points are anchored to geography: repaint on EVERY move frame so they
+    // track the basemap exactly. The raster wash freezes-and-slides during
+    // gestures (an affine estimate is fine for a blurry field), but applied
+    // to points it read as markers drifting off their facilities and
+    // snapping back at settle. project() over ~14k sources is a few ms.
+    this._onMoveStart = () => { this._moving = true }
+    this._onMove = () => this._paint()
+    this._onMoveEnd = () => { this._moving = false; this._paint() }
     this._onResize = () => this._paint()
     map.on('movestart', this._onMoveStart)
     map.on('move', this._onMove)
@@ -70,7 +75,7 @@ export class MethanePlumesOverlay {
       if (this._destroyed) return
       this._pulseRaf = requestAnimationFrame(this._pulseLoop)
       if (!this.visible || document.hidden || this._moving || !this._data) return
-      if (this.map.getZoom() < MIN_DRAW_ZOOM) return
+      // (compact low-zoom dots still ping their fresh sources — keep pulsing)
       if (now - this._lastPulse < 50) return // ~20 fps is plenty for a slow pulse
       this._lastPulse = now
       this._paint()
@@ -100,7 +105,6 @@ export class MethanePlumesOverlay {
     this.map.off('move', this._onMove)
     this.map.off('moveend', this._onMoveEnd)
     this.map.off('resize', this._onResize)
-    this._freeze.destroy()
     this._clear()
   }
 
@@ -180,17 +184,17 @@ export class MethanePlumesOverlay {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
     this._drawn = []
-    this._freeze.capture()
     if (!this.visible || !this._data) return
     const zoom = map.getZoom()
-    if (zoom < MIN_DRAW_ZOOM) return
+    const compact = zoom < FULL_ZOOM // dots below, full reticles above
     this._ensureData()
 
     const geo = getGlobeGeometry(map, w, h)
     const clock = Date.now() // animation clock — always wall time
     const refT = this._cursor ?? clock // reference time for filtering/recency
-    // Ease markers in over the first half-zoom so the handoff doesn't pop.
-    const zoomAlpha = Math.min(1, (zoom - MIN_DRAW_ZOOM) / 0.5)
+    // Ease the full treatment in over its first half-zoom so the dot→reticle
+    // handoff doesn't pop; compact dots render at full strength.
+    const zoomAlpha = compact ? 1 : Math.min(1, (zoom - FULL_ZOOM) / 0.5 + 0.5)
     // Sonar-ping phase (0→1, ~2 s).
     const phase = (clock % 2000) / 2000
     // Distance guard: far-side, limb, and world-copy positions never draw —
@@ -223,9 +227,33 @@ export class MethanePlumesOverlay {
       const archive = !fresh && lastAge > YEAR_MS
       const ageFactor = fresh ? 1 : archive ? 0.3 : 0.55
       const alpha = zoomAlpha * ageFactor
+      const LIME = this.color
+      if (compact) {
+        // Global-zoom mode: one small age-graded dot per source, dark-edged
+        // so it survives the saturated wash; a ping only when fresh. The
+        // world view must show WHERE the observed emitters are — the full
+        // reticle language takes over past FULL_ZOOM.
+        const r0 = (1.6 + (p.kgh >= 1000 ? 0.8 : 0)) * (1 + Math.max(0, zoom - 1.5) * 0.35)
+        if (fresh) {
+          const pr = r0 + 1 + (r0 * 2.2 + 4) * phase
+          ctx.beginPath()
+          ctx.arc(pt.x, pt.y, pr, 0, Math.PI * 2)
+          ctx.lineWidth = 1.4 * (1 - phase) + 0.4
+          ctx.strokeStyle = `rgba(${LIME},${(1 - phase) * 0.85})`
+          ctx.stroke()
+        }
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, r0, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${LIME},${fresh ? 0.95 : archive ? 0.35 : 0.65})`
+        ctx.fill()
+        ctx.lineWidth = 0.6
+        ctx.strokeStyle = `rgba(15,25,10,${fresh ? 0.9 : 0.5})`
+        ctx.stroke()
+        this._drawn.push({ p, x: pt.x, y: pt.y, r: r0 })
+        continue
+      }
       // Expanding sonar ping — only sources seen recently (relative to the
       // reference time) ping; a 2019 snapshot must not pulse like live news.
-      const LIME = this.color
       const ping = (ph, strength) => {
         if (ph <= 0.02 || ph >= 1) return
         const pr = r + 2 + (r * 2.6 + 6) * ph

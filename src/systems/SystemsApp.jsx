@@ -1174,7 +1174,9 @@ export default function SystemsApp() {
           // Air-quality layers open at NOW, paused — no auto-replay. The
           // button answers "what's in the air right now"; history is opt-in
           // via the slider.
-          else if (['smoke', 'co', 'pm25', 'acidity', 'methane'].includes(active.id)) rc.toLive()
+          // (Methane is deliberately NOT in this list: its story is the
+          // breathing of the field over the window, so it opens in motion.)
+          else if (['smoke', 'co', 'pm25', 'acidity'].includes(active.id)) rc.toLive()
           rc.attach(layer)
           // Observed source markers follow the gas layer's cursor: scrub
           // into the past and only sources already observed by then exist;

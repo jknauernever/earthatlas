@@ -323,6 +323,22 @@ export class ScalarOverlayLayer {
     this._raf = requestAnimationFrame(loop)
   }
 
+  // A tape paint that lands before its frames are decoded draws nothing
+  // (frames decode async via createImageBitmap) — and a PAUSED replay never
+  // ticks again, so the wash stayed blank until some map move happened to
+  // repaint; whether style.load landed before or after the decode decided
+  // if a layer "worked". Whenever the frames for the current time aren't
+  // in yet, repaint exactly once they are.
+  _repaintWhenDecoded() {
+    const tape = this._tape
+    if (!tape || this._frameWait) return
+    const { i, j } = tape.locate()
+    if (tape.hasFrame(i) && tape.hasFrame(j)) return
+    this._frameWait = tape.whenReady()
+      .then(() => { this._frameWait = null; if (!this._destroyed && this.visible) this._paint() })
+      .catch(() => { this._frameWait = null })
+  }
+
   /** Replay: the tape's time changed — redraw the frame on screen. */
   tick() {
     if (!this.visible || !this._tape) return
@@ -338,7 +354,7 @@ export class ScalarOverlayLayer {
     const bits = this._mask === 'water' ? getLandMaskSync() : null
     const { i, j, mix } = tape.locate()
     const a = tape._bytes.get(i)
-    if (!a) return
+    if (!a) { this._repaintWhenDecoded(); return }
     const b = j !== i && mix > 0 ? tape._bytes.get(j) : null
     if (this._gl) {
       const gl = this._gl
@@ -488,6 +504,7 @@ export class ScalarOverlayLayer {
     this._w = w
     this._h = h
     this._paintedAt = Date.now()
+    this._repaintWhenDecoded()
 
     const geo = getGlobeGeometry(map, w, h)
 

@@ -140,6 +140,14 @@ export class TapeField {
     return !this.useFlow || i === j || this._flows.has(i)
   }
 
+  /** Resolves once the frames that draw time t are decoded (motion, when
+   * used, is solved synchronously at draw time). Lets a painter that ran
+   * too early repaint exactly when it can. */
+  whenReady(t = this.t) {
+    const { i, j } = this.locate(t)
+    return Promise.all([this.ensureFrame(i), this.ensureFrame(j)]).then(() => undefined)
+  }
+
   /** Kick off decoding for t and the next `ahead` frames. */
   prefetch(t = this.t, ahead = 3) {
     const { i } = this.locate(t)

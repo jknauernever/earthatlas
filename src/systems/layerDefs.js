@@ -886,6 +886,9 @@ export const LAYERS = [
     sourceUrl: 'https://atmosphere.copernicus.eu/ghg-services',
     stops: CO2_STOPS,
     scalar: { opacity: 0.7 },
+    // History tape: same once-daily GHG runs as methane, 8 leads/day (see
+    // SYSTEMS_TAPES.co2). Until the first bake lands, the layer is Now-only.
+    tape: { dataset: 'cams-co2', expectKind: 'cams-co2-surface', windowDays: 14 },
     legend: { min: 395, max: 470, ticks: ['395', '~425 avg', '470+ ppm'] },
     words: [
       { label: 'Drawn down', range: 'under 415 ppm', max: 415 },

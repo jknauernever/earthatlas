@@ -2110,6 +2110,10 @@ export const SYSTEMS_TAPES = {
   pm25: { blobBase: 'systems/cams-pm25', tape: camsTape(PM25_CFG) },
   // byte = (ppb - 1800) × 0.17 → 6 ppb steps, saturating at 3300
   methane: { blobBase: 'systems/cams-ch4', tape: ghgTape(CH4_CFG, { qscale: 0.17, offset: 1800 }) },
+  // byte = (ppm - 380) × 2 → 0.5 ppm steps, saturating at 507.5 (legend tops
+  // at 470). Same GHG product and lead bridge as methane — CO₂ was the one
+  // scalar layer with no history at all.
+  co2: { blobBase: 'systems/cams-co2', tape: ghgTape(CO2_CFG, { qscale: 2, offset: 380 }) },
   airtemp: {
     blobBase: 'systems/gfs-airtemp',
     tape: gfsTape({

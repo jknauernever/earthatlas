@@ -165,7 +165,14 @@ export class ParticleLayer {
     this._w = w
     this._h = h
 
-    const zoomScale = Math.max(MIN_ZOOM_SCALE, Math.pow(2, BASE_ZOOM - map.getZoom()))
+    // Fully normalized screen speed reads faint over zoomed-in imagery
+    // (short trails, thin strokes on busy terrain) — let trails grow gently
+    // past THIN_ZOOM (~2× by z11, ~2.8× by z13) and weight the stroke a
+    // touch, so a localized fire still shows a legible wind.
+    const zNow = map.getZoom()
+    const boost = zNow > THIN_ZOOM ? Math.pow(2, (zNow - THIN_ZOOM) * 0.25) : 1
+    const zoomScale = Math.max(MIN_ZOOM_SCALE, Math.pow(2, BASE_ZOOM - zNow)) * boost
+    this._lineWidth = zNow > THIN_ZOOM ? Math.min(1.7, 1.1 + 0.15 * (zNow - THIN_ZOOM)) : 1.1
     const cols = Math.ceil(w / GRID_STEP) + 1
     const rows = Math.ceil(h / GRID_STEP) + 1
     const n = cols * rows
@@ -305,7 +312,7 @@ export class ParticleLayer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     if (!g1) return
     ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0)
-    ctx.lineWidth = 1.1
+    ctx.lineWidth = this._lineWidth || 1.1
     ctx.lineCap = 'round'
     const paths = this._stops.map(() => new Path2D())
     const sample = { vx: 0, vy: 0, spd: 0 }
@@ -358,7 +365,7 @@ export class ParticleLayer {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
     ctx.globalCompositeOperation = 'source-over'
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.lineWidth = 1.1
+    ctx.lineWidth = this._lineWidth || 1.1
     ctx.lineCap = 'round'
 
     const paths = this._stops.map(() => new Path2D())

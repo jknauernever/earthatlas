@@ -1009,38 +1009,14 @@ export default function SystemsApp() {
       inst[def.id]?.setVisible(!!layerOn[def.id] && (!liveOwner || liveOwner.atLive))
     }
 
-    // Companion flow animations (e.g. wind particles under Smoke & haze).
-    // ONE shared flow canvas (the 'aerosol:flow' element) serves whichever
-    // flow-bearing scalar layer is on — they're mutually exclusive, but
-    // 'smoke:flow' and 'dust:flow' had no canvas of their own and were
-    // silently never created (Wildfire smoke showed no motion at all).
-    for (const def of LAYERS) {
-      if (!def.flow) continue
-      const fk = `${def.id}:flow`
-      const ready = layerOn[def.id] && layerStatus[fk] === 'ok'
-      const flowCanvas = canvasEls.current[fk] || canvasEls.current['aerosol:flow']
-      if (ready && !inst[fk] && flowCanvas) {
-        for (const other of Object.keys(inst)) {
-          if (other !== fk && other.endsWith(':flow') && inst[other]) { inst[other].destroy(); inst[other] = null }
-        }
-        try {
-          // Identical construction to the Wind layer's — one wind (WIND_FLOW).
-          inst[fk] = new ParticleLayer(map, flowCanvas, fieldsRef.current[fk], {
-            count: densityCount(density),
-            colorStops: def.flow.stops,
-            ...def.flow.vector,
-          })
-        } catch (err) {
-          console.error(`[systems] ${fk} particle layer init failed:`, err)
-          continue
-        }
-      }
-      const rc = replayRef.current
-      // Visible exactly when the Wind layer would be, minus one rule: the
-      // companion yields when Wind itself is on (never two winds at once),
-      // and like Wind it hides while its layer's replay is in the past.
-      inst[fk]?.setVisible(!!layerOn[def.id] && !layerOn.wind && (!rc || rc.layerId !== def.id || rc.atLive))
-      inst[fk]?.setCount(densityCount(density))
+    // Wind-carried layers (haze, smoke, dust, PM2.5, CO) no longer spawn a
+    // hidden companion particle layer: their wind IS the Wind layer, which
+    // toggleLayer switches on (button lit) when the user turns them on and
+    // which they can switch off from there. The `flow` def still loads the
+    // wind grid so the popup can cite the run carrying the haze. Anything
+    // left over from an older session is torn down.
+    for (const key of Object.keys(inst)) {
+      if (key.endsWith(':flow') && inst[key]) { inst[key].destroy(); inst[key] = null }
     }
 
     // Event layers (quakes, fires): one ping canvas each. Layers with a
@@ -1196,16 +1172,7 @@ export default function SystemsApp() {
             rc.subscribe((c) => { if (!c.holding) applySources(c) })
             applySources(rc)
           }
-          // Companion wind shows today's wind — only honest at "now" — and
-          // yields to the Wind layer when that is on.
-          if (active.flow) {
-            const fk = `${active.id}:flow`
-            rc.subscribe((c) => {
-              const on = stateRef.current.layerOn
-              inst[fk]?.setVisible(c.atLive && !!on[active.id] && !on.wind)
-            })
-          }
-          rc.subscribe(syncLiveOnly)
+          rc.subscribe(syncLiveOnly) // the Wind layer itself hides while the replay is in the past
           replayRef.current = rc
           if (import.meta.env.DEV) window.__systemsReplay = rc // dev-only QA handle
           setReplay(rc)
@@ -1668,7 +1635,6 @@ export default function SystemsApp() {
   useEffect(() => {
     for (const def of LAYERS) {
       if (def.kind === 'vector') instancesRef.current[def.id]?.setCount(densityCount(density))
-      if (def.flow) instancesRef.current[`${def.id}:flow`]?.setCount(densityCount(density))
     }
   }, [density])
 
@@ -1693,6 +1659,20 @@ export default function SystemsApp() {
         for (const other of LAYERS) {
           if (other.kind === 'scalar' && other.id !== id) next[other.id] = false
         }
+      }
+      // Companions come on as REAL layers with their buttons lit — never a
+      // hidden clone the user can't switch off. Turning on a wind-carried
+      // layer (haze, smoke, dust, PM2.5, CO) also turns on Wind; fire and
+      // wildfire smoke bring each other (and Wind). Only on the user's
+      // turn-ON — from then on every layer toggles independently.
+      if (next[id]) {
+        if (def.flow) next.wind = true
+        if (id === 'hotspots') {
+          next.smoke = true
+          next.wind = true
+          for (const other of LAYERS) if (other.kind === 'scalar' && other.id !== 'smoke') next[other.id] = false
+        }
+        if (id === 'smoke') next.hotspots = true
       }
       return next
     })
@@ -1893,7 +1873,7 @@ export default function SystemsApp() {
   }
 
   const activeDefs = LAYERS.filter((d) => layerOn[d.id])
-  const anyVectorOn = activeDefs.some((d) => d.kind === 'vector' || d.flow)
+  const anyVectorOn = activeDefs.some((d) => d.kind === 'vector')
   const summary = activeDefs.length
     ? `${activeDefs.map((d) => d.name).join(' + ')} on`
     : 'All layers off'

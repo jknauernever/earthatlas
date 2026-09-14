@@ -621,10 +621,9 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
-    // shared flow canvas whenever this layer is on and Wind itself is off.
-    // Same run stamp rules apply (the popup cites the wind run alongside
-    // the CAMS run).
+    // Wind-carried: turning this layer on also lights the Wind layer (the
+    // user can switch it off again), and the popup cites the wind run
+    // alongside the CAMS run (WIND_FLOW names the grid to load for that).
     flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.aerosol): 3-hourly analysis frames, last 31 days.
     tape: { dataset: 'cams-aod', expectKind: 'cams-aod550' },
@@ -667,10 +666,9 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
-    // shared flow canvas whenever this layer is on and Wind itself is off.
-    // Same run stamp rules apply (the popup cites the wind run alongside
-    // the CAMS run).
+    // Wind-carried: turning this layer on also lights the Wind layer (the
+    // user can switch it off again), and the popup cites the wind run
+    // alongside the CAMS run (WIND_FLOW names the grid to load for that).
     flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.smoke).
     tape: { dataset: 'cams-smoke', expectKind: 'cams-smoke-aod550' },
@@ -760,10 +758,9 @@ export const LAYERS = [
     scalar: { opacity: 0.85 },
     // Companion animation: aerosol is a scalar, but what the eye wants is to
     // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // Companion wind: the Wind layer's own particles (WIND_FLOW) on a
-    // shared flow canvas whenever this layer is on and Wind itself is off.
-    // Same run stamp rules apply (the popup cites the wind run alongside
-    // the CAMS run).
+    // Wind-carried: turning this layer on also lights the Wind layer (the
+    // user can switch it off again), and the popup cites the wind run
+    // alongside the CAMS run (WIND_FLOW names the grid to load for that).
     flow: WIND_FLOW,
     // History tape (SYSTEMS_TAPES.dust).
     tape: { dataset: 'cams-dust', expectKind: 'cams-dust-aod550' },

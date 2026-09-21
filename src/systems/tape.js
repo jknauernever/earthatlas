@@ -22,6 +22,74 @@ import { SOURCE_BASES } from './windField.js'
 import { isLand } from './landMask.js'
 import { computeFlow, flowAt } from './tapeFlow.js'
 
+// ── PNG → bytes without a canvas ────────────────────────────────────────────
+// Frames used to decode through createImageBitmap → OffscreenCanvas →
+// getImageData: three GPU/canvas-backed objects per frame that only the
+// garbage collector ever released. An hourly tape is hundreds of frames, and
+// that — not the JS heap — is what pegged memory. Tape frames are plain 8-bit
+// gray or RGB PNGs, so we inflate the IDAT stream ourselves
+// (DecompressionStream) and undo the row filters: exact bytes, no canvas, no
+// color management, nothing left for the GC to chase.
+async function decodePngPlanes(buf) {
+  const d = new Uint8Array(buf)
+  const dv = new DataView(buf)
+  if (dv.getUint32(0) !== 0x89504e47) throw new Error('not a PNG')
+  let w = 0, h = 0, channels = 0
+  const idat = []
+  for (let o = 8; o < d.length;) {
+    const len = dv.getUint32(o)
+    const type = String.fromCharCode(d[o + 4], d[o + 5], d[o + 6], d[o + 7])
+    if (type === 'IHDR') {
+      w = dv.getUint32(o + 8); h = dv.getUint32(o + 12)
+      const depth = d[o + 16], color = d[o + 17], interlace = d[o + 20]
+      channels = color === 0 ? 1 : color === 2 ? 3 : 0
+      if (depth !== 8 || !channels || interlace) throw new Error('unsupported PNG layout')
+    } else if (type === 'IDAT') idat.push(d.subarray(o + 8, o + 8 + len))
+    else if (type === 'IEND') break
+    o += 12 + len
+  }
+  const stream = new Blob(idat).stream().pipeThrough(new DecompressionStream('deflate'))
+  const raw = new Uint8Array(await new Response(stream).arrayBuffer())
+  const n = w * channels
+  if (raw.length !== (n + 1) * h) throw new Error('PNG size mismatch')
+  const planes = Array.from({ length: channels }, () => new Uint8Array(w * h))
+  let prev = new Uint8Array(n)
+  let cur = new Uint8Array(n)
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (n + 1)]
+    const row = raw.subarray(y * (n + 1) + 1, (y + 1) * (n + 1))
+    for (let i = 0; i < n; i++) {
+      const a = i >= channels ? cur[i - channels] : 0
+      const b = prev[i]
+      const c = i >= channels ? prev[i - channels] : 0
+      let pred = 0
+      if (f === 1) pred = a
+      else if (f === 2) pred = b
+      else if (f === 3) pred = (a + b) >> 1
+      else if (f === 4) { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : c }
+      cur[i] = (row[i] + pred) & 255
+    }
+    if (channels === 1) planes[0].set(cur, y * w)
+    else for (let x = 0; x < w; x++) for (let k = 0; k < channels; k++) planes[k][y * w + x] = cur[x * channels + k]
+    const t = prev; prev = cur; cur = t
+  }
+  return { w, h, planes }
+}
+
+// Fallback for browsers without DecompressionStream: the old canvas route,
+// with the bitmap released as soon as its pixels are read.
+async function decodeViaCanvas(blob, w, h) {
+  const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
+  const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h })
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(bmp, 0, 0)
+  bmp.close?.()
+  const px = ctx.getImageData(0, 0, w, h).data
+  const planes = [0, 1, 2].map((k) => { const out = new Uint8Array(w * h); for (let i = 0; i < out.length; i++) out[i] = px[i * 4 + k]; return out })
+  c.width = 0; c.height = 0
+  return { w, h, planes }
+}
+
 export class TapeField {
   constructor(index, base) {
     this.index = index
@@ -35,6 +103,10 @@ export class TapeField {
     this.step_ms = this.meta.step_ms
     this.daily = this.step_ms >= 23 * 3.6e6
     this.frames = index.frames.map((f) => ({ ...f, url: `${base}/${f.path.replace(/^systems\//, '')}`, live: false }))
+    // Companion bands packed into the same frames as G and B (bird flight
+    // u/v) — see bakeTapeDay `extraBands`. Decoded alongside the main plane.
+    this.extraBands = index.extra_bands || null
+    this._extra = new Map()     // frame idx → [Uint8Array, Uint8Array]
     this._bytes = new Map()     // frame idx → Uint8Array
     this._pending = new Map()   // frame idx → Promise
     this._images = new Map()    // `${idx}|${lutKey}` → canvas
@@ -111,17 +183,16 @@ export class TapeField {
     if (this._bytes.has(i)) return Promise.resolve(this._bytes.get(i))
     if (this._pending.has(i)) return this._pending.get(i)
     const f = this.frames[i]
+    const { nLon: w, nLat: h } = this.meta
     const p = fetch(f.url)
-      .then((r) => { if (!r.ok) throw new Error(`frame ${r.status}`); return r.blob() })
-      .then((blob) => createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
-      .then((bmp) => {
-        const { nLon: w, nLat: h } = this.meta
-        const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h })
-        const ctx = c.getContext('2d', { willReadFrequently: true })
-        ctx.drawImage(bmp, 0, 0)
-        const d = ctx.getImageData(0, 0, w, h).data
-        const bytes = new Uint8Array(w * h)
-        for (let k = 0; k < bytes.length; k++) bytes[k] = d[k * 4]
+      .then((r) => { if (!r.ok) throw new Error(`frame ${r.status}`); return r.arrayBuffer() })
+      .then((buf) => (typeof DecompressionStream !== 'undefined'
+        ? decodePngPlanes(buf).catch(() => decodeViaCanvas(new Blob([buf], { type: 'image/png' }), w, h))
+        : decodeViaCanvas(new Blob([buf], { type: 'image/png' }), w, h)))
+      .then((img) => {
+        if (img.w !== w || img.h !== h) throw new Error('frame size mismatch')
+        const bytes = img.planes[0]
+        if (this.extraBands && img.planes.length >= 3) this._extra.set(i, [img.planes[1], img.planes[2]])
         this._bytes.set(i, bytes)
         this._pending.delete(i)
         return bytes
@@ -226,6 +297,55 @@ export class TapeField {
   }
 
   _wrap(value) { return value == null ? null : { value } }
+
+  /**
+   * Edge feather plane (one byte per grid cell, 0 = at/outside the data's
+   * edge … 255 = FEATHER_CELLS or more cells inside). The mask of a regional
+   * tape is the same in every frame, so this is built once, from the first
+   * decoded frame: a two-pass chamfer distance to the nearest missing cell
+   * (the grid box's own border counts as missing), eased with a smoothstep.
+   * Display only — it shapes alpha, never values. Null until a frame is in.
+   */
+  coverPlane() {
+    if (this._cover) return this._cover
+    const bytes = this._bytes.values().next().value
+    const m = this.meta
+    if (!bytes || !m.nodata0) return null
+    const W = m.nLon, H = m.nLat, FEATHER_CELLS = 4
+    const d = new Float32Array(W * H)
+    const at = (r, c) => (r < 0 || c < 0 || r >= H || c >= W ? 0 : d[r * W + c])
+    for (let k = 0; k < d.length; k++) d[k] = bytes[k] ? 1e3 : 0
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      if (!d[r * W + c]) continue
+      d[r * W + c] = Math.min(d[r * W + c], at(r, c - 1) + 1, at(r - 1, c) + 1, at(r - 1, c - 1) + 1.414, at(r - 1, c + 1) + 1.414)
+    }
+    for (let r = H - 1; r >= 0; r--) for (let c = W - 1; c >= 0; c--) {
+      if (!d[r * W + c]) continue
+      d[r * W + c] = Math.min(d[r * W + c], at(r, c + 1) + 1, at(r + 1, c) + 1, at(r + 1, c + 1) + 1.414, at(r + 1, c - 1) + 1.414)
+    }
+    const out = new Uint8Array(W * H)
+    for (let k = 0; k < d.length; k++) {
+      const x = Math.min(1, Math.max(0, (d[k] - 1) / FEATHER_CELLS)) // the outermost valid cell is already 0
+      out[k] = Math.round(255 * x * x * (3 - 2 * x))
+    }
+    this._cover = out
+    return out
+  }
+
+  /** Feather (0–1) at a point: bilinear over coverPlane; 1 when there is no mask. */
+  coverAt(lng, lat) {
+    const plane = this.coverPlane()
+    if (!plane) return 1
+    const m = this.meta
+    const rf = (lat - m.lat0) / m.dLat
+    let cf = ((((lng - m.lon0) % 360) + 360) % 360) / m.dLon
+    if (m.nLon * m.dLon < 359 && cf > m.nLon - 0.5) cf -= 360 / m.dLon
+    if (rf < 0 || rf > m.nLat - 1 || cf < 0 || cf > m.nLon - 1) return 0
+    const r0 = Math.min(m.nLat - 2, Math.floor(rf)), c0 = Math.min(m.nLon - 2, Math.floor(cf))
+    const fr = rf - r0, fc = cf - c0, o = r0 * m.nLon + c0
+    return ((plane[o] * (1 - fc) + plane[o + 1] * fc) * (1 - fr) + (plane[o + m.nLon] * (1 - fc) + plane[o + m.nLon + 1] * fc) * fr) / 255
+  }
+
 
   // Bilinear in BYTE units. When `nodata0`, byte 0 corners are missing and
   // the remaining weights are renormalised (same spirit as GridField's

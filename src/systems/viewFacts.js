@@ -110,11 +110,14 @@ function scalarFacts(def, field, samples) {
     const s = field.sampleScalar(ll.lng, ll.lat)
     if (!s) continue
     n++
-    sum += s.value
-    if (s.value < min) min = s.value
-    if (s.value > max) max = s.value
+    // Some grids store a transformed value (bird traffic rides as √) — facts
+    // are always stated in the layer's display units.
+    const value = def.toValue ? def.toValue(s.value) : s.value
+    sum += value
+    if (value < min) min = value
+    if (value > max) max = value
     if (catCounts) {
-      const idx = def.words.findIndex((w) => s.value < w.max)
+      const idx = def.words.findIndex((w) => value < w.max)
       catCounts[idx === -1 ? def.words.length - 1 : idx]++
     }
   }
@@ -122,7 +125,7 @@ function scalarFacts(def, field, samples) {
   const out = {
     id: def.id,
     name: def.name,
-    unit: def.id === 'waves' ? 'm' : ['aerosol', 'smoke', 'dust'].includes(def.id) ? ' AOD' : '°C',
+    unit: def.unit ? def.unit : def.id === 'waves' ? 'm' : ['aerosol', 'smoke', 'dust'].includes(def.id) ? ' AOD' : '°C',
     mean: sig(sum / n),
     min: sig(min),
     max: sig(max),

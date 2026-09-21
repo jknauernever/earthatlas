@@ -256,6 +256,32 @@ const CH4_STOPS = [
   [2450, 'rgba(108,72,20,1)'],
 ]
 
+// Bird migration traffic rate. The grid/tape carry √(birds/km/h) (see
+// api/_systems-datasets.js `birds`), so these stops are in √ units: 7 ≈ 50,
+// 22 ≈ 500, 45 ≈ 2,000, 84 ≈ 7,000, 141 ≈ 20,000 birds/km/h. Violet → magenta
+// → gold keeps a big flight night distinct from fire and smoke; quiet air is
+// transparent.
+const BIRD_STOPS = [
+  [5, 'rgba(120,90,220,0)'],
+  [10, 'rgba(125,95,225,0.22)'],
+  [22, 'rgba(150,90,230,0.45)'],
+  [45, 'rgba(215,85,190,0.66)'],
+  [84, 'rgba(250,150,90,0.82)'],
+  [141, 'rgba(255,238,160,0.95)'],
+]
+// Flight glyph tints: pale, so the birds read on top of the wash at any intensity.
+const BIRD_FLIGHT_STOPS = [
+  [0, 'rgba(225,215,255,0.55)'],
+  [500, 'rgba(255,235,215,0.75)'],
+  [2000, 'rgba(255,250,225,0.9)'],
+  [7000, 'rgba(255,255,255,1)'],
+]
+const BIRDCAST_URL = 'https://birdcast.org/migration-tools/live-migration-maps'
+// BirdCast's requested Live Maps citation (https://birdcast.org/how-to-cite/),
+// filled in for the frame actually on screen.
+const birdcastCite = (meta) =>
+  `BirdCast, Live Migration Map; ${fmtRun(meta.valid_ms)}. Cornell Lab of Ornithology. ${BIRDCAST_URL}. Accessed ${fmtDay(meta.fetched_ms || Date.now())}.`
+
 // ─── Layer definitions ──────────────────────────────────────────────────────
 
 // Panel ontology — every layer declares one of these groups.
@@ -263,6 +289,7 @@ export const GROUPS = [
   { id: 'air', label: 'Air' },
   { id: 'water', label: 'Water' },
   { id: 'land', label: 'Land' },
+  { id: 'life', label: 'Flora & Fauna' },
 ]
 
 // ONE wind, everywhere. Layers that carry a companion wind (haze, smoke,
@@ -1103,5 +1130,72 @@ export const LAYERS = [
     stamp: () => 'alerts from the past 30 days, rendered live from satellite',
     explain:
       'Colored patches are places where plants were recently lost or damaged — burn scars spreading behind the fire glows, clear-cuts, storm tracks, drought die-off. It’s the land-surface memory of everything the other layers do.',
+  },
+  {
+    id: 'birds',
+    hue: '#c4a5ff',
+    iconSvg: '<path d="M2 17c2.4-4 6.2-4 8.5 0 2.3-4 6.1-4 8.5 0"></path><path d="M12 9.5c1.4-2.3 3.4-2.3 4.7 0 1.3-2.3 3.3-2.3 4.7 0"></path><path d="M4.5 7c.9-1.5 2.2-1.5 3 0 .8-1.5 2.1-1.5 3 0"></path>',
+    group: 'life',
+    kind: 'scalar',
+    param: 'b',
+    defaultOn: false,
+    dataset: 'birdcast-mtr',
+    expectKind: 'birdcast-mtr-sqrt',
+    name: 'Bird migration',
+    sub: 'radar-observed · contiguous U.S.',
+    sourceName: 'BirdCast, Cornell Lab of Ornithology',
+    sourceUrl: BIRDCAST_URL,
+    stops: BIRD_STOPS,
+    // feather: the coverage mask ends in 0.25° steps — dissolve the edge (display only).
+    scalar: { opacity: 0.9, feather: true },
+    // Observations end at the newest radar frame — there is no separate
+    // "forecast valid now" grid to append, and the flight tapes must stay in
+    // step with the traffic tape frame for frame.
+    tape: { dataset: 'birdcast-mtr', expectKind: 'birdcast-mtr-sqrt', noLive: true },
+    // Flight direction/speed: u and v (m/s) ride in the same tape frames as
+    // G and B; a particle layer follows the replay cursor through them.
+    // Streaks only draw where at least `minMtr` birds/km/h are crossing —
+    // below that the radar's direction estimate is mostly noise.
+    flight: {
+      minMtr: 50,
+      stops: BIRD_FLIGHT_STOPS,
+      // Drawn as flapping bird silhouettes, not streaks (Josh, 2026-09-21):
+      // 18 px wingspan, one wingbeat every two seconds, half the streaks'
+      // travel speed (still proportional to the radar-measured ground speed),
+      // and a bird budget ~1/7 of the streak budget — they are objects, not texture.
+      glyph: { wingspanPx: 18, beatsPerSec: 0.5 },
+      coverageBoost: 0.3,
+      vector: { speedFactor: 0.21, gammaPivot: 10, offsetDegPerMs: 0.02, gamma: 1 },
+    },
+    // Stored value → birds/km/h (the grid carries the square root).
+    toValue: (raw) => raw * raw,
+    unit: ' birds/km/h',
+    legend: { min: 0, max: 141.4, ticks: ['0', '5,000', '20,000+ birds/km/h'] },
+    legendNote: 'Square-root scale. The birds fly the direction and relative speed the radar measured, drawn only where at least 50 birds/km/h are crossing. Birds migrate mostly at night, so daytime hours run quiet. Radar coverage is thin over mountains and ends at the U.S. border — blank is "not observed", not "no birds".',
+    words: [
+      { label: 'Minimal', range: 'under 50 birds/km/h', max: 50 },
+      { label: 'Light', range: '50–500', max: 500 },
+      { label: 'Moderate', range: '500–2,000', max: 2000 },
+      { label: 'Heavy', range: '2,000–7,000', max: 7000 },
+      { label: 'Very heavy', range: 'over 7,000', max: Infinity },
+    ],
+    stamp: (meta) => `radar frame ${fmtRun(meta.valid_ms)}`,
+    explain:
+      'Every spring and fall, billions of birds cross the continent — mostly at night, a few hundred meters up, invisible from the ground. Weather radar sees them. The glow is how many birds are crossing each kilometer every hour; the birds on the map fly the way the real ones were heading.',
+    popup(sample, meta, flight) {
+      const mtr = this.toValue(sample.value)
+      const w = wordFor(this.words, mtr)
+      const dir = flight && mtr >= this.flight.minMtr
+        ? ` · flying ${bearingWord((Math.atan2(flight.u, flight.v) * 180) / Math.PI)} at ${Math.round(flight.speed * 3.6)} km/h (${Math.round(flight.speed * 2.237)} mph)`
+        : ''
+      return {
+        head: `${w.label} bird migration`,
+        big: `${Math.round(mtr).toLocaleString('en-US')} birds/km/h`,
+        alt: 'birds crossing a 1 km line each hour',
+        meta: `Observed by U.S. weather radar${dir} · ${birdcastCite(meta)}`,
+        link: { href: BIRDCAST_URL, label: 'Source: BirdCast live migration maps ↗' },
+        ai: `Migration traffic rate ${Math.round(mtr)} birds/km/hour (birds per hour crossing a 1 km line perpendicular to their heading), from BirdCast (Cornell Lab of Ornithology) NEXRAD weather-radar mosaic, frame ${fmtRun(meta.valid_ms)}. Nocturnal migration; contiguous U.S. only; mountain radars under-report.${dir}`,
+      }
+    },
   },
 ]

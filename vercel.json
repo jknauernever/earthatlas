@@ -148,6 +148,10 @@
       "schedule": "25 * * * *"
     },
     {
+      "path": "/api/cron/birdcast",
+      "schedule": "35 * * * *"
+    },
+    {
       "path": "/api/cron/systems-bake?ds=aerosol",
       "schedule": "50 */6 * * *"
     },

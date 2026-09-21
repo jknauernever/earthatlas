@@ -8,6 +8,8 @@
  * and the bar exists to pause / scrub / step / jump to now.
  */
 
+import { runWhileAwake, noteActivity } from './activity.js'
+
 const HOLD_AT_END_MS = 2500
 const FRAMES_PER_SEC = 2 // playback: two tape frames per second, whatever the cadence
 
@@ -46,7 +48,7 @@ export class ReplayController {
     this.tape.setTime(this.t)
     this.tape.prefetch(this.t, 4)
     this._loop = this._loop.bind(this)
-    this._raf = requestAnimationFrame(this._loop)
+    this._stopLoop = runWhileAwake(this._loop)
     if (import.meta.env.DEV) window.__rc = this // dev-only QA handle
 
   }
@@ -112,7 +114,6 @@ export class ReplayController {
 
   _loop(now) {
     if (this._destroyed) return
-    this._raf = requestAnimationFrame(this._loop)
     const dt = this._last ? Math.min(100, now - this._last) : 16
     this._last = now
     if (!this.playing || document.hidden) return
@@ -152,13 +153,14 @@ export class ReplayController {
       return
     }
     this.t = next
+    noteActivity() // a replay still playing its passes keeps the page awake
     this._apply()
     this._emit()
   }
 
   destroy() {
     this._destroyed = true
-    cancelAnimationFrame(this._raf)
+    this._stopLoop()
     this._listeners.clear()
   }
 }

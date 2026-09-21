@@ -19,7 +19,7 @@ void main(){ v = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }
 const FS = `
 precision highp float;
 varying vec2 v;
-uniform sampler2D uA, uB, uFlow, uLut, uMask;
+uniform sampler2D uA, uB, uFlow, uLut, uMask, uCover;
 uniform float uMix, uHasB, uHasMask, uFlowCells;
 uniform vec2 uFlowScale;
 uniform vec4 uGrid;     // lat0, dLat, lon0, dLon (degrees)
@@ -28,6 +28,7 @@ uniform vec2 uLutRange; // min, max in value units
 uniform float uQ;       // byte = (value - offset) * q
 uniform float uOffset;  // value offset (see tape index)
 uniform float uNodata0; // 1 when byte 0 means NO DATA (ocean-only layers)
+uniform float uFeather; // 1 = fade alpha toward the data's edge (regional masks)
 const float PI = 3.14159265358979;
 // Bilinear by hand: frame grids are non-power-of-two and WebGL1 samples NPOT
 // textures only with CLAMP_TO_EDGE (REPEAT silently returns black), so the
@@ -45,7 +46,9 @@ vec2 sampleGrid(sampler2D t, vec2 p) {
     vec2 c = vec2(float(k - (k / 2) * 2), float(k / 2));
     float wt = (c.x > 0.5 ? f.x : 1.0 - f.x) * (c.y > 0.5 ? f.y : 1.0 - f.y);
     vec2 q = b0 + c;
-    q.x = mod(q.x, uN.x);
+    // Global grids wrap in longitude; a regional grid (a CONUS box) must not,
+    // or it tiles around the planet.
+    q.x = (uN.x * uGrid.w < 359.0) ? clamp(q.x, 0.0, uN.x - 1.0) : mod(q.x, uN.x);
     q.y = clamp(q.y, 0.0, uN.y - 1.0);
     float val = texture2D(t, (q + 0.5) / uN).r;
     if (uNodata0 < 0.5 || val > 0.5 / 255.0) { s += val * wt; w += wt; }
@@ -65,6 +68,13 @@ void main(){
   float col = mod(lng - uGrid.z, 360.0) / uGrid.w;
   float row = (lat - uGrid.x) / uGrid.y;
   if (row < -0.5 || row > uN.y - 0.5) discard;
+  // Regional grids: outside the box is "not covered", never a wrap (same
+  // rule as GridField._locate / TapeField.frameImage).
+  if (uN.x * uGrid.w < 359.0 && col > uN.x - 0.5) {
+    col -= 360.0 / uGrid.w;
+    if (col < -0.5) discard;
+    col = max(col, 0.0);
+  }
   vec2 p = vec2((col + 0.5) / uN.x, (row + 0.5) / uN.y);
   vec2 f = (texture2D(uFlow, p).ra - 0.5) * 2.0 * uFlowCells; // coarse cells, A->B
   vec2 d = f * uFlowScale;                                    // -> texture units
@@ -81,7 +91,16 @@ void main(){
   float val = mix(a, b, uMix) * 255.0 / uQ + uOffset;
   float li = clamp((val - uLutRange.x) / (uLutRange.y - uLutRange.x), 0.0, 1.0);
   vec4 c = texture2D(uLut, vec2(li, 0.5));
-  gl_FragColor = vec4(c.rgb * c.a, c.a); // premultiplied for the canvas source
+  // Edge feather (opt-in): a masked regional field ends in 0.25-degree stair
+  // steps. uCover is TapeField.coverPlane() - 0 at the data's edge rising to 1
+  // a few cells inside - so the wash dissolves into the map instead of ending
+  // in blocks. Display only: values are untouched. One filtered fetch.
+  float cover = 1.0;
+  if (uFeather > 0.5) {
+    if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) discard;
+    cover = texture2D(uCover, p).r;
+  }
+  gl_FragColor = vec4(c.rgb * c.a, c.a) * cover; // premultiplied for the canvas source
 }
 `
 
@@ -116,7 +135,7 @@ export class TapeWarpGL {
     gl.enableVertexAttribArray(loc)
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
     this.u = {}
-    for (const n of ['uA', 'uB', 'uFlow', 'uLut', 'uMask', 'uMix', 'uHasB', 'uHasMask', 'uFlowScale', 'uFlowCells', 'uGrid', 'uN', 'uLutRange', 'uQ', 'uOffset', 'uNodata0']) {
+    for (const n of ['uA', 'uB', 'uFlow', 'uLut', 'uMask', 'uMix', 'uHasB', 'uHasMask', 'uFlowScale', 'uFlowCells', 'uGrid', 'uN', 'uLutRange', 'uQ', 'uOffset', 'uNodata0', 'uFeather', 'uCover']) {
       this.u[n] = gl.getUniformLocation(prog, n)
     }
     gl.uniform1i(this.u.uA, 0); gl.uniform1i(this.u.uB, 1); gl.uniform1i(this.u.uFlow, 2); gl.uniform1i(this.u.uLut, 3); gl.uniform1i(this.u.uMask, 4)
@@ -223,7 +242,7 @@ export class TapeWarpGL {
     }
   }
 
-  draw({ meta, texA, texB, flowTex, flowDs, mix, min, max }) {
+  draw({ meta, texA, texB, flowTex, flowDs, mix, min, max, feather }) {
     const gl = this.gl
     gl.viewport(0, 0, this.size, this.size)
     gl.clearColor(0, 0, 0, 0)
@@ -245,6 +264,19 @@ export class TapeWarpGL {
     gl.uniform1f(this.u.uQ, meta.scale)
     gl.uniform1f(this.u.uOffset, meta.offset || 0)
     gl.uniform1f(this.u.uNodata0, meta.nodata0 ? 1 : 0)
+    // feather = a coverPlane (Uint8Array, nLon × nLat) or null; uploaded once.
+    if (feather && this._coverSrc !== feather) {
+      if (!this._coverTex) this._coverTex = gl.createTexture()
+      gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, this._coverTex)
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, meta.nLon, meta.nLat, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, feather)
+      // NPOT in WebGL1: LINEAR + CLAMP_TO_EDGE, no mipmaps - all this needs.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      this._coverSrc = feather
+    }
+    if (feather) { gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, this._coverTex); gl.uniform1i(this.u.uCover, 5) }
+    gl.uniform1f(this.u.uFeather, feather ? 1 : 0)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     const keep = new Set()
     for (const [k, t] of this._tex) if (t === texA || t === texB || t === flowTex) keep.add(k)
@@ -257,6 +289,7 @@ export class TapeWarpGL {
     this._tex.clear()
     if (this._lutTex) gl.deleteTexture(this._lutTex)
     if (this._maskTex) gl.deleteTexture(this._maskTex)
+    if (this._coverTex) gl.deleteTexture(this._coverTex)
     gl.getExtension('WEBGL_lose_context')?.loseContext()
   }
 }

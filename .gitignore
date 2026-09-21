@@ -30,3 +30,6 @@ scripts/bake-parcels/build/
 
 # Local dev bakes (scripts/bake-gfs-wind.mjs without a Blob token)
 public/dev-data/
+
+# BirdCast raw grid frames (scripts/bake-birdcast/fetch-raw.mjs) — large upstream copies, never commit
+scripts/bake-birdcast/raw/

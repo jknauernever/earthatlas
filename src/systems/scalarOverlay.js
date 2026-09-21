@@ -14,6 +14,7 @@ import { CanvasFreezer } from './canvasFreeze.js'
 import { TapeWarpGL } from './tapeWarpGL.js'
 import { getGlobeGeometry, angDist, bearing, destination } from './globeGeom.js'
 import { loadLandMask, getLandMaskSync, buildGlobeWaterMask, toUnit, isLand } from './landMask.js'
+import { runWhileAwake } from './activity.js'
 
 const NODE_PX = 8            // css px between projection/sample nodes
 const IMG_SIZE = 2048        // globe-mode mercator image (px per side)
@@ -261,6 +262,7 @@ export class ScalarOverlayLayer {
     this._max = opts.max
     this._mask = opts.mask || null
     this._opacity = opts.opacity ?? 0.6
+    this._feather = !!opts.feather
     this._lut = buildLut(opts.colorStops, opts.min, opts.max)
     this._lutKey = JSON.stringify([opts.colorStops, opts.min, opts.max])
     // Replay: `field` is a TapeField; frames are composited (cross-faded)
@@ -310,17 +312,15 @@ export class ScalarOverlayLayer {
     map.on('idle', this._onIdle)
 
     this._paint()
-    const loop = () => {
+    this._stopLoop = runWhileAwake(() => {
       if (this._destroyed) return
       // Self-heal only: repaint when layout size changes under us.
-      if (this.visible && !this._moving && !document.hidden) {
+      if (this.visible && !this._moving) {
         const cw = this.canvas.clientWidth
         const ch = this.canvas.clientHeight
         if (cw && ch && (cw !== this._w || ch !== this._h)) this._paint()
       }
-      this._raf = requestAnimationFrame(loop)
-    }
-    this._raf = requestAnimationFrame(loop)
+    })
   }
 
   // A tape paint that lands before its frames are decoded draws nothing
@@ -365,7 +365,7 @@ export class ScalarOverlayLayer {
       const texB = b ? gl.frameTexture(j, b, m.nLon, m.nLat) : null
       const flow = b && tape.useFlow ? tape.flowBetween(i, j) : null
       const flowTex = flow ? gl.flowTexture(i, flow) : null
-      gl.draw({ meta: m, texA, texB, flowTex, flowDs: flow?.ds || 1, mix, min: this._min, max: this._max })
+      gl.draw({ meta: m, texA, texB, flowTex, flowDs: flow?.ds || 1, mix, min: this._min, max: this._max, feather: this._feather ? tape.coverPlane() : null })
     } else {
       const A = tape.frameImage(i, this._lut, this._lutKey, this._min, this._max, bits, TAPE_IMG_SIZE)
       if (!A) return
@@ -386,7 +386,31 @@ export class ScalarOverlayLayer {
       }
     }
     this._drawnFrame = `${i}|${j}|${mix.toFixed(2)}`
-    this.map.triggerRepaint()
+    this._pushImg()
+  }
+
+  // Hand the freshly drawn replay canvas to Mapbox, then stop uploading.
+  // play() makes the canvas source live, so Mapbox uploads it INSIDE its next
+  // render; we pause again two renders after the upload demonstrably happened
+  // (the source has a texture). A bare play();pause() is not enough: pause()
+  // uploads immediately, and silently does nothing while the source has no
+  // tiles yet — a frame pushed then (first paint, or a paused replay) was
+  // lost and the wash stayed blank.
+  _pushImg() {
+    const { map } = this
+    const src = map.getSource(this._imgId)
+    if (!src || typeof src.play !== 'function') { map.triggerRepaint(); return }
+    src.play()
+    this._pushLeft = 2
+    if (!this._onPushRender) {
+      this._onPushRender = () => {
+        const s = map.getSource(this._imgId)
+        if (!s || !this._pushLeft) return
+        if (!s.texture) { map.triggerRepaint(); return } // not uploaded yet — keep it live
+        if (--this._pushLeft === 0) s.pause()
+      }
+      map.on('render', this._onPushRender)
+    }
   }
 
   setVisible(visible) {
@@ -397,7 +421,8 @@ export class ScalarOverlayLayer {
 
   destroy() {
     this._destroyed = true
-    cancelAnimationFrame(this._raf)
+    this._stopLoop()
+    if (this._onPushRender) this.map.off('render', this._onPushRender)
     this.map.off('style.load', this._onStyle)
     this._removeImg()
     if (this._gl) { this._gl.destroy(); this._gl = null }
@@ -450,7 +475,10 @@ export class ScalarOverlayLayer {
       map.addSource(this._imgId, {
         type: 'canvas',
         canvas: this._img,
-        animate: !!this._tape,
+        // Never free-running: `animate: true` made Mapbox re-upload this
+        // whole canvas and repaint the map every frame forever — even with
+        // the replay parked. _pushImg() uploads exactly when a frame is drawn.
+        animate: false,
         coordinates: [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]],
       })
       // Below the style's labels so place names stay readable over the wash.
@@ -462,6 +490,7 @@ export class ScalarOverlayLayer {
         paint: { 'raster-opacity': this._opacity, 'raster-fade-duration': 0 },
       }, firstSymbol)
       this._imgAdded = true
+      if (this._tape) this._pushImg()
     } catch (err) {
       console.warn('[systems] scalar image layer failed:', err)
     }
@@ -534,6 +563,8 @@ export class ScalarOverlayLayer {
     const rows = Math.ceil(h / NODE_PX) + 1
     const vals = new Float32Array(cols * rows).fill(NaN)
     // Unit vectors per node feed the raster land mask at globe zooms.
+    // Edge feather (opt-in, regional masked fields): per-node valid share.
+    const covs = this._feather && typeof this.field.coverAt === 'function' ? new Float32Array(cols * rows) : null
     const nodes = {
       x: new Float32Array(cols * rows), y: new Float32Array(cols * rows),
       z: new Float32Array(cols * rows), ok: new Uint8Array(cols * rows),
@@ -547,6 +578,7 @@ export class ScalarOverlayLayer {
         nodes.x[k] = u[0]; nodes.y[k] = u[1]; nodes.z[k] = u[2]; nodes.ok[k] = 1
         const s = this.field.sampleScalar(ll.lng, ll.lat)
         if (s) vals[k] = Math.min(this._max, Math.max(this._min, s.value))
+        if (covs) covs[k] = s ? this.field.coverAt(ll.lng, ll.lat) : 0
       }
     }
 
@@ -579,6 +611,7 @@ export class ScalarOverlayLayer {
         let v, cov = 1
         if (v00 === v00 && v10 === v10 && v01 === v01 && v11 === v11) {
           v = (v00 * (1 - fx) + v10 * fx) * (1 - fy) + (v01 * (1 - fx) + v11 * fx) * fy
+          if (covs) cov = (covs[a] * (1 - fx) + covs[a + 1] * fx) * (1 - fy) + (covs[a + cols] * (1 - fx) + covs[a + cols + 1] * fx) * fy
         } else {
           // Partial validity (coasts, globe rim): weight-average the valid
           // corners and feather alpha by their coverage — edges fade out
@@ -593,6 +626,7 @@ export class ScalarOverlayLayer {
           if (ws < 0.05) continue // effectively invalid → transparent
           v = vs / ws
           cov = ws
+          if (covs) cov *= Math.min(covs[a], covs[a + 1], covs[a + cols], covs[a + cols + 1])
         }
         const li = Math.round((v - this._min) * lutScale) * 4
         const px = (y * rw + x) * 4

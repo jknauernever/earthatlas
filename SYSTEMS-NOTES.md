@@ -575,6 +575,92 @@ only. Paused/stepped: the whole UTC day, steady. NOW: the past 24 h. If a
 scalar replay is active it owns the bar and the pings follow its cursor.
 Def flag: `timeline: { stepH, windowDays, rateHoursPerSec, dayLabel }`.
 
+## 2h. Bird migration — the first vector replay + "Flora & Fauna" (2026-09-20)
+
+Source catalog, citation and caveats: `docs/BIRDCAST_DATA.md`.
+
+- **Group**: `GROUPS` gained `{ id: 'life', label: 'Flora & Fauna' }`; layer `birds` (`param: 'b'`).
+- **Source**: BirdCast's public zarr pyramid, level 3, four CONUS chunks per
+  frame (`api/_birdcast-core.js`), bilinear-resampled mercator → 0.25° box
+  (101 × 234, lon0 235). No CORS upstream, hence the bake. The grid CSVs are
+  NOT used: their cell ids have no published geometry.
+- **One packed tape** (2026-09-21, replaces the first cut's three tapes): `birds`
+  frames are **RGB PNGs** — R = √mtr (traffic is heavy-tailed, a linear byte
+  flattened everything under the big nights; the def's `toValue` squares it
+  back), G = u, B = v (m/s, 0.25 steps, ±32). `bakeTapeDay` grew `extraBands`
+  (exactly two; index gets `extra_bands`), and `encodeRgbPng` picks a
+  None/Sub/Up/Paeth filter per row. One request + one decode per hour and the
+  bands cannot drift. 30 days ≈ 9.6 MB (was 20 MB unfiltered / 3 files);
+  a 7-day view ≈ 2.3 MB. R is still the first channel, so every single-band
+  reader (warp shader, `sampleScalar`, `frameImage`) works unchanged.
+  `tape.noLive` — observations end at the newest frame.
+- **The vector replay** (the "not built" item from §2g): `flightField.js`
+  `TapeVectorField` reads R/G/B of the one tape in the GridField `sample()` shape
+  (allocation-free — it runs thousands of times per resample);
+  `ParticleLayer.resample()` re-reads the field at the cached node lng/lats
+  without touching camera/trails, driven by the ReplayController at ≤4 Hz.
+  `colorValue` lets a field color streaks by something other than speed;
+  `countByCoverage` scales the particle budget by the share of on-screen
+  nodes carrying flow (regional + patchy field). Streak SPEED is real: node
+  vectors are the projected (u, v) displacement and `gamma: 1` keeps the
+  mapping linear. Streaks only draw where mtr ≥ `flight.minMtr` (50).
+- **Shader fix**: `tapeWarpGL.js` wrapped longitude unconditionally, so a
+  regional tape tiled around the globe (first regional tape ever shown at
+  globe zoom). It now clamps/discards when `nLon·dLon < 359`, matching
+  `GridField._locate` and `TapeField.frameImage`.
+- **Cron**: ONE job, `api/cron/birdcast.js` (`35 * * * *`) — bakes yesterday +
+  today into the tape and the live grid; hours already on tape are
+  never re-requested (`fetchDay(day, wanted, have)`), so a normal run is 4
+  small S3 GETs. Backfill: `?days=d1,d2,…` or
+  `node scripts/bake-systems-tape.mjs birds <n>`.
+  Go-live = deploy, then seed 31 days once with that backfill under
+  `BLOB_READ_WRITE_TOKEN`.
+- **Coverage mask**: upstream fills its whole bbox; far from radars the field
+  relaxes to a constant (≈313 birds/km/h over the Pacific) — interpolation, not
+  observation. A radar-range mask (≤150 km of a NEXRAD, `radars.json`) was
+  tried and replaced — lumpy and too tight on the coasts. See **Edges** below.
+- **Bird glyphs, not streaks** (Josh, 2026-09-21): `ParticleLayer` `glyph`
+  mode draws each particle as a flapping bird sprite (`birdGlyph.js`) rotated
+  to its heading — 18 px wingspan, 0.5 beats/s, half the streak travel speed
+  (still proportional to the radar ground speed), budget `coverageBoost: 0.3`.
+  First attempt (hand-drawn stroked chevrons) was rejected as "absurd"; what
+  shipped is one silhouette from "Flock of Birds" by Joe Looney, Noun Project,
+  **CC BY 3.0 — the credit in the "How this is sourced" modal ("Artwork") must
+  ship with it.** The art is one outline, so the beat is made by splitting it
+  along the body line and folding each half; 16 phases × 4 tints are
+  pre-rendered to sprites (one drawImage per bird). Birds live 10–25 s, fade
+  in/out over ~0.75 s, and glide out on their last heading when they leave the
+  field (a 1 s streak lifetime read as popping). Flight trails' 8-bit fade
+  residue is removed at composite time by the `#trail-dehaze` SVG alpha filter.
+- **Edges**: mask = lower 48 + 100 miles; `scalar.feather` fades alpha by
+  `TapeField.coverPlane()` (chamfer distance to the nearest missing cell, built
+  once; texture `uCover` in the warp shader, bilinear in the CPU painter).
+  Display only. Two tap-based attempts failed because they only reached ~50 %
+  at the last data cell — the fade has to hit zero AT the edge.
+- **Prod seed**: `scripts/bake-birdcast/seed-blob.mjs` (index carried in
+  memory, written once). Seeded 2026-09-21: 726 frames, 9.3 MB.
+- **Performance pass** (2026-09-21, after the bird layer pegged Josh's laptop
+  memory) — these apply to EVERY replay layer, not just birds:
+  1. `tape.js` decodes frames itself (`decodePngPlanes`: DecompressionStream +
+     PNG unfilter) instead of createImageBitmap → OffscreenCanvas →
+     getImageData. The old route left three GPU/canvas-backed objects per
+     frame for the GC; hourly tapes are hundreds of frames. Canvas route kept
+     only as a fallback (bitmap now `close()`d, canvas zeroed).
+  2. The replay canvas source is `animate: false`; `_pushImg()` does
+     `play(); pause()` (pause() uploads once) when a frame is actually drawn.
+     `animate: true` had Mapbox re-uploading a 1024² canvas and repainting the
+     whole map every frame forever, even parked at Now.
+  3. `activity.js`: `runWhileAwake` loops (particles, pings, replay, overlay
+     self-heal) schedule NO frames while `document.hidden` or after 5 min with
+     no input and no replay advancing; `visibilitychange`/any input restarts
+     them. Not yet converted: methanePlumesOverlay, fireEventsOverlay,
+     fireRawDetections, clipRecorder (leave the recorder alone).
+  Still open: the replay canvas is a GLOBAL 1024² mercator image even for a
+  regional tape — a bbox-sized canvas source would cut GPU fill ~10× for
+  CONUS-only layers (birds, HRRR smoke).
+- **Credit** (Josh, 2026-09-20): BirdCast's Live Maps syntax, filled per frame
+  in every popup, plus the methodology modal.
+
 ## 3. Playbook: adding a layer to /systems
 
 Every new dataset (ocean currents, SST, waves, aerosols…) follows the same

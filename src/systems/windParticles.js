@@ -29,6 +29,8 @@ import { CanvasFreezer } from './canvasFreeze.js'
 import { buildWaterMask } from './scalarOverlay.js'
 import { getGlobeGeometry } from './globeGeom.js'
 import { loadLandMask, getLandMaskSync, buildGlobeWaterMask, toUnit, isLand } from './landMask.js'
+import { runWhileAwake } from './activity.js'
+import { buildBirdSprites } from './birdGlyph.js'
 
 const GRID_STEP = 16          // css px between field nodes
 const PROJ_TOLERANCE = 2      // px round-trip error ⇒ off-globe
@@ -68,6 +70,11 @@ export class ParticleLayer {
     // polygons — rebuilt per camera settle, applied per frame as one
     // composite — so particles stop at the true shoreline.
     this._maskKind = opts.mask || null
+    this._byCoverage = !!opts.countByCoverage
+    this._coverageBoost = opts.coverageBoost ?? 1
+    // Draw each particle as a flapping bird sprite instead of a streak:
+    // { wingspanPx, beatsPerSec } — see birdGlyph.js.
+    this._glyph = opts.glyph || null
     this._mask = null
     this.visible = true
     this._destroyed = false
@@ -108,12 +115,9 @@ export class ParticleLayer {
 
     this._rebuild()
     this._lastT = 0
-    const loop = (now) => {
-      if (this._destroyed) return
-      this._frame(now)
-      this._raf = requestAnimationFrame(loop)
-    }
-    this._raf = requestAnimationFrame(loop)
+    // No frames are even scheduled while the tab is hidden or the page has
+    // sat idle (activity.js); waking restarts the loop.
+    this._stopLoop = runWhileAwake((now) => { if (!this._destroyed) this._frame(now) })
   }
 
   _bucketIndex(speed) {
@@ -136,7 +140,7 @@ export class ParticleLayer {
 
   destroy() {
     this._destroyed = true
-    cancelAnimationFrame(this._raf)
+    this._stopLoop()
     this.map.off('movestart', this._onMoveStart)
     this.map.off('moveend', this._onMoveEnd)
     this.map.off('resize', this._onResize)
@@ -172,6 +176,7 @@ export class ParticleLayer {
     const zNow = map.getZoom()
     const boost = zNow > THIN_ZOOM ? Math.pow(2, (zNow - THIN_ZOOM) * 0.25) : 1
     const zoomScale = Math.max(MIN_ZOOM_SCALE, Math.pow(2, BASE_ZOOM - zNow)) * boost
+    this._zoomScale = zoomScale
     this._lineWidth = zNow > THIN_ZOOM ? Math.min(1.7, 1.1 + 0.15 * (zNow - THIN_ZOOM)) : 1.1
     const cols = Math.ceil(w / GRID_STEP) + 1
     const rows = Math.ceil(h / GRID_STEP) + 1
@@ -200,35 +205,68 @@ export class ParticleLayer {
 
     const nodes = {
       x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), ok: new Uint8Array(n),
+      lng: new Float32Array(n), lat: new Float32Array(n),
     }
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const idx = j * cols + i
         const x = i * GRID_STEP
         const y = j * GRID_STEP
-        let tip
         const ll = unprojectAt(x, y)
         if (!ll) continue
         const u = toUnit(ll.lng, ll.lat)
         nodes.x[idx] = u[0]; nodes.y[idx] = u[1]; nodes.z[idx] = u[2]; nodes.ok[idx] = 1
-        const flow = this.field.sample(ll.lng, ll.lat)
-        if (!flow) continue
-        const cosLat = Math.max(0.05, Math.cos((ll.lat * Math.PI) / 180))
-        const tipLat = Math.max(-89.9, Math.min(89.9, ll.lat + flow.v * this._offsetDeg))
-        try { tip = map.project([ll.lng + (flow.u * this._offsetDeg) / cosLat, tipLat]) } catch { continue }
-        if (!tip || !Number.isFinite(tip.x) || !Number.isFinite(tip.y)) continue
-        const shape = zoomScale * Math.pow(Math.max(flow.speed, this._gammaPivot / 50) / this._gammaPivot, this._gamma - 1)
-        this._vx[idx] = (tip.x - x) * shape
-        this._vy[idx] = (tip.y - y) * shape
-        this._spd[idx] = flow.speed
-        this._ok[idx] = 1
+        nodes.lng[idx] = ll.lng; nodes.lat[idx] = ll.lat
+        this._sampleNode(idx, x, y, ll.lng, ll.lat)
       }
     }
-    this._spawnAll()
     this._nodes = nodes
+    this._spawnAll()
     this._mask = this._buildMask(geo)
     this._maskAt = Date.now()
     this._freeze.capture()
+  }
+
+  // One screen node's motion from the field at its lng/lat. `colorValue`
+  // lets a field color its streaks by something other than speed (bird
+  // flight is colored by how many birds are crossing, not how fast).
+  _sampleNode(idx, x, y, lng, lat) {
+    this._ok[idx] = 0
+    const flow = this.field.sample(lng, lat)
+    if (!flow) return
+    let tip
+    const cosLat = Math.max(0.05, Math.cos((lat * Math.PI) / 180))
+    const tipLat = Math.max(-89.9, Math.min(89.9, lat + flow.v * this._offsetDeg))
+    try { tip = this.map.project([lng + (flow.u * this._offsetDeg) / cosLat, tipLat]) } catch { return }
+    if (!tip || !Number.isFinite(tip.x) || !Number.isFinite(tip.y)) return
+    const shape = this._zoomScale * Math.pow(Math.max(flow.speed, this._gammaPivot / 50) / this._gammaPivot, this._gamma - 1)
+    this._vx[idx] = (tip.x - x) * shape
+    this._vy[idx] = (tip.y - y) * shape
+    this._spd[idx] = flow.colorValue ?? flow.speed
+    this._ok[idx] = 1
+  }
+
+  /**
+   * Re-read the field at every node WITHOUT touching the camera, trails or
+   * particles — for fields that change under a fixed view (a replay cursor
+   * moving through time). Particles over cells that went quiet die at their
+   * next step; new ones spawn onto cells that woke up.
+   */
+  resample() {
+    const nodes = this._nodes
+    if (!nodes || this._moving || !this._ok) return
+    for (let j = 0; j < this._rows; j++) {
+      for (let i = 0; i < this._cols; i++) {
+        const idx = j * this._cols + i
+        if (!nodes.ok[idx]) continue
+        this._sampleNode(idx, i * GRID_STEP, j * GRID_STEP, nodes.lng[idx], nodes.lat[idx])
+      }
+    }
+    if (this._byCoverage && this._age) {
+      const n = this._activeCount()
+      for (let i = this._n; i < n; i++) this._age[i] = 0 // newly active → spawn next frame
+      this._n = n
+    }
   }
 
   // Water mask: baked land raster at globe zooms (robust at the limb, honors
@@ -251,11 +289,30 @@ export class ParticleLayer {
     const z = this.map.getZoom()
     const thin = Math.max(THIN_FLOOR, Math.min(1, Math.pow(2, -(z - THIN_ZOOM) / 2)))
     const n = Math.max(0, Math.round(this.count * thin))
-    this._n = n
+    this._cap = n
     this._px = new Float32Array(n)
     this._py = new Float32Array(n)
     this._age = new Float32Array(n)
-    for (let i = 0; i < n; i++) this._spawn(i)
+    this._phase = new Float32Array(n)
+    this._life = new Float32Array(n)  // glyph mode: age at spawn (for the fade-in)
+    this._lvx = new Float32Array(n)   // glyph mode: last good velocity, so a bird
+    this._lvy = new Float32Array(n)   // leaving the field glides out instead of vanishing
+    this._lspd = new Float32Array(n)
+    for (let i = 0; i < n; i++) this._phase[i] = Math.random()
+    this._n = this._activeCount()
+    for (let i = 0; i < this._n; i++) this._spawn(i)
+  }
+
+  // Regional / patchy fields (bird flight covers one country, and only where
+  // birds are flying) keep the SAME streak density per unit of live area as a
+  // global field: the particle budget scales with the share of on-screen
+  // nodes that carry flow, instead of cramming the whole budget into it.
+  _activeCount() {
+    if (!this._byCoverage || !this._ok) return this._cap
+    let live = 0, seen = 0
+    const vis = this._nodes?.ok
+    for (let i = 0; i < this._ok.length; i++) { if (!vis || vis[i]) seen++; if (this._ok[i]) live++ }
+    return Math.min(this._cap, Math.round(this._cap * this._coverageBoost * (seen ? live / seen : 0)))
   }
 
   _spawn(i) {
@@ -272,7 +329,10 @@ export class ParticleLayer {
       if (this._ok[cj * this._cols + ci]) {
         this._px[i] = x
         this._py[i] = y
-        this._age[i] = 20 + Math.random() * 80
+        // Streaks live ~1 s (the trail carries continuity). A bird is an
+        // object the eye follows: it lives 10–25 s and eases in and out.
+        this._age[i] = this._glyph ? 600 + Math.random() * 900 : 20 + Math.random() * 80
+        if (this._life) { this._life[i] = this._age[i]; this._lvx[i] = 0; this._lvy[i] = 0 }
         return
       }
     }
@@ -338,6 +398,49 @@ export class ParticleLayer {
   }
 
   // ── Per-frame advection + draw ───────────────────────────────────────────
+  // Glyph mode: same particles, same field, same relative speeds — each drawn
+  // as a pre-rendered flapping sprite rotated to its heading. No trails.
+  _frameGlyphs(k, dtMs) {
+    const ctx = this._ctx
+    const dpr = this._dpr
+    const g = this._glyph
+    if (!this._sprites || this._spritesDpr !== dpr) {
+      this._sprites = this._stops.map(([, color]) => buildBirdSprites(color, g.wingspanPx, dpr))
+      this._spritesDpr = dpr
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    const sample = { vx: 0, vy: 0, spd: 0 }
+    const dPhase = (g.beatsPerSec * dtMs) / 1000
+    for (let i = 0; i < this._n; i++) {
+      if ((this._age[i] -= k) <= 0) { this._spawn(i); continue }
+      const x = this._px[i]
+      const y = this._py[i]
+      const FADE_FRAMES = 45 // ≈0.75 s in and out
+      if (this._fieldAt(x, y, sample)) { this._lvx[i] = sample.vx; this._lvy[i] = sample.vy; this._lspd[i] = sample.spd } else {
+        // Flew out of the observed field (or the field went quiet under it):
+        // keep its last heading and fade out, rather than blinking off.
+        if (!this._lvx[i] && !this._lvy[i]) { this._spawn(i); continue }
+        if (this._age[i] > FADE_FRAMES) { this._life[i] -= this._age[i] - FADE_FRAMES; this._age[i] = FADE_FRAMES }
+        sample.vx = this._lvx[i]; sample.vy = this._lvy[i]; sample.spd = this._lspd[i]
+      }
+      const nx = x + sample.vx * this._speedFactor * k
+      const ny = y + sample.vy * this._speedFactor * k
+      this._px[i] = nx
+      this._py[i] = ny
+      const len = Math.hypot(sample.vx, sample.vy)
+      if (len < 1e-4) continue
+      const sp = this._sprites[this._bucketIndex(sample.spd)]
+      const ph = (this._phase[i] = (this._phase[i] + dPhase * (0.85 + 0.3 * ((i * 0.618) % 1))) % 1)
+      const c = sample.vx / len, sn = sample.vy / len
+      ctx.globalAlpha = Math.max(0, Math.min(1, this._age[i] / FADE_FRAMES, (this._life[i] - this._age[i]) / FADE_FRAMES))
+      ctx.setTransform(c, sn, -sn, c, nx * dpr, ny * dpr)
+      ctx.drawImage(sp.canvas, Math.floor(ph * sp.phases) * sp.side, 0, sp.side, sp.side, -sp.side / 2, -sp.side / 2, sp.side, sp.side)
+    }
+    ctx.globalAlpha = 1
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+  }
+
   _frame(now) {
     // Time-based stepping so the animation runs at the same real speed on
     // 60 Hz and 120 Hz displays (and after background-tab gaps): k is "how
@@ -347,7 +450,7 @@ export class ParticleLayer {
     this._lastT = now
     const k = dt / 16.7
     if (!this.visible || document.hidden) return
-    if (this._moving) { if (this._liveMove) this._drawMoving(); return }
+    if (this._moving) { if (this._liveMove && !this._glyph) this._drawMoving(); return }
     // Self-heal: the canvas can measure 0×0 at construction (pre-layout), and
     // window resizes don't always fire the map's resize event first — rebuild
     // whenever the css size disagrees with the field we built.
@@ -358,6 +461,7 @@ export class ParticleLayer {
     if (!this._ok || !this._px) return
     const ctx = this._ctx
     const dpr = this._dpr
+    if (this._glyph) { this._frameGlyphs(k, dt); return }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalCompositeOperation = 'destination-in'

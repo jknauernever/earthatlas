@@ -17,6 +17,7 @@
 
 import { CanvasFreezer } from './canvasFreeze.js'
 import { getGlobeGeometry } from './globeGeom.js'
+import { runWhileAwake } from './activity.js'
 
 const PROJ_TOLERANCE = 2
 const MAX_DPR = 2
@@ -72,12 +73,7 @@ export class EventPingLayer {
     map.on('resize', this._onResize)
 
     this._rebuild()
-    const loop = (now) => {
-      if (this._destroyed) return
-      this._frame(now)
-      this._raf = requestAnimationFrame(loop)
-    }
-    this._raf = requestAnimationFrame(loop)
+    this._stopLoop = runWhileAwake((now) => { if (!this._destroyed) this._frame(now) })
   }
 
   setVisible(visible) {
@@ -102,7 +98,7 @@ export class EventPingLayer {
 
   destroy() {
     this._destroyed = true
-    cancelAnimationFrame(this._raf)
+    this._stopLoop()
     this.map.off('movestart', this._onMoveStart)
     this.map.off('move', this._onMove)
     this.map.off('moveend', this._onMoveEnd)

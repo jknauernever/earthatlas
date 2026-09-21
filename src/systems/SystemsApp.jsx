@@ -45,6 +45,7 @@ import { MethanePlumesOverlay } from './methanePlumesOverlay.js'
 import { identifyPlumeSource } from './plumeSourceLookup.js'
 import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
+import { TapeVectorField } from './flightField.js'
 import ClipStudio from './ClipStudio.jsx'
 import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
 import ShareControl from '../components/ShareControl.jsx'
@@ -78,7 +79,7 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'flight', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
 
 // Gas layers with observed-emission-source companions. A gas can carry more
 // than one provider: Carbon Mapper (lime reticles) and, for methane, UNEP
@@ -748,7 +749,10 @@ export default function SystemsApp() {
           : field.sampleScalar(e.lngLat.lng, e.lngLat.lat)
         if (!sample) continue
         const extraField = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
-        const extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+        let extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+        // Flight layers hand the popup the heading/speed at the click.
+        const flightInst = instancesRef.current.flight
+        if (def.flight && flightInst?.rc?.layerId === def.id) extraSample = flightInst.field.sample(e.lngLat.lng, e.lngLat.lat)
         const modeled = def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)
         // Under an identified source, "(a source region or plume upwind)" is
         // dead weight — the marker section above IS the source.
@@ -1137,7 +1141,7 @@ export default function SystemsApp() {
     }
     if (active && !inst.scalar && canvasEls.current.scalar) {
       try {
-        if (tape) tape.appendLive(fieldsRef.current[active.id])
+        if (tape && !active.tape.noLive) tape.appendLive(fieldsRef.current[active.id])
         const view = wantGround ? groundDef : active
         const tapeSel = wantGround ? groundTape : tape
         const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tapeSel || (wantGround ? fieldsRef.current[`${active.id}:ground`] : fieldsRef.current[active.id]), {
@@ -1146,6 +1150,7 @@ export default function SystemsApp() {
           max: view.legend.max,
           opacity: active.scalar.opacity,
           mask: active.scalar.mask,
+          feather: active.scalar.feather,
           tape: !!tapeSel,
         })
         inst.scalar = { id: slotId, layer }
@@ -1180,6 +1185,46 @@ export default function SystemsApp() {
       }
     }
     inst.scalar?.layer.setVisible(!!active)
+
+    // Flight streaks: a particle layer that follows the scalar replay's
+    // cursor through the u/v tapes. Lives and dies with its replay.
+    const flightRc = active?.flight && replayRef.current?.layerId === active.id ? replayRef.current : null
+    const flightReady = !!flightRc?.tape.extraBands
+    if (inst.flight && (!flightReady || inst.flight.rc !== flightRc)) {
+      inst.flight.off(); inst.flight.layer.destroy(); inst.flight = null
+    }
+    if (flightReady && !inst.flight && canvasEls.current.flight) {
+      try {
+        const field = new TapeVectorField({ tape: flightRc.tape, toValue: active.toValue, minValue: active.flight.minMtr })
+        const layer = new ParticleLayer(map, canvasEls.current.flight, field, {
+          count: densityCount(density),
+          colorStops: active.flight.stops,
+          countByCoverage: true,
+          coverageBoost: active.flight.coverageBoost,
+          ...active.flight.vector,
+          glyph: active.flight.glyph,
+        })
+        // Re-read the field as the cursor moves (≤4×/s; a resample is a few
+        // thousand allocation-free byte lookups), and once more when late
+        // frames decode.
+        let last = 0
+        let pending = 0
+        const follow = () => {
+          const now = performance.now()
+          if (now - last < 250) { if (!pending) pending = setTimeout(() => { pending = 0; follow() }, 270); return }
+          last = now
+          if (!field.ready()) { if (!pending) pending = setTimeout(() => { pending = 0; follow() }, 150); return }
+          layer.resample()
+        }
+        const unsub = flightRc.subscribe(follow)
+        follow()
+        inst.flight = { rc: flightRc, layer, field, off: () => { unsub(); clearTimeout(pending) } }
+        if (import.meta.env.DEV) window.__flight = layer // dev-only QA handle
+      } catch (err) {
+        console.error(`[systems] ${active.id} flight layer init failed:`, err)
+      }
+    }
+    inst.flight?.layer.setVisible(!!flightReady)
 
     // Event timelines (earthquakes): the feed's own timestamps drive a time
     // cursor. One transport bar: a scalar replay (if any) owns it and the
@@ -1640,6 +1685,7 @@ export default function SystemsApp() {
     for (const def of LAYERS) {
       if (def.kind === 'vector') instancesRef.current[def.id]?.setCount(densityCount(density))
     }
+    instancesRef.current.flight?.layer.setCount(densityCount(density))
   }, [density])
 
   // Mobile: the drawer mounts only in 'drawer' view; open it once mounted.
@@ -1895,6 +1941,18 @@ export default function SystemsApp() {
       <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methanemars = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.co2plumes = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
+      {/* Particle trails fade by multiplying alpha each frame, and 8-bit
+          rounding strands every touched pixel at alpha ≤ 8/255 forever. Under
+          a global field that's an even, invisible veil; under a REGIONAL one
+          (bird flight) it's a blocky grey footprint with a hard edge. This
+          alpha curve drops anything that faint at composite time (GPU, no
+          per-frame readback). */}
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id="trail-dehaze" colorInterpolationFilters="sRGB">
+          <feComponentTransfer><feFuncA type="linear" slope="1.06" intercept="-0.045" /></feComponentTransfer>
+        </filter>
+      </svg>
+      <canvas className={styles.windCanvas} style={{ filter: 'url(#trail-dehaze)' }} ref={(el) => { canvasEls.current.flight = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.hotspots = el }} aria-hidden="true" />
@@ -2316,6 +2374,7 @@ function MethodologyModal({ onClose, layerMeta }) {
                 {def.id === 'currents' && 'The US Navy’s global ocean analysis (ESPC-D, HYCOM model, 1/12°), fetched from the HYCOM consortium’s public server; land is masked by the model itself.'}
                 {def.id === 'sst' && 'NOAA Coral Reef Watch’s daily 5 km CoralTemp analysis, fetched via NOAA CoastWatch at 0.5°.'}
                 {def.id === 'waves' && 'NOAA’s WaveWatch III global wave model (significant wave height), fetched via the PacIOOS server at 0.5°.'}
+                {def.id === 'birds' && 'Nocturnal bird migration observed by the U.S. NEXRAD weather-radar network and processed by the Cornell Lab of Ornithology’s BirdCast project: migration traffic rate (birds crossing a 1 km line per hour) and flight velocity. We read BirdCast’s published hourly frames and resample them to a 0.25° grid — nothing is modelled, smoothed or filled in. Contiguous U.S. only; radars in mountainous terrain under-report. Cite as: BirdCast, Live Migration Map; date and time. Cornell Lab of Ornithology. https://birdcast.org/migration-tools/live-migration-maps. Date of access.'}
                 {layerMeta[def.id] && <> Currently: <strong>{def.stamp(layerMeta[def.id])}</strong>.</>}
               </li>
             ))}
@@ -2339,6 +2398,11 @@ function MethodologyModal({ onClose, layerMeta }) {
               <strong>Rendering.</strong> In-house renderers built for EarthAtlas — no
               third-party weather service in between. Basemap: Mapbox satellite, dark,
               light, and streets styles.
+            </li>
+            <li>
+              <strong>Artwork.</strong> Flock of Birds by Joe Looney from{' '}
+              <a href="https://thenounproject.com/browse/icons/term/flock-of-birds/" target="_blank" rel="noopener noreferrer" title="Flock of Birds Icons">Noun Project</a>{' '}
+              (CC BY 3.0)
             </li>
           </ul>
         </section>

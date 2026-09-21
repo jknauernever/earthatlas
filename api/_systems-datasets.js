@@ -26,6 +26,7 @@ import { writeFileSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { simplifyNifc } from './_nifc-core.js'
+import { fetchBirdcastFrame, latestBirdcastHour, BIRDCAST_LAT, BIRDCAST_LON } from './_birdcast-core.js'
 
 const MISSING = -32768
 
@@ -1540,6 +1541,43 @@ function encodeGrayPng(bytes, width, height) {
   ])
 }
 
+/**
+ * 8-bit RGB PNG from three same-length Uint8Array planes (row-major). Rows
+ * pick the best of the None/Sub/Up/Paeth filters (minimum-sum-of-residuals
+ * heuristic) — smooth geophysical fields shrink ~2-3x vs unfiltered rows.
+ */
+function encodeRgbPng(planes, width, height) {
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0
+  const bpp = 3
+  const n = width * bpp
+  const raw = Buffer.alloc((n + 1) * height)
+  let prev = new Uint8Array(n)
+  const cur = new Uint8Array(n)
+  const cand = [0, 1, 2, 4].map(() => new Uint8Array(n))
+  const paeth = (a, b, c) => { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) for (let k = 0; k < bpp; k++) cur[x * bpp + k] = planes[k][y * width + x]
+    const cost = [0, 0, 0, 0]
+    for (let i = 0; i < n; i++) {
+      const a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0
+      const vals = [cur[i], (cur[i] - a) & 255, (cur[i] - b) & 255, (cur[i] - paeth(a, b, c)) & 255]
+      for (let f = 0; f < 4; f++) { cand[f][i] = vals[f]; cost[f] += vals[f] < 128 ? vals[f] : 256 - vals[f] }
+    }
+    const best = cost.indexOf(Math.min(...cost))
+    raw[y * (n + 1)] = [0, 1, 2, 4][best]
+    raw.set(cand[best], y * (n + 1) + 1)
+    prev = Uint8Array.from(cur)
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
 // Read every (reference_time × lead) plane of one variable from a CAMS file.
 async function readCamsFrames(ncBuf, varName) {
   const { default: h5wasm } = await import('h5wasm/node')
@@ -1612,7 +1650,8 @@ async function bakeTapeDay(tape, { day, existing, blobBase }) {
   const have = new Set((existing?.frames || []).map((f) => f.valid_ms))
   if (wanted.every((v) => have.has(v))) return { unchanged: true, day }
 
-  const { lat, lon, frames } = await tape.fetchDay(day, wanted)
+  // `have` lets a cheap-per-frame source skip what's already on tape (BirdCast).
+  const { lat, lon, frames } = await tape.fetchDay(day, wanted, have)
   if (!frames.length) throw new Error(`no frames returned for ${day}`)
   const latM = axisMeta(lat)
   const lonM = axisMeta(lon)
@@ -1632,6 +1671,22 @@ async function bakeTapeDay(tape, { day, existing, blobBase }) {
     if (bad > bytes.length * (tape.maxMissingFrac ?? 0.02)) throw new Error(`frame ${new Date(fr.valid_ms).toISOString()} too many missing (${bad})`)
     const stamp = new Date(fr.valid_ms).toISOString().slice(0, 13).replace('T', '-')
     const path = `${blobBase}-tape/${stamp}.png`
+    // Companion bands (tape.extraBands, exactly two): the frame becomes an RGB
+    // PNG — R is the tape's own value (so every single-band reader still
+    // works), G and B ride along in the SAME file: one request, one decode,
+    // and the bands can never drift out of step. Missing follows R (byte 0).
+    if (tape.extraBands) {
+      if (tape.extraBands.length !== 2 || fr.extra?.length !== 2) throw new Error('extraBands: exactly two companion planes required')
+      const planes = [bytes, ...tape.extraBands.map((band, b) => {
+        const out = new Uint8Array(bytes.length)
+        for (let i = 0; i < out.length; i++) {
+          const v = fr.extra[b][i]
+          out[i] = bytes[i] === 0 || !Number.isFinite(v) ? 0 : Math.max(1, Math.min(255, Math.round((v - band.offset) * band.qscale)))
+        }
+        return out
+      })]
+      binaries.push({ path, buffer: encodeRgbPng(planes, lonM.n, latM.n), contentType: 'image/png' })
+    } else
     binaries.push({ path, buffer: encodeGrayPng(bytes, lonM.n, latM.n), contentType: 'image/png' })
     newFrames.push({ valid_ms: fr.valid_ms, run_ms: fr.run_ms, lead_h: fr.lead_h, path, ...(fr.smoothed ? { smoothed: true } : {}) })
   }
@@ -1647,6 +1702,7 @@ async function bakeTapeDay(tape, { day, existing, blobBase }) {
     version: 1, kind: `${tape.kind}-tape`, source: tape.source, fetched_ms: now,
     nLat: latM.n, nLon: lonM.n, lat0: latM.origin, dLat: latM.step, lon0: lonM.origin, dLon: lonM.step,
     qscale, offset, nodata0, step_ms: tape.stepH * H, days: tape.days ?? TAPE_DAYS, frame_kind: tape.frameKind || null,
+    ...(tape.extraBands ? { extra_bands: tape.extraBands.map(({ name, qscale: q, offset: o }) => ({ name, qscale: q, offset: o })) } : {}),
     frames: merged,
   }
   return { day, jsons: [{ path: `${blobBase}-tape.json`, json: index }], binaries, added: newFrames.length }
@@ -2121,6 +2177,62 @@ async function fetchAerosol() {
   return fetchCamsField(AEROSOL_CFG)
 }
 
+// ─── birds — BirdCast observed nocturnal migration (api/_birdcast-core.js) ──
+// Migration traffic rate is heavy-tailed (30-day sample: median 21, p99 7,000,
+// max 52,000 birds/km/h), so a linear byte would flatten everything below the
+// big nights. The grid and tape carry √mtr instead — 1 byte step ≈ 3 birds/km/h
+// at 10, ≈ 170 at 7,000 — and the client squares it back (layerDefs `birds`).
+// Flight velocity (u, v in m/s) is packed into the same frames as G and B.
+const BIRDCAST_SOURCE = 'BirdCast live migration maps (Cornell Lab of Ornithology) — NEXRAD weather-radar observations of nocturnal bird migration, contiguous U.S.'
+const BIRD_SQRT = (f) => f.mtr.map((v) => Math.sqrt(Math.max(0, v)))
+function birdcastTape() {
+  return {
+    kind: 'birdcast-mtr-sqrt',
+    source: BIRDCAST_SOURCE,
+    qscale: 1,
+    offset: -1, // byte 0 stays the missing sentinel
+    nodata0: true,
+    maxAbs: 1e4,
+    // Flight velocity rides in the same PNG (G = u, B = v; m/s, 0.25 steps, ±32).
+    extraBands: [
+      { name: 'u', qscale: 4, offset: -32.25 },
+      { name: 'v', qscale: 4, offset: -32.25 },
+    ],
+    stepH: 1,
+    latencyH: 1,
+    days: 31,
+    maxMissingFrac: 0.6, // ≈28% of the lat/lon box is outside the coverage mask
+    frameKind: 'hourly radar observation',
+    expectedTimes: (day, now) =>
+      Array.from({ length: 24 }, (_, h) => dayMs(day, h)).filter((t) => now - t >= 0.5 * H),
+    async fetchDay(day, wanted, have) {
+      const frames = []
+      for (const valid of wanted) {
+        // Hours already on tape are never asked for again — observations
+        // don't get revised, and it keeps us a light guest on Cornell's bucket.
+        if (have?.has(valid)) continue
+        try {
+          const f = await fetchBirdcastFrame(valid)
+          // Observations, not forecasts: the frame time IS the run, lead 0.
+          frames.push({ run_ms: valid, valid_ms: valid, lead_h: 0, values: BIRD_SQRT(f), extra: [f.u, f.v] })
+        } catch (err) {
+          // A radar-network gap skips its hour only.
+          console.error(`birdcast tape ${new Date(valid).toISOString()}:`, String(err).slice(0, 100))
+        }
+      }
+      if (!frames.length) throw new Error('no new BirdCast frames published')
+      return { lat: BIRDCAST_LAT, lon: BIRDCAST_LON, frames }
+    },
+  }
+}
+async function fetchBirds() {
+  const valid = await latestBirdcastHour()
+  const f = await fetchBirdcastFrame(valid)
+  const scale = 100
+  const gridBuffer = encodePlanes([BIRD_SQRT(f)], scale, 320, 0.6)
+  return { meta: buildMeta('birdcast-mtr-sqrt', BIRDCAST_SOURCE, BIRDCAST_LAT, BIRDCAST_LON, scale, valid, valid), gridBuffer }
+}
+
 // ─── History tapes (replay) — see bakeTapeDay ───────────────────────────────
 export const SYSTEMS_TAPES = {
   aerosol: { blobBase: 'systems/cams-aod', tape: camsTape(AEROSOL_CFG) },
@@ -2168,6 +2280,7 @@ export const SYSTEMS_TAPES = {
   },
 }
 SYSTEMS_TAPES['hrrr-smoke'] = { blobBase: 'systems/hrrr-smoke', tape: hrrrSmokeTape() }
+SYSTEMS_TAPES.birds = { blobBase: 'systems/birdcast-mtr', tape: birdcastTape() }
 SYSTEMS_TAPES['sst-year'].tape = weeklyOf(SYSTEMS_TAPES.sst.tape)
 SYSTEMS_TAPES['sstanom-year'].tape = weeklyOf(SYSTEMS_TAPES.sstanom.tape)
 
@@ -2201,6 +2314,7 @@ export const SYSTEMS_DATASETS = {
   'co2-plumes': { blobBase: 'systems/co2-plumes', fetchGrid: () => fetchGasSources('CO2') },
   'facilities-ch4': { blobBase: 'systems/facilities-ch4', fetchGrid: fetchFacilitiesIndex },
   co2: { blobBase: 'systems/cams-co2', fetchGrid: fetchCo2 },
+  birds: { blobBase: 'systems/birdcast-mtr', fetchGrid: fetchBirds },
 }
 
 // Test hook for scripts (shape probes); not used by the app.

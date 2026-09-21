@@ -630,7 +630,10 @@ Source catalog, citation and caveats: `docs/BIRDCAST_DATA.md`.
   along the body line and folding each half; 16 phases × 4 tints are
   pre-rendered to sprites (one drawImage per bird). Birds live 10–25 s, fade
   in/out over ~0.75 s, and glide out on their last heading when they leave the
-  field (a 1 s streak lifetime read as popping). Flight trails' 8-bit fade
+  field (a 1 s streak lifetime read as popping). When the hourly budget
+  shrinks, surplus birds are retired (`_retire` → fade, `_target` stops their
+  respawn) rather than cut; during a live globe drag `_drawMoving` re-projects
+  each sprite and takes its heading from its own re-projected tail point. Flight trails' 8-bit fade
   residue is removed at composite time by the `#trail-dehaze` SVG alpha filter.
 - **Edges**: mask = lower 48 + 100 miles; `scalar.feather` fades alpha by
   `TapeField.coverPlane()` (chamfer distance to the nearest missing cell, built
@@ -658,6 +661,11 @@ Source catalog, citation and caveats: `docs/BIRDCAST_DATA.md`.
   Still open: the replay canvas is a GLOBAL 1024² mercator image even for a
   regional tape — a bbox-sized canvas source would cut GPU fill ~10× for
   CONUS-only layers (birds, HRRR smoke).
+- **URL keys**: `acidity` moved `d` → `ph` (2026-09-21): `d` is also the
+  particle-density key, and with both set the layer flag was overwritten.
+  `legacyParam: 'd'` keeps old shared links working — honoured only for the
+  values `0`/`1`, which density never uses. New layers: never reuse `d`, `bm`,
+  `lat`, `lng`, `z`.
 - **Credit** (Josh, 2026-09-20): BirdCast's Live Maps syntax, filled per frame
   in every popup, plus the methodology modal.
 

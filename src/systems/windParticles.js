@@ -36,6 +36,7 @@ const GRID_STEP = 16          // css px between field nodes
 const PROJ_TOLERANCE = 2      // px round-trip error ⇒ off-globe
 const FADE = 0.94             // trail persistence per 60fps-frame
 const MAX_DPR = 2
+const GLYPH_FADE_FRAMES = 45  // bird sprites ease in/out over ≈0.75 s
 const BASE_ZOOM = 1.9
 // Screen speed is normalized to the globe view's feel at EVERY zoom. The
 // old floor of 0.05 let normalization stop at z≈6.2, so past that screen
@@ -264,8 +265,18 @@ export class ParticleLayer {
     }
     if (this._byCoverage && this._age) {
       const n = this._activeCount()
-      for (let i = this._n; i < n; i++) this._age[i] = 0 // newly active → spawn next frame
-      this._n = n
+      if (this._glyph) {
+        // Birds are objects the eye follows: when the budget shrinks (less of
+        // the map has traffic this hour), the surplus finishes a fade-out and
+        // simply isn't respawned — never cut mid-flight. _n stays the DRAW
+        // count; _target is how many may respawn.
+        for (let i = n; i < this._n; i++) this._retire(i)
+        this._target = n
+        this._n = Math.max(this._n, n)
+      } else {
+        for (let i = this._n; i < n; i++) this._age[i] = 0 // newly active → spawn next frame
+        this._n = n
+      }
     }
   }
 
@@ -300,7 +311,13 @@ export class ParticleLayer {
     this._lspd = new Float32Array(n)
     for (let i = 0; i < n; i++) this._phase[i] = Math.random()
     this._n = this._activeCount()
+    this._target = this._n
     for (let i = 0; i < this._n; i++) this._spawn(i)
+  }
+
+  // Glyph mode: start a bird's fade-out now (no-op if it is already fading or dead).
+  _retire(i) {
+    if (this._age[i] > GLYPH_FADE_FRAMES) { this._life[i] -= this._age[i] - GLYPH_FADE_FRAMES; this._age[i] = GLYPH_FADE_FRAMES }
   }
 
   // Regional / patchy fields (bird flight covers one country, and only where
@@ -378,9 +395,15 @@ export class ParticleLayer {
     const sample = { vx: 0, vy: 0, spd: 0 }
     const tail = this._speedFactor * 6
     const bits = this._maskKind === 'water' ? getLandMaskSync() : null
+    const glyph = this._glyph
+    if (glyph) this._ensureSprites()
     for (let i = 0; i < this._n; i++) {
       const x = this._px[i], y = this._py[i]
-      if (!this._fieldAt(x, y, sample)) continue
+      if (glyph && this._age[i] <= 0) continue
+      if (!this._fieldAt(x, y, sample)) {
+        if (!glyph || (!this._lvx[i] && !this._lvy[i])) continue
+        sample.vx = this._lvx[i]; sample.vy = this._lvy[i]; sample.spd = this._lspd[i] // a bird gliding out
+      }
       const a = g0.unproject(x, y)
       if (!a) continue
       if (bits && isLand(bits, a.lng, a.lat)) continue
@@ -388,10 +411,27 @@ export class ParticleLayer {
       if (!pa) continue
       const b = g0.unproject(x - sample.vx * tail, y - sample.vy * tail)
       const pb = b ? g1.project(b.lng, b.lat) : null
+      if (glyph) {
+        // Birds turn WITH the planet: same sprite, re-projected position, and
+        // a heading taken from where its own tail point lands on the new globe.
+        // (They hold their wing phase while the globe is being dragged.)
+        if (!pb) continue
+        const hx = pa.x - pb.x, hy = pa.y - pb.y
+        const len = Math.hypot(hx, hy)
+        if (len < 1e-4) continue
+        const sp = this._sprites[this._bucketIndex(sample.spd)]
+        const c = hx / len, sn = hy / len
+        const dpr = this._dpr
+        ctx.globalAlpha = this._glyphAlpha(i)
+        ctx.setTransform(c, sn, -sn, c, pa.x * dpr, pa.y * dpr)
+        ctx.drawImage(sp.canvas, Math.floor(this._phase[i] * sp.phases) * sp.side, 0, sp.side, sp.side, -sp.side / 2, -sp.side / 2, sp.side, sp.side)
+        continue
+      }
       const p = paths[this._bucketIndex(sample.spd)]
       p.moveTo(pb ? pb.x : pa.x, pb ? pb.y : pa.y)
       p.lineTo(pa.x, pa.y)
     }
+    if (glyph) { ctx.globalAlpha = 1; ctx.setTransform(1, 0, 0, 1, 0, 0); return }
     ctx.globalAlpha = 0.85
     for (let b = 0; b < paths.length; b++) { ctx.strokeStyle = this._stops[b][1]; ctx.stroke(paths[b]) }
     ctx.globalAlpha = 1
@@ -404,24 +444,20 @@ export class ParticleLayer {
     const ctx = this._ctx
     const dpr = this._dpr
     const g = this._glyph
-    if (!this._sprites || this._spritesDpr !== dpr) {
-      this._sprites = this._stops.map(([, color]) => buildBirdSprites(color, g.wingspanPx, dpr))
-      this._spritesDpr = dpr
-    }
+    this._ensureSprites()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     const sample = { vx: 0, vy: 0, spd: 0 }
     const dPhase = (g.beatsPerSec * dtMs) / 1000
     for (let i = 0; i < this._n; i++) {
-      if ((this._age[i] -= k) <= 0) { this._spawn(i); continue }
+      if (this._age[i] <= 0 || (this._age[i] -= k) <= 0) { this._age[i] = 0; if (i < this._target) this._spawn(i); continue }
       const x = this._px[i]
       const y = this._py[i]
-      const FADE_FRAMES = 45 // ≈0.75 s in and out
       if (this._fieldAt(x, y, sample)) { this._lvx[i] = sample.vx; this._lvy[i] = sample.vy; this._lspd[i] = sample.spd } else {
         // Flew out of the observed field (or the field went quiet under it):
         // keep its last heading and fade out, rather than blinking off.
         if (!this._lvx[i] && !this._lvy[i]) { this._spawn(i); continue }
-        if (this._age[i] > FADE_FRAMES) { this._life[i] -= this._age[i] - FADE_FRAMES; this._age[i] = FADE_FRAMES }
+        this._retire(i)
         sample.vx = this._lvx[i]; sample.vy = this._lvy[i]; sample.spd = this._lspd[i]
       }
       const nx = x + sample.vx * this._speedFactor * k
@@ -433,12 +469,23 @@ export class ParticleLayer {
       const sp = this._sprites[this._bucketIndex(sample.spd)]
       const ph = (this._phase[i] = (this._phase[i] + dPhase * (0.85 + 0.3 * ((i * 0.618) % 1))) % 1)
       const c = sample.vx / len, sn = sample.vy / len
-      ctx.globalAlpha = Math.max(0, Math.min(1, this._age[i] / FADE_FRAMES, (this._life[i] - this._age[i]) / FADE_FRAMES))
+      ctx.globalAlpha = this._glyphAlpha(i)
       ctx.setTransform(c, sn, -sn, c, nx * dpr, ny * dpr)
       ctx.drawImage(sp.canvas, Math.floor(ph * sp.phases) * sp.side, 0, sp.side, sp.side, -sp.side / 2, -sp.side / 2, sp.side, sp.side)
     }
     ctx.globalAlpha = 1
     ctx.setTransform(1, 0, 0, 1, 0, 0)
+  }
+
+  _glyphAlpha(i) {
+    return Math.max(0, Math.min(1, this._age[i] / GLYPH_FADE_FRAMES, (this._life[i] - this._age[i]) / GLYPH_FADE_FRAMES))
+  }
+
+  _ensureSprites() {
+    if (!this._sprites || this._spritesDpr !== this._dpr) {
+      this._sprites = this._stops.map(([, color]) => buildBirdSprites(color, this._glyph.wingspanPx, this._dpr))
+      this._spritesDpr = this._dpr
+    }
   }
 
   _frame(now) {
@@ -450,7 +497,7 @@ export class ParticleLayer {
     this._lastT = now
     const k = dt / 16.7
     if (!this.visible || document.hidden) return
-    if (this._moving) { if (this._liveMove && !this._glyph) this._drawMoving(); return }
+    if (this._moving) { if (this._liveMove) this._drawMoving(); return }
     // Self-heal: the canvas can measure 0×0 at construction (pre-layout), and
     // window resizes don't always fire the map's resize event first — rebuild
     // whenever the css size disagrees with the field we built.

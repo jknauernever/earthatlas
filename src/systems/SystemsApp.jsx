@@ -199,7 +199,13 @@ function readUrlState() {
     return Number.isFinite(n) ? n : null
   }
   const layers = {}
-  for (const def of LAYERS) layers[def.id] = sp.get(def.param)
+  for (const def of LAYERS) {
+    layers[def.id] = sp.get(def.param)
+    // A retired key still switches its layer, but only with a layer-flag
+    // value — the key may since have been reused for something else.
+    const legacy = def.legacyParam ? sp.get(def.legacyParam) : null
+    if (layers[def.id] == null && (legacy === '0' || legacy === '1')) layers[def.id] = legacy
+  }
   return {
     layers,
     d: sp.get('d'),

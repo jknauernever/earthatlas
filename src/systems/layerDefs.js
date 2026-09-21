@@ -1022,7 +1022,12 @@ export const LAYERS = [
     iconSvg: '<path d="M12 3.5c3.5 4.4 6 7.6 6 10.6a6 6 0 1 1-12 0c0-3 2.5-6.2 6-10.6Z"></path><path d="M12 9.5v5.5"></path><path d="M9.6 12.8 12 15.2l2.4-2.4"></path>',
     group: 'water',
     kind: 'scalar',
-    param: 'd',
+    // Was 'd' until 2026-09-21 — the same key the particle-density setting
+    // writes (d=low|high), so with acidity on and density changed, the layer
+    // flag was overwritten and acidity was lost on reload. Old shared links
+    // (d=1 / d=0 can only ever have meant this layer) still work via legacyParam.
+    param: 'ph',
+    legacyParam: 'd',
     defaultOn: false,
     dataset: 'cmems-ph',
     expectKind: 'cmems-ph-surface',

@@ -25,11 +25,36 @@ export const TRACE_URL = 'https://climatetrace.org'
 // Live bindings, filled in by loadTraceIndex().
 export let TRACE_RELEASE = 'Climate TRACE'
 let traceIndex = null
+export const currentTraceIndex = () => traceIndex
 
 /** Mapbox needs an ABSOLUTE tile template — a root-relative one is resolved
- * against the Mapbox API host and silently never loads. */
-export const traceTileUrl = () =>
-  `${window.location.origin}/api/trace-tiles?v=${encodeURIComponent(traceIndex?.build || '')}&z={z}&x={x}&y={y}`
+ * against the Mapbox API host and silently never loads. `g` = measure; a
+ * release baked before per-measure tiles (no index.measures) has one file. */
+export const traceTileUrl = (g = PRIMARY_MEASURE) =>
+  `${window.location.origin}/api/trace-tiles?v=${encodeURIComponent(traceIndex?.build || '')}` +
+  (traceIndex?.measures ? `&g=${encodeURIComponent(g)}` : '') + '&z={z}&x={x}&y={y}'
+
+// ─── Measures (what the map can be sized by) ─────────────────────────────────
+// Wording and numbers follow docs/CLIMATETRACE_FACTS.md (Climate TRACE's own
+// FAQ + GWP post) — change them only against that page.
+export const PRIMARY_MEASURE = 'co2e_100yr'
+export const MEASURE_INFO = {
+  co2e_100yr: { group: 'climate', label: 'All greenhouse gases', short: 'CO₂e', unit: 'tonnes CO₂e', hint: 'every gas combined by how much heat it traps' },
+  co2e_20yr: { group: 'climate', label: 'All greenhouse gases', short: 'CO₂e · 20-yr', unit: 'tonnes CO₂e (20-year)', hint: 'every gas combined, near-term warming', variantOf: 'co2e_100yr' },
+  co2: { group: 'climate', label: 'Carbon dioxide', short: 'CO₂', unit: 'tonnes of CO₂', hint: 'mostly from burning coal, oil and gas' },
+  ch4: { group: 'climate', label: 'Methane', short: 'Methane', unit: 'tonnes of methane', hint: 'gas leaks, coal mines, cattle, landfills' },
+  n2o: { group: 'climate', label: 'Nitrous oxide', short: 'N₂O', unit: 'tonnes of nitrous oxide', hint: 'manure, fertilizer and some industry' },
+  pm2_5: { group: 'air', label: 'Fine particles (PM2.5)', short: 'PM2.5', unit: 'tonnes of fine particles (PM2.5)', hint: 'soot small enough to reach deep into lungs' },
+  so2: { group: 'air', label: 'Sulfur dioxide', short: 'SO₂', unit: 'tonnes of sulfur dioxide', hint: 'burning coal and heavy oil, smelting' },
+  nox: { group: 'air', label: 'Nitrogen oxides', short: 'NOx', unit: 'tonnes of nitrogen oxides', hint: 'engines, boilers, furnaces' },
+  co: { group: 'air', label: 'Carbon monoxide', short: 'CO', unit: 'tonnes of carbon monoxide', hint: 'fuel that doesn’t burn completely' },
+}
+export const measureInfo = (g) => MEASURE_INFO[g] || MEASURE_INFO[PRIMARY_MEASURE]
+/** Measures this release actually has (older releases: CO₂e only). */
+export const availableMeasures = (index) => (index?.measures ? Object.keys(index.measures) : [PRIMARY_MEASURE])
+/** One line for facility cards; the full note lives in the measure picker. */
+export const AIR_CAVEAT_SHORT = 'Air-pollution figures are rough: estimated from national averages per industry, so they show where pollution comes from better than exact amounts.'
+export const AIR_CAVEAT = 'Air-pollution figures are rougher than the climate ones: for most kinds of site, Climate TRACE estimates them from national averages per industry and fuel, scaled by each site’s activity. They show where pollution comes from better than exactly how much one site emits.'
 
 async function fetchIndex(url) {
   const r = await fetch(url)
@@ -70,6 +95,11 @@ export function decodeDetail(rec, index = traceIndex) {
   for (const k of ['au', 'cu', 'efu']) out[k] = rec[k] ?? sd.units[k] ?? null
   out.md = rec.md ?? sd.md ?? null
   if (rec.o) out.o = rec.o.map((v, i) => (v == null ? null : [sd.odefs[i], v])).filter(Boolean)
+  // Other measures: g = { ch4: [m0, rle], … } → { ch4: { m0, e: [...] }, … }
+  if (rec.g) {
+    out.g = {}
+    for (const [k, [m0, rle]] of Object.entries(rec.g)) out.g[k] = { m0, e: unRle(rle) }
+  }
   if (rec.conf) {
     out.conf = {}
     index.confFields.forEach((f, i) => { const w = CONF_WORDS_BY_CODE[rec.conf[i]]; if (w) out.conf[f] = w })
@@ -283,4 +313,45 @@ export function seriesChartSvg(series, months, curIdx, color) {
   }
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Monthly emissions ${esc(monthWord(months[0]))} to ${esc(monthWord(months[n - 1]))}" style="display:block;margin:6px 0 2px;color:inherit">` +
     `<line x1="0" y1="${base}" x2="${W}" y2="${base}" stroke="currentColor" stroke-opacity="0.35" stroke-width="0.6"/>${grid}${bars}</svg>`
+}
+
+// ─── "Everything this site emits" (facility popup) ──────────────────────────
+
+/** Text after a tonnage in the popup's big number: "1.2 million tonnes of methane". */
+export const MEASURE_SUFFIX = {
+  co2e_100yr: 'CO₂e', co2e_20yr: 'CO₂e (20-year)', co2: 'of CO₂', ch4: 'of methane', n2o: 'of nitrous oxide',
+  pm2_5: 'of PM2.5', so2: 'of SO₂', nox: 'of NOx', co: 'of carbon monoxide',
+}
+const MIX_ROWS = [
+  ['climate', 'Warming the planet', ['co2e_100yr', 'co2', 'ch4', 'n2o']],
+  ['air', 'Air people breathe (rough estimates)', ['pm2_5', 'so2', 'nox', 'co']],
+]
+
+/**
+ * Every measure the detail record has, for the month on screen — HTML built
+ * only from numbers and our fixed labels (no upstream text), so it's safe to
+ * insert. The measure the map is showing is emphasized. Tonnes of different
+ * gases aren't comparable heat-wise, so this is a list, not bars.
+ */
+export function traceMixHtml(rec, ym, current) {
+  const idx = traceIndex?.months?.indexOf(ym) ?? -1
+  if (idx < 0) return ''
+  const valueOf = (g) => {
+    if (g === PRIMARY_MEASURE) { const i = idx - rec.m0; return i >= 0 && i < rec.e.length ? rec.e[i] : null }
+    const s = rec.g?.[g]
+    if (!s) return null
+    const i = idx - s.m0
+    return i >= 0 && i < s.e.length ? s.e[i] : null
+  }
+  const base = current === 'co2e_20yr' ? 'co2e_100yr' : current
+  const groups = MIX_ROWS.map(([key, title, gs]) => {
+    const items = gs.map((g) => [g, valueOf(g)]).filter(([, v]) => v != null && v > 0)
+    if (!items.length) return ''
+    const li = items.map(([g, v]) => {
+      const on = g === base
+      return `<span style="white-space:nowrap;${on ? 'font-weight:700' : ''}">${MEASURE_INFO[g].short} ${tonnesWord(v).replace(' tonnes', ' t')}</span>`
+    }).join(' · ')
+    return `<div><span style="opacity:.7">${title}:</span> ${li}</div>`
+  }).filter(Boolean)
+  return groups.length ? groups.join('') : '<div style="opacity:.7">No other measures for this site this month.</div>'
 }

@@ -12,7 +12,7 @@
 
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
 import { loadSystemsJson } from './windField.js'
-import { loadTraceIndex, peekTraceDetail, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
+import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
 import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
 
 // Per-layer  +  (24×24 monoline, stroke=currentColor) come from
@@ -1216,35 +1216,43 @@ export const LAYERS = [
       rateHoursPerSec: 3 * 730.5,
     },
     legendRows: Object.values(SECTOR_STYLE).map((s) => ({ label: s.label, glow: s.color })),
-    legendNote: 'Each disc is one facility; its area shows the greenhouse gases it emitted in the month on the time bar (CO₂-equivalent). World view shows the biggest emitters — smaller sites appear as you zoom in. Dashed rings are whole oil & gas basins, not single sites. These are Climate TRACE model estimates from satellite and activity data, not direct measurements; each popup shows its confidence rating.',
+    legendNote: 'Each disc is one facility; its area shows what it emitted in the month on the time bar, for the measure picked at the top of the map (all greenhouse gases as CO₂e by default, or one gas or air pollutant). World view shows the biggest emitters of that measure — smaller sites appear as you zoom in. Dashed rings are whole oil & gas basins, not single sites. These are Climate TRACE model estimates from satellite and activity data, not direct measurements; each popup shows its confidence rating.',
     explain:
       'Every disc is a real facility — power plants, steel mills, refineries, mines, airports, ports, landfills, cattle operations — sized by the greenhouse gases it put out that month. Press play to watch four and a half years of industry breathe: plants ramping up in winter, airports recovering after 2021, coal units going quiet.',
     popupEvent(ev) {
       const what = subsectorWord(ev.sub)
       const d = peekTraceDetail(ev.id, ev.shards)
       const monthTxt = monthWord(ev.month)
-      const yearTotal = ev.y > 0 ? `${tonnesWord(ev.y)} across ${ev.fullYear}` : null
+      const yearTotal = ev.y > 0 ? `${tonnesWord(ev.y)} ${unit} across ${ev.fullYear}` : null
       const place = ev.country ? ` in ${ev.country}` : ''
       const owner = ev.o ? ` Owned by ${ev.o}.` : ''
       const cap = ev.k ? ` Capacity: ${ev.k}.` : ''
-      const conf = ev.q ? ` Climate TRACE rates its confidence in this estimate as ${CONFIDENCE_WORDS[ev.q] || ev.q}.` : ''
+      const conf = ev.q ? ` Climate TRACE rates its confidence in this site’s estimate as ${CONFIDENCE_WORDS[ev.q] || ev.q}.` : ''
       // Cattle operations say how each was found and counted ('reported' vs
       // Climate TRACE's own synthetic/AI estimate, e.g. 'ct_syn_ai').
       const modeled = d?.o?.some(([def, v]) => /approach/i.test(def) && /(^|_)syn(_|$)|(^|_)ai$|synthetic/i.test(v))
         ? ' This operation’s location or herd size was estimated by Climate TRACE’s own model, not taken from a registry.'
         : ''
-      const basin = ev.b
-        ? ` This figure covers a whole basin — every well, pipeline and flare across the region — placed at its center, not one site.`
-        : ''
+      // What the number is, for sites whose figure isn't "smoke from here"
+      // (docs/CLIMATETRACE_FACTS.md: ports, airports, basins).
+      const scope = ev.b
+        ? ' This figure covers a whole basin — every well, pipeline and flare across the region — placed at its center, not one site. Climate TRACE deliberately doesn’t publish exact oil & gas locations.'
+        : /shipping$/.test(ev.sub)
+          ? ' The figure is ship voyages to and from here: each voyage’s emissions are split half to its departure port and half to its arrival port. It isn’t the port’s own operations, and the point stands in for the whole port area, so it can sit slightly inland.'
+          : /aviation$/.test(ev.sub)
+            ? ' The figure is fuel burned by flights; the airport’s own ground operations aren’t included.'
+            : ''
+      const air = mi.group === 'air' ? ` ${AIR_CAVEAT_SHORT}` : ''
       const late = ev.clamped ? ` (${monthTxt} is the latest month published — the data runs ~2 months behind.)` : ''
       return {
         // Basin names arrive as "Country_Basin_Play" — make them readable.
         head: `${ev.n.replace(/_/g, ' · ')} — ${what}`,
-        big: ev.value > 0 ? `${tonnesWord(ev.value)} CO₂e` : 'no estimate',
+        big: ev.value > 0 ? `${tonnesWord(ev.value)} ${unit}` : 'no estimate',
         alt: `in ${monthTxt}`,
-        chartSvg: ev.series ? seriesChartSvg(ev.series, ev.months, ev.monthIdx, sectorStyle(ev.sec).color) : '',
-        meta: `${/^[aeiou]/i.test(what) ? 'An' : 'A'} ${what}${place}.${basin}${yearTotal ? ` It emitted about ${yearTotal}${ev.b ? '' : `, #${ev.r.toLocaleString()} of the ${ev.total.toLocaleString()} sources on this map`}.` : ''}${owner}${cap}${conf}${modeled} Model estimates from satellite and activity data, not measurements.${late}`,
-        ai: `Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), ${ev.value ?? 'n/a'} t CO2e (100-yr GWP) in ${ev.month}, ${ev.y} t in ${ev.fullYear}, global rank ${ev.r} of ${ev.total} facilities; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}. Modeled estimate, not a measurement.`,
+        chartSvg: (ev.series ? seriesChartSvg(ev.series, ev.months, ev.monthIdx, sectorStyle(ev.sec).color) : '') +
+          `<div id="${mixId}" class="trace-mix" style="font-size:12px;line-height:1.5;margin:4px 0 2px;opacity:.9">Loading everything this site emits…</div>`,
+        meta: `${/^[aeiou]/i.test(what) ? 'An' : 'A'} ${what}${place}.${scope}${yearTotal ? ` About ${yearTotal}${ev.b ? '' : `, #${ev.r.toLocaleString()} of the ${(ev.measureTotal || ev.total).toLocaleString()} sources with ${mi.label.toLowerCase()} on this map`}.` : ''}${owner}${cap}${conf}${modeled} Model estimates from satellite and activity data, not measurements.${air}${late}`,
+        ai: `Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), measure ${g} (${mi.unit}): ${ev.value ?? 'n/a'} t in ${ev.month}, ${ev.y} t in ${ev.fullYear}, rank ${ev.r} of ${ev.measureTotal || ev.total} sources for this measure; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}${/shipping$/.test(ev.sub) ? '; port figure = voyage emissions split half to departure and half to arrival port, not port operations' : ''}${/aviation$/.test(ev.sub) ? '; airport figure = flight fuel combustion, excludes ground operations' : ''}${mi.group === 'air' ? '; air pollutant = Tier 1 estimate from national per-industry ratios, not a facility measurement' : ''}. Modeled estimate, not a measurement.`,
         links: [{ href: TRACE_URL, label: `Source: Climate TRACE ${TRACE_RELEASE} ↗` }],
       }
     },
@@ -1482,3 +1490,15 @@ export const LAYERS = [
     },
   },
 ]
+      const g = ev.measure || 'co2e_100yr'
+      const mi = measureInfo(g)
+      const unit = MEASURE_SUFFIX[g] || 'CO₂e'
+      // "Everything this site emits" fills in when the detail record arrives
+      // (usually already fetched on hover). Numbers + our labels only.
+      const mixId = `trace-mix-${ev.id}-${Date.now()}`
+      const fill = (rec) => {
+        const el = typeof document !== 'undefined' && document.getElementById(mixId)
+        if (el) el.innerHTML = rec ? traceMixHtml(rec, ev.month, g) : ''
+      }
+      if (d) setTimeout(() => fill(d), 0)
+      else loadTraceDetail(ev.id, ev.shards).then(fill).catch(() => fill(null))

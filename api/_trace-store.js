@@ -41,7 +41,14 @@ class BlobRange {
   close() {}
   getKey() { return this.url }
   async getBytes(offset, length) {
-    const r = await fetch(this.url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } })
+    // One retry: the first read after a release goes live has failed once in
+    // production (a transient Blob error surfaced as a 502 tile). A blank
+    // tile never refetches in Mapbox, so absorb a single blip here.
+    let r = await fetch(this.url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } })
+    if (r.status !== 206 && r.status !== 200) {
+      await new Promise((ok) => setTimeout(ok, 250))
+      r = await fetch(this.url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } })
+    }
     if (r.status !== 206 && r.status !== 200) throw new Error(`blob ${r.status}`)
     const buf = await r.arrayBuffer()
     // A server that ignores Range returns the whole file — slice it ourselves.
@@ -61,7 +68,7 @@ export function traceReader(file, v) {
     if (devLocal) r = new LocalRange(local)
     else if (VERSION_RE.test(v || '')) r = new BlobRange(`${TRACE_BLOB_BASE}/trace/${v}/${file}`)
     else return null
-    if (readers.size > 24) { for (const [k, old] of readers) { old.close(); readers.delete(k); break } }
+    if (readers.size > 40) { for (const [k, old] of readers) { old.close(); readers.delete(k); break } }
     readers.set(key, r)
   }
   return r

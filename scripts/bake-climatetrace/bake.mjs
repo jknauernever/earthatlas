@@ -22,20 +22,26 @@
 // centroid (see docs). They're kept, flagged `b=1`, so renderers can draw them
 // as regions rather than as a single site.
 //
+// MEASURES: the primary package (CO2e 100-yr) is extracted in full; the other
+// eight (CO2e 20-yr, CO2, CH4, N2O, PM2.5, SO2, NOx, CO — see MEASURES) are
+// extracted as numbers only (`extract-all <gas>` detects which from the zip's
+// folder) and joined to the primary facility records by source_id.
+//
 // OUTPUTS (build/, gitignored — publish with publish.mjs):
-//   trace-facilities.pmtiles  layer "facilities"; props per feature:
+//   trace-facilities-<measure>.pmtiles   one per measure, layer "facilities",
+//     ranked and zoom-laddered by THAT measure; props per feature:
 //     id, n (name), sec, sub, c (ISO3), at (asset type), b (basin flag),
-//     m0 (index of first month in the series), m (monthly tonnes CO2e,
-//     3 chars per month — see encodeMonth), y (latest
-//     full-year total), r (global rank by y), o (top owner), q (emissions
+//     m0 (index of first month in the series), m (monthly tonnes of the
+//     measure, 3 chars per month — see encodeMonth), y (latest full-year
+//     total), r (rank for this measure), o (top owner), q (emissions
 //     confidence: very low…high), k (capacity with units)
 //   trace-detail.pack         16,384 shards (id % 16384) in one file, layout in
 //     api/trace-detail.js; each shard is NDJSON, format 2 (encodeDetail;
-//     decode with traceData.js), exact values: monthly
-//     emissions + activity, capacity, factors, subsector extras (otherN),
-//     latest confidence ratings, ownership chains
-//   trace-index.json          release, gas, months[], per-subsector counts,
-//     per-sector monthly totals, citation
+//     decode with traceData.js): exact primary monthly emissions + activity,
+//     capacity, factors, otherN extras, latest confidence, ownership chains,
+//     and `g` = every other measure's monthly series
+//   trace-index.json          release, build, months[], measures{count, ref,
+//     sectors, tiles}, per-subsector counts, dictionary, citation
 
 import { spawn, execFileSync } from 'node:child_process'
 import readline from 'node:readline'
@@ -115,6 +121,16 @@ const intern = (s) => {
 }
 const SECTOR_PACKAGES = ['power', 'manufacturing', 'mineral_extraction', 'fossil_fuel_operations', 'fluorinated_gases', 'waste', 'transportation', 'buildings', 'agriculture', 'forestry_and_land_use']
 const BASIN_SUBSECTORS = new Set(['oil-and-gas-production', 'oil-and-gas-transport'])
+
+// Every measure a user can pick. The PRIMARY package (CO2e, 100-yr) carries the
+// full facility record (names, owners, confidence, capacity…); the others are
+// read as numbers only ("series") and joined to it by source_id. One map-tile
+// file per measure, each ranked by ITS OWN emissions, so the world view in
+// methane mode shows the biggest methane sources, not the biggest CO₂ ones.
+export const PRIMARY = 'co2e_100yr'
+export const MEASURES = ['co2e_100yr', 'co2e_20yr', 'co2', 'ch4', 'n2o', 'pm2_5', 'so2', 'nox', 'co']
+export const tilesFile = (g) => `trace-facilities-${g}.pmtiles`
+const gasOfZip = (zip) => basename(dirname(zip))
 
 // Zoom ladder by global rank (largest emitters first): a world view shows the
 // biggest sources, smaller ones arrive as you zoom in. Ranks are cumulative.
@@ -362,13 +378,51 @@ async function extractSubsector(zip, s) {
   return summary
 }
 
+// Numbers only, for a non-primary measure: source_id × month → tonnes. Names,
+// places and owners come from the primary package at assemble time.
+async function extractSeries(zip, s, gas) {
+  const t0 = Date.now()
+  const series = new Map() // id → Float32Array(MAX_MONTHS), NaN = not reported
+  let H = null, bad = 0, rows = 0, maxMonth = -1
+  for await (const { header, r } of csvRows(zip, s.sources)) {
+    if (header) { H = Object.fromEntries(header.map((k, i) => [k, i])); continue }
+    if (r.length !== Object.keys(H).length) { bad++; continue }
+    if (r[H.geometry_ref]) continue
+    const q = num(r[H.emissions_quantity])
+    const mi = monthIdx(r[H.start_time])
+    if (mi < 0 || mi >= MAX_MONTHS) continue
+    rows++
+    const id = Number(r[H.source_id])
+    let a = series.get(id)
+    if (!a) { a = new Float32Array(MAX_MONTHS).fill(NaN); series.set(id, a) }
+    if (q != null) { a[mi] = q; if (mi > maxMonth) maxMonth = mi }
+  }
+  mkdirSync(SUB_DIR, { recursive: true })
+  const out = createWriteStream(resolve(SUB_DIR, `${s.sub}.${gas}.series.ndjson`))
+  let kept = 0
+  for (const [id, a] of series) {
+    let first = -1, last = -1, any = false
+    for (let i = 0; i < MAX_MONTHS; i++) if (!Number.isNaN(a[i])) { if (first < 0) first = i; last = i; if (a[i] > 0) any = true }
+    if (!any) continue // never emits this gas — no feature, no detail entry
+    const e = []
+    for (let i = first; i <= last; i++) e.push(sig(Number.isNaN(a[i]) ? null : a[i]))
+    out.write(JSON.stringify({ id, m0: first, e }) + '\n')
+    kept++
+  }
+  await new Promise((r) => out.end(r))
+  const summary = { sub: s.sub, gas, sources: series.size, kept, rows, bad, lastMonth: maxMonth >= 0 ? monthId(maxMonth) : null, secs: Math.round((Date.now() - t0) / 1000) }
+  writeFileSync(resolve(SUB_DIR, `${s.sub}.${gas}.series.summary.json`), JSON.stringify(summary))
+  console.log(JSON.stringify(summary))
+}
+
 async function extract(zip, only) {
   const subs = (await facilitySubsectors(zip)).filter((s) => !only || s.sub === only)
   if (!subs.length) console.log(`${basename(zip)}: no facility subsectors`)
-  for (const s of subs) await extractSubsector(zip, s)
+  const gas = gasOfZip(zip)
+  for (const s of subs) await (gas === PRIMARY ? extractSubsector(zip, s) : extractSeries(zip, s, gas))
 }
 
-async function extractAll(gas = 'co2e_100yr') {
+async function extractAll(gas = PRIMARY) {
   const dir = resolve(RAW, gas)
   const zips = readdirSync(dir).filter((f) => f.endsWith('.zip')).map((f) => resolve(dir, f))
   // One child per facility subsector, 6 at a time; the two cattle files
@@ -382,6 +436,7 @@ async function extractAll(gas = 'co2e_100yr') {
     while (i < jobs.length) {
       const j = jobs[i++]
       await new Promise((res, rej) => {
+        // `extract` picks full records (primary) or numbers only from the zip's gas folder.
         const p = spawn(process.execPath, [`--max-old-space-size=${process.env.TRACE_HEAP_MB || 8000}`, fileURLToPath(import.meta.url), 'extract', j.zip, j.sub], { stdio: 'inherit' })
         p.on('exit', (code) => (code ? rej(new Error(`${j.sub} exited ${code}`)) : res()))
       })
@@ -397,8 +452,11 @@ async function* ndjson(path) {
   for await (const line of rl) if (line) yield JSON.parse(line)
 }
 
-async function assemble(gas = 'co2e_100yr') {
-  const summaries = readdirSync(SUB_DIR).filter((f) => f.endsWith('.summary.json')).map((f) => JSON.parse(readFileSync(resolve(SUB_DIR, f), 'utf8')))
+async function assemble(gas = PRIMARY) {
+  const summaries = readdirSync(SUB_DIR).filter((f) => f.endsWith('.summary.json') && !f.endsWith('.series.summary.json')).map((f) => JSON.parse(readFileSync(resolve(SUB_DIR, f), 'utf8')))
+  const seriesSummaries = readdirSync(SUB_DIR).filter((f) => f.endsWith('.series.summary.json')).map((f) => JSON.parse(readFileSync(resolve(SUB_DIR, f), 'utf8')))
+  // Measures actually baked (primary always; others only if extracted).
+  const measures = MEASURES.filter((g) => g === PRIMARY || seriesSummaries.some((x) => x.gas === g))
   const subs = summaries.map((s) => s.sub).sort()
   const ver = summaries[0]?.ver
   const lastMonth = summaries.map((s) => s.lastMonth).filter(Boolean).sort().pop()
@@ -431,57 +489,123 @@ async function assemble(gas = 'co2e_100yr') {
     dict[sub] = { odefs, units: { au: mode(tallies.au), cu: mode(tallies.cu), efu: mode(tallies.efu) }, md: mode(tallies.md) }
   }
 
-  // Pass 1: annual totals → global rank.
-  const totals = []
-  const sectorMonthly = {}
+  // Facility metadata from the primary bake — every measure's features and
+  // detail join to it by source_id.
+  const meta = new Map()
   for (const sub of subs) {
     for await (const f of ndjson(resolve(SUB_DIR, `${sub}.features.ndjson`))) {
-      let y = 0
+      meta.set(f.id, { n: f.n, sec: f.sec, sub: f.sub, c: f.c, at: f.at || null, b: f.b ? 1 : 0, lon: f.lon, lat: f.lat })
+    }
+  }
+  // One measure's series, per subsector: primary from the features file,
+  // the rest from their numbers-only series files (sources absent from the
+  // primary facility set — no name, no place — are counted and skipped).
+  async function* seriesOf(g) {
+    for (const sub of subs) {
+      const path = g === PRIMARY ? resolve(SUB_DIR, `${sub}.features.ndjson`) : resolve(SUB_DIR, `${sub}.${g}.series.ndjson`)
+      if (!existsSync(path)) continue
+      for await (const f of ndjson(path)) yield f
+    }
+  }
+
+  const minzoomFor = (r) => MINZOOM_LADDER.find(([lim]) => r <= lim)[1]
+  const measureInfo = {}
+  let rank = null // primary ranks (stored in detail records)
+  let totalsCount = 0
+  const sectorMonthly = {}
+  for (const g of measures) {
+    // Pass 1: this measure's latest-full-year totals → its own global rank.
+    const totals = []
+    const maxima = []
+    const bySector = {}
+    let orphans = 0
+    for await (const f of seriesOf(g)) {
+      const m = meta.get(f.id)
+      if (!m) { orphans++; continue }
+      let y = 0, mx = 0
       for (let i = 0; i < f.e.length; i++) {
         const mi = f.m0 + i, v = f.e[i]
         if (v == null) continue
         if (mi >= yStart && mi < yStart + 12) y += v
-        const sm = (sectorMonthly[f.sec] ||= new Array(nMonths).fill(0))
-        if (mi < nMonths) sm[mi] += v
+        if (v > mx) mx = v
+        if (g === PRIMARY && mi < nMonths) (sectorMonthly[m.sec] ||= new Array(nMonths).fill(0))[mi] += v
       }
+      if (mx <= 0) continue
       totals.push([y, f.id])
+      maxima.push(mx)
+      bySector[m.sec] = (bySector[m.sec] || 0) + 1
     }
-  }
-  totals.sort((a, b) => b[0] - a[0])
-  const rank = new Map(totals.map(([, id], i) => [id, i + 1]))
-  const minzoomFor = (r) => MINZOOM_LADDER.find(([lim]) => r <= lim)[1]
+    totals.sort((a, b) => b[0] - a[0])
+    const rk = new Map(totals.map(([, id], i) => [id, i + 1]))
+    if (g === PRIMARY) { rank = rk; totalsCount = totals.length }
+    maxima.sort((a, b) => a - b)
+    // Size reference: a big-but-not-extreme monthly value (99.5th percentile
+    // of each source's peak month). The map scales every measure to it, so a
+    // methane view reads like the CO₂e view instead of as specks.
+    const ref = maxima.length ? maxima[Math.min(maxima.length - 1, Math.floor(maxima.length * 0.995))] : 1
 
-  // Pass 2: tile features (GeoJSON, tippecanoe minzoom per feature).
-  const featPath = resolve(BUILD, 'features.geojsonl')
-  const fOut = createWriteStream(featPath)
-  for (const sub of subs) {
-    for await (const f of ndjson(resolve(SUB_DIR, `${sub}.features.ndjson`))) {
-      const r = rank.get(f.id)
+    // Pass 2: tile features (GeoJSON, tippecanoe minzoom per feature).
+    const featPath = resolve(BUILD, `features-${g}.geojsonl`)
+    const fOut = createWriteStream(featPath)
+    for await (const f of seriesOf(g)) {
+      const m = meta.get(f.id)
+      const r = rk.get(f.id)
+      if (!m || !r) continue
       let y = 0
       for (let i = 0; i < f.e.length; i++) { const mi = f.m0 + i; if (f.e[i] != null && mi >= yStart && mi < yStart + 12) y += f.e[i] }
       const props = {
-        id: f.id, n: f.n, sec: f.sec, sub: f.sub, c: f.c, ...(f.at ? { at: f.at } : {}), ...(f.b ? { b: 1 } : {}),
+        id: f.id, n: m.n, sec: m.sec, sub: m.sub, c: m.c, ...(m.at ? { at: m.at } : {}), ...(m.b ? { b: 1 } : {}),
         m0: f.m0, m: f.e.map(encodeMonth).join(''), y: Math.round(y), r,
         ...extras.get(f.id),
       }
-      fOut.write(JSON.stringify({ type: 'Feature', tippecanoe: { minzoom: minzoomFor(r) }, geometry: { type: 'Point', coordinates: [f.lon, f.lat] }, properties: props }) + '\n')
+      if (!fOut.write(JSON.stringify({ type: 'Feature', tippecanoe: { minzoom: minzoomFor(r) }, geometry: { type: 'Point', coordinates: [m.lon, m.lat] }, properties: props }) + '\n')) {
+        await new Promise((res) => fOut.once('drain', res))
+      }
+    }
+    await new Promise((r) => fOut.end(r))
+
+    const pm = resolve(BUILD, tilesFile(g))
+    rmSync(pm, { force: true })
+    console.log(`tippecanoe ${g} (${totals.length.toLocaleString()} sources${orphans ? `, ${orphans} without a primary record skipped` : ''}) …`)
+    execFileSync('tippecanoe', [
+      '-o', pm, '-l', 'facilities', '-P',
+      '-Z0', '-z8', // points: Mapbox overzooms z8 fine (~40 m precision)
+      '-r1', // the minzoom ladder decides density, not tippecanoe's rate
+      '--no-feature-limit',
+      '--drop-densest-as-needed', '--maximum-tile-bytes=700000', // safety valve for dense feedlot regions
+      '-n', `Climate TRACE facilities (${g})`, '-A', 'Climate TRACE (climatetrace.org), CC BY 4.0',
+      '--force', '--quiet',
+      featPath,
+    ], { stdio: 'inherit' })
+    rmSync(featPath, { force: true })
+    measureInfo[g] = {
+      tiles: tilesFile(g),
+      count: totals.length,
+      sectors: bySector,
+      ref: sig(ref),
+      fullYearTotal: Math.round(totals.reduce((a, [y]) => a + y, 0)),
+      orphans,
+      bytes: statSync(pm).size,
     }
   }
-  await new Promise((r) => fOut.end(r))
 
-  const pm = resolve(BUILD, 'trace-facilities.pmtiles')
-  rmSync(pm, { force: true })
-  console.log('tippecanoe …')
-  execFileSync('tippecanoe', [
-    '-o', pm, '-l', 'facilities', '-P',
-    '-Z0', '-z8', // points: Mapbox overzooms z8 fine (~40 m precision)
-    '-r1', // the minzoom ladder decides density, not tippecanoe's rate
-    '--no-feature-limit',
-    '--drop-densest-as-needed', '--maximum-tile-bytes=700000', // safety valve for dense feedlot regions
-    '-n', 'Climate TRACE facilities', '-A', 'Climate TRACE (climatetrace.org), CC BY 4.0',
-    '--force', '--quiet',
-    featPath,
-  ], { stdio: 'inherit' })
+  // Every other measure's monthly series, joined into the detail records
+  // (`g: { ch4: rle, pm2_5: rle, … }`) so a facility card can show everything
+  // the site emits. Loaded one subsector at a time to bound memory.
+  async function otherSeriesFor(sub) {
+    const bySource = new Map()
+    for (const g of measures) {
+      if (g === PRIMARY) continue
+      const path = resolve(SUB_DIR, `${sub}.${g}.series.ndjson`)
+      if (!existsSync(path)) continue
+      for await (const f of ndjson(path)) {
+        let rec = bySource.get(f.id)
+        if (!rec) { rec = {}; bySource.set(f.id, rec) }
+        rec[g] = [f.m0, rleSeries(f.e)]
+      }
+    }
+    return bySource
+  }
 
   // Detail shards: one NDJSON per (id % SHARDS), flushed in bounded batches.
   rmSync(DETAIL_DIR, { recursive: true, force: true })
@@ -492,12 +616,16 @@ async function assemble(gas = 'co2e_100yr') {
     buf = new Map(); bufBytes = 0
   }
   for (const sub of subs) {
+    const others = await otherSeriesFor(sub)
     const rl = readline.createInterface({ input: (await import('node:fs')).createReadStream(resolve(SUB_DIR, `${sub}.detail.ndjson`)) })
     for await (const line of rl) {
       if (!line) continue
       const id = Number(line.slice(6, line.indexOf(',')))
       const rec = encodeDetail(JSON.parse(line), dict)
       rec.r = rank.get(id)
+      // Other measures: [m0, rle series] each (m0 can differ from the primary's).
+      const g = others.get(id)
+      if (g) rec.g = g
       const s = JSON.stringify(rec) + '\n'
       const k = id % SHARDS
       if (!buf.has(k)) buf.set(k, [])
@@ -559,7 +687,9 @@ async function assemble(gas = 'co2e_100yr') {
     detailFormat: 2,
     detailDict: dict,
     confFields: CONF_FIELDS,
-    count: totals.length,
+    count: totalsCount,
+    primary: PRIMARY,
+    measures: measureInfo,
     subsectors: Object.fromEntries(summaries.sort((a, b) => b.sources - a.sources).map((s) => [s.sub, { sector: s.sec, sources: s.sources, lastMonth: s.lastMonth, ownership: s.ownership }])),
     sectorMonthly: Object.fromEntries(Object.entries(sectorMonthly).map(([k, v]) => [k, v.map(Math.round)])),
     minzoomLadder: MINZOOM_LADDER.map(([r, z]) => [Number.isFinite(r) ? r : null, z]),
@@ -568,9 +698,9 @@ async function assemble(gas = 'co2e_100yr') {
     source: `Climate TRACE Emissions Inventory ${ver ? ver.replace(/_/g, '.') : ''} (https://climatetrace.org), CC BY 4.0 — facility-level sources, ${gas}, monthly`,
   }
   writeFileSync(resolve(BUILD, 'trace-index.json'), JSON.stringify(index))
-  const pmMB = (statSync(pm).size / 1e6).toFixed(1)
   const packMB = (statSync(packPath).size / 1e6).toFixed(1)
-  console.log(`✓ ${index.build}: ${totals.length.toLocaleString()} sources · ${nMonths} months (→ ${lastMonth}) · full year ${fullYear} · PMTiles ${pmMB} MB · detail pack ${packMB} MB (${SHARDS} shards)`)
+  console.log(`✓ ${index.build}: ${totalsCount.toLocaleString()} sources · ${nMonths} months (→ ${lastMonth}) · full year ${fullYear} · detail pack ${packMB} MB (${SHARDS} shards)`)
+  for (const [g, m] of Object.entries(measureInfo)) console.log(`   ${g.padEnd(11)} ${String(m.count).padStart(7)} sources · tiles ${(m.bytes / 1e6).toFixed(1)} MB · size ref ${m.ref} t/month`)
 }
 
 // Dev: the index is served statically; tiles and detail come from the local

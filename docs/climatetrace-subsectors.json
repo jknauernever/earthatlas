@@ -1,0 +1,312 @@
+{
+ "enteric-fermentation-cattle-operation": {
+  "title": "Enteric fermentation cattle operation",
+  "assetLabel": "Cattle operation",
+  "definition": "Methane emissions from digestive systems of cattle located in cattle operations, including dairy farms and non-dairy cattle feeding operations. Data available for download: Country-level emission totals from enteric fermentation from cattle in feedlots within a country Emissions estimates and ownership for individual cattle feedlots available in select countries",
+  "methodology": "Methane emissions were estimated by identifying individual cattle operations using satellite imagery and AI. Once identified, the cattle operation's area size was used to predict total head of cattle and combined with the predicted manure management practices to estimate emissions from 2021 onwards till the current year. For country-level methane emissions, FAOSTAT and USDA animal count data was used for years 2015-2022 with IPCC emission factors with the remaining years projected forward.\n",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Agriculture",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "agriculture"
+ },
+ "manure-management-cattle-operation": {
+  "title": "Manure management cattle operations",
+  "assetLabel": "Cattle feedlot",
+  "definition": "Methane and nitrous oxide emissions from cattle manure decomposition in cattle operations including dairy farms and non-dairy cattle feeding operations. Data available for download: Country-level emission totals from cattle manure management in feedlots within a country Emissions and ownership estimates for individual cattle feedlots available in select countries.",
+  "methodology": "Methane and nitrous oxide emissions were estimated by identifying individual cattle operations as well as the presence of manure lagoons using satellite imagery and AI. Once identified, the cattle operation's area size was used to predict total head of cattle and combined with the predicted manure management practices to estimate emissions from 2021 onwards till the current year. For country-level methane emissions, FAOSTAT and USDA animal count data was used for years 2015-2022 with IPCC emission factors with the remaining years projected forward.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Agriculture",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Ground Truth Alternative",
+  "sectorSlugApi": "agriculture"
+ },
+ "domestic-wastewater-treatment-and-discharge": {
+  "title": "Domestic wastewater treatment and discharge",
+  "assetLabel": "Wastewater",
+  "definition": "Air emissions from the treatment and disposal of wastewater in centralized treatment plants from domestic sources. Data available for download: - Country-level emission totals from wastewater treatment within a country - Emissions estimates for individual wastewater treatment plants",
+  "methodology": "Domestic wastewater treatment plants (WWTPs) emissions were estimated by combining reported data from the Hydrowaste database with WWTPs verified using a satellite imagery and machine learning algorithms. Once identified, emissions were estimated based on the IPCC national greenhouse gas inventory guidelines. Country-level emissions were estimated by using population data for each country and disaggregating them into different wastewater treatment pathways using the WHO/JMP - WASH dataset and combining them with standard IPCC emissions factors, climate zone data and WWTP treatment technology type from Hydrowaste.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "waste"
+ },
+ "food-beverage-tobacco": {
+  "title": "Food beverages and tobacco",
+  "assetLabel": "Food beverages and tobacco",
+  "definition": "Air emissions from the processing and manufacturing of food products and beverages. Data available for download: \n- Country-level emission totals from food and beverage manufacture \n- Emissions estimates of individual food and beverage manufacturing plants",
+  "methodology": "Facilities information was obtained from Open Supply Hub. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using UNIDO statistics, EDGAR and CEDS.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "solid-waste-disposal": {
+  "title": "Solid waste disposal",
+  "assetLabel": "Disposal site",
+  "definition": "Air emissions from the treatment and disposal of municipal, industrial, and other solid waste in landfills and dumpsites. Electricity generation facilities are excluded from this subsector. \n\nData available for download: \n- Country-level emission totals from solid waste disposal within a country \n- Emissions estimates for individual landfills and dumpsites",
+  "methodology": "Solid waste disposal methane emissions are directly republished from self-reported facility-level datasets where available. Where unavailable, methane emissions are estimated through a Bayesian hierarchical regression model using waste quantities as its predictor if known, or using land area to predict both incoming waste and consequent emissions if waste data are unavailable. Country-level emissions from EDGAR, except in cases where the combined total of the landfill-level emissions exceeded the EDGAR-estimate.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Ground Truth Alternative",
+  "sectorSlugApi": "waste"
+ },
+ "electricity-generation": {
+  "title": "Electricity generation",
+  "assetLabel": "Power plant",
+  "definition": "Air emissions from thermal power plants from all major fuel sources including coal, natural gas, fuel oil, diesel, and incinerated waste. Data available for download: - Country-level emission totals from electricity generation - Emissions and ownership estimates for individual power plants.",
+  "methodology": "Power sector emissions are estimated by first assembling a global geolocated inventory of power plants, generation, and metered emissions data. Machine learning models then predict power plant generation from satellite images. These predictions are aggregated and combined with available generation data and carbon intensity factors to derive emissions estimates.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Power",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Ground Truth Alternative",
+  "sectorSlugApi": "power"
+ },
+ "textiles-leather-apparel": {
+  "title": "Textiles leather and apparel",
+  "assetLabel": "Textiles leather and apparel",
+  "definition": "Air emissions from the manufacturing of textiles and leather - specifically emissions from fiber processing, dyeing and leather tanning. \n\nData available for download: \n- Country-level emission totals from textiles and leather manufacture \n- Emissions estimates of individual textile and leather making plants",
+  "methodology": "Facilities were obtained from Open Supply Hub. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using UNIDO statistics, EDGAR and CEDS.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "domestic-shipping": {
+  "title": "Domestic shipping",
+  "assetLabel": "Domestic shipping",
+  "definition": "Greenhouse gas emissions from the combustion of fuels in domestic voyages of vessels greater than 500 gross tons. Onsite emissions from port operations are not included. Data available for download: Country-level emission totals from all voyages between domestic ports Emissions from voyages between domestic ports aggregated to arriving and departing ports",
+  "methodology": "Shipping estimates are estimated using Automatic Identification Systems (AIS) transmissions from vessels, which is combined with vessel characteristics. The estimation method is based on audited emissions reported to the European Union. Emissions then are assigned and aggregated to the corresponding port based on the port of departure and port of arrival of ship, half the emissions for a voyage are assigned to the arrival and departure ports respectively.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2023/Transportation",
+  "frequency": "Updated every month",
+  "source": "Remote Sensing, Ground truth data, Alternative",
+  "sectorSlugApi": "transportation"
+ },
+ "international-shipping": {
+  "title": "International shipping",
+  "assetLabel": "International shipping",
+  "definition": "Greenhouse gas emissions from the combustion of fuels in international voyages of vessels greater than 500 gross tonnes. Onsite emissions from airport ground operations are not included. Data available for download: Country-level emission totals from all voyages between international ports Emissions from voyages between domestic ports aggregated to arriving and departing ports",
+  "methodology": "Shipping estimates are estimated using Automatic Identification Systems (AIS) transmissions from vessels, which is combined with vessel characteristics. The estimation method is based on audited emissions reported to the European Union. Emissions then are assigned and aggregated to the corresponding port based on the port of departure and port of arrival of ship, half the emissions for a voyage are assigned to the arrival and departure ports respectively.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation",
+  "frequency": "Updated every month",
+  "source": "Remote sensing, Ground Truth, Alternative",
+  "sectorSlugApi": "transportation"
+ },
+ "water-reservoirs": {
+  "title": "Water reservoirs",
+  "assetLabel": "Water reservoir",
+  "definition": "Greenhouse gas emissions from human-made or human-expanded water bodies. \n\nData available for download: \n- Country-level emission totals from water reservoirs within a country \n- Emissions estimates for individual water reservoirs",
+  "methodology": "Water reservoir emissions were estimated by combining data from reservoir databases such as HydroLAKES and GraND, along with other attributes on climatic zone, weather and elevation. Emissions factors were taken from the IPCC National Greenhouse Gas Inventory guidelines.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Forestry%20and%20Land%20Use%20Change",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "forestry-and-land-use"
+ },
+ "domestic-aviation": {
+  "title": "Domestic aviation",
+  "assetLabel": "Domestic Aviation",
+  "definition": "Greenhouse gas emissions from the combustion of fuels in domestic commercial, cargo, private flights, and general aviation. Onsite emissions from airport ground operations are not included. Data available for download: Country-level emission totals from all flights between international airports Emissions and ownership from trips between domestic airports aggregated to arriving and departing airports",
+  "methodology": "Historical flight status data from OAG for all passenger and freight flights were combined with the International Civil Aviation Organisation (ICAO)’s methodology to estimate emissions from flights within one country between 2015 to the current year. Emissions are then assigned and aggregated to the arrival and departure airports.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "transportation"
+ },
+ "coal-mining": {
+  "title": "Coal mining",
+  "assetLabel": "Coal mine",
+  "definition": "Fugitive methane emissions from coal mining, and post-mining activities of commercially operating mines and carbon dioxide emissions from on-site fuel combustion for coal extraction, handling, and logistics.",
+  "methodology": "Emission are derived from Global Energy Monitor's coal mine tracker that provides mine-level information including estimated production, gas content and other relevant fields.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "fossil-fuel-operations"
+ },
+ "international-aviation": {
+  "title": "International aviation",
+  "assetLabel": "International Aviation",
+  "definition": "Greenhouse gas emissions from the combustion of fuels in international commercial, cargo, private flights, and general aviation. Onsite emissions from airport ground operations are not included. Data available for download: Country-level emission totals from all flights between domestic airports Emissions and ownership from trips between domestic airports aggregated to arriving and departing airports",
+  "methodology": "Historical flight status data from OAG for all passenger and freight flights is combined with the International Civil Aviation Organisation (ICAO)’s methodology to estimate emissions from flights within one country between 2015 to 2022.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "transportation"
+ },
+ "cement": {
+  "title": "Cement",
+  "assetLabel": "Cement plant",
+  "definition": "Greenhouse gas emissions released during the manufacture of cement, including both the emissions released during the chemical reaction to create the main component of cement (clinker), as well as the emissions from the combustion of fossil fuels. Data available for download: Country-level emission totals from cement manufacture Emissions and ownership estimates for individual cement plants",
+  "methodology": "Cement emissions from clinker production are estimated by combining modeling with satellite imagery and plant-level capacity to generate asset-level cement production. The facility-level cement production values are calibrated against country-level production. Finally, plant-level emission factors are applied to derive total emissions. Country level emissions are estimated by aggregated all assets within the country and scaled to account for missing assets.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": " Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "lime": {
+  "title": "Lime",
+  "assetLabel": "Lime",
+  "definition": "Air emissions from the processing and manufacture of lime. \n\nData available for download: \n- Country-level emission totals from lime processing \n- Emissions estimates of individual lime processing plants",
+  "methodology": "Facilities were obtained from public datasets and other sources. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using USGS statistics, EDGAR and CEDS.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "industrial-wastewater-treatment-and-discharge": {
+  "title": "Industrial wastewater treatment and discharge",
+  "assetLabel": "Industrial wastewater treatment and discharge",
+  "definition": "Air emissions from the treatment and disposal of wastewater from industrial sources, specifically: meat production, pulp and paper, petroleum refinery and petrochemical manufacturing, steel production, fruit and vegetable production, beer production, and ethanol refining industries. Data available for download: - Country-level emission totals from industrial wastewater treatment within a country - Emissions estimates for individual wastewater treatment plants associated with steel and paper and pulp",
+  "methodology": "Emissions were estimated by using Climate TRACE data for steel and paper and pulp activity data along with IPCC methodology for estimating industrial wastewater emissions. Country-level emission were estimated using Climate TRACE activity data for paper and pulp, steel, petroleum refining and petrochemicals, and FAOSTAT activity data for all other industries.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "waste"
+ },
+ "iron-and-steel": {
+  "title": "Iron and steel",
+  "assetLabel": "Steel plant",
+  "definition": "Greenhouse gas emissions released during the manufacturing of crude steel from fuel combustion and industrial processes. Indirect emissions from electricity usage are provided separately. Data available for download: Country-level emission totals from steel manufacture Emissions and ownership estimates for individual steel plants",
+  "methodology": "Steel emission estimates are modeled separately for two subgroups: (1) Blast furnace, basic oxygenation furnace, and open hearth furnace plants that are modeled with satellite imagery and plant-level capacity to generate facility-level production calibrated against country-level production; and (2) electric furnace plants use a disaggregation model to compute their national capacity share. Country level emissions are estimated by aggregated all assets within the country and scaled to account for missing assets.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Ground Truth Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "copper-mining": {
+  "title": "Copper mining",
+  "assetLabel": "Copper mine",
+  "definition": "Emissions from energy usage in copper mining activities. Data available for download: - Country-level emission totals from copper mining within a country - Emissions estimates and ownership for individual copper mines",
+  "methodology": "Copper-mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2023. Where available asset level data, data is aggregated from 2020 to 2023. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "mineral-extraction"
+ },
+ "oil-and-gas-production": {
+  "title": "Oil and gas production",
+  "assetLabel": "Oil and gas field",
+  "definition": "Combustion and fugitive emissions from pumping, separating, flaring, and venting during oil and gas extraction, processing, refining, compression, liquefaction, regasification, and transport of crude oil and natural gas. Data available for download: Country-level emissions totals from all oil and gas extraction processes within the country Emissions estimates and ownership for individual oil basins Emissions estimates for sub-basins (available in a few locations only)",
+  "methodology": "Oil and gas field- and basin-level carbon dioxide and methane emissions are estimated with the Oil Production Greenhouse Gas Emissions Estimator (OPGEE) Model. Oil refining carbon dioxide and methane emissions are estimated with the Petroleum Refinery Life Cycle Inventory Model (PRELIM) Model. Inputs include a number of oil and gas field characteristics, including production volumes, gas content and compositions, oil assays, and satellite-derived flaring volumes. Field-level estimates are summed and scaled to country-level on an annual basis.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "fossil-fuel-operations"
+ },
+ "oil-and-gas-transport": {
+  "title": "Oil and gas transport",
+  "assetLabel": "Oil and gas transport",
+  "definition": "Combustion and fugitive emissions from transport of crude oil and natural gas by pipeline and by road. Data available for download: - Country-level emissions totals from all oil and gas transport within the country - Emissions estimates from oil and gas transport aggregated to basin-level/sub-basin level.",
+  "methodology": "Oil and gas field- and basin-level carbon dioxide and methane emissions are estimated with the Oil Production Greenhouse Gas Emissions Estimator (OPGEE) Model. Inputs include a number of oil and gas field characteristics, including production volumes, gas content and compositions, oil assays, and satellite-derived flaring volumes. Field-level estimates are summed and scaled to country-level on an annual basis.\n",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "fossil-fuel-operations"
+ },
+ "iron-mining": {
+  "title": "Iron mining ",
+  "assetLabel": "Iron mine",
+  "definition": "Emissions from energy usage in iron mining activities. Data available for download: - Country-level emission totals from iron mining within a country - Emissions estimates and ownership for individual iron mines",
+  "methodology": "Iron mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2022. Where available asset level data, data is aggregated from 2020 to 2022. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction",
+  "frequency": "Updated every month",
+  "source": "Satellite imagery Alternative",
+  "sectorSlugApi": "mineral-extraction"
+ },
+ "oil-and-gas-refining": {
+  "title": "Oil and gas refining",
+  "assetLabel": "Refinery",
+  "definition": "Fugitive and exhaust emissions from combustion-related processes of crude oil refining. Data available for download: Country-level emission totals from oil refining within a country Emissions estimates and ownership for individual oil refining plants",
+  "methodology": "Oil refining emissions are estimated with the Petroleum Refinery Life-Cycle Inventory Model (PRELIM). PRELIM estimates energy use and greenhouse gas emissions associated with processing various crude oil types for different refinery configurations. Inputs include refinery locations, configurations, and crude refining throughputs to generate GHG intensities and absolute emissions by country.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "fossil-fuel-operations"
+ },
+ "glass": {
+  "title": "Glass",
+  "assetLabel": "Glass",
+  "definition": "Air emissions from the manufacturing of flat and blown glass. \nData available for download:\n- Country-level emission totals from glass manufacture \n- Emissions estimates of individual glass manufacturing plants",
+  "methodology": "Facilities were obtained from public datasets and other sources. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using USGS statistics, EDGAR and CEDS.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "chemicals": {
+  "title": "Chemicals",
+  "assetLabel": "Chemicals",
+  "definition": "Direct greenhouse gas emissions from the manufacture of soda ash, methanol and ammonia. Data available for download: Country-level emission totals from chemicals manufacture Emissions estimates and ownership from individual soda ash, methanol and ammonia plants",
+  "methodology": "Emissions from the manufacture of soda ash, methanol and ammonia were estimated by using, first, a disagregation model to characterize the production levels for each plant. Then the production quantity for the plant was multiplied by the proper emissions factors in order to generate emissions estimates.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "other-chemicals": {
+  "title": "Other chemicals",
+  "assetLabel": "Other chemicals",
+  "definition": "Air emissions from the manufacture of all other chemicals. \nData available for download: \n- Country-level emission totals from other chemicals manufacture\n- Emissions estimates from other chemicals manufacturing aggregated to GADM level 2",
+  "methodology": "Emissions were estimated by spatially disaggregating country-level CEDS emissions estimates using proxies like night light intensity.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "other-metals": {
+  "title": "Other metals",
+  "assetLabel": "Other metals",
+  "definition": "Air emissions released from the refining and smelting of all other metals. Indirect emissions from electricity are excluded. \n\nData available for download: \n- Country-level emission totals from other metals refining and smelting \n- - Emissions estimates for metal smelting/refinery emissions aggregated to GADM level 2",
+  "methodology": "Emissions were estimated by spatially disaggregating country-level CEDS emissions estimates using proxies like night lights.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "other-manufacturing": {
+  "title": "Other manufacturing",
+  "assetLabel": "Manufacturing",
+  "definition": "Greenhouse gas emissions from all other manufacturing industries not included as distinct subsectors. Data available for download: \n- Country-level emission totals from other manufacturing industries\n- Facility level emissions for select countries and GADM level 2 disaggregated emissions for the remaining countries.",
+  "methodology": "Self reported plant-level emissions data were gathered from various governments sites for few selected countries (Canada, USA, Israel, Europe). Climate TRACE manufacturing sector emissions were subtracted from EDGAR manufacturing sector emissions and the remaining total has been published as 'other-manufacturing' for the years that EDGAR has emissiond data. All other years have been forward-filled. ",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "pulp-and-paper": {
+  "title": "Pulp and paper",
+  "assetLabel": "Pulp and paper",
+  "definition": "Direct greenhouse gas emissions from the manufacture of chemical and semi-chemical pulp manufacture. \nData available for download: \n- Country-level emission totals from pulp manufacture \n- Emissions estimates and ownership for known individual chemical and semi-chemical pulp plants; remaining plants have been aggregated to the county/district level.",
+  "methodology": "Emissions from the production of chemical, semi-chemical and mechanical pulp were estimated by determining each individual plant’s contribution to the national pulp capacity, which was used to estimate the plant’s share of national production. Relevant emissions factors were applied to derive emissions for a given year.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "aluminum": {
+  "title": "Aluminum",
+  "assetLabel": "Aluminum plant",
+  "definition": "Direct greenhouse gas emissions released from alumina refining and aluminum smelting processes. Indirect emissions from electricity usage are provided separately. \nData available for download: \n- Country-level emission totals from aluminum manufacture \n- Emissions estimates and ownership for individual alumina refinery and smelting plants",
+  "methodology": "Aluminum emissions were estimated by determining each individual plant’s contribution to the national aluminum capacity, which was used to estimate the plant’s share of country aluminum production. Relevant emissions factors for the plant were applied to derive emissions for a given year.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": " Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ },
+ "bauxite-mining": {
+  "title": "Bauxite mining",
+  "assetLabel": "Bauxite mine",
+  "definition": "Emissions from energy usage in bauxite mining activities. Data available for download: - Country-level emission totals from bauxite mining within a country - Emissions estimates and ownership for individual bauxite mines",
+  "methodology": "Bauxite mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2023. Where available asset level data, data is aggregated from 2020 to 2023. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "mineral-extraction"
+ },
+ "petrochemical-steam-cracking": {
+  "title": "Petrochemical steam cracking",
+  "assetLabel": "Petrochemicals",
+  "definition": "Fugitive and exhaust emissions from combustion-related processes of petrochemical steam cracking of oil and gas products, the main global manufacturing process for producing olefins (ethylene, propylene, butadiene). Data available for download: Country-level emission totals from ethlylene manufacture Emissions estimates and ownership for individual steam cracking ethylene plants",
+  "methodology": "Plant-level petrochemical emissions were calculated by employing tailored emissions factors, estimated feedstock compositions, and projected outputs for select individual asset and major countries. Specifically, for plants situated in the United States, Europe, and China, this method leverages data on asset-level ethylene capacity, utilization rates, and regional emissions factors to derive more precise estimates. Country level emissions for the rest of the world were calculated based on ethylene capacity data.",
+  "methodologyAssetUrl": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes",
+  "frequency": "Updated every month",
+  "source": "Alternative",
+  "sectorSlugApi": "manufacturing"
+ }
+}

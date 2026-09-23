@@ -2,7 +2,11 @@
 // (scripts/bake-climatetrace; every facility-level source in a release, each
 // carrying its monthly series).
 //
-//   /api/trace-tiles?v=<version>&z=<z>&x=<x>&y=<y>
+//   /api/trace-tiles?v=<version>&g=<measure>&z=<z>&x=<x>&y=<y>
+//
+// `g` picks the measure (co2e_100yr, ch4, pm2_5, …): one tile file per
+// measure, `trace-facilities-<g>.pmtiles`. Without `g` → the original single
+// file `trace-facilities.pmtiles` (releases baked before per-measure tiles).
 //
 // Same approach as api/vessel-tiles.js: Mapbox's native .pmtiles source breaks
 // under Vite's dev pipeline, so we range-read the PMTiles here and emit gzipped
@@ -18,18 +22,20 @@ const pmCache = new Map() // reader → PMTiles (header/directories cached)
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   const v = searchParams.get('v') || ''
+  const g = searchParams.get('g') || ''
+  if (g && !/^[a-z0-9_]{2,16}$/.test(g)) { res.statusCode = 400; return res.end('bad measure') }
   const z = Number(searchParams.get('z'))
   const x = Number(searchParams.get('x'))
   const y = Number(searchParams.get('y'))
   if (![z, x, y].every(Number.isInteger) || z < 0 || z > 22) { res.statusCode = 400; return res.end('bad tile coords') }
 
-  const src = traceReader('trace-facilities.pmtiles', v)
+  const src = traceReader(g ? `trace-facilities-${g}.pmtiles` : 'trace-facilities.pmtiles', v)
   if (!src) { res.statusCode = 404; return res.end('unknown release') }
   let p = pmCache.get(src)
   if (!p) {
     p = new PMTiles(src)
     pmCache.set(src, p)
-    if (pmCache.size > 8) pmCache.delete(pmCache.keys().next().value)
+    if (pmCache.size > 20) pmCache.delete(pmCache.keys().next().value)
   }
 
   let tile

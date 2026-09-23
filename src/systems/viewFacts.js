@@ -196,6 +196,19 @@ function quakeFacts(def, payload, map, w, h, tolDeg) {
 // Climate TRACE facilities: summarized by the overlay from exactly what it
 // drew (see TraceFacilitiesOverlay.summarize) — the facilities visible at this
 // zoom, valued in the month on the time bar.
+const MEASURE_WORDS = {
+  co2e_100yr: 'all greenhouse gases combined, tonnes CO2-equivalent (100-year warming)',
+  co2e_20yr: 'all greenhouse gases combined, tonnes CO2-equivalent over 20 years (weights methane ~80× CO2 instead of ~30×)',
+  co2: 'carbon dioxide only, tonnes of CO2',
+  ch4: 'methane only, tonnes of methane (not CO2e)',
+  n2o: 'nitrous oxide only, tonnes of N2O (not CO2e)',
+  pm2_5: 'fine particulate matter (PM2.5), tonnes',
+  so2: 'sulfur dioxide, tonnes',
+  nox: 'nitrogen oxides, tonnes',
+  co: 'carbon monoxide, tonnes',
+}
+const MEASURE_SHORT = { co2e_100yr: 'CO₂e', co2e_20yr: 'CO₂e (20-yr)', co2: 'CO₂', ch4: 'methane', n2o: 'N₂O', pm2_5: 'PM2.5', so2: 'SO₂', nox: 'NOx', co: 'CO' }
+const AIR_MEASURES = new Set(['pm2_5', 'so2', 'nox', 'co'])
 const SECTOR_WORDS = {
   power: 'power plants', 'fossil-fuel-operations': 'oil, gas & coal operations', manufacturing: 'heavy industry',
   'mineral-extraction': 'mines', transportation: 'airports & ports', waste: 'landfills & wastewater plants',
@@ -207,7 +220,11 @@ function emissionsFacts(def, payload) {
   const base = {
     id: def.id,
     name: def.name,
-    what_it_measures: 'Monthly greenhouse-gas emissions of individual facilities, tonnes CO2-equivalent (100-year), ESTIMATED by Climate TRACE models from satellite and activity data — not direct measurements.',
+    measure_shown: MEASURE_WORDS[s.measure] || MEASURE_WORDS.co2e_100yr,
+    measure_short: MEASURE_SHORT[s.measure] || 'CO₂e',
+    what_it_measures: `Monthly emissions of individual facilities — ${MEASURE_WORDS[s.measure] || MEASURE_WORDS.co2e_100yr} — ESTIMATED by Climate TRACE models from satellite and activity data, not direct measurements. All tonnages below are in these units.`,
+    ...(AIR_MEASURES.has(s.measure) ? { air_pollutant_note: 'Air pollutants here are Climate TRACE "Tier 1" estimates: national per-industry-and-fuel ratios scaled by each site\'s activity. Say they show where pollution comes from, not precise per-site amounts.' } : {}),
+    ...(s.sectorsShown ? { kinds_of_site_shown: s.sectorsShown.map((k) => SECTOR_WORDS[k] || k), filter_note: 'The user filtered the map to these kinds of site only.' } : {}),
     month_shown: s.month,
     month_note: s.clamped
       ? `The time bar is past the newest data; ${s.month} is the latest month Climate TRACE has published (it runs ~2 months behind). Say so.`

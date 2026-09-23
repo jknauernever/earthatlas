@@ -4,8 +4,8 @@
 # Daily, a one-minute check compares Climate TRACE's download packages with
 # what production serves (trace/latest.json). Nothing new → done. A new
 # release (monthly, ~2 months behind real time) → the full bake runs here
-# (~3.5 GB download, ~40 GB of CSV streamed; the Vercel project can't host
-# this), then publish.mjs checks it against the live release, uploads it to
+# (9 measures: ~26 GB downloaded, one measure at a time; the Vercel project
+# can't host this), then publish.mjs checks it against the live release, uploads it to
 # Blob with one-file tokens from api/cron/trace-upload-token.js (CRON_SECRET),
 # and only then flips the pointer. A failed or refused run leaves the
 # previous release serving untouched.
@@ -65,19 +65,24 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
 
-      - name: Download sector packages
+      - name: Download + extract every measure (one at a time, freeing disk as it goes)
         if: steps.check.outputs.new == 'true'
-        run: node scripts/bake-climatetrace/bake.mjs download co2e_100yr
-      - name: Extract facility sources
-        if: steps.check.outputs.new == 'true'
-        # Two at a time: the cattle files alone are 15 + 27 GB of CSV.
+        # Primary (CO2e 100-yr) carries the full facility records; the other
+        # eight are numbers only. Two jobs at a time: the cattle files alone
+        # are 15 + 27 GB of CSV per measure.
         env:
           TRACE_JOBS: '2'
           TRACE_HEAP_MB: '6000'
-        run: node scripts/bake-climatetrace/bake.mjs extract-all co2e_100yr
-      - name: Free the raw downloads
-        if: steps.check.outputs.new == 'true'
-        run: rm -f scripts/bake-climatetrace/raw/co2e_100yr/*.zip && df -h .
+        run: |
+          set -e
+          for g in co2e_100yr co2e_20yr co2 ch4 n2o pm2_5 so2 nox co; do
+            echo "::group::$g"
+            node scripts/bake-climatetrace/bake.mjs download "$g"
+            node scripts/bake-climatetrace/bake.mjs extract-all "$g"
+            rm -f scripts/bake-climatetrace/raw/"$g"/*.zip
+            df -h . | tail -1
+            echo "::endgroup::"
+          done
       - name: Assemble tiles + detail
         if: steps.check.outputs.new == 'true'
         run: node --max-old-space-size=12000 scripts/bake-climatetrace/bake.mjs assemble co2e_100yr

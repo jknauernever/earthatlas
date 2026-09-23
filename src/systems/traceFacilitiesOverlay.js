@@ -20,7 +20,7 @@
  */
 
 import { getGlobeGeometry } from './globeGeom.js'
-import { traceTileUrl, sectorStyle, decodeMonth } from './traceData.js'
+import { traceTileUrl, sectorStyle, decodeMonth, PRIMARY_MEASURE, availableMeasures } from './traceData.js'
 
 const SRC = 'trace-facilities'
 const PROBE = 'trace-facilities-probe'
@@ -37,11 +37,14 @@ const rgbOf = (hex) => {
 }
 
 export class TraceFacilitiesOverlay {
-  /** index: the baked trace-index.json (months[], shards, countries). */
-  constructor(map, canvas, index) {
+  /** index: the baked trace-index.json (months[], shards, countries, measures). */
+  constructor(map, canvas, index, { measure = PRIMARY_MEASURE, sectors = null } = {}) {
     this.map = map
     this.canvas = canvas
     this.index = index
+    this.measure = availableMeasures(index).includes(measure) ? measure : PRIMARY_MEASURE
+    this.sectors = sectors // Set of sector keys to show, or null = everything
+    this._k = this._scaleFor(this.measure)
     this.nMonths = index.months.length
     this.visible = true
     this._destroyed = false
@@ -59,7 +62,7 @@ export class TraceFacilitiesOverlay {
       try {
         if (!map.getSource(SRC)) {
           map.addSource(SRC, {
-            type: 'vector', tiles: [traceTileUrl()], minzoom: 0, maxzoom: 8,
+            type: 'vector', tiles: [traceTileUrl(this.measure)], minzoom: 0, maxzoom: 8,
             attribution: '<a href="https://climatetrace.org" target="_blank" rel="noopener">Climate TRACE</a>',
           })
         }
@@ -109,6 +112,38 @@ export class TraceFacilitiesOverlay {
     if (easeOnly && now - (this._lastEase || 0) < 50) return
     this._lastEase = now
     this._mi = mi; this._mix = mix; this._flow = flow; this._clamped = clamped
+    this._paint()
+  }
+
+  /** Size multiplier that puts every measure on the CO₂e view's visual
+   * scale: each measure's bake stores a "big but not extreme" monthly value
+   * (ref); tonnes are scaled so that value draws as large as CO₂e's does. */
+  _scaleFor(g) {
+    const m = this.index.measures
+    if (!m?.[g]?.ref || !m?.[PRIMARY_MEASURE]?.ref) return 1
+    return m[PRIMARY_MEASURE].ref / m[g].ref
+  }
+
+  /** Switch what the discs measure (co2e_100yr, ch4, pm2_5, …): a different
+   * tile file, so drop the source and harvest again. */
+  setMeasure(g) {
+    if (!availableMeasures(this.index).includes(g) || g === this.measure) return
+    this.measure = g
+    this._k = this._scaleFor(g)
+    this._items = new Map()
+    this._list = []
+    try {
+      if (this.map.getLayer(PROBE)) this.map.removeLayer(PROBE)
+      if (this.map.getSource(SRC)) this.map.removeSource(SRC)
+    } catch { /* style mid-swap — _ensureSource re-adds */ }
+    this._ensureSource()
+    this._paint()
+    this._scheduleHarvest()
+  }
+
+  /** Kinds of site to show (Set of sector keys), or null for everything. */
+  setSectors(sectors) {
+    this.sectors = sectors && sectors.size ? sectors : null
     this._paint()
   }
 
@@ -176,6 +211,8 @@ export class TraceFacilitiesOverlay {
       clamped: this._clamped,
       latest: this._mi === this.nMonths - 1,
       fullYear: this.index.fullYear,
+      measure: this.measure,
+      measureTotal: this.index.measures?.[this.measure]?.count ?? this.index.count,
       total: this.index.count,
       shards: this.index.shards,
       country: this.index.countries?.[it.c] || it.c,
@@ -225,7 +262,9 @@ export class TraceFacilitiesOverlay {
       basins: basinN ? { n: basinN, t: basinT, top: basinTop } : null,
       countries: this.index.countries || {},
       zoom: this.map.getZoom(),
-      totalSources: this.index.count,
+      totalSources: this.index.measures?.[this.measure]?.count ?? this.index.count,
+      measure: this.measure,
+      sectorsShown: this.sectors ? [...this.sectors] : null,
     }
   }
 
@@ -331,6 +370,7 @@ export class TraceFacilitiesOverlay {
     for (const it of list) {
       const v = this.valueOf(it)
       if (!(v > 0)) continue // no estimate / zero this month → nothing drawn
+      if (this.sectors && !this.sectors.has(it.sec)) continue
       if (bounds) {
         if (it.lat < bounds[1] || it.lat > bounds[3]) continue
         if (bounds[0] <= bounds[2] && (it.lng < bounds[0] || it.lng > bounds[2])) continue
@@ -340,7 +380,7 @@ export class TraceFacilitiesOverlay {
         if (cosArc < 0.2) continue // well past the limb
         if (geo && !geo.isVisible(it.lng, it.lat)) continue
       }
-      const r = Math.min(it.b ? 95 : 60, (0.9 + 0.0115 * Math.sqrt(v)) * zs)
+      const r = Math.min(it.b ? 95 : 60, (0.9 + 0.0115 * Math.sqrt(v * this._k)) * zs)
       if (skipSmall && r < 2) continue
       let pt
       try { pt = map.project([it.lng, it.lat]) } catch { continue }

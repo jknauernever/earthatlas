@@ -34,6 +34,7 @@ const BUILD = resolve(HERE, 'build')
 const BLOB = cfg.blobBase.replace(/\/+$/, '')
 const POINTER_URL = `${BLOB}/${cfg.pointer}`
 const TOKEN_URL = process.env.TRACE_TOKEN_URL || 'https://earthatlas.org/api/cron/trace-upload-token'
+const PRUNE_URL = process.env.TRACE_PRUNE_URL || TOKEN_URL.replace(/trace-upload-token$/, 'trace-prune')
 
 const out = (k, v) => {
   console.log(`${k}=${v}`)
@@ -93,12 +94,16 @@ async function upload(pathname, file, contentType) {
 
 async function publish() {
   const files = {
-    tiles: resolve(BUILD, 'trace-facilities.pmtiles'),
     pack: resolve(BUILD, 'trace-detail.pack'),
     index: resolve(BUILD, 'trace-index.json'),
   }
   for (const f of Object.values(files)) if (!existsSync(f)) throw new Error(`missing ${f} — run bake.mjs assemble first`)
   const index = JSON.parse(readFileSync(files.index, 'utf8'))
+  // One tile file per measure (index.measures); older bakes had a single file.
+  const tileFiles = index.measures
+    ? Object.values(index.measures).map((m) => m.tiles)
+    : ['trace-facilities.pmtiles']
+  for (const t of tileFiles) if (!existsSync(resolve(BUILD, t))) throw new Error(`missing ${t} — run bake.mjs assemble first`)
   const live = await livePointer()
 
   // ── safety gates ──
@@ -107,7 +112,12 @@ async function publish() {
   if (bad.length) problems.push(`malformed CSV rows in ${bad.map((s) => `${s.sub} (${s.bad})`).join(', ')}`)
   if (live?.count && index.count < live.count * 0.9) problems.push(`only ${index.count} sources vs ${live.count} live (< 90%)`)
   if (live?.months && index.months.length < live.months) problems.push(`${index.months.length} months vs ${live.months} live`)
-  if (statSync(files.tiles).size < 20e6) problems.push('tiles file implausibly small')
+  const primaryTiles = resolve(BUILD, index.measures ? index.measures[index.primary].tiles : tileFiles[0])
+  if (statSync(primaryTiles).size < 20e6) problems.push('primary tiles file implausibly small')
+  for (const [g, m] of Object.entries(index.measures || {})) {
+    const prev = live?.measures?.[g]
+    if (prev && m.count < prev * 0.9) problems.push(`${g}: only ${m.count} sources vs ${prev} live (< 90%)`)
+  }
   if (statSync(files.pack).size < 50e6) problems.push('detail pack implausibly small')
   if (!/^v\d+\.\d+\.\d+-\d{8}(\d{4})?$/.test(index.build || '')) problems.push(`bad build id ${index.build}`)
   if (problems.length) {
@@ -117,7 +127,7 @@ async function publish() {
 
   console.log(`publishing ${index.build} (${index.count} sources, ${index.months[0]} → ${index.months.at(-1)})`)
   const dir = `trace/${index.build}`
-  await upload(`${dir}/trace-facilities.pmtiles`, files.tiles, 'application/octet-stream')
+  for (const t of tileFiles) await upload(`${dir}/${t}`, resolve(BUILD, t), 'application/octet-stream')
   await upload(`${dir}/trace-detail.pack`, files.pack, 'application/octet-stream')
   const indexUrl = await upload(`${dir}/trace-index.json`, files.index, 'application/json')
 
@@ -128,6 +138,7 @@ async function publish() {
     count: index.count,
     months: index.months.length,
     lastMonth: index.months.at(-1),
+    measures: index.measures ? Object.fromEntries(Object.entries(index.measures).map(([g, m]) => [g, m.count])) : null,
     sourceStamps: index.sourceStamps,
     published_ms: Date.now(),
     previous: live?.build || null,
@@ -135,6 +146,14 @@ async function publish() {
   const token = await tokenFor(cfg.pointer)
   await put(cfg.pointer, JSON.stringify(pointer, null, 1), { access: 'public', token, contentType: 'application/json' })
   console.log(`✓ live: ${index.build} (previous: ${pointer.previous || 'none'}) — ${POINTER_URL}`)
+
+  // Storage: keep only the live release and the one before it. Never fatal —
+  // the new release is already live; a failed prune just leaves extra files.
+  try {
+    const r = await fetch(PRUNE_URL, { method: 'POST', headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+    const j = await r.json().catch(() => ({}))
+    console.log(r.ok ? `✓ pruned ${j.deleted} old files (${((j.bytesFreed || 0) / 1e9).toFixed(2)} GB), kept ${j.kept?.join(', ')}` : `  prune skipped: ${r.status} ${j.error || ''}`)
+  } catch (err) { console.warn(`  prune skipped: ${err.message}`) }
 }
 
 const cmd = process.argv[2]

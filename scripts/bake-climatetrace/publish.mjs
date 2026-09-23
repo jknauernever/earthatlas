@@ -73,10 +73,14 @@ async function upload(pathname, file, contentType) {
       const token = await tokenFor(pathname)
       const body = size > 8e6 ? createReadStream(file) : readFileSync(file)
       const res = await put(pathname, body, { access: 'public', token, contentType, multipart: size > 8e6 })
-      // Readable at full size before anything points at it.
-      const head = await fetch(res.url, { method: 'HEAD', cache: 'no-store' })
-      const len = Number(head.headers.get('content-length'))
-      if (!head.ok || len !== size) throw new Error(`verify ${pathname}: HTTP ${head.status}, ${len} of ${size} bytes`)
+      // Readable at full size before anything points at it: fetch the LAST
+      // byte with a range request (what the tile/detail routes do) and check
+      // the total in Content-Range. (A HEAD right after upload can come back
+      // without Content-Length — the first CI run misread that as 0 bytes.)
+      const probe = await fetch(res.url, { headers: { Range: `bytes=${size - 1}-${size - 1}` }, cache: 'no-store' })
+      const total = Number((probe.headers.get('content-range') || '').split('/')[1])
+      await probe.arrayBuffer()
+      if (probe.status !== 206 || total !== size) throw new Error(`verify ${pathname}: HTTP ${probe.status}, content-range total ${total || 'missing'} vs ${size} bytes`)
       console.log(`  ✓ ${pathname} (${(size / 1e6).toFixed(1)} MB)`)
       return res.url
     } catch (err) {
@@ -105,7 +109,7 @@ async function publish() {
   if (live?.months && index.months.length < live.months) problems.push(`${index.months.length} months vs ${live.months} live`)
   if (statSync(files.tiles).size < 20e6) problems.push('tiles file implausibly small')
   if (statSync(files.pack).size < 50e6) problems.push('detail pack implausibly small')
-  if (!/^v\d+\.\d+\.\d+-\d{8}$/.test(index.build || '')) problems.push(`bad build id ${index.build}`)
+  if (!/^v\d+\.\d+\.\d+-\d{8}(\d{4})?$/.test(index.build || '')) problems.push(`bad build id ${index.build}`)
   if (problems.length) {
     console.error(`✗ NOT publishing ${index.build} — production unchanged:\n  - ${problems.join('\n  - ')}`)
     process.exit(1)

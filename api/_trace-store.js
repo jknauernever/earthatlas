@@ -2,7 +2,7 @@
 // (api/trace-tiles.js, api/trace-detail.js). See scripts/bake-climatetrace.
 //
 // Every release is published under its own immutable folder,
-//   <blob>/trace/<version>/trace-facilities.pmtiles
+//   <blob>/trace/<version>/trace-facilities.pmtiles   (version: v5.10.0-202609230327)
 //   <blob>/trace/<version>/trace-detail.pack
 //   <blob>/trace/<version>/trace-index.json
 // and <blob>/trace/latest.json points the client at the current one. Routes
@@ -18,7 +18,7 @@ import { resolve } from 'node:path'
 import cfg from '../src/systems/traceSource.json' with { type: 'json' }
 
 export const TRACE_BLOB_BASE = (process.env.BLOB_PUBLIC_BASE || cfg.blobBase).replace(/\/+$/, '')
-export const VERSION_RE = /^v\d+\.\d+\.\d+-\d{8}$/
+export const VERSION_RE = /^v\d+\.\d+\.\d+-\d{8}(\d{4})?$/
 const BUILD = resolve(process.cwd(), 'scripts/bake-climatetrace/build')
 
 /** A byte-range reader over one artifact: local file in dev, Blob otherwise. */

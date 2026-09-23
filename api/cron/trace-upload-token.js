@@ -17,7 +17,7 @@
 import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client'
 
 // Release files are immutable per version; the pointer is the only overwrite.
-const RELEASE_FILE = /^trace\/v\d+\.\d+\.\d+-\d{8}\/(trace-facilities\.pmtiles|trace-detail\.pack|trace-index\.json)$/
+const RELEASE_FILE = /^trace\/v\d+\.\d+\.\d+-\d{8}(\d{4})?\/(trace-facilities\.pmtiles|trace-detail\.pack|trace-index\.json)$/
 const POINTER = 'trace/latest.json'
 
 export default async function handler(req, res) {

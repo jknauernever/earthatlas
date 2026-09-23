@@ -543,8 +543,11 @@ async function assemble(gas = 'co2e_100yr') {
   const index = {
     version: 1,
     kind: 'trace-facilities',
-    // Published folder: release + bake date (immutable once uploaded).
-    build: `${release}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+    // Published folder: release + bake date AND time (UTC, YYYYMMDDHHmm) —
+    // immutable once uploaded, and never shared by two bakes (a same-day
+    // rerun overwriting a folder could leave CDN-cached byte ranges of the
+    // old file next to the new one).
+    build: `${release}-${new Date().toISOString().slice(0, 16).replace(/[-T:]/g, '')}`,
     sourceStamps: existsSync(stampsPath) ? JSON.parse(readFileSync(stampsPath, 'utf8')) : null,
     summaries: summaries.map(({ sub, sources, bad }) => ({ sub, sources, bad })),
     countries,

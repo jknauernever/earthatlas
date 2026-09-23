@@ -100,8 +100,10 @@ function vectorFacts(def, field, samples) {
   }
 }
 
-function scalarFacts(def, field, samples) {
+function scalarFacts(def, field, samples, center) {
   let n = 0
+  let sumLat = 0
+  let sumLng = 0
   let sum = 0
   let min = Infinity
   let max = -Infinity
@@ -110,6 +112,8 @@ function scalarFacts(def, field, samples) {
     const s = field.sampleScalar(ll.lng, ll.lat)
     if (!s) continue
     n++
+    sumLat += ll.lat
+    sumLng += ll.lng
     // Some grids store a transformed value (bird traffic rides as √) — facts
     // are always stated in the layer's display units.
     const value = def.toValue ? def.toValue(s.value) : s.value
@@ -121,7 +125,22 @@ function scalarFacts(def, field, samples) {
       catCounts[idx === -1 ? def.words.length - 1 : idx]++
     }
   }
-  if (!n) return null
+  // Layers whose data covers only part of the planet (def.coverage) must tell
+  // the narrator WHERE their numbers apply. Without this it spread U.S.-only
+  // radar statistics across whatever the view was centred on — it described
+  // "radar-detected birds crossing the Atlantic" (Josh, 2026-09-21). No data is
+  // "not measured", never "zero", and never licence to describe the layer there.
+  if (!n) {
+    if (!def.coverage) return null
+    return {
+      id: def.id,
+      name: def.name,
+      no_data_in_view: true,
+      coverage_area: def.coverage,
+      coverage_note: `This layer has NO data anywhere in the current view. It only exists over: ${def.coverage}. Say that plainly and say nothing else about this layer — do not describe its phenomenon in the visible region.`,
+      ...(def.factsNote ? { what_it_measures: def.factsNote } : {}),
+    }
+  }
   const out = {
     id: def.id,
     name: def.name,
@@ -130,6 +149,18 @@ function scalarFacts(def, field, samples) {
     min: sig(min),
     max: sig(max),
     sampled_points: n,
+  }
+  if (def.factsNote) out.what_it_measures = def.factsNote
+  if (def.coverage) {
+    const share = samples.length ? n / samples.length : 0
+    const centerHasData = !!(center && field.sampleScalar(center.lng, center.lat))
+    const lat = sumLat / n, lng = sumLng / n
+    out.coverage_area = def.coverage
+    out.covered_share_of_view_pct = Math.max(1, Math.round(share * 100))
+    out.view_center_has_data = centerHasData
+    out.data_centroid_lng = Math.round(lng)
+    out.data_located_around = `${Math.abs(Math.round(lat))}°${lat < 0 ? 'S' : 'N'}, ${Math.abs(Math.round(lng))}°${lng < 0 ? 'W' : 'E'}`
+    out.coverage_note = `Every statistic for this layer describes ONLY the part of the view inside coverage_area (about ${out.covered_share_of_view_pct}% of the visible area, around ${out.data_located_around}). The rest of the view has NO measurements — not zero, unmeasured.${centerHasData ? '' : ' The view is centred OUTSIDE the data: do not describe this layer at the view centre.'} Never describe this layer's phenomenon, routes, or corridors anywhere outside coverage_area.`
   }
   if (catCounts) {
     const top = catCounts
@@ -159,6 +190,56 @@ function quakeFacts(def, payload, map, w, h, tolDeg) {
       depth_km: Math.round(biggest.depth),
     },
     window: 'past 30 days, M3.0+',
+  }
+}
+
+// Climate TRACE facilities: summarized by the overlay from exactly what it
+// drew (see TraceFacilitiesOverlay.summarize) — the facilities visible at this
+// zoom, valued in the month on the time bar.
+const SECTOR_WORDS = {
+  power: 'power plants', 'fossil-fuel-operations': 'oil, gas & coal operations', manufacturing: 'heavy industry',
+  'mineral-extraction': 'mines', transportation: 'airports & ports', waste: 'landfills & wastewater plants',
+  agriculture: 'cattle operations', 'forestry-and-land-use': 'reservoirs',
+}
+function emissionsFacts(def, payload) {
+  const s = payload?.overlay?.summarize?.()
+  if (!s) return null
+  const base = {
+    id: def.id,
+    name: def.name,
+    what_it_measures: 'Monthly greenhouse-gas emissions of individual facilities, tonnes CO2-equivalent (100-year), ESTIMATED by Climate TRACE models from satellite and activity data — not direct measurements.',
+    month_shown: s.month,
+    month_note: s.clamped
+      ? `The time bar is past the newest data; ${s.month} is the latest month Climate TRACE has published (it runs ~2 months behind). Say so.`
+      : s.latest ? `${s.month} is the latest month published (data runs ~2 months behind real time).` : `REPLAY: values are for ${s.month}, not today.`,
+  }
+  if (!s.count && !s.basins) return { ...base, in_view: 0 }
+  const sectors = Object.entries(s.sectors)
+    .sort((a, b) => b[1].t - a[1].t)
+    .slice(0, 4)
+    .map(([k, v]) => ({ sector: SECTOR_WORDS[k] || k, facilities: v.n, share_of_shown_emissions_pct: Math.round((v.t / s.total) * 100) }))
+  return {
+    ...base,
+    facilities_shown: s.count,
+    sample_note: `Only the ${s.count.toLocaleString('en-US')} facilities drawn at this zoom are counted (the map shows the largest emitters first; smaller sites appear when zooming in). Totals describe these shown facilities, NOT the region's full emissions — never call them a regional or national total.`,
+    shown_emissions_tonnes: sig(s.total, 3),
+    by_sector: sectors,
+    top_facilities: s.top.map(({ it, v }) => ({
+      name: it.n,
+      type: it.sub,
+      country: s.countries[it.c] || it.c,
+      tonnes_this_month: sig(v, 3),
+      ...(it.o ? { owner: it.o } : {}),
+      ...(it.q ? { estimate_confidence: it.q } : {}),
+    })),
+    ...(s.yoy ? {
+      same_facilities_vs_year_earlier_pct: Math.round(((s.yoy.cur - s.yoy.prev) / s.yoy.prev) * 100),
+      yoy_note: 'Change for the same shown facilities versus the same month a year earlier (only sites with estimates in both months).',
+    } : {}),
+    ...(s.basins ? {
+      oil_gas_basins_shown: s.basins.n,
+      basin_note: `Oil & gas basins (dashed rings) are whole-region estimates placed at a centre point, not single sites; kept separate from the facility figures. Largest shown: ${s.basins.top.it.n.replace(/_/g, ' ')} at ${sig(s.basins.top.v, 3)} t this month.`,
+    } : {}),
   }
 }
 
@@ -214,13 +295,31 @@ export function buildViewFacts(map, activeLayers) {
   for (const { def, payload, meta } of activeLayers) {
     let f = null
     if (def.kind === 'vector') f = vectorFacts(def, payload, samples)
-    else if (def.kind === 'scalar') f = scalarFacts(def, payload, samples)
+    else if (def.kind === 'scalar') f = scalarFacts(def, payload, samples, c)
     else if (def.id === 'quakes') f = quakeFacts(def, payload, map, w, h, tolDeg)
     else if (def.id === 'hotspots') f = hotspotFacts(def, payload, map, w, h, tolDeg)
+    else if (def.id === 'emissions') f = emissionsFacts(def, payload)
     else if (def.kind === 'raster') f = { id: def.id, name: def.name, note: 'satellite vegetation-loss alerts from the past 30 days are overlaid; no aggregate statistics available client-side' }
     if (!f) continue
     f.source = def.sourceName
     if (meta && def.stamp) f.data_stamp = def.stamp(meta)
+    // Day/night where the DATA is (not where the view is centred): a layer
+    // about a nocturnal phenomenon was narrated as "nocturnal migration" over
+    // an 11 a.m. frame. Approximate local solar time from the data's longitude.
+    if (def.nocturnal && Number.isFinite(f.data_centroid_lng)) {
+      const t = new Date(meta?.tape ? meta.valid_ms : Date.now())
+      const solar = (((t.getUTCHours() + t.getUTCMinutes() / 60 + f.data_centroid_lng / 15) % 24) + 24) % 24
+      const hh = Math.floor(solar)
+      f.local_solar_time_where_data_is = `${String(hh).padStart(2, '0')}:${String(Math.round((solar - hh) * 60) % 60).padStart(2, '0')}`
+      // The UTC date is often the WRONG local date for an evening frame
+      // (04:00Z on the 20th is the night of the 19th in Ohio).
+      f.local_date_where_data_is = new Date(t.getTime() + (f.data_centroid_lng / 15) * 3.6e6).toISOString().slice(0, 10)
+      f.daylight_where_data_is = solar >= 7 && solar < 18 ? 'DAYTIME' : solar >= 5 && solar < 7 ? 'around dawn' : solar >= 18 && solar < 20 ? 'around dusk' : 'NIGHT'
+      f.day_night_note = f.daylight_where_data_is === 'DAYTIME'
+        ? 'This frame is DAYTIME over the data. This phenomenon happens mostly at night, so daytime values are expected to be low — most birds are on the ground resting and feeding. Do NOT describe this frame as night-time migration in progress.'
+        : 'Describe the time of day from daylight_where_data_is and the calendar date from local_date_where_data_is (the evening it began); do not derive them from the UTC time.'
+    }
+    delete f.data_centroid_lng
     if (meta?.tape) {
       f.frame_time_utc = new Date(meta.valid_ms).toISOString().slice(0, 16) + 'Z'
       f.frame_note = meta.live

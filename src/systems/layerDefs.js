@@ -12,6 +12,8 @@
 
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
 import { loadSystemsJson } from './windField.js'
+import { loadTraceIndex, peekTraceDetail, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
+import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
 
 // Per-layer  +  (24×24 monoline, stroke=currentColor) come from
 // the Claude Design handoff (EarthAtlas collapsed navigation proposals, #3a/#4a).
@@ -447,6 +449,258 @@ export const LAYERS = [
     },
   },
   {
+    id: 'storms',
+    hue: '#ff5a5f',
+    // The standard tropical-cyclone symbol: an eye with two trailing bands.
+    iconSvg: '<circle cx="12" cy="12" r="2"></circle><path d="M12 10c0-5 3-7 7-6-2.5 1.6-3 4-3 6"></path><path d="M12 14c0 5-3 7-7 6 2.5-1.6 3-4 3-6"></path>',
+    group: 'air',
+    kind: 'events',
+    param: 'y',
+    defaultOn: false,
+    name: 'Storms',
+    sub: 'tropical cyclones, live',
+    sourceName: 'NOAA NHC',
+    sourceUrl: 'https://www.nhc.noaa.gov/',
+    // Two warning centres feed this layer, so both get their own link rather
+    // than one label standing in for data it didn't produce. Each storm's
+    // popup additionally links the exact advisory its numbers came from.
+    sourceAlso: [{ name: 'US Navy JTWC', url: 'https://www.metoc.navy.mil/jtwc/jtwc.html' }],
+    // Global, from two warning centres. Kept as an explicit coverage note
+    // anyway: if one centre is unreachable the payload says so, and the
+    // narrator must not describe a half-empty map as a calm planet.
+    coverage:
+      'every basin where tropical cyclones form — the National Hurricane Center warns on the Atlantic and the eastern and central Pacific, and the Joint Typhoon Warning Center on the western Pacific, the Indian Ocean and the Southern Hemisphere.',
+    factsNote:
+      'Official warning-centre positions, intensities and forecast tracks for every active tropical cyclone on Earth, from NHC (Atlantic, east/central Pacific) and JTWC (west Pacific, Indian Ocean, Southern Hemisphere). These are authoritative advisory values, not model estimates. JTWC warnings do not include a central pressure or a track-uncertainty cone, so storms it warns on legitimately have neither — that is missing data, never zero.',
+    legendRows: [
+      { label: 'Disturbance / tropical depression', glow: '#5ebaff' },
+      { label: 'Tropical storm (39–73 mph)', glow: CAT_COLORS[0] },
+      { label: 'Category 1 hurricane (74–95 mph)', glow: CAT_COLORS[1] },
+      { label: 'Category 2 (96–110 mph)', glow: CAT_COLORS[2] },
+      { label: 'Category 3 (111–129 mph)', glow: CAT_COLORS[3] },
+      { label: 'Category 4 (130–156 mph)', glow: CAT_COLORS[4] },
+      { label: 'Category 5 (157+ mph)', glow: CAT_COLORS[5] },
+    ],
+    legendNote:
+      'The ringed mark is the storm now, wrapped in its real wind field. Each nested shell is how far one wind speed actually reaches — teal for tropical-storm force (39 mph), green for damaging winds (58 mph), yellow for hurricane force (74 mph), on the same color scale as the chips above. They are lopsided because storms are: the reported figure is four numbers, one per quadrant, not a radius. The solid trail behind it is where it has been, colored by how strong it was at each point; the dashed line ahead is the forecast track, and the shaded cone is the range the center could still wander into. Red and orange coastlines are warnings and watches. Storms are shown worldwide, from the National Hurricane Center in the Atlantic and eastern Pacific and the Joint Typhoon Warning Center everywhere else; JTWC does not publish a pressure or a cone, so its storms show neither. Drag the time bar to replay each storm\'s life from its first advisory — the track and the wind field rebuild themselves at every six-hour fix. Replay covers the past only: the cone and forecast describe what is expected from now, so they are hidden while you are looking backwards, and JTWC storms have no published history to replay.',
+    // Replay over the storms' own advisory fixes — the same transport bar the
+    // earthquake tape uses. PAST ONLY, deliberately: the cone and forecast
+    // track describe what is expected from now, so replaying them into last
+    // week would show a prediction that did not exist yet. 6-hourly because
+    // that is the advisory cycle; 10 days covers a typical cyclone's life.
+    // A function, not a constant, because the useful window is whatever the
+    // storms on screen have actually lived. A fixed 10 days opened the bar
+    // five days before any of them existed and played across an empty ocean.
+    // Clamped so a brand-new storm still gets a scrubbable bar and a
+    // month-old one doesn't produce hundreds of frames.
+    timeline: (storms) => {
+      let earliest = Infinity
+      for (const s of storms || []) {
+        for (const p of s.past || []) if (p.at_ms && p.at_ms < earliest) earliest = p.at_ms
+      }
+      const days = Number.isFinite(earliest)
+        ? Math.min(21, Math.max(1.5, (Date.now() - earliest) / 8.64e7 + 0.25))
+        : 3
+      // ONE pass, not the usual three. A storm's life is a story with an
+      // ending — it arrives at Now, which is the state that actually matters
+      // — and re-telling it twice more talks over the reader. Pressing Play
+      // resets the pass count, so the button always buys a fresh replay.
+      return { stepH: 6, windowDays: days, rateHoursPerSec: 18, maxPasses: 1, frameKind: 'NHC advisory fixes', dayLabel: false }
+    },
+    load: async () => {
+      const r = await fetch('/api/storms')
+      if (!r.ok) throw new Error(`storms ${r.status}`)
+      const j = await r.json()
+      // The proxy returns storms:null on upstream failure rather than an
+      // empty array, precisely so this throws into the layer's honest
+      // "unavailable" state instead of drawing a calm, storm-free ocean.
+      if (!Array.isArray(j.storms)) throw new Error(j._upstream_error || 'storms unavailable')
+      return {
+        events: j.storms,
+        meta: {
+          fetched_ms: j.fetched_ms,
+          advisory_ms: j.advisory_ms,
+          count: j.storms.length,
+          coverage: j.coverage,
+          agencies: j.agencies || [],
+          partial: j.partial || null,
+        },
+      }
+    },
+    stamp: (meta) => {
+      if (meta.partial) return `${meta.count} storm${meta.count === 1 ? '' : 's'} — ${meta.partial}`
+      if (!meta.count) return 'no tropical cyclones active anywhere on Earth right now'
+      const by = (meta.agencies || []).filter((a) => a.count).map((a) => `${a.count} from ${a.id}`).join(', ')
+      return `${meta.count} active storm${meta.count === 1 ? '' : 's'}${by ? ` (${by})` : ''} · latest advisory ${fmtRun(meta.advisory_ms)}`
+    },
+    explain:
+      'Every tropical cyclone on Earth that a warning centre is currently tracking — hurricanes in the Atlantic and eastern Pacific, typhoons in the western Pacific, cyclones in the Indian Ocean and the Southern Hemisphere. The nested shells around each storm are its real wind field, and they are lopsided because a storm\'s winds genuinely reach further on one side than the other. The trail behind is its life so far: watch the color climb as a harmless smudge of disturbed weather organizes into a depression, a named storm, and then a hurricane. The cone ahead is not the storm\'s size — it\'s the forecasters\' honest uncertainty about where the center will go, and roughly two times in three the storm stays inside it.',
+    popupEvent(s, ctx = {}) {
+      const cat = s.cat || 0
+      const head = cat > 0 ? `${s.name} — ${stageWord(s.type_word, cat)}` : `${s.name} — ${s.type_word}`
+      const big = s.mph != null ? `${s.mph} mph winds` : 'intensity not reported'
+      const bits = []
+      if (s.mb != null) bits.push(`${s.mb} mb`)
+      if (s.basin_word) bits.push(`in ${s.basin_word}`)
+      if (s.move_kt != null && s.move_dir != null) {
+        bits.push(`moving ${bearingWord(s.move_dir)} at ${Math.round(s.move_kt * 1.15078)} mph`)
+      }
+      // Initial great-circle bearing between the first two forecast positions.
+      // Used ONLY to let the narrator name a direction when the advisory
+      // itself published no motion vector (see the ai block below).
+      let fcstHeading = null
+      {
+        const a = s.forecast?.[0]
+        const b = s.forecast?.[1]
+        if (a && b && a.lat != null && b.lat != null) {
+          const toRad = (d) => (d * Math.PI) / 180
+          const dLon = toRad(b.lng - a.lng)
+          const y = Math.sin(dLon) * Math.cos(toRad(b.lat))
+          const x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat))
+            - Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(dLon)
+          fcstHeading = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+        }
+      }
+
+      // Only NHC storms carry a past track (JTWC's product is current +
+      // forecast only), so this whole paragraph is conditional on having one.
+      const first = s.past?.[0]
+      const now = s.past?.[s.past.length - 1]
+      const story = []
+      if (first && now && first.kt != null && now.kt != null && now.kt > first.kt) {
+        const days = Math.max(1, Math.round((now.at_ms - first.at_ms) / 8.64e7))
+        story.push(
+          `It started as a ${first.type_word.toLowerCase()} of about ${Math.round(first.kt * 1.15078)} mph ${days === 1 ? 'yesterday' : `${days} days ago`} and has been strengthening since.`,
+        )
+      }
+      if (s.peak_forecast?.kt != null && s.peak_forecast.kt > (s.kt ?? 0)) {
+        story.push(
+          `Forecast to peak near ${Math.round(s.peak_forecast.kt * 1.15078)} mph ${s.peak_forecast.when ? `around ${s.peak_forecast.when}` : 'in the next day or so'}.`,
+        )
+      } else if (s.peak_forecast?.kt != null) {
+        story.push('Forecast to weaken from here.')
+      }
+      if (s.watches?.length) {
+        const words = [...new Set(s.watches.map((w) => w.word.toLowerCase()))]
+        story.push(`There ${words.length === 1 ? 'is a' : 'are a'} ${words.join(' and a ')} in effect on the coast.`)
+      }
+      // What the click actually landed on. A storm is several published
+      // shapes stacked up, and answering "Polo, 178 mph" for a click 300 km
+      // ahead of it inside the cone was technically true and practically
+      // useless — it never said the thing the reader wanted to know, which is
+      // "am I in its path?".
+      const hit = s._hit
+      // While the time bar is in the past, every number above describes that
+      // moment, not this one. Say which moment, or the reader has no way to
+      // tell a replayed frame from live.
+      if (hit?.view?.historic) {
+        story.unshift(
+          `Replay — this is ${s.name} as of ${fmtRun(hit.view.at_ms)}, when it was a ${stageWord(hit.view.type_word, hit.view.cat).toLowerCase()}${hit.view.mph != null ? ` with winds near ${hit.view.mph} mph` : ''}. Drag the bar to Now for its current state and forecast.`,
+        )
+      }
+      if (hit?.part === 'cone') {
+        story.unshift(
+          `You clicked inside the forecast cone${s.cone_days ? ` — the ${s.cone_days}-day track forecast` : ''}. The centre of the storm could pass anywhere through this area, though not necessarily here, and about two times in three it stays inside the cone.`,
+        )
+      } else if (hit?.part === 'forecast') {
+        const f = hit.detail
+        const mph = f.kt != null ? `${Math.round(f.kt * 1.15078)} mph` : 'intensity not given'
+        const gust = f.gust_kt != null ? `, gusting ${Math.round(f.gust_kt * 1.15078)} mph` : ''
+        story.unshift(
+          `This is a forecast position: ${s.name} is expected here ${whenLabel(f, s) || `in ${f.tau} hours`}, as a ${stageWord(f.type_word || s.type_word, f.cat).toLowerCase()} with winds near ${mph}${gust}.`,
+        )
+      } else if (hit?.part === 'past') {
+        const pp = hit.detail
+        const mph = pp.kt != null ? `${Math.round(pp.kt * 1.15078)} mph` : 'intensity not given'
+        story.unshift(
+          `${s.name} was here${pp.at_ms ? ` on ${fmtRun(pp.at_ms)}` : ''}, as a ${stageWord(pp.type_word, pp.cat).toLowerCase()} with winds near ${mph}.`,
+        )
+      } else if (hit?.part === 'watch') {
+        const m = WW_MEANING[hit.detail.code]
+        story.unshift(
+          m
+            ? `This stretch of coast is under a ${m[0].toLowerCase()} from ${s.name}: ${m[1]}, ${m[2]}. A watch means conditions are possible and it is time to prepare; a warning means they are expected.`
+            : `This stretch of coast is under a ${hit.detail.word} from ${s.name}.`,
+        )
+      } else if (hit?.part === 'fcstline') {
+        const last = s.forecast?.[s.forecast.length - 1]
+        story.unshift(
+          `You clicked the forecast track — the line the centre of ${s.name} is expected to follow${last ? `, out to ${whenLabel(last, s) || `${last.tau} hours ahead`}` : ''}. The shaded cone around it is how far the real path could stray.`,
+        )
+      } else if (hit?.part === 'pastline') {
+        const seg = hit.detail
+        story.unshift(
+          `${s.name} actually passed along here, as a ${stageWord(TYPE_WORDS[seg.type] || seg.type, seg.cat).toLowerCase()} on this stretch of its track.`,
+        )
+      } else if (hit?.part === 'wind') {
+        const kt = hit.detail.kt
+        story.unshift(
+          `At this spot the advisory says ${windWord(kt)} — ${Math.round(kt * 1.15078)} mph or stronger — currently reach you.`,
+        )
+      }
+
+      // JTWC publishes neither a central pressure nor a track-uncertainty
+      // cone. Saying so plainly is the difference between "we don't have it"
+      // and the reader assuming the storm simply doesn't have one.
+      if (s.agency === 'JTWC') {
+        story.push(
+          'The Joint Typhoon Warning Center, which warns on this basin, publishes no central pressure and no track cone, so neither is shown here.',
+        )
+      }
+      // Both layers report a wind speed at the same spot and they disagree —
+      // 64 mph from the model against a 178 mph advisory, stacked in one
+      // popup, looked like a contradiction. It isn't: the global model's
+      // half-degree grid smooths a hurricane's core away. Say so, but only
+      // when the Wind layer is actually on and the two numbers are visible
+      // together.
+      if (ctx.layerOn?.wind && cat >= 1) {
+        story.push(
+          'If the Wind layer is showing a lower speed here, that is the global weather model, whose grid is too coarse to resolve an eyewall — this advisory figure is the measured one.',
+        )
+      }
+      const centre = s.agency_name || 'the National Hurricane Center'
+      return {
+        head,
+        big,
+        alt: bits.join(' · ') || null,
+        meta: `${story.join(' ')} Advisory ${s.advisory_num || ''} from ${centre}${s.advisory_ms ? `, issued ${fmtRun(s.advisory_ms)}` : ''}.`.trim(),
+        ai:
+          `OFFICIAL ${s.agency || 'NHC'} ADVISORY (authoritative — not a model estimate): ${s.name}, ${stageWord(s.type_word, cat)}` +
+          (s.basin_word
+            ? `, in ${s.basin_word.toUpperCase()} — state this basin and NEVER any other; do not call it an Atlantic storm unless that is the basin named here`
+            : '') +
+          ', ' +
+          `${s.kt ?? '?'} kt sustained (${s.mph ?? '?'} mph), ` +
+          (s.mb != null
+            ? `central pressure ${s.mb} mb, `
+            : 'central pressure NOT PUBLISHED by this warning centre — do not state or estimate one, ') +
+          `at ${s.lat}, ${s.lng}. ` +
+          // A bare "movement not reported" left a vacuum the narrator filled:
+          // on advisory 009, where NHC published no motion at all, it wrote
+          // "moving northwestward at 90 knots" — a speed no cyclone has ever
+          // travelled, assembled out of thin air. The pressure prohibition
+          // right above never leaked like that because it is phrased as an
+          // instruction, not a fact. So: forbid it explicitly, and hand over
+          // the one honest substitute we can compute — the bearing between
+          // the advisory's own forecast positions — clearly labelled as
+          // derived, with no speed attached.
+          (s.move_dir != null && s.move_kt != null
+            ? `Moving ${bearingWord(s.move_dir)} at ${s.move_kt} kt. `
+            : 'MOVEMENT NOT PUBLISHED in this advisory. Do NOT state any movement speed — not in knots, not in mph, not "slowly" or "rapidly". ' +
+              (fcstHeading != null
+                ? `You may say only that its forecast track runs to the ${bearingWord(fcstHeading)}, described as the forecast direction rather than a reported motion. `
+                : 'Say nothing about which way it is moving. ')) +
+          `Track history: ${(s.past || []).map((p) => `${p.kt}kt`).join(' → ') || 'none'}. ` +
+          `Forecast: ${(s.forecast || []).map((f) => `+${f.tau}h ${f.kt}kt`).join(', ') || 'none'}. ` +
+          (s.watches?.length ? `Coastal watches/warnings in effect: ${[...new Set(s.watches.map((w) => w.word))].join(', ')}. ` : '') +
+          'The Wind layer, if on, is a 0.5° global model that cannot resolve a storm core: it reads far slower than the advisory above. The advisory values are the authoritative ones — never average them with the model, and never present the model number as the storm\'s strength.',
+        link: s.advisory_url
+          ? { href: s.advisory_url, label: `Source: ${s.agency || 'NHC'} advisory ${s.advisory_num || ''} ↗`.replace(/\s+/g, ' ') }
+          : { href: 'https://www.nhc.noaa.gov/', label: 'Source: NOAA NHC ↗' },
+      }
+    },
+  },
+  {
     id: 'hotspots',
     hue: '#fb7185',
     iconSvg: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"></path>',
@@ -627,51 +881,6 @@ export const LAYERS = [
         big: `${sample.value.toFixed(1)} °C`,
         alt: `${(sample.value * 1.8 + 32).toFixed(0)} °F`,
         meta: `2 m air temperature · ${tapeStamp(meta, `forecast valid now · run ${fmtRun(meta.run_ms)}`) || `model run ${fmtRun(meta.run_ms)}`}`,
-      }
-    },
-  },
-  {
-    id: 'aerosol',
-    hue: '#d9a441',
-    iconSvg: '<path d="M5.2 6.2l1.4 1.4M2 13h2M20 13h2M17.4 7.6l1.4-1.4M22 17H2M22 21H2M16 13a4 4 0 0 0-8 0"></path>',
-    group: 'air',
-    kind: 'scalar',
-    param: 's',
-    defaultOn: false,
-    dataset: 'cams-aod',
-    expectKind: 'cams-aod550',
-    name: 'Smoke & haze',
-    sub: 'aerosols · CAMS forecast',
-    sourceName: 'Copernicus CAMS',
-    sourceUrl: 'https://atmosphere.copernicus.eu/global-forecast-plots',
-    stops: AOD_STOPS,
-    scalar: { opacity: 0.85 },
-    // Companion animation: aerosol is a scalar, but what the eye wants is to
-    // see it MOVE. Haze is carried by the wind, so the layer runs a neutral
-    // Wind-carried: turning this layer on also lights the Wind layer (the
-    // user can switch it off again), and the popup cites the wind run
-    // alongside the CAMS run (WIND_FLOW names the grid to load for that).
-    flow: WIND_FLOW,
-    // History tape (SYSTEMS_TAPES.aerosol): 3-hourly analysis frames, last 31 days.
-    tape: { dataset: 'cams-aod', expectKind: 'cams-aod550' },
-    legend: { min: 0, max: 2, ticks: ['0', '0.5', '1', '2+ AOD'] },
-    words: [
-      { label: 'Clear', range: 'under 0.1', max: 0.1 },
-      { label: 'Hazy', range: '0.1–0.3', max: 0.3 },
-      { label: 'Smoky', range: '0.3–0.7', max: 0.7 },
-      { label: 'Thick', range: '0.7–1.5', max: 1.5 },
-      { label: 'Extreme', range: 'over 1.5', max: Infinity },
-    ],
-    stamp: (meta) => `model run ${fmtRun(meta.run_ms)}`,
-    explain:
-      'The haze is everything floating in the air — wildfire smoke, desert dust, pollution, sea salt — shown by how much sunlight it blocks. Watch plumes stream downwind of the fire belts and dust cross oceans on the trade winds.',
-    popup(sample, meta) {
-      const word = wordFor(this.words, sample.value).label
-      return {
-        head: `${word} air`,
-        big: `AOD ${sample.value.toFixed(2)}`,
-        alt: sample.value < 0.1 ? 'clean sky' : sample.value < 0.3 ? 'slight haze' : sample.value < 0.7 ? 'visibly smoky' : 'dense smoke or dust',
-        meta: `Aerosol optical depth at 550 nm · ${tapeStamp(meta, `forecast valid now · run ${fmtRun(meta.run_ms)} +${meta.lead_h} h`) || `model run ${fmtRun(meta.run_ms)}`}`,
       }
     },
   },
@@ -977,6 +1186,70 @@ export const LAYERS = [
     },
   },
   {
+    // Climate TRACE facility inventory: every facility-level source in the
+    // release, month by month (scripts/bake-climatetrace; docs/CLIMATETRACE_API.md).
+    // Its own canvas renderer (traceFacilitiesOverlay.js) over our PMTiles,
+    // and a MONTHLY transport tape. The tape yields the bar to fire and to
+    // other timeline layers (their cursors are days, not months) and follows
+    // a scalar replay's cursor, clamped to the latest published month.
+    id: 'emissions',
+    hue: '#fb923c',
+    iconSvg: '<path d="M3 21h18"></path><path d="M5 21V11l4 2.5V11l4 2.5V8l4 2.5V21"></path><path d="M17 8V4h2v6"></path>',
+    group: 'air',
+    kind: 'events',
+    param: 'e',
+    defaultOn: false,
+    name: 'Emission sources',
+    sub: 'facilities, monthly · Climate TRACE',
+    sourceName: 'Climate TRACE',
+    sourceUrl: TRACE_URL,
+    load: async () => {
+      const index = await loadTraceIndex()
+      return { events: [], index, meta: { fetched_ms: index.generated_ms, count: index.count, release: index.release, last: index.months[index.months.length - 1] } }
+    },
+    stamp: (meta) => `${meta.count.toLocaleString()} facilities, monthly estimates through ${monthWord(meta.last)} (release ${meta.release})`,
+    timeline: {
+      yieldsTo: ['hotspots'],
+      makeTape: (field) => new MonthTape(field.index.months),
+      // Whole record, three months a second (~22 s a pass).
+      windowDays: 2200,
+      rateHoursPerSec: 3 * 730.5,
+    },
+    legendRows: Object.values(SECTOR_STYLE).map((s) => ({ label: s.label, glow: s.color })),
+    legendNote: 'Each disc is one facility; its area shows the greenhouse gases it emitted in the month on the time bar (CO₂-equivalent). World view shows the biggest emitters — smaller sites appear as you zoom in. Dashed rings are whole oil & gas basins, not single sites. These are Climate TRACE model estimates from satellite and activity data, not direct measurements; each popup shows its confidence rating.',
+    explain:
+      'Every disc is a real facility — power plants, steel mills, refineries, mines, airports, ports, landfills, cattle operations — sized by the greenhouse gases it put out that month. Press play to watch four and a half years of industry breathe: plants ramping up in winter, airports recovering after 2021, coal units going quiet.',
+    popupEvent(ev) {
+      const what = subsectorWord(ev.sub)
+      const d = peekTraceDetail(ev.id, ev.shards)
+      const monthTxt = monthWord(ev.month)
+      const yearTotal = ev.y > 0 ? `${tonnesWord(ev.y)} across ${ev.fullYear}` : null
+      const place = ev.country ? ` in ${ev.country}` : ''
+      const owner = ev.o ? ` Owned by ${ev.o}.` : ''
+      const cap = ev.k ? ` Capacity: ${ev.k}.` : ''
+      const conf = ev.q ? ` Climate TRACE rates its confidence in this estimate as ${CONFIDENCE_WORDS[ev.q] || ev.q}.` : ''
+      // Cattle operations say how each was found and counted ('reported' vs
+      // Climate TRACE's own synthetic/AI estimate, e.g. 'ct_syn_ai').
+      const modeled = d?.o?.some(([def, v]) => /approach/i.test(def) && /(^|_)syn(_|$)|(^|_)ai$|synthetic/i.test(v))
+        ? ' This operation’s location or herd size was estimated by Climate TRACE’s own model, not taken from a registry.'
+        : ''
+      const basin = ev.b
+        ? ` This figure covers a whole basin — every well, pipeline and flare across the region — placed at its center, not one site.`
+        : ''
+      const late = ev.clamped ? ` (${monthTxt} is the latest month published — the data runs ~2 months behind.)` : ''
+      return {
+        // Basin names arrive as "Country_Basin_Play" — make them readable.
+        head: `${ev.n.replace(/_/g, ' · ')} — ${what}`,
+        big: ev.value > 0 ? `${tonnesWord(ev.value)} CO₂e` : 'no estimate',
+        alt: `in ${monthTxt}`,
+        chartSvg: ev.series ? seriesChartSvg(ev.series, ev.months, ev.monthIdx, sectorStyle(ev.sec).color) : '',
+        meta: `${/^[aeiou]/i.test(what) ? 'An' : 'A'} ${what}${place}.${basin}${yearTotal ? ` It emitted about ${yearTotal}${ev.b ? '' : `, #${ev.r.toLocaleString()} of the ${ev.total.toLocaleString()} sources on this map`}.` : ''}${owner}${cap}${conf}${modeled} Model estimates from satellite and activity data, not measurements.${late}`,
+        ai: `Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), ${ev.value ?? 'n/a'} t CO2e (100-yr GWP) in ${ev.month}, ${ev.y} t in ${ev.fullYear}, global rank ${ev.r} of ${ev.total} facilities; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}. Modeled estimate, not a measurement.`,
+        links: [{ href: TRACE_URL, label: `Source: Climate TRACE ${TRACE_RELEASE} ↗` }],
+      }
+    },
+  },
+  {
     id: 'sstanom',
     hue: '#f87171',
     iconSvg: '<path d="M4 14l4.5-4.5 3 3L17 7"></path><path d="M13.5 7H17v3.5"></path><path d="M3 20c2-1.7 4-1.7 6 0s4 1.7 6 0 4-1.7 6 0"></path>',
@@ -1172,6 +1445,11 @@ export const LAYERS = [
       coverageBoost: 0.3,
       vector: { speedFactor: 0.21, gammaPivot: 10, offsetDegPerMs: 0.02, gamma: 1 },
     },
+    // Where the numbers apply, in words — handed to the Explain narrator so it
+    // never describes this layer outside its radar coverage (viewFacts.js).
+    coverage: 'the contiguous United States (lower 48) and up to about 100 miles beyond its borders and coasts — U.S. weather-radar coverage only; nothing over the open ocean, Canada, Mexico or any other continent',
+    factsNote: 'migration traffic rate: birds per hour crossing a 1 km line on the ground, as observed by the U.S. weather-radar network (BirdCast, Cornell Lab of Ornithology). It is a RATE of passage, not a count: never state or imply how many birds were in the air or in the view (no "millions of birds"). Migration is mostly nocturnal songbirds. Radar cannot identify species.',
+    nocturnal: true,
     // Stored value → birds/km/h (the grid carries the square root).
     toValue: (raw) => raw * raw,
     unit: ' birds/km/h',

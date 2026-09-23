@@ -38,6 +38,9 @@ import TransportBar from './TransportBar.jsx'
 import { formatAiText } from './aiFormat.js'
 import { EventPingLayer } from './eventPings.js'
 import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
+import { StormsOverlay } from './stormsOverlay.js'
+import { TraceFacilitiesOverlay } from './traceFacilitiesOverlay.js'
+import { probeHover } from './hoverProbe.js'
 import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
 import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
@@ -79,7 +82,7 @@ const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]
 
 // Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
 // the clip recorder composites these over the basemap in exactly this order.
-const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'flight', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'quakes']
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'flight', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'emissions', 'quakes', 'storms']
 
 // Gas layers with observed-emission-source companions. A gas can carry more
 // than one provider: Carbon Mapper (lime reticles) and, for methane, UNEP
@@ -228,6 +231,10 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => (
 // One compact chip per analyzed layer — these are the facts engine's own
 // numbers, shown under the AI prose so readers see the numbers' source.
 function factChip(f) {
+  if (f.no_data_in_view) return `${f.name}: no data in this view`
+  if (f.covered_share_of_view_pct != null) {
+    return `${f.name}: avg ${f.mean?.toLocaleString?.() ?? f.mean} · max ${f.max?.toLocaleString?.() ?? f.max}${f.unit} — over the ${f.covered_share_of_view_pct}% of this view that has data`
+  }
   if (f.id === 'wind' || f.id === 'currents') {
     return `${f.name}: avg ${f.mean} · max ${f.max} m/s, ${f.dominant_direction}`
   }
@@ -244,6 +251,13 @@ function factChip(f) {
           ? (f.est_co2_tonnes_per_day / 1e6).toFixed(1) + ' Mt'
           : f.est_co2_tonnes_per_day.toLocaleString() + ' t'} CO₂/day (est.)`
         : '')
+  }
+  if (f.id === 'emissions') {
+    if (!f.facilities_shown) return `${f.name}: no facilities drawn in this view (${f.month_shown})`
+    const t = f.shown_emissions_tonnes
+    const tw = t >= 1e6 ? `${(t / 1e6).toFixed(1)} Mt` : `${Math.round(t).toLocaleString()} t`
+    return `${f.name}: ${f.facilities_shown.toLocaleString()} facilities shown · ${tw} CO₂e in ${f.month_shown} (model estimates)` +
+      (f.same_facilities_vs_year_earlier_pct != null ? ` · ${f.same_facilities_vs_year_earlier_pct > 0 ? '+' : ''}${f.same_facilities_vs_year_earlier_pct}% vs a year earlier` : '')
   }
   if (f.note) return `${f.name}: 30-day alert overlay`
   return `${f.name}: ${f.min} to ${f.max} ${f.unit} in view`
@@ -368,6 +382,11 @@ export default function SystemsApp() {
   const fireDailyLoadRef = useRef(false) // fire-daily rollup fetch state
   const fireSkipBuildRef = useRef(false) // window-extension recreations land at Now, no build replay
   const [dataEpoch, setDataEpoch] = useState(0) // bumped when a visible layer's data is refreshed
+  // Shared hover: one tooltip for every discrete-feature layer (see
+  // hoverProbe.js). Held in state only when it changes — the probe itself
+  // runs on a coalesced animation frame so a fast drag across the globe
+  // can't queue a render per mouse event.
+  const [hoverTip, setHoverTip] = useState(null)
   const resumeRef = useRef({}) // layer id → { t, playing } to restore a replay across a data refresh
   const [eventReplay, setEventReplay] = useState(null)
   const [popupOpen, setPopupOpen] = useState(false)
@@ -548,6 +567,9 @@ export default function SystemsApp() {
         return `<div class="${styles.popupSection}">` +
         `<div class="${styles.popupHead}">${escapeHtml(p.head)}</div>` +
         `<div class="${styles.popupSpeed}">${escapeHtml(p.big)} <span>(${escapeHtml(p.alt)})</span></div>` +
+        // chartSvg: a layer-built SVG from numbers only (e.g. Climate TRACE
+        // traceData.seriesChartSvg) — never upstream text, so not escaped.
+        (p.chartSvg || '') +
         `<div class="${styles.popupMeta}">${escapeHtml(p.meta)}</div>` +
         (links.length
           ? `<div class="${styles.popupMeta}">${links.map((l) =>
@@ -633,7 +655,10 @@ export default function SystemsApp() {
             if (rawInst?.isActive()) continue
           }
           const ev = instancesRef.current[def.id]?.nearest(e.point.x, e.point.y, 16)
-          if (ev) sections.push(sectionHtml(def.popupEvent(ev)))
+          // Second argument lets an event layer say something that depends on
+          // what ELSE is on — Storms uses it to reconcile its advisory wind
+          // with the Wind layer's model wind when both are showing.
+          if (ev) sections.push(sectionHtml(def.popupEvent(ev, { layerOn: stateRef.current.layerOn })))
           continue
         }
         // Analyst-drawn smoke plumes ride the smoke layer: a click inside one
@@ -920,7 +945,7 @@ export default function SystemsApp() {
           ? { replay: { frame_time_utc: new Date(replayRef.current.tape.metaAt().valid_ms).toISOString().slice(0, 16) + 'Z', note: 'archived analysis frame, not live conditions' } }
           : {}),
       }
-      fetch(`/api/systems-explain?v=2&f=${b64url(JSON.stringify(popupFacts))}`)
+      fetch(`/api/systems-explain?v=3&f=${b64url(JSON.stringify(popupFacts))}`)
         .then(async (r) => {
           const j = await r.json().catch(() => ({}))
           if (popupAiReqRef.current !== reqId || popupRef.current !== popup) return
@@ -1032,7 +1057,9 @@ export default function SystemsApp() {
     // Event layers (quakes, fires): one ping canvas each. Layers with a
     // resolution ladder are owned by the zoom-swap effect below.
     for (const def of LAYERS) {
-      if (def.kind !== 'events' || def.variants) continue
+      // `!def.ping`: Storms is an events layer that brings its own renderer
+      // (animated cyclone glyphs + tracks + cones), so it has no ping config.
+      if (def.kind !== 'events' || def.variants || !def.ping) continue
       const ready = layerOn[def.id] && layerStatus[def.id] === 'ok'
       if (ready && !inst[def.id] && canvasEls.current[def.id]) {
         try {
@@ -1197,7 +1224,7 @@ export default function SystemsApp() {
     const flightRc = active?.flight && replayRef.current?.layerId === active.id ? replayRef.current : null
     const flightReady = !!flightRc?.tape.extraBands
     if (inst.flight && (!flightReady || inst.flight.rc !== flightRc)) {
-      inst.flight.off(); inst.flight.layer.destroy(); inst.flight = null
+      inst.flight.destroy(); inst.flight = null
     }
     if (flightReady && !inst.flight && canvasEls.current.flight) {
       try {
@@ -1224,7 +1251,10 @@ export default function SystemsApp() {
         }
         const unsub = flightRc.subscribe(follow)
         follow()
-        inst.flight = { rc: flightRc, layer, field, off: () => { unsub(); clearTimeout(pending) } }
+        // destroy() is the contract every entry in `inst` must honour — the
+        // unmount sweep calls it on whatever it finds. (The first cut stored
+        // a bare { layer, off } here and leaving /inmotion with birds on threw.)
+        inst.flight = { rc: flightRc, layer, field, destroy: () => { unsub(); clearTimeout(pending); layer.destroy() } }
         if (import.meta.env.DEV) window.__flight = layer // dev-only QA handle
       } catch (err) {
         console.error(`[systems] ${active.id} flight layer init failed:`, err)
@@ -1236,7 +1266,12 @@ export default function SystemsApp() {
     // cursor. One transport bar: a scalar replay (if any) owns it and the
     // event layer follows its time; otherwise the event layer gets its own
     // controller.
-    const tlDef = LAYERS.find((d) => d.timeline && layerOn[d.id] && layerStatus[d.id] === 'ok' && inst[d.id])
+    // A timeline may `yieldsTo` other layers (Climate TRACE's monthly tape
+    // yields to fire, whose cursor is days) and always yields to another
+    // timeline that doesn't — one bar, owned by the finest-grained clock.
+    const tlCands = LAYERS.filter((d) => d.timeline && layerOn[d.id] && layerStatus[d.id] === 'ok' && inst[d.id])
+    const yields = (d) => !!d.timeline.yieldsTo && (d.timeline.yieldsTo.some((id) => layerOn[id]) || tlCands.some((o) => !o.timeline.yieldsTo))
+    const tlDef = tlCands.find((d) => !yields(d))
     const ev = eventReplayRef.current
     if (ev && (!tlDef || ev.layerId !== tlDef.id || replayRef.current)) {
       ev.destroy(); eventReplayRef.current = null; setEventReplay(null)
@@ -1252,8 +1287,22 @@ export default function SystemsApp() {
           rc.subscribe((c) => ping.setTime(c.atLive ? null : c.t, c.playing ? 'flow' : 'day'))
         }
       } else if (!eventReplayRef.current) {
-        const tape = new EventTape(fieldsRef.current[tlDef.id].events, tlDef.timeline)
-        const rc = new ReplayController(tape, { windowDays: tlDef.timeline.windowDays, rateHoursPerSec: tlDef.timeline.rateHoursPerSec || 24 })
+        // `timeline` may be a function of the feed when the useful window
+        // depends on the data itself. Storms needs this: a fixed 10-day
+        // window opened five days before any current storm existed, so
+        // playback began on an empty ocean. Quakes keeps a plain object.
+        const tl = typeof tlDef.timeline === 'function'
+          ? tlDef.timeline(fieldsRef.current[tlDef.id].events)
+          : tlDef.timeline
+        const tape = tl.makeTape ? tl.makeTape(fieldsRef.current[tlDef.id]) : new EventTape(fieldsRef.current[tlDef.id].events, tl)
+        // maxPasses is forwarded so a timeline can ask for a single run.
+        // Undefined keeps ReplayController's default of three, which is what
+        // quakes wants; Storms asks for one.
+        const rc = new ReplayController(tape, {
+          windowDays: tl.windowDays,
+          rateHoursPerSec: tl.rateHoursPerSec || 24,
+          ...(tl.maxPasses != null ? { maxPasses: tl.maxPasses } : {}),
+        })
         rc.layerId = tlDef.id
         const resumeE = resumeRef.current[tlDef.id]
         if (resumeE) { delete resumeRef.current[tlDef.id]; rc.seek(resumeE.t); if (resumeE.playing) rc.play(); else rc.pause() }
@@ -1419,6 +1468,90 @@ export default function SystemsApp() {
     }
     inst.fireevents?.setVisible(on)
   }, [mapReady, layerOn, eventsTick])
+
+  // ─── Storms: NHC tropical cyclones. Its own canvas overlay rather than the
+  // ping layer — a hurricane has to spin, and it carries track lines, a
+  // forecast cone and warning coastlines that a point renderer can't draw.
+  // It exposes `nearest()`, so the generic events click path finds it.
+  useEffect(() => {
+    const def = LAYERS.find((d) => d.id === 'storms')
+    if (!def) return
+    const on = !!layerOn.storms
+    const inst = instancesRef.current
+    if (mapReady && on && layerStatus.storms === 'ok' && fieldsRef.current.storms && !inst.storms && canvasEls.current.storms) {
+      try {
+        inst.storms = new StormsOverlay(mapRef.current, canvasEls.current.storms, fieldsRef.current.storms.events)
+      } catch (err) {
+        console.error('[systems] storms overlay init failed:', err)
+      }
+    }
+    inst.storms?.setVisible(on)
+    // `dataEpoch` is load-bearing, not decoration: the 10-minute refresh
+    // poller re-pulls every `def.load` layer and DESTROYS its instance
+    // (`inst[id].destroy(); inst[id] = null`), relying on the rebuild effects
+    // to construct a new one. Without dataEpoch in these deps this effect
+    // never re-runs, so ten minutes after load the storms overlay is torn
+    // down and never rebuilt — the layer silently vanishes and only a page
+    // reload brings it back. The main instance effect already lists it.
+  }, [mapReady, layerOn, layerStatus, dataEpoch])
+
+  // ─── Emission sources: Climate TRACE facilities, own canvas overlay over
+  // our PMTiles (see traceFacilitiesOverlay.js). `nearest()` feeds the
+  // generic events click path; the monthly tape is wired by the timeline
+  // effect above. dataEpoch: the refresh poller destroys def.load instances.
+  useEffect(() => {
+    const on = !!layerOn.emissions
+    const inst = instancesRef.current
+    if (mapReady && on && layerStatus.emissions === 'ok' && fieldsRef.current.emissions && !inst.emissions && canvasEls.current.emissions) {
+      try {
+        inst.emissions = new TraceFacilitiesOverlay(mapRef.current, canvasEls.current.emissions, fieldsRef.current.emissions.index)
+      } catch (err) {
+        console.error('[systems] emissions overlay init failed:', err)
+      }
+    }
+    inst.emissions?.setVisible(on)
+    if (!on) inst.emissions?.setTime(null)
+  }, [mapReady, layerOn, layerStatus, dataEpoch])
+
+  // ─── Hover: one listener, one tooltip, every discrete layer ──────────────
+  // Continuous fields (wind, currents, every scalar wash) are deliberately
+  // NOT probed — a value exists at every pixel there, so a tooltip would
+  // trail the cursor everywhere saying something nobody asked for. Those
+  // stay click-to-inspect.
+  useEffect(() => {
+    if (!mapReady) return
+    const map = mapRef.current
+    if (!map) return
+    let raf = 0
+    let pt = null
+    const run = () => {
+      raf = 0
+      if (!pt) { setHoverTip(null); return }
+      let hit = null
+      try { hit = probeHover(pt.x, pt.y, instancesRef.current, stateRef.current.layerOn) } catch { hit = null }
+      // The cursor is the cheap half of the affordance and works even for
+      // layers that have no highlight of their own yet.
+      try { map.getCanvas().style.cursor = hit ? 'pointer' : '' } catch { /* map torn down */ }
+      setHoverTip(hit ? { ...hit, x: pt.x, y: pt.y } : null)
+    }
+    const onMove = (e) => {
+      pt = { x: e.point.x, y: e.point.y }
+      if (!raf) raf = requestAnimationFrame(run)
+    }
+    const onOut = () => {
+      pt = null
+      if (!raf) raf = requestAnimationFrame(run)
+    }
+    map.on('mousemove', onMove)
+    map.on('mouseout', onOut)
+    return () => {
+      map.off('mousemove', onMove)
+      map.off('mouseout', onOut)
+      if (raf) cancelAnimationFrame(raf)
+      try { map.getCanvas().style.cursor = '' } catch { /* map torn down */ }
+      setHoverTip(null)
+    }
+  }, [mapReady])
 
   // ─── Raw detections: the close-zoom rung of the fire ladder. Individual
   // 375 m VIIRS pixels (colored by recency) replace cluster glows and derived
@@ -1681,8 +1814,10 @@ export default function SystemsApp() {
     const inst = instancesRef.current
     for (const key of Object.keys(inst)) {
       if (!inst[key]) continue
-      if (key === 'scalar') inst[key].layer.destroy()
-      else inst[key].destroy()
+      try {
+        if (key === 'scalar') inst[key].layer.destroy()
+        else inst[key].destroy()
+      } catch (err) { console.error(`[systems] ${key} teardown failed:`, err) }
       inst[key] = null
     }
   }, [])
@@ -1882,14 +2017,25 @@ export default function SystemsApp() {
         }
         const rc = replayRef.current
         if (rc && rc.layerId === d.id) return { def: d, payload: rc.tape, meta: rc.tape.metaAt() }
+        // Emission sources: the facts come from what its overlay has drawn.
+        if (d.id === 'emissions') return { def: d, payload: { ...fieldsRef.current[d.id], overlay: instancesRef.current.emissions }, meta: layerMeta[d.id] }
         return { def: d, payload: fieldsRef.current[d.id], meta: layerMeta[d.id] }
       })
     if (!active.length) return
     // Facts are instant and free — show them immediately while the prose loads.
     const facts = buildViewFacts(map, active)
     const reqId = ++explainReqRef.current
+    // Nothing on screen has data here (a U.S.-only layer viewed over Europe):
+    // there are no facts to narrate, so don't ask a model to fill the silence —
+    // given an empty view it invented European migration and claimed no one
+    // else measures it. Say what is true, deterministically.
+    if (facts.layers.every((l) => l.no_data_in_view)) {
+      const lines = facts.layers.map((l) => `**${l.name}** has no data in this view. It only covers ${l.coverage_area}.`)
+      setExplain({ status: 'ok', facts, text: `## What you're seeing\n\n${lines.join(' ')} Nothing was measured here, which is not the same as nothing happening. Turn the globe to the covered area, or switch on another layer, to see data for this region.` })
+      return
+    }
     setExplain({ status: 'loading', facts, text: null })
-    fetch(`/api/systems-explain?v=2&f=${b64url(JSON.stringify(facts))}`)
+    fetch(`/api/systems-explain?v=3&f=${b64url(JSON.stringify(facts))}`)
       .then(async (r) => {
         const j = await r.json().catch(() => ({}))
         if (explainReqRef.current !== reqId) return
@@ -1964,7 +2110,42 @@ export default function SystemsApp() {
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.hotspots = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireraw = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireevents = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.emissions = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.quakes = el }} aria-hidden="true" />
+      {/* Storms sit above every other overlay: when a Cat 5 is on screen it
+          is the most important thing on the globe, and its track has to stay
+          legible over a smoke wash or a pressure field. */}
+      <canvas className={styles.windCanvas} style={{ zIndex: 7 }} ref={(el) => { canvasEls.current.storms = el }} aria-hidden="true" />
+      {/* Shared hover tooltip — above every overlay canvas, never intercepting
+          the pointer. Flips at the right and bottom edges so it can't clip. */}
+      {hoverTip && (() => {
+        const cw = mapRef.current?.getCanvas?.()?.clientWidth || 0
+        const ch = mapRef.current?.getCanvas?.()?.clientHeight || 0
+        const flipX = cw && hoverTip.x > cw - 240
+        const flipY = ch && hoverTip.y > ch - 110
+        return (
+          <div
+            className={styles.hoverTip}
+            style={{
+              left: hoverTip.x,
+              top: hoverTip.y,
+              transform: `translate(${flipX ? 'calc(-100% - 14px)' : '14px'}, ${flipY ? 'calc(-100% - 14px)' : '14px'})`,
+              borderColor: hoverTip.color ? `${hoverTip.color}8c` : 'rgba(255,255,255,0.25)',
+            }}
+            aria-hidden="true"
+          >
+            {hoverTip.lines.map((ln, i) => (
+              <div
+                key={ln + i}
+                className={i === 0 ? styles.hoverTipHead : styles.hoverTipLine}
+                style={i === 0 && hoverTip.color ? { color: hoverTip.color } : undefined}
+              >
+                {ln}
+              </div>
+            ))}
+          </div>
+        )
+      })()}
       {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       {/* Branding */}
@@ -2208,6 +2389,17 @@ export default function SystemsApp() {
                       <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                         {def.sourceName}
                       </a>
+                      {/* A layer fed by more than one agency links each of them:
+                          one label covering two sources would send the reader to
+                          the wrong one for half the data. Storms is the first. */}
+                      {def.sourceAlso?.map((src) => (
+                        <span key={src.url}>
+                          {' & '}
+                          <a className={styles.sourceLink} href={src.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            {src.name}
+                          </a>
+                        </span>
+                      ))}
                       {' · '}{def.stamp(meta)}, fetched {agoWord(meta.fetched_ms)}.
                     </div>
                   )}

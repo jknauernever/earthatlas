@@ -228,6 +228,7 @@ freeze during gestures.
 | Ocean currents | **HYCOM/Navy ESPC-D-V02** via ncss.hycom.org (surface `water_u/v`, stride 6, `accept=netcdf` — this older TDS rejects `accept=netcdf3`) | 6 h cron; analysis+forecast to now | OSCAR: every public ERDDAP copy frozen (2014/2018); OSCAR v2 needs Earthdata auth |
 | Sea temperature | **NOAA Coral Reef Watch CoralTemp** via CoastWatch ERDDAP (`NOAA_DHW`, `CRW_SST`, index-strided ×10 → 0.5°) | 12 h cron; daily product, ~1-day lag | OISST *final* lags ~2 weeks — too stale to label "live" |
 | Waves | **WaveWatch III global** via PacIOOS ERDDAP (`ww3_global`, `Thgt`, value-based time constraint → nearest-to-now step) | 6 h cron; forecast series | — |
+| Sea-level pressure | NOAA GFS via **Unidata THREDDS NCSS** (`Pressure_reduced_to_MSL_msl`, no `vertCoord`) — same pipe and run as Wind | 6 h cron; `time=present` | — (the wind bake had already proved the endpoint) |
 
 All four verified with real fetches before any bake code was written. New
 datasets register in `api/_systems-datasets.js` (shared netcdf/encode/meta
@@ -666,8 +667,400 @@ Source catalog, citation and caveats: `docs/BIRDCAST_DATA.md`.
   `legacyParam: 'd'` keeps old shared links working — honoured only for the
   values `0`/`1`, which density never uses. New layers: never reuse `d`, `bm`,
   `lat`, `lng`, `z`.
+- **Explain + partial-coverage layers** (2026-09-21): with the globe centred on
+  the Atlantic the narrator described "radar-detected birds crossing the
+  ocean" — it had the bird statistics but nothing said WHERE they applied.
+  A layer with `def.coverage` now sends `coverage_area`,
+  `covered_share_of_view_pct`, `view_center_has_data`, `data_located_around`
+  and a literal `coverage_note`; `def.nocturnal` adds local solar time, local
+  date and DAY/NIGHT at the data (a daytime frame was narrated as night
+  migration; 04Z was misdated); `def.factsNote` → `what_it_measures` (it is a
+  RATE — no "millions of birds"). Prompt gained a COVERAGE hard rule and
+  "a count is a number too". When NO active layer has data in view the model
+  is not called at all — given an empty view it invented European migration —
+  and a fixed sentence is shown. Explain cache key bumped to `v=3`.
+  Any future regional layer: set `coverage` (and `nocturnal` if it applies).
+- **`inst` contract**: every entry in `instancesRef.current` must expose
+  `destroy()` — the unmount sweep calls it blindly. `inst.flight` first shipped
+  as a bare `{ layer, off }` and leaving /inmotion by client-side navigation
+  with birds on threw in cleanup. Fixed; the sweep is now try/catch per entry.
 - **Credit** (Josh, 2026-09-20): BirdCast's Live Maps syntax, filled per frame
   in every popup, plus the methodology modal.
+
+## 2j. Sea-level pressure — built, then REMOVED the same day (2026-09-22)
+
+Built as the cheap first answer to "show me the hurricane", then cut. Do not
+re-add it without reading this. Josh: *"I just don't think most people care
+about this layer."* He was right, and the reasons are worth keeping because
+they generalise.
+
+**Why it failed as a layer.** A 0.5° grid puts ~4 cells across a hurricane, so
+even a Cat 5 renders as a small blob. Checked against reality on the day:
+NHC's advisory for Polo read **920 mb**, and six hours later **892 mb**, while
+the grid read **966 hPa** at the same position — a 74 hPa gap. The model isn't
+wrong; it cannot see a 20-km eye. Pressure is the *substrate* a storm sits in,
+never the thing that makes a storm legible. The Storms layer (§2k) is what
+that job actually needed.
+
+**The ramp lesson, which outlives the layer.** The first ramp spread colour
+evenly across the legend's 920–1045 span and looked like nothing. ~95 % of the
+planet sits within 1005–1025 hPa, so an even ramp spends its whole budget on
+the band where nothing happens. The fix was holding the quiet band near
+transparent and accelerating colour hard outside it. **Design a ramp against
+the field's actual distribution, not its record extremes** — the legend's
+honest range and the ramp's useful range are two different problems.
+
+**The second reason it was cut.** "Reduced to sea level" over Greenland and
+Antarctica extrapolates pressure downward through two miles of ice, which is
+physically meaningless. Josh spotted it immediately as the anomalies looking
+like they lived at the poles. Any future pressure layer must mask high terrain.
+
+Removed: the def and ramp from `layerDefs.js`, `fetchPressure` and both
+registry entries from `_systems-datasets.js`, both `ds=pressure` crons from
+`vercel.json`, and the methodology paragraph. The Blob pair
+`systems/gfs-mslp-*` was never seeded in prod, so there is nothing to clean up
+there.
+
+## 2k. Storms — NHC tropical cyclones (2026-09-22)
+
+The layer the pressure experiment was really reaching for. Full API catalog
+in **docs/STORMS_API.md** — read that before touching the pipeline; it
+records every field, every gotcha and every dead end, verified live.
+
+**Two sources, one proxy.** `api/storms.js` (edge) merges NHC's
+`CurrentStorms.json` (the authoritative intensity/pressure/advisory URLs) with
+six layers of NOAA's tropical ArcGIS `_summary` service (forecast points,
+forecast track, cone, watch/warning, past points, past track, wind field).
+Reasons it is a server route and not a browser fetch:
+
+1. `CurrentStorms.json` sends **no CORS headers** — the browser cannot read
+   it at all. It is also the only source of the human-readable advisory URLs,
+   which are this layer's inline provenance.
+2. Seven upstream round trips per visitor becomes one edge-cached call.
+3. **`9999` is NOAA's missing-value sentinel** on the forecast-point layer.
+   Every row past tau=0 carries `mslp=9999`, `tcdir=9999`, `tcspd=9999`.
+   Stripping it in one place means no client can print "9999 hPa".
+
+Coordinates are rounded to 3 decimals (~110 m) in the proxy: a 5-day cone is
+~1600 vertices per storm at 14 decimals, which alone was half a 200 KB
+payload. 126 KB now.
+
+**Use the `_summary` service.** `NHC_tropical_weather` splits per storm bin
+(AT1…CP5 × ~26 sublayers = hundreds of layers, one query per storm);
+`NHC_tropical_weather_summary` merges all active storms into one layer per
+product, filtered by `binnumber` — which is also the join key back to
+CurrentStorms.json's `binNumber`.
+
+**The renderer draws only what NOAA published.** First version had a rotating
+three-armed spiral at the eye. Josh: "the spinning pinwheel looks cheesy and
+not at all elegant." He was right, and the deeper problem was honesty — the
+arms corresponded to nothing and the fixed screen size misrepresented the
+storm's extent. It's a loading spinner in a hurricane costume. Replaced with
+the advisory's **real wind field**: NHC's 34/50/64 kt quadrant polygons,
+which are genuinely lopsided (Polo, 2026-09-22: 80 nm of tropical-storm winds
+to the southeast, 70 nm to the northeast). Nothing on screen is invented now.
+
+The past track is drawn **per segment, colored by the category the storm had
+on that stretch** (ArcGIS layer 11 carries `stormtype`+`ss` per segment), so a
+rapid-intensification storm reads as a line going cyan → yellow → orange →
+magenta. Polo went 20 kt to 155 kt in five days; that stroke is the layer's
+best single image.
+
+**Scale ladder**, same idea as the fire layers (glow → hull → detections): a
+storm's true 80-nautical-mile wind field is sub-pixel on a whole-globe view,
+so a minimum-size still mark carries it until you zoom in far enough that the
+real footprint is bigger, at which point the geography takes over.
+
+**rAF trap, worth remembering.** The first version painted only inside a
+`requestAnimationFrame` loop guarded by `!document.hidden`. rAF is throttled
+or parked whenever the document is hidden — a background tab, an unfocused
+preview pane — so the canvas stayed blank with no error anywhere. Any overlay
+must paint once on construction and on every state change, and use the loop
+only for animation.
+
+**Horizon culling is not optional.** Mapbox projects back-facing points to
+plausible on-screen coordinates, so without a limb test a storm in the
+Atlantic draws straight through the planet while you're looking at the
+Philippine Sea. Adding JTWC made it obvious and Josh caught it immediately —
+there is now almost always a storm on the hemisphere you aren't looking at.
+Use the same two-part test every other overlay here uses: `getGlobeGeometry()`
+→ `isVisible()` when the horizon is on screen, unproject round-trip when it
+isn't. A comment claiming you cull is not culling.
+
+**What animates, and why.** Chevrons march along the past and forecast tracks
+in the direction of travel, at a rate scaled by the storm's own forward speed
+(`move_kt`), and the forecast dashes crawl with them. That is motion carrying
+information — heading and pace — which is the bar this layer holds itself to
+after the spiral. The wind field and the eye stay still.
+
+**Coverage is global (2026-09-22, same day).** JTWC was added so the layer
+covers every basin. It publishes no GIS service and no JSON; what it does
+publish per storm is a `.tcw` ("JMV 3.0") file whose header is compact and
+machine-readable — 5 KB, versus a 437 KB KMZ that is mostly icon PNGs. Full
+format table in docs/STORMS_API.md §7. Three things that will bite:
+
+* **Storm numbers 90–99 are INVESTS**, whose product is a free-prose
+  "Tropical Cyclone Formation Alert" with no position block at all. Parsing
+  one as a warning produces garbage; filter to 01–89.
+* **JTWC overlaps NHC** in `ep`/`cp` and cuts at a different synoptic hour —
+  NHC had Polo at 155 kt (19Z) while JTWC's 12Z warning said 140 kt. NHC wins
+  in `al`/`ep`/`cp`, or the same storm appears twice, contradicting itself.
+* **JTWC publishes no central pressure and no track cone.** Those are
+  rendered as absent and *said out loud* in the popup, never guessed from
+  wind speed, and the KMZ's "34-knot danger swath" is NOT substituted for a
+  cone — it answers a different question. Wind radii come as four quadrant
+  numbers, drawn as literal stepped quadrant arcs rather than smoothed into
+  an organic blob, because four numbers is what was reported.
+
+The noun changes by basin: typhoon in the western Pacific, cyclone in the
+Indian Ocean and Southern Hemisphere. `stageWord()` picks it from the storm's
+own type word.
+
+A half-outage is visible: if JTWC is unreachable the NHC storms still render
+and the payload's `partial` field makes the panel say which basins are
+missing, rather than an all-or-nothing failure that hides a live hurricane.
+
+IBTrACS was evaluated for past tracks and rejected — 21 h stale and missing
+the newest storm (docs/STORMS_API.md §8).
+
+**Wiring checklist** (the part that cost the most time): an events-kind layer
+with its own renderer needs (1) the def in `layerDefs.js` with no `ping`,
+(2) the `!def.ping` guard in the EventPingLayer effect so it doesn't get one,
+(3) `'storms'` in `OVERLAY_KEYS`, (4) **an actual `<canvas>` element in the
+JSX** — OVERLAY_KEYS alone does not create one, it only memoizes existing
+elements — and (5) a `nearest(x, y, px)` method on the overlay class, which
+is what the generic events click path calls, so no click-handler change is
+needed at all.
+
+---
+
+## 2k-bis. Storms replay — past only, and why (2026-09-22)
+
+The layer now has a time cursor, reusing the earthquake tape's machinery
+(`EventTape` + `ReplayController` + the shared transport bar) via a
+`timeline` entry on the def and a `setTime(t, mode)` on the overlay. `mode
+=== 'last24'` is the controller saying "parked at Now", which restores live.
+
+**Past only, deliberately.** The cone, the forecast track and the forecast
+dots are products of the PRESENT — they describe what forecasters expect from
+now. Replaying to last Sunday with today's cone on screen would show a
+prediction that did not exist at the time the bar points at. `_viewOf()`
+therefore drops all of them in history, along with the coastal watches and
+warnings (equally a statement about now), leaving only what was observed and
+published then: position, intensity, category and the wind field measured at
+that fix. Extending replay into the forecast is possible later but needs a
+hard visual break at Now first.
+
+**One pass, not three.** `maxPasses` is now forwarded from a `timeline`
+config into ReplayController (undefined keeps the default of 3, which is what
+quakes wants). Storms asks for 1: a storm's life is a story with an ending —
+it arrives at Now, which is the state that actually matters — and re-telling
+it twice more talks over the reader. `play()` resets the pass count, so the
+button always buys a fresh replay.
+
+**Per-fix wind shells** come from ArcGIS layer 13 (Past Wind Radii), grouped
+by `synoptime`, and are matched to a frame only within one 6-hour advisory
+cycle so an early disturbance can't borrow shells measured hours later. Early
+frames legitimately have no shells at all — a disturbance has no 34-knot
+radius to report. That absence is data, not a gap to fill. Rings are
+decimated to every 6th vertex (361 → 61 points); at the zooms this layer is
+read at it is visually identical and keeps the tape's payload sane.
+
+**The window is a function, not a constant.** `timeline` may be a function of
+the feed, because the useful window is however long the storms on screen have
+actually lived. A fixed 10 days opened the bar five days before any current
+storm existed and played across an empty ocean. Clamped to 1.5–21 days.
+
+**Bug worth remembering:** layer 10 (Past Points) was queried with
+`returnGeometry=false` and WITHOUT `lat,lon` in `outFields`. Live mode never
+noticed, because it draws the past track from layer 11's geometry — but the
+replay positions the storm from these fixes, so every replayed frame was
+coordinate-less and drew nothing at all, silently. When a field is only
+consumed by one mode, the other mode's success proves nothing.
+
+**JTWC storms cannot be replayed** — the `.tcw` product is current + forecast
+only, so they have no `past` at all and are simply absent from history rather
+than frozen at their present position, which would be a lie about the past.
+Said plainly in the panel note. If this matters later, their KMZ carries past
+best-track points (docs/STORMS_API.md §7.2).
+
+## 2k-quater. The wind-field vortex (2026-09-22)
+
+Particles circulating inside each storm's published wind field. Settled with
+Josh over several rounds of side-by-side sketches rather than by editing the
+layer — when a visual is being judged by eye, sketches iterate in seconds and
+code iterates in minutes.
+
+**Everything steering them is published or settled physics.** Direction is
+Coriolis (counterclockwise north of the equator, clockwise south). Speed comes
+from the quadrant radii — a particle between the 50- and 64-knot rings is in
+air the advisory says moves 50–64 kt. Shape is those same lopsided radii.
+Drift is the storm's own forward motion when published, which is why the
+right-front quadrant runs fastest in the northern hemisphere.
+
+**What is NOT drawn: a calm eye.** A real cyclone peaks at the eyewall and
+quiets inside it, but NHC publishes no radius of maximum wind, so a calm hole
+would be a shape invented to look convincing. Inside the strongest reported
+ring the speed ramps from that ring's threshold to the storm's reported
+maximum — both ends published, only the rise between them assumed. Josh's
+rule, and the right one: *if we don't know the shape of the eye, don't
+pretend.*
+
+**Why the tail follows real position history.** A straight extrapolated tail
+at this curvature reads as a dash. Keeping ~28 past positions and stroking
+through them is what makes it read as a vortex, and it lets the colour change
+along the arm — teal behind, magenta at the head — which is the inflow made
+visible.
+
+**What the sketch rounds taught:**
+* Fixed streamlines look like line art, not wind. Josh: *"the lines are too
+  persistent"*, then *"the goal is to visualize MOTION and WIND, not exact
+  line traces"*. Free particles only; nothing fixed, nothing burns in.
+* Long tails need LOW turbulence — a wobbly long tail is noise, a smooth one
+  is a vortex arm — and SMALL heads: big heads at this density read as a
+  swarm of comets and bury the swirl.
+* Tuning constants live together at the top of stormsOverlay.js (FLOW_TAIL,
+  FLOW_HEAD, FLOW_PER_PX, FLOW_MAX, FLOW_TURB, FLOW_RUNS) because they only
+  make sense as a combination.
+
+**Zoom: geometry is data, density and motion are presentation.** The rule
+that matters most here, and it was arrived at by getting it wrong twice.
+First attempt thinned the strokes as a storm shrank, which made a Category 5
+vanish into a faint smudge at globe zoom. Second attempt gave the whole glyph
+a minimum on-screen size so it stayed conspicuous — and that was worse,
+because the width of a wind field IS the datum and inflating it is exactly
+the kind of lie this layer exists not to tell. Josh: *"You are visually
+distorting the actual data. The width is the width... It's the density of the
+sprites and the MOTION that needs to be more assertive at zoomed out levels."*
+
+So: the field is drawn at TRUE SCALE at every zoom, and what scales instead is
+how many sprites fill it and how fast they circulate. Calibrated against zoom
+6 (~120 px of field radius), where the look was approved — at that size every
+boost is exactly 1.0, so the signed-off appearance is reproduced bit for bit.
+Below it, density rises to 3.5× particles-per-pixel and circulation follows
+the SQUARE ROOT of the size ratio, capped at 3×. Linear scaling was the first
+try and it reached 5× by zoom 3, which Josh flagged immediately as spinning
+too fast. Particle lifetimes are divided by the same boost so each one still
+covers the same share of the field before respawning.
+
+Angular speed is inherently zoom-independent, which is why any boost is needed
+at all: at twelve pixels across, a real outer-band orbit takes half a minute
+and reads as stationary.
+
+**Correction to an earlier claim in this file:** lifetime scaling does NOT
+keep streak length constant in pixels. A streak is FLOW_TAIL history points
+long, so its pixel length goes as `timeBoost × rPx` — lifetime only governs
+how far a particle travels before it respawns. Softening the speed ramp
+therefore shortens streaks at low zoom as a side effect. If that ever needs
+fixing, the right lever is raising FLOW_TAIL on small storms, not speed.
+
+**Performance.** Colour and width both vary monotonically down a tail, so
+contiguous runs share one stroke: 5 calls instead of 27, a 4.5× reduction
+(650 particles × 27 = 17,550 strokes/frame becomes 3,900 + 650 head fills).
+Density is a ratio (particles per px of field radius), capped at 650/storm.
+Nothing draws below 34 px of field radius, and the horizon test culls the far
+side — so the nightmare case of five full-size storms at once cannot occur.
+
+**Measuring note:** frame rate CANNOT be measured from the hidden preview
+pane — requestAnimationFrame is throttled to near-zero there and the overlay
+painted 0 frames in a 3-second sample. Numbers taken that way are artifacts.
+Benchmark in a visible window, or count draw calls, which is deterministic.
+
+## 2k-ter. Hover: shared infrastructure, discrete features only (2026-09-22)
+
+`hoverProbe.js` + one mousemove listener in SystemsApp + one tooltip. Per-
+overlay tooltips were the alternative and would have meant N implementations
+of edge-flipping, styling and throttling drifting apart.
+
+**Scope is discrete features only** — points, lines and shapes you can be
+"on" (storms, quakes, fire events, gas plumes, smoke polygons). Continuous
+fields (wind, currents, every scalar wash) are excluded on purpose: a value
+exists at every pixel there, so a tooltip would trail the cursor everywhere
+saying something nobody asked for. Those stay click-to-inspect. Josh drew
+this line and it's the right one.
+
+Adding a layer needs an instance that can answer "what's at this pixel"
+(`hoverAt`, `nearest` or `hitTest` — most overlays already have one for
+click handling) plus a formatter. For layers with a `popupEvent` on their
+def, `fromPopupEvent()` reuses the existing card's head/big/alt, so they get
+hover with no new copy written.
+
+**Storms answers for itself** via `_probe`, which resolves WHICH PART: eye,
+forecast dot, past fix, wind shell, past-track segment, forecast track,
+coastal watch/warning, or cone. Priority runs most-specific first, and the
+coastal watch/warning outranks everything else among lines because it is the
+only thing on this map that tells somebody to do something. The same probe
+feeds the click popup, so clicking inside the cone now says "inside the
+cone" instead of reporting the storm as if you'd clicked its eye.
+
+**Watch vs warning wording is spelled out, not paraphrased** (`WW_MEANING`):
+a watch means conditions are POSSIBLE, generally within 48 hours; a warning
+means they are EXPECTED, generally within 36 hours. Getting that backwards on
+a coastline where people make evacuation decisions would be the worst error
+this layer could make.
+
+A thin white outline marks whatever the cursor is on. It matters most here
+because a storm is several overlapping shapes and the tooltip alone can't
+tell you whether it read the 50-knot shell or the 64.
+
+## 2l. Narrator honesty: absent data must be an INSTRUCTION, not a fact
+
+Two fabrications in one afternoon on the Storms layer, both from the same
+root cause, and the contrast between them is the lesson.
+
+**What leaked.** The `ai:` block said *"Movement not reported on this
+intermediate advisory."* — a true statement of absence. The narrator wrote
+**"moving northwestward at 90 knots"**. No cyclone has ever travelled at 90
+kt; it had assembled a number out of the surrounding context. Separately, with
+only lat/lon and a name to go on, it called eastern-Pacific Polo *"one of the
+strongest Atlantic hurricanes on record"*.
+
+**What did NOT leak.** JTWC storms have no central pressure, and that field's
+instruction reads *"central pressure NOT PUBLISHED by this warning centre —
+do not state or estimate one"*. Dujuan's narration never invented one.
+
+**The rule.** A missing value stated as a fact leaves a vacuum the model
+fills. Phrase it as a prohibition, name every unit it might reach for, and
+where possible hand over an honest substitute so it has something true to say:
+
+    MOVEMENT NOT PUBLISHED in this advisory. Do NOT state any movement
+    speed — not in knots, not in mph, not "slowly" or "rapidly". You may
+    say only that its forecast track runs to the <bearing>, described as
+    the forecast direction rather than a reported motion.
+
+That bearing is computed from the advisory's own first two forecast
+positions, so it is derived-but-true, and it is labelled as such. Result:
+"Polo's forecast track runs toward the northwest."
+
+**Corollary — never let it infer a category from coordinates.** Basin is now
+carried explicitly (`basin_word`) from the storm id prefix and passed with an
+instruction to state that basin and no other.
+
+## 2m. Two layers, two wind numbers (2026-09-22)
+
+With Wind and Storms both on, one popup stacked **64 mph** (model) above
+**178 mph** (advisory) at the same click, with nothing reconciling them.
+Measured breakdown, so the next person doesn't re-derive it:
+
+| Source | Wind at/near Polo | vs advisory |
+|---|---|---|
+| NHC advisory (eyewall, 1-min sustained) | **178 mph** | — |
+| GFS native 0.25° peak in a box around the eye | 143 mph | 80 % |
+| Our 0.5° bake, at the eye cell | 132 mph | 74 % |
+| Our 0.5° bake, 1° (~111 km) from the eye | **66 mph** | 37 % |
+
+So the alarming 64 mph was **mostly where the click landed**, not the model
+failing: 111 km out in the outer circulation, 66 mph is the correct answer.
+Of the remaining gap, ~35 mph is the model's own resolution limit and only
+~11 mph is our extra ×2 stride (`horizStride=2`). Dropping the stride would
+buy 8 % accuracy in storm cores for 4× the global payload — not worth it, and
+deliberately not done.
+
+The popup now says this in one sentence, but only when the Wind layer is
+actually on (`popupEvent(ev, { layerOn })`), and the narrator is told never to
+average the two or present the model figure as the storm's strength.
+
+---
 
 ## 3. Playbook: adding a layer to /systems
 

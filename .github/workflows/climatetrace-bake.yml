@@ -1,0 +1,86 @@
+# Keeps the /inmotion "Emission sources" layer on the newest Climate TRACE
+# release, with no code change or deploy (see scripts/bake-climatetrace/).
+#
+# Daily, a one-minute check compares Climate TRACE's download packages with
+# what production serves (trace/latest.json). Nothing new → done. A new
+# release (monthly, ~2 months behind real time) → the full bake runs here
+# (~3.5 GB download, ~40 GB of CSV streamed; the Vercel project can't host
+# this), then publish.mjs checks it against the live release, uploads it to
+# Blob with one-file tokens from api/cron/trace-upload-token.js (CRON_SECRET),
+# and only then flips the pointer. A failed or refused run leaves the
+# previous release serving untouched.
+#
+# Run by hand: Actions → climatetrace-bake → Run workflow (tick "force" to
+# rebake even when nothing changed upstream).
+name: climatetrace-bake
+on:
+  schedule:
+    - cron: '23 9 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebake and publish even if Climate TRACE has not changed'
+        type: boolean
+        default: false
+
+concurrency:
+  group: climatetrace-bake
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      TRACE_TOKEN_URL: https://earthatlas.org/api/cron/trace-upload-token
+      FORCE: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Anything new from Climate TRACE?
+        id: check
+        run: node scripts/bake-climatetrace/publish.mjs check
+
+      - name: Restore tippecanoe
+        if: steps.check.outputs.new == 'true'
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.check.outputs.new == 'true' && steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe ~/tippecanoe-bin/
+      - name: Put tippecanoe on PATH
+        if: steps.check.outputs.new == 'true'
+        run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+
+      - name: Download sector packages
+        if: steps.check.outputs.new == 'true'
+        run: node scripts/bake-climatetrace/bake.mjs download co2e_100yr
+      - name: Extract facility sources
+        if: steps.check.outputs.new == 'true'
+        # Two at a time: the cattle files alone are 15 + 27 GB of CSV.
+        env:
+          TRACE_JOBS: '2'
+          TRACE_HEAP_MB: '6000'
+        run: node scripts/bake-climatetrace/bake.mjs extract-all co2e_100yr
+      - name: Free the raw downloads
+        if: steps.check.outputs.new == 'true'
+        run: rm -f scripts/bake-climatetrace/raw/co2e_100yr/*.zip && df -h .
+      - name: Assemble tiles + detail
+        if: steps.check.outputs.new == 'true'
+        run: node --max-old-space-size=12000 scripts/bake-climatetrace/bake.mjs assemble co2e_100yr
+      - name: Publish (safety-checked; production unchanged on failure)
+        if: steps.check.outputs.new == 'true'
+        run: node scripts/bake-climatetrace/publish.mjs publish

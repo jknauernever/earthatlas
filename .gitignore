@@ -33,3 +33,7 @@ public/dev-data/
 
 # BirdCast raw grid frames (scripts/bake-birdcast/fetch-raw.mjs) — large upstream copies, never commit
 scripts/bake-birdcast/raw/
+
+# Climate TRACE raw sector packages + bake outputs (scripts/bake-climatetrace) — multi-GB, never commit; upload to Blob
+scripts/bake-climatetrace/raw/
+scripts/bake-climatetrace/build/

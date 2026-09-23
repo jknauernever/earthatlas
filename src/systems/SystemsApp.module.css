@@ -717,3 +717,30 @@
   .modeToast { font-size: 12px; padding: 6px 12px; }
   .modeChip { font-size: 10px; }
 }
+
+/* Shared hover tooltip (hoverProbe.js + the hover controller in SystemsApp).
+   Sits above every overlay canvas and never takes the pointer, so it can't
+   fight the map's own drag handling or flicker by hovering itself. */
+.hoverTip {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  max-width: 230px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
+  background: rgba(9, 13, 22, 0.93);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+}
+.hoverTipHead {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #fff;
+}
+.hoverTipLine {
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(226, 232, 240, 0.88);
+}

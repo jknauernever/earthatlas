@@ -6,6 +6,8 @@ const fmtUTC = (ms) => {
   return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })} · ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`
 }
 const fmtDate = (ms) => new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+// Monthly tapes (Climate TRACE) name the month, never a day.
+const fmtMonth = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const fmtLocal = (ms) => new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
 const fmtRunShort = (ms) => {
   const d = new Date(ms)
@@ -72,32 +74,37 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
     // Compact pill (phones, while a popup is open): date + play/pause only.
     return (
       <div className={`${styles.bar} ${styles.mini}`} role="region" aria-label="Replay controls">
-        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')}>{live ? 'NOW' : 'REPLAY'}</span>
-        <span className={styles.miniDate}>{daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
+        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')}>{live ? (meta.liveBadge || 'NOW') : 'REPLAY'}</span>
+        <span className={styles.miniDate}>{meta.monthLabel ? fmtMonth(shownMs) : daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
         <button type="button" className={`${styles.btn} ${styles.play}`} onClick={() => c.toggle()} aria-label={c.playing ? 'Pause' : 'Play'}>{c.playing ? '❚❚' : '▶'}</button>
       </div>
     )
   }
 
-  const stepTitle = c.weekly ? 'one week' : daily || meta.dayLabel ? 'one day' : `${stepH} hours`
+  const monthly = !!meta.monthLabel
+  const stepTitle = monthly ? 'one month' : c.weekly ? 'one week' : daily || meta.dayLabel ? 'one day' : `${stepH} hours`
+  // A monthly tape steps one frame (= one month); every other dated tape steps days.
+  const step = (dir) => (monthly ? c.stepFrames(dir) : daily || meta.dayLabel ? c.stepDays(c.weekly ? 7 * dir : dir) : c.stepFrames(dir))
+  // Its last frame is the latest PUBLISHED month, not the present moment.
+  const liveWord = meta.liveBadge || 'NOW'
   return (
     <div className={`${styles.bar} ${shifted ? styles.shifted : ''}`} role="region" aria-label="Replay controls">
       {/* Line 1: the time on screen (fixed height). Line 2: the controls —
           separated so the controls never shift as the date text changes. */}
       <div className={styles.when}>
-        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')} title={`${sourceName} · ${c.playing && !live ? steady : `${kind}${runLabel}`}`}>{live ? 'NOW' : 'REPLAY'}</span>
-        <span className={styles.utc}>{daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
+        <span className={styles.badge + (live ? ` ${styles.badgeLive}` : '')} title={`${sourceName} · ${c.playing && !live ? steady : `${kind}${runLabel}`}`}>{live ? liveWord : 'REPLAY'}</span>
+        <span className={styles.utc}>{meta.monthLabel ? fmtMonth(shownMs) : daily || meta.dayLabel ? fmtDate(shownMs) : fmtUTC(shownMs)}</span>
         {!daily && !meta.dayLabel && <span className={styles.local}>({fmtLocal(shownMs)})</span>}
         <span className={styles.status}>{status}</span>
       </div>
       <div className={styles.row}>
         <button type="button" className={styles.btn} onClick={() => c.toStart()} title="Back to start of window" aria-label="Back to start">⏮</button>
-        <button type="button" className={styles.btn} onClick={() => (daily || meta.dayLabel ? c.stepDays(c.weekly ? -7 : -1) : c.stepFrames(-1))} title={`Back ${stepTitle} (←)`} aria-label="Back one step">◀︎</button>
+        <button type="button" className={styles.btn} onClick={() => step(-1)} title={`Back ${stepTitle} (←)`} aria-label="Back one step">◀︎</button>
         <button type="button" className={`${styles.btn} ${styles.play}`} onClick={() => c.toggle()} title={c.playing ? 'Pause (space)' : 'Play (space)'} aria-label={c.playing ? 'Pause' : 'Play'}>
           {c.playing ? '❚❚' : '▶'}
         </button>
-        <button type="button" className={styles.btn} onClick={() => (daily || meta.dayLabel ? c.stepDays(c.weekly ? 7 : 1) : c.stepFrames(1))} title={`Forward ${stepTitle} (→)`} aria-label="Forward one step">▶︎</button>
-        <button type="button" className={`${styles.btn} ${live ? styles.btnLiveOn : ''}`} onClick={() => c.toLive()} title="Jump to now" aria-label="Jump to now">Now ⏭</button>
+        <button type="button" className={styles.btn} onClick={() => step(1)} title={`Forward ${stepTitle} (→)`} aria-label="Forward one step">▶︎</button>
+        <button type="button" className={`${styles.btn} ${live ? styles.btnLiveOn : ''}`} onClick={() => c.toLive()} title={meta.liveBadge ? 'Jump to the latest month' : 'Jump to now'} aria-label={meta.liveBadge ? 'Jump to latest' : 'Jump to now'}>{meta.liveBadge ? 'Latest ⏭' : 'Now ⏭'}</button>
         <input
           className={styles.scrub}
           type="range"

@@ -607,6 +607,52 @@ function hmsProxyPlugin() {
   }
 }
 
+// Dev middleware: serve /api/storms. Unlike the other proxies here, this one
+// does not re-implement the Edge function — it imports api/storms.js and runs
+// its handler directly, since that handler is plain Web Request/Response and
+// Node speaks both. One implementation, so dev and prod cannot drift.
+function stormsProxyPlugin() {
+  return {
+    name: 'storms-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/storms', async (req, res) => {
+        res.setHeader('content-type', 'application/json')
+        try {
+          const { default: handler } = await server.ssrLoadModule('/api/storms.js')
+          const out = await handler(new Request('https://localhost/api/storms', { method: req.method || 'GET' }))
+          res.statusCode = out.status
+          res.end(await out.text())
+        } catch (err) {
+          res.statusCode = 200
+          res.end(JSON.stringify({ fetched_ms: Date.now(), storms: null, _upstream_error: String(err).slice(0, 200) }))
+        }
+      })
+    },
+  }
+}
+
+// Dev middleware: serve /api/trace-tiles and /api/trace-detail (Climate TRACE
+// facility MVT + per-source detail) by running the Node handlers themselves —
+// they range-read the local bake, so dev and prod share one implementation.
+function traceTilesPlugin() {
+  return {
+    name: 'trace-tiles',
+    configureServer(server) {
+      for (const route of ['trace-tiles', 'trace-detail']) {
+        server.middlewares.use(`/api/${route}`, async (req, res) => {
+          try {
+            const { default: handler } = await server.ssrLoadModule(`/api/${route}.js`)
+            await handler(req, res)
+          } catch (err) {
+            res.statusCode = 502
+            res.end(String(err).slice(0, 200))
+          }
+        })
+      }
+    },
+  }
+}
+
 // Dev middleware: serve /api/inciweb by mirroring the production Edge function.
 function inciwebProxyPlugin() {
   return {
@@ -782,6 +828,8 @@ export default defineConfig(({ mode }) => {
     hmsProxyPlugin(),
     hmsSmokeProxyPlugin(),
     inciwebProxyPlugin(),
+    stormsProxyPlugin(),
+    traceTilesPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),

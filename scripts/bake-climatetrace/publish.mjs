@@ -150,10 +150,29 @@ async function publish() {
   // Storage: keep only the live release and the one before it. Never fatal —
   // the new release is already live; a failed prune just leaves extra files.
   try {
-    const r = await fetch(PRUNE_URL, { method: 'POST', headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+    // Name exactly what to keep: the build just made live and the one it
+    // replaced. (Never let the route infer this from the pointer — right after
+    // the flip a cached read returns the OLD pointer.)
+    const keep = [index.build, live?.build].filter(Boolean)
+    const r = await fetch(PRUNE_URL, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ keep }),
+    })
     const j = await r.json().catch(() => ({}))
     console.log(r.ok ? `✓ pruned ${j.deleted} old files (${((j.bytesFreed || 0) / 1e9).toFixed(2)} GB), kept ${j.kept?.join(', ')}` : `  prune skipped: ${r.status} ${j.error || ''}`)
   } catch (err) { console.warn(`  prune skipped: ${err.message}`) }
+
+  // Final check: the release that's now live must still be readable. If
+  // cleanup (or anything else) removed it, fail the run loudly — a green run
+  // must mean a working layer.
+  const after = await fetch(`${indexUrl}?t=${Date.now()}`, { cache: 'no-store' })
+  await after.arrayBuffer().catch(() => {})
+  if (!after.ok) {
+    console.error(`✗ the live release ${index.build} is NOT readable after publish (index HTTP ${after.status}) — the layer is broken; investigate now`)
+    process.exit(1)
+  }
+  console.log(`✓ live release readable after cleanup (${index.build})`)
 }
 
 const cmd = process.argv[2]

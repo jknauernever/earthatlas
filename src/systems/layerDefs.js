@@ -1222,6 +1222,9 @@ export const LAYERS = [
     popupEvent(ev) {
       const what = subsectorWord(ev.sub)
       const d = peekTraceDetail(ev.id, ev.shards)
+      const g = ev.measure || 'co2e_100yr'
+      const mi = measureInfo(g)
+      const unit = MEASURE_SUFFIX[g] || 'CO₂e'
       const monthTxt = monthWord(ev.month)
       const yearTotal = ev.y > 0 ? `${tonnesWord(ev.y)} ${unit} across ${ev.fullYear}` : null
       const place = ev.country ? ` in ${ev.country}` : ''
@@ -1244,6 +1247,15 @@ export const LAYERS = [
             : ''
       const air = mi.group === 'air' ? ` ${AIR_CAVEAT_SHORT}` : ''
       const late = ev.clamped ? ` (${monthTxt} is the latest month published — the data runs ~2 months behind.)` : ''
+      // "Everything this site emits" fills in when the detail record arrives
+      // (usually already fetched on hover). Numbers + our labels only.
+      const mixId = `trace-mix-${ev.id}-${Date.now()}`
+      const fill = (rec) => {
+        const el = typeof document !== 'undefined' && document.getElementById(mixId)
+        if (el) el.innerHTML = rec ? traceMixHtml(rec, ev.month, g) : ''
+      }
+      if (d) setTimeout(() => fill(d), 0)
+      else loadTraceDetail(ev.id, ev.shards).then(fill).catch(() => fill(null))
       return {
         // Basin names arrive as "Country_Basin_Play" — make them readable.
         head: `${ev.n.replace(/_/g, ' · ')} — ${what}`,
@@ -1490,15 +1502,3 @@ export const LAYERS = [
     },
   },
 ]
-      const g = ev.measure || 'co2e_100yr'
-      const mi = measureInfo(g)
-      const unit = MEASURE_SUFFIX[g] || 'CO₂e'
-      // "Everything this site emits" fills in when the detail record arrives
-      // (usually already fetched on hover). Numbers + our labels only.
-      const mixId = `trace-mix-${ev.id}-${Date.now()}`
-      const fill = (rec) => {
-        const el = typeof document !== 'undefined' && document.getElementById(mixId)
-        if (el) el.innerHTML = rec ? traceMixHtml(rec, ev.month, g) : ''
-      }
-      if (d) setTimeout(() => fill(d), 0)
-      else loadTraceDetail(ev.id, ev.shards).then(fill).catch(() => fill(null))

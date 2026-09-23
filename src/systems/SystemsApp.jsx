@@ -40,9 +40,9 @@ import { EventPingLayer } from './eventPings.js'
 import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
 import { StormsOverlay } from './stormsOverlay.js'
 import { TraceFacilitiesOverlay } from './traceFacilitiesOverlay.js'
-import { probeHover } from './hoverProbe.js'
 import MeasurePicker from './MeasurePicker.jsx'
 import { MEASURE_INFO, PRIMARY_MEASURE, SECTOR_STYLE, availableMeasures } from './traceData.js'
+import { probeHover } from './hoverProbe.js'
 import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
 import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
@@ -215,9 +215,9 @@ function readUrlState() {
     layers,
     d: sp.get('d'),
     bm: sp.get('bm'),
-    lat: num('lat'), lng: num('lng'), z: num('z'),
     eg: sp.get('eg'), // Emission sources: measure (ch4, pm2_5, co2e_20yr, …)
     es: sp.get('es'), // Emission sources: kinds of site shown (comma list)
+    lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
 
@@ -424,6 +424,12 @@ export default function SystemsApp() {
   const [layerMeta, setLayerMeta] = useState({})       // id → meta
   const [density, setDensity] = useState(() => (DENSITIES.some((d) => d.id === initial.d) ? initial.d : 'med'))
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
+  // Emission sources: what the discs measure, and which kinds of site show.
+  const [traceMeasure, setTraceMeasure] = useState(() => (MEASURE_INFO[initial.eg] ? initial.eg : PRIMARY_MEASURE))
+  const [traceSectors, setTraceSectors] = useState(() => {
+    const ks = (initial.es || '').split(',').filter((k) => SECTOR_STYLE[k])
+    return ks.length ? new Set(ks) : null
+  })
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
   // Layer navigation (Claude Design handoff, 2026-08-22): an icon DOCK is the
@@ -638,12 +644,6 @@ export default function SystemsApp() {
               if (fev.frp_sum) {
                 const t = (fev.frp_sum / 2) * 86400 * 0.368 * 1.65 / 1000
                 co2 = ` It's putting out roughly ${t >= 1e6 ? (t / 1e6).toFixed(1) + ' million tonnes' : Math.round(t).toLocaleString() + ' tonnes'} of CO₂ a day (a rough satellite estimate).`
-  // Emission sources: what the discs measure, and which kinds of site show.
-  const [traceMeasure, setTraceMeasure] = useState(() => (MEASURE_INFO[initial.eg] ? initial.eg : PRIMARY_MEASURE))
-  const [traceSectors, setTraceSectors] = useState(() => {
-    const ks = (initial.es || '').split(',').filter((k) => SECTOR_STYLE[k])
-    return ks.length ? new Set(ks) : null
-  })
               }
               sections.push(sectionHtml({
                 head: fireEventName(fev),
@@ -1522,6 +1522,8 @@ export default function SystemsApp() {
     inst.emissions?.setVisible(on)
     if (!on) inst.emissions?.setTime(null)
   }, [mapReady, layerOn, layerStatus, dataEpoch])
+  useEffect(() => { instancesRef.current.emissions?.setMeasure(traceMeasure) }, [traceMeasure])
+  useEffect(() => { instancesRef.current.emissions?.setSectors(traceSectors) }, [traceSectors])
 
   // ─── Hover: one listener, one tooltip, every discrete layer ──────────────
   // Continuous fields (wind, currents, every scalar wash) are deliberately
@@ -1948,6 +1950,8 @@ export default function SystemsApp() {
     }
     if (density !== 'med') sp.set('d', density)
     if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (layerOn.emissions && traceMeasure !== PRIMARY_MEASURE) sp.set('eg', traceMeasure)
+    if (layerOn.emissions && traceSectors) sp.set('es', [...traceSectors].join(','))
     if (mapView) {
       sp.set('lat', mapView.lat.toFixed(3))
       sp.set('lng', mapView.lng.toFixed(3))
@@ -2028,8 +2032,6 @@ export default function SystemsApp() {
         const rc = replayRef.current
         if (rc && rc.layerId === d.id) return { def: d, payload: rc.tape, meta: rc.tape.metaAt() }
         // Emission sources: the facts come from what its overlay has drawn.
-  useEffect(() => { instancesRef.current.emissions?.setMeasure(traceMeasure) }, [traceMeasure])
-  useEffect(() => { instancesRef.current.emissions?.setSectors(traceSectors) }, [traceSectors])
         if (d.id === 'emissions') return { def: d, payload: { ...fieldsRef.current[d.id], overlay: instancesRef.current.emissions }, meta: layerMeta[d.id] }
         return { def: d, payload: fieldsRef.current[d.id], meta: layerMeta[d.id] }
       })
@@ -2210,6 +2212,17 @@ export default function SystemsApp() {
           </div>
         )
       })()}
+
+      {layerOn.emissions && layerStatus.emissions === 'ok' && fieldsRef.current.emissions?.index && (
+        <MeasurePicker
+          measure={traceMeasure}
+          onMeasure={setTraceMeasure}
+          sectors={traceSectors}
+          onSectors={setTraceSectors}
+          available={availableMeasures(fieldsRef.current.emissions.index)}
+          sectorCounts={fieldsRef.current.emissions.index.measures?.[traceMeasure]?.sectors}
+        />
+      )}
 
       {explain && (
         <div className={styles.explainCard}>
@@ -2462,8 +2475,6 @@ export default function SystemsApp() {
                             <svg className={styles.legendGlyph} viewBox="0 0 48 48" aria-hidden="true">
                               <path d={FLAME_PATH} fill={FLAME_STATES[row.flame].fill} stroke="#fff" strokeWidth="2.5" />
                               <path d={FLAME_INNER} fill={FLAME_STATES[row.flame].inner} opacity="0.85" />
-    if (layerOn.emissions && traceMeasure !== PRIMARY_MEASURE) sp.set('eg', traceMeasure)
-    if (layerOn.emissions && traceSectors) sp.set('es', [...traceSectors].join(','))
                             </svg>
                           ) : (
                             <span
@@ -2652,14 +2663,3 @@ function MethodologyModal({ onClose, layerMeta }) {
     </div>
   )
 }
-      {layerOn.emissions && layerStatus.emissions === 'ok' && fieldsRef.current.emissions?.index && (
-        <MeasurePicker
-          measure={traceMeasure}
-          onMeasure={setTraceMeasure}
-          sectors={traceSectors}
-          onSectors={setTraceSectors}
-          available={availableMeasures(fieldsRef.current.emissions.index)}
-          sectorCounts={fieldsRef.current.emissions.index.measures?.[traceMeasure]?.sectors}
-        />
-      )}
-

@@ -1800,7 +1800,30 @@ export default function SystemsApp() {
       const cursor = owner?.t ?? Date.now()
       for (const def of LAYERS) {
         if (def.kind !== 'raster' || !def.raster?.followsTime) continue
-        if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') { applyYield(def); continue }
+        if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') {
+          // Switched off: this effect owns these layers' visibility, so it
+          // must HIDE them — skipping them left the last radar frame on the
+          // map after Precipitation was turned off (Josh, 2026-09-23).
+          if (!layerOn[def.id]) {
+            const pl = fieldsRef.current[def.id]
+            for (const e of [...(pl?.images || []), ...(pl?.sources || [])]) {
+              if (!e.key) continue
+              for (const slot of ['a', 'b']) {
+                const lid = slotIds(def.id, e.key, slot).layerId
+                try {
+                  if (map.getLayer(lid)) {
+                    map.setPaintProperty(lid, 'raster-opacity', 0)
+                    map.setLayoutProperty(lid, 'visibility', 'none')
+                  }
+                } catch { /* style swapped */ }
+              }
+            }
+            const sh = rasterSlotsRef.current[`${def.id}:__shown`]
+            if (sh) { sh.key = null; sh.want = null }
+          }
+          applyYield(def)
+          continue
+        }
         const payload = fieldsRef.current[def.id]
         if (!payload) continue
         const ts = rasterTimeState(payload, cursor, atLive)

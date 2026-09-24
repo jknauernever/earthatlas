@@ -1,0 +1,51 @@
+# Bakes JAXA GSMaP_NOW into the half-hourly rolling TAPE the /inmotion
+# Precipitation layer animates dust-style (scripts/bake-gsmap-tape.py).
+# (The old tile pyramid, scripts/bake-gsmap.py, is no longer run.)
+#
+# Not for resolution — both are 0.1 deg. For AGE. IMERG via GIBS measured 6.4
+# hours behind; GSMaP_NOW is an hourly average published about two minutes
+# after the hour it covers ends. The sharp tier (MRMS radar) is minutes old,
+# and a six-hour gap between the two is roughly 325 km of storm movement, so
+# rain visibly jumped when the map swapped tiers on zoom. IMERG stays in the
+# layer for REPLAY only, because it is the tier with a deep free archive.
+#
+# GSMaP is distributed over password-protected FTP after registration at
+# https://sharaku.eorc.jaxa.jp/GSMaP/registration.html. Credentials live in
+# repo secrets, never in the tree. JAXA FAQ Q16: processing their data into
+# our own rasters needs no further procedure; redistributing their files
+# would. The required credit is carried in the layer and in the meta.
+#
+# Frames are issued every 30 minutes; the scheduler drifts, so this asks for
+# every 20 and takes whatever is newest. Each run pulls one ~2 MB .dat.gz and
+# posts a ~1 MB PMTiles pyramid.
+name: gsmap-bake
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: gsmap-bake
+  cancel-in-progress: false  # a first run backfills two days; never cut it off
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/gmgsi-requirements.txt
+      - run: pip install -r scripts/gmgsi-requirements.txt
+      # The half-hourly rolling TAPE the layer animates (dust-style), same
+      # login and ingest. A first run backfills the whole two-day window.
+      - name: Bake GSMaP_NOW rain tape
+        run: python scripts/bake-gsmap-tape.py
+        env:
+          GSMAP_FTP_USER: ${{ secrets.GSMAP_FTP_USER }}
+          GSMAP_FTP_PASS: ${{ secrets.GSMAP_FTP_PASS }}
+          CLOUDS_INGEST_URL: https://earthatlas.org/api/cron/clouds-ingest
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

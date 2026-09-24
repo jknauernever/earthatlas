@@ -34,6 +34,7 @@ import { TapeField } from './tape.js'
 import { loadLandMask, getLandMaskSync, isLand } from './landMask.js'
 import { ReplayController } from './replay.js'
 import { EventTape } from './eventTape.js'
+import { RasterTape } from './rasterTape.js'
 import TransportBar from './TransportBar.jsx'
 import { formatAiText } from './aiFormat.js'
 import { EventPingLayer } from './eventPings.js'
@@ -48,7 +49,7 @@ import { FireRawDetectionsOverlay } from './fireRawDetections.js'
 import { SmokePlumesOverlay } from './smokePlumesOverlay.js'
 import { MethanePlumesOverlay } from './methanePlumesOverlay.js'
 import { identifyPlumeSource } from './plumeSourceLookup.js'
-import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient } from './layerDefs.js'
+import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient, tierSees } from './layerDefs.js'
 import { buildViewFacts } from './viewFacts.js'
 import { TapeVectorField } from './flightField.js'
 import ClipStudio from './ClipStudio.jsx'
@@ -370,6 +371,278 @@ function useMediaQuery(q) {
   return m
 }
 
+
+/**
+ * Is the WHOLE visible map inside one tier's real footprint? Sampled at nine
+ * points on the SCREEN (corners, edge midpoints, centre), unprojected to
+ * lat/lng.
+ *
+ * Not map.getBounds(). On the globe projection getBounds() is a padded box
+ * far larger than what is drawn — at z3.7 over the US it reported a west edge
+ * of -181 while the screen's left edge sat at -180 — so a tier whose footprint
+ * genuinely covered the view was refused, and the zoom at which the ladder
+ * switched depended on where the globe happened to sit in the window.
+ *
+ * Conservative by construction — anything it cannot establish (a throw from
+ * the projection, a point off the planet) reads as OUTSIDE, which leaves the
+ * coarser, honest tier on screen.
+ */
+function viewInsideTier(map, tier, mapView) {
+  if (tier.base) return true
+  // Judged at the zoom the badge DISPLAYS (one decimal). A raw 4.986 reads
+  // "z5.0" on screen, and a tier that switches "at z5" must switch there.
+  const zoom = Math.round((mapView?.zoom ?? map.getZoom()) * 10) / 10
+  if (!(zoom >= tier.minzoom)) return false
+  // A `centre` tier claims the view when the view's CENTRE is over its grid.
+  // Radar takes over from z5, and at z5 a laptop screen spans ~34 degrees of
+  // longitude — the canvas runs under the side panel too — so demanding the
+  // whole view sit inside the CONUS grid kept the 11 km product on screen for
+  // most US views at the zoom Josh asked the radar to appear. Past radar range
+  // the swap shows NO rain rather than a patch of the other product: two
+  // instruments are still never drawn together.
+  if (tier.centre) {
+    let c
+    try { c = map.getCenter() } catch { return false }
+    return !!c && tierSees(tier, c.lat, c.lng)
+  }
+  let W, H
+  try { ({ clientWidth: W, clientHeight: H } = map.getCanvas()) } catch { return false }
+  if (!(W > 0 && H > 0)) return false
+  for (const fy of [0, 0.5, 1]) {
+    for (const fx of [0, 0.5, 1]) {
+      let ll
+      try { ll = map.unproject([fx * W, fy * H]) } catch { return false }
+      if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)) return false
+      if (!tierSees(tier, ll.lat, ll.lng)) return false
+    }
+  }
+  return true
+}
+
+/**
+ * Which ONE tier of a resolution ladder owns the map right now.
+ *
+ * Tiers are listed finest first and the first that qualifies wins, so the
+ * rule reads the way a reader experiences it: show the sharpest thing that
+ * genuinely covers what is on screen, and fall back the moment it does not.
+ *
+ * The ladder also yields to the clock. Every live tier is hidden as soon as
+ * the transport bar leaves Now — they are single frames with no archive —
+ * so scrubbing into the past walks past them to the replay tier, which does
+ * have one. Without that the map went blank at exactly the zooms the reader
+ * had been studying.
+ */
+function activeTierKey(map, payload, mapView, ts) {
+  const tiers = payload?.tiers
+  if (!tiers?.length) return null
+  for (const tier of tiers) {
+    if (ts?.hide.has(tier.key)) continue
+    if (viewInsideTier(map, tier, mapView)) return tier.key
+  }
+  return null
+}
+
+
+
+// How often a time-following raster layer is allowed to fetch a new frame.
+//
+// A replay emits on every animation frame, and a raster swap is not a cheap
+// redraw: it discards the source's tiles and refetches a whole screenful.
+// Measured against GIBS, a viewport takes 2-4 SECONDS to populate. The first
+// cut used 600 ms, so every frame was replaced before it had finished
+// arriving and the map simply stayed empty while the time bar swept along —
+// which reads, correctly, as "nothing is animating".
+//
+// The ReplayController now holds the cursor until RasterTape says the frame
+// is warm (see rasterTape.js), so by the time the follower swaps, the tiles
+// are already in the browser's cache and paint immediately. This only decides
+// how promptly the follower notices the cursor moved — it no longer has to
+// stand in for buffering, which is why it can be short again.
+const RASTER_FOLLOW_MS = 120
+
+// A cursor JUMP, as opposed to playback. Holding the old frame until the
+// new one lands is what stops playback blinking — but through a jump (the
+// loop restarting two days back, a scrub, Now) it drew today's radar under
+// a label two days old. Paints are ~120 ms apart and normal play moves the
+// cursor about half an hour per paint, so a move bigger than this between
+// two consecutive paints is a jump: the old frame goes at once and the map
+// is honestly empty until the right one arrives. (Measuring how far the
+// frame on SCREEN lags instead blinked during ordinary playback: at 4 h/s a
+// half-second swap is already two hours of bar.)
+const RASTER_JUMP_MS = 3 * 3600e3
+
+/**
+ * What each piece of a time-following raster layer should be showing at one
+ * moment on the transport bar.
+ *
+ * Three answers, and they are different. A piece that knows how to address
+ * its own archive (`at`) returns the URL for that moment, or null when the
+ * moment is outside what the archive holds. A piece marked `archiveOnly`
+ * exists ONLY to be scrubbed into, so at Now it stands down for whatever is
+ * younger. A piece with no history at all is HIDDEN the instant the bar
+ * leaves Now — today's rain drawn over last Tuesday's storm track is a
+ * composite of two moments presented as one, which is the thing this project
+ * will not do.
+ */
+function rasterTimeState(payload, cursorMs, atLive) {
+  const urls = new Map()
+  const hide = new Set()
+  for (const e of [...(payload?.images || []), ...(payload?.sources || [])]) {
+    if (!e.key) continue
+    if (e.archiveOnly) {
+      const u = atLive || typeof e.at !== 'function' ? null : e.at(cursorMs)
+      if (u) urls.set(e.key, u); else hide.add(e.key)
+    } else if (typeof e.at === 'function') {
+      const u = atLive ? (e.tiles || e.url) : e.at(cursorMs)
+      if (u) urls.set(e.key, u); else hide.add(e.key)
+    } else if (!atLive) {
+      hide.add(e.key)
+    }
+  }
+  return { urls, hide }
+}
+
+/**
+ * Should one piece of a raster layer be on screen? The single rule, applied
+ * by both effects below — the camera one and the clock one. It lived in two
+ * places for one build and they immediately disagreed: the clock hid the
+ * clouds on a scrub and nothing ever turned them back on.
+ */
+/**
+ * A time-following tile source is double-buffered: two Mapbox sources and two
+ * layers per piece, one showing and one being loaded into.
+ *
+ * `setTiles` throws away a source's tiles the moment it is called, so a
+ * single-buffered layer goes EMPTY while the next frame is fetched. Over a
+ * wide view that is seconds of nothing, and playing a loop through it reads
+ * as the layer blinking on and off rather than as weather moving. So the next
+ * frame is loaded into the hidden slot and the two are swapped only once it
+ * has actually arrived — the map is never without a frame.
+ */
+const slotIds = (defId, key, slot) => ({
+  srcId: `systems-${defId}-${key}-${slot}-src`,
+  layerId: `systems-${defId}-${key}-${slot}-layer`,
+})
+
+/**
+ * Call back once a source has REALLY finished loading the frame just handed
+ * to it — verified, not signalled.
+ *
+ * Two earlier versions both failed the same way, and both looked right in
+ * every property I read back:
+ *
+ *   isSourceLoaded() right after setTiles returns TRUE, because Mapbox has
+ *   not queued the new tiles yet.
+ *   `idle` fires on the very next frame for the same reason: at that instant
+ *   there are no outstanding requests, so the map is idle by definition.
+ *
+ * Either way the swap moved to an empty slot and hid the one that still had
+ * pixels, and the map blinked out and refilled a second later. Only a
+ * screenshot during playback showed it; visibility, opacity and the frame
+ * URLs all read back perfectly the whole time.
+ *
+ * So this polls instead, and demands the answer hold: nothing before 250 ms
+ * (long enough for the requests to be queued) and then two consecutive
+ * positives. A deadline swaps anyway, so one wedged tile cannot stall the
+ * loop.
+ */
+function onSourceSettled(map, srcId, cb, timeoutMs = 8000) {
+  let done = false
+  let streak = 0
+  let timer = 0
+  const start = performance.now()
+  const finish = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    cb()
+  }
+  const tick = () => {
+    if (done) return
+    const age = performance.now() - start
+    if (age > timeoutMs) return finish()
+    let loaded = false
+    try { loaded = map.isSourceLoaded(srcId) && map.areTilesLoaded() } catch { loaded = false }
+    streak = loaded && age > 250 ? streak + 1 : 0
+    if (streak >= 2) return finish()
+    timer = setTimeout(tick, 150)
+  }
+  timer = setTimeout(tick, 150)
+  return () => { done = true; clearTimeout(timer) }
+}
+
+/**
+ * Slot control for double-buffered raster tiles.
+ *
+ * Selection is by OPACITY, never by `visibility`. Mapbox does not load tiles
+ * for a layer whose visibility is 'none', so a hidden buffer never
+ * pre-loads — and `isSourceLoaded` then answers "nothing pending, therefore
+ * loaded". The swap landed on an empty layer, hid the full one, and only
+ * then did Mapbox start fetching. On screen that is the data switching off,
+ * going blank, and building back in, with the time bar sitting on the SAME
+ * frame throughout.
+ *
+ * `arm` makes a layer visible at zero opacity, which is what gets its tiles
+ * requested while it is still invisible to the reader.
+ */
+const armLayer = (map, layerId) => {
+  if (!map.getLayer(layerId)) return
+  map.setLayoutProperty(layerId, 'visibility', 'visible')
+  map.setPaintProperty(layerId, 'raster-opacity', 0)
+}
+const revealLayer = (map, layerId, opacity) => {
+  if (!map.getLayer(layerId)) return
+  map.setLayoutProperty(layerId, 'visibility', 'visible')
+  map.setPaintProperty(layerId, 'raster-opacity', opacity)
+}
+/**
+ * Swap two frames of the same tier WITHOUT the brightness dip.
+ *
+ * Fading the new frame in while the old one fades out halves both at the
+ * midpoint, so the rain visibly pulsed dark on every step of a replay. The
+ * frame that is DRAWN ON TOP is the only one that may be translucent: if the
+ * new slot is above, it fades in over the old one held at full strength; if
+ * it is below, it is set to full strength at once (hidden under the old one)
+ * and the old one fades out off the top. Either way the composite never drops
+ * below one full frame. Slot 'b' is added after 'a', so it draws above it.
+ */
+const FRAME_FADE_MS = 260
+const swapFrames = (map, fromId, toId, opacity, toIsAbove) => {
+  if (!map.getLayer(toId)) return
+  map.setLayoutProperty(toId, 'visibility', 'visible')
+  if (toIsAbove) {
+    map.setPaintProperty(toId, 'raster-opacity-transition', { duration: FRAME_FADE_MS, delay: 0 })
+    map.setPaintProperty(toId, 'raster-opacity', opacity)
+    setTimeout(() => {
+      try {
+        if (!map.getLayer(fromId)) return
+        map.setPaintProperty(fromId, 'raster-opacity-transition', { duration: 0, delay: 0 })
+        map.setPaintProperty(fromId, 'raster-opacity', 0)
+      } catch { /* style swapped */ }
+    }, FRAME_FADE_MS + 20)
+  } else {
+    map.setPaintProperty(toId, 'raster-opacity-transition', { duration: 0, delay: 0 })
+    map.setPaintProperty(toId, 'raster-opacity', opacity)
+    if (map.getLayer(fromId)) {
+      map.setPaintProperty(fromId, 'raster-opacity-transition', { duration: FRAME_FADE_MS, delay: 0 })
+      map.setPaintProperty(fromId, 'raster-opacity', 0)
+    }
+  }
+}
+const retireLayer = (map, layerId) => {
+  if (!map.getLayer(layerId)) return
+  map.setPaintProperty(layerId, 'raster-opacity', 0)
+}
+
+function rasterPieceShow(payload, key, ts, winner, ready) {
+  if (!ready) return false
+  if (ts?.hide.has(key)) return false
+  // A resolution ladder is exactly ONE product at a time — see activeTierKey.
+  if (payload?.tiers?.length) return key === winner
+  return true
+}
+
+
 export default function SystemsApp() {
   const containerRef = useRef(null)
   const canvasEls = useRef({})       // layer id (or 'scalar') → canvas element
@@ -395,6 +668,9 @@ export default function SystemsApp() {
   const [eventReplay, setEventReplay] = useState(null)
   const [popupOpen, setPopupOpen] = useState(false)
   const fieldsRef = useRef({})       // layer id → GridField
+  // `${layerId}:${pieceKey}` → { active: 'a'|'b', url } for double-buffered
+  // time-following raster tiles (see slotIds / onSourceSettled).
+  const rasterSlotsRef = useRef({})
   const popupRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
 
@@ -418,8 +694,20 @@ export default function SystemsApp() {
         seenScalar = true
       }
     }
+    for (const def of LAYERS) if (def.companionOf) on[def.id] = !!on[def.companionOf]
     return on
   })
+  // A companion layer (no button, no URL key — e.g. the US radar that takes
+  // over the Precipitation button past z5) is on exactly when its parent is,
+  // whichever code path flipped the parent.
+  useEffect(() => {
+    const drift = LAYERS.filter((d) => d.companionOf && !!layerOn[d.id] !== !!layerOn[d.companionOf])
+    if (drift.length) setLayerOn((on) => {
+      const next = { ...on }
+      for (const d of drift) next[d.id] = !!on[d.companionOf]
+      return next
+    })
+  }, [layerOn])
   const [layerStatus, setLayerStatus] = useState({})   // id → 'loading' | 'ok' | 'error'
   const [layerMeta, setLayerMeta] = useState({})       // id → meta
   const [density, setDensity] = useState(() => (DENSITIES.some((d) => d.id === initial.d) ? initial.d : 'med'))
@@ -1085,32 +1373,138 @@ export default function SystemsApp() {
       inst[def.id]?.setVisible(!!layerOn[def.id])
     }
 
-    // Raster overlays (vegetation loss): live inside the map style itself —
-    // added/removed there and re-added after every basemap swap (styleEpoch).
+    // Raster overlays (vegetation loss, clouds, rain): live inside the map
+    // style itself — added/removed there and re-added after every basemap
+    // swap (styleEpoch).
+    //
+    // A raster layer may bring ONE tile URL (`tileUrl`) or SEVERAL
+    // (`sources`). Clouds needs several because no single satellite sees the
+    // whole planet: five geostationary discs are laid down side by side, each
+    // transparent outside its own view, and together they close the globe.
     for (const def of LAYERS) {
       if (def.kind !== 'raster') continue
-      const srcId = `systems-${def.id}-src`
-      const layerId = `systems-${def.id}-layer`
       const payload = fieldsRef.current[def.id]
-      const ready = layerOn[def.id] && layerStatus[def.id] === 'ok' && payload?.tileUrl
+      const ready = layerOn[def.id] && layerStatus[def.id] === 'ok'
+      // Three shapes, because three layers want different things: a single
+      // tile template (vegetation loss), several tile templates, or ONE image
+      // pinned to four corners (clouds — NOAA ships the whole globe as one
+      // picture, so there is nothing to tile).
+      const sources = payload?.sources
+        || (payload?.tileUrl ? [{ key: 'main', tiles: payload.tileUrl, attribution: def.attribution }] : [])
+      // Image sources (one picture pinned to four corners) draw ABOVE this
+      // layer's tile sources.
+      const images = payload?.images
+        || (payload?.imageUrl ? [{ key: 'img', url: payload.imageUrl, coordinates: payload.imageCoordinates }] : [])
+
+      // Resolution ladder (precipitation): three products measuring the SAME
+      // quantity at different sharpness and age. They must never draw
+      // together. The first cut layered a sharp 2 km image straight over
+      // the global tiles, and because rain imagery is mostly transparent the
+      // coarse 11 km blocks showed through and around the 2 km field — two
+      // measurements of different ages and resolutions in one picture, which
+      // is exactly the kind of composite this project refuses to draw.
+      //
+      // So it is a SWAP, not an overlay, and activeTierKey names the single
+      // winner. Clipping the tiles instead cannot work — a raster source's
+      // `bounds` culls whole tiles, so the seam would still be one tile wide.
+      // Time-following layers (clouds, precipitation) are ALSO driven by the
+      // follower effect below, which runs on the replay's own clock. Both go
+      // through rasterTimeState and activeTierKey, so a camera move and a
+      // scrub can never disagree about what should be on screen.
+      const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+      const ts = def.raster?.followsTime
+        ? rasterTimeState(payload, owner?.t ?? Date.now(), !owner || owner.atLive)
+        : null
+      const winner = activeTierKey(map, payload, mapView, ts)
+      for (const im of images) {
+        const srcId = `systems-${def.id}-${im.key}-src`
+        const layerId = `systems-${def.id}-${im.key}-layer`
+        try {
+          if (ready && !map.getSource(srcId)) {
+            map.addSource(srcId, { type: 'image', url: im.url, coordinates: im.coordinates })
+            // Clouds are a BACKDROP: everything else on this map is data drawn
+            // on top of the weather, not under it. Without an explicit
+            // beforeId the layer lands wherever its effect happened to run and
+            // could bury precipitation. (Canvas overlays like Storms sit above
+            // the whole map and are unaffected either way.)
+            let beforeId
+            if (im.underlay) {
+              try {
+                beforeId = map.getStyle().layers
+                  .find((l) => l.id.startsWith('systems-') && l.id !== layerId)?.id
+              } catch { beforeId = undefined }
+            }
+            map.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: srcId,
+              ...(im.minzoom != null ? { minzoom: im.minzoom } : {}),
+              paint: {
+                'raster-opacity': im.opacity ?? def.raster.opacity,
+                ...(def.raster.fadeDuration != null ? { 'raster-fade-duration': def.raster.fadeDuration } : {}),
+              },
+            }, beforeId)
+          }
+          if (map.getLayer(layerId)) {
+            const show = rasterPieceShow(payload, im.key, ts, winner, ready)
+            map.setLayoutProperty(layerId, 'visibility', show ? 'visible' : 'none')
+          }
+        } catch (err) {
+          console.error(`[systems] ${def.id} image layer failed:`, err)
+        }
+      }
+
       try {
-        if (ready && !map.getSource(srcId)) {
-          map.addSource(srcId, {
-            type: 'raster',
-            tiles: [payload.tileUrl],
-            tileSize: 256,
-            attribution: 'NASA OPERA L3 DIST-ALERT · GLAD',
-          })
-          map.addLayer({
-            id: layerId,
-            type: 'raster',
-            source: srcId,
-            paint: { 'raster-opacity': def.raster.opacity },
-          })
-        }
-        if (map.getLayer(layerId)) {
-          map.setLayoutProperty(layerId, 'visibility', ready ? 'visible' : 'none')
-        }
+        sources.forEach((src, i) => {
+          const key = src.key || i
+          // Two slots for a time-following layer so the next frame can be
+          // loaded out of sight; one for a static one, which never swaps.
+          const slots = def.raster?.followsTime ? ['a', 'b'] : ['a']
+          const state = (rasterSlotsRef.current[`${def.id}:${key}`] ||= { active: 'a', url: src.tiles })
+          for (const slot of slots) {
+            const { srcId, layerId } = slotIds(def.id, key, slot)
+            if (ready && !map.getSource(srcId)) {
+              map.addSource(srcId, {
+                type: 'raster',
+                tiles: [src.tiles],
+                tileSize: 256,
+                ...(src.maxzoom != null ? { maxzoom: src.maxzoom } : {}),
+                // Clips a source to its own region so neighbouring satellite
+                // discs never overlap, and stops tiles being requested at all
+                // outside it.
+                ...(src.bounds ? { bounds: src.bounds } : {}),
+                attribution: src.attribution || def.attribution || '',
+              })
+              // Weather rasters draw UNDER the place-name labels (the first
+              // symbol layer), like the scalar overlays do. Added on top,
+              // radar and rain buried the town names (Josh, 2026-09-23).
+              let labelsId
+              try { labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id } catch { labelsId = undefined }
+              map.addLayer({
+                id: layerId,
+                type: 'raster',
+                source: srcId,
+                paint: {
+                  // A time-following layer starts INVISIBLE: the follower
+                  // effect alone decides which product and which moment is
+                  // shown. Added visible, every tier drew its live frame on
+                  // load — today's radar under a replay label two days old.
+                  'raster-opacity': slot === state.active && !def.raster?.followsTime ? def.raster.opacity : 0,
+                  'raster-opacity-transition': { duration: 260, delay: 0 },
+                  ...(def.raster.fadeDuration != null ? { 'raster-fade-duration': def.raster.fadeDuration } : {}),
+                },
+              }, def.raster?.belowLabels ? labelsId : undefined)
+            }
+            // Visibility for a time-following layer belongs to the follower
+            // effect ALONE. Two writers is how the map ended up going blank
+            // between a tier being switched off and its replacement having
+            // any tiles: whoever ran second won, and neither waited.
+            if (map.getLayer(layerId) && !def.raster?.followsTime) {
+              const show = rasterPieceShow(payload, key, ts, winner, ready)
+              map.setLayoutProperty(layerId, 'visibility', show ? 'visible' : 'none')
+            }
+          }
+        })
       } catch (err) {
         console.error(`[systems] ${def.id} raster layer failed:`, err)
       }
@@ -1227,7 +1621,10 @@ export default function SystemsApp() {
         console.error(`[systems] ${active.id} overlay init failed:`, err)
       }
     }
-    inst.scalar?.layer.setVisible(!!active)
+    // A companion raster that is on screen (the US radar past z5) owns the
+    // map; the parent's scalar field steps aside so two instruments are
+    // never drawn over each other. See applyYield in the follower effect.
+    inst.scalar?.layer.setVisible(!!active && !rasterSlotsRef.current[`${active.id}:yield`])
 
     // Flight streaks: a particle layer that follows the scalar replay's
     // cursor through the u/v tapes. Lives and dies with its replay.
@@ -1279,7 +1676,11 @@ export default function SystemsApp() {
     // A timeline may `yieldsTo` other layers (Climate TRACE's monthly tape
     // yields to fire, whose cursor is days) and always yields to another
     // timeline that doesn't — one bar, owned by the finest-grained clock.
-    const tlCands = LAYERS.filter((d) => d.timeline && layerOn[d.id] && layerStatus[d.id] === 'ok' && inst[d.id])
+    // `inst[d.id]` for a layer that draws through a canvas overlay; a raster
+    // layer (Precipitation) has no instance and owns the bar anyway — its
+    // tiles follow the cursor through the raster-follower effect below.
+    const tlCands = LAYERS.filter((d) => d.timeline && layerOn[d.id] && layerStatus[d.id] === 'ok'
+      && (d.kind === 'raster' || inst[d.id]))
     const yields = (d) => !!d.timeline.yieldsTo && (d.timeline.yieldsTo.some((id) => layerOn[id]) || tlCands.some((o) => !o.timeline.yieldsTo))
     const tlDef = tlCands.find((d) => !yields(d))
     const ev = eventReplayRef.current
@@ -1294,7 +1695,7 @@ export default function SystemsApp() {
         const rc = replayRef.current
         if (!rc.followers?.has(tlDef.id)) {
           rc.followers = rc.followers || new Set(); rc.followers.add(tlDef.id)
-          rc.subscribe((c) => ping.setTime(c.atLive ? null : c.t, c.playing ? 'flow' : 'day'))
+          rc.subscribe((c) => ping?.setTime(c.atLive ? null : c.t, c.playing ? 'flow' : 'day'))
         }
       } else if (!eventReplayRef.current) {
         // `timeline` may be a function of the feed when the useful window
@@ -1304,7 +1705,39 @@ export default function SystemsApp() {
         const tl = typeof tlDef.timeline === 'function'
           ? tlDef.timeline(fieldsRef.current[tlDef.id].events)
           : tlDef.timeline
-        const tape = tl.makeTape ? tl.makeTape(fieldsRef.current[tlDef.id]) : new EventTape(fieldsRef.current[tlDef.id].events, tl)
+        // A raster layer's "frames" are tile URLs, so it gets a tape that can
+        // answer ready()/prefetch() about them. That is what makes the
+        // ReplayController hold the cursor until a frame is actually there,
+        // exactly as it does for the scalar layers — rather than running
+        // ahead and leaving the map to blink.
+        const payloadFor = fieldsRef.current[tlDef.id]
+        const archiveSrc = tlDef.kind === 'raster'
+          ? (payloadFor.sources || []).find((sr) => typeof sr.at === 'function')
+          : null
+        // For a resolution ladder the tape must warm whatever will actually
+        // be ON SCREEN at each moment for this view — the ladder's winner —
+        // not just the first source with an archive. It used to warm MRMS
+        // alone, whose archive is three hours deep: for the other 45 hours of
+        // the bar there was "nothing to fetch", every frame reported ready,
+        // and the cursor ran ahead of IMERG tiles that had not arrived.
+        const ladderUrlAt = payloadFor?.tiers?.length
+          ? (ms) => {
+              const ts = rasterTimeState(payloadFor, ms, false)
+              const w = activeTierKey(map, payloadFor, null, ts)
+              if (!w) return null
+              const src = payloadFor.sources.find((sr) => sr.key === w)
+              return { url: ts.urls.get(w), maxzoom: src?.maxzoom }
+            }
+          : null
+        const tape = tl.makeTape
+          ? tl.makeTape(payloadFor)
+          : archiveSrc
+            ? new RasterTape({
+                ...tl, map,
+                maxzoom: Math.max(...(payloadFor.sources || []).map((sr) => sr.maxzoom ?? 6)),
+                urlAt: ladderUrlAt || ((ms) => archiveSrc.at(ms)),
+              })
+            : new EventTape(payloadFor.events || [], tl)
         // maxPasses is forwarded so a timeline can ask for a single run.
         // Undefined keeps ReplayController's default of three, which is what
         // quakes wants; Storms asks for one.
@@ -1317,8 +1750,8 @@ export default function SystemsApp() {
         const resumeE = resumeRef.current[tlDef.id]
         if (resumeE) { delete resumeRef.current[tlDef.id]; rc.seek(resumeE.t); if (resumeE.playing) rc.play(); else rc.pause() }
         const modeOf = (c) => (c.atLive ? 'last24' : c.playing && !c.holding ? 'flow' : 'day')
-        rc.attach({ tick: () => ping.setTime(rc.t, modeOf(rc)) })
-        rc.subscribe((c) => ping.setTime(c.t, modeOf(c))) // pause → whole day; Now → past 24 h
+        rc.attach({ tick: () => ping?.setTime(rc.t, modeOf(rc)) })
+        rc.subscribe((c) => ping?.setTime(c.t, modeOf(c))) // pause → whole day; Now → past 24 h
         rc.subscribe(syncLiveOnly)
         eventReplayRef.current = rc
         if (import.meta.env.DEV) window.__systemsReplay = rc
@@ -1326,6 +1759,224 @@ export default function SystemsApp() {
       }
     }
   }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch, mapView, smokeGroundTick])
+
+  // Raster layers follow the transport bar.
+  //
+  // Before this, scrubbing a storm back three days left the clouds and the
+  // rain showing right now: one map displaying two different moments, with
+  // nothing on screen to say so. Whichever replay owns the bar, the raster
+  // weather layers now follow its cursor — precipitation by asking GIBS for
+  // that half-hour, clouds (which have no archive of their own yet) by
+  // standing aside until the bar is back at Now.
+  //
+  // This effect drives the clock; the layer-sync effect above drives the
+  // camera. They share rasterTimeState, so they cannot contradict each other.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return undefined
+    const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+
+    let last = 0
+    let trailing = 0
+    const cancelSwap = {}   // piece id → detach its pending sourcedata listener
+
+    // A companion raster ON SCREEN (the US radar past z5) takes the map from
+    // its parent's scalar field — never both at once. "On screen" means the
+    // tier the ladder wants is the one actually drawn, so while radar tiles
+    // are still loading the global field stays up instead of a blank.
+    const applyYield = (def) => {
+      if (!def.companionOf) return
+      const sh = rasterSlotsRef.current[`${def.id}:__shown`]
+      const y = !!(layerOn[def.id] && sh && sh.want && sh.key === sh.want)
+      const k = `${def.companionOf}:yield`
+      if (rasterSlotsRef.current[k] === y) return
+      rasterSlotsRef.current[k] = y
+      const sc = instancesRef.current.scalar
+      if (sc && sc.id.startsWith(def.companionOf)) sc.layer.setVisible(!y && !!layerOn[def.companionOf])
+    }
+
+    const paint = () => {
+      const atLive = !owner || owner.atLive
+      const cursor = owner?.t ?? Date.now()
+      for (const def of LAYERS) {
+        if (def.kind !== 'raster' || !def.raster?.followsTime) continue
+        if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') { applyYield(def); continue }
+        const payload = fieldsRef.current[def.id]
+        if (!payload) continue
+        const ts = rasterTimeState(payload, cursor, atLive)
+        const winner = activeTierKey(map, payload, null, ts)
+        const isImage = new Set((payload.images || []).map((im) => im.key))
+        // EVERY piece, not just the ones with a URL to swap or a reason to
+        // hide: a piece with neither (the live-only cloud image, back at Now)
+        // still has to be told it may come back.
+        const keys = [...(payload.images || []), ...(payload.sources || [])]
+          .map((e) => e.key).filter(Boolean)
+        {
+        // ONE rule owns what is on screen: nothing is hidden until its
+        // replacement is actually drawn. That covers both transitions that
+        // used to leave a hole —
+        //
+        //   frame -> frame  (the next half-hour of the same product)
+        //   tier  -> tier   (leaving Now hands the map from the live product
+        //                    to the archive one, whose layers have never
+        //                    loaded a single tile)
+        //
+        // The tier case is the one that read as "turning off, going blank,
+        // building in": the old tier was switched off the instant the winner
+        // changed, and the new one needed a second or two to fetch anything.
+        const shown = (rasterSlotsRef.current[`${def.id}:__shown`] ||= { key: null })
+        const jumped = shown.lastCursor != null && Math.abs(cursor - shown.lastCursor) > RASTER_JUMP_MS
+        shown.lastCursor = cursor
+        // The tier that SHOULD be on screen now. A load that lands after its
+        // tier lost the ladder must be dropped: at Now, an IMERG frame still
+        // arriving from the replay put itself back on screen and hid GSMaP.
+        shown.want = winner
+        const wantKey = winner
+        const id = `${def.id}:${wantKey}`
+        const state = wantKey ? (rasterSlotsRef.current[`${def.id}:${wantKey}`] ||= { active: 'a', url: null }) : null
+        const wantUrl = wantKey ? ts.urls.get(wantKey) : null
+
+        // Retire by fading to nothing, and only take a layer out of the draw
+        // once it is already invisible. A layer removed while still opaque is
+        // the hole.
+        const hideAllBut = (keepKey) => {
+          for (const k of keys) {
+            if (k === keepKey) continue
+            for (const slot of ['a', 'b']) {
+              const lid = slotIds(def.id, k, slot).layerId
+              retireLayer(map, lid)
+              // A tier that is not in play goes fully dark once it has faded.
+              // Left merely transparent it would keep fetching tiles, and
+              // four tiers loading at once is four times the traffic for one
+              // visible product. Only AFTER the fade, never before it.
+              setTimeout(() => {
+                try {
+                  if (rasterSlotsRef.current[`${def.id}:__shown`]?.key === k) return
+                  if (map.getLayer(lid)) map.setLayoutProperty(lid, 'visibility', 'none')
+                } catch { /* style swapped */ }
+              }, 340)
+            }
+          }
+          // The winner's spare buffer stays armed — it is where the next
+          // frame lands, and it must be able to load before it is shown.
+          const st = keepKey ? rasterSlotsRef.current[`${def.id}:${keepKey}`] : null
+          if (!st) return
+          retireLayer(map, slotIds(def.id, keepKey, st.active === 'a' ? 'b' : 'a').layerId)
+        }
+
+        try {
+          if (!wantKey) { hideAllBut(null); continue }
+          if (isImage.has(wantKey)) {
+            const { srcId, layerId } = slotIds(def.id, wantKey, 'a')
+            if (!map.getLayer(layerId)) continue
+            if (wantUrl && state.url !== wantUrl) { map.getSource(srcId)?.updateImage?.({ url: wantUrl }); state.url = wantUrl }
+            revealLayer(map, layerId, def.raster.opacity)
+            shown.key = wantKey
+            hideAllBut(wantKey)
+            continue
+          }
+
+          const cur = slotIds(def.id, wantKey, state.active)
+          if (!map.getLayer(cur.layerId)) continue
+          const needsLoad = wantUrl && state.url !== wantUrl
+
+          if (!needsLoad) {
+            // Already holding the right frame: show it, then retire whatever
+            // it replaced.
+            revealLayer(map, cur.layerId, def.raster.opacity)
+            shown.key = wantKey
+            hideAllBut(wantKey)
+            continue
+          }
+          // A jump (see RASTER_JUMP_MS): what is on screen belongs to a
+          // different moment, so it goes NOW rather than when the new frame
+          // lands — and an in-flight load for the old moment is abandoned,
+          // or it would land and put the old moment straight back.
+          if (jumped && shown.key) {
+            shown.key = null
+            hideAllBut(wantKey)
+            retireLayer(map, cur.layerId)
+          }
+          if (state.loading && !jumped && performance.now() - (state.loadingAt || 0) < 8000) continue
+          // Mid-swap, the spare slot is still one of the two frames on screen;
+          // loading into it now would blank it and put the dip back.
+          if (!jumped && performance.now() < (state.swapUntil || 0)) continue
+
+          const next = state.active === 'a' ? 'b' : 'a'
+          const nxt = slotIds(def.id, wantKey, next)
+          if (!map.getSource(nxt.srcId)) continue
+          state.loading = wantUrl
+          state.loadingAt = performance.now()
+          map.getSource(nxt.srcId).setTiles([wantUrl])
+          // Visible at zero opacity: invisible to the reader, but Mapbox will
+          // now actually fetch it, which is the whole point of the buffer.
+          armLayer(map, nxt.layerId)
+          cancelSwap[id]?.()
+          cancelSwap[id] = onSourceSettled(map, nxt.srcId, () => {
+            try {
+              if (state.loading !== wantUrl) return // a later frame won the race
+              if (shown.want !== wantKey) { state.loading = null; return } // tier no longer wanted
+              // Same tier, next frame: swap without a dip (see swapFrames).
+              // A tier change, or a jump that already cleared the screen,
+              // simply shows the new frame.
+              const sameTierOnScreen = shown.key === wantKey
+              if (sameTierOnScreen) swapFrames(map, cur.layerId, nxt.layerId, def.raster.opacity, next === 'b')
+              else revealLayer(map, nxt.layerId, def.raster.opacity)
+              state.active = next
+              state.url = wantUrl
+              state.loading = null
+              state.swapUntil = performance.now() + FRAME_FADE_MS + 80
+              shown.key = wantKey
+              // Only NOW is the old frame — and the old tier — redundant.
+              if (!sameTierOnScreen) retireLayer(map, cur.layerId)
+              applyYield(def)
+              setTimeout(() => {
+                try { if (state.active === next) hideAllBut(wantKey) } catch { /* style swapped */ }
+              }, FRAME_FADE_MS + 60)
+            } catch { /* style swapped mid-flight */ }
+          })
+        } catch (err) {
+          console.error(`[systems] ${def.id}/${wantKey} time follow failed:`, err)
+        }
+        }
+      }
+      for (const def of LAYERS) if (def.companionOf) applyYield(def)
+    }
+
+    const onTick = () => {
+      const now = performance.now()
+      const wait = RASTER_FOLLOW_MS - (now - last)
+      if (wait <= 0) { last = now; paint(); return }
+      if (!trailing) {
+        trailing = setTimeout(() => { trailing = 0; last = performance.now(); paint() }, wait)
+      }
+    }
+
+    paint()
+    // The camera changes which tier should win just as much as the clock
+    // does — zooming into the US is what promotes the 1 km radar over the
+    // global product. This effect owns visibility for these layers, so it
+    // has to hear about moves too; parked at Now there are no replay ticks
+    // at all, and zooming in did nothing.
+    const onMove = () => onTick()
+    map.on('moveend', onMove)
+    map.on('zoomend', onMove)
+    const off = owner?.subscribe(onTick)
+    return () => {
+      map.off('moveend', onMove)
+      map.off('zoomend', onMove)
+      if (trailing) clearTimeout(trailing)
+      // Detach the pending listeners AND release the in-flight marks they
+      // were going to clear. The slot state outlives this effect, so a
+      // cancelled swap that left `loading` set would wedge the layer.
+      for (const [id, c] of Object.entries(cancelSwap)) {
+        c?.()
+        const st = rasterSlotsRef.current[id]
+        if (st) { st.loading = null; st.loadingAt = 0 }
+      }
+      off?.()
+    }
+  }, [mapReady, layerOn, layerStatus, dataEpoch, styleEpoch, replay, eventReplay, fireReplay])
 
   // ─── Keep a globe left open current: every 10 min, check each visible
   // layer's source for a newer bake (tiny metadata/index fetch) and, only if
@@ -1945,6 +2596,7 @@ export default function SystemsApp() {
   useEffect(() => {
     const sp = new URLSearchParams()
     for (const def of LAYERS) {
+      if (!def.param) continue // companions have no URL key of their own
       if (def.defaultOn && !layerOn[def.id]) sp.set(def.param, '0')
       if (!def.defaultOn && layerOn[def.id]) sp.set(def.param, '1')
     }
@@ -2088,7 +2740,7 @@ export default function SystemsApp() {
     )
   }
 
-  const activeDefs = LAYERS.filter((d) => layerOn[d.id])
+  const activeDefs = LAYERS.filter((d) => layerOn[d.id] && !d.companionOf)
   const anyVectorOn = activeDefs.some((d) => d.kind === 'vector')
   const summary = activeDefs.length
     ? `${activeDefs.map((d) => d.name).join(' + ')} on`
@@ -2324,7 +2976,7 @@ export default function SystemsApp() {
             <div key={group.id} className={styles.dockGroup}>
               <div className={styles.dockGroupLabel}>{group.label}</div>
               <div className={styles.dockGrid}>
-                {LAYERS.filter((d) => d.group === group.id).map((def) => {
+                {LAYERS.filter((d) => d.group === group.id && !d.companionOf).map((def) => {
                   const on = !!layerOn[def.id]
                   return (
                     <button
@@ -2387,7 +3039,7 @@ export default function SystemsApp() {
             {GROUPS.map((group) => (
               <div key={group.id} className={styles.group}>
                 <div className={styles.groupHead}>{group.label}</div>
-            {LAYERS.filter((d) => d.group === group.id).map((def) => {
+            {LAYERS.filter((d) => d.group === group.id && !d.companionOf).map((def) => {
               const on = layerOn[def.id]
               const status = layerStatus[def.id]
               const meta = layerMeta[def.id]
@@ -2594,7 +3246,7 @@ function MethodologyModal({ onClose, layerMeta }) {
         <section className={styles.modalSection}>
           <h3>Where the data comes from</h3>
           <ul>
-            {LAYERS.map((def) => (
+            {LAYERS.filter((d) => !d.companionOf).map((def) => (
               <li key={def.id}>
                 <strong>{def.name} — </strong>
                 <a href={def.sourceUrl} target="_blank" rel="noopener noreferrer">{def.sourceName}</a>

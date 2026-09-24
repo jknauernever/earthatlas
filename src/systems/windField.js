@@ -127,6 +127,21 @@ export async function loadSystemsJson(name, expectKind) {
   throw lastErr || new Error('no data source reachable')
 }
 
+/**
+ * Resolve a baked binary asset (an image, not JSON) to a URL that actually
+ * exists, using the same dev-data-then-Blob order as loadSystemsJson. A HEAD
+ * is enough — the browser fetches the image itself afterwards.
+ */
+export async function systemsAssetBase(filename) {
+  for (const base of jsonBases()) {
+    try {
+      const r = await fetch(`${base}/${filename}`, { method: 'HEAD' })
+      if (r.ok) return `${base}/${filename}`
+    } catch { /* try the next base */ }
+  }
+  throw new Error(`asset not reachable: ${filename}`)
+}
+
 /** Load a dataset by its baked name (e.g. 'gfs-wind', 'hycom-currents'). */
 export async function loadGridField(dataset, expectKind) {
   let lastErr = null

@@ -1062,6 +1062,99 @@ average the two or present the model figure as the storm's strength.
 
 ---
 
+## 2n. Clouds & precipitation (2026-09-23)
+
+Full catalog with every measured number in **docs/CLOUDS_API.md**. Read it
+before touching either layer — it also records what was built and thrown away,
+which is the reason the current design is worth its pipeline.
+
+**Clouds = NOAA GMGSI.** One global mosaic NOAA has already blended from every
+geostationary satellite. Hourly, 7 MB a frame, on anonymous public S3. There
+is nothing to stitch because there is one source — and that, not freshness,
+is the whole argument.
+
+**What was tried first and binned.** A GIBS + EUMETSAT stitch of five
+geostationary discs. Josh, correctly: *"this cloud layer is TERRIBLE."* Two
+measured reasons:
+1. GIBS has no Meteosat at all, so the gap must be filled from EUMETSAT, and
+   the two render the same infrared irreconcilably: over identical ocean,
+   GIBS clear sky at luminance 125, EUMETSAT at 22.
+2. Full discs overlap and a geostationary limb washes out white, so the joins
+   blew out into a white stripe down the Atlantic.
+Clipping to non-overlapping longitude bands fixed the second and not the
+first. Five providers was the wrong foundation; no amount of patching fixes a
+representation mismatch.
+
+**MODIS/VIIRS true colour** was also evaluated (it was suggested as the
+answer). Seamless and beautiful, but a polar orbiter builds its mosaic swath
+by swath: measured at z3, *today's* Americas tile was an empty 1.6 KB while
+Asia already had 22 KB. Only YESTERDAY is complete, so it cannot show a storm
+that exists now.
+
+**Raw GOES off S3** was evaluated too: 351 MB per scan for the multi-band
+file, geostationary projection, and **no GeoColor in the bucket** — GeoColor
+is a CIRA composite, not a band, so "render the GeoColor matrix" isn't a
+thing. That path is a satellite imaging pipeline, not a layer.
+
+**Pipeline.** python + h5py in GitHub Actions (`gmgsi-bake.yml`, hourly at
+:45) → resample → lossless WebP → POST to `api/cron/clouds-ingest.js` →
+Blob. Exactly the LiveOcean pattern. Actions rather than a Vercel function
+because **this project's preset is Vite and won't build python in api/** —
+a project constraint. *Vercel itself supports python natively; I had that
+wrong and said so out loud.*
+
+**Format matters here.** 4096×2048 grey+alpha: RGBA PNG 9.5 MB, grey+alpha
+PNG 6.4 MB, **lossless WebP 1.2–1.6 MB** — and lossy WebP came out BIGGER
+than lossless, because most of the frame is uniform transparency. That is
+what lets full resolution fit Vercel's 4.5 MB body limit after base64.
+
+**Rendering.** A Mapbox `image` source pinned to four corners, verified on the
+globe projection. One image, no tile pyramid, no seams anywhere.
+
+**Polarity and the honest limit.** High = cold = high cloud (Polo's eyewall
+210, daylit Sahara 37, median 122), so opacity ramps from 130 to 210. Low
+cloud over warm ocean is nearly the sea's temperature and longwave IR cannot
+separate them — this layer shows mid and high cloud and misses shallow marine
+cloud. `GMGSI_VIS` would fill the daylit half if ever wanted. Said plainly in
+the layer's own note; cold GROUND (ice sheets, winter continents, mountains)
+also reads as cloud and that is stated too.
+
+**Precipitation is a RESOLUTION LADDER** — one layer, two measured products,
+one shared ramp (docs/CLOUDS_API.md §9). Global base: GIBS IMERG, 11 km,
+half-hourly, **6.2 h behind** (the daily product is 50.7 h and unusable).
+Detail tier at zoom >= 3.5 over the Americas: NOAA GOES RRQPE, 2 km native,
+every 10 min, published ~5 s after the scan ends.
+
+This is NOT the clouds stitch repeated: that failed on PRE-RENDERED images
+from providers who render the same quantity differently. RRQPE is a
+quantitative mm/h field, so we colour it with GIBS's OWN ramp
+(`GPM_Precipitation_Rate.xml`) and the palette matches exactly.
+
+**What the shared palette does not fix:** the tiers differ in STATISTICS.
+57 % of RRQPE's raining pixels land in the orange 2–5 mm/h band against 13 %
+green, because 2 km resolves a convective core while IMERG's 11 km averages it
+against its surroundings. The transition therefore steps in intensity as well
+as sharpness. Physically correct, unremovable without discarding the detail.
+
+**RRQPE has no lat/lon arrays** — `x`/`y` are ABI fixed-grid scan angles, so
+the bake forward-projects lat/lon to scan angles (GOES-R PUG) with the
+far-side visibility test, and merges the two satellites by nearness to nadir.
+
+**Image width is pinned to 4096** for both weather images: WebGL
+MAX_TEXTURE_SIZE is 4096 on many phones and a wider `image` source fails or is
+silently downscaled there. That, not bandwidth, is why the rain tier ships at
+~5 km rather than its native 2 km.
+
+**`TIME=default`** on GIBS serves its newest frame — no resolver, no
+capabilities fetch (that document is 5.8 MB). Used by the precipitation layer.
+
+**Debugging note:** a Chrome tab that isn't visible throttles rendering hard —
+several "it's all black" moments were a background tab taking ~50 s to
+composite, with tiles already cached. Check `document.hidden` first. Same trap
+as the preview pane in §2k-quater.
+
+---
+
 ## 3. Playbook: adding a layer to /systems
 
 Every new dataset (ocean currents, SST, waves, aerosols…) follows the same
@@ -1104,6 +1197,223 @@ shape. Checklist:
 **Ship**
 12. `npm run build` locally, Josh QAs on localhost:5173, batch into one push
     to main, seed the new Blob pair once post-deploy.
+
+---
+
+## Raster layers and time
+
+Two rules, both in `SystemsApp.jsx`, both expressed through one function
+(`rasterPieceShow`) so the camera and the clock can never contradict each
+other:
+
+1. **A resolution ladder shows exactly one product.** Precipitation has a
+   global tier (IMERG tiles) and a detail tier (the baked GOES image). The
+   first build layered them, and because rain imagery is mostly transparent
+   the coarse 11 km blocks showed through and around the 2 km field — two
+   ages and two resolutions in one picture. It is a **swap**: the detail tier
+   takes over only when the whole viewport is inside what those satellites
+   actually see (`ladderSees`, 65° of arc from each sub-satellite point),
+   and the global tier switches off for exactly as long.
+
+   Clipping the tiles cannot do this. A raster source's `bounds` culls whole
+   tiles, so the seam would still be one tile wide wherever the cut does not
+   land on a tile boundary at every zoom both layers render.
+
+2. **The ladder yields to the clock.** The detail tier is one live frame with
+   no archive. Scrubbed into the past it has nothing to draw, so it hands the
+   map back to the global tier rather than both going blank at exactly the
+   zoom the reader was studying.
+
+`raster: { followsTime: true }` opts a layer in. A piece that can address its
+own archive (`at(ms)`) gets a URL for that moment; a piece that cannot is
+**hidden** as soon as the bar leaves Now — today's clouds over last
+Tuesday's storm track is one map showing two moments, which is the thing this
+project will not draw. Opt-in on purpose: the vegetation-loss raster is a
+30-day aggregate, not an instant, and must not blink out during a replay.
+
+Cadence: a replay `_emit()`s every animation frame, and a raster swap is a
+network round trip, so the follower is rate-limited (`RASTER_FOLLOW_MS`, 600
+ms) with a trailing call so the final position always lands exactly. Measured
+during a storms-paced replay (18 h/s): 10 of 72 available half-hourly frames
+fetched over 2.7 s — and that is dev, where StrictMode double-subscribes,
+so production is about half.
+
+See `docs/CLOUDS_API.md` for what each source can and cannot replay.
+
+### Precipitation: a three-rung ladder, one rung on screen
+
+| rung | source | grid | cadence | age | where |
+|---|---|---|---|---|---|
+| sharp | NOAA MRMS | 1 km | 2 min | ~2 min | CONUS, z5+ (view CENTRE over the grid) |
+| base, live | JAXA GSMaP_NOW | 11 km | 30 min | ~30 min | global |
+| base, replay | NASA IMERG (GIBS) | 11 km | 30 min | ~6.4 h | global, past only |
+
+`activeTierKey()` in SystemsApp walks the tiers finest-first and takes the
+first that qualifies. A `base` tier always qualifies. `viewInsideTier` samples
+nine SCREEN points via `map.unproject` — never `getBounds()`, which on the
+globe is a padded box (it reported west = -181 at z3.7 over the US and refused
+tiers that covered the view). MRMS is a `centre: true` tier: it claims the
+view when the view's centre is over its box, because at z5 a laptop screen
+spans ~34° of longitude and "whole view inside" kept most US views on GSMaP.
+Past radar range the map shows no rain rather than a patch of GSMaP. Zoom is
+compared at the badge's precision (one decimal): 4.986 reads "z5.0" and must
+switch.
+
+**GOES RRQPE was REMOVED (2026-09-23).** It is an infrared estimate and
+misses light/stratiform rain. Same ten minutes over central New Mexico: MRMS
+49% of the area raining, GOES 17%, GOES flagged only 24% of MRMS's raining
+cells, and its lightest 10% of rain was 1.8 mm/h against the radar's 0.3. Our
+decode was verified faithful to NOAA's file (uint16 × scale_factor); it is
+the product, and it is the only precipitation product ABI publishes. The bake
+script, workflow and dev pyramid were taken out; the measurements live in the
+layer's factsNote.
+
+The ladder yields to the clock: every live rung is hidden the instant the bar
+leaves Now, so a scrub walks past them to the replay rung. Without that the
+map went blank at exactly the zooms the reader had been studying.
+
+Why GSMaP displaced IMERG at Now: **not resolution** — identical 0.1° grids
+— but AGE. IMERG measured 6.4 h behind against GOES's 10 minutes, which is
+~325 km of storm movement, about a fifth of the screen at z5. That gap was
+what made rain visibly jump on zoom. IMERG stays for replay because it is the
+only rung with a deep free archive.
+
+Precipitation owns its own transport bar (`timeline` on the def, half-hourly
+over 2 days, `yieldsTo` Storms/Quakes/Fires). `tlCands` therefore admits a
+raster layer with no canvas instance, and the `ping` calls are optional-chained.
+The last ~6 h of that bar draw nothing, because that is genuinely beyond what
+the archive holds and clamping would pass off a six-hour-old frame as this
+minute's rain.
+
+### Animating raster tiles without blinking
+
+`setTiles` DISCARDS a source's tiles the moment it is called, so a
+single-buffered raster layer goes empty while the next frame is fetched.
+Measured against GIBS, a viewport takes 2–4 seconds to populate. Playing a
+loop through that reads as the layer blinking on and off rather than as
+weather moving — which is exactly what it did.
+
+So every time-following TILE piece is double-buffered: two sources and two
+layers (`…-a-…` / `…-b-…`). The next frame is loaded into the hidden slot,
+and the two cross-fade (260 ms on `raster-opacity`) only once `sourcedata`
+reports it loaded. One load in flight at a time, so the loop paces itself to
+the network and skips cursor positions it cannot keep up with rather than
+thrashing. Measured after the fix: 0 frameless samples, 10 swaps and 11
+distinct frames in 12 s.
+
+Two traps, both hit:
+
+* A cancelled swap must CLEAR `state.loading`. The slot state lives in a ref
+  that outlives the effect, and the effect re-runs as soon as the replay is
+  created — its cleanup detached the pending listener and left the in-flight
+  mark set, which blocked every later frame for good. The layer sat frozen on
+  its *live* tiles while the bar was scrubbed into the past. There is now
+  both an explicit release in the cleanup and an 8 s deadline as a backstop.
+* An empty tile must be a DECODABLE image, not a 204. Mapbox hands a raster
+  body straight to the image decoder and an empty one throws “the source
+  image could not be decoded” — 65 of them on one dry view of Kansas. Empty
+  tiles are answered with a 68-byte transparent PNG.
+
+An `image` source (clouds) stays single-buffered: `updateImage` swaps
+atomically, so there is no gap to hide.
+
+### The sharp tiers need archives, or a replay throws away the zoom
+
+Pressing play while zoomed into Santa Fe used to drop the map from 1 km radar
+to the global 11 km product magnified sixty-four times: enormous hard-edged
+blocks that also overstate how uniform the rain is. The cause was simply that
+MRMS and GOES each published one "latest" frame, so every replay fell to the
+only tier with history.
+
+MRMS now keeps a ROLLING ARCHIVE — `systems/mrms-conus/<valid_ms>.pmtiles`
+plus a `-tape.json` index, 10-minute spacing over 3 hours (19 frames, ~12 MB),
+backfilled from S3 on the first run so it is useful immediately instead of in
+three hours. `api/rain-tiles.js?t=mrms&f=<ms>` serves a frame; the tier's
+`at(ms)` returns null outside the archive, so `activeTierKey` walks past it to
+the next tier exactly as it does for any live-only tier.
+
+The ingest gained `prune`, because a rolling archive has to drop its tail —
+MRMS alone would add ~86 MB a day. Deletes run after the writes and are held
+to the same allowlist, so it can only ever remove what it could have written.
+
+Still true: beyond 3 hours, a zoomed-in replay falls back to IMERG blocks.
+Extending it is only storage (0.62 MB a frame: 12 h ≈ 45 MB, 24 h ≈ 89 MB).
+GOES would need the same treatment for the mid zooms.
+
+### Replay: never a frame from another moment (2026-09-23)
+
+Three bugs, all "two moments presented as one", found by screenshot bursts:
+
+* **The tape warmed the wrong product.** The RasterTape was built from the
+  first source with an archive — MRMS, 3 h deep — so for 45 of the bar's 48
+  hours every frame reported ready and the cursor ran ahead of IMERG tiles.
+  The tape's `urlAt` now returns the ladder WINNER for that moment and view
+  (`{ url, maxzoom }`; tiles are clipped to that product's maxzoom).
+* **Holding the old frame through a jump.** "Nothing hidden until its
+  replacement is drawn" stops playback blinking, but through a loop restart,
+  scrub or Now it drew today's radar under a label two days old. A cursor
+  move > `RASTER_JUMP_MS` (3 h) between two consecutive paints is a jump: the
+  old frame goes at once and any in-flight load for the old moment is
+  abandoned. (Measuring on-screen lag instead blinked during normal play: at
+  4 h/s a half-second swap is already 2 h of bar.)
+* **Every tier drew its live frame on load.** Time-following layers are now
+  added at opacity 0; only the follower reveals them.
+
+### Visibility is owned by ONE effect, and selection is by opacity
+
+Mapbox does not load tiles for a layer with `visibility: none`, so a hidden
+double-buffer never pre-loads and `isSourceLoaded` then answers "nothing
+pending, therefore loaded". Slots are selected by `raster-opacity`; the
+incoming buffer is armed visible-at-zero so it genuinely fetches, and nothing
+is retired until its replacement is drawn. A tier that is out of play does go
+fully dark, but only AFTER its fade, or four tiers would fetch at once.
+
+The follower effect owns visibility for time-following layers — the camera
+effect must not also write it. It therefore has to listen to `moveend` and
+`zoomend` as well as the replay: parked at Now there are no replay ticks at
+all, and for one build zooming in changed nothing.
+
+### Smoothed display of the 11 km tiers (Josh's choice, 2026-09-23)
+
+GSMaP (live) and IMERG (replay) are drawn SMOOTHED: rates — never colours —
+are smoothed with a quadratic B-spline of the 0.1° cells (two one-cell box
+passes, as normalised convolution so missing data is not read as dry), then
+coloured on the one ramp. One pass (bilinear) left the rain/dry contour
+stepping along the grid; three blurred the cores. An isolated single-cell
+peak draws at ~3/4. Disclosed in the layer copy (factsNote, legendNote).
+
+* GSMaP: in the bake (`scripts/bake-gsmap.py` resample + spline_smooth).
+* IMERG: `api/imerg-tiles.js` proxies GIBS, decodes each colour back to its
+  exact rate (GPM_Precipitation_Rate.xml; every pixel matched), smooths with
+  the same spline over the tile plus its 8 neighbours (no seams), re-encodes
+  PNG with a zlib-only codec (sharp is a devDependency). Past frames are
+  immutable, cached a year at the edge. First playback of a new view is
+  slower (~0.3–0.8 s per tile uncached).
+* MRMS (1 km radar) is NOT smoothed.
+
+### OPEN: sharper measured rain outside the US (Josh, 2026-09-23)
+
+After the ladder is fixed, find a better dataset for detail where MRMS does
+not reach. Outside CONUS the map is 11 km GSMaP at every zoom, and a hurricane
+at z5 (e.g. Polo off Acapulco, 2026-09-23) is hard blocks. Research catalogue:
+`docs/PRECIP_SOURCES_GLOBAL.md`.
+
+### Bakes
+
+`scripts/_rain_common.py` is shared by all three precipitation bakes (ramp,
+Mercator tiling, max-pooling, PMTiles, publish). It exists because the tiers
+must share a colour ramp and a downsample rule exactly — when those were
+copied per-bake they drifted within a day.
+
+Measured: GSMaP 1.00 MB / 535 tiles / 7 s · GOES 1.33 MB / 763 tiles / 14 s
+· MRMS 0.59 MB / 193 tiles / 3 s. Dry tiles are never stored; the endpoint
+answers 204.
+
+`api/rain-tiles.js` serves all three by `?t=`. Its `LocalFileSource` uses
+`Buffer.alloc`, NOT `allocUnsafe`: a range read past EOF (which happens while
+a bake rewrites the archive under a running server) would otherwise hand back
+uninitialised heap, and a WebP decoded from that renders as an opaque BLACK
+SQUARE over the map. `api/vessel-tiles.js` still has that bug.
 
 ---
 

@@ -11,7 +11,7 @@
  */
 
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
-import { loadSystemsJson } from './windField.js'
+import { loadSystemsJson, systemsAssetBase } from './windField.js'
 import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
 import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
 
@@ -163,6 +163,31 @@ const SSTANOM_STOPS = [
 // Aerosol optical depth (unitless): clear air fades to transparent so only
 // smoke, dust and haze paint — warm yellows through brown to deep purple.
 // Dust: transparent → sand → ochre. (Wildfire smoke shares the Smoke & haze ramp.)
+// Precipitation on a SQUARE-ROOT scale (the tape stores sqrt(mm/h)): the
+// NASA GIBS GPM rain-rate colours at their own mm/h breaks, so the dust-style
+// rain uses the same palette as the radar tiles. Transparent below 0.1 mm/h.
+const RAIN_STOPS = [
+  [0, 'rgba(0,118,78,0)'],
+  [0.296, 'rgba(0,118,78,0)'],
+  [0.316, 'rgb(0,118,78)'],     // 0.1 mm/h
+  [0.447, 'rgb(0,151,31)'],     // 0.2
+  [0.592, 'rgb(23,176,0)'],     // 0.35
+  [0.707, 'rgb(69,192,0)'],     // 0.5
+  [0.866, 'rgb(143,214,0)'],    // 0.75
+  [1.0, 'rgb(195,228,0)'],      // 1
+  [1.225, 'rgb(247,217,0)'],    // 1.5
+  [1.414, 'rgb(255,176,6)'],    // 2
+  [1.732, 'rgb(255,122,26)'],   // 3
+  [2.0, 'rgb(255,89,39)'],      // 4
+  [2.449, 'rgb(255,32,32)'],    // 6
+  [2.828, 'rgb(255,1,1)'],      // 8
+  [3.464, 'rgb(212,0,0)'],      // 12
+  [4.0, 'rgb(181,0,0)'],        // 16
+  [5.0, 'rgb(138,0,0)'],        // 25
+  [6.325, 'rgb(82,0,0)'],       // 40
+  [8.5, 'rgb(82,0,0)'],         // 72
+]
+
 const DUST_STOPS = [
   [0, 'rgba(240,215,150,0)'],
   [0.05, 'rgba(240,215,150,0.15)'],
@@ -307,6 +332,25 @@ const WIND_FLOW = {
   stops: WIND_STOPS,
   vector: { speedFactor: 0.42, gammaPivot: 10, offsetDegPerMs: 0.02 },
 }
+
+
+/**
+ * Resolution ladder: is a point inside one tier's real footprint?
+ *
+ * A `base` tier (the global one, and the replay one) always qualifies — it is
+ * the thing every other tier falls back to, so it cannot be gated on a box.
+ *
+ * A ground-radar tier (MRMS) is just a box, because a radar network's edge is
+ * where the radars are.
+ */
+export function tierSees(tier, lat, lng) {
+  if (!tier) return false
+  if (tier.base) return true
+  if (lat > tier.north || lat < tier.south) return false
+  if (lng < tier.west || lng > tier.east) return false
+  return true
+}
+
 
 export const LAYERS = [
   {
@@ -885,6 +929,180 @@ export const LAYERS = [
     },
   },
   {
+    id: 'clouds',
+    hue: '#cbd5e1',
+    iconSvg: '<path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97 6 6 0 0 0-11.6-1.4A4 4 0 0 0 6.5 19Z"></path>',
+    group: 'air',
+    kind: 'raster',
+    param: 'k2',
+    defaultOn: false,
+    name: 'Clouds',
+    sub: 'whole Earth, hourly',
+    sourceName: 'NOAA GMGSI',
+    sourceUrl: 'https://registry.opendata.aws/noaa-gmgsi/',
+    stops: null,
+    legend: null,
+    words: null,
+    // Always beneath the other layers — clouds are the backdrop that data is
+    // read against, never something drawn over it.
+    raster: { opacity: 0.92, fadeDuration: 300, underlay: true, followsTime: true },
+    attribution: 'NOAA Global Mosaic of Geostationary Satellite Imagery',
+    coverage:
+      'the whole globe between about 72° north and 72° south. Geostationary satellites sit over the equator and see the far polar regions at too shallow an angle to be usable, so the very top and bottom of the map are blank rather than cloudless.',
+    factsNote:
+      'NOAA\'s global mosaic of every geostationary weather satellite, longwave infrared, hourly. It measures TEMPERATURE, not cloud: bright means cold, and cold usually means high cloud — but cold GROUND reads the same way, so winter continents, high mountains and ice sheets can appear cloud-like. It is an observation, not a model, and it does not measure rain.',
+    legendNote:
+      'Every geostationary weather satellite on Earth, merged by NOAA into one picture and refreshed every hour. White is cold — and cold, high up, means deep cloud, which is why storm tops glow brightest. It is infrared, so it works straight through the night side of the planet. One honest caveat: infrared reads temperature rather than cloud, so genuinely cold ground — ice sheets, winter continents, high mountains — can look like cloud too.',
+    load: async () => {
+      // One image for the whole planet. NOAA has already merged every
+      // geostationary satellite, so there is nothing to stitch — which is the
+      // entire reason this layer is built on GMGSI instead of assembling
+      // GOES + Meteosat + Himawari by hand. That attempt is written up, with
+      // the measurements that killed it, in docs/CLOUDS_API.md.
+      const meta = await loadSystemsJson('gmgsi-clouds-meta', 'gmgsi-clouds')
+      const base = await systemsAssetBase('gmgsi-clouds.webp')
+      return {
+        images: [{
+          key: 'gmgsi',
+          url: `${base}?v=${meta.fetched_ms || Date.now()}`,
+          coordinates: [
+            [-180, meta.lat_limit], [180, meta.lat_limit],
+            [180, -meta.lat_limit], [-180, -meta.lat_limit],
+          ],
+          underlay: true,
+        }],
+        meta,
+      }
+    },
+    stamp: (meta) => `satellite mosaic for ${fmtRun(meta.valid_ms)}`,
+    explain:
+      'Every cloud on Earth at once, as the ring of geostationary weather satellites sees them — NOAA merges GOES over the Americas, Meteosat over Europe, Africa and the Indian Ocean, and Himawari over Asia and the Pacific into a single picture every hour. It is infrared, so the night half of the planet is just as visible as the day half. The whitest cloud is the coldest and therefore the highest, which is why a hurricane\'s eyewall and the thunderstorms along the equator stand out hardest.',
+  },
+  {
+    // Precipitation, played the way desert dust plays (Josh, 2026-09-23):
+    // one half-hourly global grid per frame, preloaded, with the motion
+    // between frames computed in the browser and drawn on the GPU (tape.js,
+    // tapeWarpGL.js). The tiled replay it replaced was a slideshow with
+    // loading pauses however the swap was tuned. ONE product for the whole
+    // loop — JAXA GSMaP_NOW — so there is no seam and no six-hour hole.
+    // Zoomed past z5 over the US the companion `rainRadar` (1 km NOAA MRMS
+    // tiles) takes the map and this field steps aside.
+    id: 'rain',
+    hue: '#60a5fa',
+    iconSvg: '<path d="M17.5 15a4.5 4.5 0 0 0 .5-8.97 6 6 0 0 0-11.6-1.4A4 4 0 0 0 6.5 15"></path><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"></path>',
+    group: 'air',
+    kind: 'scalar',
+    param: 'k3',
+    defaultOn: false,
+    dataset: 'gsmap-rain',
+    expectKind: 'gsmap-rain-sqrt',
+    name: 'Precipitation',
+    sub: 'satellite, and US radar zoomed in',
+    sourceName: 'JAXA GSMaP_NOW',
+    sourceUrl: 'https://sharaku.eorc.jaxa.jp/GSMaP_NOW/',
+    sourceAlso: [
+      { name: 'NOAA MRMS', url: 'https://www.nssl.noaa.gov/projects/mrms/' },
+    ],
+    stops: RAIN_STOPS,
+    // Translucent so the basemap reads through; drawn under the labels.
+    scalar: { opacity: 0.72 },
+    tape: { dataset: 'gsmap-rain', expectKind: 'gsmap-rain-sqrt', noLive: true, windowDays: 2 },
+    // Stored value → mm/h (the grid carries the square root).
+    toValue: (raw) => raw * raw,
+    unit: ' mm/h',
+    legend: { min: 0, max: 8.5, ticks: ['0', '8', '32', '72+ mm/h'] },
+    words: [
+      { label: 'Light rain', range: 'under 2.5 mm/h', max: 2.5 },
+      { label: 'Moderate rain', range: '2.5–10 mm/h', max: 10 },
+      { label: 'Heavy rain', range: '10–50 mm/h', max: 50 },
+      { label: 'Violent rain', range: 'over 50 mm/h', max: Infinity },
+    ],
+    attribution: '(c)JAXA, provided by JAXA, Courtesy of JAXA · NOAA MRMS',
+    coverage:
+      'rain and snow between about 60° north and 60° south, from JAXA\'s GSMaP_NOW, which merges the passive-microwave satellite constellation with geostationary infrared. Zoomed in over the continental United States (zoom 5 and closer, judged by the centre of the view) it switches to NOAA\'s 1 km ground-radar network. Only one of the two is ever drawn.',
+    factsNote:
+      'Two measured products, never both on screen. Everywhere: JAXA GSMaP_NOW, an hourly-average rain rate issued every 30 minutes and published about two minutes after its hour ends, on a 0.1° (~11 km) grid shown at 0.2° with each cell the HEAVIEST of the four beneath it (so rain AREA is overstated, never its presence or intensity). The two-day loop is GSMaP alone, right up to the present. Between half-hourly frames the rain is moved along motion COMPUTED from consecutive frames — the in-between positions are an estimate; the frames themselves are measurements. Over the continental US past zoom 5: NOAA MRMS, 1 km radar plus gauges, archived every 30 minutes over the same two days. Do not report the switch between them as rain starting or stopping. NOAA\'s GOES infrared rainfall rate was deliberately left out: it misses light and stratiform rain — against MRMS over New Mexico on 2026-09-23, in the same ten minutes, it flagged 17% of the area as raining against the radar\'s 49%.',
+    legendNote:
+      'Rain and snow actually falling, measured rather than forecast: greens light through to deep red for torrential, on a square-root scale. Frames are half-hourly; the motion between them is computed from consecutive frames. Each 0.2° cell shows the heaviest rain beneath it. Zoom into the US past z5 and the map switches to NOAA\'s 1 km radar.',
+    stamp: (meta) => `JAXA GSMaP_NOW · hourly average to ${fmtRun(meta.window_end_ms || meta.valid_ms)}`,
+    explain:
+      'Where rain and snow are actually falling, measured from orbit rather than modelled — including over the oceans, where there is not a rain gauge for thousands of miles. The loop is two days of JAXA\'s global GSMaP, one frame every half hour, with the motion between frames computed from the frames themselves. Zoom in over the United States and it switches to NOAA\'s ground-radar network, 1 km and fine enough to pick out individual thunderstorms. Put it under the Storms layer and a hurricane\'s rain bands line up with its wind field.',
+    popup(sample, meta) {
+      const end = meta.window_end_ms || meta.valid_ms
+      const credit = `(c)JAXA, provided by JAXA, Courtesy of JAXA · hourly average to ${fmtRun(end)}`
+      const mm = this.toValue(sample.value)
+      if (!(mm >= 0.1)) {
+        return {
+          head: 'No measurable rain',
+          big: 'under 0.1 mm/h',
+          alt: 'JAXA GSMaP_NOW hourly-average rain rate',
+          meta: credit,
+          link: { href: this.sourceUrl, label: 'Source: JAXA GSMaP_NOW ↗' },
+          ai: `No measurable rain (under 0.1 mm/h) in JAXA GSMaP_NOW for the hour ending ${new Date(end).toISOString()}.`,
+        }
+      }
+      const w = wordFor(this.words, mm)
+      const v = mm >= 10 ? Math.round(mm) : mm.toFixed(1)
+      return {
+        head: w.label,
+        big: `${v} mm/h`,
+        alt: `${(mm / 25.4).toFixed(2)} in/h · heaviest in this 0.2° cell`,
+        meta: credit,
+        link: { href: this.sourceUrl, label: 'Source: JAXA GSMaP_NOW ↗' },
+        ai: `Rain rate ${v} mm/h (heaviest of the 0.1° cells in this 0.2° cell), JAXA GSMaP_NOW satellite estimate, hourly average ending ${new Date(end).toISOString()}.`,
+      }
+    },
+  },
+  {
+    // Companion of `rain`: no button, no URL key — on exactly when
+    // Precipitation is (SystemsApp mirrors it). NOAA MRMS 1 km radar tiles,
+    // shown only past z5 with the view centred over the US grid; while they
+    // are on screen the global field steps aside (applyYield).
+    id: 'rainRadar',
+    companionOf: 'rain',
+    hue: '#60a5fa',
+    group: 'air',
+    kind: 'raster',
+    defaultOn: false,
+    name: 'Precipitation — US radar',
+    sourceName: 'NOAA MRMS',
+    sourceUrl: 'https://www.nssl.noaa.gov/projects/mrms/',
+    stops: null,
+    legend: null,
+    words: null,
+    raster: { opacity: 0.72, fadeDuration: 0, followsTime: true, belowLabels: true },
+    attribution: 'NOAA MRMS',
+    load: async () => {
+      const out = { sources: [], tiers: [], images: [], meta: { fetched_ms: Date.now() } }
+      // `e` bumps when the endpoint's own output changes (e=2: the empty-tile
+      // PNG was corrupt and browsers had cached it), so no stale copy survives.
+      const tileUrl = (t, v) => `${location.origin}/api/rain-tiles?t=${t}&z={z}&x={x}&y={y}&v=${v || 0}&e=2`
+      const r = await loadSystemsJson('mrms-conus-meta', 'mrms-conus')
+      const mrms = { key: 'mrms', tiles: tileUrl('mrms', r.fetched_ms), maxzoom: r.maxzoom, attribution: 'NOAA MRMS' }
+      // The rolling archive (48 h, every 30 min) lets a replay keep the 1 km
+      // radar instead of dropping to the global field.
+      try {
+        const tp = await loadSystemsJson('mrms-conus-tape', 'mrms-conus')
+        const fr = (tp.frames || []).map((f) => f.valid_ms).sort((a, b) => a - b)
+        const tol = (tp.step_ms || 6e5) / 2
+        if (fr.length) {
+          mrms.at = (t) => {
+            let best = null
+            for (const ms of fr) if (best === null || Math.abs(ms - t) < Math.abs(best - t)) best = ms
+            if (best === null || Math.abs(best - t) > tol) return null // outside the archive
+            return `${tileUrl('mrms', r.fetched_ms)}&f=${best}`
+          }
+        }
+      } catch { /* live-only radar */ }
+      out.sources.push(mrms)
+      // No base tier: when the radar does not qualify, nothing of this layer
+      // is drawn and the parent's global field shows.
+      out.tiers.push({ key: 'mrms', minzoom: 5, centre: true, west: r.west, east: r.east, north: r.north, south: r.south })
+      out.meta.valid_ms = r.valid_ms
+      return out
+    },
+  },
+  {
     id: 'smoke',
     hue: '#b8a1e3',
     iconSvg: '<path d="M12 21a4 4 0 0 1-4-4c0-1.6.8-2.8 2-4 .4 1.2 1.2 1.8 2 1.8-.5-2.2.3-4 2-5-.1 1.6.6 2.7 1.6 3.8.9 1 1.4 2.1 1.4 3.4a4 4 0 0 1-4 4Z"></path><path d="M9 3.5c1.2.8 2.4-.8 3.6 0s2.4-.8 3.4 0"></path>',
@@ -1411,6 +1629,7 @@ export const LAYERS = [
     legendNote: 'Colored pixels are satellite alerts of recent vegetation loss or damage — fire scars, logging, storms, drought stress. Redder = more recent. Alerts are 30 m pixels; zoom in for detail, or open Forest Monitor for the full tool.',
     words: null,
     raster: { opacity: 0.85 },
+    attribution: 'NASA OPERA L3 DIST-ALERT · GLAD',
     // Same cloud function /forestmonitor uses; it returns a short-lived Google
     // Earth Engine tile URL for the requested window.
     load: async () => {

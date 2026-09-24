@@ -1,0 +1,39 @@
+# Bakes NOAA MRMS PrecipRate into the sharpest tier of the /inmotion
+# Precipitation ladder: the national ground-radar network fused with gauges,
+# 1 km and two minutes old, over the continental US.
+#
+# The tier above it: GSMaP at 11 km / ~30 min globally; radar takes over from
+# z5. Exactly one is ever drawn.
+#
+# GRIB2 needs eccodes, which ships as a pip wheel, so no apt in CI.
+#
+# MRMS publishes every 2 minutes. There is no point chasing that from a
+# best-effort scheduler, and each run is a ~0.7 MB download and a ~0.6 MB
+# upload, so this asks for every 10 and takes whatever is newest.
+name: mrms-bake
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: mrms-bake
+  cancel-in-progress: false  # a first run backfills 48 h of frames; never cut it off
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/gmgsi-requirements.txt
+      - run: pip install -r scripts/gmgsi-requirements.txt
+      - name: Bake MRMS precipitation rate
+        run: python scripts/bake-mrms.py
+        env:
+          CLOUDS_INGEST_URL: https://earthatlas.org/api/cron/clouds-ingest
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

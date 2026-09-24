@@ -631,14 +631,15 @@ function stormsProxyPlugin() {
   }
 }
 
-// Dev middleware: serve /api/trace-tiles and /api/trace-detail (Climate TRACE
-// facility MVT + per-source detail) by running the Node handlers themselves —
-// they range-read the local bake, so dev and prod share one implementation.
+// Dev middleware for the endpoints that range-read a local bake and so cannot
+// be mirrored by a fetch: Climate TRACE facility MVT + per-source detail, and
+// the precipitation raster pyramids (GSMaP, MRMS). Runs the Node handlers themselves, so dev
+// and prod share one implementation.
 function traceTilesPlugin() {
   return {
     name: 'trace-tiles',
     configureServer(server) {
-      for (const route of ['trace-tiles', 'trace-detail']) {
+      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles']) {
         server.middlewares.use(`/api/${route}`, async (req, res) => {
           try {
             const { default: handler } = await server.ssrLoadModule(`/api/${route}.js`)

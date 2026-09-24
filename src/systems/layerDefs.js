@@ -12,7 +12,7 @@
 
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
 import { loadSystemsJson, systemsAssetBase } from './windField.js'
-import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
+import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, traceMixFacts, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
 import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
 
 // Per-layer  +  (24×24 monoline, stroke=currentColor) come from
@@ -1480,9 +1480,12 @@ export const LAYERS = [
         big: ev.value > 0 ? `${tonnesWord(ev.value)} ${unit}` : 'no estimate',
         alt: `in ${monthTxt}`,
         chartSvg: (ev.series ? seriesChartSvg(ev.series, ev.months, ev.monthIdx, sectorStyle(ev.sec).color) : '') +
-          `<div id="${mixId}" class="trace-mix" style="font-size:12px;line-height:1.5;margin:4px 0 2px;opacity:.9">Loading everything this site emits…</div>`,
+          `<div id="${mixId}" class="trace-mix" style="font-size:12.5px;line-height:1.55;margin:4px 0 6px">Loading everything this site emits…</div>`,
         meta: `${/^[aeiou]/i.test(what) ? 'An' : 'A'} ${what}${place}.${scope}${yearTotal ? ` About ${yearTotal}${ev.b ? '' : `, #${ev.r.toLocaleString()} of the ${(ev.measureTotal || ev.total).toLocaleString()} sources with ${mi.label.toLowerCase()} on this map`}.` : ''}${owner}${cap}${conf}${modeled} Model estimates from satellite and activity data, not measurements.${air}${late}`,
-        ai: `Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), measure ${g} (${mi.unit}): ${ev.value ?? 'n/a'} t in ${ev.month}, ${ev.y} t in ${ev.fullYear}, rank ${ev.r} of ${ev.measureTotal || ev.total} sources for this measure; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}${/shipping$/.test(ev.sub) ? '; port figure = voyage emissions split half to departure and half to arrival port, not port operations' : ''}${/aviation$/.test(ev.sub) ? '; airport figure = flight fuel combustion, excludes ground operations' : ''}${mi.group === 'air' ? '; air pollutant = Tier 1 estimate from national per-industry ratios, not a facility measurement' : ''}. Modeled estimate, not a measurement.`,
+        // Exact per-gas figures when the detail record is already here (it
+        // usually is — hovering fetches it), so the narrator never guesses
+        // what the CO₂e figure contains.
+        ai: `${d ? `Every gas Climate TRACE reports for this site in ${ev.month} (tonnes; a gas missing from this list is NOT in the estimate — never attribute any of the figure to it): ${JSON.stringify(traceMixFacts(d, ev.month))}. ` : ''}Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), measure ${g} (${mi.unit}): ${ev.value ?? 'n/a'} t in ${ev.month}, ${ev.y} t in ${ev.fullYear}, rank ${ev.r} of ${ev.measureTotal || ev.total} sources for this measure; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}${/shipping$/.test(ev.sub) ? '; port figure = voyage emissions split half to departure and half to arrival port, not port operations' : ''}${/aviation$/.test(ev.sub) ? '; airport figure = flight fuel combustion, excludes ground operations' : ''}${mi.group === 'air' ? '; air pollutant = Tier 1 estimate from national per-industry ratios, not a facility measurement' : ''}. Modeled estimate, not a measurement.`,
         links: [{ href: TRACE_URL, label: `Source: Climate TRACE ${TRACE_RELEASE} ↗` }],
       }
     },

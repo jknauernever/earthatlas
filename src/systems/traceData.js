@@ -322,36 +322,82 @@ export const MEASURE_SUFFIX = {
   co2e_100yr: 'CO₂e', co2e_20yr: 'CO₂e (20-year)', co2: 'of CO₂', ch4: 'of methane', n2o: 'of nitrous oxide',
   pm2_5: 'of PM2.5', so2: 'of SO₂', nox: 'of NOx', co: 'of carbon monoxide',
 }
-const MIX_ROWS = [
-  ['climate', 'Warming the planet', ['co2e_100yr', 'co2', 'ch4', 'n2o']],
-  ['air', 'Air people breathe (rough estimates)', ['pm2_5', 'so2', 'nox', 'co']],
-]
+/** One measure's value for the month `ym` from a decoded detail record
+ * (null = not reported). */
+function mixValue(rec, ym, g) {
+  const idx = traceIndex?.months?.indexOf(ym) ?? -1
+  if (idx < 0 || !rec) return null
+  const s = g === PRIMARY_MEASURE ? { m0: rec.m0, e: rec.e } : rec.g?.[g]
+  if (!s) return null
+  const i = idx - s.m0
+  const v = i >= 0 && i < s.e.length ? s.e[i] : null
+  return v == null || !Number.isFinite(v) ? null : v
+}
+
+/** Every measure for one site-month, for the popup narrator (exact numbers,
+ * so it never guesses which gases are in the CO₂e figure). */
+export function traceMixFacts(rec, ym) {
+  const out = {}
+  for (const g of Object.keys(MEASURE_INFO)) {
+    const v = mixValue(rec, ym, g)
+    if (v != null) out[g] = v
+  }
+  return out
+}
+
+// Under a tonne, kilograms (a coal mine's 0.0013 t of N₂O is 1.3 kg, not "0.0 t").
+const tw = (v) => (v == null ? '—' : v === 0 ? '0 t'
+  : v < 1 ? `${Number((v * 1000).toPrecision(2)).toLocaleString('en-US')} kg`
+    : tonnesWord(v).replace(' tonnes', ' t'))
 
 /**
- * Every measure the detail record has, for the month on screen — HTML built
- * only from numbers and our fixed labels (no upstream text), so it's safe to
- * insert. The measure the map is showing is emphasized. Tonnes of different
- * gases aren't comparable heat-wise, so this is a list, not bars.
+ * "Everything this site emits" for the month on screen, as the facility
+ * card's breakdown: labeled rows per gas and per air pollutant, the measure
+ * the map shows in bold. Built ONLY from numbers and our fixed labels (no
+ * upstream text), so it is safe to insert.
+ *
+ * Bars: tonnes of different gases aren't comparable heat-wise, so there are
+ * no per-gas tonnage bars. The one bar shows what IS comparable — how this
+ * site's CO₂e splits between CO₂ and the other greenhouse gases (CO₂e − CO₂,
+ * Climate TRACE's own totals, no GWP arithmetic of ours).
  */
 export function traceMixHtml(rec, ym, current) {
-  const idx = traceIndex?.months?.indexOf(ym) ?? -1
-  if (idx < 0) return ''
-  const valueOf = (g) => {
-    if (g === PRIMARY_MEASURE) { const i = idx - rec.m0; return i >= 0 && i < rec.e.length ? rec.e[i] : null }
-    const s = rec.g?.[g]
-    if (!s) return null
-    const i = idx - s.m0
-    return i >= 0 && i < s.e.length ? s.e[i] : null
-  }
+  if (!rec || (traceIndex?.months?.indexOf(ym) ?? -1) < 0) return ''
+  const v = (g) => mixValue(rec, ym, g)
+  const twenty = current === 'co2e_20yr'
+  const co2eKey = twenty ? 'co2e_20yr' : 'co2e_100yr'
   const base = current === 'co2e_20yr' ? 'co2e_100yr' : current
-  const groups = MIX_ROWS.map(([key, title, gs]) => {
-    const items = gs.map((g) => [g, valueOf(g)]).filter(([, v]) => v != null && v > 0)
-    if (!items.length) return ''
-    const li = items.map(([g, v]) => {
-      const on = g === base
-      return `<span style="white-space:nowrap;${on ? 'font-weight:700' : ''}">${MEASURE_INFO[g].short} ${tonnesWord(v).replace(' tonnes', ' t')}</span>`
-    }).join(' · ')
-    return `<div><span style="opacity:.7">${title}:</span> ${li}</div>`
-  }).filter(Boolean)
-  return groups.length ? groups.join('') : '<div style="opacity:.7">No other measures for this site this month.</div>'
+  const row = (g, label) => {
+    const val = v(g)
+    if (val == null) return ''
+    const on = g === base || (g === 'co2e_100yr' && twenty)
+    return `<div style="display:flex;justify-content:space-between;gap:10px;${on ? 'font-weight:700' : ''}">` +
+      `<span>${label}</span><span style="white-space:nowrap">${tw(val)}</span></div>`
+  }
+  const head = (t, tag) => `<div style="margin:8px 0 3px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.6">${t}${tag ? ` <span style="text-transform:none;letter-spacing:0;font-weight:500">· ${tag}</span>` : ''}</div>`
+
+  // Warming the planet
+  const co2e = v(co2eKey), co2 = v('co2'), ch4 = v('ch4'), n2o = v('n2o')
+  let climate = row(co2eKey, twenty ? 'All greenhouse gases (CO₂e, 20-yr)' : 'All greenhouse gases (CO₂e)') +
+    row('co2', 'Carbon dioxide') + row('ch4', 'Methane') + row('n2o', 'Nitrous oxide')
+  if (co2e > 0 && co2 != null) {
+    const pCo2 = Math.max(0, Math.min(1, co2 / co2e))
+    const pct = (x) => (x > 0 && x < 0.005 ? '<1' : x > 0.995 && x < 1 ? '>99' : String(Math.round(x * 100)))
+    climate += `<div style="display:flex;height:7px;border-radius:4px;overflow:hidden;margin:5px 0 2px;background:#e5e7eb" role="img" aria-label="CO₂ ${pct(pCo2)}% of this site’s warming">` +
+      `<span style="width:${(pCo2 * 100).toFixed(1)}%;background:#ea580c"></span><span style="flex:1;background:#7c3aed"></span></div>` +
+      `<div style="font-size:11px;opacity:.75"><span style="color:#ea580c">■</span> CO₂ ${pct(pCo2)}% · <span style="color:#7c3aed">■</span> methane &amp; nitrous oxide ${pct(1 - pCo2)}% of this site’s warming${twenty ? ' (20-year view)' : ''}</div>`
+  }
+  if (co2e != null && ch4 == null && n2o == null) {
+    climate += '<div style="font-size:11px;opacity:.75;margin-top:2px">Climate TRACE gives no separate methane or nitrous-oxide figure for this site.</div>'
+  }
+
+  // Air people breathe
+  const air = row('pm2_5', 'Fine particles (PM2.5)') + row('so2', 'Sulfur dioxide') + row('nox', 'Nitrogen oxides') + row('co', 'Carbon monoxide')
+
+  const parts = []
+  if (climate) parts.push(head('Warming the planet') + climate)
+  if (air) parts.push(head('Air people breathe', 'rough estimates') + air)
+  return parts.length
+    ? `<div style="border-top:1px solid rgba(0,0,0,.1);margin-top:6px">${parts.join('')}</div>`
+    : '<div style="opacity:.7">No other measures for this site this month.</div>'
 }

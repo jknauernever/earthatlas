@@ -857,10 +857,14 @@ export default function SystemsApp() {
       let coverageWanted = false
       let fireLineDone = false
       const aiItems = [] // structured copies of each section, for the popup narration
+      let wideCard = false // a section with its own full card layout (Emission sources)
       const sectionHtml = (p) => {
         // `ai` carries the full technical facts for the narrator even when
         // the visible text is plain-language.
         aiItems.push({ what: p.head, value: `${p.big} (${p.alt})`, detail: p.ai || p.meta })
+        // A layer-built card (traceCard.js — escapes all upstream text itself)
+        // replaces the standard head/big/meta layout and widens the popup.
+        if (p.cardHtml) { wideCard = true; return `<div class="${styles.popupSection}">${p.cardHtml}</div>` }
         const links = p.links || (p.link ? [p.link] : [])
         return `<div class="${styles.popupSection}">` +
         `<div class="${styles.popupHead}">${escapeHtml(p.head)}</div>` +
@@ -1140,15 +1144,33 @@ export default function SystemsApp() {
       popupRef.current?.remove()
       // No fixed anchor at birth: fitPopupToMap re-anchors to the roomier
       // side right after mount and caps the height to that room.
-      popupRef.current = new mapboxgl.Popup({ offset: 10, maxWidth: '290px' })
+      popupRef.current = new mapboxgl.Popup({ offset: 10, maxWidth: wideCard ? 'min(460px, calc(100vw - 24px))' : '290px' })
         .setLngLat(e.lngLat)
         .setHTML(
           `<div class="${styles.popup}">${sections.join('')}` +
-          `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div></div>`,
+          // Facility cards carry their own sourced "why it matters here"; the
+          // narrator kept inventing specifics there (cargo types, rail links),
+          // so they get no AI paragraph. Other layers keep theirs.
+          (wideCard ? '' : `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div>`) + '</div>',
         )
         .addTo(map)
+      if (wideCard) popupRef.current.getElement()?.querySelector(`.${styles.popup}`)?.style.setProperty('width', 'min(460px, calc(100vw - 24px))')
       fitPopupToMap(popupRef.current)
       attachPopupScrollHint(popupRef.current, styles)
+      // A card that fills in after mount (Emission sources) grows the popup:
+      // re-fit and re-anchor when it says so.
+      {
+        const pp = popupRef.current
+        const onGrew = () => {
+          if (popupRef.current !== pp) return
+          fitPopupToMap(pp)
+          try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+          fitPopupToMap(pp)
+          attachPopupScrollHint(pp, styles)
+        }
+        window.addEventListener('systems-popup-grew', onGrew)
+        pp.once('close', () => window.removeEventListener('systems-popup-grew', onGrew))
+      }
       // Phones: the replay bar shrinks to a pill while a popup is open so the
       // two never overlap; restored on close.
       setPopupOpen(true)
@@ -1207,6 +1229,7 @@ export default function SystemsApp() {
       // (by anyone) share one cached generation. Failure just removes the
       // pending line — the deterministic facts above it stand alone.
       const popup = popupRef.current
+      if (wideCard) return // no narration for facility cards (see setHTML above)
       const reqId = ++popupAiReqRef.current
       // Ground the location for the narrator: hemisphere-lettered coordinates
       // (models misread signed decimals — 4.6°E once became "near Ullapool",

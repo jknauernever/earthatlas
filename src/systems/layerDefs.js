@@ -12,6 +12,7 @@
 
 import { fetchQuakes, magColor, MAG_RAMP } from '../quakes/quakesService.js'
 import { loadSystemsJson, systemsAssetBase } from './windField.js'
+import { traceCardShell, traceCardBody, displayName } from './traceCard.js'
 import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, traceMixFacts, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
 import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
 
@@ -1437,56 +1438,44 @@ export const LAYERS = [
     legendNote: 'Each disc is one facility; its area shows what it emitted in the month on the time bar, for the measure picked at the top of the map (all greenhouse gases as CO₂e by default, or one gas or air pollutant). World view shows the biggest emitters of that measure — smaller sites appear as you zoom in. Dashed rings are whole oil & gas basins, not single sites. These are Climate TRACE model estimates from satellite and activity data, not direct measurements; each popup shows its confidence rating.',
     explain:
       'Every disc is a real facility — power plants, steel mills, refineries, mines, airports, ports, landfills, cattle operations — sized by the greenhouse gases it put out that month. Press play to watch four and a half years of industry breathe: plants ramping up in winter, airports recovering after 2021, coal units going quiet.',
-    popupEvent(ev) {
-      const what = subsectorWord(ev.sub)
-      const d = peekTraceDetail(ev.id, ev.shards)
+    // The facility card (traceCard.js). `ctx` is passed only by the click
+    // path — the hover tooltip calls this too (head/big/alt only), and must
+    // not trigger the card's neighbour fetches on every mouse move.
+    popupEvent(ev, ctx) {
       const g = ev.measure || 'co2e_100yr'
       const mi = measureInfo(g)
       const unit = MEASURE_SUFFIX[g] || 'CO₂e'
-      const monthTxt = monthWord(ev.month)
-      const yearTotal = ev.y > 0 ? `${tonnesWord(ev.y)} ${unit} across ${ev.fullYear}` : null
-      const place = ev.country ? ` in ${ev.country}` : ''
-      const owner = ev.o ? ` Owned by ${ev.o}.` : ''
-      const cap = ev.k ? ` Capacity: ${ev.k}.` : ''
-      const conf = ev.q ? ` Climate TRACE rates its confidence in this site’s estimate as ${CONFIDENCE_WORDS[ev.q] || ev.q}.` : ''
-      // Cattle operations say how each was found and counted ('reported' vs
-      // Climate TRACE's own synthetic/AI estimate, e.g. 'ct_syn_ai').
-      const modeled = d?.o?.some(([def, v]) => /approach/i.test(def) && /(^|_)syn(_|$)|(^|_)ai$|synthetic/i.test(v))
-        ? ' This operation’s location or herd size was estimated by Climate TRACE’s own model, not taken from a registry.'
-        : ''
-      // What the number is, for sites whose figure isn't "smoke from here"
-      // (docs/CLIMATETRACE_FACTS.md: ports, airports, basins).
-      const scope = ev.b
-        ? ' This figure covers a whole basin — every well, pipeline and flare across the region — placed at its center, not one site. Climate TRACE deliberately doesn’t publish exact oil & gas locations.'
-        : /shipping$/.test(ev.sub)
-          ? ' The figure is ship voyages to and from here: each voyage’s emissions are split half to its departure port and half to its arrival port. It isn’t the port’s own operations, and the point stands in for the whole port area, so it can sit slightly inland.'
-          : /aviation$/.test(ev.sub)
-            ? ' The figure is fuel burned by flights; the airport’s own ground operations aren’t included.'
-            : ''
-      const air = mi.group === 'air' ? ` ${AIR_CAVEAT_SHORT}` : ''
-      const late = ev.clamped ? ` (${monthTxt} is the latest month published — the data runs ~2 months behind.)` : ''
-      // "Everything this site emits" fills in when the detail record arrives
-      // (usually already fetched on hover). Numbers + our labels only.
-      const mixId = `trace-mix-${ev.id}-${Date.now()}`
-      const fill = (rec) => {
-        const el = typeof document !== 'undefined' && document.getElementById(mixId)
-        if (el) el.innerHTML = rec ? traceMixHtml(rec, ev.month, g) : ''
+      const what = subsectorWord(ev.sub)
+      const d = peekTraceDetail(ev.id, ev.shards)
+      const bodyId = `trace-card-${ev.id}-${Date.now()}`
+      if (ctx && typeof document !== 'undefined') {
+        traceCardBody(ev).then((res) => {
+          const el = document.getElementById(bodyId)
+          if (!el) return
+          if (!res) { el.innerHTML = ''; return }
+          el.innerHTML = res.body
+          const rest = el.closest('[data-trace-card]')?.querySelector('[data-trace-rest]')
+          if (rest) rest.innerHTML = res.rest
+          const ident = el.closest('[data-trace-card]')?.querySelector('[data-trace-ident]')
+          if (ident) ident.innerHTML = res.ident
+          window.dispatchEvent(new CustomEvent('systems-popup-grew'))
+        }).catch(() => { const el = document.getElementById(bodyId); if (el) el.innerHTML = '' })
       }
-      if (d) setTimeout(() => fill(d), 0)
-      else loadTraceDetail(ev.id, ev.shards).then(fill).catch(() => fill(null))
+      const facts = d ? traceMixFacts(d, ev.month) : null
       return {
-        // Basin names arrive as "Country_Basin_Play" — make them readable.
-        head: `${ev.n.replace(/_/g, ' · ')} — ${what}`,
+        head: `${displayName(ev.n)} — ${what}`,
         big: ev.value > 0 ? `${tonnesWord(ev.value)} ${unit}` : 'no estimate',
-        alt: `in ${monthTxt}`,
-        chartSvg: (ev.series ? seriesChartSvg(ev.series, ev.months, ev.monthIdx, sectorStyle(ev.sec).color) : '') +
-          `<div id="${mixId}" class="trace-mix" style="font-size:12.5px;line-height:1.55;margin:4px 0 6px">Loading everything this site emits…</div>`,
-        meta: `${/^[aeiou]/i.test(what) ? 'An' : 'A'} ${what}${place}.${scope}${yearTotal ? ` About ${yearTotal}${ev.b ? '' : `, #${ev.r.toLocaleString()} of the ${(ev.measureTotal || ev.total).toLocaleString()} sources with ${mi.label.toLowerCase()} on this map`}.` : ''}${owner}${cap}${conf}${modeled} Model estimates from satellite and activity data, not measurements.${air}${late}`,
-        // Exact per-gas figures when the detail record is already here (it
-        // usually is — hovering fetches it), so the narrator never guesses
-        // what the CO₂e figure contains.
-        ai: `${d ? `Every gas Climate TRACE reports for this site in ${ev.month} (tonnes; a gas missing from this list is NOT in the estimate — never attribute any of the figure to it): ${JSON.stringify(traceMixFacts(d, ev.month))}. ` : ''}Climate TRACE ${TRACE_RELEASE} facility estimate: ${ev.n} (${ev.sub}, ${ev.c}), measure ${g} (${mi.unit}): ${ev.value ?? 'n/a'} t in ${ev.month}, ${ev.y} t in ${ev.fullYear}, rank ${ev.r} of ${ev.measureTotal || ev.total} sources for this measure; owner ${ev.o || 'unknown'}; capacity ${ev.k || 'n/a'}; confidence ${ev.q || 'n/a'}${ev.b ? '; basin-level aggregate, not a single facility' : ''}${/shipping$/.test(ev.sub) ? '; port figure = voyage emissions split half to departure and half to arrival port, not port operations' : ''}${/aviation$/.test(ev.sub) ? '; airport figure = flight fuel combustion, excludes ground operations' : ''}${mi.group === 'air' ? '; air pollutant = Tier 1 estimate from national per-industry ratios, not a facility measurement' : ''}. Modeled estimate, not a measurement.`,
-        links: [{ href: TRACE_URL, label: `Source: Climate TRACE ${TRACE_RELEASE} ↗` }],
+        alt: `in ${monthWord(ev.month)}`,
+        wide: true,
+        cardHtml: traceCardShell(ev, bodyId),
+        // Narrator facts. The card already shows the numbers, the health
+        // notes and the neighbours; the narrator adds local context only.
+        ai: `Climate TRACE ${TRACE_RELEASE} facility card for ${displayName(ev.n)} (${ev.sub}, ${ev.country || ev.c}), month ${ev.month}. ` +
+          (facts ? `Every gas Climate TRACE reports here that month, tonnes (a gas NOT listed is not in the estimate — never attribute any of the figure to it): ${JSON.stringify(facts)}. ` : '') +
+          (ev.nearby?.length ? `Other sources within 4 km: ${ev.nearby.slice(0, 4).map((x) => `${displayName(x.n)} (${x.sub}, ${x.km.toFixed(1)} km)`).join('; ')}. ` : '') +
+          `Estimate confidence: ${ev.q || 'n/a'}.${ev.b ? ' Basin-level aggregate, not a single facility.' : ''}${/shipping$/.test(ev.sub) ? ' Port figure = ship voyage emissions split half to departure and half to arrival port, not port operations.' : ''}${/aviation$/.test(ev.sub) ? ' Airport figure = flight fuel, excludes ground operations.' : ''} ` +
+          'The card ALREADY shows the tonnages, the car comparison, the gas shares, health effects of each pollutant, and the neighbour list — do not repeat any of them. Add only what the card cannot: what this place is and who lives or works around it, in plain words, using only these facts and well-known geography. No statistics that are not in these facts.',
+        links: [],
       }
     },
   },

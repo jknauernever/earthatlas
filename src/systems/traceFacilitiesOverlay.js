@@ -21,6 +21,7 @@
 
 import { getGlobeGeometry } from './globeGeom.js'
 import { traceTileUrl, sectorStyle, decodeMonth, PRIMARY_MEASURE, availableMeasures } from './traceData.js'
+import { nearbyOf } from './traceCard.js'
 
 const SRC = 'trace-facilities'
 const PROBE = 'trace-facilities-probe'
@@ -198,16 +199,26 @@ export class TraceFacilitiesOverlay {
   }
 
   eventFor(it) {
+    // Co-located twins (e.g. a port's domestic + international entries) are
+    // one place to a reader: one card, summed series. Neighbours within 4 km
+    // feed the card's "why it matters here".
+    const { twins, nearby } = nearbyOf(it, this._list)
     const series = []
-    for (let i = 0; i < this.nMonths; i++) series.push(Number.isNaN(it.vals[i]) ? null : it.vals[i])
+    for (let i = 0; i < this.nMonths; i++) {
+      let v = Number.isNaN(it.vals[i]) ? null : it.vals[i]
+      for (const tw of twins) { const x = tw.vals[i]; if (!Number.isNaN(x)) v = (v || 0) + x }
+      series.push(v)
+    }
     return {
       ...it,
       vals: undefined,
+      twins: twins.map(({ id, sub }) => ({ id, sub })),
+      nearby,
       series,
       month: this.index.months[this._mi],
       months: this.index.months,
       monthIdx: this._mi,
-      value: Number.isNaN(it.vals[this._mi]) ? null : it.vals[this._mi],
+      value: series[this._mi],
       clamped: this._clamped,
       latest: this._mi === this.nMonths - 1,
       fullYear: this.index.fullYear,

@@ -1,0 +1,157 @@
+{
+"enteric-fermentation-cattle-operation": {
+"label": "Cattle operation",
+"method": "Methane emissions were estimated by identifying individual cattle operations using satellite imagery and AI. Once identified, the cattle operation's area size was used to predict total head of cattle and combined with the predicted manure management practices to estimate emissions from 2021 onwards till the current year. For country-level methane emissions, FAOSTAT and USDA animal count data was used for years 2015-2022 with IPCC emission factors with the remaining years projected forward.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Agriculture"
+},
+"manure-management-cattle-operation": {
+"label": "Cattle feedlot",
+"method": "Methane and nitrous oxide emissions were estimated by identifying individual cattle operations as well as the presence of manure lagoons using satellite imagery and AI. Once identified, the cattle operation's area size was used to predict total head of cattle and combined with the predicted manure management practices to estimate emissions from 2021 onwards till the current year. For country-level methane emissions, FAOSTAT and USDA animal count data was used for years 2015-2022 with IPCC emission factors with the remaining years projected forward.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Agriculture"
+},
+"domestic-wastewater-treatment-and-discharge": {
+"label": "Wastewater",
+"method": "Domestic wastewater treatment plants (WWTPs) emissions were estimated by combining reported data from the Hydrowaste database with WWTPs verified using a satellite imagery and machine learning algorithms. Once identified, emissions were estimated based on the IPCC national greenhouse gas inventory guidelines. Country-level emissions were estimated by using population data for each country and disaggregating them into different wastewater treatment pathways using the WHO/JMP - WASH dataset and combining them with standard IPCC emissions factors, climate zone data and WWTP treatment technology type from Hydrowaste.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste"
+},
+"food-beverage-tobacco": {
+"label": "Food beverages and tobacco",
+"method": "Facilities information was obtained from Open Supply Hub. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using UNIDO statistics, EDGAR and CEDS.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"solid-waste-disposal": {
+"label": "Disposal site",
+"method": "Solid waste disposal methane emissions are directly republished from self-reported facility-level datasets where available. Where unavailable, methane emissions are estimated through a Bayesian hierarchical regression model using waste quantities as its predictor if known, or using land area to predict both incoming waste and consequent emissions if waste data are unavailable. Country-level emissions from EDGAR, except in cases where the combined total of the landfill-level emissions exceeded the EDGAR-estimate.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste"
+},
+"electricity-generation": {
+"label": "Power plant",
+"method": "Power sector emissions are estimated by first assembling a global geolocated inventory of power plants, generation, and metered emissions data. Machine learning models then predict power plant generation from satellite images. These predictions are aggregated and combined with available generation data and carbon intensity factors to derive emissions estimates.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Power"
+},
+"textiles-leather-apparel": {
+"label": "Textiles leather and apparel",
+"method": "Facilities were obtained from Open Supply Hub. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using UNIDO statistics, EDGAR and CEDS.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"domestic-shipping": {
+"label": "Domestic shipping",
+"method": "Shipping estimates are estimated using Automatic Identification Systems (AIS) transmissions from vessels, which is combined with vessel characteristics. The estimation method is based on audited emissions reported to the European Union. Emissions then are assigned and aggregated to the corresponding port based on the port of departure and port of arrival of ship, half the emissions for a voyage are assigned to the arrival and departure ports respectively.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2023/Transportation"
+},
+"international-shipping": {
+"label": "International shipping",
+"method": "Shipping estimates are estimated using Automatic Identification Systems (AIS) transmissions from vessels, which is combined with vessel characteristics. The estimation method is based on audited emissions reported to the European Union. Emissions then are assigned and aggregated to the corresponding port based on the port of departure and port of arrival of ship, half the emissions for a voyage are assigned to the arrival and departure ports respectively.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation"
+},
+"water-reservoirs": {
+"label": "Water reservoir",
+"method": "Water reservoir emissions were estimated by combining data from reservoir databases such as HydroLAKES and GraND, along with other attributes on climatic zone, weather and elevation. Emissions factors were taken from the IPCC National Greenhouse Gas Inventory guidelines.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Forestry%20and%20Land%20Use%20Change"
+},
+"domestic-aviation": {
+"label": "Domestic Aviation",
+"method": "Historical flight status data from OAG for all passenger and freight flights were combined with the International Civil Aviation Organisation (ICAO)’s methodology to estimate emissions from flights within one country between 2015 to the current year. Emissions are then assigned and aggregated to the arrival and departure airports.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation"
+},
+"coal-mining": {
+"label": "Coal mine",
+"method": "Emission are derived from Global Energy Monitor's coal mine tracker that provides mine-level information including estimated production, gas content and other relevant fields.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations"
+},
+"international-aviation": {
+"label": "International Aviation",
+"method": "Historical flight status data from OAG for all passenger and freight flights is combined with the International Civil Aviation Organisation (ICAO)’s methodology to estimate emissions from flights within one country between 2015 to 2022.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Transportation"
+},
+"cement": {
+"label": "Cement plant",
+"method": "Cement emissions from clinker production are estimated by combining modeling with satellite imagery and plant-level capacity to generate asset-level cement production. The facility-level cement production values are calibrated against country-level production. Finally, plant-level emission factors are applied to derive total emissions. Country level emissions are estimated by aggregated all assets within the country and scaled to account for missing assets.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+},
+"lime": {
+"label": "Lime",
+"method": "Facilities were obtained from public datasets and other sources. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using USGS statistics, EDGAR and CEDS.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"industrial-wastewater-treatment-and-discharge": {
+"label": "Industrial wastewater treatment and discharge",
+"method": "Emissions were estimated by using Climate TRACE data for steel and paper and pulp activity data along with IPCC methodology for estimating industrial wastewater emissions. Country-level emission were estimated using Climate TRACE activity data for paper and pulp, steel, petroleum refining and petrochemicals, and FAOSTAT activity data for all other industries.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Waste"
+},
+"iron-and-steel": {
+"label": "Steel plant",
+"method": "Steel emission estimates are modeled separately for two subgroups: (1) Blast furnace, basic oxygenation furnace, and open hearth furnace plants that are modeled with satellite imagery and plant-level capacity to generate facility-level production calibrated against country-level production; and (2) electric furnace plants use a disaggregation model to compute their national capacity share. Country level emissions are estimated by aggregated all assets within the country and scaled to account for missing assets.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+},
+"copper-mining": {
+"label": "Copper mine",
+"method": "Copper-mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2023. Where available asset level data, data is aggregated from 2020 to 2023. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction"
+},
+"oil-and-gas-production": {
+"label": "Oil and gas field",
+"method": "Oil and gas field- and basin-level carbon dioxide and methane emissions are estimated with the Oil Production Greenhouse Gas Emissions Estimator (OPGEE) Model. Oil refining carbon dioxide and methane emissions are estimated with the Petroleum Refinery Life Cycle Inventory Model (PRELIM) Model. Inputs include a number of oil and gas field characteristics, including production volumes, gas content and compositions, oil assays, and satellite-derived flaring volumes. Field-level estimates are summed and scaled to country-level on an annual basis.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations"
+},
+"oil-and-gas-transport": {
+"label": "Oil and gas transport",
+"method": "Oil and gas field- and basin-level carbon dioxide and methane emissions are estimated with the Oil Production Greenhouse Gas Emissions Estimator (OPGEE) Model. Inputs include a number of oil and gas field characteristics, including production volumes, gas content and compositions, oil assays, and satellite-derived flaring volumes. Field-level estimates are summed and scaled to country-level on an annual basis.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations"
+},
+"iron-mining": {
+"label": "Iron mine",
+"method": "Iron mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2022. Where available asset level data, data is aggregated from 2020 to 2022. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction"
+},
+"oil-and-gas-refining": {
+"label": "Refinery",
+"method": "Oil refining emissions are estimated with the Petroleum Refinery Life-Cycle Inventory Model (PRELIM). PRELIM estimates energy use and greenhouse gas emissions associated with processing various crude oil types for different refinery configurations. Inputs include refinery locations, configurations, and crude refining throughputs to generate GHG intensities and absolute emissions by country.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Fossil%20Fuel%20Operations"
+},
+"glass": {
+"label": "Glass",
+"method": "Facilities were obtained from public datasets and other sources. Emissions were estimated at each plant by estimating total production and total sectoral emissions within a country using USGS statistics, EDGAR and CEDS.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"chemicals": {
+"label": "Chemicals",
+"method": "Emissions from the manufacture of soda ash, methanol and ammonia were estimated by using, first, a disagregation model to characterize the production levels for each plant. Then the production quantity for the plant was multiplied by the proper emissions factors in order to generate emissions estimates.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+},
+"other-chemicals": {
+"label": "Other chemicals",
+"method": "Emissions were estimated by spatially disaggregating country-level CEDS emissions estimates using proxies like night light intensity.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"other-metals": {
+"label": "Other metals",
+"method": "Emissions were estimated by spatially disaggregating country-level CEDS emissions estimates using proxies like night lights.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"other-manufacturing": {
+"label": "Manufacturing",
+"method": "Self reported plant-level emissions data were gathered from various governments sites for few selected countries (Canada, USA, Israel, Europe). Climate TRACE manufacturing sector emissions were subtracted from EDGAR manufacturing sector emissions and the remaining total has been published as 'other-manufacturing' for the years that EDGAR has emissiond data. All other years have been forward-filled.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Other%20Sectors"
+},
+"pulp-and-paper": {
+"label": "Pulp and paper",
+"method": "Emissions from the production of chemical, semi-chemical and mechanical pulp were estimated by determining each individual plant’s contribution to the national pulp capacity, which was used to estimate the plant’s share of national production. Relevant emissions factors were applied to derive emissions for a given year.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+},
+"aluminum": {
+"label": "Aluminum plant",
+"method": "Aluminum emissions were estimated by determining each individual plant’s contribution to the national aluminum capacity, which was used to estimate the plant’s share of country aluminum production. Relevant emissions factors for the plant were applied to derive emissions for a given year.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+},
+"bauxite-mining": {
+"label": "Bauxite mine",
+"method": "Bauxite mining emissions are derived from annual country-level production (2010-2019) and forecasted through 2023. Where available asset level data, data is aggregated from 2020 to 2023. InSAR analysis was used for some assets where production data wasn’t available, by developing scaling factors from assets where we had both InSAR and reported production values. Emission factors were calculated from reported CO2 emissions and production statistics, then averaged by country or region. Finally, emissions factors are combined with activity data to estimate total emission.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Mineral%20Extraction"
+},
+"petrochemical-steam-cracking": {
+"label": "Petrochemicals",
+"method": "Plant-level petrochemical emissions were calculated by employing tailored emissions factors, estimated feedstock compositions, and projected outputs for select individual asset and major countries. Specifically, for plants situated in the United States, Europe, and China, this method leverages data on asset-level ethylene capacity, utilization rates, and regional emissions factors to derive more precise estimates. Country level emissions for the rest of the world were calculated based on ethylene capacity data.",
+"url": "https://github.com/climatetracecoalition/methodology-documents/tree/main/2025/Manufacturing%20and%20Industrial%20Processes"
+}
+}

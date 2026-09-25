@@ -67,8 +67,9 @@ const TRACK_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 
 // A picked ship's tracks: bold cyan (the Ship identity accent) over a dark casing,
 // so they read through any density of yellow and on satellite (Josh, 2026-09-25).
 const OWN_COLOR = '#22d3ee'
-const OWN_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 2.2, 10, 3.2, 14, 4.5]
-const OWN_CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 4.2, 10, 5.8, 14, 7.5]
+// Halved 2026-09-25 (Josh: "too wide… cut in half").
+const OWN_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 1.1, 10, 1.6, 14, 2.25]
+const OWN_CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 2.1, 10, 2.9, 14, 3.75]
 const TRACK_MONTH_CAP = 12
 const TILES_BASE = typeof window !== 'undefined' ? window.location.origin : ''
 const trackTileUrl = (ym) =>

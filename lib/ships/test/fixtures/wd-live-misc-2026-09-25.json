@@ -1,0 +1,2757 @@
+{
+ "request": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q52331308%7CQ135414827%7CQ5338367&props=info%7Clabels%7Cdescriptions%7Cclaims%7Csitelinks%2Furls&languages=en&sitefilter=enwiki&format=json&maxlag=5",
+ "retrieved_at": "2026-09-25T22:12:57.504Z",
+ "response": {
+  "entities": {
+   "Q52331308": {
+    "pageid": 53199349,
+    "ns": 0,
+    "title": "Q52331308",
+    "lastrevid": 2021690510,
+    "modified": "2023-12-01T21:57:03Z",
+    "type": "item",
+    "id": "Q52331308",
+    "labels": {
+     "en": {
+      "language": "en",
+      "value": "Horizon Kodiak"
+     }
+    },
+    "descriptions": {
+     "en": {
+      "language": "en",
+      "value": "container ship built in 1987"
+     }
+    },
+    "claims": {
+     "P31": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "e04a5d612ce0b5bbc14bd8ff04ed9c62e5b324e9",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 17210,
+          "id": "Q17210"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q52331308$647CCF93-5141-49A9-BDF8-31AE2A33EC37",
+       "rank": "normal"
+      }
+     ],
+     "P458": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P458",
+        "hash": "8dee8b2e83d38fe0d8c17d1a46ca904f46111c51",
+        "datavalue": {
+         "value": "8419166",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q52331308$5EE276B2-28FF-4207-9912-7873A969D7AA",
+       "rank": "normal"
+      }
+     ],
+     "P373": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P373",
+        "hash": "76ba5b4bb48a1c18892616750042f7f2ac5ae51b",
+        "datavalue": {
+         "value": "IMO 8419166",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q52331308$FE12A1D9-EBD7-4FDE-838C-B7CC29BB7398",
+       "rank": "normal"
+      }
+     ],
+     "P729": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P729",
+        "hash": "3a806c13a494fab23384550a395e4b0bd138a09d",
+        "datavalue": {
+         "value": {
+          "time": "+1987-00-00T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 9,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q52331308$B32838E9-507E-4D6B-A399-46446B43E649",
+       "rank": "normal"
+      }
+     ],
+     "P587": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P587",
+        "hash": "179e74c29fb6afb5f3ca55033bd9f4b04a8f2e6c",
+        "datavalue": {
+         "value": "366793000",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q52331308$0F4BE3AE-14CF-43FA-9E9E-3B36348E6283",
+       "rank": "normal"
+      }
+     ],
+     "P1448": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "2e598aa7cbe643673ba925417abfc5b59860eda7",
+        "datavalue": {
+         "value": {
+          "text": "Sea Land Kodiak",
+          "language": "en"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "cb8638f8586a74f9f8254deab9fdde682330a924",
+          "datavalue": {
+           "value": {
+            "time": "+1987-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P582": [
+         {
+          "snaktype": "value",
+          "property": "P582",
+          "hash": "21223f87fb708457f98a20c67e7c7e4eafbd0ff3",
+          "datavalue": {
+           "value": {
+            "time": "+2000-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580",
+        "P582"
+       ],
+       "id": "Q52331308$E4D1A6BC-28D7-4946-9624-FD2FC4980A7B",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "235f445f8e5cd478792f6939c4a4dde75cd3a0e0",
+        "datavalue": {
+         "value": {
+          "text": "CSX Kodiak",
+          "language": "en"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "dbfdfcd2e0d1c901a7c647aec6fcb680f8ffa81b",
+          "datavalue": {
+           "value": {
+            "time": "+2000-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P582": [
+         {
+          "snaktype": "value",
+          "property": "P582",
+          "hash": "8cf42da636603cf5e981a4fdb48bd8a5fe9892dc",
+          "datavalue": {
+           "value": {
+            "time": "+2003-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580",
+        "P582"
+       ],
+       "id": "Q52331308$EBA5F225-EAC8-40BD-9B09-A18B649846F4",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "a472a4d4b0c45403fa055e80fd8e5f264342792e",
+        "datavalue": {
+         "value": {
+          "text": "Horizon Kodiak",
+          "language": "en"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "05038d5d0fd23c067a48301252f21993a10ee995",
+          "datavalue": {
+           "value": {
+            "time": "+2003-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580"
+       ],
+       "id": "Q52331308$CC3A23FC-96D4-48CA-8944-2BA6C6C4451B",
+       "rank": "normal"
+      }
+     ],
+     "P2043": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2043",
+        "hash": "03fd39e8cec5c831d72e3eab1254087b68e03410",
+        "datavalue": {
+         "value": {
+          "amount": "+217",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q52331308$6AC8A82C-7932-49E4-A47C-DF410FCA40B1",
+       "rank": "normal"
+      }
+     ],
+     "P1093": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1093",
+        "hash": "36f976d628ae877f58f5951c4742ef3f8e31a164",
+        "datavalue": {
+         "value": {
+          "amount": "+20965",
+          "unit": "1"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q52331308$653A17EB-6CFA-4F62-904B-4FD69C1728C1",
+       "rank": "normal"
+      }
+     ],
+     "P2317": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2317",
+        "hash": "d882ca16ca9872bee53796109eb6d5027cf9a8d4",
+        "datavalue": {
+         "value": "KGTZ",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q52331308$11012DC0-A612-49F8-B8F9-853AA503B7AC",
+       "rank": "normal"
+      }
+     ],
+     "P7782": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P7782",
+        "hash": "4cc55c96d1ac735c7430fc11f56d8b3215e53f2e",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 83906878,
+          "id": "Q83906878"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q52331308$a9ba68c9-a376-462a-9a92-ceb1817fc57a",
+       "rank": "normal"
+      }
+     ],
+     "P8047": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P8047",
+        "hash": "84fa94448bbf34f070068298a120824cc7bde545",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 30,
+          "id": "Q30"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q52331308$0D202FC8-4DBA-4C79-8C70-1037F517514D",
+       "rank": "normal"
+      }
+     ],
+     "P176": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P176",
+        "hash": "d4e8356e3be34e706fdb68632a96408b71120e7c",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 20710586,
+          "id": "Q20710586"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q52331308$aac61b17-4028-8db9-e28d-9589cf9cda0a",
+       "rank": "normal"
+      }
+     ],
+     "P617": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P617",
+        "hash": "094a42b1ad4b11ff55cc5000ca9eb9127b02ede3",
+        "datavalue": {
+         "value": "737",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q52331308$531a7306-4af5-f1d0-c7d3-f0b883c82c49",
+       "rank": "normal"
+      }
+     ],
+     "P532": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P532",
+        "hash": "31df9b8c3b6b24f9fb00dc4fbf3f9e721d183d27",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 39450,
+          "id": "Q39450"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q52331308$74b37521-4b4b-7ff2-2c83-01994aae159a",
+       "rank": "normal"
+      }
+     ]
+    },
+    "sitelinks": {}
+   },
+   "Q135414827": {
+    "pageid": 129148862,
+    "ns": 0,
+    "title": "Q135414827",
+    "lastrevid": 2383169804,
+    "modified": "2025-07-23T16:18:07Z",
+    "type": "item",
+    "id": "Q135414827",
+    "labels": {},
+    "descriptions": {
+     "en": {
+      "language": "en",
+      "value": "buoy tender for the Deep-ocean Assessment and Reporting of Tsunamis system"
+     }
+    },
+    "claims": {
+     "P729": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P729",
+        "hash": "45c789035f431390c4ebcc8cce95c309eeb82f08",
+        "datavalue": {
+         "value": {
+          "time": "+1993-00-00T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 9,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q135414827$37514725-4765-0606-8c33-c9e8a6bdada5",
+       "rank": "normal"
+      }
+     ],
+     "P2043": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2043",
+        "hash": "4e9a36f454474336c86dfbe5c04bb01c37078148",
+        "datavalue": {
+         "value": {
+          "amount": "+63.55",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q135414827$ea8909e2-40cb-cd16-354d-51a5d14c805a",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "6c7123de1042b93ca7ce7af55318e792a437769f",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "904f68f2ad78cf58d538d8b3f50a091ffed7ce6e",
+            "datavalue": {
+             "value": "https://www.marinetraffic.com/de/ais/details/ships/shipid:426034/mmsi:368205000/imo:9043914/vessel:POINT_NEMO",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P31": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "cbb9bad74c557cba77b1677dca75bd96aa8e1e58",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 11903334,
+          "id": "Q11903334"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "0aeab9e143c5db97d70edf13eadfbcd2920bb5db",
+          "datavalue": {
+           "value": {
+            "time": "+1993-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P582": [
+         {
+          "snaktype": "value",
+          "property": "P582",
+          "hash": "f2a04c4f9ed9438562e6f7da0e4630b5af466a61",
+          "datavalue": {
+           "value": {
+            "time": "+2023-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580",
+        "P582"
+       ],
+       "id": "Q135414827$f90ec231-43a4-fb14-e047-a3c851895a0f",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "d1bf5e69f27fa05ad2931bc9e812c1d53e39ed5d",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 1623035,
+          "id": "Q1623035"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "e18d3ba7a83b3a85bc3146e03813224f03817c66",
+          "datavalue": {
+           "value": {
+            "time": "+2023-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580"
+       ],
+       "id": "Q135414827$100bd302-494a-4a01-f34a-4127e15d7c42",
+       "rank": "normal"
+      }
+     ],
+     "P2261": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2261",
+        "hash": "dcbe43ec16ec887db098b1e01ae09a24b76a43cd",
+        "datavalue": {
+         "value": {
+          "amount": "+13.41",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q135414827$f0c0b557-44fe-0bf4-acaf-99c46808e99a",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "6c7123de1042b93ca7ce7af55318e792a437769f",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "904f68f2ad78cf58d538d8b3f50a091ffed7ce6e",
+            "datavalue": {
+             "value": "https://www.marinetraffic.com/de/ais/details/ships/shipid:426034/mmsi:368205000/imo:9043914/vessel:POINT_NEMO",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P458": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P458",
+        "hash": "f35e7ff84c3b947a7ee4e3797ce8d8c3c3553bb7",
+        "datavalue": {
+         "value": "9043914",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q135414827$756925e3-4c3c-cfc6-a2ae-51a910d29e0e",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "68795062874db62d749ef67ac8179ddc39bff012",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "daef48d518d216dc026361de641b24987abaa57e",
+            "datavalue": {
+             "value": "https://www.vesselfinder.com/de/vessels/details/9043914",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P1476": [
+           {
+            "snaktype": "value",
+            "property": "P1476",
+            "hash": "544655479aa8cbd7bc1a0842dff82801359fb8ec",
+            "datavalue": {
+             "value": {
+              "text": "POINT NEMO, Pollution Control Vessel - Schiffsdaten und aktuelle Position - IMO 9043914 - VesselFinder",
+              "language": "en"
+             },
+             "type": "monolingualtext"
+            },
+            "datatype": "monolingualtext"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "62c426ff569f7fc97bd730cc537c30c5eacc9a18",
+            "datavalue": {
+             "value": {
+              "time": "+2025-07-19T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P1476",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P18": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P18",
+        "hash": "85ad2d42a1bace73a1f92372b78555c7dd2c02e9",
+        "datavalue": {
+         "value": "Pollution control vessel 'Point Nemo' at Northlake Shipyard, Seattle.jpg",
+         "type": "string"
+        },
+        "datatype": "commonsMedia"
+       },
+       "type": "statement",
+       "id": "Q135414827$55599fb6-4842-b21e-957b-920f81410b7c",
+       "rank": "normal"
+      }
+     ],
+     "P8047": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P8047",
+        "hash": "84fa94448bbf34f070068298a120824cc7bde545",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 30,
+          "id": "Q30"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q135414827$9eeff106-4690-e78f-9ded-42d7342b4c73",
+       "rank": "normal"
+      }
+     ],
+     "P1093": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1093",
+        "hash": "931a8e0441bb8b40774b0f3b4fdb2fd53ecb447a",
+        "datavalue": {
+         "value": {
+          "amount": "+1335",
+          "unit": "1"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q135414827$de124ccc-4eee-085e-4fe4-7627cbeb5e5c",
+       "rank": "normal"
+      }
+     ],
+     "P373": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P373",
+        "hash": "e643989f61151b63b07e091a2f3c1a8777620214",
+        "datavalue": {
+         "value": "IMO 9043914",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q135414827$c916e2b4-4b1e-dad5-b073-e329d645b588",
+       "rank": "normal"
+      }
+     ],
+     "P7782": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P7782",
+        "hash": "0d89f8c02cb43ad7fff708e7bb1c93a4273250d5",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 135414867,
+          "id": "Q135414867"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q135414827$a4c3c976-4a2d-69e6-c210-4aedd82948c4",
+       "rank": "normal"
+      }
+     ],
+     "P176": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P176",
+        "hash": "e2b3fcc17e1a5c1a1eb8cab49d72ca405c3f8f9e",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 7842860,
+          "id": "Q7842860"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P617": [
+         {
+          "snaktype": "value",
+          "property": "P617",
+          "hash": "a3a45d33f4b39691c5fb1830634224223848dbaf",
+          "datavalue": {
+           "value": "1295",
+           "type": "string"
+          },
+          "datatype": "string"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P617"
+       ],
+       "id": "Q135414827$1e971eb1-4925-eac5-4e99-4c60cc9b515d",
+       "rank": "normal"
+      }
+     ],
+     "P137": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P137",
+        "hash": "3fdb7a4f22d06878c9564da55a8520208b79b630",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 6972114,
+          "id": "Q6972114"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q135414827$742fdf7e-4de1-16ac-f778-f34cc243918a",
+       "rank": "normal"
+      }
+     ],
+     "P532": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P532",
+        "hash": "88591b7ed4023a066a3b05b317a2ff6d50a422c6",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 5083,
+          "id": "Q5083"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q135414827$7f92f580-4637-cdf2-8225-20c15984e639",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "6c2a6b0f60c91091dea4a1ab934d56f5306a78bb",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "36f4df1038d1c03c793336bbd40968471b202812",
+            "datavalue": {
+             "value": "https://www.flickr.com/photos/sailingnavies/54250134119/in/dateposted-public/",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P1448": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "98622d741acd20f6857aad0606427b1a9466851b",
+        "datavalue": {
+         "value": {
+          "text": "New Jersey Responder",
+          "language": "mul"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "0aeab9e143c5db97d70edf13eadfbcd2920bb5db",
+          "datavalue": {
+           "value": {
+            "time": "+1993-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P582": [
+         {
+          "snaktype": "value",
+          "property": "P582",
+          "hash": "f2a04c4f9ed9438562e6f7da0e4630b5af466a61",
+          "datavalue": {
+           "value": {
+            "time": "+2023-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580",
+        "P582"
+       ],
+       "id": "Q135414827$71f162e8-45d3-2bb6-f01b-f0ff0a2ef687",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "1d4f381cf5edae746991c47e108ec0bc5b304322",
+        "datavalue": {
+         "value": {
+          "text": "Point Nemo",
+          "language": "mul"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "e18d3ba7a83b3a85bc3146e03813224f03817c66",
+          "datavalue": {
+           "value": {
+            "time": "+2023-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580"
+       ],
+       "id": "Q135414827$b77113e7-446c-2861-7251-34dccd8dcf55",
+       "rank": "normal"
+      }
+     ],
+     "P289": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P289",
+        "hash": "492a8fcec33be9eac67118cdf297167addd59d52",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 135440503,
+          "id": "Q135440503"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q135414827$4150503f-4db4-ec22-c1c4-4ebe2b4e23f5",
+       "rank": "normal"
+      }
+     ]
+    },
+    "sitelinks": {}
+   },
+   "Q5338367": {
+    "pageid": 5105640,
+    "ns": 0,
+    "title": "Q5338367",
+    "lastrevid": 2534599538,
+    "modified": "2026-08-22T04:47:34Z",
+    "type": "item",
+    "id": "Q5338367",
+    "labels": {
+     "en": {
+      "language": "en",
+      "value": "Edison Chouest Offshore"
+     }
+    },
+    "descriptions": {
+     "en": {
+      "language": "en",
+      "value": "family of marine transportation companies"
+     }
+    },
+    "claims": {
+     "P31": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "326e3d41d1e9c34715e880be6e1c6a1e822e4317",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 4830453,
+          "id": "Q4830453"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$DFA18733-4842-4DF8-BF79-EBF19B51330E",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "b7fc6c9f46efeede3bf483f3a5b0c45c7be77936",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 783794,
+          "id": "Q783794"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$f3e9a8b5-41c3-11ac-4c14-806d037a41a1",
+       "rank": "normal"
+      }
+     ],
+     "P3417": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P3417",
+        "hash": "00975d4afb961ce65835dc246fa3c6a83b692ce8",
+        "datavalue": {
+         "value": "Edison-Chouest-Offshore",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$0A17967E-1AA6-45F7-AA43-4A5A1B9F0507",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "3b0a5bb3c1f955edce73740124f7d935698092ad",
+         "snaks": {
+          "P248": [
+           {
+            "snaktype": "value",
+            "property": "P248",
+            "hash": "3ac9682e789a3a3791d4fd088b265ea03abef101",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 51711,
+              "id": "Q51711"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P248"
+         ]
+        }
+       ]
+      }
+     ],
+     "P646": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P646",
+        "hash": "2a321509c7bcae78af97cd2bf3650f630929335c",
+        "datavalue": {
+         "value": "/m/0cc96wv",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$0A4351FC-6693-4874-BEA5-E841AC15A656",
+       "rank": "normal"
+      }
+     ],
+     "P373": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P373",
+        "hash": "f7f5629180179a65a916098a74ef44e2f597403a",
+        "datavalue": {
+         "value": "Edison Chouest Offshore",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q5338367$674e5515-86fd-4bf6-9193-6345ccafecff",
+       "rank": "normal"
+      }
+     ],
+     "P856": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P856",
+        "hash": "6a9065cd95b5c92322edfc36e70c841f7ae7aa7a",
+        "datavalue": {
+         "value": "https://www.chouest.com/",
+         "type": "string"
+        },
+        "datatype": "url"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P407": [
+         {
+          "snaktype": "value",
+          "property": "P407",
+          "hash": "daf1c4fcb58181b02dff9cc89deb084004ddae4b",
+          "datavalue": {
+           "value": {
+            "entity-type": "item",
+            "numeric-id": 1860,
+            "id": "Q1860"
+           },
+           "type": "wikibase-entityid"
+          },
+          "datatype": "wikibase-item"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P407"
+       ],
+       "id": "Q5338367$826888e3-49e7-f650-1f03-f765a730bb74",
+       "rank": "normal"
+      }
+     ],
+     "P571": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P571",
+        "hash": "548a1e3f72e4f1c045f62e7cf81a6065c1cf4096",
+        "datavalue": {
+         "value": {
+          "time": "+1960-00-00T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 9,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q5338367$261b7c5f-4a19-f549-1701-c6716291ba1d",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "4c13b86079bf0ce0cfe59169c249c1291ca639e7",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "39609b15f9ee7d4a286fdf3bbbb47ea97df62759",
+            "datavalue": {
+             "value": "http://www.chouest.com/about.html",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P458": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P458",
+        "hash": "ecf79ae19456eeab05791bb10d15e81adf62bf2d",
+        "datavalue": {
+         "value": "1134645",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P1810": [
+         {
+          "snaktype": "value",
+          "property": "P1810",
+          "hash": "86500c494d299c31efd67d2475f3ae3f43c31842",
+          "datavalue": {
+           "value": "Edison Chouest Offshore LLC",
+           "type": "string"
+          },
+          "datatype": "string"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P1810"
+       ],
+       "id": "Q5338367$757adce1-4b48-b43d-0eea-7fcb5d0bdcca",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P458",
+        "hash": "fe8d992dc1da9cad9cb167a298b682478e52e378",
+        "datavalue": {
+         "value": "5255363",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P1810": [
+         {
+          "snaktype": "value",
+          "property": "P1810",
+          "hash": "0b052ddf7be2c77971c4560c250d0f58497b81ae",
+          "datavalue": {
+           "value": "Offshore Service Vessels LLC",
+           "type": "string"
+          },
+          "datatype": "string"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P1810"
+       ],
+       "id": "Q5338367$16fefa48-4d66-7c0f-7368-05fb914c6af2",
+       "rank": "deprecated"
+      }
+     ],
+     "P452": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P452",
+        "hash": "eb73668aaac33839678e5f9d488c99b9e218c773",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 651658,
+          "id": "Q651658"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$D1C1867B-493F-4766-9DEB-8A7EE6B1D37C",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "cb641b5ce777a8fc22eae96aad114734bf270407",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 328,
+              "id": "Q328"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "4f11432758d987dec9a22cb3b9e1ccd4d8b561b2",
+            "datavalue": {
+             "value": "https://en.wikipedia.org/w/index.php?title=Edison_Chouest_Offshore&oldid=1178889793",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P3377": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P3377",
+        "hash": "d129a2e728782ba425fc1e539511758b895102dc",
+        "datavalue": {
+         "value": "0008627D:US",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$14abcad5-4d29-de1f-1484-380a482854ef",
+       "rank": "normal"
+      }
+     ],
+     "P1320": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1320",
+        "hash": "7145eb63b810ca6b7cf675752549aee3953b43ba",
+        "datavalue": {
+         "value": "us_la/34546673K",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$4cefa831-461e-b873-3cd6-cb4347920004",
+       "rank": "normal"
+      }
+     ],
+     "P17": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P17",
+        "hash": "be4c6eafa2984964f04be85667263f5642ba1a72",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 30,
+          "id": "Q30"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$9d07e6d3-4b07-9aba-3cf9-9e6af0bbb671",
+       "rank": "normal"
+      }
+     ],
+     "P1278": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1278",
+        "hash": "a0f913f271f068744684c5ce89ff6783a248eb0e",
+        "datavalue": {
+         "value": "MV8DJFUD8MICNMQN3139",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$670df56a-4373-60f4-cf45-a1b04081371b",
+       "rank": "normal"
+      }
+     ],
+     "P159": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P159",
+        "hash": "79f792b5e1c460f490a23037ece994316e403830",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 2450904,
+          "id": "Q2450904"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P6375": [
+         {
+          "snaktype": "value",
+          "property": "P6375",
+          "hash": "2a6a2c022a9e460ae738c33db0e00f185c0ce471",
+          "datavalue": {
+           "value": {
+            "text": "16201 E Main St, Cut Off, Louisiana 70345",
+            "language": "en"
+           },
+           "type": "monolingualtext"
+          },
+          "datatype": "monolingualtext"
+         }
+        ],
+        "P625": [
+         {
+          "snaktype": "value",
+          "property": "P625",
+          "hash": "9c8ae7fe0e6a87b9d7b3d54e2822a0f62ef00eba",
+          "datavalue": {
+           "value": {
+            "latitude": 29.476333333333333,
+            "longitude": -90.31611111111111,
+            "altitude": null,
+            "precision": 0.00002777777777777778,
+            "globe": "http://www.wikidata.org/entity/Q2"
+           },
+           "type": "globecoordinate"
+          },
+          "datatype": "globe-coordinate"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P6375",
+        "P625"
+       ],
+       "id": "Q5338367$83894804-45bb-1957-4e36-2b0336ebb1fb",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "b831d61a158b4a4baac347c3000880a8cbe97fba",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "876626f9945c1637a02b736bd107eb77c83fcc03",
+            "datavalue": {
+             "value": "https://www.chouest.com/contact.html",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P3749": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P3749",
+        "hash": "e00990f23db04f15ae94b543437f8f980f9d7b4b",
+        "datavalue": {
+         "value": "3196341667853866234",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$05a70269-4be6-d55f-6ff6-3adbae1356c4",
+       "rank": "normal"
+      }
+     ],
+     "P2002": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2002",
+        "hash": "0605676d4c54a2e736ae8c575560a420cef4867b",
+        "datavalue": {
+         "value": "edisonchouest",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P6552": [
+         {
+          "snaktype": "value",
+          "property": "P6552",
+          "hash": "1e02ec00b3357b92367e97f117e66e37b021e0b4",
+          "datavalue": {
+           "value": "38466337",
+           "type": "string"
+          },
+          "datatype": "external-id"
+         }
+        ],
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "2ca56c0d0435a63ff74b050aec1e64d8d559e482",
+          "datavalue": {
+           "value": {
+            "time": "+2009-05-07T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P3744": [
+         {
+          "snaktype": "value",
+          "property": "P3744",
+          "hash": "aa1baf4d63490f1ffbd04cac9dde9a6184902b27",
+          "datavalue": {
+           "value": {
+            "amount": "+929",
+            "unit": "1"
+           },
+           "type": "quantity"
+          },
+          "datatype": "quantity"
+         }
+        ],
+        "P585": [
+         {
+          "snaktype": "value",
+          "property": "P585",
+          "hash": "33b918698a827b2b9058c392f9163f6471f09697",
+          "datavalue": {
+           "value": {
+            "time": "+2024-06-08T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P6552",
+        "P580",
+        "P3744",
+        "P585"
+       ],
+       "id": "Q5338367$d1f7f6b0-45d0-2d23-1636-cde63ad302ff",
+       "rank": "normal"
+      }
+     ],
+     "P2397": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2397",
+        "hash": "9a94f05dc95c19f54830754a8d24eb5aca5a3217",
+        "datavalue": {
+         "value": "UC6Ox148wHU3k_Neh_eTGm7w",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P11245": [
+         {
+          "snaktype": "value",
+          "property": "P11245",
+          "hash": "3d8abf389ba652edd507c9d39cfa360667014b45",
+          "datavalue": {
+           "value": "ChouestVideo",
+           "type": "string"
+          },
+          "datatype": "external-id"
+         }
+        ],
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "e77a1c7c231f76a331d672348dff69b3db0c6cb4",
+          "datavalue": {
+           "value": {
+            "time": "+2011-11-18T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P3744": [
+         {
+          "snaktype": "value",
+          "property": "P3744",
+          "hash": "636717d53915ea87eef03706db0328c238f517e6",
+          "datavalue": {
+           "value": {
+            "amount": "+1690",
+            "unit": "1"
+           },
+           "type": "quantity"
+          },
+          "datatype": "quantity"
+         }
+        ],
+        "P5436": [
+         {
+          "snaktype": "value",
+          "property": "P5436",
+          "hash": "dbcaac906902f3ffb744cf665aceb9d318aca179",
+          "datavalue": {
+           "value": {
+            "amount": "+203486",
+            "unit": "1"
+           },
+           "type": "quantity"
+          },
+          "datatype": "quantity"
+         }
+        ],
+        "P3740": [
+         {
+          "snaktype": "value",
+          "property": "P3740",
+          "hash": "aa7a1d04bdab29408b5dd28e01d5154892878ccf",
+          "datavalue": {
+           "value": {
+            "amount": "+42",
+            "unit": "1"
+           },
+           "type": "quantity"
+          },
+          "datatype": "quantity"
+         }
+        ],
+        "P585": [
+         {
+          "snaktype": "value",
+          "property": "P585",
+          "hash": "33b918698a827b2b9058c392f9163f6471f09697",
+          "datavalue": {
+           "value": {
+            "time": "+2024-06-08T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P11245",
+        "P580",
+        "P3744",
+        "P5436",
+        "P3740",
+        "P585"
+       ],
+       "id": "Q5338367$b1bc6af4-4673-7882-7f24-ae00c9c75ee6",
+       "rank": "normal"
+      }
+     ],
+     "P4264": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P4264",
+        "hash": "9a7229981736fac437891e0076f249783cc2b607",
+        "datavalue": {
+         "value": "edison-chouest-offshore",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$6f686b49-44cf-3a61-a2d4-f2a80fc99edc",
+       "rank": "normal"
+      }
+     ],
+     "P2013": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2013",
+        "hash": "813129335b0ff0648a6dd4ea0820454d3842d39c",
+        "datavalue": {
+         "value": "edison.chouest.offshore",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P11705": [
+         {
+          "snaktype": "value",
+          "property": "P11705",
+          "hash": "325bc6fdf317c7d5804744737eccb5a1dc90d8a2",
+          "datavalue": {
+           "value": "390780587681375",
+           "type": "string"
+          },
+          "datatype": "external-id"
+         }
+        ],
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "5fab1526cdc99fe53abb5f63bf6c7e00b8d5058c",
+          "datavalue": {
+           "value": {
+            "time": "+2013-01-02T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P11705",
+        "P580"
+       ],
+       "id": "Q5338367$c4b41839-4a68-aeec-c27e-8ecaa74afe3c",
+       "rank": "normal"
+      }
+     ],
+     "P1329": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1329",
+        "hash": "1aaac34b0bacfcc1148ea9af3b54e5151b73aad7",
+        "datavalue": {
+         "value": "+1-985-601-4444",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q5338367$e7388a12-4bdc-43dd-9e12-df2838a0b809",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "b831d61a158b4a4baac347c3000880a8cbe97fba",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "876626f9945c1637a02b736bd107eb77c83fcc03",
+            "datavalue": {
+             "value": "https://www.chouest.com/contact.html",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P1454": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1454",
+        "hash": "a60b721bac497f18dd4f14d21d427fa4e53de980",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 149789,
+          "id": "Q149789"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$39697f05-4ffd-a7f9-12be-41d986a3c999",
+       "rank": "normal"
+      }
+     ],
+     "P355": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "b48d3ae0530365c2b985bde96a7377ddbc99d589",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 116689843,
+          "id": "Q116689843"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$9e755f1f-4a03-612c-0e94-a14976ad9a97",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "0804cf8219f187910605dbca64e5ab53dd8cd52b",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 126002066,
+          "id": "Q126002066"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P580": [
+         {
+          "snaktype": "value",
+          "property": "P580",
+          "hash": "68c4b4d459d1b131347d9ffde2e282a8b9a167c8",
+          "datavalue": {
+           "value": {
+            "time": "+1996-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ],
+        "P582": [
+         {
+          "snaktype": "value",
+          "property": "P582",
+          "hash": "c8a8b6cf4694be0f395a71ea8e237ded39daaac0",
+          "datavalue": {
+           "value": {
+            "time": "+2016-00-00T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 9,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P580",
+        "P582"
+       ],
+       "id": "Q5338367$3cf6d939-4ec8-80f8-3742-fdd5ae967705",
+       "rank": "deprecated"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "35d79ef7a147979a9777c182306d3c6a58dd9b09",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 126441135,
+          "id": "Q126441135"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$909fbc45-4266-a6f7-8922-3031fa4f7690",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "f88593aabbd113f46388373c95d672713c6a3f59",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 126441136,
+          "id": "Q126441136"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$880cb9d8-4088-dd11-097e-775f7dd6f688",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "f27c087cedfe6a3c304a49dfc7b7edd00710112b",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 123143878,
+          "id": "Q123143878"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$2ed2b73a-46ab-d871-4ec2-17ab0dea0f3c",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P355",
+        "hash": "de86151e9724acddb0391b8c9d510d07e09ac0d0",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 123169690,
+          "id": "Q123169690"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$f1ede759-49f8-7e67-037c-37655b6fd577",
+       "rank": "normal"
+      }
+     ],
+     "P1056": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1056",
+        "hash": "5ca8491a6e0f16214d36c052632c51fba7414aed",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 11446,
+          "id": "Q11446"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q5338367$3EE576FA-12EE-437A-8548-6F0E0ACCAED3",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "e4155314204e5cc94c5b73add2b472a5bde867cb",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 328,
+              "id": "Q328"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "60d94c30e05e02d0c492d36e389412275978960d",
+            "datavalue": {
+             "value": "https://en.wikipedia.org/w/index.php?title=Edison_Chouest_Offshore&oldid=1292054976",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P11245": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P11245",
+        "hash": "9807c215269003e9492fd95577b955ddf9305f37",
+        "datavalue": {
+         "value": "chouestvideo",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P2397": [
+         {
+          "snaktype": "value",
+          "property": "P2397",
+          "hash": "9a94f05dc95c19f54830754a8d24eb5aca5a3217",
+          "datavalue": {
+           "value": "UC6Ox148wHU3k_Neh_eTGm7w",
+           "type": "string"
+          },
+          "datatype": "external-id"
+         }
+        ],
+        "P585": [
+         {
+          "snaktype": "value",
+          "property": "P585",
+          "hash": "7cb00c1b7a68f01ad5dbcc5c4938b4a8c355b599",
+          "datavalue": {
+           "value": {
+            "time": "+2025-10-21T00:00:00Z",
+            "timezone": 0,
+            "before": 0,
+            "after": 0,
+            "precision": 11,
+            "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+           },
+           "type": "time"
+          },
+          "datatype": "time"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P2397",
+        "P585"
+       ],
+       "id": "Q5338367$09d6ae21-206b-40c1-8a00-873c23677197",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "1a9f42c21f9c34d81e9e87de7e180e41013e8ec9",
+         "snaks": {
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "9d436b4f199cd0782e3842f5c869535ec224e93a",
+            "datavalue": {
+             "value": {
+              "time": "+2025-10-21T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ],
+          "P248": [
+           {
+            "snaktype": "value",
+            "property": "P248",
+            "hash": "e6e6374525f7d680f01ff599745f367fb1369b87",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 8056784,
+              "id": "Q8056784"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P813",
+          "P248"
+         ]
+        }
+       ]
+      }
+     ],
+     "P14750": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P14750",
+        "hash": "9265bb80c5708e9cf24f0c6ae3050092224e82b4",
+        "datavalue": {
+         "value": "57BC-E2DB-0AA7-ED7F-4712",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q5338367$5F5443FB-EE7A-4943-AA1F-3644F1D9F20D",
+       "rank": "normal"
+      }
+     ]
+    },
+    "sitelinks": {
+     "enwiki": {
+      "site": "enwiki",
+      "title": "Edison Chouest Offshore",
+      "badges": [],
+      "url": "https://en.wikipedia.org/wiki/Edison_Chouest_Offshore"
+     }
+    }
+   }
+  },
+  "success": 1
+ },
+ "lookup": {
+  "Q30": {
+   "label": "United States",
+   "iso3": "USA"
+  },
+  "Q5083": {
+   "label": "Seattle",
+   "iso3": null
+  },
+  "Q17210": {
+   "label": "container ship",
+   "iso3": null,
+   "watercraft": true,
+   "offshore": false
+  },
+  "Q11446": {
+   "label": "ship",
+   "iso3": null
+  },
+  "Q39450": {
+   "label": "Anchorage",
+   "iso3": null
+  },
+  "Q149789": {
+   "label": "limited liability company",
+   "iso3": null
+  },
+  "Q651658": {
+   "label": "freight transport",
+   "iso3": null
+  },
+  "Q783794": {
+   "label": "company",
+   "iso3": null,
+   "watercraft": false,
+   "offshore": false
+  },
+  "Q1623035": {
+   "label": "buoy tender",
+   "iso3": null,
+   "watercraft": true,
+   "offshore": false
+  },
+  "Q2450904": {
+   "label": "Cut Off",
+   "iso3": null
+  },
+  "Q4830453": {
+   "label": "business",
+   "iso3": null,
+   "watercraft": false,
+   "offshore": false
+  },
+  "Q6972114": {
+   "label": "National Data Buoy Center",
+   "iso3": null
+  },
+  "Q7842860": {
+   "label": "Trinity Industries",
+   "iso3": null
+  },
+  "Q11903334": {
+   "label": "oil recovery ship",
+   "iso3": null,
+   "watercraft": true,
+   "offshore": false
+  },
+  "Q20710586": {
+   "label": "Bay Shipbuilding Company",
+   "iso3": null
+  },
+  "Q83906878": {
+   "label": "Category:Horizon Kodiak (ship, 1987)",
+   "iso3": null
+  },
+  "Q116689843": {
+   "label": "North American Shipbuilding",
+   "iso3": null
+  },
+  "Q123143878": {
+   "label": "Tampa Ship",
+   "iso3": null
+  },
+  "Q123169690": {
+   "label": "LaShip",
+   "iso3": null
+  },
+  "Q126002066": {
+   "label": "North American Fabricators",
+   "iso3": null
+  },
+  "Q126441135": {
+   "label": "Estaleiro Navship",
+   "iso3": null
+  },
+  "Q126441136": {
+   "label": "Gulf Ship",
+   "iso3": null
+  },
+  "Q135414867": {
+   "label": "Point Nemo (ship, 1993)",
+   "iso3": null
+  },
+  "Q135440503": {
+   "label": "Responder class oil recovery vessels",
+   "iso3": null
+  }
+ },
+ "lookup_raw": [
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q30"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "United States"
+   },
+   "iso3": {
+    "type": "literal",
+    "value": "USA"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q5083"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Seattle"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q17210"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "container ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q11446"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q39450"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Anchorage"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q149789"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "limited liability company"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q651658"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "freight transport"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q783794"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "company"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q1623035"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "buoy tender"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q2450904"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Cut Off"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "business"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q6972114"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "National Data Buoy Center"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q7842860"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Trinity Industries"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q11903334"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "oil recovery ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q20710586"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Bay Shipbuilding Company"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q83906878"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Category:Horizon Kodiak (ship, 1987)"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q116689843"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "North American Shipbuilding"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q123143878"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Tampa Ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q123169690"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "LaShip"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q126002066"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "North American Fabricators"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q126441135"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Estaleiro Navship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q126441136"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Gulf Ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q135414867"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Point Nemo (ship, 1993)"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q135440503"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Responder class oil recovery vessels"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q783794"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q1623035"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "true"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q4830453"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q11903334"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "true"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q17210"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "true"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  }
+ ]
+}

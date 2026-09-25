@@ -15,3 +15,17 @@
 - **Synthetic test scenarios**, named `TEST …` and clearly fake, for cases the documentation does not show: conflicting registries, shared MMSIs, ownership changes. They exist only inside throwaway test schemas and are never shown to users.
 
 Record more live responses with `npm run ships:import-gfw -- --save <dir> …`.
+
+## Wikidata (and the EURODAM cross-source case)
+
+| File | What it is |
+|---|---|
+| `wd-live-eurodam-2026-09-25.json` | **Real, recorded live** 2026-09-25 by `scripts/ships/wikidataClient.js`: `request` (the `wbgetentities` URL), `response` exactly as received for Q548546 (MS Eurodam), and `lookup` / `lookup_raw` (the SPARQL label / ISO / watercraft lookups for the items it references). |
+| `wd-live-misc-2026-09-25.json` | **Real, recorded live** the same way: Q52331308 (Horizon Kodiak, three official names with dates), Q135414827 (Point Nemo, ex New Jersey Responder, type change over time; its IMO sits on two of our NOAA vessels), Q5338367 (Edison Chouest Offshore: a company carrying an IMO *company* number in P458). |
+| `gfw-live-eurodam-2026-09-25.json` | **Real, recorded live** GFW detail entry (`registries-info-data=ALL`) for IMO 9378448. |
+| `mc-live-eurodam-2026-06.ndjson` | **Real** MarineCadastre identity rows for MMSI 245206000 from `scripts/ships/bake-ais/build/identity-2026-06.ndjson`. |
+
+`wikidata-db.test.js` also builds a few **SYNTHETIC** cases from these (Q-ids ≥ Q900000000, MMSIs 36700090x / 367000999), each marked in the test name.
+| `commons-live-eurodam-2026-09-25.json` | **Real, recorded live** Wikimedia Commons `imageinfo` response (licence extmetadata, 640 px thumbnail) for EURODAM's two P18 files. |
+
+`typeLookup.test.js` and the licence-filter test use small **SYNTHETIC** rows / metadata, marked as such in the test names.

@@ -17,7 +17,9 @@
     "ships:migrate": "node --env-file=.env.local scripts/ships/migrate.mjs",
     "ships:import-gfw": "node --env-file=.env.local scripts/ships/import-gfw.mjs",
     "ships:import-mc": "node --env-file=.env.local scripts/ships/import-mc.mjs",
-    "ships:reresolve": "node --env-file=.env.local scripts/ships/reresolve.mjs"
+    "ships:import-wikidata": "node --env-file=.env.local scripts/ships/import-wikidata.mjs",
+    "ships:reresolve": "node --env-file=.env.local scripts/ships/reresolve.mjs",
+    "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

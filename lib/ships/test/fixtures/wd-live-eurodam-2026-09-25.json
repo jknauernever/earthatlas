@@ -1,0 +1,1427 @@
+{
+ "request": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q548546&props=info%7Clabels%7Cdescriptions%7Cclaims%7Csitelinks%2Furls&languages=en&sitefilter=enwiki&format=json&maxlag=5",
+ "retrieved_at": "2026-09-25T22:12:55.322Z",
+ "response": {
+  "entities": {
+   "Q548546": {
+    "pageid": 516854,
+    "ns": 0,
+    "title": "Q548546",
+    "lastrevid": 2406984593,
+    "modified": "2025-09-18T17:17:07Z",
+    "type": "item",
+    "id": "Q548546",
+    "labels": {
+     "en": {
+      "language": "en",
+      "value": "MS Eurodam"
+     }
+    },
+    "descriptions": {
+     "en": {
+      "language": "en",
+      "value": "Signature class cruise ship"
+     }
+    },
+    "claims": {
+     "P373": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P373",
+        "hash": "1fc3962994451edc09bebf670e008ff4b3be5b60",
+        "datavalue": {
+         "value": "Eurodam (ship, 2008)",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "q548546$B2C191E2-2DF0-4BCC-B3E1-58104CC04CF3",
+       "rank": "normal"
+      }
+     ],
+     "P31": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P31",
+        "hash": "e1050df771716a9fffe47801084396209cdf6cc5",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 39804,
+          "id": "Q39804"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$D36E5827-94D6-4882-9210-0A610570C0BD",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P646": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P646",
+        "hash": "c4d3b205151db717a62d76949b15f0f7e8079964",
+        "datavalue": {
+         "value": "/m/02q1j8l",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q548546$58A5994C-D5F9-4D77-97C3-7CEE93CA2A88",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "2b00cb481cddcac7623114367489b5c194901c4a",
+         "snaks": {
+          "P248": [
+           {
+            "snaktype": "value",
+            "property": "P248",
+            "hash": "a94b740202b097dd33355e0e6c00e54b9395e5e0",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 15241312,
+              "id": "Q15241312"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P577": [
+           {
+            "snaktype": "value",
+            "property": "P577",
+            "hash": "fde79ecb015112d2f29229ccc1ec514ed3e71fa2",
+            "datavalue": {
+             "value": {
+              "time": "+2013-10-28T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P248",
+          "P577"
+         ]
+        }
+       ]
+      }
+     ],
+     "P18": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P18",
+        "hash": "73eb69e77fe295cb837b77f6bada64736d940c16",
+        "datavalue": {
+         "value": "Eurodam (ship, 2008) 001.jpg",
+         "type": "string"
+        },
+        "datatype": "commonsMedia"
+       },
+       "type": "statement",
+       "id": "Q548546$3A320470-F933-400B-8392-8F0F5C6E8394",
+       "rank": "normal"
+      },
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P18",
+        "hash": "661562134ac65507de4967b8b3f46b4f22db5673",
+        "datavalue": {
+         "value": "2018-09-18 MS EURODAM - IMO 9378448 - Glacier Bay, Alaska USA.jpg",
+         "type": "string"
+        },
+        "datatype": "commonsMedia"
+       },
+       "type": "statement",
+       "id": "Q548546$b6b2ccb8-47cf-7503-38d3-7d042ca95675",
+       "rank": "preferred"
+      }
+     ],
+     "P458": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P458",
+        "hash": "acd6eb59da4e60167e830abb994eea5ad0a4ddec",
+        "datavalue": {
+         "value": "9378448",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q548546$ADD1B93E-6B4A-4200-94F2-5A4C33A26DE2",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P176": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P176",
+        "hash": "044885aedd9966b6aeea128db17404cc99cb89a7",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 1327429,
+          "id": "Q1327429"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$7906CA72-BA8B-48B5-81E6-7B5BA2744885",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "fa278ebfc458360e5aed63d5058cca83c46134f1",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 328,
+              "id": "Q328"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143"
+         ]
+        }
+       ]
+      }
+     ],
+     "P587": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P587",
+        "hash": "3049e520620d4737cc9fada8bd81096ca6ff83e3",
+        "datavalue": {
+         "value": "245206000",
+         "type": "string"
+        },
+        "datatype": "external-id"
+       },
+       "type": "statement",
+       "id": "Q548546$FDCBF615-BCCE-4B37-A0AE-5C7ACF373D6F",
+       "rank": "normal"
+      }
+     ],
+     "P617": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P617",
+        "hash": "0b2b5d3fbef8b2254a9662843898c77921839ed7",
+        "datavalue": {
+         "value": "6149",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q548546$f18d4be0-4092-cff8-73f0-86263d289470",
+       "rank": "normal"
+      }
+     ],
+     "P1093": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1093",
+        "hash": "2f8dcb420f63a1ede4c1d432586e54132a02df8a",
+        "datavalue": {
+         "value": {
+          "amount": "+86273",
+          "unit": "1"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$60ab048b-49b8-e417-c5aa-76d3066ec5ac",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P2317": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2317",
+        "hash": "f870778418e21f6891e3c4ac69cc0a3281d1ae27",
+        "datavalue": {
+         "value": "PHOS",
+         "type": "string"
+        },
+        "datatype": "string"
+       },
+       "type": "statement",
+       "id": "Q548546$b3f7f144-40ed-1d6e-86e7-afbb92acf1f5",
+       "rank": "normal"
+      }
+     ],
+     "P2043": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2043",
+        "hash": "827f8a6452ba54152dc36c4efb0dd2529656a326",
+        "datavalue": {
+         "value": {
+          "amount": "+285.43",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P1013": [
+         {
+          "snaktype": "value",
+          "property": "P1013",
+          "hash": "090fba95776237dac8032d7cc2157c5d4acba613",
+          "datavalue": {
+           "value": {
+            "entity-type": "item",
+            "numeric-id": 2358152,
+            "id": "Q2358152"
+           },
+           "type": "wikibase-entityid"
+          },
+          "datatype": "wikibase-item"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P1013"
+       ],
+       "id": "Q548546$4bcdc223-4e5d-fce9-5f8c-be27789f7b0f",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "eb268d97dd9e67de1c75d05d41b19e6cd1659eee",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854"
+         ]
+        }
+       ]
+      }
+     ],
+     "P2049": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2049",
+        "hash": "89154762f8d53dd896ea3b6b972d9c3c5fbce66e",
+        "datavalue": {
+         "value": {
+          "amount": "+32.26",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$f61f81d0-4cb0-7121-48cd-6b25b4e8c998",
+       "rank": "normal"
+      }
+     ],
+     "P504": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P504",
+        "hash": "2bb3747d4a43b891280c31242d1a13162951a84e",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 34370,
+          "id": "Q34370"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$6bfd7367-4d1b-140a-4683-55dd640bcf52",
+       "rank": "normal"
+      }
+     ],
+     "P2262": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2262",
+        "hash": "44faa37e80b722aff2bbd30d1809d6b6929434d3",
+        "datavalue": {
+         "value": {
+          "amount": "+8",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$83D0F35E-1C8B-4904-BD01-2DD6102EEB15",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P137": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P137",
+        "hash": "3201bd7b03faa1b4c1821ea77e494125d4335a4e",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 1624735,
+          "id": "Q1624735"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$4FF12B70-2254-4A26-9870-86C879FC7B86",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "15db406751351871e6bfadf7942bada570f77edc",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e4f6d9441d0600513c4533c672b5ab472dc73694",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 328,
+              "id": "Q328"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "4b8729d9b16723a8a4f50d3eaf54b87654abf7f2",
+            "datavalue": {
+             "value": "https://en.wikipedia.org/w/index.php?title=MS_Eurodam&oldid=874170757",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P2261": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2261",
+        "hash": "b079e728822f4677b23968ab72bd33e4779e070e",
+        "datavalue": {
+         "value": {
+          "amount": "+32.25",
+          "unit": "http://www.wikidata.org/entity/Q11573"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$2669FDEA-B11F-4D73-B63B-572FEBF58732",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "3ea63b075df2168c333d8f35ecfe5b7ee0d0fab8",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "d38375ffe6fe142663ff55cd783aa4df4301d83d",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 48183,
+              "id": "Q48183"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "d0fd220727a05219ce549655cb9ca33a39072870",
+            "datavalue": {
+             "value": "https://de.wikipedia.org/w/index.php?title=Eurodam&oldid=179472228",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P1083": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1083",
+        "hash": "e493a35a6ffc6d9217acf487473a94f9c38a744a",
+        "datavalue": {
+         "value": {
+          "amount": "+2104",
+          "unit": "1"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$5E5E313E-85F1-4255-BE69-3EEDAF36AC65",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "3ea63b075df2168c333d8f35ecfe5b7ee0d0fab8",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "d38375ffe6fe142663ff55cd783aa4df4301d83d",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 48183,
+              "id": "Q48183"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "d0fd220727a05219ce549655cb9ca33a39072870",
+            "datavalue": {
+             "value": "https://de.wikipedia.org/w/index.php?title=Eurodam&oldid=179472228",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        },
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P4519": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P4519",
+        "hash": "9d2617c8be6dff778bf0e099161943d6442a31d5",
+        "datavalue": {
+         "value": {
+          "amount": "+9125",
+          "unit": "http://www.wikidata.org/entity/Q191118"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P1013": [
+         {
+          "snaktype": "value",
+          "property": "P1013",
+          "hash": "a4592e3262cad628444a2f9c981b5f62eb0a4881",
+          "datavalue": {
+           "value": {
+            "entity-type": "item",
+            "numeric-id": 1332978,
+            "id": "Q1332978"
+           },
+           "type": "wikibase-entityid"
+          },
+          "datatype": "wikibase-item"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P1013"
+       ],
+       "id": "Q548546$F479D8FD-8AC9-47C5-847C-7C603A1EACDF",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P1448": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1448",
+        "hash": "00d1c3f9595133dc2e48043f38802fcacf5e85b8",
+        "datavalue": {
+         "value": {
+          "text": "Eurodam",
+          "language": "mul"
+         },
+         "type": "monolingualtext"
+        },
+        "datatype": "monolingualtext"
+       },
+       "type": "statement",
+       "id": "Q548546$BE3911A6-4A6B-4535-B25E-8E504AA5844C",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "13a6d66f6518029435b6d41af093183f62467d2b",
+         "snaks": {
+          "P854": [
+           {
+            "snaktype": "value",
+            "property": "P854",
+            "hash": "a9823a2f4475f7aac9c1ce443f64ebd4182ccf67",
+            "datavalue": {
+             "value": "https://www.hafen-hamburg.de/de/schiffe/kreuzfahrtschiffe",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ],
+          "P813": [
+           {
+            "snaktype": "value",
+            "property": "P813",
+            "hash": "149d0abb0a7d12c3c0ce9af634eae124ea5c2164",
+            "datavalue": {
+             "value": {
+              "time": "+2020-01-23T00:00:00Z",
+              "timezone": 0,
+              "before": 0,
+              "after": 0,
+              "precision": 11,
+              "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+             },
+             "type": "time"
+            },
+            "datatype": "time"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P854",
+          "P813"
+         ]
+        }
+       ]
+      }
+     ],
+     "P8047": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P8047",
+        "hash": "97e0ffb217c0fb78df54d3487e072b556585a577",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 55,
+          "id": "Q55"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$9F12A989-9332-46E3-B384-065103A1A072",
+       "rank": "normal"
+      }
+     ],
+     "P532": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P532",
+        "hash": "aef4b719285394a08457d104f71153832651c61b",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 34370,
+          "id": "Q34370"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$5F03FDD3-51B9-4C25-8414-AD13C24F01BD",
+       "rank": "normal"
+      }
+     ],
+     "P127": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P127",
+        "hash": "91b500085c31e8ac6637a8aad68580b73be8ffcc",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 1624735,
+          "id": "Q1624735"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$5c43c4d7-4c70-eeec-3a97-8f48bbed6a42",
+       "rank": "normal"
+      }
+     ],
+     "P729": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P729",
+        "hash": "2a6f9eba06dc92ea2b6780e0049cb801e8dbca7f",
+        "datavalue": {
+         "value": {
+          "time": "+2008-00-00T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 9,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q548546$97638654-0635-4495-AFA1-BD65C72BA6B6",
+       "rank": "normal"
+      }
+     ],
+     "P856": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P856",
+        "hash": "e3de7b869edac0d8d998206389b455b5cbda5337",
+        "datavalue": {
+         "value": "https://www.hollandamerica.com/en_US/cruise-ships/ms-eurodam/7.html",
+         "type": "string"
+        },
+        "datatype": "url"
+       },
+       "type": "statement",
+       "qualifiers": {
+        "P407": [
+         {
+          "snaktype": "value",
+          "property": "P407",
+          "hash": "92569fc163bb841d6f408130e2ad26cd58ec71e3",
+          "datavalue": {
+           "value": {
+            "entity-type": "item",
+            "numeric-id": 7976,
+            "id": "Q7976"
+           },
+           "type": "wikibase-entityid"
+          },
+          "datatype": "wikibase-item"
+         }
+        ]
+       },
+       "qualifiers-order": [
+        "P407"
+       ],
+       "id": "Q548546$baaa47c4-45e5-f70b-584d-ede758c48fb5",
+       "rank": "normal"
+      }
+     ],
+     "P571": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P571",
+        "hash": "0148446b01349f86471adfd0ba419c0fb53da186",
+        "datavalue": {
+         "value": {
+          "time": "+2008-00-00T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 9,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q548546$cc44b37c-4cac-cc38-63aa-742544bd04e1",
+       "rank": "normal"
+      }
+     ],
+     "P1071": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1071",
+        "hash": "122edf3b501e76ef87727913e8ad90890c72ac04",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 1327429,
+          "id": "Q1327429"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$F07438D2-C6DD-44A5-8B7C-E60CADDED8B2",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "775d054a7e6f7a499d74b9314ac692e8bfedf762",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 8449,
+              "id": "Q8449"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "5b2a8a3e3075dd901458a2b333516d428b068502",
+            "datavalue": {
+             "value": "https://es.wikipedia.org/w/index.php?title=MS_Eurodam&oldid=148822674",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P1619": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P1619",
+        "hash": "4e274e4bba83c1cae6cecc26585037b943c24eb6",
+        "datavalue": {
+         "value": {
+          "time": "+2008-06-16T00:00:00Z",
+          "timezone": 0,
+          "before": 0,
+          "after": 0,
+          "precision": 11,
+          "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+         },
+         "type": "time"
+        },
+        "datatype": "time"
+       },
+       "type": "statement",
+       "id": "Q548546$F83A0C14-D14E-46DF-A6E9-4C928AAB7640",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "775d054a7e6f7a499d74b9314ac692e8bfedf762",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "e17507043402fe54ae6c4d65cc51f46cec987de9",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 8449,
+              "id": "Q8449"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "5b2a8a3e3075dd901458a2b333516d428b068502",
+            "datavalue": {
+             "value": "https://es.wikipedia.org/w/index.php?title=MS_Eurodam&oldid=148822674",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ],
+     "P7782": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P7782",
+        "hash": "aac1ffa886defec7b0dacc8a1fd67f2620b01652",
+        "datavalue": {
+         "value": {
+          "entity-type": "item",
+          "numeric-id": 83565097,
+          "id": "Q83565097"
+         },
+         "type": "wikibase-entityid"
+        },
+        "datatype": "wikibase-item"
+       },
+       "type": "statement",
+       "id": "Q548546$718d07f3-46d7-14c4-d7e7-320f66e0d38e",
+       "rank": "normal"
+      }
+     ],
+     "P2052": [
+      {
+       "mainsnak": {
+        "snaktype": "value",
+        "property": "P2052",
+        "hash": "81d61fa21efc4d446711f3fcb39e3e43ceb456b6",
+        "datavalue": {
+         "value": {
+          "amount": "+23.9",
+          "unit": "http://www.wikidata.org/entity/Q128822"
+         },
+         "type": "quantity"
+        },
+        "datatype": "quantity"
+       },
+       "type": "statement",
+       "id": "Q548546$9F12B97D-F56A-4026-B1D0-040AD4253E62",
+       "rank": "normal",
+       "references": [
+        {
+         "hash": "19131c66d4aab7b103a2001f248a65460213aa64",
+         "snaks": {
+          "P143": [
+           {
+            "snaktype": "value",
+            "property": "P143",
+            "hash": "d38375ffe6fe142663ff55cd783aa4df4301d83d",
+            "datavalue": {
+             "value": {
+              "entity-type": "item",
+              "numeric-id": 48183,
+              "id": "Q48183"
+             },
+             "type": "wikibase-entityid"
+            },
+            "datatype": "wikibase-item"
+           }
+          ],
+          "P4656": [
+           {
+            "snaktype": "value",
+            "property": "P4656",
+            "hash": "f6fd8b04f37e88aa3ac6deb09d2f777c03805b19",
+            "datavalue": {
+             "value": "https://de.wikipedia.org/w/index.php?title=Eurodam&oldid=231235019",
+             "type": "string"
+            },
+            "datatype": "url"
+           }
+          ]
+         },
+         "snaks-order": [
+          "P143",
+          "P4656"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "sitelinks": {
+     "enwiki": {
+      "site": "enwiki",
+      "title": "MS Eurodam",
+      "badges": [],
+      "url": "https://en.wikipedia.org/wiki/MS_Eurodam"
+     }
+    }
+   }
+  },
+  "success": 1
+ },
+ "lookup": {
+  "Q1624735": {
+   "label": "Holland America Line",
+   "iso3": null
+  },
+  "Q83565097": {
+   "label": "Category:Eurodam (ship, 2008)",
+   "iso3": null
+  },
+  "Q39804": {
+   "label": "cruise ship",
+   "iso3": null,
+   "watercraft": true,
+   "offshore": false
+  },
+  "Q1327429": {
+   "label": "Fincantieri",
+   "iso3": null
+  },
+  "Q55": {
+   "label": "Netherlands",
+   "iso3": null
+  },
+  "Q34370": {
+   "label": "Rotterdam",
+   "iso3": null
+  }
+ },
+ "lookup_raw": [
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q1624735"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Holland America Line"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q83565097"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Category:Eurodam (ship, 2008)"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q39804"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "cruise ship"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q1327429"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Fincantieri"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q55"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Netherlands"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q34370"
+   },
+   "label": {
+    "xml:lang": "en",
+    "type": "literal",
+    "value": "Rotterdam"
+   }
+  },
+  {
+   "x": {
+    "type": "uri",
+    "value": "http://www.wikidata.org/entity/Q39804"
+   },
+   "w": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "true"
+   },
+   "o": {
+    "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+    "type": "literal",
+    "value": "false"
+   }
+  }
+ ]
+}

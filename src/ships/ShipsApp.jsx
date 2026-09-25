@@ -202,9 +202,13 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    // /shiptraffic dims by √(months stacked) and opens on "All" (24 months → ~0.14).
-    // A single month of the Salish Sea already holds ~30k trips, so /ships uses
-    // that same look (the 24-month opacity) and dims further as months stack.
+    // Mid style load (basemap swap, hot reload), addSource throws "Style is not
+    // done loading" and would take the whole page down. Wait, then re-run.
+    if (!map.isStyleLoaded()) {
+      const retry = () => setStyleVersion((n) => n + 1)
+      map.once('idle', retry)
+      return () => map.off('idle', retry)
+    }
     // One month: /shiptraffic's "All" look (0.7/√24 ≈ 0.14), which Josh approved.
     // Our tracks come from every position (pleasure craft included), so stacking
     // months must hold that look: dim in proportion to months (/shiptraffic's √

@@ -234,9 +234,14 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               <div className={styles.legendNoteText}>EarthAtlas keeps these separate until the evidence is strong enough. MMSIs get reused and mistyped, so a shared MMSI alone never merges two ships.</div>
             </div>
           )}
+          {/* Every source this card draws on, with its licence (from ships.sources). */}
           <div className={styles.attribution}>
-            Vessel identity: <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a>{' '}
-            <a className={styles.sourceLink} href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC 4.0</a>
+            {vessel.sources.map((src, i) => (
+              <span key={src.id}>{i > 0 && ' · '}
+                <a className={styles.sourceLink} href={src.attribution_url || src.homepage_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>{' '}
+                <a className={styles.sourceLink} href={src.license_url} target="_blank" rel="noopener noreferrer">{src.license}</a>
+              </span>
+            ))}
           </div>
           </>}
         </>

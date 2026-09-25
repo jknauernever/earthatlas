@@ -42,6 +42,10 @@ import { FireEventsOverlay, fireEventName } from './fireEventsOverlay.js'
 import { StormsOverlay } from './stormsOverlay.js'
 import { TraceFacilitiesOverlay } from './traceFacilitiesOverlay.js'
 import MeasurePicker from './MeasurePicker.jsx'
+import FungiPicker from './FungiPicker.jsx'
+import { fungiMeasure, loadFungiField } from './fungiData.js'
+import { FungiTilesOverlay } from './fungiTiles.js'
+import { FungiThreadsLayer } from './fungiThreads.js'
 import { MEASURE_INFO, PRIMARY_MEASURE, SECTOR_STYLE, availableMeasures } from './traceData.js'
 import { probeHover } from './hoverProbe.js'
 import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
@@ -218,6 +222,8 @@ function readUrlState() {
     bm: sp.get('bm'),
     eg: sp.get('eg'), // Emission sources: measure (ch4, pm2_5, co2e_20yr, …)
     es: sp.get('es'), // Emission sources: kinds of site shown (comma list)
+    fgm: sp.get('fgm'), // Underground fungi: which map (hyphae, am-rich, ecm-rare-emp, …)
+    fgt: sp.get('fgt'), // Underground fungi: '0' = living threads off
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -714,6 +720,17 @@ export default function SystemsApp() {
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   // Emission sources: what the discs measure, and which kinds of site show.
   const [traceMeasure, setTraceMeasure] = useState(() => (MEASURE_INFO[initial.eg] ? initial.eg : PRIMARY_MEASURE))
+  // Underground fungi: the map the pill asked for, and the one on screen.
+  // The layer def's `measure` (which drives its ramp, legend and popup)
+  // changes only when that map's grids have arrived, together with the field.
+  const [fungiWant, setFungiWant] = useState(() => {
+    const m = fungiMeasure(initial.fgm)
+    const def = LAYERS.find((d) => d.id === 'fungi')
+    if (def) def.measure = m
+    return m
+  })
+  const [fungiShown, setFungiShown] = useState(fungiWant)
+  const [fungiThreadsOn, setFungiThreadsOn] = useState(() => initial.fgt !== '0')
   const [traceSectors, setTraceSectors] = useState(() => {
     const ks = (initial.es || '').split(',').filter((k) => SECTOR_STYLE[k])
     return ks.length ? new Set(ks) : null
@@ -1591,7 +1608,7 @@ export default function SystemsApp() {
     const tape = active?.tape && tapeKey && !wantGround ? fieldsRef.current[tapeKey] : null
     const groundTape = wantGround ? fieldsRef.current[`${active.id}:ground:tape`] : null
     const slotId = active
-      ? (wantGround ? (groundTape ? `${active.id}:ground:tape` : `${active.id}:ground`) : tape ? tapeKey : active.id)
+      ? (wantGround ? (groundTape ? `${active.id}:ground:tape` : `${active.id}:ground`) : tape ? tapeKey : active.measures ? `${active.id}:${active.measure}` : active.id)
       : null
     if (inst.scalar && inst.scalar.id !== slotId) {
       inst.scalar.layer.destroy()
@@ -1781,7 +1798,7 @@ export default function SystemsApp() {
         setEventReplay(rc)
       }
     }
-  }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch, mapView, smokeGroundTick])
+  }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch, mapView, smokeGroundTick, fungiShown])
 
   // Raster layers follow the transport bar.
   //
@@ -2220,6 +2237,81 @@ export default function SystemsApp() {
     if (!on) inst.emissions?.setTime(null)
   }, [mapReady, layerOn, layerStatus, dataEpoch])
   useEffect(() => { instancesRef.current.emissions?.setMeasure(traceMeasure) }, [traceMeasure])
+
+  // Underground fungi: swap the map once its grids are in. Until then the
+  // previous map stays up with its own legend — never one map's colours
+  // under another's scale. Grids are cached, so switching back is instant.
+  const fungiWantRef = useRef(fungiWant)
+  fungiWantRef.current = fungiWant
+  useEffect(() => {
+    const def = LAYERS.find((d) => d.id === 'fungi')
+    if (!def || fungiWant === def.measure) { setFungiShown(fungiWant); return }
+    if (layerStatus.fungi !== 'ok') { def.measure = fungiWant; setFungiShown(fungiWant); return } // first load will fetch it
+    loadFungiField(fungiWant)
+      .then((f) => {
+        if (fungiWantRef.current !== fungiWant) return
+        def.measure = fungiWant
+        fieldsRef.current.fungi = f
+        setLayerMeta((m) => ({ ...m, fungi: f.meta }))
+        setFungiShown(fungiWant)
+      })
+      .catch((err) => { console.warn('[systems] fungi map unavailable:', fungiWant, err); setFungiWant(def.measure) })
+  }, [fungiWant, layerStatus.fungi])
+
+  // Underground fungi: SPUN's ~1 km tiles draw the picture (fungiTiles.js)
+  // while the 0.1° field keeps answering clicks and Explain. The layer's
+  // `:yield` flag (the one the US radar raises over precipitation) makes the
+  // scalar wash step aside; if the tile index is missing, the wash stays.
+  const fungiTilesIndexRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    const inst = instancesRef.current
+    const setWash = (show) => { if (inst.scalar?.id.startsWith('fungi')) inst.scalar.layer.setVisible(show) }
+    if (!map || !mapReady || !layerOn.fungi || layerStatus.fungi !== 'ok') {
+      inst.fungiTiles?.setVisible(false)
+      rasterSlotsRef.current['fungi:yield'] = false
+      return
+    }
+    let cancelled = false
+    Promise.resolve(fungiTilesIndexRef.current || loadSystemsJson('spun-tiles', 'spun-tiles'))
+      .then((index) => {
+        if (cancelled) return
+        fungiTilesIndexRef.current = index
+        const def = LAYERS.find((d) => d.id === 'fungi')
+        if (!inst.fungiTiles) inst.fungiTiles = new FungiTilesOverlay(map, index, def.scalar.opacity)
+        const ok = inst.fungiTiles.show(fungiShown)
+        inst.fungiTiles.setVisible(ok)
+        rasterSlotsRef.current['fungi:yield'] = ok
+        setWash(!ok)
+      })
+      .catch((err) => {
+        console.warn('[systems] fungi tiles unavailable, drawing the 0.1° field:', err)
+        rasterSlotsRef.current['fungi:yield'] = false
+        setWash(true)
+      })
+    return () => { cancelled = true }
+  }, [mapReady, layerOn.fungi, layerStatus.fungi, fungiShown, styleEpoch])
+
+  // Living threads over the Fungal networks map: an ILLUSTRATION whose
+  // seeding follows SPUN's measured density (fungiThreads.js). Only on the
+  // networks map; the other maps measure kinds of fungi, not network.
+  useEffect(() => {
+    const map = mapRef.current
+    const inst = instancesRef.current
+    const want = !!map && mapReady && layerOn.fungi && layerStatus.fungi === 'ok' && fungiShown === 'hyphae' && fungiThreadsOn
+    if (!want) {
+      if (inst.fungiThreads) { inst.fungiThreads.destroy(); inst.fungiThreads = null }
+      return
+    }
+    let cancelled = false
+    loadFungiField('hyphae')
+      .then((field) => {
+        if (cancelled || inst.fungiThreads || !canvasEls.current.fungithreads) return
+        inst.fungiThreads = new FungiThreadsLayer(map, canvasEls.current.fungithreads, field)
+      })
+      .catch(() => { /* no field, no threads: the map itself still shows */ })
+    return () => { cancelled = true }
+  }, [mapReady, layerOn.fungi, layerStatus.fungi, fungiShown, fungiThreadsOn])
   useEffect(() => { instancesRef.current.emissions?.setSectors(traceSectors) }, [traceSectors])
 
   // ─── Hover: one listener, one tooltip, every discrete layer ──────────────
@@ -2650,6 +2742,8 @@ export default function SystemsApp() {
     if (basemap !== 'satellite') sp.set('bm', basemap)
     if (layerOn.emissions && traceMeasure !== PRIMARY_MEASURE) sp.set('eg', traceMeasure)
     if (layerOn.emissions && traceSectors) sp.set('es', [...traceSectors].join(','))
+    if (layerOn.fungi && fungiWant !== 'hyphae') sp.set('fgm', fungiWant)
+    if (layerOn.fungi && !fungiThreadsOn) sp.set('fgt', '0')
     if (mapView) {
       sp.set('lat', mapView.lat.toFixed(3))
       sp.set('lng', mapView.lng.toFixed(3))
@@ -2659,7 +2753,7 @@ export default function SystemsApp() {
     // The URL is now canonical for this view — queue its social share card
     // (debounced + deduped; see src/lib/shareCard.js).
     if (mapReady) scheduleViewCard(captureShareImage)
-  }, [layerOn, density, basemap, mapView, mapReady, captureShareImage, traceMeasure, traceSectors])
+  }, [layerOn, density, basemap, mapView, mapReady, captureShareImage, traceMeasure, traceSectors, fungiWant, fungiThreadsOn])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -2798,6 +2892,7 @@ export default function SystemsApp() {
       {/* Overlay stack: scalar color wash below, particle layers above,
           event pings (fires, quakes) on top. */}
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.scalar = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fungithreads = el }} aria-hidden="true" />
       <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.smokeplumes = el }} aria-hidden="true" />
       {/* Observed-plume dots ride ABOVE every other overlay: they're the
           attention layer — direct observations of live leaks. */}
@@ -2899,9 +2994,12 @@ export default function SystemsApp() {
           <div
             className={styles.modeCueWrap}
             aria-live="polite"
-            // The Emission sources pill owns this spot while it shows; the
-            // mode cue drops below it.
-            style={layerOn.emissions && layerStatus.emissions === 'ok' ? { transform: 'translateX(-50%) translateY(40px)' } : undefined}
+            // The top-center pills (Emission sources, Underground fungi) own
+            // this spot while they show; the mode cue drops below them.
+            style={(() => {
+              const pills = (layerOn.emissions && layerStatus.emissions === 'ok' ? 1 : 0) + (layerOn.fungi && layerStatus.fungi === 'ok' ? 1 : 0)
+              return pills ? { transform: `translateX(-50%) translateY(${40 * pills}px)` } : undefined
+            })()}
           >
             {grounded?.ground.chip && !modeToast && (
               <div className={styles.modeChip}>{grounded.ground.chip}</div>
@@ -2919,6 +3017,18 @@ export default function SystemsApp() {
           onSectors={setTraceSectors}
           available={availableMeasures(fieldsRef.current.emissions.index)}
           sectorCounts={fieldsRef.current.emissions.index.measures?.[traceMeasure]?.sectors}
+        />
+      )}
+
+      {layerOn.fungi && layerStatus.fungi === 'ok' && (
+        <FungiPicker
+          measure={fungiWant}
+          onMeasure={setFungiWant}
+          threads={fungiThreadsOn}
+          onThreads={setFungiThreadsOn}
+          loading={fungiWant !== fungiShown}
+          // Under the Emission sources pill when both layers are on.
+          stacked={!!(layerOn.emissions && layerStatus.emissions === 'ok')}
         />
       )}
 

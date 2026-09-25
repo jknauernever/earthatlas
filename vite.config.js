@@ -639,7 +639,7 @@ function traceTilesPlugin() {
   return {
     name: 'trace-tiles',
     configureServer(server) {
-      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles']) {
+      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles', 'spun-tiles']) {
         server.middlewares.use(`/api/${route}`, async (req, res) => {
           try {
             const { default: handler } = await server.ssrLoadModule(`/api/${route}.js`)

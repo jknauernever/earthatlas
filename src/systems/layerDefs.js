@@ -15,6 +15,7 @@ import { loadSystemsJson, systemsAssetBase } from './windField.js'
 import { traceCardShell, traceCardBody, displayName } from './traceCard.js'
 import { loadTraceIndex, peekTraceDetail, loadTraceDetail, traceMixHtml, traceMixFacts, measureInfo, MEASURE_SUFFIX, AIR_CAVEAT_SHORT, MonthTape, SECTOR_STYLE, sectorStyle, seriesChartSvg, subsectorWord, tonnesWord, monthWord, CONFIDENCE_WORDS, TRACE_URL, TRACE_RELEASE } from './traceData.js'
 import { stageColor, stageWord, CAT_COLORS, TYPE_WORDS, WW_MEANING, windWord, whenLabel } from './stormsOverlay.js'
+import { FUNGI_MEASURES, DEFAULT_FUNGI, FUNGI_COVERAGE, SPUN_URL, loadFungiField, fungiPopup } from './fungiData.js'
 
 // Per-layer  +  (24×24 monoline, stroke=currentColor) come from
 // the Claude Design handoff (EarthAtlas collapsed navigation proposals, #3a/#4a).
@@ -1710,6 +1711,45 @@ export const LAYERS = [
         link: { href: BIRDCAST_URL, label: 'Source: BirdCast live migration maps ↗' },
         ai: `Migration traffic rate ${Math.round(mtr)} birds/km/hour (birds per hour crossing a 1 km line perpendicular to their heading), from BirdCast (Cornell Lab of Ornithology) NEXRAD weather-radar mosaic, frame ${fmtRun(meta.valid_ms)}. Nocturnal migration; contiguous U.S. only; mountain radars under-report.${dir}`,
       }
+    },
+  },
+  {
+    // SPUN's underground-fungi research maps: ONE layer, several measures,
+    // picked from the top-center pill (FungiPicker.jsx, same shape as the
+    // Emission sources picker). `measure` is set by SystemsApp; everything
+    // measure-specific (ramp, legend, words, notes, popup) reads through the
+    // getters below, so the panel, the map, the popup and Explain always
+    // describe the same grid. Measures + wording: fungiData.js.
+    id: 'fungi',
+    hue: '#e0409a',
+    iconSvg: '<path d="M4.5 10.5a7.5 6 0 0 1 15 0Z"></path><path d="M10 10.5V14h4v-3.5"></path><path d="M3 14h18"></path><path d="M12 14v3l-3.5 3.5M12 17l3.5 3.5M12 17v4"></path>',
+    group: 'life',
+    kind: 'scalar',
+    param: 'fg',
+    defaultOn: false,
+    name: 'Underground fungi',
+    sub: 'mycorrhizal networks · research maps',
+    sourceName: 'SPUN',
+    sourceUrl: SPUN_URL,
+    // The paper behind the measure on screen, linked beside SPUN.
+    get sourceAlso() { const m = FUNGI_MEASURES[this.measure]; return [{ name: m.cite, url: m.url }] },
+    measure: DEFAULT_FUNGI,
+    measures: FUNGI_MEASURES,
+    load() { return loadFungiField(this.measure) },
+    get stops() { return FUNGI_MEASURES[this.measure].stops },
+    get legend() { return FUNGI_MEASURES[this.measure].legend },
+    get words() { return FUNGI_MEASURES[this.measure].words },
+    get unit() { return FUNGI_MEASURES[this.measure].unit },
+    get legendNote() { return FUNGI_MEASURES[this.measure].note },
+    get factsNote() { return FUNGI_MEASURES[this.measure].factsNote },
+    scalar: { opacity: 0.85 },
+    attribution: 'SPUN (Society for the Protection of Underground Networks) · CC BY 4.0',
+    coverage: FUNGI_COVERAGE,
+    stamp: () => 'published model predictions (~1 km, shown at 0.1°)',
+    explain:
+      'Under almost every plant is a web of fungi trading minerals and water for sugar from the roots. These maps, from the Society for the Protection of Underground Networks, predict how dense those networks are and how many different kinds of fungi live in the soil, from DNA in tens of thousands of soil samples. Most of the richest places have no protection at all.',
+    popup(sample) {
+      return fungiPopup(this.measure, sample)
     },
   },
 ]

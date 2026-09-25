@@ -205,7 +205,11 @@ export default function ShipsApp() {
     // /shiptraffic dims by √(months stacked) and opens on "All" (24 months → ~0.14).
     // A single month of the Salish Sea already holds ~30k trips, so /ships uses
     // that same look (the 24-month opacity) and dims further as months stack.
-    const opacity = Math.max(0.03, 0.7 / Math.sqrt(24 * Math.max(1, trackMonths.length)))
+    // One month: /shiptraffic's "All" look (0.7/√24 ≈ 0.14), which Josh approved.
+    // Our tracks come from every position (pleasure craft included), so stacking
+    // months must hold that look: dim in proportion to months (/shiptraffic's √
+    // saturated the lanes solid at 12 months).
+    const opacity = Math.max(0.012, 0.7 / Math.sqrt(24) / Math.max(1, trackMonths.length))
     // Drop months no longer selected (a basemap swap already dropped everything).
     for (const ym of [...addedMonthsRef.current]) {
       if (trackMonths.includes(ym) && map.getSource(trkSrc(ym))) continue

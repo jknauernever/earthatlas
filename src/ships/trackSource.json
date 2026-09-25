@@ -3,9 +3,9 @@
   "region": "salish",
   "bbox": [
     -124.85,
-    47.0,
+    47,
     -122.05,
-    49.0
+    49
   ],
   "version": "salish-v4",
   "months": [
@@ -22,5 +22,33 @@
     "2026-05",
     "2026-06"
   ],
-  "tiles": {}
+  "tiles": {
+    "2025-07": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-07.pmtiles",
+    "2025-08": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-08.pmtiles",
+    "2025-09": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-09.pmtiles",
+    "2025-10": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-10.pmtiles",
+    "2025-11": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-11.pmtiles",
+    "2025-12": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-12.pmtiles",
+    "2026-01": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-01.pmtiles",
+    "2026-02": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-02.pmtiles",
+    "2026-03": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-03.pmtiles",
+    "2026-04": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-04.pmtiles",
+    "2026-05": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-05.pmtiles",
+    "2026-06": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-06.pmtiles"
+  },
+  "packs": {
+    "2025-07": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-07.pack",
+    "2025-08": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-08.pack",
+    "2025-09": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-09.pack",
+    "2025-10": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-10.pack",
+    "2025-11": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-11.pack",
+    "2025-12": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2025-12.pack",
+    "2026-01": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-01.pack",
+    "2026-02": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-02.pack",
+    "2026-03": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-03.pack",
+    "2026-04": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-04.pack",
+    "2026-05": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-05.pack",
+    "2026-06": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v4/tracks-2026-06.pack"
+  },
+  "uploadedAt": "2026-09-25T15:17:48.069Z"
 }

@@ -28,8 +28,8 @@ deviations, assumptions, open issues, and the proposed next phase. Then stop.
 |---|---|---|
 | 0 | Repo assessment + open-source catalog | done 2026-09-24 |
 | 1 | Identity/provenance schema + GFW Vessels import + tests + basic /ships search page (identity history with inline sources) | authorized 2026-09-24 |
-| 2 | First AIS source (MarineCadastre, CC0), resolved by MMSI + timestamp; tracks on the map | not authorized |
-| 3 | Global context: GFW presence / dark-vessel (SAR) detections, ports (World Port Index), port visits | not authorized |
+| 2 | First AIS source (MarineCadastre, CC0), resolved by MMSI + timestamp; tracks on the map | authorized 2026-09-24; built; prod rollout 2026-09-25 |
+| 3 | Global context: GFW presence / dark-vessel (SAR) detections, ports (World Port Index), port visits | authorized 2026-09-25 (study first) |
 | 4 | Pollution: EU MRV CO₂, Climate TRACE voyages, SkyTruth Cerulean slicks | not authorized |
 | 5 | Live AIS (Digitraffic / Kystverket; needs an always-on worker, which is a new infrastructure decision) | not authorized |
 

@@ -18,7 +18,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
+import { shipsPool, DEFAULT_SCHEMA, withTx, withRetry } from '../../lib/ships/db.js'
 import { ensureGfwSource, ingestGfwEntry, tally } from '../../lib/ships/ingestGfw.js'
 import { GFW_SOURCE } from '../../lib/ships/gfw.js'
 import { startRun, finishRun } from '../../lib/ships/store.js'
@@ -44,7 +44,7 @@ async function save(name, body) {
 
 async function ingestAll(entries, retrievalUrl) {
   for (const e of entries) {
-    const r = await ingestGfwEntry(pool, schema, e, { runId, retrievalUrl })
+    const r = await withRetry(() => ingestGfwEntry(pool, schema, e, { runId, retrievalUrl }))
     tally(stats, r)
     for (const w of r.warnings) console.warn(`  warn: ${w}`)
     datasetVersion ||= e.dataset

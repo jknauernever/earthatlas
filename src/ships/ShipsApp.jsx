@@ -209,11 +209,9 @@ export default function ShipsApp() {
       map.once('idle', retry)
       return () => map.off('idle', retry)
     }
-    // One month: /shiptraffic's "All" look (0.7/√24 ≈ 0.14), which Josh approved.
-    // Our tracks come from every position (pleasure craft included), so stacking
-    // months must hold that look: dim in proportion to months (/shiptraffic's √
-    // saturated the lanes solid at 12 months).
-    const opacity = Math.max(0.012, 0.7 / Math.sqrt(24) / Math.max(1, trackMonths.length))
+    // Exactly /shiptraffic's rule (ShipTrafficApp.jsx): 0.7 / √(months drawn), floor 0.08.
+    // Josh wants the lines identical to /shiptraffic; don't re-tune this.
+    const opacity = Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, trackMonths.length)))
     // Drop months no longer selected (a basemap swap already dropped everything).
     for (const ym of [...addedMonthsRef.current]) {
       if (trackMonths.includes(ym) && map.getSource(trkSrc(ym))) continue
@@ -222,6 +220,8 @@ export default function ShipsApp() {
       addedMonthsRef.current.delete(ym)
     }
     const kindFilter = trackKinds.length ? ['in', ['get', 'kind'], ['literal', trackKinds]] : null
+    // Tracks go under the basemap's labels (place names stay readable), as on /shiptraffic.
+    const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
     for (const ym of trackMonths) {
       if (!map.getSource(trkSrc(ym))) {
         addedMonthsRef.current.add(ym)
@@ -229,7 +229,7 @@ export default function ShipsApp() {
           bounds: trackSource.bbox, attribution: 'Ship tracks: MarineCadastre AIS (NOAA / BOEM / USCG)' })
         map.addLayer({ id: trkLine(ym), type: 'line', source: trkSrc(ym), 'source-layer': trackSource.sourceLayer,
           layout: { 'line-join': 'round' },
-          paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } })
+          paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, labelsId)
       }
       map.setLayoutProperty(trkLine(ym), 'visibility', tracksOn ? 'visible' : 'none')
       map.setPaintProperty(trkLine(ym), 'line-opacity', opacity)
@@ -238,15 +238,15 @@ export default function ShipsApp() {
     if (!map.getSource(OWN_SRC)) {
       map.addSource(OWN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addLayer({ id: OWN_CASING, type: 'line', source: OWN_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0a0e17', 'line-width': OWN_CASING_WIDTH, 'line-opacity': 0.85 } })
+        paint: { 'line-color': '#0a0e17', 'line-width': OWN_CASING_WIDTH, 'line-opacity': 0.85 } }, labelsId)
       map.addLayer({ id: OWN_LINE, type: 'line', source: OWN_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': OWN_COLOR, 'line-width': OWN_WIDTH, 'line-opacity': 1 } })
+        paint: { 'line-color': OWN_COLOR, 'line-width': OWN_WIDTH, 'line-opacity': 1 } }, labelsId)
     }
     const ownVis = tracksOn && identityOn && vesselId ? 'visible' : 'none'
     map.setLayoutProperty(OWN_CASING, 'visibility', ownVis)
     map.setLayoutProperty(OWN_LINE, 'visibility', ownVis)
-    // Keep the picked ship above month layers added later.
-    if (map.getLayer(OWN_CASING)) { map.moveLayer(OWN_CASING); map.moveLayer(OWN_LINE) }
+    // Keep the picked ship above month layers added later, and still under the labels.
+    if (map.getLayer(OWN_CASING)) { map.moveLayer(OWN_CASING, labelsId); map.moveLayer(OWN_LINE, labelsId) }
   }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId])
 
   // The picked ship's own tracks: every selected month × every MMSI it held.

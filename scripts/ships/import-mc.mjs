@@ -13,7 +13,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
+import { shipsPool, DEFAULT_SCHEMA, withTx, withRetry } from '../../lib/ships/db.js'
 import { aggregateRows, MC_SOURCE } from '../../lib/ships/marinecadastre.js'
 import { ensureMcSource, ingestMcMmsi } from '../../lib/ships/ingestMc.js'
 import { tally } from '../../lib/ships/ingestGfw.js'
@@ -46,7 +46,7 @@ try {
   const worker = async () => {
     while (i < aggs.length) {
       const a = aggs[i++]
-      tally(stats, await ingestMcMmsi(pool, schema, a, { runId, retrievalUrl: `bake:${files.join('+')}` }))
+      tally(stats, await withRetry(() => ingestMcMmsi(pool, schema, a, { runId, retrievalUrl: `bake:${files.join('+')}` })))
       if (++done % 250 === 0) console.log(`  ${done}/${aggs.length}`)
     }
   }

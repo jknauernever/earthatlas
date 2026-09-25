@@ -25,7 +25,8 @@ Salish bake's time-based rules (30-min gap, 60 kn jump) can't apply. Instead:
   need a US-wide land grid; recorded in the manifest as not applied.
 
 Outputs in OUT_DIR:
-  tracks.pmtiles  tippecanoe -Z3 -z10, layer "tracks", props mmsi kind vtype t0 t1
+  tracks.pmtiles  layer "tracks": z3-8 merged per kind (prop kind only);
+                  z9-10 one line per track (props mmsi kind vtype t0 t1)
   tracks.pack     every drawn line grouped by MMSI (same 'SHTP' layout as
                   scripts/ships/bake-ais/build_tracks.py), for the picked ship
   manifest.json   source, rules, stats, sizes
@@ -40,13 +41,20 @@ import pyarrow.parquet as pq
 import shapely
 
 SRC = "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-{ym}.parquet"
-RULES_VERSION = "us-v1"
+RULES_VERSION = "us-v2"  # v2: zoomed-out tiles merge lines per vessel type (nothing dropped)
 JUMP_KM = 10
 PARKED_M = 100
 SIMPLIFY_DEG = 0.0002
 PACK_SIMPLIFY_DEG = 0.00005
 PACK_SHARDS = 1024
-TIPPECANOE = ["-Z3", "-z10", "--simplification=10", "--drop-densest-as-needed"]
+# Zoomed out (z3-8), Esri's approach: every line kept, merged per vessel type
+# (only `kind` survives, so identical features coalesce into one per tile).
+# Zoomed in (z9-10): one line per ship with its MMSI; crowded tiles may drop
+# lines there, which is fine because a picked ship reads the complete pack.
+TIPPECANOE_LOW = ["-Z3", "-z8", "--simplification=10", "-y", "kind", "--coalesce", "--reorder",
+                  "--maximum-tile-bytes=2500000", "--drop-densest-as-needed"]
+TIPPECANOE_HIGH = ["-Z9", "-z10", "--simplification=10", "--drop-densest-as-needed"]
+TIPPECANOE = TIPPECANOE_LOW + ["+"] + TIPPECANOE_HIGH  # for the manifest
 LIMIT = int(os.environ.get("SHIPS_US_LIMIT", "0"))  # rows, for a quick local test only
 
 
@@ -174,7 +182,12 @@ def build(ym, out_dir):
 
     pm = os.path.join(out_dir, "tracks.pmtiles")
     t_tip = time.time()
-    subprocess.run(["tippecanoe", "-o", pm, "-l", "tracks", "-f", "-q", *TIPPECANOE, "--read-parallel", ndjson], check=True)
+    low, high = pm + ".low.pmtiles", pm + ".high.pmtiles"
+    subprocess.run(["tippecanoe", "-o", low, "-l", "tracks", "-f", *TIPPECANOE_LOW, "--read-parallel", ndjson], check=True)
+    subprocess.run(["tippecanoe", "-o", high, "-l", "tracks", "-f", "-q", *TIPPECANOE_HIGH, "--read-parallel", ndjson], check=True)
+    # Disjoint zoom ranges, so joining is a plain concatenation of tiles.
+    subprocess.run(["tile-join", "-o", pm, "-f", "--no-tile-size-limit", low, high], check=True)
+    os.remove(low); os.remove(high)
     os.remove(ndjson)
 
     manifest = dict(region="us", month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

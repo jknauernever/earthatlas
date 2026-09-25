@@ -51,14 +51,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/tippecanoe-bin
-          key: tippecanoe-2.79.0-${{ runner.os }}
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
       - name: Build tippecanoe 2.79.0
         if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
           git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
           make -C /tmp/tippecanoe -j4
-          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe ~/tippecanoe-bin/
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
       - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
 
       - name: Bake + publish each month

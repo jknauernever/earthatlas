@@ -72,8 +72,11 @@ const DEFAULT_VIEW = { center: [-123.45, 48.1], zoom: 7.7 }
 // VITE_VESSEL_TILES_BASE lets plain-vite QA point at a standalone tile server.
 const VESSEL_TILES_BASE = (import.meta.env.VITE_VESSEL_TILES_BASE
   || (typeof window !== 'undefined' ? window.location.origin : '')).trim()
+// `dev=1` (dev builds only): before vite.config.js routed /api/vessel-tiles, plain
+// Vite answered these URLs with the handler's JS source under a 1-year immutable
+// cache header, poisoning local browser caches. A distinct dev URL sidesteps those.
 const vesselTileUrl = (id) =>
-  `${VESSEL_TILES_BASE}/api/vessel-tiles?t=${id}&v=${trackSource.version}&z={z}&x={x}&y={y}`
+  `${VESSEL_TILES_BASE}/api/vessel-tiles?t=${id}&v=${trackSource.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
 const vesselSrcId = (id) => `ves-${id}`
 const vesselLayerId = (id) => `ves-${id}-line`
 const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this

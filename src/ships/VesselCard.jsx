@@ -11,6 +11,7 @@ import pick from './ShipPicker.module.css'
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
   ais_self_reported: { label: 'AIS', cls: 'evAis', title: 'What the ship itself broadcast over AIS (self-reported, unverified)' },
+  ais_published: { label: 'AIS', cls: 'evAis', title: 'What the ship broadcast over AIS, as published by NOAA MarineCadastre. The Coast Guard corrects some missing or clearly wrong values, and NOAA doesn\'t mark which' },
   registry: { label: 'Registry', cls: 'evReg', title: 'A vessel registry record, as processed by Global Fishing Watch' },
   inferred: { label: 'Model', cls: 'evInf', title: 'Global Fishing Watch classification (machine-learning models + registries)' },
   derived_identity: { label: 'Matched', cls: 'evInf', title: 'Identity match made by a third party' },
@@ -26,12 +27,25 @@ const ROLE_ROWS = [
   ['technical_manager', 'Technical manager'], ['commercial_manager', 'Commercial manager'],
   ['ism_manager', 'ISM manager'], ['bareboat_charterer', 'Bareboat charterer'],
 ]
-const CHAR_ROWS = [['vessel_type', 'Vessel type'], ['gear_type', 'Gear type'], ['length_m', 'Length'], ['tonnage_gt', 'Gross tonnage'], ['authorization', 'Public authorizations']]
+const CHAR_ROWS = [['vessel_type', 'Kind of ship'], ['length_m', 'Length'], ['width_m', 'Width'], ['tonnage_gt', 'Gross tonnage'],
+  ['gear_type', 'Fishing gear'], ['transceiver', 'AIS transponder'], ['authorization', 'Public authorizations']]
+// GFW's documented fishing-gear vocabulary (docs/GFW_VESSELS_API.md reference data).
+// For non-fishing ships GFW's gear field just repeats the ship class ("cargo"), so the
+// Overview shows gear only when it is a real gear; History keeps every raw value.
+const FISHING_GEARS = new Set(['TUNA_PURSE_SEINES', 'DRIFTNETS', 'TROLLERS', 'SET_LONGLINES', 'PURSE_SEINES', 'POTS_AND_TRAPS',
+  'OTHER_FISHING', 'DREDGE_FISHING', 'SET_GILLNETS', 'FIXED_GEAR', 'TRAWLERS', 'FISHING', 'SEINERS', 'OTHER_PURSE_SEINES',
+  'OTHER_SEINES', 'SQUID_JIGGER', 'POLE_AND_LINE', 'DRIFTING_LONGLINES'])
+// Short name for each source's inline link.
+const SRC_LABEL = { 'gfw-vessel-identity': 'GFW', 'marinecadastre-ais': 'NOAA' }
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : null)
 function fmtValue(attr, v) {
-  if (attr === 'length_m') return `${v} m`
+  if (attr === 'length_m' || attr === 'width_m') return `${v} m`
+  if (attr === 'transceiver') return v === 'A' ? 'Class A (commercial ships)' : v === 'B' ? 'Class B (small craft)' : v
   if (attr === 'tonnage_gt') return `${Number(v).toLocaleString()} GT`
+  // MarineCadastre types arrive as "37 · Pleasure craft / sailing": show the group, keep the code.
+  const coded = attr === 'vessel_type' && /^(\d+) · (.+)$/.exec(String(v))
+  if (coded) return `${coded[2]} (AIS code ${coded[1]})`
   if (attr === 'vessel_type' || attr === 'gear_type') return String(v).replaceAll('_', ' ').toLowerCase()
   return v
 }
@@ -73,6 +87,8 @@ export function Ev({ c }) {
 
 export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded }) {
   const [vessel, setVessel] = useState(null)
+  const [folded, setFolded] = useState(false) // header only, so the map underneath shows
+  const [tab, setTab] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -98,8 +114,42 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
 
   const Src = ({ a }) => (
     <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
-      title={sourceTitle(a, sourcesById)}>GFW</a>
+      title={sourceTitle(a, sourcesById)}>{SRC_LABEL[a.source_id] || 'source'}</a>
   )
+
+  // Overview: the latest value each source gives, one line per source (no timelines).
+  const latestPerSource = (attr) => {
+    const byEv = new Map()
+    for (const a of rowsFor(vessel.assertions, attr)) {
+      if (attr === 'gear_type' && !FISHING_GEARS.has(String(a.value_norm).toUpperCase())) continue
+      const k = `${a.evidence_class}|${a.source_id}`
+      const cur = byEv.get(k)
+      if (!cur || String(a.to || '9999') > String(cur.to || '9999')) byEv.set(k, a)
+    }
+    const order = ['ais_published', 'ais_self_reported', 'registry', 'inferred', 'derived_identity', 'unverified']
+    return [...byEv.values()].sort((x, y) => order.indexOf(x.evidence_class) - order.indexOf(y.evidence_class))
+  }
+  const renderOverview = (rows, title) => {
+    const present = rows.filter(([attr]) => latestPerSource(attr).length)
+    if (!present.length) return null
+    return (
+      <div className={styles.section}>
+        {title && <div className={styles.sectionHead}>{title}</div>}
+        {present.map(([attr, label]) => (
+          <div key={attr} className={styles.attrBlock}>
+            <div className={styles.attrLabel}>{label}</div>
+            {latestPerSource(attr).map((a) => (
+              <div key={a.id} className={styles.valRowShort}>
+                <span className={styles.val}>{fmtValue(attr, a.value_raw)}</span>
+                <Ev c={a.evidence_class} />
+                <Src a={a} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   const renderSection = (rows, title) => {
     const present = rows.filter(([attr]) => vessel.assertions.some((a) => a.attribute === attr))
@@ -125,7 +175,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   }
 
   return (
-    <div className={pick.card} role="dialog" aria-label="Ship card">
+    <div className={`${pick.card} ${folded ? pick.cardFolded : ''}`} role="dialog" aria-label="Ship card">
+      <button type="button" className={pick.fold} onClick={() => setFolded((f) => !f)}
+        aria-label={folded ? 'Unfold ship card' : 'Fold ship card'} title={folded ? 'Show the whole card' : 'Fold the card to its name'}>{folded ? '▾' : '▴'}</button>
       <button type="button" className={pick.close} onClick={onClose} aria-label="Close ship card">×</button>
       {error && <div className={styles.errorNote}>{error}</div>}
       {!vessel && !error && <div className={styles.loadingNote}>Loading ship…</div>}
@@ -139,7 +191,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             </div>
             {vessel.vessel.needs_review && (
               <div className={styles.review} title="EarthAtlas found evidence that conflicts with this identity. It did not merge anything automatically.">
-                Identity needs review: see the conflicting evidence below.
+                Identity needs review: see the Matches tab.
               </div>
             )}
             <div className={styles.idNote} title="EarthAtlas's own id for this vessel. IMO and MMSI can change or be wrong; this id doesn't.">
@@ -147,11 +199,30 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             </div>
           </div>
 
-          {renderSection(IDENTITY_ROWS, 'Identity over time')}
-          {renderSection(ROLE_ROWS, 'Ownership & management')}
-          {renderSection(CHAR_ROWS, 'Characteristics')}
+          {!folded && <>
+          <div className={pick.tabs} role="tablist">
+            {[['overview', 'Overview'], ['history', 'History'], ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={tab === id}
+                className={`${pick.tab} ${tab === id ? pick.tabOn : ''}`} onClick={() => setTab(id)}>{label}</button>
+            ))}
+          </div>
 
-          {candidates.length > 0 && (
+          {tab === 'overview' && <>
+            {renderOverview(CHAR_ROWS, null)}
+            {renderOverview(ROLE_ROWS.filter(([a]) => a !== 'registry_owner'), null)}
+            {renderOverview([['registry_owner', 'Owner (latest registry listing)']], null)}
+            {!CHAR_ROWS.concat(ROLE_ROWS).some(([attr]) => vessel.assertions.some((a) => a.attribute === attr)) && (
+              <div className={styles.legendNoteText}>No characteristics published for this ship yet.</div>
+            )}
+          </>}
+
+          {tab === 'history' && <>
+            {renderSection(IDENTITY_ROWS, 'Identity over time')}
+            {renderSection(ROLE_ROWS, 'Ownership & management')}
+            {renderSection(CHAR_ROWS, 'Characteristics over time')}
+          </>}
+
+          {tab === 'matches' && candidates.length > 0 && (
             <div className={styles.section}>
               <div className={styles.sectionHead}>Possible matches, not merged</div>
               {candidates.map((c, i) => (
@@ -167,6 +238,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             Vessel identity: <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a>{' '}
             <a className={styles.sourceLink} href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC 4.0</a>
           </div>
+          </>}
         </>
       )}
     </div>
@@ -176,7 +248,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
 /** Latest name/flag/MMSI and the registry IMO, for headers and the pill. */
 export function currentIdentity(vessel) {
   if (!vessel) return {}
-  const latest = (attr) => rowsFor(vessel.assertions, attr).sort((x, y) => String(y.to || '9999').localeCompare(String(x.to || '9999')))[0]
+  // Registry first (same rule as the search summaries in lib/ships/queries.js), then the latest from any source.
+  const latest = (attr) => rowsFor(vessel.assertions, attr).sort((x, y) =>
+    (y.evidence_class === 'registry') - (x.evidence_class === 'registry') || String(y.to || '9999').localeCompare(String(x.to || '9999')))[0]
   return { name: latest('name'), flag: latest('flag'), mmsi: latest('mmsi'),
     imo: rowsFor(vessel.assertions, 'imo').find((a) => a.evidence_class === 'registry') || latest('imo') }
 }

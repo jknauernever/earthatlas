@@ -9,6 +9,7 @@
  *   npm run ships:import-gfw -- --where "flag = 'USA'" --max-pages 2
  *   npm run ships:import-gfw -- --replay path/to/saved.json   # ingest a saved detail response, no network
  *   add --save <dir> to keep the raw responses (for recorded test fixtures)
+ *   add --resume to skip GFW vessel ids already stored (continue an interrupted run)
  *
  * Search only finds GFW vessel ids: it returns just each vessel's LATEST
  * registry record. What gets ingested is always the full detail response
@@ -89,6 +90,14 @@ try {
       }
     }
     console.log(`discovered ${ids.size} GFW vessel ids`)
+    if (args.includes('--resume')) {
+      const { rows } = await pool.query(
+        `SELECT DISTINCT a.sub_record_ref FROM ${schema}.assertions a JOIN ${schema}.source_entities se ON se.id = a.source_entity_id
+          WHERE se.source_id = $1 AND a.evidence_class = 'ais_self_reported' AND a.sub_record_ref = ANY($2)`, [GFW_SOURCE.id, [...ids]])
+      for (const r of rows) ids.delete(r.sub_record_ref)
+      stats.skippedAlreadyStored = rows.length
+      console.log(`--resume: ${rows.length} already stored, ${ids.size} to fetch`)
+    }
     // 2. Fetch full detail in batches and ingest.
     const all = [...ids]
     for (let i = 0; i < all.length; i += 20) {

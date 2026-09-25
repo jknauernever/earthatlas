@@ -6,6 +6,8 @@
 | `gfw-doc-claudina.json` | **Real** GFW entry, verbatim from `/docs/quick-start` (has a registry owner and combinedSourcesInfo). |
 | `gfw-live-gabu-reefer-2026-09-24.json` | **Real, recorded live** 2026-09-24: `GET /v3/vessels?ids[0]=0b7047cb5-…&registries-info-data=ALL` (dataset v4.0). |
 | `gfw-live-cresty-2026-09-24.json`, `gfw-live-goldeneye-2026-09-24.json` | **Real, recorded live** 2026-09-24 (one detail call returned both). Sister ships that share an AIS identity inside GFW's data: the regression case for never matching GFW entries by AIS id. |
+| `gfw-live-linnea-rose-2026-09-24.json` | **Real, recorded live** GFW detail entry for LINNEA ROSE (MMSI 368330140), Josh's QA boat. |
+| `mc-live-linnea-rose-2026-06-21.ndjson` | **Real** MarineCadastre identity rows for LINNEA ROSE, derived from the 146 positions in `ais-2026-06-21.csv.zst` (the shape build_tracks.py writes). |
 | `gfw-doc-don-tito.json` | **Real** GFW entry, verbatim from `/docs/v3/vessels/get-one-vessel` (AIS only, no registry). |
 
 `scenarios.js` builds two kinds of entries:

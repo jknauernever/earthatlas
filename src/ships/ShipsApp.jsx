@@ -26,7 +26,9 @@ import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import ShipPicker from './ShipPicker.jsx'
+import TrackMonths, { TRACK_KINDS } from './TrackControls.jsx'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
+import trackSource from './trackSource.json'
 import styles from './ShipsApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -48,6 +50,44 @@ const IDENTITY = {
   sourceName: 'Global Fishing Watch', sourceUrl: 'https://globalfishingwatch.org',
 }
 
+const TRACK_ICON = '<path d="M3 19c3-1 4-5 7-6s5 2 8 0 3-6 3-6"/><circle cx="3" cy="19" r="1.5"/><circle cx="21" cy="7" r="1.5"/>'
+const TRACKS = {
+  id: 'tracks', name: 'Ship tracks', sub: 'where ships went, from AIS', hue: '#fde047', iconSvg: TRACK_ICON,
+  sourceName: 'MarineCadastre AIS (NOAA / BOEM / USCG)', sourceUrl: 'https://hub.marinecadastre.gov/pages/vesseltraffic',
+}
+
+// Track lines: /shiptraffic's exact style (src/shiptraffic/ShipTrafficApp.jsx) —
+// one yellow, width by zoom, slight blur, and stacked months dimmed by √count so
+// busy lanes glow instead of saturating. Tiles: /api/ship-tracks (bake:
+// scripts/ships/bake-ais/). A picked ship's own tracks draw on top, brighter,
+// from the complete per-MMSI pack (?mmsi=): the density tiles drop lines in
+// crowded areas, so they can't be trusted to hold one particular ship.
+const TRACK_COLOR = '#fde047'
+const TRACK_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5]
+// A picked ship's tracks: bold cyan (the Ship identity accent) over a dark casing,
+// so they read through any density of yellow and on satellite (Josh, 2026-09-25).
+const OWN_COLOR = '#22d3ee'
+const OWN_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 2.2, 10, 3.2, 14, 4.5]
+const OWN_CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 4.2, 10, 5.8, 14, 7.5]
+const TRACK_MONTH_CAP = 12
+const TILES_BASE = typeof window !== 'undefined' ? window.location.origin : ''
+const trackTileUrl = (ym) =>
+  `${TILES_BASE}/api/ship-tracks?t=${ym}&v=${trackSource.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const trkSrc = (ym) => `shiptrk-${ym}`
+const trkLine = (ym) => `shiptrk-${ym}-line`
+const OWN_SRC = 'shiptrk-own'
+const OWN_LINE = 'shiptrk-own-line'
+const OWN_CASING = 'shiptrk-own-casing'
+
+/**
+ * A track belongs to the picked ship only if its MMSI is one the ship held AND
+ * it starts inside that MMSI's observed window (temporal identity,
+ * src/ships/CLAUDE.md). An MMSI reused by another boat in another year never
+ * lights up.
+ */
+const inOwnWindow = (f, periods) => periods.some(({ mmsi, from, to }) =>
+  f.properties.mmsi === mmsi && (from == null || f.properties.t0 >= from) && (to == null || f.properties.t0 <= to))
+
 // On-state derivations from a hue, as /inmotion: border .6, background .13, icon = hue.
 function hueStyle(hex) {
   const n = parseInt(hex.slice(1), 16)
@@ -60,13 +100,14 @@ const Icon = ({ svg, size = 19 }) => (
 )
 
 //   v   picked vessel (EarthAtlas uuid)     q  ship search text      k  kinds (comma list)
-//   id  '0' = Ship identity layer off       bm basemap               lat,lng,z camera
+//   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
+//   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
 function readUrlState() {
   if (typeof window === 'undefined') return {}
   const sp = new URLSearchParams(window.location.search)
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
-    v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), bm: sp.get('bm'),
+    v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -94,6 +135,11 @@ export default function ShipsApp() {
   const [mobileView, setMobileView] = useState('dock')
 
   const [identityOn, setIdentityOn] = useState(initial.id !== '0')
+  const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
+  const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
+  const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
+  const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
+  const [ownTracks, setOwnTracks] = useState([])      // the picked ship's complete tracks (from the per-MMSI pack)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState(initial.q || '')
   const [kinds, setKinds] = useState(() => (initial.k ? initial.k.split(',').filter(Boolean) : []))
@@ -113,11 +159,13 @@ export default function ShipsApp() {
       projection: 'globe',
     })
     mapRef.current = map
+    if (import.meta.env.DEV) window.__shipsMap = map // dev-only QA handle (as /inmotion's __systemsMap)
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => {
       map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
       setMapReady(true)
+      setStyleVersion((n) => n + 1)
     })
     return () => { map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,12 +188,132 @@ export default function ShipsApp() {
 
   useEffect(() => { document.title = 'Ships — vessel identity over time · EarthAtlas' }, [])
 
+  // ─── Track layers (one source per selected month, stacked) ─────────────────
+  const allTrackMonths = useMemo(() => (trackSource.months || []).slice(-TRACK_MONTH_CAP), [])
+  const [trackRange, setTrackRange] = useState(() => {
+    const n = allTrackMonths.length
+    const [a, b] = (initial.tm || '').split('_')
+    const ia = allTrackMonths.indexOf(a), ib = allTrackMonths.indexOf(b || a)
+    return ia >= 0 && ib >= 0 ? [Math.min(ia, ib), Math.max(ia, ib)] : [0, Math.max(0, n - 1)]
+  })
+  const [trackKinds, setTrackKinds] = useState(() => (initial.tk ? initial.tk.split(',').filter(Boolean) : []))
+  const trackMonths = useMemo(() => allTrackMonths.slice(trackRange[0], trackRange[1] + 1), [allTrackMonths, trackRange])
+  const addedMonthsRef = useRef(new Set())
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    // /shiptraffic dims by √(months stacked) and opens on "All" (24 months → ~0.14).
+    // A single month of the Salish Sea already holds ~30k trips, so /ships uses
+    // that same look (the 24-month opacity) and dims further as months stack.
+    const opacity = Math.max(0.03, 0.7 / Math.sqrt(24 * Math.max(1, trackMonths.length)))
+    // Drop months no longer selected (a basemap swap already dropped everything).
+    for (const ym of [...addedMonthsRef.current]) {
+      if (trackMonths.includes(ym) && map.getSource(trkSrc(ym))) continue
+      if (map.getLayer(trkLine(ym))) map.removeLayer(trkLine(ym))
+      if (map.getSource(trkSrc(ym))) map.removeSource(trkSrc(ym))
+      addedMonthsRef.current.delete(ym)
+    }
+    const kindFilter = trackKinds.length ? ['in', ['get', 'kind'], ['literal', trackKinds]] : null
+    for (const ym of trackMonths) {
+      if (!map.getSource(trkSrc(ym))) {
+        addedMonthsRef.current.add(ym)
+        map.addSource(trkSrc(ym), { type: 'vector', tiles: [trackTileUrl(ym)], minzoom: 5, maxzoom: 10,
+          bounds: trackSource.bbox, attribution: 'Ship tracks: MarineCadastre AIS (NOAA / BOEM / USCG)' })
+        map.addLayer({ id: trkLine(ym), type: 'line', source: trkSrc(ym), 'source-layer': trackSource.sourceLayer,
+          layout: { 'line-join': 'round' },
+          paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } })
+      }
+      map.setLayoutProperty(trkLine(ym), 'visibility', tracksOn ? 'visible' : 'none')
+      map.setPaintProperty(trkLine(ym), 'line-opacity', opacity)
+      map.setFilter(trkLine(ym), kindFilter)
+    }
+    if (!map.getSource(OWN_SRC)) {
+      map.addSource(OWN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({ id: OWN_CASING, type: 'line', source: OWN_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#0a0e17', 'line-width': OWN_CASING_WIDTH, 'line-opacity': 0.85 } })
+      map.addLayer({ id: OWN_LINE, type: 'line', source: OWN_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': OWN_COLOR, 'line-width': OWN_WIDTH, 'line-opacity': 1 } })
+    }
+    const ownVis = tracksOn && identityOn && vesselId ? 'visible' : 'none'
+    map.setLayoutProperty(OWN_CASING, 'visibility', ownVis)
+    map.setLayoutProperty(OWN_LINE, 'visibility', ownVis)
+    // Keep the picked ship above month layers added later.
+    if (map.getLayer(OWN_CASING)) { map.moveLayer(OWN_CASING); map.moveLayer(OWN_LINE) }
+  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId])
+
+  // The picked ship's own tracks: every selected month × every MMSI it held.
+  useEffect(() => {
+    if (!vesselId || !mmsiPeriods.length || !trackMonths.length) { setOwnTracks([]); return }
+    const ctl = new AbortController()
+    const mmsis = [...new Set(mmsiPeriods.map((p) => p.mmsi))]
+    Promise.all(trackMonths.flatMap((ym) => mmsis.map((m) =>
+      fetch(`/api/ship-tracks?t=${ym}&mmsi=${m}&v=${trackSource.version}`, { signal: ctl.signal }).then((r) => (r.ok ? r.json() : { features: [] })).catch(() => ({ features: [] })))))
+      .then((fcs) => { if (!ctl.signal.aborted) setOwnTracks(fcs.flatMap((fc) => fc.features).filter((f) => inOwnWindow(f, mmsiPeriods))) })
+    return () => ctl.abort()
+  }, [vesselId, mmsiPeriods, trackMonths])
+  const fitToOwnRef = useRef(false) // set when a ship is picked from search; a track click doesn't move the map
+  useEffect(() => {
+    const map = mapRef.current
+    const src = map?.getSource(OWN_SRC)
+    if (src) src.setData({ type: 'FeatureCollection', features: ownTracks })
+    if (map && ownTracks.length && fitToOwnRef.current) {
+      fitToOwnRef.current = false
+      const b = new mapboxgl.LngLatBounds()
+      for (const f of ownTracks) for (const c of f.geometry.coordinates) b.extend(c)
+      // The card hangs from the top centre, so fit the tracks into the map below it.
+      const card = document.querySelector('[aria-label="Ship card"]')?.getBoundingClientRect()
+      const h = map.getContainer().clientHeight
+      const top = card ? Math.min(card.bottom + 24, h * 0.6) : 90
+      map.fitBounds(b, { padding: { top, bottom: 40, left: isMobile ? 30 : 140, right: isMobile ? 30 : 80 }, maxZoom: 12, duration: 1200 })
+    }
+  }, [ownTracks, mapReady, styleVersion, isMobile])
+
+  // Click a track → which ship held that MMSI when the track started → its card.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !trackMonths.length) return
+    const layers = trackMonths.map(trkLine)
+    const hit = (pt) => {
+      const live = layers.filter((l) => map.getLayer(l))
+      if (!live.length) return []
+      return map.queryRenderedFeatures([[pt.x - 4, pt.y - 4], [pt.x + 4, pt.y + 4]], { layers: live })
+    }
+    const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
+    const onClick = async (e) => {
+      const f = hit(e.point)[0]
+      if (!f) return
+      const { mmsi, t0 } = f.properties
+      const when = new Date(t0 * 1000).toISOString()
+      try {
+        const r = await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)
+        const d = await r.json()
+        if (d.status === 'resolved') {
+          setIdentityOn(true); setPickerOpen(false); setVesselName(null); setVesselId(d.vesselIds[0]); setTrackNote(null)
+        } else {
+          setIdentityOn(true); setPickerOpen(false); setVesselId(null); setMmsiPeriods([])
+          setTrackNote(d.status === 'ambiguous'
+            ? `MMSI ${mmsi} was used by ${d.vesselIds.length} different ships at ${when.slice(0, 10)}, so EarthAtlas won't guess which one this track is.`
+            : `No identity record yet for MMSI ${mmsi} on ${when.slice(0, 10)}. Its AIS track is real; the ship just isn't in the identity database.`)
+        }
+      } catch { setTrackNote('Could not look up this track’s ship.') }
+    }
+    map.on('mousemove', onMove)
+    map.on('click', onClick)
+    return () => { map.off('mousemove', onMove); map.off('click', onClick) }
+  }, [mapReady, trackMonths])
+
   const handlePlace = useCallback((r) => { flyToSearchResult(mapRef.current, r) }, [])
 
   // ─── Shareable URL ────────────────────────────────────────────────────────
   useEffect(() => {
     const sp = new URLSearchParams()
     if (!identityOn) sp.set('id', '0')
+    if (!tracksOn) sp.set('tr', '0')
+    if (allTrackMonths.length && !(trackRange[0] === 0 && trackRange[1] === allTrackMonths.length - 1)) {
+      const [a, b] = [allTrackMonths[trackRange[0]], allTrackMonths[trackRange[1]]]
+      sp.set('tm', a === b ? a : `${a}_${b}`)
+    }
+    if (trackKinds.length) sp.set('tk', trackKinds.join(','))
     if (vesselId) sp.set('v', vesselId)
     if (query.trim()) sp.set('q', query.trim())
     if (kinds.length) sp.set('k', kinds.join(','))
@@ -154,18 +322,18 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, vesselId, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, trackRange, trackKinds, vesselId, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
     setIdentityOn(next)
     setPickerOpen(next && !vesselId) // turning on with nothing picked → open the search
   }
-  const pickShip = (r) => { setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
+  const pickShip = (r) => { fitToOwnRef.current = true; setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
-  const activeCount = identityOn ? 1 : 0
+  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0)
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
@@ -191,14 +359,25 @@ export default function ShipsApp() {
         />
       </MapSearch>
 
-      {/* Ships pill — /inmotion's MeasurePicker construct; the card hangs under it */}
+      {/* Ships pill — /inmotion's MeasurePicker construct; the card hangs under it.
+          (Track months and kinds live in the left panel, under Ship tracks.) */}
       {identityOn && (
         <ShipPicker shipName={vesselId ? vesselName : null} query={query} onQuery={setQuery} kinds={kinds} onKinds={setKinds}
           onPick={pickShip} open={pickerOpen} onOpen={setPickerOpen}>
+          {!vesselId && trackNote && (
+            <div className={styles.trackNote} role="status">{trackNote}
+              <button type="button" className={styles.inlineLink} onClick={() => setTrackNote(null)}> dismiss</button>
+            </div>
+          )}
           {vesselId && (
-            <VesselCard vesselId={vesselId} onClose={() => { setVesselId(null); setVesselName(null) }}
+            <VesselCard vesselId={vesselId} onClose={() => { setVesselId(null); setVesselName(null); setMmsiPeriods([]) }}
               onSelectVessel={(id) => setVesselId(id)}
-              onLoaded={(v) => setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')} />
+              onLoaded={(v) => {
+                setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')
+                const secs = (x) => (x ? Math.floor(new Date(x).getTime() / 1000) : null)
+                setMmsiPeriods(v.assertions.filter((a) => a.attribute === 'mmsi' && /^\d{9}$/.test(a.value_norm) && a.period_kind !== 'unknown')
+                  .map((a) => ({ mmsi: Number(a.value_norm), from: secs(a.from), to: secs(a.to) })))
+              }} />
           )}
         </ShipPicker>
       )}
@@ -246,6 +425,14 @@ export default function ShipsApp() {
                 {identityOn && <span className={styles.liveDotHue} aria-hidden="true" />}
                 {!isMobile && <span className={styles.dockTip} aria-hidden="true">{IDENTITY.name} <span>· {IDENTITY.sub}</span></span>}
               </button>
+              {allTrackMonths.length > 0 && (
+                <button type="button" className={`${styles.dockBtn} ${tracksOn ? styles.dockOn : ''}`}
+                  style={tracksOn ? hueStyle(TRACKS.hue) : undefined} onClick={() => setTracksOn((o) => !o)} aria-pressed={tracksOn} aria-label={TRACKS.name}>
+                  <Icon svg={TRACKS.iconSvg} size={isMobile ? 16 : 19} />
+                  {tracksOn && <span className={styles.liveDotHue} aria-hidden="true" />}
+                  {!isMobile && <span className={styles.dockTip} aria-hidden="true">{TRACKS.name} <span>· {TRACKS.sub}</span></span>}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -294,6 +481,41 @@ export default function ShipsApp() {
                     </div>
                   )}
                 </div>
+                {allTrackMonths.length > 0 && (
+                  <div className={styles.layerBlock}>
+                    <div className={styles.layerRow} role="switch" aria-checked={tracksOn} tabIndex={0} onClick={() => setTracksOn((o) => !o)}
+                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTracksOn((o) => !o) } }}>
+                      <span className={`${styles.rowIcon} ${tracksOn ? styles.dockOn : ''}`} style={tracksOn ? hueStyle(TRACKS.hue) : undefined} aria-hidden="true">
+                        <Icon svg={TRACKS.iconSvg} size={16} />
+                      </span>
+                      <div className={styles.layerInfo}>
+                        <span className={styles.layerName}>{TRACKS.name}</span>
+                        <span className={styles.layerSub}>{TRACKS.sub}</span>
+                      </div>
+                    </div>
+                    {tracksOn && (
+                      <div className={styles.kindFilter}>
+                        <TrackMonths months={allTrackMonths} range={trackRange} onRange={setTrackRange} styles={styles} />
+                        <div className={styles.fieldLabel} style={{ marginTop: 12 }}>Kind of ship</div>
+                        <div className={styles.chipRow}>
+                          <button type="button" className={!trackKinds.length ? styles.chipTrack : styles.chip} onClick={() => setTrackKinds([])}>Every kind</button>
+                          {TRACK_KINDS.map(([k, name]) => (
+                            <button key={k} type="button" className={trackKinds.includes(k) ? styles.chipTrack : styles.chip}
+                              onClick={() => setTrackKinds(trackKinds.includes(k) ? trackKinds.filter((x) => x !== k) : [...trackKinds, k])}>{name}</button>
+                          ))}
+                        </div>
+                        <div className={styles.legendNoteText}>From the AIS type code each ship broadcasts, as NOAA publishes it (the Coast Guard corrects some). Tracks stay yellow; this only filters.</div>
+                      </div>
+                    )}
+                    {tracksOn && (
+                      <div className={styles.liveNote}>
+                        Salish Sea (US waters), {allTrackMonths[0]} → {allTrackMonths[allTrackMonths.length - 1]}. Zoom into the region to see them; click a track
+                        for its ship. A picked ship’s own tracks show in cyan. Data:{' '}
+                        <a className={styles.sourceLink} href={TRACKS.sourceUrl} target="_blank" rel="noopener noreferrer">{TRACKS.sourceName}</a>, public domain.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -1,0 +1,47 @@
+{
+ "dataset": "public-global-vessel-identity:v4.0",
+ "registryInfo": [],
+ "registryOwners": [],
+ "selfReportedInfo": [
+  {
+   "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+   "imo": null,
+   "flag": "USA",
+   "ssvid": "368330140",
+   "callsign": "WN0431D",
+   "shipname": "LINNEA ROSE",
+   "nShipname": "LINNEAROSE",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "NO_MATCH",
+   "messagesCounter": 261175,
+   "positionsCounter": 31799,
+   "transmissionDateTo": "2026-09-22T21:48:13Z",
+   "transmissionDateFrom": "2025-05-02T17:31:23Z"
+  }
+ ],
+ "combinedSourcesInfo": [
+  {
+   "vesselId": "323723207-7453-0bf2-0c0f-07e028cf1042",
+   "geartypes": [
+    {
+     "name": "OTHER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2025
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "OTHER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2025
+    }
+   ]
+  }
+ ],
+ "registryInfoTotalRecords": 0,
+ "registryPublicAuthorizations": []
+}

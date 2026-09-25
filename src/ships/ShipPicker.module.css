@@ -160,3 +160,20 @@
 @media (max-width: 767px) {
   .card { max-height: calc(100vh - 170px); }
 }
+
+/* Folded card: header only. */
+.fold {
+  position: absolute; top: 8px; right: 38px; width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: rgba(243, 247, 238, 0.6); font-size: 13px; cursor: pointer;
+}
+.fold:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.cardFolded { padding-bottom: 10px; }
+
+/* Card tabs: Overview · History · Matches (segmented, same glass as the chips). */
+.tabs { display: flex; gap: 4px; margin: 10px 0 2px; padding: 3px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
+.tab {
+  flex: 1; padding: 5px 8px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+  color: rgba(243, 247, 238, 0.7); font: inherit; font-size: 12px; font-weight: 600;
+}
+.tab:hover { color: #fff; }
+.tabOn { background: rgba(103, 232, 249, 0.16); color: #e0fbff; }

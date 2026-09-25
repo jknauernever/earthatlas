@@ -1,0 +1,15 @@
+{
+  "sourceLayer": "tracks",
+  "region": "salish",
+  "bbox": [
+    -124.85,
+    47.0,
+    -122.05,
+    49.0
+  ],
+  "version": "salish-v4",
+  "months": [
+    "2026-06"
+  ],
+  "tiles": {}
+}

@@ -1,0 +1,4 @@
+# Multi-GB AIS caches and tile outputs: never commit (tiles go to Vercel Blob).
+cache/
+build/
+track_tiles/

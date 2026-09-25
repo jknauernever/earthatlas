@@ -1,0 +1,400 @@
+/* /ships — shell copied from /inmotion (src/systems/SystemsApp.module.css) so the suite reads as one:
+   dark glass, atmosphere-cyan accent, icon dock ⇄ panel, globe. Ship-specific styles at the end. */
+
+.container {
+  position: fixed;
+  inset: 0;
+  background: #0a0e17;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #e5e7eb;
+}
+.mapWrap { position: absolute; inset: 0; }
+
+/* Particle animation overlay — plain DOM above the map canvas, below all
+   chrome. Clicks fall through to the map (that's the wind-readout popup). */
+.windCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tokenError {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 20px;
+  background: rgba(10, 14, 23, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.tokenError code { color: #22d3ee; }
+
+/* ─── Branding ───────────────────────────────────────────────────────────── */
+.branding {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.brandingLink { text-decoration: none; color: inherit; display: inline-flex; align-items: center; transition: opacity 0.15s ease; }
+.brandingLink:hover { opacity: 0.8; }
+.wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark em { font-style: italic; font-weight: 400; opacity: 0.9; }
+.subBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #67e8f9; /* atmosphere cyan */
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  padding-left: 10px;
+}
+
+/* ─── Search box ─────────────────────────────────────────────────────────── */
+.searchBox {
+  position: absolute;
+  top: 16px; right: 60px;
+  width: 320px;
+  max-width: calc(100vw - 80px);
+  z-index: 11;
+  font-family: inherit;
+}
+
+
+.shareCtl { position: absolute; top: 110px; right: 10px; z-index: 10; }
+.basemapMenu { position: absolute; top: 198px; right: 10px; z-index: 10; }
+.basemapToggle, .basemapToggleActive {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.basemapToggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
+.basemapToggleActive { background: #131c30; color: #22d3ee; border-color: rgba(34, 211, 238, 0.5); }
+.basemapMenuPanel {
+  position: absolute; top: 42px; right: 0;
+  width: 160px; padding: 4px;
+  background: rgba(10, 14, 23, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.basemapMenuTitle {
+  padding: 8px 10px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5); font-weight: 600;
+}
+.basemapMenuItem, .basemapMenuItemActive {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
+  border: 0; background: transparent; color: #e5e7eb;
+  font: inherit; font-size: 13px; text-align: left;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.1s ease;
+}
+.basemapMenuItem:hover { background: rgba(255, 255, 255, 0.05); }
+.basemapMenuItemActive { background: rgba(34, 211, 238, 0.12); color: #fff; }
+.basemapMenuItemLabel { flex: 1; font-weight: 500; }
+.basemapMenuCheck { color: #22d3ee; }
+
+/* ─── Control panel ──────────────────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 70px; left: 16px;
+  width: 312px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 100px);
+  display: flex; flex-direction: column;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  z-index: 11;
+  overflow: hidden;
+}
+.panelHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px;
+  flex-shrink: 0;
+}
+.panelHead .countChip { margin-left: auto; }
+.panelHidden { display: none !important; }
+.panelTitle {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
+}
+.panelCollapse {
+  border: 0; background: transparent; color: rgba(255, 255, 255, 0.6);
+  font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1;
+}
+.panelCollapse:hover { color: #fff; }
+.panelCollapsed { width: 312px; }
+.panelBody { padding: 0 14px 14px; overflow-y: auto; }
+
+/* ─── Groups: Air / Water / Land ─────────────────────────────────────────── */
+.group + .group { margin-top: 10px; }
+.groupHead {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Layer rows: icon chip + name (the whole row is the toggle) ─────────── */
+.layerBlock { padding-bottom: 0; }
+.layerBlock + .layerBlock { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.layerRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 4px; margin: 0 -4px; border-radius: 8px;
+  cursor: pointer; user-select: none;
+}
+.layerRow:hover { background: rgba(255, 255, 255, 0.05); }
+.layerRow:focus-visible { outline: 2px solid rgba(103, 232, 249, 0.6); outline-offset: -2px; }
+/* Icon chip in rows — same off/on hue treatment as the dock (1:1 mapping). */
+.rowIcon {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px; display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5);
+}
+/* One line per dataset: name + short descriptor side by side, descriptor
+   truncates rather than wrapping. Source links live in the live-stamp (when
+   the layer is on) and in "How this is sourced". */
+.layerInfo { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex: 1; }
+.layerName { font-size: 13.5px; font-weight: 600; color: #fff; line-height: 1.3; white-space: nowrap; }
+.layerSub {
+  font-size: 11px; color: rgba(255, 255, 255, 0.5); line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.sourceLink { color: rgba(120, 200, 255, 0.9); text-decoration: underline; text-underline-offset: 2px; }
+.sourceLink:hover { color: rgba(160, 220, 255, 1); }
+
+/* Inline provenance states: live run stamp / loading / honest failure. */
+.liveNote {
+  font-size: 11px; line-height: 1.5;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, 0.07);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 7px;
+  padding: 7px 9px;
+  margin: 0 0 12px;
+}
+.liveDot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  margin-right: 6px;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
+}
+.loadingNote {
+  font-size: 11px; line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 0 10px;
+}
+.errorNote {
+  font-size: 11px; line-height: 1.5;
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 7px;
+  padding: 7px 9px;
+  margin-bottom: 12px;
+}
+
+.field { margin-bottom: 14px; }
+.fieldLabel {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55); font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ─── Help tip ───────────────────────────────────────────────────────────── */
+.tip {
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; color: rgba(255, 255, 255, 0.5);
+  pointer-events: none; text-align: center; max-width: 90vw;
+}
+
+/* ─── Icon dock (default navigation; Claude Design handoff #3a/#4b/#4c) ── */
+.dock {
+  position: absolute; top: 70px; left: 16px; z-index: 11; width: 104px;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px; backdrop-filter: blur(8px);
+}
+.dockTitle { font-size: 12px; font-style: italic; font-weight: 700; letter-spacing: 0.01em; color: #6EEBFF; white-space: nowrap; padding: 0 2px; }
+.dockMeta { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.countChip {
+  font-size: 9px; font-weight: 700; color: #67e8f9; background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 999px; padding: 2px 6px; white-space: nowrap;
+}
+.dockCtl { display: flex; gap: 2px; }
+.dockBtnSm {
+  width: 22px; height: 22px; border-radius: 6px; border: 0; background: transparent; color: rgba(255, 255, 255, 0.6);
+  cursor: pointer; font-size: 12px; display: grid; place-items: center; padding: 0;
+}
+.dockBtnSm:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.dockGroup { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.dockGroupLabel { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.4); padding: 0 2px; }
+.dockGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.dockBtn {
+  position: relative; width: 42px; height: 42px; border-radius: 9px; cursor: pointer; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.dockBtn:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.85); border-color: rgba(255, 255, 255, 0.3); }
+.dockOn, .dockOn:hover { border-color: var(--hue-border); background: var(--hue-bg); color: var(--hue); }
+.liveDotHue {
+  position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--hue); box-shadow: 0 0 6px var(--hue);
+}
+/* Hover tooltip on EVERY icon, on or off — to the right of the button. */
+.dockTip {
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; padding: 6px 10px; border-radius: 7px;
+  background: rgba(10, 14, 23, 0.96); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  font-size: 11.5px; font-weight: 600; color: #fff;
+  opacity: 0; pointer-events: none; transition: opacity 0.08s; z-index: 20;
+}
+.dockTip span { color: rgba(255, 255, 255, 0.5); font-weight: 400; }
+.dockBtn:hover .dockTip, .dockBtn:focus-visible .dockTip { opacity: 1; }
+
+/* Mobile dock (88 px, 34 px buttons, 16 px icons) + tap confirmation chip + pill. */
+.dockMobile { width: 88px; top: 52px; left: 10px; gap: 5px; padding: 6px; border-radius: 11px; }
+.dockMobile .dockTitle { font-size: 10.5px; padding: 0 1px; }
+.dockMobile .countChip { font-size: 8px; padding: 2px 5px; }
+.dockMobile .dockBtnSm { width: 20px; height: 20px; font-size: 11px; }
+.dockMobile .dockBtn { width: 34px; height: 34px; border-radius: 8px; }
+.dockMobile .liveDotHue { top: 2px; right: 2px; width: 4px; height: 4px; box-shadow: 0 0 5px var(--hue); }
+.tapChip {
+  position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; padding: 5px 8px; border-radius: 6px;
+  background: rgba(10, 14, 23, 0.96); border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 10px; font-weight: 600; color: #fff; z-index: 20; pointer-events: none;
+  animation: chipFade 1.5s ease-out forwards;
+}
+.tapChip b { color: var(--hue); font-weight: 700; }
+@keyframes chipFade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.pill {
+  position: absolute; top: 52px; left: 10px; z-index: 11; width: 44px; height: 44px; border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(10, 14, 23, 0.85); color: rgba(255, 255, 255, 0.8);
+  display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(8px);
+}
+.pillBadge {
+  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; border-radius: 999px;
+  background: #22d3ee; color: #06121a; font-size: 9px; font-weight: 700; display: grid; place-items: center;
+  padding: 0 3px; border: 2px solid #0a0e17;
+}
+
+/* ─── Phones ───────────────────────────────────────────────────────────────
+   The control panel moves into the MapSheet drawer; top chrome compacts the
+   same way the other tools do. */
+@media (max-width: 768px) {
+  .branding {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+  }
+  .wordmark { font-size: 14px; }
+  .subBadge { font-size: 10px; padding-left: 8px; }
+
+  /* Mobile column: search (16) → share (62) → clip (106) → basemap (150). */
+  .shareCtl {
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+  .basemapMenu {
+    top: calc(150px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+
+  /* Explain button drops below the branding row; card fills the width. */
+  .explainBtn {
+    top: calc(60px + env(safe-area-inset-top, 0px));
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+  .explainCard { top: calc(104px + env(safe-area-inset-top, 0px)); }
+  .basemapToggle, .basemapToggleActive { width: 44px; height: 44px; }
+  .basemapMenuItem, .basemapMenuItemActive { padding: 11px 10px; }
+
+  .panelHead { display: none; }
+  .panelBody { padding: 0; overflow: visible; }
+  .tip { display: none; }
+
+  .chipRow { gap: 6px; }
+  .chip, .chipActive { font-size: 13px; padding: 8px 13px; }
+  }
+
+/* Mode-switch cue under the Explain button: a transient toast when the
+   layer's zoomed-in view engages/disengages, and a quiet persistent chip
+   while it's active. Dark pills — readable over any basemap. */
+.modeCueWrap {
+  position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+  z-index: 11; display: flex; justify-content: center; pointer-events: none;
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+/* ─── /ships specifics ───────────────────────────────────────────────────── */
+.basemapMenu { top: 154px; }                   /* no clip button here: share (110) → basemap (154) */
+
+/* Ship card internals (VesselCard.jsx; the card shell is in ShipPicker.module.css). */
+.vesselHead { padding: 2px 0 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 4px; }
+.vesselName { font-size: 18px; font-weight: 700; color: #fff; line-height: 1.2; }
+.vesselSub { font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-top: 3px; }
+.idNote { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.review {
+  margin-top: 8px; padding: 6px 9px; border-radius: 7px; font-size: 11.5px; line-height: 1.45;
+  color: #fcd34d; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.25);
+}
+.section { margin-top: 12px; }
+.sectionHead {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45); padding: 4px 0 2px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.attrBlock { margin-bottom: 9px; }
+.attrLabel { font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, 0.75); margin-bottom: 3px; }
+.valRow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: baseline;
+  font-size: 12.5px; padding: 2px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.val { color: #fff; overflow-wrap: anywhere; }
+.period { color: rgba(255, 255, 255, 0.55); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.warn { color: #fbbf24; }
+.ev { font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; padding: 1px 5px; border-radius: 4px; cursor: help; white-space: nowrap; }
+.evAis { color: #67e8f9; background: rgba(34, 211, 238, 0.12); }
+.evReg { color: #86efac; background: rgba(74, 222, 128, 0.12); }
+.evInf { color: #d8b4fe; background: rgba(192, 132, 252, 0.12); }
+.srcLink { font-size: 10.5px; white-space: nowrap; }
+.candRow { font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 4px; line-height: 1.45; }
+.inlineLink { border: 0; background: transparent; padding: 0; cursor: pointer; color: rgba(120, 200, 255, 0.9); font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.inlineLink:hover { color: rgba(160, 220, 255, 1); }
+.legendNoteText { font-size: 10.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.55); margin-top: 6px; }
+.attribution { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 11px; color: rgba(255, 255, 255, 0.55); }
+
+@media (max-width: 768px) {
+  .basemapMenu { top: calc(106px + env(safe-area-inset-top, 0px)); }  /* search (16) → share (62) → basemap (106) */
+  .valRow { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .period { grid-column: 1 / -1; }
+}

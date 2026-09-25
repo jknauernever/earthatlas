@@ -1,0 +1,38 @@
+{
+ "dataset": "public-global-vessel-identity:v20230623",
+ "registryInfoTotalRecords": 0,
+ "registryInfo": [],
+ "registryOwners": [],
+ "registryAuthorizations": [],
+ "selfReportedInfo": [
+  {
+   "id": "c54923e64-46f3-9338-9dcb-ff09724077a3",
+   "ssvid": "775998121",
+   "shipname": "DON TITO",
+   "nShipname": "DONTITO",
+   "flag": "VEN",
+   "callsign": "YD23136",
+   "imo": null,
+   "geartype": null,
+   "shiptype": "OTHER_NON_FISHING",
+   "messagesCounter": 1103,
+   "positionsCounter": 430,
+   "shiptypesByYear": [
+    {
+     "shiptype": "OTHER_NON_FISHING",
+     "years": [
+      2021,
+      2022,
+      2023
+     ]
+    }
+   ],
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "NO_MATCH",
+   "transmissionDateFrom": "2021-08-06T10:49:26Z",
+   "transmissionDateTo": "2023-09-21T14:52:16Z"
+  }
+ ]
+}

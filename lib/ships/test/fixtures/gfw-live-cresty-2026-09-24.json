@@ -1,0 +1,181 @@
+{
+ "dataset": "public-global-vessel-identity:v4.0",
+ "registryInfo": [
+  {
+   "id": "8deb3a9c0f3660a6ab7eaf9087b07216",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210763000",
+   "lengthM": null,
+   "callsign": "5BZE3",
+   "shipname": "CRESTY",
+   "geartypes": [
+    "CARGO"
+   ],
+   "nShipname": "CRESTY",
+   "tonnageGt": 23433,
+   "sourceCode": [
+    "IMO"
+   ],
+   "extraFields": [],
+   "latestVesselInfo": true,
+   "transmissionDateTo": "2026-07-30T12:20:25Z",
+   "vesselInfoReference": "96429054d901165032f5b8be91f3bef0",
+   "transmissionDateFrom": "2014-04-10T05:04:09Z"
+  },
+  {
+   "id": "8deb3a9c0f3660a6ab7eaf9087b07216",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210764000",
+   "lengthM": null,
+   "callsign": "5BZE3",
+   "shipname": "CRESTY",
+   "geartypes": [
+    "CARGO"
+   ],
+   "nShipname": "CRESTY",
+   "tonnageGt": 23433,
+   "sourceCode": [
+    "IMO"
+   ],
+   "extraFields": [],
+   "latestVesselInfo": true,
+   "transmissionDateTo": "2014-02-21T02:45:19Z",
+   "vesselInfoReference": "a3c403b853ee7affbb99cbd5e00461c3",
+   "transmissionDateFrom": "2014-02-11T01:40:07Z"
+  },
+  {
+   "id": "8deb3a9c0f3660a6ab7eaf9087b07216",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210763000",
+   "lengthM": null,
+   "callsign": "5BZE3",
+   "shipname": "CRESTY",
+   "geartypes": [
+    "CARGO"
+   ],
+   "nShipname": "CRESTY",
+   "tonnageGt": 23433,
+   "sourceCode": [
+    "IMO"
+   ],
+   "extraFields": [],
+   "latestVesselInfo": true,
+   "transmissionDateTo": "2014-01-24T04:28:53Z",
+   "vesselInfoReference": "fb0265284ccbd599ce6a5f647c9eff87",
+   "transmissionDateFrom": "2013-12-04T01:54:42Z"
+  }
+ ],
+ "registryOwners": [
+  {
+   "flag": "CYP",
+   "name": "EUDOCIA MARITIME",
+   "ssvid": "210763000",
+   "dateTo": "2026-07-30T12:20:25Z",
+   "dateFrom": "2014-04-10T05:04:09Z",
+   "sourceCode": [
+    "IMO"
+   ]
+  },
+  {
+   "flag": "CYP",
+   "name": "EUDOCIA MARITIME",
+   "ssvid": "210764000",
+   "dateTo": "2014-02-21T02:45:19Z",
+   "dateFrom": "2014-02-11T01:40:07Z",
+   "sourceCode": [
+    "IMO"
+   ]
+  },
+  {
+   "flag": "CYP",
+   "name": "EUDOCIA MARITIME",
+   "ssvid": "210763000",
+   "dateTo": "2014-01-24T04:28:53Z",
+   "dateFrom": "2013-12-04T01:54:42Z",
+   "sourceCode": [
+    "IMO"
+   ]
+  }
+ ],
+ "selfReportedInfo": [
+  {
+   "id": "0d8d0aedd-d2e9-a69d-9e38-6f91408d25f3",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210763000",
+   "callsign": "5BZE3",
+   "shipname": "CRESTY",
+   "nShipname": "CRESTY",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "messagesCounter": 7584257,
+   "positionsCounter": 2059045,
+   "transmissionDateTo": "2026-09-22T23:59:56Z",
+   "transmissionDateFrom": "2013-12-04T01:52:24Z"
+  },
+  {
+   "id": "c8378dcab-b8a3-7abf-85a5-dbe907156a16",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210764000",
+   "callsign": "5BZD3",
+   "shipname": "CRESTY",
+   "nShipname": "CRESTY",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "messagesCounter": 252,
+   "positionsCounter": 113,
+   "transmissionDateTo": "2014-02-21T03:01:03Z",
+   "transmissionDateFrom": "2014-02-11T01:34:12Z"
+  }
+ ],
+ "combinedSourcesInfo": [
+  {
+   "vesselId": "c8378dcab-b8a3-7abf-85a5-dbe907156a16",
+   "geartypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2014,
+     "yearFrom": 2014
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2014,
+     "yearFrom": 2014
+    }
+   ]
+  },
+  {
+   "vesselId": "0d8d0aedd-d2e9-a69d-9e38-6f91408d25f3",
+   "geartypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ]
+  }
+ ],
+ "registryInfoTotalRecords": 3,
+ "registryPublicAuthorizations": []
+}

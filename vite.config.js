@@ -654,6 +654,27 @@ function traceTilesPlugin() {
   }
 }
 
+// Dev middleware for /api/ships: runs the Node handler itself against the dev
+// ships database (SHIPS_DATABASE_URL from .env.local), so dev and prod share one implementation.
+function shipsApiPlugin(shipsDbUrl) {
+  return {
+    name: 'ships-api',
+    configureServer(server) {
+      if (shipsDbUrl && !process.env.SHIPS_DATABASE_URL) process.env.SHIPS_DATABASE_URL = shipsDbUrl
+      server.middlewares.use('/api/ships', async (req, res) => {
+        try {
+          const { default: handler } = await server.ssrLoadModule('/api/ships.js')
+          req.url = `/api/ships${req.url === '/' ? '' : req.url}`
+          await handler(req, res)
+        } catch (err) {
+          res.statusCode = 502
+          res.end(String(err).slice(0, 200))
+        }
+      })
+    },
+  }
+}
+
 // Dev middleware: serve /api/inciweb by mirroring the production Edge function.
 function inciwebProxyPlugin() {
   return {
@@ -834,6 +855,7 @@ export default defineConfig(({ mode }) => {
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),
+    shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || ''),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

@@ -12,7 +12,10 @@
     "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",
     "dev:parcel-tiles": "node scripts/bake-parcels/serve-tiles.mjs",
-    "lint": "eslint src --ext .js,.jsx"
+    "lint": "eslint src --ext .js,.jsx",
+    "test:ships": "node --env-file-if-exists=.env.local --test lib/ships/test/*.test.js",
+    "ships:migrate": "node --env-file=.env.local scripts/ships/migrate.mjs",
+    "ships:import-gfw": "node --env-file=.env.local scripts/ships/import-gfw.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

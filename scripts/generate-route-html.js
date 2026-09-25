@@ -100,6 +100,17 @@ const ROUTES = [
       'Salish Sea vessel traffic, ship strike risk, whale ship interaction, AIS vessel density, San Juan Islands orcas, Southern Resident killer whales, MarineCadastre AIS, cetacean sightings map, iNaturalist whales, OBIS, Haro Strait shipping',
   },
   {
+    out: 'ships.html',
+    url: 'https://earthatlas.org/ships',
+    title: 'Ships — vessel identity over time · EarthAtlas',
+    description:
+      'Look up any ship by name, IMO, MMSI or call sign and see how its identity changed over time: names, MMSIs, flags, owners and registry records, each with its source, and whether the ship broadcast it or a registry recorded it. Powered by Global Fishing Watch. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Ships — vessel identity history with sources',
+    keywords:
+      'ship identity, vessel lookup, IMO number lookup, MMSI lookup, vessel history, ship name changes, flag changes, ship ownership, Global Fishing Watch vessels, AIS identity',
+  },
+  {
     out: 'inmotion.html',
     url: 'https://earthatlas.org/inmotion',
     title: 'In Motion — Earth’s systems, animated · EarthAtlas',

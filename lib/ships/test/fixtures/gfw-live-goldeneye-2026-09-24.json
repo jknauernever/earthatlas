@@ -1,0 +1,185 @@
+{
+ "dataset": "public-global-vessel-identity:v4.0",
+ "registryInfo": [
+  {
+   "id": "14c4b38edd8e4d7fce05ccbf2a789e8b",
+   "imo": "9637131",
+   "flag": "CYP",
+   "ssvid": "210764000",
+   "lengthM": null,
+   "callsign": "5BZD3",
+   "shipname": "GOLDENEYE",
+   "geartypes": [
+    "CARGO"
+   ],
+   "nShipname": "GOLDENEYE",
+   "tonnageGt": 23433,
+   "sourceCode": [
+    "IMO"
+   ],
+   "extraFields": [],
+   "latestVesselInfo": true,
+   "transmissionDateTo": "2026-07-31T23:59:21Z",
+   "vesselInfoReference": "89d05c00b5dfd9fcead03c75273ec278",
+   "transmissionDateFrom": "2013-12-03T02:01:50Z"
+  },
+  {
+   "id": "14c4b38edd8e4d7fce05ccbf2a789e8b",
+   "imo": "9637131",
+   "flag": "CYP",
+   "ssvid": "210763000",
+   "lengthM": null,
+   "callsign": "5BZE3",
+   "shipname": "GOLDENEYE",
+   "geartypes": [
+    "CARGO"
+   ],
+   "nShipname": "GOLDENEYE",
+   "tonnageGt": 23433,
+   "sourceCode": [
+    "IMO"
+   ],
+   "extraFields": [],
+   "latestVesselInfo": true,
+   "transmissionDateTo": "2014-05-05T05:16:14Z",
+   "vesselInfoReference": "885b7adfd1e4a1922b00b898ed080ac1",
+   "transmissionDateFrom": "2014-01-04T00:58:26Z"
+  }
+ ],
+ "registryOwners": [
+  {
+   "flag": "CYP",
+   "name": "PLOTO SHIPPING",
+   "ssvid": "210764000",
+   "dateTo": "2026-07-31T23:59:21Z",
+   "dateFrom": "2013-12-03T02:01:50Z",
+   "sourceCode": [
+    "IMO"
+   ]
+  },
+  {
+   "flag": "CYP",
+   "name": "PLOTO SHIPPING",
+   "ssvid": "210763000",
+   "dateTo": "2014-05-05T05:16:14Z",
+   "dateFrom": "2014-01-04T00:58:26Z",
+   "sourceCode": [
+    "IMO"
+   ]
+  }
+ ],
+ "selfReportedInfo": [
+  {
+   "id": "0d8d0aedd-d2e9-a69d-9e38-6f91408d25f3",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210763000",
+   "callsign": "5BZE3",
+   "shipname": "CRESTY",
+   "nShipname": "CRESTY",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "messagesCounter": 7584257,
+   "positionsCounter": 2059045,
+   "transmissionDateTo": "2026-09-22T23:59:56Z",
+   "transmissionDateFrom": "2013-12-04T01:52:24Z"
+  },
+  {
+   "id": "2ec07c42a-a5fd-a338-dd2f-c4296b939289",
+   "imo": "9637131",
+   "flag": "CYP",
+   "ssvid": "210764000",
+   "callsign": "5BZD3",
+   "shipname": "GOLDENEYE",
+   "nShipname": "GOLDENEYE",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "messagesCounter": 6084340,
+   "positionsCounter": 2071690,
+   "transmissionDateTo": "2026-09-22T23:58:37Z",
+   "transmissionDateFrom": "2013-12-03T02:01:47Z"
+  },
+  {
+   "id": "c8378dcab-b8a3-7abf-85a5-dbe907156a16",
+   "imo": "9637143",
+   "flag": "CYP",
+   "ssvid": "210764000",
+   "callsign": "5BZD3",
+   "shipname": "CRESTY",
+   "nShipname": "CRESTY",
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "messagesCounter": 252,
+   "positionsCounter": 113,
+   "transmissionDateTo": "2014-02-21T03:01:03Z",
+   "transmissionDateFrom": "2014-02-11T01:34:12Z"
+  }
+ ],
+ "combinedSourcesInfo": [
+  {
+   "vesselId": "2ec07c42a-a5fd-a338-dd2f-c4296b939289",
+   "geartypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ]
+  },
+  {
+   "vesselId": "c8378dcab-b8a3-7abf-85a5-dbe907156a16",
+   "geartypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2014,
+     "yearFrom": 2014
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2014,
+     "yearFrom": 2014
+    }
+   ]
+  },
+  {
+   "vesselId": "0d8d0aedd-d2e9-a69d-9e38-6f91408d25f3",
+   "geartypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "CARGO",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearTo": 2026,
+     "yearFrom": 2013
+    }
+   ]
+  }
+ ],
+ "registryInfoTotalRecords": 2,
+ "registryPublicAuthorizations": []
+}

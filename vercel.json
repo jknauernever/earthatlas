@@ -35,6 +35,10 @@
       "destination": "/shiptraffic.html"
     },
     {
+      "source": "/ships",
+      "destination": "/ships.html"
+    },
+    {
       "source": "/inmotion",
       "destination": "/inmotion.html"
     },

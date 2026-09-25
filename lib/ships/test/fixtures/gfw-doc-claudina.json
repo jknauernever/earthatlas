@@ -1,0 +1,129 @@
+{
+ "dataset": "public-global-vessel-identity:v20231026",
+ "registryInfoTotalRecords": 1,
+ "registryInfo": [
+  {
+   "id": "72f191cf1cb981cefc7733d32abba37e",
+   "recordId": "IMO-7831410",
+   "sourceCode": [
+    "IMO"
+   ],
+   "ssvid": "701000948",
+   "flag": "ARG",
+   "shipname": "CLAUDINA",
+   "nShipname": "CLAUDINA",
+   "callsign": "LW3058",
+   "imo": "7831410",
+   "latestVesselInfo": true,
+   "transmissionDateFrom": "2013-01-01T07:26:04Z",
+   "transmissionDateTo": "2023-04-13T14:15:39Z",
+   "geartype": [
+    "FISHING"
+   ],
+   "lengthM": 53.6,
+   "tonnageGt": 369,
+   "vesselInfoReference": "ce19d2b7-e5a6-43bf-b439-4070f10fe74e"
+  }
+ ],
+ "registryOwners": [
+  {
+   "name": "DESEADO PESQUERA",
+   "flag": "ARG",
+   "ssvid": "701000948",
+   "sourceCode": [
+    "IMO"
+   ],
+   "dateFrom": "2013-01-01T07:26:04Z",
+   "dateTo": "2023-04-13T14:15:39Z"
+  }
+ ],
+ "registryAuthorizations": [],
+ "combinedSourcesInfo": [
+  {
+   "vesselId": "e9efd1586-61cf-74a8-757d-e8b4c0664c20",
+   "geartypes": [
+    {
+     "name": "SQUID_JIGGER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2013,
+     "yearTo": 2016
+    },
+    {
+     "name": "OTHER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2012,
+     "yearTo": 2012
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "FISHING",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2013,
+     "yearTo": 2016
+    },
+    {
+     "name": "OTHER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2012,
+     "yearTo": 2012
+    }
+   ]
+  },
+  {
+   "vesselId": "9b3e9019d-d67f-005a-9593-b66b997559e5",
+   "geartypes": [
+    {
+     "name": "SQUID_JIGGER",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2016,
+     "yearTo": 2023
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "FISHING",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2016,
+     "yearTo": 2023
+    }
+   ]
+  }
+ ],
+ "selfReportedInfo": [
+  {
+   "id": "9b3e9019d-d67f-005a-9593-b66b997559e5",
+   "ssvid": "701000948",
+   "shipname": "CLAUDINA",
+   "nShipname": "CLAUDINA",
+   "flag": "ARG",
+   "callsign": "LW3058",
+   "imo": "7831410",
+   "messagesCounter": 616714906,
+   "positionsCounter": 1914662,
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "transmissionDateFrom": "2016-12-20T20:27:39Z",
+   "transmissionDateTo": "2023-04-13T18:19:16Z"
+  },
+  {
+   "id": "e9efd1586-61cf-74a8-757d-e8b4c0664c20",
+   "ssvid": "701000948",
+   "shipname": "CLAUDINA",
+   "nShipname": "CLAUDINA",
+   "flag": "ARG",
+   "callsign": "LW3058",
+   "imo": "0",
+   "messagesCounter": 8313445,
+   "positionsCounter": 73907,
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "transmissionDateFrom": "2012-01-01T04:38:08Z",
+   "transmissionDateTo": "2016-09-15T15:07:46Z"
+  }
+ ]
+}

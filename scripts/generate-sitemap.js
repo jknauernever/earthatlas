@@ -70,6 +70,9 @@ addUrl('/happywhale')
 // ShipTraffic
 addUrl('/shiptraffic')
 
+// Ships (vessel identity)
+addUrl('/ships')
+
 // In Motion
 addUrl('/inmotion')
 

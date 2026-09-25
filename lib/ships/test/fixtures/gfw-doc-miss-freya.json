@@ -1,0 +1,156 @@
+{
+ "dataset": "public-global-vessel-identity:v3.0",
+ "registryInfoTotalRecords": 1,
+ "registryInfo": [
+  {
+   "id": "db2d2e9437254280b9ccc8c59e8c8ccb",
+   "sourceCode": [
+    "IMO",
+    "USA"
+   ],
+   "ssvid": "368045130",
+   "flag": "USA",
+   "shipname": "MISS FREYA",
+   "nShipname": "MISSFREYA",
+   "callsign": "WDK3424",
+   "imo": "8969513",
+   "latestVesselInfo": true,
+   "transmissionDateFrom": "2019-02-01T19:28:14Z",
+   "transmissionDateTo": "2023-07-31T08:10:29Z",
+   "geartype": [
+    "FISHING"
+   ],
+   "lengthM": null,
+   "tonnageGt": 171,
+   "vesselInfoReference": "4e4b5501-c2cf-4384-8051-c3affacb0229"
+  }
+ ],
+ "registryOwners": [],
+ "registryAuthorizations": [],
+ "combinedSourcesInfo": [
+  {
+   "vesselId": "126221ace-e3b5-f4ed-6150-394809737c55",
+   "geartypes": [
+    {
+     "name": "SET_LONGLINES",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2019,
+     "yearTo": 2022
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "FISHING",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2019,
+     "yearTo": 2022
+    }
+   ]
+  },
+  {
+   "vesselId": "3312b30d6-65b6-1bdb-6a78-3f5eb3977e58",
+   "geartypes": [
+    {
+     "name": "SET_LONGLINES",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2019,
+     "yearTo": 2023
+    }
+   ],
+   "shiptypes": [
+    {
+     "name": "FISHING",
+     "source": "COMBINATION_OF_REGISTRY_AND_AIS_INFERRED_NN_INFO",
+     "yearFrom": 2019,
+     "yearTo": 2023
+    }
+   ]
+  }
+ ],
+ "selfReportedInfo": [
+  {
+   "id": "3312b30d6-65b6-1bdb-6a78-3f5eb3977e58",
+   "ssvid": "368045130",
+   "shipname": "MISS FREYA",
+   "nShipname": "MISSFREYA",
+   "flag": "USA",
+   "callsign": "WDK3424",
+   "imo": null,
+   "messagesCounter": 90158,
+   "positionsCounter": 15799,
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "transmissionDateFrom": "2019-04-06T13:12:43Z",
+   "transmissionDateTo": "2023-10-21T09:32:55Z"
+  },
+  {
+   "id": "126221ace-e3b5-f4ed-6150-394809737c55",
+   "ssvid": "368045130",
+   "shipname": "MISS FREYA",
+   "nShipname": "MISSFREYA",
+   "flag": "USA",
+   "callsign": null,
+   "imo": null,
+   "messagesCounter": 12483,
+   "positionsCounter": 2066,
+   "sourceCode": [
+    "AIS"
+   ],
+   "matchFields": "SEVERAL_FIELDS",
+   "transmissionDateFrom": "2019-02-01T19:24:59Z",
+   "transmissionDateTo": "2022-07-17T11:48:43.52Z"
+  }
+ ],
+ "matchCriteria": [
+  {
+   "reference": "3312b30d6-65b6-1bdb-6a78-3f5eb3977e58",
+   "property": "selfReportedInfo.id",
+   "source": "selfReportedInfo",
+   "matches": [
+    {
+     "property": "selfReportedInfo.ssvid",
+     "value": "368045130"
+    }
+   ],
+   "period": {
+    "dateFrom": "2019-04-06T13:12:43Z",
+    "dateTo": "2023-10-21T09:32:55Z"
+   },
+   "latestVesselInfo": true
+  },
+  {
+   "reference": "126221ace-e3b5-f4ed-6150-394809737c55",
+   "property": "selfReportedInfo.id",
+   "source": "selfReportedInfo",
+   "matches": [
+    {
+     "property": "selfReportedInfo.ssvid",
+     "value": "368045130"
+    }
+   ],
+   "period": {
+    "dateFrom": "2019-02-01T19:24:59Z",
+    "dateTo": "2022-07-17T11:48:43.52Z"
+   },
+   "latestVesselInfo": true
+  },
+  {
+   "reference": "4e4b5501-c2cf-4384-8051-c3affacb0229",
+   "property": "registryInfo.vesselInfoReference",
+   "source": "registryInfo",
+   "matches": [
+    {
+     "property": "registryInfo.ssvid",
+     "value": "368045130"
+    }
+   ],
+   "period": {
+    "dateFrom": "2019-02-01T19:28:14Z",
+    "dateTo": "2023-07-31T08:10:29Z"
+   },
+   "latestVesselInfo": true
+  }
+ ]
+}

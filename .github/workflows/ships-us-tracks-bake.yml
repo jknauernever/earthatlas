@@ -1,0 +1,74 @@
+# Bakes US-wide /ships tracks from NOAA MarineCadastre's monthly track files
+# (CC0) and publishes them to Vercel Blob (scripts/ships/bake-us/).
+#
+# Run by hand: Actions → ships-us-tracks-bake → Run workflow, with one or more
+# months ("2025-06" or "2024-01 2024-02 …"). Each month: download ~1.6 GB of
+# Parquet, build lines + per-ship pack + PMTiles, upload with one-file tokens
+# from api/cron/ships-upload-token.js (CRON_SECRET), then add it to
+# ships/tracks/us-v1/index.json. A failed month leaves the index untouched.
+name: ships-us-tracks-bake
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Months to bake, space-separated YYYY-MM (NOAA has 2024-01 → 2025-12)'
+        required: true
+        default: '2025-06'
+
+concurrency:
+  group: ships-us-tracks-bake
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      MONTHS: ${{ github.event.inputs.months }}
+    steps:
+      - name: Check months
+        run: |
+          for m in $MONTHS; do [[ "$m" =~ ^20[0-9]{2}-(0[1-9]|1[0-2])$ ]] || { echo "bad month: $m"; exit 1; }; done
+      - name: Free disk (tippecanoe temp + one month of NDJSON)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet pyarrow shapely numpy
+
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+
+      - name: Bake + publish each month
+        run: |
+          set -e
+          for m in $MONTHS; do
+            echo "::group::$m"
+            python3 scripts/ships/bake-us/build_us_tracks.py "$m" "$RUNNER_TEMP/ships-$m"
+            node scripts/ships/bake-us/publish.mjs "$m" "$RUNNER_TEMP/ships-$m"
+            rm -rf "$RUNNER_TEMP/ships-$m"
+            df -h / | tail -1
+            echo "::endgroup::"
+          done

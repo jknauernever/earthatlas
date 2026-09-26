@@ -100,10 +100,6 @@
   ],
   "crons": [
     {
-      "path": "/api/news/dispatch",
-      "schedule": "0 8 * * *"
-    },
-    {
       "path": "/api/birdsong/refresh",
       "schedule": "0 9 * * 1"
     },

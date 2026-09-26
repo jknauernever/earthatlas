@@ -42,6 +42,7 @@ import shapely
 
 SRC = "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-{ym}.parquet"
 RULES_VERSION = "us-v2"  # v2: zoomed-out tiles merge lines per vessel type (nothing dropped)
+TILESET = "us-v2"        # Blob folder + index; months from either derivation publish here
 JUMP_KM = 10
 PARKED_M = 100
 SIMPLIFY_DEG = 0.0002
@@ -120,51 +121,43 @@ def lines_from_batch(tbl, stats):
         yield int(mmsi[r]), vt[r], int(t0[r]), int(t1[r]), c
 
 
-def build(ym, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
-    t_start = time.time()
-    src = os.path.join(out_dir, f"ais-track-{ym}.parquet")
-    url = SRC.format(ym=ym)
-    if not os.path.exists(src):
-        download(ym, src)
-    src_bytes = os.path.getsize(src)
-    ndjson = os.path.join(out_dir, "tracks.ndjson")
-    shard_dir = os.path.join(out_dir, "shards"); os.makedirs(shard_dir, exist_ok=True)
-    shard_fh = {}
-    stats = dict(rows=0, parts=0, jump_splits=0, single_vertex=0, parked_not_drawn=0, lines=0, vessels=0)
-    vessels = set()
-    pf = pq.ParquetFile(src)
-    with open(ndjson, "w") as out:
-        done = 0
-        for batch in pf.iter_batches(batch_size=50_000, columns=["mmsi", "vessel_type", "start_time", "end_time", "geometry"]):
-            if LIMIT and done >= LIMIT: break
-            done += batch.num_rows
-            tbl = pa.Table.from_batches([batch])
-            recs = list(lines_from_batch(tbl, stats))
-            if not recs: continue
-            lines = [shapely.LineString(r[4]) for r in recs]
-            simp = shapely.simplify(lines, SIMPLIFY_DEG)
-            psimp = shapely.simplify(lines, PACK_SIMPLIFY_DEG)
-            for (m, v, a, b, _), g, pg in zip(recs, simp, psimp):
-                k = kind_of(v)
-                gc = np.round(shapely.get_coordinates(g), 5).tolist()
-                if len(gc) < 2: continue
-                out.write(json.dumps({"type": "Feature", "geometry": {"type": "LineString", "coordinates": gc},
-                                      "properties": {"mmsi": m, "kind": k, "vtype": v, "month": ym, "t0": a, "t1": b}},
-                                     separators=(",", ":")) + "\n")
-                pc = np.round(shapely.get_coordinates(pg), 5).tolist()
-                sh = m % PACK_SHARDS
-                fh = shard_fh.get(sh)
-                if fh is None:
-                    fh = shard_fh[sh] = open(os.path.join(shard_dir, f"{sh}.ndjson"), "a")
-                fh.write(json.dumps({"mmsi": m, "kind": k, "vtype": v, "t0": a, "t1": b, "c": pc}, separators=(",", ":")) + "\n")
-                stats["lines"] += 1; vessels.add(m)
-            print(f"  {done:,} rows, {stats['lines']:,} lines, {time.time() - t_start:.0f}s", flush=True)
-    for fh in shard_fh.values(): fh.close()
-    stats["vessels"] = len(vessels)
-    os.remove(src)  # streamed through, not kept
+class LineWriter:
+    """Writes drawable lines to the tippecanoe NDJSON and the per-MMSI pack shards."""
+    def __init__(self, out_dir, ym):
+        self.ym = ym
+        self.ndjson = os.path.join(out_dir, "tracks.ndjson")
+        self.shard_dir = os.path.join(out_dir, "shards"); os.makedirs(self.shard_dir, exist_ok=True)
+        self.out = open(self.ndjson, "w"); self.shard_fh = {}
+        self.lines = 0; self.vessels = set()
 
-    # Pack: shards sorted by (mmsi, t0), gzip'd, 'SHTP' header + offsets.
+    def write(self, recs):
+        """recs: [(mmsi, vtype, t0, t1, coords ndarray, extra_props dict|None)]"""
+        if not recs: return
+        lines = [shapely.LineString(r[4]) for r in recs]
+        simp = shapely.simplify(lines, SIMPLIFY_DEG)
+        psimp = shapely.simplify(lines, PACK_SIMPLIFY_DEG)
+        for (m, v, a, b, _, extra), g, pg in zip(recs, simp, psimp):
+            k = kind_of(v)
+            gc = np.round(shapely.get_coordinates(g), 5).tolist()
+            if len(gc) < 2: continue
+            props = {"mmsi": m, "kind": k, "vtype": v, "month": self.ym, "t0": a, "t1": b, **(extra or {})}
+            self.out.write(json.dumps({"type": "Feature", "geometry": {"type": "LineString", "coordinates": gc},
+                                       "properties": props}, separators=(",", ":")) + "\n")
+            pc = np.round(shapely.get_coordinates(pg), 5).tolist()
+            sh = m % PACK_SHARDS
+            fh = self.shard_fh.get(sh)
+            if fh is None:
+                fh = self.shard_fh[sh] = open(os.path.join(self.shard_dir, f"{sh}.ndjson"), "a")
+            fh.write(json.dumps({"mmsi": m, "kind": k, "vtype": v, "t0": a, "t1": b, **(extra or {}), "c": pc}, separators=(",", ":")) + "\n")
+            self.lines += 1; self.vessels.add(m)
+
+    def close(self):
+        self.out.close()
+        for fh in self.shard_fh.values(): fh.close()
+
+
+def finish(out_dir, w):
+    """Pack + two-pass tippecanoe + tile-join. Returns (pack_path, pmtiles_path, tippecanoe_secs)."""
     pack = os.path.join(out_dir, "tracks.pack")
     offsets, pos = [], 0
     with open(pack + ".tmp", "wb") as fh:
@@ -172,7 +165,7 @@ def build(ym, out_dir):
         fh.write(b"\0" * 4 * (PACK_SHARDS + 1))  # offsets, filled in below
         for sh in range(PACK_SHARDS):
             offsets.append(pos)
-            f = os.path.join(shard_dir, f"{sh}.ndjson")
+            f = os.path.join(w.shard_dir, f"{sh}.ndjson")
             if not os.path.exists(f): continue
             rows = open(f).read().splitlines()
             rows.sort(key=lambda r: (lambda o: (o["mmsi"], o["t0"]))(json.loads(r)))
@@ -181,19 +174,41 @@ def build(ym, out_dir):
         offsets.append(pos)
         fh.seek(8); fh.write(struct.pack(f"<{PACK_SHARDS + 1}I", *offsets))
     os.replace(pack + ".tmp", pack)
-    os.rmdir(shard_dir)
-
+    os.rmdir(w.shard_dir)
     pm = os.path.join(out_dir, "tracks.pmtiles")
     t_tip = time.time()
     low, high = pm + ".low.pmtiles", pm + ".high.pmtiles"
-    subprocess.run(["tippecanoe", "-o", low, "-l", "tracks", "-f", *TIPPECANOE_LOW, "--read-parallel", ndjson], check=True)
-    subprocess.run(["tippecanoe", "-o", high, "-l", "tracks", "-f", "-q", *TIPPECANOE_HIGH, "--read-parallel", ndjson], check=True)
+    subprocess.run(["tippecanoe", "-o", low, "-l", "tracks", "-f", "-q", *TIPPECANOE_LOW, "--read-parallel", w.ndjson], check=True)
+    subprocess.run(["tippecanoe", "-o", high, "-l", "tracks", "-f", "-q", *TIPPECANOE_HIGH, "--read-parallel", w.ndjson], check=True)
     # Disjoint zoom ranges, so joining is a plain concatenation of tiles.
     subprocess.run(["tile-join", "-o", pm, "-f", "--no-tile-size-limit", low, high], check=True)
-    os.remove(low); os.remove(high)
-    os.remove(ndjson)
+    os.remove(low); os.remove(high); os.remove(w.ndjson)
+    return pack, pm, round(time.time() - t_tip)
 
-    manifest = dict(region="us", month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+
+def build(ym, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
+    t_start = time.time()
+    src = os.path.join(out_dir, f"ais-track-{ym}.parquet")
+    url = SRC.format(ym=ym)
+    if not os.path.exists(src):
+        download(ym, src)
+    src_bytes = os.path.getsize(src)
+    w = LineWriter(out_dir, ym)
+    stats = dict(rows=0, parts=0, jump_splits=0, single_vertex=0, parked_not_drawn=0, lines=0, vessels=0)
+    pf = pq.ParquetFile(src)
+    done = 0
+    for batch in pf.iter_batches(batch_size=50_000, columns=["mmsi", "vessel_type", "start_time", "end_time", "geometry"]):
+        if LIMIT and done >= LIMIT: break
+        done += batch.num_rows
+        w.write([(*r, None) for r in lines_from_batch(pa.Table.from_batches([batch]), stats)])
+        print(f"  {done:,} rows, {w.lines:,} lines, {time.time() - t_start:.0f}s", flush=True)
+    w.close()
+    stats["lines"], stats["vessels"] = w.lines, len(w.vessels)
+    os.remove(src)  # streamed through, not kept
+    pack, pm, tip_secs = finish(out_dir, w)
+
+    manifest = dict(region="us", tileset=TILESET, month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     source=dict(name="MarineCadastre monthly vessel tracks (NOAA / BOEM / USCG)", license="CC0",
                                 url=url, bytes=src_bytes),
                     rules=dict(version=RULES_VERSION, jump_km=JUMP_KM, parked_m=PARKED_M, simplify_deg=SIMPLIFY_DEG,
@@ -201,7 +216,7 @@ def build(ym, out_dir):
                                tippecanoe=" ".join(TIPPECANOE)),
                     pack=dict(shards=PACK_SHARDS, simplify_deg=PACK_SIMPLIFY_DEG, bytes=os.path.getsize(pack)),
                     pmtiles_bytes=os.path.getsize(pm), stats=stats,
-                    secs=dict(total=round(time.time() - t_start), tippecanoe=round(time.time() - t_tip)),
+                    secs=dict(total=round(time.time() - t_start), tippecanoe=tip_secs),
                     test_limit_rows=LIMIT or None)
     with open(os.path.join(out_dir, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=1)

@@ -27,7 +27,7 @@ const BUILD = resolve(process.argv[3] || resolve(HERE, 'build', ym))
 const manifest = JSON.parse(readFileSync(resolve(BUILD, 'manifest.json'), 'utf8'))
 if (manifest.month !== ym) throw new Error(`manifest is for ${manifest.month}, not ${ym}`)
 if (manifest.test_limit_rows) throw new Error('refusing to publish a test bake (SHIPS_US_LIMIT was set)')
-const VERSION = manifest.rules.version            // e.g. us-v1
+const VERSION = manifest.tileset || manifest.rules.version  // Blob folder, e.g. us-v2
 const BASE = `ships/tracks/${VERSION}`
 
 async function tokenFor(pathname) {

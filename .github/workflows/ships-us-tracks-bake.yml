@@ -2,8 +2,10 @@
 # (CC0) and publishes them to Vercel Blob (scripts/ships/bake-us/).
 #
 # Run by hand: Actions → ships-us-tracks-bake → Run workflow, with one or more
-# months ("2025-06" or "2024-01 2024-02 …"). Each month: download ~1.6 GB of
-# Parquet, build lines + per-ship pack + PMTiles, upload with one-file tokens
+# months ("2026-06" or "2026-06 2026-05 …"). Each month: if NOAA has a monthly
+# track file (2024-01 → 2025-12, ~1.6 GB) build from it (build_us_tracks.py);
+# otherwise build tracks from the 28–31 daily position files (~10 GB,
+# build_us_points.py). Then lines + per-ship pack + PMTiles, uploaded with one-file tokens
 # from api/cron/ships-upload-token.js (CRON_SECRET), then add it to
 # ships/tracks/us-v1/index.json. A failed month leaves the index untouched.
 name: ships-us-tracks-bake
@@ -11,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       months:
-        description: 'Months to bake, space-separated YYYY-MM (NOAA has 2024-01 → 2025-12)'
+        description: 'Months to bake, space-separated YYYY-MM (monthly files 2024-01 → 2025-12; daily files after)'
         required: true
         default: '2025-06'
 
@@ -44,7 +46,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install --quiet pyarrow shapely numpy
+      - run: pip install --quiet pyarrow shapely numpy duckdb
 
       - name: Restore tippecanoe
         id: tippecanoe-cache
@@ -66,7 +68,13 @@ jobs:
           set -e
           for m in $MONTHS; do
             echo "::group::$m"
-            python3 scripts/ships/bake-us/build_us_tracks.py "$m" "$RUNNER_TEMP/ships-$m"
+            if curl -sfI "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-$m.parquet" > /dev/null; then
+              echo "monthly track file → build_us_tracks.py"
+              python3 scripts/ships/bake-us/build_us_tracks.py "$m" "$RUNNER_TEMP/ships-$m"
+            else
+              echo "no monthly track file → daily positions, build_us_points.py"
+              python3 scripts/ships/bake-us/build_us_points.py "$m" "$RUNNER_TEMP/ships-$m"
+            fi
             node scripts/ships/bake-us/publish.mjs "$m" "$RUNNER_TEMP/ships-$m"
             rm -rf "$RUNNER_TEMP/ships-$m"
             df -h / | tail -1

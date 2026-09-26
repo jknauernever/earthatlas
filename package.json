@@ -22,6 +22,9 @@
     "ships:import-psix": "node --env-file=.env.local scripts/ships/import-psix.mjs",
     "ships:import-tc": "node --env-file=.env.local scripts/ships/import-tc.mjs",
     "ships:reresolve": "node --env-file=.env.local scripts/ships/reresolve.mjs",
+    "ships:import-incidents-cgmix": "node --env-file=.env.local scripts/ships/import-incidents-cgmix.mjs",
+    "ships:import-incidents-ecology": "node --env-file=.env.local scripts/ships/import-incidents-ecology.mjs",
+    "ships:import-incidents-names": "node --env-file=.env.local scripts/ships/import-incidents-names.mjs",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

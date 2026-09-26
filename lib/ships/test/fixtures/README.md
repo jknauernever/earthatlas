@@ -40,3 +40,13 @@ Record more live responses with `npm run ships:import-gfw -- --save <dir> …`.
 | `mc-live-368616000-…`, `mc-live-316001269-…`, `mc-live-316042022-…` (2025-07_2026-06) | **Real** MarineCadastre identity rows (from `scripts/ships/bake-ais/build/identity-*.ndjson`) for BLACKFISH VI, SPIRIT OF VANCOUVER ISLAND ("SPIRIT OF V I" on AIS) and SEASPAN RAPTOR. |
 
 `registries.test.js` / `registries-db.test.js` also build a few **SYNTHETIC** variants (a licence with BLACKFISH's MMSI but another name, a PSIX record with the call sign removed, a made-up recreational LLC licence), each marked in the test name.
+
+## Incidents (docs/SHIP_INCIDENT_SOURCES.md §13)
+
+| File | What it is |
+|---|---|
+| `cgmix-live-2026-09-26.json` | **Real, recorded live** 2026-09-26 by `scripts/ships/cgmixClient.js`: every stored IIR result string (title, summary, involved vessels, water segments, personal-casualty summary, vessel status, brief) for WALLA WALLA 7669720, ALEUTIAN ISLE 7543400, KODIAK ENTERPRISE 7665123 and EURODAM 8016476 / 6250030 / 6520747 / 6580151 / 4748475; plus PSIX `getOperationControls` 8202052 and `getVesselDeficiencies` 8237466 (EURODAM), each with a `context` copied from our stored PSIX vessel record (vessel id, name, case start, port). The IIR briefs are narratives; tests only check that they are withheld. |
+| `ecology-live-2026-09-26.json` | **Real** rows of the WA Ecology "Reported spills to water" layer query (`Source_Type='Vessel'`), rows exactly as returned: ALEUTIAN ISLE (ERTS 716940, two product rows), KODIAK ENTERPRISE (722001), F/V Blackfish 2015 (661444, not BLACKFISH VI), a recreational sinking (657839), and a Puget Sound row with an inland longitude (747793). |
+| `names-live-2026-09-26.json` | **Real** rows: 4 Washington NRC reports from `CY26.xlsx` (BLACKFISH pleasure craft 1472632, COASTAL PROGRESS, FORTRESS, MATSON KODIAK) as `import-incidents-names.mjs` stores them (CALLS responsible-party columns dropped, original row hash kept), and 4 NOAA IncidentNews CSV rows (MOLLUSK 11081, NEW ST. JOSEPH 11195, recreational CAIRDEAS 11065, NORTH AMERICAN 10785). |
+
+`incidents-db.test.js` also builds **SYNTHETIC** events (source `test-incidents`, keys `T-…`, names `TEST …`) for identifier cases the real fixtures do not cover (IMO / official number / MMSI inside and outside our observed window, conflicting identifiers), plus one Ecology row with a changed case name. Each is marked in the test name.

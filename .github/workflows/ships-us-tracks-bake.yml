@@ -1,39 +1,81 @@
-# Bakes US-wide /ships tracks from NOAA MarineCadastre's monthly track files
-# (CC0) and publishes them to Vercel Blob (scripts/ships/bake-us/).
+# Bakes US-wide /ships tracks from NOAA MarineCadastre AIS (CC0) and publishes
+# them to Vercel Blob (scripts/ships/bake-us/).
 #
-# Run by hand: Actions → ships-us-tracks-bake → Run workflow, with one or more
-# months ("2026-06" or "2026-06 2026-05 …"). Each month: if NOAA has a monthly
-# track file (2024-01 → 2025-12, ~1.6 GB) build from it (build_us_tracks.py);
-# otherwise build tracks from the 28–31 daily position files (~10 GB,
-# build_us_points.py). Then lines + per-ship pack + PMTiles, uploaded with one-file tokens
-# from api/cron/ships-upload-token.js (CRON_SECRET), then add it to
-# ships/tracks/us-v1/index.json. A failed month leaves the index untouched.
+# Run by hand: Actions → ships-us-tracks-bake → Run workflow, with months as a
+# list ("2026-06 2026-05") and/or ranges ("2015-01..2026-06"). One job per month,
+# up to 10 at a time, newest first:
+#   - months with a NOAA monthly track file (2024-01 → 2025-12, ~1.6 GB) build
+#     from it (build_us_tracks.py);
+#   - other months build tracks from the daily position files (~10 GB/month,
+#     build_us_points.py).
+# Each job uploads its month with one-file tokens from api/cron/ships-upload-token.js
+# (CRON_SECRET). The final job adds every finished month to
+# ships/tracks/us-v2/index.json in ONE write, so parallel jobs never race on the
+# index. A failed month is simply left out of the index.
 name: ships-us-tracks-bake
 on:
   workflow_dispatch:
     inputs:
       months:
-        description: 'Months to bake, space-separated YYYY-MM (monthly files 2024-01 → 2025-12; daily files after)'
+        description: 'Months: YYYY-MM list and/or YYYY-MM..YYYY-MM ranges (daily data 2015-01 → 2026-06)'
         required: true
-        default: '2025-06'
+        default: '2026-06'
+      skip_existing:
+        description: 'Skip months already in the index'
+        type: boolean
+        default: true
 
 concurrency:
   group: ships-us-tracks-bake
   cancel-in-progress: false
 
 jobs:
-  bake:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    outputs:
+      months: ${{ steps.plan.outputs.months }}
+    steps:
+      - id: plan
+        env:
+          MONTHS: ${{ github.event.inputs.months }}
+          SKIP: ${{ github.event.inputs.skip_existing }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os, re, sys, urllib.request
+          out = []
+          for tok in os.environ["MONTHS"].split():
+              m = re.fullmatch(r"(20\d\d)-(0[1-9]|1[0-2])(?:\.\.(20\d\d)-(0[1-9]|1[0-2]))?", tok)
+              if not m: sys.exit(f"bad month: {tok}")
+              y, mo = int(m[1]), int(m[2]); y2, mo2 = (int(m[3]), int(m[4])) if m[3] else (y, mo)
+              while (y, mo) <= (y2, mo2):
+                  out.append(f"{y}-{mo:02d}"); y, mo = (y + 1, 1) if mo == 12 else (y, mo + 1)
+          out = sorted(set(out), reverse=True)  # newest first
+          if os.environ.get("SKIP") == "true":
+              try:
+                  idx = json.load(urllib.request.urlopen("https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/us-v2/index.json"))
+                  out = [m for m in out if m not in idx.get("months", {})]
+              except Exception as e:
+                  print(f"no index yet ({e})", file=sys.stderr)
+          print("months=" + json.dumps(out))
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+  bake:
+    needs: plan
+    if: needs.plan.outputs.months != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
     env:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
-      MONTHS: ${{ github.event.inputs.months }}
+      M: ${{ matrix.month }}
     steps:
-      - name: Check months
-        run: |
-          for m in $MONTHS; do [[ "$m" =~ ^20[0-9]{2}-(0[1-9]|1[0-2])$ ]] || { echo "bad month: $m"; exit 1; }; done
-      - name: Free disk (tippecanoe temp + one month of NDJSON)
+      - name: Free disk (daily files are staged, ~5 GB/month)
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
@@ -47,7 +89,6 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install --quiet pyarrow shapely numpy duckdb
-
       - name: Restore tippecanoe
         id: tippecanoe-cache
         uses: actions/cache@v4
@@ -63,20 +104,43 @@ jobs:
           mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
       - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
 
-      - name: Bake + publish each month
+      - name: Bake ${{ matrix.month }}
         run: |
           set -e
-          for m in $MONTHS; do
-            echo "::group::$m"
-            if curl -sfI "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-$m.parquet" > /dev/null; then
-              echo "monthly track file → build_us_tracks.py"
-              python3 scripts/ships/bake-us/build_us_tracks.py "$m" "$RUNNER_TEMP/ships-$m"
-            else
-              echo "no monthly track file → daily positions, build_us_points.py"
-              python3 scripts/ships/bake-us/build_us_points.py "$m" "$RUNNER_TEMP/ships-$m"
-            fi
-            node scripts/ships/bake-us/publish.mjs "$m" "$RUNNER_TEMP/ships-$m"
-            rm -rf "$RUNNER_TEMP/ships-$m"
-            df -h / | tail -1
-            echo "::endgroup::"
-          done
+          if curl -sfI "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-$M.parquet" > /dev/null; then
+            echo "monthly track file → build_us_tracks.py"
+            python3 scripts/ships/bake-us/build_us_tracks.py "$M" "$RUNNER_TEMP/ships-$M"
+          else
+            echo "no monthly track file → daily positions, build_us_points.py"
+            python3 scripts/ships/bake-us/build_us_points.py "$M" "$RUNNER_TEMP/ships-$M"
+          fi
+      - name: Upload ${{ matrix.month }} to Blob
+        run: |
+          mkdir -p "$RUNNER_TEMP/entries"
+          node scripts/ships/bake-us/publish.mjs "$M" "$RUNNER_TEMP/ships-$M" --entry-out "$RUNNER_TEMP/entries/$M.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.month }}
+          path: ${{ runner.temp }}/entries/${{ matrix.month }}.json
+          retention-days: 7
+
+  index:
+    needs: bake
+    if: always() && needs.bake.result != 'skipped'
+    runs-on: ubuntu-latest
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: entry-*
+          path: entries
+      - name: Add finished months to the index (one write)
+        run: node scripts/ships/bake-us/publish.mjs --index entries

@@ -51,8 +51,11 @@ PACK_SHARDS = 1024
 # (only `kind` survives, so identical features coalesce into one per tile).
 # Zoomed in (z9-10): one line per ship with its MMSI; crowded tiles may drop
 # lines there, which is fine because a picked ship reads the complete pack.
-TIPPECANOE_LOW = ["-Z3", "-z8", "--simplification=10", "-y", "kind", "--coalesce", "--reorder",
-                  "--maximum-tile-bytes=2500000", "--drop-densest-as-needed"]
+# -D10 (1024-unit tiles): lines are thinner than a pixel at these zooms, so a coarser
+# grid looks the same and collapses duplicate vertices. No feature/size limits: a
+# merged shape can't be "dropped" to fit (the first us-v2 run looped for 95 min at z3).
+TIPPECANOE_LOW = ["-Z3", "-z8", "-D10", "--simplification=10", "-y", "kind", "--coalesce", "--reorder",
+                  "--no-feature-limit", "--no-tile-size-limit"]
 TIPPECANOE_HIGH = ["-Z9", "-z10", "--simplification=10", "--drop-densest-as-needed"]
 TIPPECANOE = TIPPECANOE_LOW + ["+"] + TIPPECANOE_HIGH  # for the manifest
 LIMIT = int(os.environ.get("SHIPS_US_LIMIT", "0"))  # rows, for a quick local test only

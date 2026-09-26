@@ -639,7 +639,7 @@ function traceTilesPlugin() {
   return {
     name: 'trace-tiles',
     configureServer(server) {
-      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles', 'spun-tiles', 'ship-tracks']) {
+      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles', 'spun-tiles', 'ship-tracks', 'gfw-tiles']) {
         server.middlewares.use(`/api/${route}`, async (req, res) => {
           try {
             const { default: handler } = await server.ssrLoadModule(`/api/${route}.js`)
@@ -656,11 +656,13 @@ function traceTilesPlugin() {
 
 // Dev middleware for /api/ships: runs the Node handler itself against the dev
 // ships database (SHIPS_DATABASE_URL from .env.local), so dev and prod share one implementation.
-function shipsApiPlugin(shipsDbUrl) {
+function shipsApiPlugin(shipsDbUrl, gfwToken) {
   return {
     name: 'ships-api',
     configureServer(server) {
       if (shipsDbUrl && !process.env.SHIPS_DATABASE_URL) process.env.SHIPS_DATABASE_URL = shipsDbUrl
+      // Server-side only (api/gfw-tiles.js); never bundled into the client.
+      if (gfwToken && !process.env.GFW_API_TOKEN) process.env.GFW_API_TOKEN = gfwToken
       server.middlewares.use('/api/ships', async (req, res) => {
         try {
           const { default: handler } = await server.ssrLoadModule('/api/ships.js')
@@ -855,7 +857,7 @@ export default defineConfig(({ mode }) => {
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),
-    shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || ''),
+    shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || ''),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

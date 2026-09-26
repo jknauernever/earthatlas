@@ -1,15 +1,17 @@
-/* /ships top-center pill + popover + card. Copied from /inmotion's
+/* /ships top-right pill + popover + card. Copied from /inmotion's
    MeasurePicker.module.css (same construct, same dark glass), in the
    atmosphere-cyan accent. No "Explain this view" button here, so the pill
    sits at the top row; the card hangs under it. */
 
+/* Anchored top-right, tucked under the place search (Josh, 2026-09-26): right edges
+   line up with the search box (right: 60px), and the popover / card grow down and to
+   the left. Mobile keeps its own position below. */
 .wrap {
   position: absolute;
-  top: 16px; left: 50%;
-  transform: translateX(-50%);
+  top: 62px; right: 60px;
   z-index: 11;
-  display: flex; flex-direction: column; align-items: center;
-  max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; align-items: flex-end;
+  max-width: calc(100vw - 80px);
 }
 
 .pill {
@@ -114,7 +116,7 @@
 .swatch { width: 9px; height: 9px; border-radius: 50%; }
 
 @media (max-width: 767px) {
-  .wrap { top: calc(60px + env(safe-area-inset-top, 0px)); }
+  .wrap { top: calc(60px + env(safe-area-inset-top, 0px)); right: auto; left: 50%; transform: translateX(-50%); align-items: center; max-width: calc(100vw - 24px); }
   .pill { font-size: 12px; padding: 6px 11px; }
   .pillLead { display: none; }
   .pop { max-height: 60vh; }
@@ -141,7 +143,7 @@
 .card {
   margin-top: 8px;
   width: min(400px, calc(100vw - 24px));
-  max-height: calc(100vh - 110px);
+  max-height: calc(100vh - 160px);
   overflow-y: auto;
   padding: 12px 14px 14px;
   border-radius: 14px;

@@ -18,7 +18,7 @@ export const fmtMonth = (ym) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym
  * kind-of-ship filter (Josh, 2026-09-25): /shiptraffic's month grid (click a
  * month, shift-click a span) plus All and per-year chips.
  */
-export default function TrackMonths({ months, range, onRange, styles: s }) {
+export default function TrackMonths({ months, range, onRange, styles: s, cap = Infinity }) {
   const [a, b] = range
   const isAll = a === 0 && b === months.length - 1
   const years = [...new Set(months.map((m) => m.slice(0, 4)))]
@@ -31,7 +31,7 @@ export default function TrackMonths({ months, range, onRange, styles: s }) {
     <div>
       <div className={s.fieldLabel}>When · <span className={s.fieldHint}>{label}</span></div>
       <div className={s.chipRow}>
-        <button type="button" className={isAll ? s.chipTrack : s.chip} onClick={() => onRange([0, months.length - 1])}>All</button>
+        {months.length <= cap && <button type="button" className={isAll ? s.chipTrack : s.chip} onClick={() => onRange([0, months.length - 1])}>All</button>}
         {years.length > 1 && years.map((y) => (
           <button key={y} type="button" className={isYear(y) ? s.chipTrack : s.chip} onClick={() => onRange(yearSpan(y))}>{y}</button>
         ))}
@@ -52,7 +52,7 @@ export default function TrackMonths({ months, range, onRange, styles: s }) {
           </div>
         ))}
       </div>
-      <div className={s.legendNoteText}>Click a month · shift-click for a span</div>
+      <div className={s.legendNoteText}>Click a month · shift-click for a span{months.length > cap ? ` (up to ${cap} months)` : ''}</div>
     </div>
   )
 }

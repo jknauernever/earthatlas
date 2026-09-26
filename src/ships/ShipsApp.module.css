@@ -376,7 +376,7 @@
 .attrBlock { margin-bottom: 9px; }
 .attrLabel { font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, 0.75); margin-bottom: 3px; }
 .valRow {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: baseline;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: baseline;
   font-size: 12.5px; padding: 2px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 .val { color: #fff; overflow-wrap: anywhere; }
@@ -395,7 +395,7 @@
 
 @media (max-width: 768px) {
   .basemapMenu { top: calc(106px + env(safe-area-inset-top, 0px)); }  /* search (16) → share (62) → basemap (106) */
-  .valRow { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .valRow { grid-template-columns: minmax(0, 1fr) auto; }
   .period { grid-column: 1 / -1; }
 }
 .trackNote {
@@ -404,7 +404,7 @@
   color: #f3f7ee; font-size: 12.5px; line-height: 1.45; backdrop-filter: blur(10px);
 }
 .valRowShort {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: baseline;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; align-items: baseline;
   font-size: 12.5px; padding: 2px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
@@ -445,3 +445,38 @@
 .monthCell:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .monthCellActive { background: rgba(253, 224, 71, 0.22); border-color: rgba(253, 224, 71, 0.7); color: #fef9c3; font-weight: 600; }
 .monthCellEmpty { flex: 1; height: 20px; }
+/* Shared "When" block at the top of the Ships group (drives tracks, presence, dark vessels). */
+.whenBlock { margin: 8px 0 10px; }
+
+/* Ship card: Wikidata evidence, photo, kind-of-ship line (2026-09-25) */
+.evCom { color: #fcd34d; background: rgba(252, 211, 77, 0.12); }
+.weakMatch { font-size: 9.5px; color: rgba(252, 211, 77, 0.85); border: 1px dashed rgba(252, 211, 77, 0.5); border-radius: 4px; padding: 0 4px; cursor: help; white-space: nowrap; }
+.photo { margin: 10px 0 0; }
+.photo img { display: block; width: 100%; height: auto; max-height: 190px; object-fit: cover; border-radius: 8px; background: rgba(255, 255, 255, 0.05); }
+.photo figcaption { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); margin-top: 4px; line-height: 1.4; }
+.typeLine { margin-top: 12px; }
+.typeHead { font-size: 15px; font-weight: 700; color: #fff; }
+.typeNote { font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 3px; line-height: 1.4; }
+.hazard { font-size: 11.5px; color: #fbbf24; margin-top: 5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.valRowShort > .val { flex: 1 1 auto; min-width: 0; }
+.srcPair { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.srcList { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; justify-content: flex-end; margin-left: auto; }
+.histRow { padding: 3px 0 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 12.5px; }
+.histMeta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; margin-top: 1px; }
+
+/* Map popups (dark-vessel cells). Same look as /shiptraffic's popups. */
+.popup { padding: 11px 13px; font-size: 13px; color: #1f2937; line-height: 1.45; min-width: 220px; }
+.popupHead { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 7px; font-weight: 600; }
+.popupTitle { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.2; }
+.popupMeta { font-size: 11.5px; color: #6b7280; margin-top: 3px; }
+.popupSub { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-top: 9px; font-weight: 600; }
+.popupRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.popupK { flex: 1; font-size: 12px; color: #374151; }
+.popupV { font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+.popupNote { font-size: 11px; color: #6b7280; margin-top: 8px; line-height: 1.4; }
+.popupNote a { color: #a21caf; }
+.popupList { margin-top: 8px; max-height: 220px; overflow-y: auto; border-top: 1px solid #e5e7eb; }
+.popupShip { display: block; width: 100%; text-align: left; padding: 6px 2px; border: 0; border-bottom: 1px solid #f3f4f6; background: none; cursor: pointer; font: inherit; }
+.popupShip:hover { background: #f9fafb; }
+.popupShipKind { display: block; font-size: 12.5px; font-weight: 600; color: #111827; }
+.popupShipMeta { display: block; font-size: 11px; color: #6b7280; font-variant-numeric: tabular-nums; }

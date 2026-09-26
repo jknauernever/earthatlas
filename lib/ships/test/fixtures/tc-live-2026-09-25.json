@@ -1,0 +1,905 @@
+{
+ "note": "REAL Transport Canada data: the export row (large-vessel-registry_dataset_en.xlsx, Last-Modified 2026-09-25, parsed by lib/ships/xlsx.js) + the Vessel Registration Query System API response exactly as received, for SPIRIT OF VANCOUVER ISLAND, SEASPAN RAPTOR, SALISH SEA ECLIPSE.",
+ "records": [
+  {
+   "official_number": "816503",
+   "dataset": {
+    "file": "large-vessel-registry_dataset_en.xlsx",
+    "url": "https://opendatatc.tc.canada.ca/large-vessel-registry_dataset_en.xlsx",
+    "last_modified": "2026-09-25T12:07:29.000Z"
+   },
+   "row": {
+    "Official Number": "816503.0",
+    "Vessel Name": "SPIRIT OF VANCOUVER ISLAND",
+    "IMO Vessel Number": "9030682",
+    "Hull Number": "",
+    "Year of Build": "199300",
+    "Year of Latest Rebuild": "",
+    "Port of Registry": "VICTORIA",
+    "Certificate Issuing date or Registration date": "1994-01-07",
+    "Vessel Descriptor": "PASSENGER",
+    "Gross Tonnage": "21958.0",
+    "Net Tonnage": "6587.0",
+    "Construction Type": "CARVEL/FLUSH",
+    "Construction Material": "STEEL",
+    "Length": "159.3",
+    "Breadth": "26.6",
+    "Depth": "8.0",
+    "Engine Type": "DIESEL",
+    "Number of Engines": "4.0",
+    "Propulsion Type": "SELF-PROPELLED",
+    "Speed (Knots)": "19.5",
+    "Propulsion Method": "TWIN SCREW",
+    "Engine Propulsion Power": "16000.0",
+    "Unit/Brake Power": "KILOWATTS"
+   },
+   "api": {
+    "ResultSet": [
+     [
+      {
+       "Name": "Official Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "816503"
+       }
+      },
+      {
+       "Name": "Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SPIRIT OF VANCOUVER ISLAND"
+       }
+      },
+      {
+       "Name": "Port of Registry",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "VICTORIA"
+       }
+      },
+      {
+       "Name": "Status",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "REGISTERED"
+       }
+      },
+      {
+       "Name": "Former Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "IMO Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "9030682"
+       }
+      },
+      {
+       "Name": "Hull Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "Year Built",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "1993"
+       }
+      },
+      {
+       "Name": "Year Rebuilt",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "Registry Date",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "1994-01-07"
+       }
+      },
+      {
+       "Name": "Certificate Expires",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2030-03-31"
+       }
+      },
+      {
+       "Name": "Number of Encumbrances",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "1"
+       }
+      },
+      {
+       "Name": "Vessel Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "PASSENGER / UNKNOWN / UNKNOWN"
+       }
+      },
+      {
+       "Name": "Gross Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "21958.000001111848"
+       }
+      },
+      {
+       "Name": "Net Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "6586.999999222056"
+       }
+      },
+      {
+       "Name": "Construction Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "CARVEL/FLUSH"
+       }
+      },
+      {
+       "Name": "Construction Material",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "STEEL"
+       }
+      },
+      {
+       "Name": "Vessel Length (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "159.3"
+       }
+      },
+      {
+       "Name": "Vessel Breadth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "26.6"
+       }
+      },
+      {
+       "Name": "Vessel Depth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "8"
+       }
+      },
+      {
+       "Name": "Engine Description",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "DIESEL"
+       }
+      },
+      {
+       "Name": "Number of Engines",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "4"
+       }
+      },
+      {
+       "Name": "Propulsion Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SELF-PROPELLED"
+       }
+      },
+      {
+       "Name": "Speed (knots)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "19.5"
+       }
+      },
+      {
+       "Name": "Propulsion Method",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "TWIN SCREW"
+       }
+      },
+      {
+       "Name": "Propulsion Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "16000"
+       }
+      },
+      {
+       "Name": "Unit of Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "KILOWATTS"
+       }
+      },
+      {
+       "Name": "Builder Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "INTEGRATED FERRY CONSTRUCTORS LTD."
+       }
+      },
+      {
+       "Name": "Builder Address 1",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder Address 2",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder Address 3",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder City",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "VICTORIA"
+       }
+      },
+      {
+       "Name": "Builder Prov. Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "BC"
+       }
+      },
+      {
+       "Name": "Builder State / Province",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "BRITISH COLUMBIA"
+       }
+      },
+      {
+       "Name": "Builder Country Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "020"
+       }
+      },
+      {
+       "Name": "Builder Country",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "CANADA"
+       }
+      },
+      {
+       "Name": "Builder Postal Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      }
+     ]
+    ]
+   },
+   "api_url": "http://data.tc.gc.ca/v1.3/api/eng/vessel-registration-query-system/canadian-registry-large-vessels/official-number/816503",
+   "api_retrieved_at": "2026-09-26T00:49:22.552Z"
+  },
+  {
+   "official_number": "844174",
+   "dataset": {
+    "file": "large-vessel-registry_dataset_en.xlsx",
+    "url": "https://opendatatc.tc.canada.ca/large-vessel-registry_dataset_en.xlsx",
+    "last_modified": "2026-09-25T12:07:29.000Z"
+   },
+   "row": {
+    "Official Number": "844174.0",
+    "Vessel Name": "SEASPAN RAPTOR",
+    "IMO Vessel Number": "9766994",
+    "Hull Number": "35",
+    "Year of Build": "201500",
+    "Year of Latest Rebuild": "",
+    "Port of Registry": "VANCOUVER",
+    "Certificate Issuing date or Registration date": "2021-01-08",
+    "Vessel Descriptor": "TUG",
+    "Gross Tonnage": "312.0",
+    "Net Tonnage": "94.0",
+    "Construction Type": "MOULDED",
+    "Construction Material": "STEEL",
+    "Length": "23.07",
+    "Breadth": "11.25",
+    "Depth": "4.38",
+    "Engine Type": "DIESEL",
+    "Number of Engines": "2.0",
+    "Propulsion Type": "SELF-PROPELLED",
+    "Speed (Knots)": "12.0",
+    "Propulsion Method": "TWIN SCREW",
+    "Engine Propulsion Power": "4700.0",
+    "Unit/Brake Power": "KILOWATTS"
+   },
+   "api": {
+    "ResultSet": [
+     [
+      {
+       "Name": "Official Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "844174"
+       }
+      },
+      {
+       "Name": "Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SEASPAN RAPTOR"
+       }
+      },
+      {
+       "Name": "Port of Registry",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "VANCOUVER"
+       }
+      },
+      {
+       "Name": "Status",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "REGISTERED"
+       }
+      },
+      {
+       "Name": "Former Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "IMO Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "9766994"
+       }
+      },
+      {
+       "Name": "Hull Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "35"
+       }
+      },
+      {
+       "Name": "Year Built",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2015"
+       }
+      },
+      {
+       "Name": "Year Rebuilt",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "Registry Date",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2021-01-08"
+       }
+      },
+      {
+       "Name": "Certificate Expires",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2026-12-31"
+       }
+      },
+      {
+       "Name": "Number of Encumbrances",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "1"
+       }
+      },
+      {
+       "Name": "Vessel Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "TUG"
+       }
+      },
+      {
+       "Name": "Gross Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "312.000001763992"
+       }
+      },
+      {
+       "Name": "Net Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "94.000001640696"
+       }
+      },
+      {
+       "Name": "Construction Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "MOULDED"
+       }
+      },
+      {
+       "Name": "Construction Material",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "STEEL"
+       }
+      },
+      {
+       "Name": "Vessel Length (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "23.07"
+       }
+      },
+      {
+       "Name": "Vessel Breadth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "11.25"
+       }
+      },
+      {
+       "Name": "Vessel Depth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "4.38"
+       }
+      },
+      {
+       "Name": "Engine Description",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "DIESEL"
+       }
+      },
+      {
+       "Name": "Number of Engines",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2"
+       }
+      },
+      {
+       "Name": "Propulsion Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SELF-PROPELLED"
+       }
+      },
+      {
+       "Name": "Speed (knots)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "12"
+       }
+      },
+      {
+       "Name": "Propulsion Method",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "TWIN SCREW"
+       }
+      },
+      {
+       "Name": "Propulsion Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "4700"
+       }
+      },
+      {
+       "Name": "Unit of Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "KILOWATTS"
+       }
+      },
+      {
+       "Name": "Builder Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SANMAR DENIZCILIK MAKINA VE TIC. LTD. STI. "
+       }
+      },
+      {
+       "Name": "Builder Address 1",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder Address 2",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder Address 3",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder City",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "ISTANBUL"
+       }
+      },
+      {
+       "Name": "Builder Prov. Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "99"
+       }
+      },
+      {
+       "Name": "Builder State / Province",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "Other Country"
+       }
+      },
+      {
+       "Name": "Builder Country Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "154"
+       }
+      },
+      {
+       "Name": "Builder Country",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "TURKEY"
+       }
+      },
+      {
+       "Name": "Builder Postal Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      }
+     ]
+    ]
+   },
+   "api_url": "http://data.tc.gc.ca/v1.3/api/eng/vessel-registration-query-system/canadian-registry-large-vessels/official-number/844174",
+   "api_retrieved_at": "2026-09-26T00:49:23.717Z"
+  },
+  {
+   "official_number": "842522",
+   "dataset": {
+    "file": "large-vessel-registry_dataset_en.xlsx",
+    "url": "https://opendatatc.tc.canada.ca/large-vessel-registry_dataset_en.xlsx",
+    "last_modified": "2026-09-25T12:07:29.000Z"
+   },
+   "row": {
+    "Official Number": "842522.0",
+    "Vessel Name": "SALISH SEA ECLIPSE",
+    "IMO Vessel Number": "9895721",
+    "Hull Number": "",
+    "Year of Build": "201904",
+    "Year of Latest Rebuild": "",
+    "Port of Registry": "VICTORIA",
+    "Certificate Issuing date or Registration date": "2019-04-15",
+    "Vessel Descriptor": "PASSENGER",
+    "Gross Tonnage": "133.47",
+    "Net Tonnage": "100.1",
+    "Construction Type": "CARVEL/FLUSH",
+    "Construction Material": "ALUMINUM",
+    "Length": "23.06",
+    "Breadth": "7.94",
+    "Depth": "2.21",
+    "Engine Type": "DIESEL",
+    "Number of Engines": "4.0",
+    "Propulsion Type": "SELF-PROPELLED",
+    "Speed (Knots)": "34.0",
+    "Propulsion Method": "QUAD - JET ",
+    "Engine Propulsion Power": "2087.0",
+    "Unit/Brake Power": "KILOWATTS"
+   },
+   "api": {
+    "ResultSet": [
+     [
+      {
+       "Name": "Official Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "842522"
+       }
+      },
+      {
+       "Name": "Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SALISH SEA ECLIPSE"
+       }
+      },
+      {
+       "Name": "Port of Registry",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "VICTORIA"
+       }
+      },
+      {
+       "Name": "Status",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "REGISTERED"
+       }
+      },
+      {
+       "Name": "Former Vessel Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "IMO Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "9895721"
+       }
+      },
+      {
+       "Name": "Hull Number",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "Year Built",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2019"
+       }
+      },
+      {
+       "Name": "Year Rebuilt",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "-"
+       }
+      },
+      {
+       "Name": "Registry Date",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2019-04-15"
+       }
+      },
+      {
+       "Name": "Certificate Expires",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2030-03-31"
+       }
+      },
+      {
+       "Name": "Number of Encumbrances",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "3"
+       }
+      },
+      {
+       "Name": "Vessel Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "PASSENGER"
+       }
+      },
+      {
+       "Name": "Gross Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "133.47000006836"
+       }
+      },
+      {
+       "Name": "Net Tonnage (t)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "100.099998903224"
+       }
+      },
+      {
+       "Name": "Construction Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "CARVEL/FLUSH"
+       }
+      },
+      {
+       "Name": "Construction Material",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "ALUMINUM"
+       }
+      },
+      {
+       "Name": "Vessel Length (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "23.06"
+       }
+      },
+      {
+       "Name": "Vessel Breadth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "7.94"
+       }
+      },
+      {
+       "Name": "Vessel Depth (m)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "2.21"
+       }
+      },
+      {
+       "Name": "Engine Description",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "DIESEL"
+       }
+      },
+      {
+       "Name": "Number of Engines",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "4"
+       }
+      },
+      {
+       "Name": "Propulsion Type",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "SELF-PROPELLED"
+       }
+      },
+      {
+       "Name": "Speed (knots)",
+       "Value": {
+        "Type": "System.Decimal",
+        "Literal": "34"
+       }
+      },
+      {
+       "Name": "Propulsion Method",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "QUAD - JET "
+       }
+      },
+      {
+       "Name": "Propulsion Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "2087"
+       }
+      },
+      {
+       "Name": "Unit of Power",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "KILOWATTS"
+       }
+      },
+      {
+       "Name": "Builder Name",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "ABD ENTERPRISES LTD."
+       }
+      },
+      {
+       "Name": "Builder Address 1",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "6340 BUCHANAN STREET"
+       }
+      },
+      {
+       "Name": "Builder Address 2",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder Address 3",
+       "Value": {
+        "Type": "System.String",
+        "Literal": ""
+       }
+      },
+      {
+       "Name": "Builder City",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "BURNABY"
+       }
+      },
+      {
+       "Name": "Builder Prov. Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "BC"
+       }
+      },
+      {
+       "Name": "Builder State / Province",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "BRITISH COLUMBIA"
+       }
+      },
+      {
+       "Name": "Builder Country Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "020"
+       }
+      },
+      {
+       "Name": "Builder Country",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "CANADA"
+       }
+      },
+      {
+       "Name": "Builder Postal Code",
+       "Value": {
+        "Type": "System.String",
+        "Literal": "V5B 2S7"
+       }
+      }
+     ]
+    ]
+   },
+   "api_url": "http://data.tc.gc.ca/v1.3/api/eng/vessel-registration-query-system/canadian-registry-large-vessels/official-number/842522",
+   "api_retrieved_at": "2026-09-26T00:49:24.863Z"
+  }
+ ]
+}

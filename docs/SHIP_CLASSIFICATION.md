@@ -258,6 +258,69 @@ the taxonomy returns "not in crosswalk" and the raw claim still shows.
 | Q216057 | barque | 12 | recreational / sailing_vessel |  |
 | Q12688575 | drilling rig | 5 | offshore / offshore_unit |  |
 
+### 3d. USCG PSIX vessel service (`docs/VESSEL_REGISTRIES.md` §2) — added 2026-09-25
+
+Raw claim: `vessel_type`, `value_norm = PSIX_<normalized service type>`, evidence `registry`
+(sub-type and cargo authority in `detail`). Vocabulary = the list the PSIX web service documents.
+
+| PSIX service type | → group / class | Note |
+|---|---|---|
+| Commercial Fishing Vessel | fishing / fishing_vessel | |
+| Fish Processing Vessel | fishing / fish_factory | |
+| Freight Ship; Freight Barge | cargo / cargo_unspecified | barge noted |
+| Industrial Vessel | other (abstains like a bare other) | MISLE category is broad |
+| Mobile Offshore Drilling Unit | offshore / offshore_unit | |
+| Offshore Supply Vessel | offshore / offshore_support | |
+| Oil Recovery | government / pollution_response | same judgement as AIS 54 |
+| Passenger (Inspected / Uninspected); Passenger Barge (…) | passenger / passenger_unspecified | |
+| Public Freight; Public Tankship/Barge | cargo; tanker (unspecified) | government-owned, but the type is cargo / tanker (first mapped to government: 44 conflicts with AIS cargo on the dev DB, so changed) |
+| Public Vessel, Unclassified | government / government_unspecified | government-owned |
+| Recreational | recreational / recreational_unspecified | |
+| Research Vessel | research / research_vessel | |
+| School Ship | government / training | |
+| Tank Ship; Tank Barge | tanker / tanker_unspecified | |
+| Towing Vessel | tug_tow / tug_tow_unspecified | |
+| Unclassified; Unknown | unknown | |
+
+### 3e. FCC ship licence classes (`docs/VESSEL_REGISTRIES.md` §3) — added 2026-09-25, **low rank (proposed)**
+
+Raw claim: `vessel_type`, `value_norm = FCC_<general>_<specific>`, evidence `registry`,
+`detail.declared_by_applicant = true`. The specific class (ITU List V code) is used when
+mapped, else the general class. **Every FCC vote is low-rank** (`lowRank: true`): like the
+GFW model it decides only when nothing else votes and otherwise shows as dissent, never
+as a conflict — because applicants file loosely (a private pleasure boat and a USCG-inspected
+passenger boat both filed as "PL pleasure / PA passenger ship"). **Josh to confirm.**
+
+| FCC code | → group / class |
+|---|---|
+| general FV / GV / PL / SV / MM | fishing / government / recreational / government·search_rescue / — (abstains) |
+| PA passenger ship; PMX cargo+passenger; FBT ferry; VDT hydrofoil | passenger; passenger·other_passenger; passenger·ferry; passenger·high_speed_craft |
+| CA cargo; TRA tramp; CHA barge; CAB coaster; BLK bulk; TPO ore; CON container; FRG reefer | cargo (unspecified ×3); cargo·general_cargo; cargo·bulk_carrier ×2; cargo·container_ship; cargo·reefer |
+| OIL oil tanker; CIT tanker | tanker·oil_tanker; tanker |
+| TUG | tug_tow·tug |
+| PH fishing vessel; CHR trawler; BTA factory ship; BLN whaler | fishing·fishing_vessel; fishing·trawler; fishing·fish_factory; fishing |
+| PLT pilot tender; RAM salvage | port_service·pilot; port_service·salvage |
+| EXP research/survey; ECO training; RAV supply; CBL cable ship | research·research_vessel; government·training; offshore·offshore_support; offshore·offshore_construction |
+| YAT yacht; SLO sloop; VLR sailing ship | recreational·yacht; recreational·sailing_vessel ×2 |
+| MTB motorboat; ACV air-cushion; AUX auxiliary; codes not in Form 605 (OSV, DRG, CTR, CRO, PON, PHA…) | — (abstain / not in crosswalk) |
+
+### 3f. Transport Canada vessel descriptor (`docs/VESSEL_REGISTRIES.md` §4) — added 2026-09-25
+
+Raw claim: `vessel_type`, `value_norm = TC_<normalized descriptor>`, evidence `registry`.
+
+| TC descriptor (rows in the export) | → group / class |
+|---|---|
+| PLEASURE CRAFT (12,443) / SAILING (38) | recreational / recreational_unspecified; recreational / sailing_vessel |
+| FISHING (8,799) | fishing / fishing_vessel |
+| BARGE (2,266) / CARGO (155) | cargo / cargo_unspecified |
+| TUG (1,136) | tug_tow / tug |
+| PASSENGER (922) / FERRY (166) | passenger / passenger_unspecified; passenger / ferry |
+| WORKBOAT (719) | port_service (judgement, like Wikidata "working vessel") |
+| FLOATING STRUCTURE (113) | non_vessel |
+| TANKER (37) | tanker |
+| OFFSHORE CONSTRUCTION VESSEL (3) | offshore / offshore_construction |
+| NON-COMMERCIAL (43), AIR CUSHION VEHICLE (3) | — (abstain) |
+
 ## 4. Combining sources (decided 2026-09-25 — `combine()` / `classifyClaims()`)
 
 For a vessel, from its active `vessel_type` claims (for a time window; "now" keeps
@@ -265,7 +328,8 @@ AIS observations however old, but drops Wikidata types whose validity ended):
 1. Map each claim through its source's crosswalk. `unknown` and generic Wikidata
    classes abstain; a bare `other` (AIS 90, GFW OTHER) counts only if nothing more
    specific votes.
-2. **Ranking (Josh, 2026-09-25):** GFW's *model-inferred* type (`inferred`) ranks
+2. **Ranking (Josh, 2026-09-25):** GFW's *model-inferred* type (`inferred`) — and, proposed
+   2026-09-25, FCC licence classes (`lowRank`, §3e) — ranks
    **below** AIS (`ais_published` / `ais_self_reported`), registry and Wikidata
    (`community_curated`). The ranked sources decide; the model decides only when
    no ranked source votes (`basis: 'model_only'`).

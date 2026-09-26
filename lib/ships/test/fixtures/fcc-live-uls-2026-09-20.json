@@ -1,0 +1,199 @@
+{
+ "note": "REAL FCC ULS rows from l_ship.zip, grouped per licence as buildLicenseRecord stores them (personal fields withheld, original line SHA-256 kept).",
+ "records": [
+  {
+   "usi": "4921984",
+   "dataset": {
+    "file": "l_ship.zip",
+    "url": "https://data.fcc.gov/download/pub/uls/complete/l_ship.zip",
+    "created": "Sun Sep 20 10:49:57 EDT 2026",
+    "created_utc": "2026-09-20T14:49:57.000Z"
+   },
+   "lines": [
+    {
+     "file": "EN",
+     "text": "EN|4921984|||WDP4981|L|L02518020|Outer Island Expeditions, LLC||||||||[withheld]|Anacortes|WA|[withheld]|||000|0031850670|L||||||",
+     "withheld": [
+      "street",
+      "zip"
+     ],
+     "original_sha256": "b5c5c8242e363dfb02c926d4fc266859dc2500a24dffe4d46a3549c7f6e0a26e"
+    },
+    {
+     "file": "HD",
+     "text": "HD|4921984|0010996257||WDP4981|A|SB|03/26/2024|03/26/2034||||||||||N||||||||||N||[withheld]||[withheld]||[withheld]||||||||04/25/2024|04/25/2024|||||||||||||||",
+     "withheld": [
+      "certifier_first",
+      "certifier_last",
+      "certifier_title"
+     ],
+     "original_sha256": "a7126d9c2d4dfb69985ef9446354547e81abe17cf9a30666c9e86a08a656fd4c"
+    },
+    {
+     "file": "HS",
+     "text": "HS|4921984||WDP4981|03/26/2024|LIISS"
+    },
+    {
+     "file": "HS",
+     "text": "HS|4921984||WDP4981|04/25/2024|LIAUA"
+    },
+    {
+     "file": "SH",
+     "text": "SH|4921984|||WDP4981|R||PL|PA|Blackfish VI|1344473|N|Y|||44|17|||||368616000|N|N|Y|Y|N"
+    },
+    {
+     "file": "SR",
+     "text": "SR|4921984|||WDP4981|2DCCAA99AEFFBFF||||||Y||||Y|||3||84"
+    }
+   ]
+  },
+  {
+   "usi": "4805138",
+   "dataset": {
+    "file": "l_ship.zip",
+    "url": "https://data.fcc.gov/download/pub/uls/complete/l_ship.zip",
+    "created": "Sun Sep 20 10:49:57 EDT 2026",
+    "created_utc": "2026-09-20T14:49:57.000Z"
+   },
+   "lines": [
+    {
+     "file": "EN",
+     "text": "EN|4805138|||WDN9773|L|[withheld]|[withheld]|[withheld]|[withheld]|[withheld]|||||[withheld]|[withheld]|[withheld]|[withheld]||[withheld]|000|[withheld]|I||||||",
+     "withheld": [
+      "street",
+      "zip",
+      "attention",
+      "licensee_id",
+      "entity_name",
+      "first",
+      "mi",
+      "last",
+      "city",
+      "state",
+      "frn"
+     ],
+     "original_sha256": "957874c6543ff22d0829b5afeb00e5fd71e2d0b6ae1f3c45568be95734ef5dcb"
+    },
+    {
+     "file": "HD",
+     "text": "HD|4805138|0010660775||WDN9773|A|SA|08/19/2023|08/19/2033||||||||||N||||||||||N||[withheld]|[withheld]|[withheld]||||||||||08/19/2023|08/19/2023|||||||||||||||",
+     "withheld": [
+      "certifier_first",
+      "certifier_mi",
+      "certifier_last"
+     ],
+     "original_sha256": "fe2926e607a472cdb373175bfe686e9704d04b0ca75508c65571b33af5950125"
+    },
+    {
+     "file": "HS",
+     "text": "HS|4805138||WDN9773|08/19/2023|LIISS"
+    },
+    {
+     "file": "SH",
+     "text": "SH|4805138|||WDN9773|R||PL|PA|Linnea Rose|WN0431DM|Y|Y|||||||||368330140|||||"
+    },
+    {
+     "file": "SR",
+     "text": "SR|4805138|||WDN9773|||||||Y|||Y||||0|0|9"
+    }
+   ]
+  },
+  {
+   "usi": "1545921",
+   "dataset": {
+    "file": "l_ship.zip",
+    "url": "https://data.fcc.gov/download/pub/uls/complete/l_ship.zip",
+    "created": "Sun Sep 20 10:49:57 EDT 2026",
+    "created_utc": "2026-09-20T14:49:57.000Z"
+   },
+   "lines": [
+    {
+     "file": "EN",
+     "text": "EN|1545921|||WCX7958|L||[withheld]|[withheld]|[withheld]|[withheld]|||||[withheld]|[withheld]|[withheld]|[withheld]|||000||I||||||",
+     "withheld": [
+      "street",
+      "zip",
+      "entity_name",
+      "first",
+      "mi",
+      "last",
+      "city",
+      "state"
+     ],
+     "original_sha256": "bd0f6f10477bcf306b0ecb262dff61024e8c789d43ec595e278eded7d12015a3"
+    },
+    {
+     "file": "HD",
+     "text": "HD|1545921|||WCX7958|E|SB|10/15/1997|10/15/2007|12/15/2007|||||||||||||||||||N||||||||||||||10/15/1997|12/15/2007|||||||||||||||"
+    },
+    {
+     "file": "HS",
+     "text": "HS|1545921||WCX7958|07/23/2007|LETRES"
+    },
+    {
+     "file": "HS",
+     "text": "HS|1545921||WCX7958|12/15/2007|LIEXP"
+    },
+    {
+     "file": "HS",
+     "text": "HS|1545921||WCX7958|11/17/2000|LICCNV"
+    },
+    {
+     "file": "SH",
+     "text": "SH|1545921|||WCX7958|R||PL|CHR|SEARCHER|1028221|Y|Y|||130|20|||||368616000|||||Y"
+    }
+   ]
+  },
+  {
+   "usi": "3202504",
+   "dataset": {
+    "file": "l_ship.zip",
+    "url": "https://data.fcc.gov/download/pub/uls/complete/l_ship.zip",
+    "created": "Sun Sep 20 10:49:57 EDT 2026",
+    "created_utc": "2026-09-20T14:49:57.000Z"
+   },
+   "lines": [
+    {
+     "file": "EN",
+     "text": "EN|3202504|||WDF4719|L|L01572306|YANKEE SAILING LLC||||||||[withheld]|CHESTER|CT|[withheld]||[withheld]|000|0019879071|L||||||",
+     "withheld": [
+      "street",
+      "zip",
+      "attention"
+     ],
+     "original_sha256": "f238c679fcb441397d0b6e241d90e17a7e1956a781e1fbbc52e182880d7335f8"
+    },
+    {
+     "file": "HD",
+     "text": "HD|3202504|0004266132||WDF4719|E|SB|06/02/2010|06/02/2020|08/08/2020|||||||||||||||||||N||[withheld]||[withheld]||[withheld]||||||||06/02/2010|08/08/2020|||||||||||||||",
+     "withheld": [
+      "certifier_first",
+      "certifier_last",
+      "certifier_title"
+     ],
+     "original_sha256": "1dd67fc1e323919d7e196694c1f1cbcdc111fd1c6c47af3697e236acc9d9cc20"
+    },
+    {
+     "file": "HS",
+     "text": "HS|3202504||WDF4719|06/02/2010|LIISS"
+    },
+    {
+     "file": "HS",
+     "text": "HS|3202504||WDF4719|03/09/2020|LETRES"
+    },
+    {
+     "file": "HS",
+     "text": "HS|3202504||WDF4719|08/08/2020|LIEXP"
+    },
+    {
+     "file": "SH",
+     "text": "SH|3202504|||WDF4719|R||MM|PA|YANKEE|1076210|Y|Y|||13|15|||||368616000|N|N|Y|N|N"
+    },
+    {
+     "file": "SR",
+     "text": "SR|3202504|||WDF4719|020A3144001||||||Y||||Y|||0|0|25"
+    }
+   ]
+  }
+ ]
+}

@@ -29,3 +29,14 @@ Record more live responses with `npm run ships:import-gfw -- --save <dir> …`.
 | `commons-live-eurodam-2026-09-25.json` | **Real, recorded live** Wikimedia Commons `imageinfo` response (licence extmetadata, 640 px thumbnail) for EURODAM's two P18 files. |
 
 `typeLookup.test.js` and the licence-filter test use small **SYNTHETIC** rows / metadata, marked as such in the test names.
+
+## Official registries (docs/VESSEL_REGISTRIES.md)
+
+| File | What it is |
+|---|---|
+| `fcc-live-uls-2026-09-20.json` | **Real** FCC ULS rows from the weekly `l_ship.zip` (File Creation Date 2026-09-20), grouped per licence exactly as `buildLicenseRecord` stores them: personal fields `[withheld]` with the original line's SHA-256 (privacy rule). Licences: BLACKFISH VI (4921984), LINNEA ROSE (4805138, licensee a private individual: name withheld), SEARCHER (1545921) and YANKEE (3202504), the two earlier holders of MMSI 368616000. |
+| `psix-live-2026-09-25.json` | **Real, recorded live** USCG CGMIX PSIXData responses (every XML result string as received) for BLACKFISH VI (1763413) and EURODAM (865188). |
+| `tc-live-2026-09-25.json` | **Real** Transport Canada data: the open.canada.ca export row (parsed by `lib/ships/xlsx.js`) + the Vessel Registration Query System API response as received, for SPIRIT OF VANCOUVER ISLAND, SEASPAN RAPTOR, SALISH SEA ECLIPSE. |
+| `mc-live-368616000-…`, `mc-live-316001269-…`, `mc-live-316042022-…` (2025-07_2026-06) | **Real** MarineCadastre identity rows (from `scripts/ships/bake-ais/build/identity-*.ndjson`) for BLACKFISH VI, SPIRIT OF VANCOUVER ISLAND ("SPIRIT OF V I" on AIS) and SEASPAN RAPTOR. |
+
+`registries.test.js` / `registries-db.test.js` also build a few **SYNTHETIC** variants (a licence with BLACKFISH's MMSI but another name, a PSIX record with the call sign removed, a made-up recreational LLC licence), each marked in the test name.

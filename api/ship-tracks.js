@@ -5,6 +5,8 @@
 //   /api/ship-tracks?t=<YYYY-MM>&mmsi=<9 digits>        EVERY track of one MMSI that month (GeoJSON),
 //                                                      read from tracks-YYYY-MM.pack; see
 //                                                      scripts/ships/bake-ais/build_tracks.py
+//   /api/ship-tracks?r=mpa&z=<z>&x=<x>&y=<y>           NOAA Marine Protected Areas (MVT; one bake,
+//                                                      scripts/ships/bake-mpa/, trackSource.mpa)
 //   add &r=us for the US-wide tracks (MarineCadastre monthly track files, baked
 //   in GitHub Actions by scripts/ships/bake-us/; file URLs come from the Blob
 //   index at trackSource.us.index). Default r=salish.
@@ -140,6 +142,17 @@ async function usUrls(t) {
 const LOCAL_CACHE = 'no-store'
 const cache = new Map()
 async function pmtilesFor(t, region) {
+  if (region === 'mpa') {
+    let p = cache.get('mpa')
+    if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete('mpa'); p = null }
+    if (!p) {
+      const localPath = resolve(process.cwd(), `scripts/ships/bake-mpa/build/mpa-${manifest.mpa.version}.pmtiles`)
+      if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
+      else p = new PMTiles(new BlobRange(manifest.mpa.tiles))
+      cache.set('mpa', p)
+    }
+    return p
+  }
   if (region === 'us') {
     const key = `us:${t}`
     if (!cache.has(key)) { const u = await usUrls(t); if (!u) return null; cache.set(key, new PMTiles(new BlobRange(u.tiles, u.pmtiles_bytes))) }
@@ -224,12 +237,12 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400')
     return res.end(JSON.stringify({ total: ships.length, ships: ships.slice(0, 30) }))
   }
-  const t = searchParams.get('t')
-  const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
-  if (!isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
   const region = searchParams.get('r') || 'salish'
-  if (region !== 'salish' && region !== 'us') { res.statusCode = 400; return res.end('bad region') }
-  const mmsiParam = searchParams.get('mmsi')
+  if (region !== 'salish' && region !== 'us' && region !== 'mpa') { res.statusCode = 400; return res.end('bad region') }
+  const t = region === 'mpa' ? 'mpa' : searchParams.get('t')
+  const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
+  if (region !== 'mpa' && !isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
+  const mmsiParam = region === 'mpa' ? null : searchParams.get('mmsi')
   if (mmsiParam != null) {
     if (!/^\d{9}$/.test(mmsiParam)) { res.statusCode = 400; return res.end('bad mmsi') }
     let features
@@ -250,7 +263,7 @@ export default async function handler(req, res) {
     tile = await p.getZxy(z, x, y)
   } catch (e) {
     console.error('[ship-tracks] tile', region, t, z, x, y, e?.message)
-    cache.delete(region === 'us' ? `us:${t}` : t)
+    cache.delete(region === 'us' ? `us:${t}` : t) // (t is 'mpa' for r=mpa)
     res.statusCode = 502
     res.setHeader('Cache-Control', 'no-store')
     return res.end('tile read failed')

@@ -5,6 +5,7 @@
 #
 #   zsh scripts/ships/prod.sh migrate            back up prod `ships`, then apply pending migrations (additive)
 #   zsh scripts/ships/prod.sh import-ports       back up, then countries, World Port Index, GFW anchorage names, match
+#   zsh scripts/ships/prod.sh import-anchorages  back up, then official anchorage areas: US (MarineCadastre + eCFR), Canada (DFO), non-designated (82 FR 10313)
 #   zsh scripts/ships/prod.sh upload-salish      upload the baked Salish track tiles to Vercel Blob
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
@@ -45,9 +46,28 @@ case "${1:-}" in
     # a fresh database there may be nothing to match yet.
     echo "== match"; prod_node scripts/ships/import-ports.mjs match || echo "match: nothing to match yet (no port visits stored)"
     ;;
+  import-anchorages)
+    # Needs migration 009 on prod first (prod.sh migrate). Reads the files downloaded by the dev imports' --fetch
+    # (scripts/ships/bake-ais/build/anchorages/), so prod gets exactly what was QA'd on localhost.
+    need SHIPS_PROD_DATABASE_URL
+    backup import-anchorages
+    for step in us ca nondesignated; do
+      echo "== $step"; prod_node scripts/ships/import-anchorages.mjs $step
+    done
+    ;;
   upload-salish)
     need BLOB_READ_WRITE_TOKEN
     node --env-file=.env.local scripts/ships/bake-ais/upload.mjs
+    ;;
+  upload-mpa)
+    # Marine protected areas tiles baked by scripts/ships/bake-mpa/bake.mjs (NOAA MPA Inventory),
+    # to the path src/ships/trackSource.json `mpa.tiles` points at. Josh approved 2026-09-27.
+    need BLOB_READ_WRITE_TOKEN
+    url=$(python3 -c "import json; print(json.load(open('src/ships/trackSource.json'))['mpa']['tiles'])")
+    file=scripts/ships/bake-mpa/build/${url:t}
+    [ -f "$file" ] || { echo "prod.sh: $file not found (run the MPA bake first)" >&2; exit 2 }
+    BLOB_READ_WRITE_TOKEN="$(envval BLOB_READ_WRITE_TOKEN)" npx vercel blob put "$file" --access public --pathname "ships/mpa/${url:t}" \
+      --content-type application/octet-stream --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" | grep -o 'https://[^ ]*' | head -1
     ;;
   pack-table)
     need CRON_SECRET
@@ -63,6 +83,6 @@ case "${1:-}" in
     node --env-file=.env.local scripts/ships/bake-us/build/publish-index.mjs --index "$dir"
     ;;
   *)
-    sed -n '2,15p' "$0"; exit 2
+    sed -n '2,16p' "$0"; exit 2
     ;;
 esac

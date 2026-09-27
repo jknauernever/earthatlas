@@ -71,3 +71,11 @@ All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]
 | `ports-live-2026-09-26.json` | **Real** verbatim extracts of the four downloads made 2026-09-26 (2026-09-27 UTC) by `scripts/ships/import-ports.mjs --fetch`: 15 WPI JSON port objects (Salish Sea, Alaska, SF Bay, Port Everglades), 7 GeoNames `countryInfo.txt` lines + header, 8 UN/LOCODE 2025-1 CSV lines, 11 `anchorage_overrides.csv` rows + header (incl. repeated cells and one mangled s2id), each with its download `.meta.json`; plus one GFW port-visit event (usa-homer) exactly as stored by the step-1 fetch. |
 
 `ports.test.js` marks its few edited cases SYNTHETIC in the test name.
+
+## Anchorage areas (docs/ANCHORAGE_AREAS_SOURCES.md)
+
+| File | What it is |
+|---|---|
+| `anchorages-live-2026-09-27.json` | **Real** verbatim extracts of the downloads made 2026-09-27 by `scripts/ships/import-anchorages.mjs --fetch`: 9 of the 679 MarineCadastre "Anchorages" FeatureServer GeoJSON features (Cherry Point, Smith Cove West, Elliott Bay East, the Port Angeles non-anchorage area, SF Anchorage 20, LA Anchorage F, a MultiPolygon, a null-CFR row, a 110.228 row); 3 of the 117 DFO Pacific commercial anchorage features (English Bay U, English Bay 1, Royal Roads A with radius "unknown"); the proposed §110.230 text of 82 FR 10313 as GPO's plain text gives it; the eCFR Part 110 version entries for 110.214/224/228/230 plus the non-substantive ones after 2022-11-17; and 7 real GFW port-visit positions (event id + position as stored in the dev DB). |
+
+`anchorages.test.js` / `anchorages-db.test.js` mark the cases they build or edit (hole/circle shapes, an overlapping designated copy, a renamed feature) SYNTHETIC in the test name.

@@ -508,3 +508,12 @@
 a.portCountry { text-decoration: none; }
 a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline; text-underline-offset: 2px; }
 .unnamedPort { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; font-weight: 500; color: rgba(255, 255, 255, 0.72); cursor: help; }
+.stopKind { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10.5px; color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.08); cursor: help; }
+
+/* Protected areas legend (least → most restrictive) */
+.mpaLegend { display: grid; gap: 3px; margin-bottom: 8px; }
+.mpaLegendRow { display: flex; align-items: center; gap: 8px; }
+.mpaSwatch { width: 14px; height: 10px; border-radius: 2px; border: 1px solid #4ade80; flex: none; }
+/* Stop marker (Ports tab "map" link). */
+.stopMarker { width: 16px; height: 16px; border-radius: 50%; background: #22d3ee; border: 3px solid #0a0e17; box-shadow: 0 0 0 2px #22d3ee, 0 2px 8px rgba(0, 0, 0, 0.5); cursor: pointer; }
+.popupShipHead { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.2; }

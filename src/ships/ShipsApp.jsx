@@ -185,6 +185,62 @@ function darkPopupHTML({ count, months, period, pct, detail }) {
     `</div>`
   )
 }
+// ─── Marine protected areas (NOAA MPA Inventory) ─────────────────────────────
+// Baked by scripts/ships/bake-mpa/ into one PMTiles file, served by /api/ship-tracks?r=mpa.
+// One green, deepening with how strict the protection is (NOAA's "Level of Protection").
+const MPA_ICON = '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M8.5 12.5c1.2-1 2.3-1 3.5 0s2.3 1 3.5 0"/>'
+const MPA = {
+  id: 'mpa', name: 'Protected areas', sub: 'US marine protected areas and their rules', hue: '#4ade80', iconSvg: MPA_ICON,
+  sourceName: 'NOAA Marine Protected Areas Inventory', sourceUrl: 'https://marineprotectedareas.noaa.gov/dataanalysis/mpainventory/',
+}
+// Least → most restrictive, as NOAA's MPA classification system orders them.
+const MPA_LEVELS = [
+  ['Uniform Multiple Use', 'Multiple use', 'the same rules everywhere; some uses allowed'],
+  ['Zoned Multiple Use', 'Zoned multiple use', 'different rules in different zones'],
+  ['Zoned w/No Take Areas', 'Zoned, with no-take areas', 'some zones ban all removal'],
+  ['No Take', 'No take', 'nothing may be removed'],
+  ['No Impact', 'No impact', 'no removal and no harm'],
+  ['No Access', 'No access', 'entry prohibited or restricted'],
+]
+const MPA_SHADES = ['#bbf7d0', '#86efac', '#4ade80', '#22c55e', '#16a34a', '#15803d']
+const mpaTileUrl = `${TILES_BASE}/api/ship-tracks?r=mpa&v=${trackSource.mpa.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const mpaLevelMatch = (vals, fallback) => ['match', ['get', 'Prot_Lvl'], ...MPA_LEVELS.flatMap(([k], i) => [k, vals[i]]), fallback]
+const MPA_FILL_COLOR = mpaLevelMatch(MPA_SHADES, MPA_SHADES[0])
+const MPA_FILL_OPACITY = mpaLevelMatch([0.18, 0.22, 0.27, 0.34, 0.38, 0.42], 0.18)
+const MPA_LINE_OPACITY = ['interpolate', ['linear'], ['zoom'], 3, 0.75, 8, 0.95]
+const MPA_LINE_WIDTH = ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.4, 12, 2]
+function mpaPopupHTML(p) {
+  const s = styles
+  const lvl = MPA_LEVELS.find(([k]) => k === p.Prot_Lvl)
+  const row = (k, v) => (v == null || v === '' ? '' : `<div class="${s.popupRow}"><span class="${s.popupK}">${k}</span><span class="${s.popupV}">${escapeHtml(v)}</span></div>`)
+  const km2 = (v) => (v == null ? null : `${Number(v) >= 100 ? fmtN(Math.round(v)) : Number(v).toFixed(v >= 1 ? 1 : 2)} km²`)
+  const who = [p.Design, p.Gov_Level, p.State].filter(Boolean)
+  const safeUrl = p.URL && /^https?:\/\//i.test(p.URL) ? p.URL : null
+  return (
+    `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}">Marine protected area</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(p.Site_Name || 'Unnamed site')}</div>` +
+    `<div class="${s.popupMeta}">${escapeHtml(who.join(' · '))}${p.Estab_Yr ? ` · since ${p.Estab_Yr}` : ''}</div>` +
+    row('Protection', lvl ? `${lvl[1]}: ${lvl[2]}` : p.Prot_Lvl) +
+    row('Fishing', p.Fish_Rstr) +
+    row('Vessels', p.Vessel) +
+    row('Anchoring', p.Anchor) +
+    row('Season', p.Constancy) +
+    row('Protects', p.Cons_Focus) +
+    row('Managed by', p.Mgmt_Agen) +
+    row('Marine area', km2(p.AreaMar)) +
+    (p.AreaNT ? row('No-take area', km2(p.AreaNT)) : '') +
+    (p.IUCNcat ? row('IUCN category', p.IUCNcat) : '') +
+    ((safeUrl || p.WDPA_Cd) ? `<div class="${s.popupMeta}">` +
+      [safeUrl && `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">Site information</a>`,
+        p.WDPA_Cd && `<a href="https://www.protectedplanet.net/${Number(p.WDPA_Cd)}" target="_blank" rel="noopener noreferrer">Protected Planet record</a>`].filter(Boolean).join(' · ') +
+      `</div>` : '') +
+    `<div class="${s.popupNote}">Not for navigation and not a legal boundary: check the Code of Federal Regulations or state code for official rules.</div>` +
+    `<div class="${s.popupNote}">Data: <a href="${MPA.sourceUrl}" target="_blank" rel="noopener noreferrer">${MPA.sourceName}</a> (site ${escapeHtml(p.Site_ID || '?')}, data as of ${fmtIsoDay(trackSource.mpa.version)}), public domain.</div>` +
+    `</div>`
+  )
+}
+const fmtIsoDay = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 const monthStart = (ym) => `${ym}-01`
 const monthAfter = (ym) => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01` }
 
@@ -221,6 +277,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   v   picked vessel (EarthAtlas uuid)     q  ship search text      k  kinds (comma list)
 //   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
+//   mp  '1' = Protected areas on (default off)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -228,7 +285,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), ct: sp.get('ct'), cf: sp.get('cf'),
+    dk: sp.get('dk'), mp: sp.get('mp'), ct: sp.get('ct'), cf: sp.get('cf'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -258,10 +315,13 @@ export default function ShipsApp() {
   const [identityOn, setIdentityOn] = useState(initial.id !== '0')
   const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
   const [darkOn, setDarkOn] = useState(initial.dk !== '0')
+  const [mpaOn, setMpaOn] = useState(initial.mp === '1')
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
   const [pickedTrack, setPickedTrack] = useState(null) // { mmsi, t0 } of a clicked line, or null
+  const [stopFocus, setStopFocus] = useState(null)     // { t0s } the ship's tracks arriving at / leaving a stop opened from the Ports tab
+  const stopMarkerRef = useRef(null)
   const [ownTracks, setOwnTracks] = useState([])      // the picked ship's complete tracks (from the per-MMSI pack)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState(initial.q || '')
@@ -414,13 +474,15 @@ export default function ShipsApp() {
     }
     const ownVis = tracksOn && identityOn && vesselId ? 'visible' : 'none'
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) map.setLayoutProperty(l, 'visibility', ownVis)
-    const hi = pickedTrack ? ['all', ['==', ['get', 'mmsi'], pickedTrack.mmsi], ['==', ['get', 't0'], pickedTrack.t0]] : ['==', ['get', 't0'], -1]
+    const hi = pickedTrack ? ['all', ['==', ['get', 'mmsi'], pickedTrack.mmsi], ['==', ['get', 't0'], pickedTrack.t0]]
+      : stopFocus?.t0s?.length ? ['in', ['get', 't0'], ['literal', stopFocus.t0s]] : ['==', ['get', 't0'], -1]
+    const dim = !!(pickedTrack || stopFocus?.t0s?.length)
     map.setFilter(OWN_HI_CASING, hi); map.setFilter(OWN_HI, hi)
-    map.setPaintProperty(OWN_LINE, 'line-opacity', pickedTrack ? 0.55 : 1)
-    map.setPaintProperty(OWN_CASING, 'line-opacity', pickedTrack ? 0.5 : 0.85)
+    map.setPaintProperty(OWN_LINE, 'line-opacity', dim ? 0.55 : 1)
+    map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths, pickedTrack])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths, pickedTrack, stopFocus])
 
   // The picked ship's own tracks: every selected month × every MMSI it held.
   useEffect(() => {
@@ -509,6 +571,7 @@ export default function ShipsApp() {
     const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
     const openShip = async (mmsi, t0, month) => {
       setPickedTrack(t0 ? { mmsi: Number(mmsi), t0: Number(t0) } : null)
+      setStopFocus(null); stopMarkerRef.current?.remove()
       const when = new Date(t0 * 1000).toISOString()
       const resolve = async () => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)).json()
       try {
@@ -622,6 +685,110 @@ export default function ShipsApp() {
     return () => { map.off('click', onClick); map.off('mousemove', onMove); darkPopupRef.current?.remove() }
   }, [mapReady, darkOn, gfwRange, trackMonths])
 
+  // ─── Marine protected areas ────────────────────────────────────────────────────
+  // Fill under everything (dark cells, tracks); outline over the track lines so a boundary still
+  // reads through busy lanes, but under the picked ship's cyan tracks and the labels. Tracks are
+  // (re)added under the labels whenever the months change, so the outline is re-seated after them.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    // Same gate as the track layers: only the style JSON must be loaded (see there).
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    const layers = map.getStyle().layers
+    if (!map.getSource('mpa')) {
+      const below = layers.find((l) => l.id === 'gfw-dark-fill' || l.id.startsWith('shiptrk'))?.id || layers.find((l) => l.type === 'symbol')?.id
+      map.addSource('mpa', { type: 'vector', tiles: [mpaTileUrl], minzoom: 0, maxzoom: trackSource.mpa.maxzoom,
+        attribution: `<a href="${MPA.sourceUrl}" target="_blank" rel="noopener">NOAA MPA Inventory</a>` })
+      map.addLayer({ id: 'mpa-fill', type: 'fill', source: 'mpa', 'source-layer': trackSource.mpa.sourceLayer,
+        paint: { 'fill-color': MPA_FILL_COLOR, 'fill-opacity': MPA_FILL_OPACITY } }, below)
+      map.addLayer({ id: 'mpa-line', type: 'line', source: 'mpa', 'source-layer': trackSource.mpa.sourceLayer, layout: { 'line-join': 'round' },
+        paint: { 'line-color': MPA_FILL_COLOR, 'line-opacity': MPA_LINE_OPACITY, 'line-width': MPA_LINE_WIDTH } }, below)
+    }
+    const top = map.getLayer(OWN_CASING) ? OWN_CASING : layers.find((l) => l.type === 'symbol')?.id
+    if (top) map.moveLayer('mpa-line', top)
+    for (const id of ['mpa-fill', 'mpa-line']) map.setLayoutProperty(id, 'visibility', mpaOn ? 'visible' : 'none')
+  }, [mapReady, styleVersion, mpaOn, trackMonths])
+
+  // Click inside a protected area → its rules. Tracks and dark-vessel cells take the click first.
+  const mpaPopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !mpaOn) return
+    const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
+    const onClick = (e) => {
+      if (!map.getLayer('mpa-fill')) return
+      const others = otherLayers()
+      if (others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
+      const hits = map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] })
+      if (!hits.length) return
+      // Overlapping sites (a reserve inside a sanctuary): show the smallest, the most specific one.
+      const f = hits.reduce((a, b) => ((b.properties.AreaKm ?? Infinity) < (a.properties.AreaKm ?? Infinity) ? b : a))
+      mpaPopupRef.current?.remove()
+      mpaPopupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(mpaPopupHTML(f.properties)).addTo(map)
+    }
+    const onMove = (e) => {
+      if (!map.getLayer('mpa-fill') || map.getCanvas().style.cursor === 'pointer') return
+      if (map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] }).length) map.getCanvas().style.cursor = 'pointer'
+    }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
+  }, [mapReady, mpaOn])
+
+  // ─── A stop from the Ports tab on the map (Josh, 2026-09-27) ────────────────
+  // Marker on GFW's stop point (the anchorage cell, not the exact berth), the ship's own track arriving
+  // before and leaving after highlighted, the view fitted to them, and AIS silences around the stop named.
+  const showStop = useCallback((v) => {
+    const map = mapRef.current
+    if (!map || !Number.isFinite(v.lat) || !Number.isFinite(v.lon)) return
+    const s = Date.parse(v.start_at) / 1000, e = v.end_at ? Date.parse(v.end_at) / 1000 : s
+    const month = String(v.start_at).slice(0, 7)
+    const before = ownTracks.filter((f) => f.properties.t1 <= s + 3600).sort((a, b) => b.properties.t1 - a.properties.t1)[0]
+    const after = ownTracks.filter((f) => f.properties.t0 >= e - 3600).sort((a, b) => a.properties.t0 - b.properties.t0)[0]
+    const hrs = (h) => (h < 48 ? `${Math.round(h)} hours` : `${(h / 24).toFixed(1)} days`)
+    const notes = []
+    if (!trackMonths.includes(month)) notes.push(`${fmtMonth(month)} isn’t among the months shown, so the ship’s tracks around this stop aren’t drawn. Pick it under When.`)
+    else {
+      const gapIn = before ? (s - before.properties.t1) / 3600 : null, gapOut = after ? (after.properties.t0 - e) / 3600 : null
+      if (!before) notes.push('No AIS track before this stop in the months shown.')
+      else if (gapIn > 3) notes.push(`AIS was silent for ${hrs(gapIn)} before the ship arrived.`)
+      if (!after) notes.push('No AIS track after this stop in the months shown.')
+      else if (gapOut > 3) notes.push(`AIS was silent for ${hrs(gapOut)} after the ship left.`)
+    }
+    setPickedTrack(null)
+    setStopFocus({ t0s: [before, after].filter(Boolean).map((f) => f.properties.t0) })
+    stopMarkerRef.current?.remove()
+    const el = document.createElement('div')
+    el.className = styles.stopMarker
+    const day = (t) => (t ? String(t).slice(0, 16).replace('T', ' ') : '?')
+    const popup = new mapboxgl.Popup({ offset: 12, maxWidth: '290px' }).setHTML(
+      `<div class="${styles.popup}">` +
+      // Which ship: its name and IMO from the card, and the MMSI it was broadcasting on at this stop (GFW).
+      (v.ship?.name ? `<div class="${styles.popupShipHead}">${escapeHtml(v.ship.name)}</div>` : '') +
+      `<div class="${styles.popupMeta}">${[v.ship?.imo && `IMO ${escapeHtml(v.ship.imo)}`, (v.ssvid || v.ship?.mmsi) && `MMSI ${escapeHtml(v.ssvid || v.ship.mmsi)}`].filter(Boolean).join(' · ')}</div>` +
+      `<div class="${styles.popupHead}" style="margin-top:8px">Stop · ${escapeHtml(v.stop_kind_text || 'port visit')}</div>` +
+      `<div class="${styles.popupTitle}">${escapeHtml(v.title || v.port_label || 'Stop')}</div>` +
+      `<div class="${styles.popupMeta}">${escapeHtml(day(v.start_at))} → ${escapeHtml(day(v.end_at))} UTC</div>` +
+      notes.map((n) => `<div class="${styles.popupNote}">${escapeHtml(n)}</div>`).join('') +
+      `<div class="${styles.popupNote}">The marker is Global Fishing Watch’s point for this anchorage (a grid cell about 0.5 km across), not the ship’s exact berth. A ship sitting still draws no track line.</div></div>`)
+    stopMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([v.lon, v.lat]).setPopup(popup).addTo(map)
+    stopMarkerRef.current.togglePopup()
+    // Fit to the stop plus the nearby ends of the arriving / leaving tracks (within 20 km); after a long
+    // AIS silence those ends can be far away, so they don't count, and the view stays on the stop.
+    const km = (c) => Math.hypot((c[0] - v.lon) * 111.32 * Math.cos((v.lat * Math.PI) / 180), (c[1] - v.lat) * 111.32)
+    const near = [...(before ? before.geometry.coordinates.slice(-60) : []), ...(after ? after.geometry.coordinates.slice(0, 60) : [])].filter((c) => km(c) <= 20)
+    const b = new mapboxgl.LngLatBounds([v.lon - 0.01, v.lat - 0.006], [v.lon + 0.01, v.lat + 0.006])
+    near.forEach((c) => b.extend(c))
+    const card = document.querySelector('[aria-label="Ship card"]')?.getBoundingClientRect()
+    map.fitBounds(b, { padding: { top: 90, bottom: 50, left: isMobile ? 30 : 330, right: isMobile ? 30 : Math.min(480, (card?.width || 400) + 60) },
+      maxZoom: 14, duration: 1200 })
+  }, [ownTracks, trackMonths, isMobile])
+  useEffect(() => () => { stopMarkerRef.current?.remove() }, [])
+  useEffect(() => { setStopFocus(null); stopMarkerRef.current?.remove() }, [vesselId])
+
   const handlePlace = useCallback((r) => { flyToSearchResult(mapRef.current, r) }, [])
 
   // ─── Shareable URL ────────────────────────────────────────────────────────
@@ -630,6 +797,7 @@ export default function ShipsApp() {
     if (!identityOn) sp.set('id', '0')
     if (!tracksOn) sp.set('tr', '0')
     if (!darkOn) sp.set('dk', '0')
+    if (mpaOn) sp.set('mp', '1')
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
       const [a, b] = trackSel
       sp.set('tm', a === b ? a : `${a}_${b}`)
@@ -645,7 +813,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -656,7 +824,7 @@ export default function ShipsApp() {
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
-  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0)
+  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0)
   const anyTimed = tracksOn || darkOn
   return (
     <div className={styles.container}>
@@ -697,6 +865,7 @@ export default function ShipsApp() {
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
               onClose={() => { setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false); setPickedTrack(null) }}
               onSelectVessel={(id) => setVesselId(id)}
+              onShowPlace={showStop}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')
                 const secs = (x) => (x ? Math.floor(new Date(x).getTime() / 1000) : null)
@@ -766,6 +935,17 @@ export default function ShipsApp() {
                   {!isMobile && <span className={styles.dockTip} aria-hidden="true">{def.name} <span>· {def.sub}</span></span>}
                 </button>
               ))}
+            </div>
+          </div>
+          <div className={styles.dockGroup}>
+            <div className={styles.dockGroupLabel}>PLACES</div>
+            <div className={styles.dockGrid}>
+              <button type="button" className={`${styles.dockBtn} ${mpaOn ? styles.dockOn : ''}`}
+                style={mpaOn ? hueStyle(MPA.hue) : undefined} onClick={() => setMpaOn((o) => !o)} aria-pressed={mpaOn} aria-label={MPA.name}>
+                <Icon svg={MPA.iconSvg} size={isMobile ? 16 : 19} />
+                {mpaOn && <span className={styles.liveDotHue} aria-hidden="true" />}
+                {!isMobile && <span className={styles.dockTip} aria-hidden="true">{MPA.name} <span>· {MPA.sub}</span></span>}
+              </button>
             </div>
           </div>
         </div>
@@ -879,6 +1059,38 @@ export default function ShipsApp() {
                     )}
                   </div>
                 ))}
+              </div>
+              <div className={styles.group}>
+                <div className={styles.groupHead}>Places</div>
+                <div className={styles.layerBlock}>
+                  <div className={styles.layerRow} role="switch" aria-checked={mpaOn} tabIndex={0} onClick={() => setMpaOn((o) => !o)}
+                    onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMpaOn((o) => !o) } }}>
+                    <span className={`${styles.rowIcon} ${mpaOn ? styles.dockOn : ''}`} style={mpaOn ? hueStyle(MPA.hue) : undefined} aria-hidden="true">
+                      <Icon svg={MPA.iconSvg} size={16} />
+                    </span>
+                    <div className={styles.layerInfo}>
+                      <span className={styles.layerName}>{MPA.name}</span>
+                      <span className={styles.layerSub}>{MPA.sub}</span>
+                    </div>
+                  </div>
+                  {mpaOn && (
+                    <div className={styles.liveNote}>
+                      <div className={styles.mpaLegend}>
+                        {MPA_LEVELS.map(([k, name], i) => (
+                          <div key={k} className={styles.mpaLegendRow}>
+                            <span className={styles.mpaSwatch} style={{ background: MPA_SHADES[i], opacity: 0.35 + i * 0.12 }} aria-hidden="true" />
+                            {name}
+                          </div>
+                        ))}
+                      </div>
+                      Every US marine protected area that meets the IUCN definition: federal, state, territorial, local and jointly run. Deeper
+                      green = stricter protection. Click one for its fishing, vessel and anchoring rules. Not for navigation or legal
+                      boundaries. Data:{' '}
+                      <a className={styles.sourceLink} href={MPA.sourceUrl} target="_blank" rel="noopener noreferrer">{MPA.sourceName}</a>,
+                      as of {fmtIsoDay(trackSource.mpa.version)}, public domain.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

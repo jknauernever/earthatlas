@@ -149,7 +149,7 @@ export function Ev({ c }) {
 }
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
-export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, tab: tabProp, onTab, folded: foldedProp, onFold }) {
+export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, tab: tabProp, onTab, folded: foldedProp, onFold }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
   const [tabOwn, setTabOwn] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
@@ -341,7 +341,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             {renderSection(CHAR_ROWS, 'Characteristics over time')}
           </>}
 
-          {tab === 'ports' && <PortsOfCall vesselId={vessel.vessel.id} />}
+          {tab === 'ports' && <PortsOfCall vesselId={vessel.vessel.id} onShowPlace={onShowPlace}
+            ship={{ name: current.name?.value_raw || null, imo: current.imo?.value_raw || null, mmsi: current.mmsi?.value_raw || null }} />}
 
           {tab === 'incidents' && <Incidents list={vessel.incidents || []} />}
 
@@ -594,6 +595,10 @@ function nameWhy(p) {
     case 'wpi_nearest_clear': return `Nearest of several World Port Index ports within 4 km (${km}, less than half the next one's distance)${lbl}. NGA Pub 150, public domain — click for the WPI record`
     case 'gfw_override_label': case 'gfw_override_label_majority': return `No World Port Index port within 4 km. Name from Global Fishing Watch's reviewed anchorage-name list (pipe-anchorages, Apache-2.0) for this anchorage${lbl} — click for that row`
     case 'gfw_event_name': return `No World Port Index port within 4 km and no reviewed anchorage name. Name Global Fishing Watch gives this anchorage in its port-visit events${lbl} — click for an event carrying it`
+    case 'gfw_override_nearest': return `No World Port Index port and no reviewed name for this exact anchorage. Name of the nearest entry (within 4 km) in Global Fishing Watch's reviewed anchorage-name list, as GFW itself applies it${lbl} — click for that row`
+    case 'gfw_override_label_over_wpi_facility': case 'gfw_override_label_majority_over_wpi_facility': case 'gfw_override_nearest_over_wpi_facility': case 'gfw_event_name_over_wpi_facility':
+      return `The World Port Index port here names a facility (terminal, refinery…), so Global Fishing Watch's name for the place is shown instead${lbl}`
+    case 'wpi_near_approx': return `Approximate: nothing names this exact spot, so this is the nearest World Port Index port, ${km} away${lbl}. The place is near it, not necessarily in it — click for the WPI record`
     default: return null
   }
 }
@@ -605,7 +610,12 @@ function PortName({ p }) {
   if (!p.port_name) {
     return <span className={styles.unnamedPort} title={`No World Port Index port within 4 km and no Global Fishing Watch name for this port; this is GFW's internal label${p.gfw_name ? ` (GFW names it “${p.gfw_name}”, which is a code)` : ''}.`}>{p.port_label || 'unnamed port'}</span>
   }
-  const shown = p.name_source_id === 'nga-wpi' ? p.port_name : titleCase(p.port_name)
+  const base = p.name_source_id === 'nga-wpi' ? p.port_name : titleCase(p.port_name)
+  // Approximate names say so: "near Cherry Point · 7 km" (Josh 2026-09-26) — unless the ships stopping here
+  // themselves broadcast that place as their destination (GFW topDestination), which confirms the place.
+  const confirmed = p.name_method === 'wpi_near_approx' && sameName(p.top_destination, p.port_name)
+  const shown = p.name_method === 'wpi_near_approx' && !confirmed
+    ? `near ${base}${p.name_distance_km != null ? ` · ${Math.round(Number(p.name_distance_km))} km` : ''}` : base
   const tag = NAME_SOURCE[p.name_source_id] || p.name_source_id
   return (
     <>
@@ -613,8 +623,72 @@ function PortName({ p }) {
       {p.name_source_record_id
         ? <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${p.name_source_record_id}`} target="_blank" rel="noopener noreferrer" title={nameWhy(p) || undefined}>{tag}</a>
         : <span className={styles.srcLink} title={nameWhy(p) || undefined}>{tag}</span>}
+      {confirmed && <span className={styles.weakMatch} title={`Ships stopping here most often broadcast “${p.top_destination}” as their AIS destination (Global Fishing Watch), which matches this nearby World Port Index port`}>ships' destination</span>}
     </>
   )
+}
+/** The port name as plain text (for the map popup), same rules as PortName. */
+function plainPortName(p) {
+  if (!p.port_name) return p.port_label || 'unnamed port'
+  const base = p.name_source_id === 'nga-wpi' ? p.port_name : titleCase(p.port_name)
+  if (p.name_method !== 'wpi_near_approx' || sameName(p.top_destination, p.port_name)) return base
+  return `near ${base}${p.name_distance_km != null ? ` · ${Math.round(Number(p.name_distance_km))} km` : ''}`
+}
+const normPlace = (s) => String(s || '').toUpperCase().replace(/[^A-Z]/g, '')
+const sameName = (a, b) => !!a && !!b && normPlace(a).length >= 4 && normPlace(a) === normPlace(b)
+
+// Kind of stop (Josh 2026-09-27), from GFW's dock flag and distance from shore (whole km) on the event.
+const STOP_KIND = {
+  docked: { text: 'Docked', title: 'Global Fishing Watch marks this anchorage as a dock: a port call alongside a berth' },
+  anchor: { text: 'At anchor', title: 'Not at a dock, and 1 km or more from shore (Global Fishing Watch): the ship waited at anchor' },
+  alongside: { text: 'Alongside, not a known dock', title: 'Not at a dock by Global Fishing Watch’s list, but within 1 km of shore: often an industrial pier (e.g. a refinery pier) or anchoring close in' },
+}
+// Official anchorage areas (lib/ships/anchorages.js; Josh 2026-09-27): the area a stop's position lies in, or is
+// within 500 m of. Decided at read time from the stop's position; GFW's own classification above is not changed.
+const ANCHORAGE_SRC = { 'noaa-mc-anchorages': 'USCG/NOAA', 'dfo-pacific-commercial-anchorages': 'DFO', 'uscg-vts-ps-nondesignated': '82 FR 10313' }
+const ANCHORAGE_SOURCE_IDS = Object.keys(ANCHORAGE_SRC).concat('ecfr-part110-versions')
+function anchorageWhat(a) {
+  if (a.legal_status === 'designated') return `${a.name}, a ${a.kind ? `${a.kind} ` : ''}anchorage designated in ${a.citation || '33 CFR'}${a.location ? ` (${a.location})` : ''}`
+  if (a.legal_status === 'active_listed') return `${a.name}${a.alternate_name ? ` (“${a.alternate_name}”)` : ''}, an active commercial shipping anchorage on Fisheries and Oceans Canada’s Pacific list${a.location ? ` (${a.location})` : ''}; the area is ${a.boundary_note}`
+  return `${a.name}, a Puget Sound anchorage the Coast Guard’s Vessel Traffic Service uses but that is NOT designated in law; its boundary is ${a.citation}`
+}
+function AnchorageSource({ a }) {
+  const what = a.source_id === 'noaa-mc-anchorages' ? 'MarineCadastre “Anchorages” polygon (NOAA Office for Coastal Management and U.S. Coast Guard, from 33 CFR; public domain)'
+    : a.source_id === 'dfo-pacific-commercial-anchorages' ? `DFO “Active Commercial Shipping Anchorages in Pacific Canada” point (OGL-Canada 2.0); the circle of its ${a.radius_m} m swing radius is built by EarthAtlas`
+      : `the proposed-rule paragraph 33 CFR 110.230${a.paragraph || ''} in 82 FR 10313 (2017), withdrawn 2018 (US Government work)`
+  return <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${a.source_record_id}`} target="_blank" rel="noopener noreferrer"
+    title={`Anchorage area from ${what}, exactly as received — click for the raw record`}>{ANCHORAGE_SRC[a.source_id] || a.source_id}</a>
+}
+function AnchorageMarkers({ a }) {
+  return <>
+    {a.legal_status === 'non_designated' && <span className={styles.weakMatch}
+      title={`Not a designated anchorage. The Coast Guard’s Puget Sound Vessel Traffic Service lists it among its “non-designated anchorages”; the only published boundary is in a 2017 proposed rule (82 FR 10313) that was withdrawn on 2018-04-27 (83 FR 18491) and never took effect. ${a.boundary_note || ''}`}>non-designated</span>}
+    {a.source_id === 'noaa-mc-anchorages' && a.boundary_note && (a.amendment_record_id
+      ? <a className={styles.weakMatch} href={`/api/ships?op=record&id=${a.amendment_record_id}`} target="_blank" rel="noopener noreferrer"
+          title={`${a.boundary_note}. The boundary in force today may differ — click for the eCFR amendment list`}>older boundary</a>
+      : <span className={styles.weakMatch} title={a.boundary_note}>older boundary</span>)}
+  </>
+}
+/** "At anchor · Elliott Bay East" (inside), or the GFW stop kind plus "near …" (≤ 500 m) / "in …" (docked). */
+function StopKind({ v }) {
+  const k = STOP_KIND[v.stop_kind], a = v.anchorage, n = !a && v.anchorage_near
+  const also = v.anchorage_also?.length ? ` It also lies inside ${v.anchorage_also.join(', ')}.` : ''
+  if (a && v.stop_kind !== 'docked') {
+    const why = v.stop_kind === 'alongside'
+      ? ' Global Fishing Watch puts this stop within 1 km of shore, which alone would read “alongside”; because its position is inside this anchorage area it is shown as at anchor.'
+      : v.stop_kind === 'unknown' ? ' Global Fishing Watch gives no distance from shore for this stop.' : ''
+    return <>
+      <span className={styles.stopKind} title={`The stop’s position (Global Fishing Watch’s intermediate anchorage point, about 0.5 km across) lies inside ${anchorageWhat(a)}.${why}${also}`}>At anchor · {a.name}</span>
+      <AnchorageMarkers a={a} />{' '}<AnchorageSource a={a} />
+    </>
+  }
+  return <>
+    {k && <span className={styles.stopKind} title={k.title}>{k.text}</span>}
+    {a && <><span className={styles.stopKind} title={`Global Fishing Watch marks the start or end of this visit at a dock, so it stays “Docked”; the stop’s position (its intermediate anchorage point) lies inside ${anchorageWhat(a)}, so the visit may include time waiting there.${also}`}>in {a.name}</span>
+      <AnchorageMarkers a={a} />{' '}<AnchorageSource a={a} /></>}
+    {n && <><span className={styles.stopKind} title={`Not inside any official anchorage area, but ${n.distance_m} m from the edge of ${anchorageWhat(n)}. The stop’s position is Global Fishing Watch’s anchorage point (about 0.5 km across), so it may have been in it.`}>near {n.name} · {n.distance_m} m</span>
+      <AnchorageMarkers a={n} />{' '}<AnchorageSource a={n} /></>}
+  </>
 }
 /** Country of the port: GFW's ISO3, named by GeoNames (link = the GeoNames row). */
 function PortCountry({ v }) {
@@ -626,7 +700,7 @@ function PortCountry({ v }) {
   )
 }
 
-function PortsOfCall({ vesselId }) {
+function PortsOfCall({ vesselId, onShowPlace, ship }) {
   const [data, setData] = useState(null)
   const [visits, setVisits] = useState([])
   const [err, setErr] = useState(null)
@@ -654,13 +728,21 @@ function PortsOfCall({ vesselId }) {
   const src = data.source
   const since = data.since ? monthYear(data.since) : null
   const top = (data.topPorts || []).slice(0, 3)
+  const anch = data.anchorages
+  const anchOfficial = anch ? anch.inside.designated + anch.inside.active_listed : 0
+  const anchSources = (data.nameSources || []).filter((x) => ANCHORAGE_SOURCE_IDS.includes(x.id))
   const skippedNames = [...new Set((data.skipped || []).map((x) => x.name).filter(Boolean))].slice(0, 3)
   const skippedMmsis = [...new Set((data.skipped || []).map((x) => x.mmsi).filter(Boolean))].sort()
   return (
     <div className={styles.section}>
       {data.total > 0 ? (
         <div className={styles.portSummary}>
-          {data.total.toLocaleString()} port {data.total === 1 ? 'visit' : 'visits'}{since && ` since ${since}`}
+          {data.total.toLocaleString()} {data.total === 1 ? 'stop' : 'stops'}{since && ` since ${since}`}
+          {data.stopKinds && <>: {[['docked', 'docked'], ['anchor', 'at anchor'], ['alongside', 'alongside']]
+            .filter(([k]) => data.stopKinds[k]).map(([k, w]) => `${data.stopKinds[k].toLocaleString()} ${w}`).join(', ')}</>}
+          {anch && (anchOfficial + anch.inside.non_designated + anch.near) > 0 && <> · <span title={`Where each stop’s position lies: inside an anchorage designated in 33 CFR or on Fisheries and Oceans Canada’s active commercial list${anch.inside.non_designated ? ', inside a Puget Sound non-designated anchorage (boundary from a withdrawn 2017 proposed rule)' : ''}${anch.near ? `, or within ${anch.near_m} m of one` : ''}. Sources at the bottom.`}>
+            {[anchOfficial && `${anchOfficial.toLocaleString()} in official anchorages`, anch.inside.non_designated && `${anch.inside.non_designated.toLocaleString()} in non-designated anchorages`,
+              anch.near && `${anch.near.toLocaleString()} near one`].filter(Boolean).join(', ')}</span></>}
           {top.length > 0 && <> · most often: {top.map((p, i) => (
             <span key={p.key || p.port_label || i}>{i > 0 && ', '}<PortName p={p} /> ({p.n.toLocaleString()})</span>
           ))}</>}
@@ -691,7 +773,10 @@ function PortsOfCall({ vesselId }) {
               <span className={styles.period} title={`Arrived ${utcTime(v.start_at)} UTC · left ${v.end_at ? `${utcTime(v.end_at)} UTC` : 'unknown'}`}>
                 {arrive}{leave && leave !== arrive ? ` → ${leave}` : ''} UTC
               </span>
+              <StopKind v={v} />
               {conf && <span className={styles.weakMatch} title={conf.title}>{conf.text}</span>}
+              {onShowPlace && Number.isFinite(v.lat) && Number.isFinite(v.lon) && <>{' · '}
+                <button type="button" className={styles.inlineLink} onClick={() => onShowPlace({ ...v, title: plainPortName(v), stop_kind_text: STOP_KIND[v.stop_kind]?.text, ship })} title={`Show this stop on the map (${v.lat.toFixed(4)}, ${v.lon.toFixed(4)})`}>map</button></>}
               {' · '}
               <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${v.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
                 title={`Global Fishing Watch port-visit event ${v.event_id} (${v.dataset_version || 'public-global-port-visits-events'}), exactly as received · ${src?.license || 'CC BY-NC 4.0'} — click for the raw record`}>GFW</a>
@@ -706,8 +791,11 @@ function PortsOfCall({ vesselId }) {
       )}
       {err && data && <div className={styles.incidentMeta}>{err}</div>}
       <div className={styles.legendNoteText}>
-        A port visit is Global Fishing Watch’s reading of the ship’s AIS signal: it came within 3 km of a known anchorage, stopped, and left beyond 4 km.
+        A stop is Global Fishing Watch’s reading of the ship’s AIS signal: it came within 3 km of a known anchorage, stopped, and left beyond 4 km.
+        Docked = GFW marks the spot as a dock; at anchor = not a dock and 1 km or more offshore; alongside = not a known dock but within 1 km of shore (often an industrial pier).
         Dates are UTC. Port names come from the World Port Index when one of its ports lies within 4 km of the anchorage, otherwise from Global Fishing Watch’s anchorage names; where neither names it, GFW’s internal label is shown.
+        {anch && <> “At anchor · name” = the stop’s position lies inside an official anchorage area (US: 33 CFR as digitised by NOAA and the Coast Guard; Canada: Fisheries and Oceans Canada’s list, as circles of each anchorage’s swing radius);
+          “near” = within {anch.near_m} m of one. Non-designated = a Puget Sound anchorage the Coast Guard uses but never designated (boundary from a withdrawn 2017 proposal); older boundary = that regulation was amended after the map was made.</>}
         {skippedMmsis.length > 0 && <> Not counted: {plural(data.skipped.length, 'other AIS identity')} that Global Fishing Watch groups with this ship
           {skippedNames.length > 0 && <> (broadcasting as {skippedNames.join(', ')})</>} on MMSI {skippedMmsis.join(', ')}; these are usually its tenders or lifeboats.</>}
         {data.fetchedAt && <> Checked with Global Fishing Watch {utcTime(data.fetchedAt)} UTC.</>}
@@ -719,9 +807,16 @@ function PortsOfCall({ vesselId }) {
           <a className={styles.sourceLink} href={src.attribution_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>
         </div>
       )}
-      {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits').length > 0 && (
+      {anchSources.length > 0 && (
         <div className={styles.legendNoteText}>
-          Names: {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits').sort((a, b) => ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(a.id) - ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(b.id)).map((x, i) => (
+          Anchorage areas: {anchSources.sort((a, b) => ANCHORAGE_SOURCE_IDS.indexOf(a.id) - ANCHORAGE_SOURCE_IDS.indexOf(b.id)).map((x, i) => (
+            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name} — ${x.license}`}>{x.attribution_text}</a></span>
+          ))}
+        </div>
+      )}
+      {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits' && !ANCHORAGE_SOURCE_IDS.includes(x.id)).length > 0 && (
+        <div className={styles.legendNoteText}>
+          Names: {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits' && !ANCHORAGE_SOURCE_IDS.includes(x.id)).sort((a, b) => ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(a.id) - ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(b.id)).map((x, i) => (
             <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name} — ${x.license}`}>{x.attribution_text}</a></span>
           ))}
         </div>

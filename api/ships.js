@@ -10,7 +10,8 @@
 //   /api/ships?op=mmsi&mmsi=<9 digits>&at=<ISO time>       → { status, vesselIds }
 //   /api/ships?op=ports&id=<uuid>[&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=] → the ship's port visits, newest first
 //        each visit carries our port's name (World Port Index first, then GFW; lib/ships/ports.js), its source record,
-//        and the country name (GeoNames); nameSources = those sources' licences.
+//        and the country name (GeoNames); the official anchorage area its position lies in / is near (lib/ships/anchorages.js);
+//        nameSources = those sources' licences.
 //
 // Exceptions to "no third-party calls" (Josh, 2026-09-26): op=lookup / op=save (click lookups) and
 // op=ports call GFW server-side with GFW_API_TOKEN; the token never reaches the browser.
@@ -24,6 +25,7 @@ import { tracksForMmsi } from './ship-tracks.js'
 import { searchVessels, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
 import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
 import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
+import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -140,10 +142,10 @@ export default async function handler(req, res) {
       const [source] = await q(`SELECT id, name, publisher, homepage_url, license, license_url, commercial_use,
                                        attribution_text, attribution_url FROM ${S}.sources WHERE id = $1`, [PORT_VISITS_SOURCE.id])
       const nameSources = await q(`SELECT id, name, publisher, homepage_url, license, license_url, attribution_text, attribution_url
-                                     FROM ${S}.sources WHERE id = ANY($1)`, [NAME_SOURCE_IDS])
+                                     FROM ${S}.sources WHERE id = ANY($1)`, [[...NAME_SOURCE_IDS, ...ANCHORAGE_SOURCE_IDS]])
       const body = { vesselId: id, window: win, ...out, fetch, source: source ?? null, nameSources }
       return send(res, 200, body, fetch.status === 'failed' || fetch.status === 'stale_no_gfw' ? 'no-store'
-        : 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400')
+        : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
     return send(res, 400, { error: 'unknown op' })
   } catch (e) {

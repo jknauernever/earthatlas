@@ -57,5 +57,11 @@
     "sourceLayer": "tracks",
     "minzoom": 3,
     "maxzoom": 10
+  },
+  "mpa": {
+    "version": "2025-01-15",
+    "sourceLayer": "mpa",
+    "maxzoom": 12,
+    "tiles": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/mpa/mpa-2025-01-15.pmtiles"
   }
 }

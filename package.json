@@ -30,6 +30,9 @@
     "ships:import-locode": "node --env-file=.env.local scripts/ships/import-ports.mjs locode",
     "ships:import-anchorages": "node --env-file=.env.local scripts/ships/import-ports.mjs anchorages",
     "ships:match-ports": "node --env-file=.env.local scripts/ships/import-ports.mjs match",
+    "ships:import-anchorages-us": "node --env-file=.env.local scripts/ships/import-anchorages.mjs us",
+    "ships:import-anchorages-ca": "node --env-file=.env.local scripts/ships/import-anchorages.mjs ca",
+    "ships:import-anchorages-nondesignated": "node --env-file=.env.local scripts/ships/import-anchorages.mjs nondesignated",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

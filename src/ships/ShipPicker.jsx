@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import styles from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
-import { Spinner, Loading } from '../components/panel'
+import { Loading } from '../components/panel'
 
 const KIND_LABEL = {
   PASSENGER: 'Passenger', CARGO: 'Cargo', FISHING: 'Fishing', CARRIER: 'Fish carrier', BUNKER: 'Bunker',
@@ -106,7 +106,7 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
             : found ? `${found.total}${found.capped ? '+' : ''} ${found.class ? found.label.replace(/\s*\(.*\)$/, '') : `${found.label} ship`}${found.total === 1 ? '' : 's'}${found.rest ? ` · “${found.rest}”` : ''}${found.total > results.length ? ` · first ${results.length} by name` : ''}`
             : `${results.length === 25 ? 'First 25' : results.length} ship${results.length === 1 ? '' : 's'}`}</div>}
           {found && <div className={styles.note}>Kind of ship as EarthAtlas reads it from every source (the card’s “Kind of ship”). Add a name or owner to narrow it: “Washington ferry”.</div>}
-          {loading && !results && <Loading className={styles.note}>Searching…</Loading>}
+          {loading && !results && <Loading kind="search" className={styles.note} />}
           {error && <div className={styles.note}>{error}</div>}
           {results && !results.length && !loading && <div className={styles.note}>No ships match.</div>}
           {results?.length > 0 && (

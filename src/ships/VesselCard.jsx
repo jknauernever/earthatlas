@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
-import { Spinner, Loading } from '../components/panel'
+import { Loading, LoadingInline } from '../components/panel'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
@@ -297,7 +297,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         aria-label={folded ? 'Unfold ship card' : 'Fold ship card'} title={folded ? 'Show the whole card' : 'Fold the card to its name'}><Chevron up={!folded} size={16} /></button>
       <button type="button" className={pick.close} onClick={onClose} aria-label="Close ship card">×</button>
       {error && <div className={styles.errorNote}>{error}</div>}
-      {!vessel && !error && <Loading className={styles.loadingNote}>Loading ship…</Loading>}
+      {!vessel && !error && <Loading kind="quick" className={styles.loadingNote} />}
       {vessel && (
         <>
           <div className={styles.vesselHead}>
@@ -772,7 +772,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
       .finally(() => setMore(false))
   }
   if (err && !data) return <div className={styles.errorNote}>{err}</div>
-  if (!data) return <Loading className={styles.loadingNote}>Loading port visits… The first look asks Global Fishing Watch and can take a few seconds.</Loading>
+  if (!data) return <Loading kind="slow" className={styles.loadingNote} />
   const src = data.source
   const since = data.since ? monthYear(data.since) : null
   const top = (data.topPorts || []).slice(0, 3)
@@ -834,7 +834,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
       })}
       {visits.length < data.total && (
         <button type="button" className={styles.recordToggle} onClick={loadMore} disabled={more}>
-          {more ? <><Spinner size={12} /> Loading…</> : `Show older visits (${(data.total - visits.length).toLocaleString()} more)`} <Chevron size={13} />
+          {more ? <LoadingInline kind="more" /> : `Show older visits (${(data.total - visits.length).toLocaleString()} more)`} <Chevron size={13} />
         </button>
       )}
       {err && data && <div className={styles.incidentMeta}>{err}</div>}

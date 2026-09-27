@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
-import { Spinner, Loading } from '../components/panel'
+import { Loading, LoadingInline } from '../components/panel'
 
 export const PORT_HUE = '#fb923c'
 const IMPORT_HUE = '#3b82f6' // validated pair on the dark card (dataviz validator, 2026-09-27)
@@ -172,7 +172,7 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
       <button type="button" className={pick.close} onClick={onClose} aria-label="Close port card">×</button>
       {err && <div className={styles.errorNote}>{err}</div>}
       {loading && !err && (
-        <Loading className={styles.loadingNote} style={{ paddingRight: 56 }}>Loading port…{slow && ' The first look asks Global Fishing Watch and IMF PortWatch; busy ports can take up to a minute.'}</Loading>
+        <Loading kind={slow ? 'slow' : 'quick'} className={styles.loadingNote} style={{ paddingRight: 56 }} />
       )}
       {!loading && p && <>
         <div className={styles.vesselHead}>
@@ -243,7 +243,7 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
               {list.map((s) => <ShipRow key={s.gfwId} s={s} onSelectVessel={onSelectVessel} />)}
               {list.length < data.ships.total && (
                 <button type="button" className={styles.recordToggle} onClick={loadMore} disabled={more}>
-                  {more ? <><Spinner size={12} /> Loading…</> : `Show more ships (${fmtN(data.ships.total - list.length)} more)`} <Chevron size={13} />
+                  {more ? <LoadingInline kind="more" /> : `Show more ships (${fmtN(data.ships.total - list.length)} more)`} <Chevron size={13} />
                 </button>
               )}
               <div className={styles.legendNoteText}>

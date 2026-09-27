@@ -300,7 +300,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded
 //   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
-//   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'matches' (default overview)       cf  '1' = ship card folded
+//   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'emissions' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
   const sp = new URLSearchParams(window.location.search)
@@ -381,7 +381,7 @@ export default function ShipsApp() {
   const [kinds, setKinds] = useState(() => (initial.k ? initial.k.split(',').filter(Boolean) : []))
   const [vesselId, setVesselId] = useState(initial.v || null)
   // The ship card reopens where the user left it: tab (ct) and folded (cf).
-  const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches'].includes(initial.ct) ? initial.ct : 'overview')
+  const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
   const [vesselName, setVesselName] = useState(null)
 

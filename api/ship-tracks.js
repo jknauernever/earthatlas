@@ -8,6 +8,9 @@
 //   /api/ship-tracks?op=all&mmsi=<9 digits>&v=<key>     EVERY track of one MMSI across EVERY month we have
 //                                                      (Salish detail inside its box, US-wide elsewhere),
 //                                                      simplified for display; one request per ship
+//   /api/ship-tracks?op=voyages&mmsi=<9 digits>|imo=<7 digits>
+//                                                      Climate TRACE voyage emissions for one ship (Salish Sea pull,
+//                                                      scripts/ships/bake-ct-voyages; ship card Emissions tab)
 //   /api/ship-tracks?r=mpa&z=<z>&x=<x>&y=<y>           NOAA Marine Protected Areas (MVT; one bake,
 //                                                      scripts/ships/bake-mpa/, trackSource.mpa)
 //   add &r=us for the US-wide tracks (MarineCadastre monthly track files, baked
@@ -129,6 +132,36 @@ export async function tracksForMmsi(t, mmsi, region) {
   return out
 }
 const isTileset = (t) => /^\d{4}-\d{2}$/.test(t)
+
+// ─── Climate TRACE voyages: one ship's trips and port stays (scripts/ships/bake-ct-voyages) ───
+// Same pack layout as the track packs; one NDJSON line per ship starting {"key":<mmsi|imo>,.
+const voyagePacks = new Map()
+async function voyagePack(kind) {
+  let p = voyagePacks.get(kind)
+  if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); voyagePacks.delete(kind); p = null }
+  if (p) return p
+  const local = resolve(process.cwd(), `scripts/ships/bake-ct-voyages/build/ct-voyages-${kind}-${manifest.ctVoyages?.version || 'v1'}.pack`)
+  const src = existsSync(local) ? new LocalFileSource(local) : manifest.ctVoyages?.[kind] ? new BlobRange(manifest.ctVoyages[kind]) : null
+  if (!src) return null
+  const head = Buffer.from((await src.getBytes(0, 8)).data)
+  if (head.toString('ascii', 0, 4) !== 'SHTP') throw new Error('not a voyage pack')
+  const n = head.readUInt32LE(4)
+  const off = Buffer.from((await src.getBytes(8, (n + 1) * 4)).data)
+  const offsets = new Uint32Array(n + 1)
+  for (let i = 0; i <= n; i++) offsets[i] = off.readUInt32LE(i * 4)
+  p = { src, n, dataStart: 8 + (n + 1) * 4, offsets, local: existsSync(local) }
+  voyagePacks.set(kind, p)
+  return p
+}
+export async function voyagesFor(kind, key) {
+  const p = await voyagePack(kind)
+  if (!p) return null
+  const s = key % p.n, a = p.offsets[s], b = p.offsets[s + 1]
+  if (b <= a) return { found: false }
+  const raw = zlib.gunzipSync(Buffer.from((await p.src.getBytes(p.dataStart + a, b - a)).data)).toString('utf8')
+  const line = raw.split('\n').find((l) => l.startsWith(`{"key":${key},`))
+  return line ? { found: true, local: p.local, ...JSON.parse(line) } : { found: false, local: p.local }
+}
 
 // ─── One ship, every month (Josh 2026-09-27: a picked ship shows all its years) ───
 // Reads each month's pack server-side in parallel, so the browser makes one request instead of ~140.
@@ -281,6 +314,19 @@ async function shipsNear(months, lng, lat, tol) {
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
+  if (searchParams.get('op') === 'voyages') {
+    const mmsi = searchParams.get('mmsi'), imo = searchParams.get('imo')
+    const kind = mmsi ? 'mmsi' : 'imo', key = mmsi || imo
+    if (!(mmsi ? /^\d{9}$/.test(mmsi) : /^\d{7}$/.test(imo || ''))) { res.statusCode = 400; return res.end('mmsi (9 digits) or imo (7 digits)') }
+    let r
+    try { r = await voyagesFor(kind, Number(key)) } catch (e) { console.error('[ship-tracks] voyages', e?.message); voyagePacks.delete(kind); res.statusCode = 502; return res.end('voyages read failed') }
+    if (!r) { res.statusCode = 404; return res.end('voyages not built') }
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Cache-Control', r.local ? LOCAL_CACHE : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
+    const { local, ...body } = r
+    return res.end(JSON.stringify({ kind, ...body, dataset: manifest.ctVoyages?.version || 'ct-voyages-v1' }))
+  }
   if (searchParams.get('op') === 'all') {
     const m = searchParams.get('mmsi') || ''
     if (!/^\d{9}$/.test(m)) { res.statusCode = 400; return res.end('bad mmsi') }

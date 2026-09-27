@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
+import ShipEmissions from './ShipEmissions.jsx'
 import { Loading, LoadingInline } from '../components/panel'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
@@ -321,6 +322,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           <div className={pick.tabs} role="tablist">
             {[['overview', 'Overview'], ['history', 'History'],
               ...(hasGfw ? [['ports', 'Ports']] : []),
+              ...(current.imo || current.mmsi ? [['emissions', 'Emissions']] : []),
               ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
               ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id}
@@ -347,6 +349,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
 
           {tab === 'ports' && <PortsOfCall vesselId={vessel.vessel.id} onShowPlace={onShowPlace}
             ship={{ name: current.name?.value_raw || null, imo: current.imo?.value_raw || null, mmsi: current.mmsi?.value_raw || null }} />}
+
+          {tab === 'emissions' && <ShipEmissions vessel={vessel} />}
 
           {tab === 'incidents' && <Incidents list={vessel.incidents || []} />}
 

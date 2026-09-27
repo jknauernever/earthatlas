@@ -25,6 +25,11 @@
     "ships:import-incidents-cgmix": "node --env-file=.env.local scripts/ships/import-incidents-cgmix.mjs",
     "ships:import-incidents-ecology": "node --env-file=.env.local scripts/ships/import-incidents-ecology.mjs",
     "ships:import-incidents-names": "node --env-file=.env.local scripts/ships/import-incidents-names.mjs",
+    "ships:import-countries": "node --env-file=.env.local scripts/ships/import-ports.mjs countries",
+    "ships:import-wpi": "node --env-file=.env.local scripts/ships/import-ports.mjs wpi",
+    "ships:import-locode": "node --env-file=.env.local scripts/ships/import-ports.mjs locode",
+    "ships:import-anchorages": "node --env-file=.env.local scripts/ships/import-ports.mjs anchorages",
+    "ships:match-ports": "node --env-file=.env.local scripts/ships/import-ports.mjs match",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

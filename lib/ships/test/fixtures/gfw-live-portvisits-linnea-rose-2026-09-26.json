@@ -1,0 +1,968 @@
+{
+ "_label": "REAL, recorded live 2026-09-26 from the GFW Events API. entries are a verbatim subset of the response: the newest 10 of 58 (sort=-start).",
+ "request": "GET /v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[0]=323723207-7453-0bf2-0c0f-07e028cf1042&start-date=2024-09-26&end-date=2026-09-27&limit=1000&offset=0&sort=-start",
+ "retrieved_at": "2026-09-27T02:06:45.590Z",
+ "status": 200,
+ "headers": {
+  "x-datasets": "public-global-port-visits-events:v4.0",
+  "cache-control": "private, max-age=86400",
+  "content-type": "application/json; charset=utf-8",
+  "x-ratelimit-daily-remaining-requests": "49952"
+ },
+ "body": {
+  "metadata": {
+   "datasets": [
+    "public-global-port-visits-events:v4.0"
+   ],
+   "vessels": [
+    "323723207-7453-0bf2-0c0f-07e028cf1042"
+   ],
+   "dateRange": {
+    "from": "2024-09-26",
+    "to": "2026-09-27"
+   }
+  },
+  "limit": 1000,
+  "offset": 0,
+  "nextOffset": null,
+  "total": 58,
+  "entries": [
+   {
+    "start": "2026-09-23T16:37:07.000Z",
+    "end": "2026-09-23T22:29:53.000Z",
+    "id": "51f56b801194cca6b09f66e65ef5d514",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6684,
+     "lon": -123.1788
+    },
+    "regions": {
+     "mpa": [
+      "555672185",
+      "312353"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "ACAP",
+      "IATTC",
+      "IWC",
+      "PICES",
+      "IPHC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.17884234953208,
+     48.66843362213121,
+     -123.04385287850813,
+     48.61117663936599
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "c2e6542946c598e25dbe815a17f2d11c",
+     "confidence": "4",
+     "durationHrs": 5.879444444444444,
+     "startAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d5f",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61117663936599,
+      "lon": -123.04385287850813,
+      "name": "USA-417",
+      "topDestination": "CRT"
+     }
+    }
+   },
+   {
+    "start": "2026-09-22T17:31:03.000Z",
+    "end": "2026-09-23T16:31:06.000Z",
+    "id": "ee91a53d3bfc8e4aa626351e9584e40c",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6684,
+     "lon": -123.1788
+    },
+    "regions": {
+     "mpa": [
+      "555672185",
+      "312353"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IATTC",
+      "PICES",
+      "IPHC",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.17884234953208,
+     48.66843362213121,
+     -123.04769715239719,
+     48.61801158105476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "620646449bc464d65d41308046e43f26",
+     "confidence": "4",
+     "durationHrs": 23.000833333333333,
+     "startAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d57",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61801158105476,
+      "lon": -123.04769715239719,
+      "name": "USA-417",
+      "topDestination": "AY"
+     }
+    }
+   },
+   {
+    "start": "2026-09-20T00:20:33.000Z",
+    "end": "2026-09-22T17:24:32.000Z",
+    "id": "9f824d0b58f97f542e749be240109d15",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.4675,
+     "lon": -122.9822
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.98223323787356,
+     48.46752794957619,
+     -123.04769715239719,
+     48.61801158105476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "545775cf587f17ab22517757f81812c4",
+     "confidence": "4",
+     "durationHrs": 65.0663888888889,
+     "startAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d57",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61801158105476,
+      "lon": -123.04769715239719,
+      "name": "USA-417",
+      "topDestination": "AY"
+     }
+    }
+   },
+   {
+    "start": "2026-09-08T15:28:05.000Z",
+    "end": "2026-09-19T23:12:06.000Z",
+    "id": "3d0978ce57362be95065e463f2b4f896",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6684,
+     "lon": -123.1788
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "ACAP",
+      "IATTC",
+      "IPHC",
+      "PICES",
+      "IWC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.17884234953208,
+     48.66843362213121,
+     -122.98223323787356,
+     48.46752794957619
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "c7df3cfe503c5f8641682846adc8f172",
+     "confidence": "4",
+     "durationHrs": 271.7336111111111,
+     "startAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     }
+    }
+   },
+   {
+    "start": "2026-09-06T23:24:48.000Z",
+    "end": "2026-09-08T15:22:15.000Z",
+    "id": "f4e53f1bf67fbda2f5ef47e2d9790817",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6403,
+     "lon": -122.9835
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.98346368459663,
+     48.64025429211538,
+     -123.04769715239719,
+     48.61801158105476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "8a451416f6d8c7f46cb2769bdcef51c2",
+     "confidence": "4",
+     "durationHrs": 39.9575,
+     "startAnchorage": {
+      "anchorageId": "5485862f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-856",
+      "lat": 48.64025429211538,
+      "lon": -122.98346368459663,
+      "name": "USA-856",
+      "topDestination": "MASSACRE BAY"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485862f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-856",
+      "lat": 48.64025429211538,
+      "lon": -122.98346368459663,
+      "name": "USA-856",
+      "topDestination": "MASSACRE BAY"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d57",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61801158105476,
+      "lon": -123.04769715239719,
+      "name": "USA-417",
+      "topDestination": "AY"
+     }
+    }
+   },
+   {
+    "start": "2026-09-06T22:05:25.000Z",
+    "end": "2026-09-06T22:53:59.000Z",
+    "id": "f7f2546fd41cc6b709ca1658f831cce1",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.7631,
+     "lon": -122.9175
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IPHC",
+      "IATTC",
+      "ACAP",
+      "IWC",
+      "PICES"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.91752048596148,
+     48.76306294666176,
+     -122.91293498605475,
+     48.75315826962539
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "aebca1578fbaab0da4aafb85bd9f03dd",
+     "confidence": "4",
+     "durationHrs": 0.8094444444444444,
+     "startAnchorage": {
+      "anchorageId": "54859201",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-suciaisland",
+      "lat": 48.76306294666176,
+      "lon": -122.91752048596148,
+      "name": null,
+      "topDestination": "CIMA OFF"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54859201",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-suciaisland",
+      "lat": 48.76306294666176,
+      "lon": -122.91752048596148,
+      "name": null,
+      "topDestination": "CIMA OFF"
+     },
+     "endAnchorage": {
+      "anchorageId": "54858e03",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-suciaisland",
+      "lat": 48.75315826962539,
+      "lon": -122.91293498605475,
+      "name": null,
+      "topDestination": "CRT"
+     }
+    }
+   },
+   {
+    "start": "2026-09-06T18:32:42.000Z",
+    "end": "2026-09-06T21:45:47.000Z",
+    "id": "93baa06f6e1181301cc51295bbd94aa1",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6684,
+     "lon": -123.1788
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IATTC",
+      "IWC",
+      "IPHC",
+      "PICES",
+      "ACAP"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.17884234953208,
+     48.66843362213121,
+     -123.17884234953208,
+     48.66843362213121
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "47740f6cc2a5a69356e5bd28ca01dc2e",
+     "confidence": "4",
+     "durationHrs": 3.2180555555555554,
+     "startAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     }
+    }
+   },
+   {
+    "start": "2026-09-05T20:37:05.000Z",
+    "end": "2026-09-06T18:26:39.000Z",
+    "id": "320a555d5577b3a97b9990f08310c228",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6684,
+     "lon": -123.1788
+    },
+    "regions": {
+     "mpa": [
+      "555672185",
+      "312353"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IWC",
+      "ACAP",
+      "IATTC",
+      "IPHC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.17884234953208,
+     48.66843362213121,
+     -123.04769715239719,
+     48.61801158105476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "3c6c13f55d9f752ef627a137ecafdfa4",
+     "confidence": "4",
+     "durationHrs": 21.82611111111111,
+     "startAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f622f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-stuartisland",
+      "lat": 48.66843362213121,
+      "lon": -123.17884234953208,
+      "name": null,
+      "topDestination": "REID HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d57",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61801158105476,
+      "lon": -123.04769715239719,
+      "name": "USA-417",
+      "topDestination": "AY"
+     }
+    }
+   },
+   {
+    "start": "2026-09-04T22:02:50.000Z",
+    "end": "2026-09-05T20:30:59.000Z",
+    "id": "b51c46c4453b7ea31b28c02355aaae6a",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.4675,
+     "lon": -122.9822
+    },
+    "regions": {
+     "mpa": [
+      "555672185",
+      "312353"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.98223323787356,
+     48.46752794957619,
+     -123.04769715239719,
+     48.61801158105476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "803dca1855d002c84704d7492d52b06f",
+     "confidence": "4",
+     "durationHrs": 22.469166666666666,
+     "startAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f7d57",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-417",
+      "lat": 48.61801158105476,
+      "lon": -123.04769715239719,
+      "name": "USA-417",
+      "topDestination": "AY"
+     }
+    }
+   },
+   {
+    "start": "2026-09-04T17:47:06.000Z",
+    "end": "2026-09-04T19:51:06.000Z",
+    "id": "09613f2be2b1aad32b51f995de7cbdb5",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.5392,
+     "lon": -123.0153
+    },
+    "regions": {
+     "mpa": [
+      "555672185",
+      "312353"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.0152566694625,
+     48.53919894874539,
+     -122.98223323787356,
+     48.46752794957619
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "323723207-7453-0bf2-0c0f-07e028cf1042",
+     "name": "LINNEA ROSE",
+     "ssvid": "368330140",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "9cec968ef7e018546a166c573fffdce0",
+     "confidence": "4",
+     "durationHrs": 2.066666666666667,
+     "startAnchorage": {
+      "anchorageId": "548f7e7d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-fridayharbor",
+      "lat": 48.53919894874539,
+      "lon": -123.0152566694625,
+      "name": "FRIDAY HARBOR",
+      "topDestination": "FRIDAY HARBOR"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f7e7d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-fridayharbor",
+      "lat": 48.53919894874539,
+      "lon": -123.0152566694625,
+      "name": "FRIDAY HARBOR",
+      "topDestination": "FRIDAY HARBOR"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f81e3",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-626",
+      "lat": 48.46752794957619,
+      "lon": -122.98223323787356,
+      "name": "USA-626",
+      "topDestination": "TENDERING"
+     }
+    }
+   }
+  ]
+ }
+}

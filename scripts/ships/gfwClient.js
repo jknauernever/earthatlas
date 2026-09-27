@@ -7,6 +7,7 @@
  */
 const BASE = 'https://gateway.api.globalfishingwatch.org/v3'
 export const DATASET = 'public-global-vessel-identity:latest'
+export const PORT_VISITS_DATASET = 'public-global-port-visits-events:latest'
 
 export function gfwClient(token, { minIntervalMs = 1000, log = console.log } = {}) {
   if (!token) throw new Error('GFW_API_TOKEN not set (add it to .env.local; see docs/GFW_VESSELS_API.md)')
@@ -58,6 +59,17 @@ export function gfwClient(token, { minIntervalMs = 1000, log = console.log } = {
       return get('/vessels', {
         'datasets': [DATASET], 'ids': ids, 'registries-info-data': 'ALL',
         'includes': ['POTENTIAL_RELATED_SELF_REPORTED_INFO'],
+      })
+    },
+    /**
+     * One page of port-visit events for one or more GFW identity ids (docs/GFW_ACTIVITY_API.md,
+     * "Port visits for one vessel"). Dates are UTC days, start inclusive, end exclusive, overlap
+     * semantics. Default order (oldest start first) keeps offset paging stable.
+     */
+    portVisits({ vesselIds, from, to, limit = 1000, offset = 0 }) {
+      return get('/events', {
+        'datasets': [PORT_VISITS_DATASET], 'vessels': vesselIds,
+        'start-date': from, 'end-date': to, limit, offset,
       })
     },
   }

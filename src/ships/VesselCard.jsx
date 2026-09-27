@@ -187,7 +187,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         .filter((c) => c.other_vessel && c.other_vessel !== vessel.vessel.id)
         .filter((c, i, all) => all.findIndex((x) => x.other_vessel === c.other_vessel && x.method === c.method) === i)
     : []
-  const tab = tabWanted === 'matches' && !candidates.length ? 'overview' : tabWanted
+  // Ports of call come from GFW's port-visit events, so only ships with a GFW identity get the tab.
+  const hasGfw = !!vessel?.assertions.some((a) => a.source_id === 'gfw-vessel-identity' && a.evidence_class === 'ais_self_reported')
+  const tab = (tabWanted === 'matches' && !candidates.length) || (tabWanted === 'ports' && !hasGfw) ? 'overview' : tabWanted
 
   const Src = ({ a }) => {
     const note = a.source_id === 'wikidata' ? LINK_NOTE[a.link_method] : null
@@ -314,6 +316,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {!folded && <>
           <div className={pick.tabs} role="tablist">
             {[['overview', 'Overview'], ['history', 'History'],
+              ...(hasGfw ? [['ports', 'Ports']] : []),
               ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
               ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id}
@@ -337,6 +340,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             {renderSection(ROLE_ROWS, 'Ownership & management')}
             {renderSection(CHAR_ROWS, 'Characteristics over time')}
           </>}
+
+          {tab === 'ports' && <PortsOfCall vesselId={vessel.vessel.id} />}
 
           {tab === 'incidents' && <Incidents list={vessel.incidents || []} />}
 
@@ -550,6 +555,177 @@ function Incidents({ list }) {
         )
       })}
       <div className={styles.legendNoteText}>Records are linked to this ship by official number, IMO or an MMSI it held at the time; name-only matches aren’t shown. Injuries appear as counts only.</div>
+    </div>
+  )
+}
+
+// ─── Ports of call tab (Josh, 2026-09-26; Phase 3 step 1) ─────────────────────
+// Global Fishing Watch port-visit events for this ship's own AIS identity (lib/ships/portVisits.js).
+// The first look asks GFW through our server (token never in the browser); visits are saved to our
+// database and later opens read them from there. Port names (step 2, lib/ships/ports.js): World Port
+// Index first, then GFW's anchorage names (Josh, 2026-09-26); each name links to the record it came from.
+// Country names: GeoNames. Every row links to the GFW event exactly as received.
+const PAGE = 100
+const utcDay = (t) => (t ? new Date(t).toISOString().slice(0, 10) : null)
+const utcTime = (t) => (t ? new Date(t).toISOString().replace('T', ' ').slice(0, 16) : null)
+const monthYear = (t) => new Date(t).toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s\-'/(])([a-z])/g, (_, p, c) => p + c.toUpperCase())
+/** Length of stay in plain words: "45 minutes", "9 hours", "3.5 days". */
+export function stayWords(h) {
+  if (h == null || !Number.isFinite(Number(h))) return 'length unknown'
+  const m = Math.round(Number(h) * 60)
+  if (m < 60) return m <= 1 ? 'about a minute' : `${m} minutes`
+  if (h < 36) { const r = Math.round(h); return r === 1 ? '1 hour' : `${r} hours` }
+  const d = h / 24
+  return `${d < 10 ? String(Math.round(d * 10) / 10) : Math.round(d).toLocaleString()} days`
+}
+const CONFIDENCE = {
+  3: { text: 'medium confidence', title: 'GFW saw the ship arrive or leave, plus a stop, but not both ends of the visit (confidence 3 of 4). Recent visits often show this until the departure is processed.' },
+  2: { text: 'low confidence', title: 'GFW saw only a stop or a gap in the signal near the port (confidence 2 of 4). May be a false visit caused by noisy AIS.' },
+}
+const NAME_SOURCE = { 'nga-wpi': 'WPI', 'gfw-anchorage-overrides': 'GFW anchorages', 'gfw-port-visits': 'GFW' }
+const HARBOR = { L: 'large', M: 'medium', S: 'small', V: 'very small' }
+/** Why this name: the matching method in plain words (lib/ships/ports.js matchLabel). */
+function nameWhy(p) {
+  const km = p.name_distance_km != null ? `${Number(p.name_distance_km).toFixed(1)} km` : null
+  const lbl = p.port_label ? ` (GFW port ${p.port_label})` : ''
+  switch (p.name_method) {
+    case 'wpi_within_4km': return `World Port Index port${p.harbor_size ? ` (${HARBOR[p.harbor_size] || p.harbor_size} harbour)` : ''}, ${km} from the anchorage Global Fishing Watch places this port at${lbl}. NGA Pub 150, public domain — click for the WPI record`
+    case 'wpi_nearest_clear': return `Nearest of several World Port Index ports within 4 km (${km}, less than half the next one's distance)${lbl}. NGA Pub 150, public domain — click for the WPI record`
+    case 'gfw_override_label': case 'gfw_override_label_majority': return `No World Port Index port within 4 km. Name from Global Fishing Watch's reviewed anchorage-name list (pipe-anchorages, Apache-2.0) for this anchorage${lbl} — click for that row`
+    case 'gfw_event_name': return `No World Port Index port within 4 km and no reviewed anchorage name. Name Global Fishing Watch gives this anchorage in its port-visit events${lbl} — click for an event carrying it`
+    default: return null
+  }
+}
+/**
+ * Our port's name with its inline source (WPI / GFW anchorages / GFW), or GFW's internal label when no source
+ * names it (never an invented name). WPI names are shown as WPI writes them; GFW's upper-case names in title case.
+ */
+function PortName({ p }) {
+  if (!p.port_name) {
+    return <span className={styles.unnamedPort} title={`No World Port Index port within 4 km and no Global Fishing Watch name for this port; this is GFW's internal label${p.gfw_name ? ` (GFW names it “${p.gfw_name}”, which is a code)` : ''}.`}>{p.port_label || 'unnamed port'}</span>
+  }
+  const shown = p.name_source_id === 'nga-wpi' ? p.port_name : titleCase(p.port_name)
+  const tag = NAME_SOURCE[p.name_source_id] || p.name_source_id
+  return (
+    <>
+      {shown}{' '}
+      {p.name_source_record_id
+        ? <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${p.name_source_record_id}`} target="_blank" rel="noopener noreferrer" title={nameWhy(p) || undefined}>{tag}</a>
+        : <span className={styles.srcLink} title={nameWhy(p) || undefined}>{tag}</span>}
+    </>
+  )
+}
+/** Country of the port: GFW's ISO3, named by GeoNames (link = the GeoNames row). */
+function PortCountry({ v }) {
+  if (!v.iso3) return null
+  if (!v.country_name) return <span className={styles.portCountry} title="Country of the port (ISO 3166 alpha-3), as Global Fishing Watch gives it">{v.iso3}</span>
+  return (
+    <a className={styles.portCountry} href={v.country_record_id ? `/api/ships?op=record&id=${v.country_record_id}` : 'https://www.geonames.org'} target="_blank" rel="noopener noreferrer"
+      title={`Country of the port: Global Fishing Watch gives ${v.iso3}; the English name is from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{v.country_name}</a>
+  )
+}
+
+function PortsOfCall({ vesselId }) {
+  const [data, setData] = useState(null)
+  const [visits, setVisits] = useState([])
+  const [err, setErr] = useState(null)
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    const ctl = new AbortController()
+    setData(null); setVisits([]); setErr(null)
+    fetch(`/api/ships?op=ports&id=${encodeURIComponent(vesselId)}&limit=${PAGE}`, { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Load failed (${r.status})`))))
+      .then((d) => { setData(d); setVisits(d.visits || []) })
+      .catch((e) => { if (e.name !== 'AbortError') setErr(e.message) })
+    return () => ctl.abort()
+  }, [vesselId])
+  const loadMore = () => {
+    setMore(true)
+    const w = data.window
+    fetch(`/api/ships?op=ports&id=${encodeURIComponent(vesselId)}&from=${w.from}&to=${w.to}&limit=${PAGE}&offset=${visits.length}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((d) => setVisits((v) => [...v, ...(d.visits || [])]))
+      .catch(() => setErr('Couldn’t load older visits right now.'))
+      .finally(() => setMore(false))
+  }
+  if (err && !data) return <div className={styles.errorNote}>{err}</div>
+  if (!data) return <div className={styles.loadingNote}>Loading port visits… The first look asks Global Fishing Watch and can take a few seconds.</div>
+  const src = data.source
+  const since = data.since ? monthYear(data.since) : null
+  const top = (data.topPorts || []).slice(0, 3)
+  const skippedNames = [...new Set((data.skipped || []).map((x) => x.name).filter(Boolean))].slice(0, 3)
+  const skippedMmsis = [...new Set((data.skipped || []).map((x) => x.mmsi).filter(Boolean))].sort()
+  return (
+    <div className={styles.section}>
+      {data.total > 0 ? (
+        <div className={styles.portSummary}>
+          {data.total.toLocaleString()} port {data.total === 1 ? 'visit' : 'visits'}{since && ` since ${since}`}
+          {top.length > 0 && <> · most often: {top.map((p, i) => (
+            <span key={p.key || p.port_label || i}>{i > 0 && ', '}<PortName p={p} /> ({p.n.toLocaleString()})</span>
+          ))}</>}
+        </div>
+      ) : (
+        <div className={styles.legendNoteText}>
+          {data.fetch?.status === 'failed' || data.fetch?.status === 'stale_no_gfw'
+            ? 'Couldn’t reach Global Fishing Watch right now, and no port visits are stored for this ship yet.'
+            : `Global Fishing Watch has no port visits for this ship between ${data.window.from} and ${utcDay(Date.parse(`${data.window.to}T00:00:00Z`) - 864e5)}.`}
+        </div>
+      )}
+      {data.total > 0 && (data.fetch?.status === 'failed' || data.fetch?.status === 'stale_no_gfw') && (
+        <div className={styles.capNote}>Couldn’t refresh from Global Fishing Watch right now; showing the visits saved {data.fetchedAt ? `on ${utcDay(data.fetchedAt)}` : 'earlier'}.</div>
+      )}
+      {visits.map((v) => {
+        const conf = CONFIDENCE[v.confidence]
+        const arrive = utcDay(v.start_at), leave = utcDay(v.end_at)
+        return (
+          <div key={v.id} className={styles.incident}>
+            <div className={styles.incidentHead}>
+              <span className={styles.incidentTitle}>
+                <PortName p={v} />
+                <PortCountry v={v} />
+              </span>
+              <span className={styles.period}>{stayWords(v.duration_hrs)}</span>
+            </div>
+            <div className={styles.incidentMeta}>
+              <span className={styles.period} title={`Arrived ${utcTime(v.start_at)} UTC · left ${v.end_at ? `${utcTime(v.end_at)} UTC` : 'unknown'}`}>
+                {arrive}{leave && leave !== arrive ? ` → ${leave}` : ''} UTC
+              </span>
+              {conf && <span className={styles.weakMatch} title={conf.title}>{conf.text}</span>}
+              {' · '}
+              <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${v.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
+                title={`Global Fishing Watch port-visit event ${v.event_id} (${v.dataset_version || 'public-global-port-visits-events'}), exactly as received · ${src?.license || 'CC BY-NC 4.0'} — click for the raw record`}>GFW</a>
+            </div>
+          </div>
+        )
+      })}
+      {visits.length < data.total && (
+        <button type="button" className={styles.recordToggle} onClick={loadMore} disabled={more}>
+          {more ? 'Loading…' : `Show older visits (${(data.total - visits.length).toLocaleString()} more)`} <Chevron size={13} />
+        </button>
+      )}
+      {err && data && <div className={styles.incidentMeta}>{err}</div>}
+      <div className={styles.legendNoteText}>
+        A port visit is Global Fishing Watch’s reading of the ship’s AIS signal: it came within 3 km of a known anchorage, stopped, and left beyond 4 km.
+        Dates are UTC. Port names come from the World Port Index when one of its ports lies within 4 km of the anchorage, otherwise from Global Fishing Watch’s anchorage names; where neither names it, GFW’s internal label is shown.
+        {skippedMmsis.length > 0 && <> Not counted: {plural(data.skipped.length, 'other AIS identity')} that Global Fishing Watch groups with this ship
+          {skippedNames.length > 0 && <> (broadcasting as {skippedNames.join(', ')})</>} on MMSI {skippedMmsis.join(', ')}; these are usually its tenders or lifeboats.</>}
+        {data.fetchedAt && <> Checked with Global Fishing Watch {utcTime(data.fetchedAt)} UTC.</>}
+      </div>
+      {src && (
+        <div className={styles.legendNoteText}>
+          Source: <a className={styles.sourceLink} href={src.homepage_url} target="_blank" rel="noopener noreferrer">Global Fishing Watch port-visit events</a>{' · '}
+          <a className={styles.sourceLink} href={src.license_url} target="_blank" rel="noopener noreferrer">{src.license}</a>{' · '}
+          <a className={styles.sourceLink} href={src.attribution_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>
+        </div>
+      )}
+      {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits').length > 0 && (
+        <div className={styles.legendNoteText}>
+          Names: {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits').sort((a, b) => ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(a.id) - ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(b.id)).map((x, i) => (
+            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name} — ${x.license}`}>{x.attribution_text}</a></span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

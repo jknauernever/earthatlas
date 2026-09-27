@@ -221,7 +221,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   v   picked vessel (EarthAtlas uuid)     q  ship search text      k  kinds (comma list)
 //   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
-//   ct  ship card tab: 'history' | 'matches' (default overview)       cf  '1' = ship card folded
+//   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
   const sp = new URLSearchParams(window.location.search)
@@ -268,7 +268,7 @@ export default function ShipsApp() {
   const [kinds, setKinds] = useState(() => (initial.k ? initial.k.split(',').filter(Boolean) : []))
   const [vesselId, setVesselId] = useState(initial.v || null)
   // The ship card reopens where the user left it: tab (ct) and folded (cf).
-  const [cardTab, setCardTab] = useState(['history', 'matches'].includes(initial.ct) ? initial.ct : 'overview')
+  const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
   const [vesselName, setVesselName] = useState(null)
 

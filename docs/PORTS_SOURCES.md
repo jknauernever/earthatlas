@@ -245,3 +245,81 @@ Source page: https://globalfishingwatch.org/datasets-and-code-anchorages/ (read 
 
 - `unloCode` (WPI, with a space) = `LOCODE` (PortWatch, with a space) = Country + Location (UN/LOCODE mirror, separate columns). This is the only shared key. GFW anchorages carry no LOCODE.
 - Small recreational harbours (Friday Harbor, Roche Harbor) exist in WPI (size `V`) and in GFW anchorages, but not in PortWatch, and UN/LOCODE does not flag them as ports.
+
+---
+
+## Step 2 (ports reference): re-verified live 2026-09-26 (local; 2026-09-27 UTC)
+
+Downloads by `scripts/ships/import-ports.mjs --fetch` (one request per file, UA `EarthAtlas-ships/0.1`), saved to
+`scripts/ships/bake-ais/build/ports/` (gitignored) with a `.meta.json`. Code: `lib/ships/ports.js`, migration
+`lib/ships/migrations/008_ports.sql`.
+
+### NGA World Port Index
+- `GET https://msi.nga.mil/api/publications/world-port-index?output=json`: 200, `application/json;charset=UTF-8`, 6,316,131 bytes,
+  **no Last-Modified header**. `{"ports":[…]}`, **2,951 ports**, 170 country codes, all with `ycoord`/`xcoord`.
+- Fields used: `portNumber` (key), `portName`, `alternateName`, `countryCode` (ISO alpha-2), `countryName`, `regionName`,
+  `ycoord`/`xcoord` (decimal degrees; floats like `47.60000000000008`), `unloCode`, `harborSize`, `harborType`, `globalId`.
+  The whole object is stored as the source record.
+- `unloCode`: 2,564 non-empty (the study said 2,565). Two are malformed and are not used as keys:
+  35600 Portsmouth Harbour `"GB ME\""`, 42070 Spetses `" "`. 13 codes appear on two WPI ports (e.g. `US VDZ`, `US GLC`).
+- Country codes not in ISO 3166 (so no ISO3/name): `XU` Johnston Atoll, `QM` Midway Island, `QW` Wake Island.
+- Licence: unchanged (US Government work, "NO COPYRIGHT CLAIMED UNDER TITLE 17 U.S.C.").
+- Names: `portName` is kept raw in the record; the port's name only collapses repeated spaces ("Roche  Harbor" → "Roche Harbor").
+
+### UN/LOCODE (official UNECE download)
+- `https://unlocode.unece.org/publications` (read 2026-09-26) links two zips:
+  - **Production 2025-1** ("Latest Release"): `https://opensource.unicc.org/un/unece/uncefact/vocab-locode/-/jobs/artifacts/2025-1/download?job=package-release`
+    → 302 to `…/-/jobs/12335/artifacts/download`, 200, 13,507,338 bytes, Last-Modified 2026-05-08. **This is what we import.**
+  - Pre-Release: `https://unlocode.unece.org/downloads/unlocode-latest.zip`, 13,185,797 bytes, Last-Modified 2026-09-23 (`--pre-release`).
+- Zip contents (both): `release/csv/UNLOCODE CodeListPart1..3.csv`, `SubdivisionCodes.csv`, `.txt`, `.xml`, `.mdb`, `UNLOCODE.ttl`.
+  The CSVs are **UTF-8, no header**, 12 columns: Change, Country, Location, Name, NameWoDiacritics, Subdivision, Function, Status,
+  Date, IATA, Coordinates, Remarks. 116,533 rows in 2025-1, incl. 301 country header rows (`,AD,,.ANDORRA,…`). Quoted fields occur.
+- Import scope (default): rows whose Function starts with `1` (port) **plus** every code WPI references: 18,017 rows
+  (76 codes appear twice with different content; both rows are kept). `--all` imports every row.
+- WPI `unloCode` checked against 2025-1: 2,557 of 2,563 found, 2,139 of them port-flagged. Not in UN/LOCODE: `NC BUG`, `GC COG`,
+  `AO KOT`, `JB HBI`, `ES ALD`, `PF UTU` (`GC`, `JB` are not ISO country codes).
+- `US CP4` (Cherry Point, a PortWatch port) is function `--3-----`: **not** port-flagged, but it has coordinates (`4852N 12230W`).
+- **Licence: the two primary statements conflict** (read 2026-09-26):
+  - Footer of every unlocode.unece.org page: "All UN/CEFACT standards are free to use under CC By 4.0 license".
+  - `https://unlocode.unece.org/terms` is the general UN text: "The United Nations grants permission to Users to visit the Site
+    and to download and copy the information, documents and materials … for the User's personal, non-commercial use, without
+    any right to resell or redistribute them or to compile or create derivative works therefrom, subject to the terms and
+    conditions outlined below, and also subject to more specific restrictions that may apply to specific Material within this Site."
+    (The study above said the terms add no data restriction; that was wrong.)
+  - The GitLab repository `un/unece/uncefact/vocab-locode` carries a GPL-3.0 `LICENSE` (its code).
+  - What we do: UN/LOCODE rows are stored as evidence and used only to **check** WPI's `unloCode` (the crosswalk key itself
+    comes from WPI, public domain). Nothing from UN/LOCODE is shown on the card. Recorded in `ships.sources` with attribution
+    "UN/LOCODE, United Nations Economic Commission for Europe (UNECE), CC BY 4.0." **Open question for Josh.**
+- Crosswalk for IMF PortWatch (step 3): `ships.port_aliases` rows `key_kind='unlocode'` (key as `US SEA`, source `nga-wpi`,
+  `detail.locode` = the UN/LOCODE check). PortWatch `LOCODE` joins on it. No PortWatch data is imported.
+- No "Swartz Bay" row exists in UN/LOCODE 2025-1.
+
+### GFW pipe-anchorages overrides
+- `https://raw.githubusercontent.com/GlobalFishingWatch/pipe-anchorages/main/src/pipe_anchorages/assets/data/port_lists/anchorage_overrides.csv`
+  (the default branch is `main`; `master` served the same bytes). Header `s2id,latitude,longitude,label,sublabel,iso3`,
+  **60,410 data rows**. Last commit touching the file: `b5f367a`, 2025-12-03. Repo licence (GitHub API): Apache-2.0; pushed 2026-08-11.
+- 431 rows have a spreadsheet-mangled `s2id` (e.g. `1.46E+83`); they are stored under `unkeyed:<hash>` and never matched.
+- 4,394 rows repeat an `s2id` with different content, e.g. `12994ef7` = `IBIZA` and `ESP-113 / sublabel IBIZA`;
+  `8fab0e03` = `COLON` and `MANZANILLO`. All rows are kept; a cell with two different real labels is not used for naming.
+- How GFW uses the list (code read 2026-09-26, `src/pipe_anchorages/port_info_finder.py` + `assets/config/name_anchorages_cfg.yaml`):
+  by **nearest point**, not by s2id: override list first, then `peru.csv`, `indonesia.csv`, `WPI_ports.csv`, `geonames_1000.csv`;
+  `label_distance_km: 4.0`, `sublabel_distance_km: 1.0`. We match overrides by exact S2 cell only (more conservative).
+
+### Country names: GeoNames countryInfo.txt
+- `https://download.geonames.org/export/dump/countryInfo.txt`: 200, Last-Modified 2026-09-27 02:53 GMT (regenerated daily),
+  252 countries; columns `ISO, ISO3, ISO-Numeric, fips, Country, …`.
+- Licence (`https://download.geonames.org/export/dump/readme.txt`): "This work is licensed under a Creative Commons Attribution 4.0 License".
+- Names are short English names ("United States", "South Korea", "Ivory Coast"). `XK/XKX` Kosovo is a user-assigned code.
+- Not used: UN M49 (`unstats.un.org/unsd/methodology/m49/overview/`, HTML table only) falls under the general UN terms quoted above;
+  the ISO list in the UN/LOCODE repo (`iso-3166/CountryCodes.csv`) has alpha-2 only.
+
+### Matching rule as built (Josh 2026-09-26: WPI name first, then GFW)
+Per GFW port label, over every anchorage point our stored visits carry for it (start, intermediate and end slots):
+1. a WPI port within **4 km** of any point, **same country** (WPI alpha-2 → ISO3 via GeoNames vs GFW `flag`): one → it
+   (`wpi_within_4km`); several → the nearest only if < 0.5 × the next (`wpi_nearest_clear`), else candidates recorded, no WPI name;
+2. the overrides label for the label's exact S2 cells (codes like `ESP-113` are not names);
+3. GFW's own anchorage `name` (codes like `USA-1843` are not names);
+4. otherwise unnamed: the raw label is shown.
+Result on the dev DB 2026-09-26 (81 labels from EURODAM + AMERICAN ENDURANCE): WPI 24 (22 within 4 km, 2 clearly nearest),
+overrides 14, GFW name 21, unnamed 22. The decision for a label depends on which anchorages our stored visits contain, so a
+label can change name when more ships' visits arrive (the old decision is kept as `superseded`).

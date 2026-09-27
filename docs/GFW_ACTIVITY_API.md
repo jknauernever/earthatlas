@@ -351,3 +351,48 @@ Port visits in the Salish box, Aug 2026 (request 26):
 - Intermediate-anchorage names include SEATTLE, EVERETT, TACOMA, FRIDAY HARBOR, ROCHE HARBOR, PORT ANGELES, VICTORIA, plus unnamed ids such as `usa-usa-399` with `name:null`.
 - Friday Harbor sample: `{"start":"2017-08-02T05:49:16Z","end":"2026-08-27T20:12:43Z","position":{"lat":48.5338,"lon":-122.9745},"vessel":{"ssvid":"366993822","flag":"USA","type":"NA"},"port_visit":{"confidence":"4","durationHrs":79502.39,"intermediateAnchorage":{"anchorageId":"548f7e39","atDock":true,"id":"usa-fridayharbor","lat":48.533768,"lon":-122.974520,"name":"FRIDAY HARBOR","topDestination":"BK"}}}`
 - Tacoma sample: `usa-tacoma`, anchorageId `5490560f`, 47.26662/−122.36873, PHL-flag cargo vessel, visit since 2014-05-29, confidence `"3"`.
+
+## Port visits for one vessel (verified live 2026-09-26, for /ships "Ports of call")
+
+17 GET requests on 2026-09-26 against
+`/v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[i]=<GFW vessel id>&start-date=…&end-date=…&limit=…&offset=…`,
+for 4 ships we hold (GFW identity ids from `ships.vessel_assertions.sub_record_ref`,
+`source_id='gfw-vessel-identity'`). Every response resolved `x-datasets` to
+`public-global-port-visits-events:v4.0` and carried `cache-control: private, max-age=86400`.
+The rate-limit header stayed at `remaining 49952` throughout (it is recomputed every 30 min, see above).
+Recorded responses (trimmed, labelled): `lib/ships/test/fixtures/gfw-live-portvisits-*-2026-09-26.json`.
+
+| # | Request (dataset param omitted) | Result |
+|---|---|---|
+| 52 | AMERICAN ENDURANCE `19004d162-…`, 2024-09-26 → 2026-09-27, `limit=100&offset=0` | 200, 1.1 s, **total 160**, `nextOffset 100`, 100 entries. `metadata {datasets, vessels, dateRange{from,to}}`. |
+| 53 | same, `offset=100` | 60 entries, **`nextOffset: null`** on the last page. |
+| 54 | same, `limit=1000` | all 160 in one page. |
+| 55 | same + `confidences[0..2]=2,3,4` | total 160; `metadata.portVisitConfidences` echoes the filter. |
+| 56 | same + `confidences=2,3` only | total 0: all 160 of this ship's visits are confidence `"4"`. |
+| 57 | same, `start-date=2012-01-01` (14.7-year span), `limit=1` | 200, **total 652**, earliest visit 2016-09-28. No span limit hit. |
+| 58 | same 2-year window + `sort=-start` | **newest first**. `sort` is not in the events parameter table; it works (UNVERIFIED as a stable contract). Without it, entries come **oldest `start` first**. |
+| 59 | EURODAM main identity `6d8a6e1eb-…` (MMSI 245206000), 2 years, `limit=1000&sort=-start` | total **467** (1 × `"3"`, 466 × `"4"`). Newest start 2026-09-23. |
+| 60–61 | EURODAM, all 15 ids pasted into `vessels[0]` separated by spaces (a shell mistake) | 200, **total 0**. A malformed/unknown vessel id is not an error, just no events. |
+| 62 | EURODAM, **15 ids as `vessels[0]…vessels[14]`**, 2 years | 200, 2.3 s, **total 484** = the 467 above + 17 from the other 14 identities. So several ids per request work (15 tested; the maximum is UNVERIFIED). |
+| 63 | SPIRIT OF VANCOUVER ISLAND (BC Ferries) `0b5fc673b-…`, 2 years, `limit=1000` | **total 4,550**, `nextOffset 1000`. Median stay 1.0 h (a ferry shuttling Swartz Bay ↔ Tsawwassen). Swartz Bay is the unnamed label **`CAN-279`** (486 of the first 1,000). |
+| 64 | EURODAM main id, 2012-01-01 → 2026-09-27, `limit=1` | total **2,652**. |
+| 65 | LINNEA ROSE `323723207-…`, 2 years | total 58 (see #30 for its earlier 56). |
+| 66 | LINNEA ROSE with `start-date=2024-09-26T00:00:00Z` | 200, accepted; `metadata.dateRange.from` echoes the full timestamp. |
+| 67 | no `limit` / `offset` | **422** `"limit must not be less than 1"`, `"If you send the limit property then the offset property is required"` (and the reverse). Both are required. |
+| 68 | SPIRIT OF VANCOUVER ISLAND, `limit=5000` | 200, 2.9 s, **all 4,550 in one page**, `nextOffset null`. ~1.5 KB of JSON per event. The maximum `limit` is UNVERIFIED. |
+
+Facts from these responses:
+- **Time zone**: `start` / `end` are ISO-8601 UTC with milliseconds (`2026-09-21T14:59:02.000Z`). Dates in the query are UTC days.
+- **Window semantics**: overlap. A EURODAM visit that started 2024-09-25T18:49Z came back for `start-date=2024-09-26`. Every returned visit in the samples had an `end` (no open visits; none ended after the request's end date).
+- `port_visit.durationHrs` = `end − start` in hours exactly (max difference 0 over 160 events).
+- **Event object for a vessel query** (all 5,252 events in the four full responses #54, #62, #65, #68 had exactly these keys): `start, end, id, type:"port_visit", position{lat,lon}` (= intermediate anchorage), `regions{mpa, eez, rfmo, fao, majorFao, eez12Nm, highSeas, mpaNoTakePartial, mpaNoTake}`, `boundingBox[4]`, `distances{start/endDistanceFromShoreKm, start/endDistanceFromPortKm}`, `vessel{id, name, ssvid, flag, type, nextPort}`, `port_visit{visitId, confidence, durationHrs, startAnchorage, intermediateAnchorage, endAnchorage}`.
+  - `id` (event id) and `port_visit.visitId` are different 32-hex strings, each unique per visit.
+  - `vessel.id` is the queried GFW identity id; `vessel.ssvid` is that identity's MMSI; `vessel.name` is its AIS name (the tender identities below say `"T13 EURODAM"`, `"EURODAM T11"` or `null`).
+  - `vessel.nextPort` was **null in every sampled event** (it is filled in the region queries of #26, not here).
+  - All three anchorages were present in every sampled event. Anchorage keys: `anchorageId` (S2 token), `atDock` (boolean), `distanceFromShoreKm` (**string**), `flag` (ISO3 of the port country, string), `id` (GFW port label), `lat`/`lon` (numbers), `name` (**often null**), `topDestination`.
+  - The start and end anchorage of one visit can belong to different port labels (AMERICAN ENDURANCE: 46 of 160). The intermediate anchorage is GFW's location for the visit.
+- **Names**: `name` was null on the intermediate anchorage for 90 of 160 AMERICAN ENDURANCE visits and 149 of 467 EURODAM visits. Null-name labels include real ports (`usa-seattle` ×46, `usa-porteverglades` ×43, `usa-halibutpoint` ×40 = Sitka) and bare codes (`usa-usa-399` ×39, `usa-usa-1839` ×23, `CAN-279`). This is why the "Ports of call" names need World Port Index next (docs/PORTS_SOURCES.md §1, §4).
+- **Latency**: on 2026-09-26 the newest visits started 2026-09-21 (AMERICAN ENDURANCE) and 2026-09-23 (EURODAM, confidence `"3"`, i.e. probably not yet closed by an exit).
+- **Confidence**: no default filter was observed (unfiltered responses held `"3"` and `"4"`). The vessels sampled were almost all `"4"`.
+- **Several GFW ids per ship: do NOT send them all.** EURODAM's GFW entry groups 15 AIS identities: the ship (MMSI 245206000, 20.3 million messages) and 14 identities on MMSIs 245206011–016 named like `"T13 EURODAM"`, `"EURODAM T11"` or nothing (130–15,607 messages each; these look like its tenders / lifeboats, UNVERIFIED). Those 14 produced 17 "visits" of 545–77,326 hours, overlapping the ship's own visits (e.g. SANTA BARBARA 2016-06-13 → 2025-04-09). GFW's registry records list the same MMSIs, so a registry-MMSI rule does not separate them. EarthAtlas's rule (lib/ships/portVisits.js `ownIdentities`): query the identity with the most AIS messages plus any identity whose broadcast name equals a name a registry gives for the ship; record the rest as skipped.
+- **What GFW allows for the default window**: any window back to 2012 in one request (no span limit found), paged with `limit`/`offset`. EarthAtlas defaults to the last 2 years.

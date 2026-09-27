@@ -8,6 +8,12 @@
 //   /api/ships?op=vessel&id=<uuid>                         → { vessel, assertions, links, outgoing, sources }
 //   /api/ships?op=record&id=<source record id>             → the raw source payload (traceability)
 //   /api/ships?op=mmsi&mmsi=<9 digits>&at=<ISO time>       → { status, vesselIds }
+//   /api/ships?op=ports&id=<uuid>[&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=] → the ship's port visits, newest first
+//        each visit carries our port's name (World Port Index first, then GFW; lib/ships/ports.js), its source record,
+//        and the country name (GeoNames); nameSources = those sources' licences.
+//
+// Exceptions to "no third-party calls" (Josh, 2026-09-26): op=lookup / op=save (click lookups) and
+// op=ports call GFW server-side with GFW_API_TOKEN; the token never reaches the browser.
 //
 // Rules: src/ships/CLAUDE.md.
 
@@ -16,6 +22,8 @@ import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
 import { searchVessels, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
+import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
+import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -96,6 +104,46 @@ export default async function handler(req, res) {
       if (!gfw) return send(res, 503, { error: 'GFW not configured' })
       const pool = shipsPool()
       try { return send(res, 200, await saveMmsis(pool, S, mmsis, gfw), 'no-store') } finally { await pool.end() }
+    }
+    // Ports of call (docs/GFW_ACTIVITY_API.md, "Port visits for one vessel"). Guardrail: only vessels in our
+    // database that carry a GFW identity id ever reach GFW, and only when the fetch log says the stored
+    // visits are missing or stale (FRESH_HOURS); otherwise this is a database read.
+    if (op === 'ports') {
+      const id = p.get('id') || ''
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return send(res, 400, { error: 'id must be a vessel uuid' })
+      const win = parseWindow(p.get('from'), p.get('to'))
+      if (win.error) return send(res, 400, { error: win.error })
+      const [vessel] = await q(`SELECT id FROM ${S}.vessels WHERE id = $1`, [id])
+      if (!vessel) return send(res, 404, { error: 'vessel not found' })
+      const { own, plan } = await portVisitPlan(q, S, id, win)
+      if (!own.use.length) return send(res, 200, { vesselId: id, window: win, gfwIds: [], total: 0, visits: [], topPorts: [], fetch: { status: 'no_gfw_identity' } })
+      let fetch = { status: 'fresh' }
+      if (plan.fetch) {
+        const gfw = gfwFor()
+        if (!gfw) fetch = { status: 'stale_no_gfw' }
+        else {
+          const pool = shipsPool()
+          try {
+            const r = await ensurePortVisits(pool, S, id, gfw, win)
+            fetch = { status: r.status, calls: r.calls ?? 0, incremental: !!r.plan?.incremental, stats: r.stats }
+            // Name the new visits' ports (World Port Index first, then GFW; lib/ships/ports.js). A failure here
+            // only leaves raw labels on the card.
+            try { fetch.named = (await nameVisits(pool, S, r.gfwIds || own.use)).visitsUpdated ?? 0 } catch (e) { console.error('ships ports naming', id, e) }
+          } catch (e) {
+            // Show what we have; say that the refresh failed. Never cache this answer.
+            console.error('ships ports fetch', id, e)
+            fetch = { status: 'failed' }
+          } finally { await pool.end() }
+        }
+      }
+      const out = await vesselPortVisits(q, S, id, { ...win, limit: p.get('limit'), offset: p.get('offset') })
+      const [source] = await q(`SELECT id, name, publisher, homepage_url, license, license_url, commercial_use,
+                                       attribution_text, attribution_url FROM ${S}.sources WHERE id = $1`, [PORT_VISITS_SOURCE.id])
+      const nameSources = await q(`SELECT id, name, publisher, homepage_url, license, license_url, attribution_text, attribution_url
+                                     FROM ${S}.sources WHERE id = ANY($1)`, [NAME_SOURCE_IDS])
+      const body = { vesselId: id, window: win, ...out, fetch, source: source ?? null, nameSources }
+      return send(res, 200, body, fetch.status === 'failed' || fetch.status === 'stale_no_gfw' ? 'no-store'
+        : 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400')
     }
     return send(res, 400, { error: 'unknown op' })
   } catch (e) {

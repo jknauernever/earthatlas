@@ -1,0 +1,851 @@
+{
+ "_label": "REAL, recorded live 2026-09-26 from the GFW Events API. entries are a verbatim subset of the response: the newest 9 of 4,550 plus every non-\"4\" confidence visit among the first 1,000 (sort=-start).",
+ "request": "GET /v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[0]=0b5fc673b-b547-b536-5dea-002ba9ad9b95&start-date=2024-09-26&end-date=2026-09-27&limit=1000&offset=0&sort=-start",
+ "retrieved_at": "2026-09-27T02:06:39.994Z",
+ "status": 200,
+ "headers": {
+  "x-datasets": "public-global-port-visits-events:v4.0",
+  "cache-control": "private, max-age=86400",
+  "content-type": "application/json; charset=utf-8",
+  "x-ratelimit-daily-remaining-requests": "49952"
+ },
+ "body": {
+  "metadata": {
+   "datasets": [
+    "public-global-port-visits-events:v4.0"
+   ],
+   "vessels": [
+    "0b5fc673b-b547-b536-5dea-002ba9ad9b95"
+   ],
+   "dateRange": {
+    "from": "2024-09-26",
+    "to": "2026-09-27"
+   }
+  },
+  "limit": 1000,
+  "offset": 0,
+  "nextOffset": 1000,
+  "total": 4550,
+  "entries": [
+   {
+    "start": "2026-09-23T23:37:30.000Z",
+    "end": "2026-09-23T23:47:42.000Z",
+    "id": "aaeb804d78928e7831c79e46b8d1c5dd",
+    "type": "port_visit",
+    "position": {
+     "lat": 49.0059,
+     "lon": -123.1292
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IATTC",
+      "PICES",
+      "IPHC",
+      "IWC",
+      "ACAP"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.12917853646881,
+     49.00585441071613,
+     -123.12917853646881,
+     49.00585441071613
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "56981e2b72b2fea972de745029b578f3",
+     "confidence": "3",
+     "durationHrs": 0.17,
+     "startAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T21:29:32.000Z",
+    "end": "2026-09-23T22:44:23.000Z",
+    "id": "4b986dc62f7b863bf3c4224ff3562981",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.7347,
+     "lon": -123.3719
+    },
+    "regions": {
+     "mpa": [
+      "305157_2"
+     ],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "PICES",
+      "IPHC",
+      "ACAP",
+      "IATTC",
+      "IWC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.37194615360261,
+     48.734745732168975,
+     -123.37194615360261,
+     48.734745732168975
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "6a24b7070691df1bcc91e0c7f7863f98",
+     "confidence": "4",
+     "durationHrs": 1.2475,
+     "startAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T19:25:52.000Z",
+    "end": "2026-09-23T20:34:07.000Z",
+    "id": "54255746fef6645c3769df245b17dd64",
+    "type": "port_visit",
+    "position": {
+     "lat": 49.0059,
+     "lon": -123.1292
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IPHC",
+      "PICES",
+      "IATTC",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.12917853646881,
+     49.00585441071613,
+     -123.16775500643837,
+     49.01057117614096
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "4d5604b738bd81011e575eb3dd9d8133",
+     "confidence": "4",
+     "durationHrs": 1.1375,
+     "startAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485e4f7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-robertsbank",
+      "lat": 49.01057117614096,
+      "lon": -123.16775500643837,
+      "name": "ROBERTS BANK",
+      "topDestination": "ROBERTS BANK"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T17:11:34.000Z",
+    "end": "2026-09-23T18:34:41.000Z",
+    "id": "24b7d42df3bd699b6a7832b4670f360b",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.7347,
+     "lon": -123.3719
+    },
+    "regions": {
+     "mpa": [
+      "305157_2"
+     ],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "ACAP",
+      "IWC",
+      "IATTC",
+      "PICES",
+      "IPHC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.37194615360261,
+     48.734745732168975,
+     -123.37194615360261,
+     48.734745732168975
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "15058e121b147c63369b01864a85935d",
+     "confidence": "4",
+     "durationHrs": 1.3852777777777778,
+     "startAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T15:18:41.000Z",
+    "end": "2026-09-23T16:19:04.000Z",
+    "id": "6fb8a9e1e1df9d34afd50eac574d6c3f",
+    "type": "port_visit",
+    "position": {
+     "lat": 49.0059,
+     "lon": -123.1292
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IPHC",
+      "PICES",
+      "IATTC",
+      "IWC",
+      "ACAP"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.12917853646881,
+     49.00585441071613,
+     -123.16775500643837,
+     49.01057117614096
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "eaa3cad2c6496ef917cce0f9fcd976f0",
+     "confidence": "4",
+     "durationHrs": 1.006388888888889,
+     "startAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485e4f7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-robertsbank",
+      "lat": 49.01057117614096,
+      "lon": -123.16775500643837,
+      "name": "ROBERTS BANK",
+      "topDestination": "ROBERTS BANK"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T05:06:22.000Z",
+    "end": "2026-09-23T14:10:22.000Z",
+    "id": "5f15ee3bfd1cad17db28c9e7bc1e8775",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.7347,
+     "lon": -123.3719
+    },
+    "regions": {
+     "mpa": [
+      "305157_2"
+     ],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IWC",
+      "PICES",
+      "IATTC",
+      "IPHC",
+      "ACAP"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.37194615360261,
+     48.734745732168975,
+     -123.41686771843348,
+     48.679474097212164
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "785d7f3290118404a4eb3ae03622b230",
+     "confidence": "4",
+     "durationHrs": 9.066666666666666,
+     "startAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f67f1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-tsehumharbour",
+      "lat": 48.679474097212164,
+      "lon": -123.41686771843348,
+      "name": "TSEHUM HARBOUR",
+      "topDestination": "BDOCKX00001"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T03:20:14.000Z",
+    "end": "2026-09-23T04:14:12.000Z",
+    "id": "b4d454d80a3039b2f492b7071bd14bbb",
+    "type": "port_visit",
+    "position": {
+     "lat": 49.0059,
+     "lon": -123.1292
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IPHC",
+      "IWC",
+      "PICES",
+      "IATTC",
+      "ACAP"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.12917853646881,
+     49.00585441071613,
+     -123.16775500643837,
+     49.01057117614096
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "b1c3f873798762af4648008368f1d402",
+     "confidence": "4",
+     "durationHrs": 0.8994444444444445,
+     "startAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485e4f7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-robertsbank",
+      "lat": 49.01057117614096,
+      "lon": -123.16775500643837,
+      "name": "ROBERTS BANK",
+      "topDestination": "ROBERTS BANK"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T01:21:09.000Z",
+    "end": "2026-09-23T02:23:45.000Z",
+    "id": "65f71136564a0773aa0d817022cb5e6f",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.6795,
+     "lon": -123.4169
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.41686771843348,
+     48.679474097212164,
+     -123.37194615360261,
+     48.734745732168975
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "dfad56357cb556069b42f0a1d55aa43d",
+     "confidence": "4",
+     "durationHrs": 1.0433333333333332,
+     "startAnchorage": {
+      "anchorageId": "548f67f1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-tsehumharbour",
+      "lat": 48.679474097212164,
+      "lon": -123.41686771843348,
+      "name": "TSEHUM HARBOUR",
+      "topDestination": "BDOCKX00001"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f67f1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-tsehumharbour",
+      "lat": 48.679474097212164,
+      "lon": -123.41686771843348,
+      "name": "TSEHUM HARBOUR",
+      "topDestination": "BDOCKX00001"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f5ddb",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "CAN",
+      "id": "can-can-279",
+      "lat": 48.734745732168975,
+      "lon": -123.37194615360261,
+      "name": "CAN-279",
+      "topDestination": "BG GWANGYAN"
+     }
+    }
+   },
+   {
+    "start": "2026-09-22T23:18:13.000Z",
+    "end": "2026-09-23T00:14:31.000Z",
+    "id": "329b6ad21047fecefb5390337e416f32",
+    "type": "port_visit",
+    "position": {
+     "lat": 49.0059,
+     "lon": -123.1292
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "PICES",
+      "IATTC",
+      "IWC",
+      "ACAP",
+      "IPHC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.12917853646881,
+     49.00585441071613,
+     -123.16775500643837,
+     49.01057117614096
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "0b5fc673b-b547-b536-5dea-002ba9ad9b95",
+     "name": "SPIRIT OF VI",
+     "ssvid": "316001269",
+     "flag": "CAN",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "6ed0a4639f5d419626ddbb53ade12caf",
+     "confidence": "4",
+     "durationHrs": 0.9383333333333334,
+     "startAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485e5b5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "CAN",
+      "id": "can-tsawwassen",
+      "lat": 49.00585441071613,
+      "lon": -123.12917853646881,
+      "name": "TSAWWASSEN",
+      "topDestination": "TSAWWASSEN"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485e4f7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-robertsbank",
+      "lat": 49.01057117614096,
+      "lon": -123.16775500643837,
+      "name": "ROBERTS BANK",
+      "topDestination": "ROBERTS BANK"
+     }
+    }
+   }
+  ]
+ }
+}

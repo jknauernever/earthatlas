@@ -1,0 +1,1126 @@
+{
+ "_label": "REAL, recorded live 2026-09-26 from the GFW Events API. entries are a verbatim subset of the response: the newest 12 of 160 (response order: oldest first).",
+ "request": "GET /v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[0]=19004d162-2295-8dd5-fbb3-284ff0561ce6&start-date=2024-09-26&end-date=2026-09-27&limit=1000&offset=0",
+ "retrieved_at": "2026-09-27T02:05:03.631Z",
+ "status": 200,
+ "headers": {
+  "x-datasets": "public-global-port-visits-events:v4.0",
+  "cache-control": "private, max-age=86400",
+  "content-type": "application/json; charset=utf-8",
+  "x-ratelimit-daily-remaining-requests": "49952"
+ },
+ "body": {
+  "metadata": {
+   "datasets": [
+    "public-global-port-visits-events:v4.0"
+   ],
+   "vessels": [
+    "19004d162-2295-8dd5-fbb3-284ff0561ce6"
+   ],
+   "dateRange": {
+    "from": "2024-09-26",
+    "to": "2026-09-27"
+   }
+  },
+  "limit": 1000,
+  "offset": 0,
+  "nextOffset": null,
+  "total": 160,
+  "entries": [
+   {
+    "start": "2026-07-29T01:02:30.000Z",
+    "end": "2026-07-29T01:17:13.000Z",
+    "id": "cabdcb6acef769b948686cf9c4d32ca6",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.4942,
+     "lon": -122.6833
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.68328769538273,
+     48.49420500558081,
+     -122.64479752921444,
+     48.513128209917426
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "8d5bcd7a3b5e1c2a1bdc6ae5ebb42144",
+     "confidence": "4",
+     "durationHrs": 0.2452777777777778,
+     "startAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "endAnchorage": {
+      "anchorageId": "548579bf",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-anacortes",
+      "lat": 48.513128209917426,
+      "lon": -122.64479752921444,
+      "name": "ANACORTES",
+      "topDestination": "ANACORTES"
+     }
+    }
+   },
+   {
+    "start": "2026-07-29T01:25:00.000Z",
+    "end": "2026-07-31T19:15:41.000Z",
+    "id": "6f759d6333ccef1a225892cf4b9de4ee",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.5884,
+     "lon": -122.6926
+    },
+    "regions": {
+     "mpa": [
+      "312353",
+      "555672185",
+      "312866"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IATTC",
+      "IPHC",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.69262083218646,
+     48.58838313938733,
+     -122.68328769538273,
+     48.49420500558081
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "1db3648a2d6115daf3dafaea92e853f0",
+     "confidence": "4",
+     "durationHrs": 65.84472222222222,
+     "startAnchorage": {
+      "anchorageId": "54859d35",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-414",
+      "lat": 48.58838313938733,
+      "lon": -122.69262083218646,
+      "name": null,
+      "topDestination": "CNTAINERS E"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54859d35",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-414",
+      "lat": 48.58838313938733,
+      "lon": -122.69262083218646,
+      "name": null,
+      "topDestination": "CNTAINERS E"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     }
+    }
+   },
+   {
+    "start": "2026-08-07T00:27:27.000Z",
+    "end": "2026-08-08T18:11:12.000Z",
+    "id": "58300daed895a4b58e7109a2e878c0f6",
+    "type": "port_visit",
+    "position": {
+     "lat": 38.0569,
+     "lon": -122.2614
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IWC",
+      "ACAP",
+      "IATTC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.26143880057116,
+     38.056918039405645,
+     -122.26143880057116,
+     38.056918039405645
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "8ad6cb0540a58d029538e51a42e073c2",
+     "confidence": "4",
+     "durationHrs": 41.729166666666664,
+     "startAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "endAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     }
+    }
+   },
+   {
+    "start": "2026-08-10T18:36:48.000Z",
+    "end": "2026-08-12T12:36:00.000Z",
+    "id": "464e7a67355916e6a8af48515e17316e",
+    "type": "port_visit",
+    "position": {
+     "lat": 33.689,
+     "lon": -118.1486
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IATTC",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -118.1486171459441,
+     33.68897543160553,
+     -118.21489914248001,
+     33.69959592183292
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 7,
+     "endDistanceFromShoreKm": 5,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "bcc73296b9441388fecd368e5ea7917b",
+     "confidence": "4",
+     "durationHrs": 41.986666666666665,
+     "startAnchorage": {
+      "anchorageId": "80dd3afb",
+      "atDock": false,
+      "distanceFromShoreKm": "7",
+      "flag": "USA",
+      "id": "usa-longbeach",
+      "lat": 33.68897543160553,
+      "lon": -118.1486171459441,
+      "name": null,
+      "topDestination": "LONG BEACH"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80dd3afb",
+      "atDock": false,
+      "distanceFromShoreKm": "7",
+      "flag": "USA",
+      "id": "usa-longbeach",
+      "lat": 33.68897543160553,
+      "lon": -118.1486171459441,
+      "name": null,
+      "topDestination": "LONG BEACH"
+     },
+     "endAnchorage": {
+      "anchorageId": "80dd39fb",
+      "atDock": false,
+      "distanceFromShoreKm": "5",
+      "flag": "USA",
+      "id": "usa-longbeach",
+      "lat": 33.69959592183292,
+      "lon": -118.21489914248001,
+      "name": null,
+      "topDestination": "LOS ANGELES"
+     }
+    }
+   },
+   {
+    "start": "2026-08-15T11:53:34.000Z",
+    "end": "2026-08-16T09:51:07.000Z",
+    "id": "1627388794083ce2c3ba583078aa0632",
+    "type": "port_visit",
+    "position": {
+     "lat": 38.0569,
+     "lon": -122.2614
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "ACAP",
+      "PICES",
+      "IWC",
+      "IATTC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.26143880057116,
+     38.056918039405645,
+     -122.26143880057116,
+     38.056918039405645
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "5c654223205756f8dfb558f548a0400f",
+     "confidence": "4",
+     "durationHrs": 21.95916666666667,
+     "startAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "endAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     }
+    }
+   },
+   {
+    "start": "2026-08-19T19:26:28.000Z",
+    "end": "2026-08-22T07:27:15.000Z",
+    "id": "77f3e8f50bc1c90c6b6f389d342e2a76",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.4942,
+     "lon": -122.6833
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.68328769538273,
+     48.49420500558081,
+     -122.68328769538273,
+     48.49420500558081
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "3d3eda424b9ddeb782b216ea482a7af8",
+     "confidence": "4",
+     "durationHrs": 60.01305555555555,
+     "startAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     }
+    }
+   },
+   {
+    "start": "2026-08-25T04:04:17.000Z",
+    "end": "2026-08-26T20:31:15.000Z",
+    "id": "05a02552668e5a52d46ce7080694c88e",
+    "type": "port_visit",
+    "position": {
+     "lat": 38.0569,
+     "lon": -122.2614
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "ACAP",
+      "IWC",
+      "IATTC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.26143880057116,
+     38.056918039405645,
+     -122.26143880057116,
+     38.056918039405645
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "b451d76c429c0a62b1924902bd946f6e",
+     "confidence": "4",
+     "durationHrs": 40.449444444444445,
+     "startAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "endAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     }
+    }
+   },
+   {
+    "start": "2026-08-29T19:35:12.000Z",
+    "end": "2026-09-01T23:12:29.000Z",
+    "id": "f0c46598ea4a0cdcdefc041708e6c05c",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.4942,
+     "lon": -122.6833
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.68328769538273,
+     48.49420500558081,
+     -122.68328769538273,
+     48.49420500558081
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "71ed4bc0d7d9b7ad49225cdf8c0c7193",
+     "confidence": "4",
+     "durationHrs": 75.62138888888889,
+     "startAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     }
+    }
+   },
+   {
+    "start": "2026-09-07T03:57:10.000Z",
+    "end": "2026-09-08T21:59:31.000Z",
+    "id": "320b60e95f8721a85ca394dd3eec6bc5",
+    "type": "port_visit",
+    "position": {
+     "lat": 38.0569,
+     "lon": -122.2614
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IWC",
+      "IATTC",
+      "ACAP"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.26143880057116,
+     38.056918039405645,
+     -122.26143880057116,
+     38.056918039405645
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "d33a25fcfcc6b9dbf9614497c2db889c",
+     "confidence": "4",
+     "durationHrs": 42.03916666666667,
+     "startAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "endAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     }
+    }
+   },
+   {
+    "start": "2026-09-12T03:05:12.000Z",
+    "end": "2026-09-13T15:24:23.000Z",
+    "id": "c86e99897ce2bad104be2173e0c22733",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.5072,
+     "lon": -122.6767
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IATTC",
+      "IPHC",
+      "ACAP",
+      "IWC",
+      "PICES"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.6767399960048,
+     48.507195405508426,
+     -122.68328769538273,
+     48.49420500558081
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "8ae0f4f364a0f8e5103ba82ae29d221d",
+     "confidence": "4",
+     "durationHrs": 36.319722222222225,
+     "startAnchorage": {
+      "anchorageId": "54857909",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.507195405508426,
+      "lon": -122.6767399960048,
+      "name": null,
+      "topDestination": "WSF TERMINAL"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54857909",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.507195405508426,
+      "lon": -122.6767399960048,
+      "name": null,
+      "topDestination": "WSF TERMINAL"
+     },
+     "endAnchorage": {
+      "anchorageId": "5485796b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-usa-399",
+      "lat": 48.49420500558081,
+      "lon": -122.68328769538273,
+      "name": null,
+      "topDestination": "BOUNDS"
+     }
+    }
+   },
+   {
+    "start": "2026-09-13T17:49:23.000Z",
+    "end": "2026-09-14T22:44:23.000Z",
+    "id": "5439023fbbdece6f84ae666c9733a56e",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.1331,
+     "lon": -123.3889
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "ACAP",
+      "PICES",
+      "IPHC",
+      "IWC",
+      "IATTC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.38891954122127,
+     48.13305857259637,
+     -123.41371034817111,
+     48.13951131087239
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "b6ac05a26d5f191680451f99ab08ab29",
+     "confidence": "4",
+     "durationHrs": 28.916666666666668,
+     "startAnchorage": {
+      "anchorageId": "548fb06b",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-portangeles",
+      "lat": 48.13305857259637,
+      "lon": -123.38891954122127,
+      "name": "PORT ANGELES",
+      "topDestination": "PORT ANGELES WA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548fb06b",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-portangeles",
+      "lat": 48.13305857259637,
+      "lon": -123.38891954122127,
+      "name": "PORT ANGELES",
+      "topDestination": "PORT ANGELES WA"
+     },
+     "endAnchorage": {
+      "anchorageId": "548fb03b",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-portangeles",
+      "lat": 48.13951131087239,
+      "lon": -123.41371034817111,
+      "name": "PORT ANGELES",
+      "topDestination": "PORT ANGELES"
+     }
+    }
+   },
+   {
+    "start": "2026-09-21T14:59:02.000Z",
+    "end": "2026-09-22T22:35:29.000Z",
+    "id": "62e3f84b9bf1c658d631625c51f42b08",
+    "type": "port_visit",
+    "position": {
+     "lat": 38.0569,
+     "lon": -122.2614
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IATTC",
+      "ACAP",
+      "PICES",
+      "IWC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.26143880057116,
+     38.056918039405645,
+     -122.26143880057116,
+     38.056918039405645
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "19004d162-2295-8dd5-fbb3-284ff0561ce6",
+     "name": "AMERICAN ENDURANCE",
+     "ssvid": "369040000",
+     "flag": "USA",
+     "type": "other",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "30f34ecc9194c13e393bc83f5661c8f6",
+     "confidence": "4",
+     "durationHrs": 31.6075,
+     "startAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     },
+     "endAnchorage": {
+      "anchorageId": "808573f9",
+      "atDock": false,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-selby",
+      "lat": 38.056918039405645,
+      "lon": -122.26143880057116,
+      "name": "SELBY",
+      "topDestination": "SAN FRANCISCO"
+     }
+    }
+   }
+  ]
+ }
+}

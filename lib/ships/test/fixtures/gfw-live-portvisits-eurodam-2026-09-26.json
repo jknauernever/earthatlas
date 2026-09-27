@@ -1,0 +1,2280 @@
+{
+ "_label": "REAL, recorded live 2026-09-26 from the GFW Events API. entries are a verbatim subset of the response: the newest 8 of the ship's own 467 (identity 6d8a6e1eb-…, MMSI 245206000) plus ALL 17 visits of its 14 other identities (MMSIs 245206011-016, tenders/lifeboats), from one request with 15 vessel ids and sort=-start.",
+ "request": "GET /v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[0]=6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741&vessels[1]=309b5a0a6-692d-1107-1204-2cd604eea554&vessels[2]=89a1a8e27-7dfe-53d2-4095-474f3238aa91&vessels[3]=06d5684b8-8070-75c0-774c-d7cdd65c51a9&vessels[4]=847e83389-9011-175c-8ebb-de3766d570ad&vessels[5]=ba2bc1825-5d24-6be3-8b57-460fe55fc9ae&vessels[6]=2171a79f6-647d-53d3-38bf-24e2be2c01ee&vessels[7]=eb96dc170-01d0-8129-64b9-54f0990b9c65&vessels[8]=a57e79646-6153-e0ea-5495-c398ce7a3d49&vessels[9]=c1f07ae21-1845-5b50-a595-fe1f8e12570d&vessels[10]=5535610da-ae22-cf1f-f9b8-62cd88c11570&vessels[11]=ccb352743-36ad-619b-1e07-ae0f9c6f183b&vessels[12]=a012e2fd6-6763-e93d-263c-7e85fcb0073d&vessels[13]=15be91155-5d1a-e394-4489-dcef2cd976d4&vessels[14]=cc5d0d7cc-ca4d-0be4-10f6-39f704bd40d2&start-date=2024-09-26&end-date=2026-09-27&limit=1000&offset=0&sort=-start",
+ "retrieved_at": "2026-09-27T02:05:45.790Z",
+ "status": 200,
+ "headers": {
+  "x-datasets": "public-global-port-visits-events:v4.0",
+  "cache-control": "private, max-age=86400",
+  "content-type": "application/json; charset=utf-8",
+  "x-ratelimit-daily-remaining-requests": "49952"
+ },
+ "body": {
+  "metadata": {
+   "datasets": [
+    "public-global-port-visits-events:v4.0"
+   ],
+   "vessels": [
+    "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+    "309b5a0a6-692d-1107-1204-2cd604eea554",
+    "89a1a8e27-7dfe-53d2-4095-474f3238aa91",
+    "06d5684b8-8070-75c0-774c-d7cdd65c51a9",
+    "847e83389-9011-175c-8ebb-de3766d570ad",
+    "ba2bc1825-5d24-6be3-8b57-460fe55fc9ae",
+    "2171a79f6-647d-53d3-38bf-24e2be2c01ee",
+    "eb96dc170-01d0-8129-64b9-54f0990b9c65",
+    "a57e79646-6153-e0ea-5495-c398ce7a3d49",
+    "c1f07ae21-1845-5b50-a595-fe1f8e12570d",
+    "5535610da-ae22-cf1f-f9b8-62cd88c11570",
+    "ccb352743-36ad-619b-1e07-ae0f9c6f183b",
+    "a012e2fd6-6763-e93d-263c-7e85fcb0073d",
+    "15be91155-5d1a-e394-4489-dcef2cd976d4",
+    "cc5d0d7cc-ca4d-0be4-10f6-39f704bd40d2"
+   ],
+   "dateRange": {
+    "from": "2024-09-26",
+    "to": "2026-09-27"
+   }
+  },
+  "limit": 1000,
+  "offset": 0,
+  "nextOffset": null,
+  "total": 484,
+  "entries": [
+   {
+    "start": "2026-09-23T15:02:07.000Z",
+    "end": "2026-09-23T23:58:35.000Z",
+    "id": "d8517889cb84ea710fef4a85ad075537",
+    "type": "port_visit",
+    "position": {
+     "lat": 57.1296,
+     "lon": -135.3793
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -135.37927434598157,
+     57.12957389040137,
+     -135.3934893238766,
+     57.1163801542819
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "f557b34e0f0080d64bd1271822d56149",
+     "confidence": "3",
+     "durationHrs": 8.94111111111111,
+     "startAnchorage": {
+      "anchorageId": "54046f45",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.12957389040137,
+      "lon": -135.37927434598157,
+      "name": null,
+      "topDestination": "SITKA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54046f45",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.12957389040137,
+      "lon": -135.37927434598157,
+      "name": null,
+      "topDestination": "SITKA"
+     },
+     "endAnchorage": {
+      "anchorageId": "540465f9",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.1163801542819,
+      "lon": -135.3934893238766,
+      "name": null,
+      "topDestination": "SITKA"
+     }
+    }
+   },
+   {
+    "start": "2026-09-23T01:03:47.000Z",
+    "end": "2026-09-23T05:37:24.000Z",
+    "id": "b80e42358f19c0ff0032d1fe5d22b3a6",
+    "type": "port_visit",
+    "position": {
+     "lat": 58.1152,
+     "lon": -135.4553
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -135.4552620784258,
+     58.11521240454,
+     -135.4552620784258,
+     58.11521240454
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "a114dc910066d51468c2dfe2df50dca1",
+     "confidence": "4",
+     "durationHrs": 4.560277777777777,
+     "startAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     },
+     "endAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     }
+    }
+   },
+   {
+    "start": "2026-09-21T19:23:26.000Z",
+    "end": "2026-09-22T06:40:09.000Z",
+    "id": "813d5a6d7953b04356843d433bfdfe1b",
+    "type": "port_visit",
+    "position": {
+     "lat": 58.2888,
+     "lon": -134.3977
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [
+      "ACAP",
+      "IWC",
+      "IPHC",
+      "PICES"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -134.39765007270205,
+     58.288823129857064,
+     -134.39765007270205,
+     58.288823129857064
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "b0f4b94a93a91c00e91338c8bd7eca1f",
+     "confidence": "4",
+     "durationHrs": 11.278611111111111,
+     "startAnchorage": {
+      "anchorageId": "5400df7d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-juneau",
+      "lat": 58.288823129857064,
+      "lon": -134.39765007270205,
+      "name": "JUNEAU",
+      "topDestination": "JUNEAU"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "5400df7d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-juneau",
+      "lat": 58.288823129857064,
+      "lon": -134.39765007270205,
+      "name": "JUNEAU",
+      "topDestination": "JUNEAU"
+     },
+     "endAnchorage": {
+      "anchorageId": "5400df7d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-juneau",
+      "lat": 58.288823129857064,
+      "lon": -134.39765007270205,
+      "name": "JUNEAU",
+      "topDestination": "JUNEAU"
+     }
+    }
+   },
+   {
+    "start": "2026-09-19T12:22:15.000Z",
+    "end": "2026-09-19T22:23:07.000Z",
+    "id": "3192395371e16cf241547575f29f847b",
+    "type": "port_visit",
+    "position": {
+     "lat": 47.6325,
+     "lon": -122.4174
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "ACAP",
+      "IATTC",
+      "IWC",
+      "IPHC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -122.41736110808421,
+     47.632450567183476,
+     -122.41736110808421,
+     47.632450567183476
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "1afc770cba3ddc31af42cc8f217c574b",
+     "confidence": "4",
+     "durationHrs": 10.014444444444445,
+     "startAnchorage": {
+      "anchorageId": "54903e33",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-seattle",
+      "lat": 47.632450567183476,
+      "lon": -122.41736110808421,
+      "name": null,
+      "topDestination": "SEATTLE USA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54903e33",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-seattle",
+      "lat": 47.632450567183476,
+      "lon": -122.41736110808421,
+      "name": null,
+      "topDestination": "SEATTLE USA"
+     },
+     "endAnchorage": {
+      "anchorageId": "54903e33",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-seattle",
+      "lat": 47.632450567183476,
+      "lon": -122.41736110808421,
+      "name": null,
+      "topDestination": "SEATTLE USA"
+     }
+    }
+   },
+   {
+    "start": "2026-09-19T02:14:37.000Z",
+    "end": "2026-09-19T06:52:25.000Z",
+    "id": "f1822585efaec48adbf7d47e0bd01b07",
+    "type": "port_visit",
+    "position": {
+     "lat": 48.3956,
+     "lon": -123.4506
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8493"
+     ],
+     "rfmo": [
+      "IWC",
+      "IPHC",
+      "ACAP",
+      "PICES",
+      "IATTC"
+     ],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -123.4506341533892,
+     48.39556044796976,
+     -123.4506341533892,
+     48.39556044796976
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "ca8de1aab39924326ead1c078b3b82a0",
+     "confidence": "4",
+     "durationHrs": 4.63,
+     "startAnchorage": {
+      "anchorageId": "548f0b71",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-esquimalt",
+      "lat": 48.39556044796976,
+      "lon": -123.4506341533892,
+      "name": "ESQUIMALT",
+      "topDestination": "NAVAL OPERATIONS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "548f0b71",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-esquimalt",
+      "lat": 48.39556044796976,
+      "lon": -123.4506341533892,
+      "name": "ESQUIMALT",
+      "topDestination": "NAVAL OPERATIONS"
+     },
+     "endAnchorage": {
+      "anchorageId": "548f0b71",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "CAN",
+      "id": "can-esquimalt",
+      "lat": 48.39556044796976,
+      "lon": -123.4506341533892,
+      "name": "ESQUIMALT",
+      "topDestination": "NAVAL OPERATIONS"
+     }
+    }
+   },
+   {
+    "start": "2026-09-17T13:00:52.000Z",
+    "end": "2026-09-17T20:56:35.000Z",
+    "id": "5102a0a5ac4d6f238b2454b4fe24bcc5",
+    "type": "port_visit",
+    "position": {
+     "lat": 55.3976,
+     "lon": -131.7297
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -131.7296729257311,
+     55.39761994028788,
+     -131.6215900082693,
+     55.32951979449161
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "6a5f0d9e2f8a95d1bf23f23dfec4bdae",
+     "confidence": "4",
+     "durationHrs": 7.9286111111111115,
+     "startAnchorage": {
+      "anchorageId": "540c26f5",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-wardcove",
+      "lat": 55.39761994028788,
+      "lon": -131.7296729257311,
+      "name": "WARD COVE",
+      "topDestination": "KETCHIKAN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "540c26f5",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-wardcove",
+      "lat": 55.39761994028788,
+      "lon": -131.7296729257311,
+      "name": "WARD COVE",
+      "topDestination": "KETCHIKAN"
+     },
+     "endAnchorage": {
+      "anchorageId": "540c2523",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-ketchikan",
+      "lat": 55.32951979449161,
+      "lon": -131.6215900082693,
+      "name": "KETCHIKAN",
+      "topDestination": "KETCHIKAN"
+     }
+    }
+   },
+   {
+    "start": "2026-09-16T15:05:15.000Z",
+    "end": "2026-09-17T00:06:05.000Z",
+    "id": "8c6548c9f552a8892f9a2877700a878a",
+    "type": "port_visit",
+    "position": {
+     "lat": 57.1296,
+     "lon": -135.3793
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -135.37927434598157,
+     57.12957389040137,
+     -135.37927434598157,
+     57.12957389040137
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "163c35b1e811169208cb617038f7f050",
+     "confidence": "4",
+     "durationHrs": 9.01388888888889,
+     "startAnchorage": {
+      "anchorageId": "54046f45",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.12957389040137,
+      "lon": -135.37927434598157,
+      "name": null,
+      "topDestination": "SITKA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54046f45",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.12957389040137,
+      "lon": -135.37927434598157,
+      "name": null,
+      "topDestination": "SITKA"
+     },
+     "endAnchorage": {
+      "anchorageId": "54046f45",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-halibutpoint",
+      "lat": 57.12957389040137,
+      "lon": -135.37927434598157,
+      "name": null,
+      "topDestination": "SITKA"
+     }
+    }
+   },
+   {
+    "start": "2026-09-16T01:10:23.000Z",
+    "end": "2026-09-16T05:38:37.000Z",
+    "id": "eb1f9aaccab219cd2a30644032ddab1a",
+    "type": "port_visit",
+    "position": {
+     "lat": 58.1152,
+     "lon": -135.4553
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8463"
+     ],
+     "rfmo": [],
+     "fao": [
+      "67"
+     ],
+     "majorFao": [
+      "67"
+     ],
+     "eez12Nm": [
+      "8463"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -135.4552620784258,
+     58.11521240454,
+     -135.4552620784258,
+     58.11521240454
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+     "name": "EURODAM",
+     "ssvid": "245206000",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "4c473630d0976fc07d537ec7d01669bc",
+     "confidence": "4",
+     "durationHrs": 4.470555555555555,
+     "startAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     },
+     "endAnchorage": {
+      "anchorageId": "54016fd5",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "USA",
+      "id": "usa-hoonah",
+      "lat": 58.11521240454,
+      "lon": -135.4552620784258,
+      "name": "HOONAH",
+      "topDestination": "HOONAH"
+     }
+    }
+   },
+   {
+    "start": "2026-04-18T14:53:11.000Z",
+    "end": "2026-04-19T01:53:52.000Z",
+    "id": "e1f33f228055045c813a3594c763165c",
+    "type": "port_visit",
+    "position": {
+     "lat": 22.8865,
+     "lon": -109.8923
+    },
+    "regions": {
+     "mpa": [
+      "902481",
+      "301991"
+     ],
+     "eez": [
+      "8429"
+     ],
+     "rfmo": [],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8429"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -109.8922671564776,
+     22.886545126883618,
+     -109.89988154237373,
+     22.88633770561857
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 1,
+     "endDistanceFromShoreKm": 1,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "847e83389-9011-175c-8ebb-de3766d570ad",
+     "name": null,
+     "ssvid": "245206013",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "a71df00f53fcc25f8ab2e677a31edc33",
+     "confidence": "3",
+     "durationHrs": 11.011388888888888,
+     "startAnchorage": {
+      "anchorageId": "86af4b1b",
+      "atDock": false,
+      "distanceFromShoreKm": "1",
+      "flag": "MEX",
+      "id": "mex-cabosanlucas",
+      "lat": 22.886545126883618,
+      "lon": -109.8922671564776,
+      "name": "CABO SAN LUCAS",
+      "topDestination": "CABO SAN LUCAS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "86af4b1b",
+      "atDock": false,
+      "distanceFromShoreKm": "1",
+      "flag": "MEX",
+      "id": "mex-cabosanlucas",
+      "lat": 22.886545126883618,
+      "lon": -109.8922671564776,
+      "name": "CABO SAN LUCAS",
+      "topDestination": "CABO SAN LUCAS"
+     },
+     "endAnchorage": {
+      "anchorageId": "86af4b1d",
+      "atDock": true,
+      "distanceFromShoreKm": "1",
+      "flag": "MEX",
+      "id": "mex-cabosanlucas",
+      "lat": 22.88633770561857,
+      "lon": -109.89988154237373,
+      "name": "CABO SAN LUCAS",
+      "topDestination": "CABO SAN LUCAS"
+     }
+    }
+   },
+   {
+    "start": "2026-02-11T00:27:06.000Z",
+    "end": "2026-04-21T23:33:00.000Z",
+    "id": "c5da117b0d8c06873d1c4d202e02b1b0",
+    "type": "port_visit",
+    "position": {
+     "lat": 33.3464,
+     "lon": -118.3224
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -118.32171757809593,
+     33.351020352944104,
+     -118.32171757809593,
+     33.351020352944104
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "eb96dc170-01d0-8129-64b9-54f0990b9c65",
+     "name": "T13 EURODAM",
+     "ssvid": "245206013",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "92f6c85fe5f999b52cb7d6a2103039ec",
+     "confidence": "2",
+     "durationHrs": 1679.0983333333334,
+     "startAnchorage": {
+      "anchorageId": "80dd6d5f",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.351020352944104,
+      "lon": -118.32171757809593,
+      "name": "AVALON",
+      "topDestination": "AVALON"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80dd72a1",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.34639519382489,
+      "lon": -118.32236349402827,
+      "name": "AVALON",
+      "topDestination": "CATALINA LONG BEACH"
+     },
+     "endAnchorage": {
+      "anchorageId": "80dd6d5f",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.351020352944104,
+      "lon": -118.32171757809593,
+      "name": "AVALON",
+      "topDestination": "AVALON"
+     }
+    }
+   },
+   {
+    "start": "2025-11-13T20:27:22.000Z",
+    "end": "2026-01-21T20:13:11.000Z",
+    "id": "dd1816711311efd49c55f8cd5134aaf0",
+    "type": "port_visit",
+    "position": {
+     "lat": 29.9423,
+     "lon": -90.061
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -90.06104870705957,
+     29.942263414588908,
+     -90.06104870705957,
+     29.942263414588908
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "06d5684b8-8070-75c0-774c-d7cdd65c51a9",
+     "name": null,
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "2d5fc25826cecffbf42a7d023c8c404d",
+     "confidence": "2",
+     "durationHrs": 1655.763611111111,
+     "startAnchorage": {
+      "anchorageId": "8620a66f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-neworleans",
+      "lat": 29.942263414588908,
+      "lon": -90.06104870705957,
+      "name": "NEW ORLEANS",
+      "topDestination": "NEW ORLEANS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8620a66f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-neworleans",
+      "lat": 29.942263414588908,
+      "lon": -90.06104870705957,
+      "name": "NEW ORLEANS",
+      "topDestination": "NEW ORLEANS"
+     },
+     "endAnchorage": {
+      "anchorageId": "8620a66f",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-neworleans",
+      "lat": 29.942263414588908,
+      "lon": -90.06104870705957,
+      "name": "NEW ORLEANS",
+      "topDestination": "NEW ORLEANS"
+     }
+    }
+   },
+   {
+    "start": "2025-10-09T03:27:00.000Z",
+    "end": "2026-02-10T20:27:06.000Z",
+    "id": "5b2eba806761944c1e9df180e795fedc",
+    "type": "port_visit",
+    "position": {
+     "lat": 25.7784,
+     "lon": -80.1736
+    },
+    "regions": {
+     "mpa": [
+      "555655559"
+     ],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "ICCAT",
+      "NAMMCO",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -80.17355625130965,
+     25.778426265871577,
+     -80.17355625130965,
+     25.778426265871577
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "eb96dc170-01d0-8129-64b9-54f0990b9c65",
+     "name": "T13 EURODAM",
+     "ssvid": "245206013",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "ca3144db7041e1be7f9bcd600433fa1e",
+     "confidence": "2",
+     "durationHrs": 2993.0016666666666,
+     "startAnchorage": {
+      "anchorageId": "88d9b43d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-miami",
+      "lat": 25.778426265871577,
+      "lon": -80.17355625130965,
+      "name": "MIAMI",
+      "topDestination": "MIAMI"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "88d9b43d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-miami",
+      "lat": 25.778426265871577,
+      "lon": -80.17355625130965,
+      "name": "MIAMI",
+      "topDestination": "MIAMI"
+     },
+     "endAnchorage": {
+      "anchorageId": "88d9b43d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-miami",
+      "lat": 25.778426265871577,
+      "lon": -80.17355625130965,
+      "name": "MIAMI",
+      "topDestination": "MIAMI"
+     }
+    }
+   },
+   {
+    "start": "2025-03-04T18:22:59.000Z",
+    "end": "2025-10-09T02:50:54.000Z",
+    "id": "d697eb0fd4361add19dcc29d88b0d4d8",
+    "type": "port_visit",
+    "position": {
+     "lat": 34.4081,
+     "lon": -119.6915
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IWC",
+      "IATTC",
+      "PICES",
+      "ACAP"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -119.68157259038134,
+     34.408477381924,
+     -119.68241091800563,
+     34.39702064439569
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "ba2bc1825-5d24-6be3-8b57-460fe55fc9ae",
+     "name": "T16 EURODAM",
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "19dffe41384ab19bceb8870805244fe8",
+     "confidence": "2",
+     "durationHrs": 5240.465277777777,
+     "startAnchorage": {
+      "anchorageId": "80e913ed",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.408477381924,
+      "lon": -119.68157259038134,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTABARBRA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80e9138b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.40805969999597,
+      "lon": -119.6915414333587,
+      "name": "SANTA BARBARA",
+      "topDestination": "KANESTRAUM"
+     },
+     "endAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     }
+    }
+   },
+   {
+    "start": "2025-02-02T04:55:35.000Z",
+    "end": "2025-03-04T14:22:59.000Z",
+    "id": "dd7412ceccdcbf2c9bcac0b09500a0a0",
+    "type": "port_visit",
+    "position": {
+     "lat": 18.3307,
+     "lon": -64.9263
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "33180"
+     ],
+     "rfmo": [
+      "ICCAT"
+     ],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "33180"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -64.92627692176391,
+     18.33066664531647,
+     -64.92135414176312,
+     18.33535095409634
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "ba2bc1825-5d24-6be3-8b57-460fe55fc9ae",
+     "name": "T16 EURODAM",
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "8c911f5173fb8e475b8e30b0fd999cc2",
+     "confidence": "2",
+     "durationHrs": 729.4566666666667,
+     "startAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "endAnchorage": {
+      "anchorageId": "8c051a89",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33535095409634,
+      "lon": -64.92135414176312,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     }
+    }
+   },
+   {
+    "start": "2024-11-22T19:36:20.000Z",
+    "end": "2025-02-02T00:40:04.000Z",
+    "id": "0aa3f97c3c697df94f1e943329823178",
+    "type": "port_visit",
+    "position": {
+     "lat": 18.4601,
+     "lon": -77.937
+    },
+    "regions": {
+     "mpa": [
+      "203",
+      "555744903"
+     ],
+     "eez": [
+      "8459"
+     ],
+     "rfmo": [
+      "CRFM"
+     ],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -77.93161945338355,
+     18.47521056801191,
+     -77.93633208228886,
+     18.46235435921673
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "ba2bc1825-5d24-6be3-8b57-460fe55fc9ae",
+     "name": "T16 EURODAM",
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "0b07a2a7c67d56feabe876eafd2d7ae3",
+     "confidence": "2",
+     "durationHrs": 1709.0622222222223,
+     "startAnchorage": {
+      "anchorageId": "8ed98083",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "JAM",
+      "id": "jam-montegobay",
+      "lat": 18.47521056801191,
+      "lon": -77.93161945338355,
+      "name": "MONTEGO BAY",
+      "topDestination": "MONTEGO BAY"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8ed9807b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "JAM",
+      "id": "jam-montegobay",
+      "lat": 18.460068320167306,
+      "lon": -77.93699593397946,
+      "name": "MONTEGO BAY",
+      "topDestination": "MONTEGO BAY"
+     },
+     "endAnchorage": {
+      "anchorageId": "8ed9807d",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "JAM",
+      "id": "jam-montegobay",
+      "lat": 18.46235435921673,
+      "lon": -77.93633208228886,
+      "name": "MONTEGO BAY",
+      "topDestination": "MONTEGO BAY"
+     }
+    }
+   },
+   {
+    "start": "2024-11-09T19:18:37.000Z",
+    "end": "2025-10-09T03:10:23.000Z",
+    "id": "ab274be47ea4f99abff0ecdff5608757",
+    "type": "port_visit",
+    "position": {
+     "lat": 34.397,
+     "lon": -119.6824
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IATTC",
+      "PICES",
+      "ACAP",
+      "IWC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -119.68241091800563,
+     34.39702064439569,
+     -119.68241091800563,
+     34.39702064439569
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "2171a79f6-647d-53d3-38bf-24e2be2c01ee",
+     "name": "EURODAM T11",
+     "ssvid": "245206011",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "fb3e18acf6970a66905086694d883538",
+     "confidence": "2",
+     "durationHrs": 7999.862777777777,
+     "startAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     },
+     "endAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     }
+    }
+   },
+   {
+    "start": "2024-10-17T20:56:46.000Z",
+    "end": "2024-11-09T14:25:07.000Z",
+    "id": "914788dfe44f866693a0c48a7aceab91",
+    "type": "port_visit",
+    "position": {
+     "lat": 18.3307,
+     "lon": -64.9263
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "33180"
+     ],
+     "rfmo": [
+      "ICCAT"
+     ],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "33180"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -64.92627692176391,
+     18.33066664531647,
+     -64.92627692176391,
+     18.33066664531647
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "2171a79f6-647d-53d3-38bf-24e2be2c01ee",
+     "name": "EURODAM T11",
+     "ssvid": "245206011",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "910fb65ad9aa8d6f204afd43c7689dee",
+     "confidence": "2",
+     "durationHrs": 545.4725,
+     "startAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "endAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     }
+    }
+   },
+   {
+    "start": "2024-09-04T22:35:45.000Z",
+    "end": "2025-10-09T03:15:35.000Z",
+    "id": "37552214a4ca058eb6ff21288f2be8e2",
+    "type": "port_visit",
+    "position": {
+     "lat": 34.397,
+     "lon": -119.6824
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "ACAP",
+      "IWC",
+      "IATTC"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -119.68157259038134,
+     34.408477381924,
+     -119.68241091800563,
+     34.39702064439569
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "c1f07ae21-1845-5b50-a595-fe1f8e12570d",
+     "name": "EURODAM T12",
+     "ssvid": "245206012",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "a162cef24b4927095dfef1d6b497e581",
+     "confidence": "2",
+     "durationHrs": 9580.663888888888,
+     "startAnchorage": {
+      "anchorageId": "80e913ed",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.408477381924,
+      "lon": -119.68157259038134,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTABARBRA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     },
+     "endAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     }
+    }
+   },
+   {
+    "start": "2024-05-14T06:43:40.000Z",
+    "end": "2024-11-22T15:36:20.000Z",
+    "id": "f620db7e52583d69a2e6839a4c835a8b",
+    "type": "port_visit",
+    "position": {
+     "lat": 12.1515,
+     "lon": -68.2785
+    },
+    "regions": {
+     "mpa": [
+      "230",
+      "555703527"
+     ],
+     "eez": [
+      "26520"
+     ],
+     "rfmo": [],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "26520"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -68.27851262476476,
+     12.151485566582814,
+     -68.27851262476476,
+     12.151485566582814
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "ba2bc1825-5d24-6be3-8b57-460fe55fc9ae",
+     "name": "T16 EURODAM",
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "88af7d711dec26d384a582d2041932a4",
+     "confidence": "2",
+     "durationHrs": 4616.877777777778,
+     "startAnchorage": {
+      "anchorageId": "8e831bb1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "BES",
+      "id": "bes-kralendijk",
+      "lat": 12.151485566582814,
+      "lon": -68.27851262476476,
+      "name": "KRALENDIJK",
+      "topDestination": "ORCA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8e831bb1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "BES",
+      "id": "bes-kralendijk",
+      "lat": 12.151485566582814,
+      "lon": -68.27851262476476,
+      "name": "KRALENDIJK",
+      "topDestination": "ORCA"
+     },
+     "endAnchorage": {
+      "anchorageId": "8e831bb1",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "BES",
+      "id": "bes-kralendijk",
+      "lat": 12.151485566582814,
+      "lon": -68.27851262476476,
+      "name": "KRALENDIJK",
+      "topDestination": "ORCA"
+     }
+    }
+   },
+   {
+    "start": "2024-03-03T19:05:16.000Z",
+    "end": "2024-10-17T16:11:18.000Z",
+    "id": "7a0edc074cbb43813abcd17a8b7649ca",
+    "type": "port_visit",
+    "position": {
+     "lat": 13.9234,
+     "lon": -90.7945
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8430"
+     ],
+     "rfmo": [
+      "IATTC",
+      "IWC",
+      "ACAP",
+      "OSPESCA"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -90.79445714204923,
+     13.923370658473527,
+     -90.79445714204923,
+     13.923370658473527
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "2171a79f6-647d-53d3-38bf-24e2be2c01ee",
+     "name": "EURODAM T11",
+     "ssvid": "245206011",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "531dbd5b4b89c6fa3a4d146bb16544e1",
+     "confidence": "2",
+     "durationHrs": 5469.100555555556,
+     "startAnchorage": {
+      "anchorageId": "8588ecd7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "GTM",
+      "id": "gtm-puertoquetzal",
+      "lat": 13.923370658473527,
+      "lon": -90.79445714204923,
+      "name": "PUERTO QUETZAL",
+      "topDestination": "PUERTO QUETZAL"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8588ecd7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "GTM",
+      "id": "gtm-puertoquetzal",
+      "lat": 13.923370658473527,
+      "lon": -90.79445714204923,
+      "name": "PUERTO QUETZAL",
+      "topDestination": "PUERTO QUETZAL"
+     },
+     "endAnchorage": {
+      "anchorageId": "8588ecd7",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "GTM",
+      "id": "gtm-puertoquetzal",
+      "lat": 13.923370658473527,
+      "lon": -90.79445714204923,
+      "name": "PUERTO QUETZAL",
+      "topDestination": "PUERTO QUETZAL"
+     }
+    }
+   },
+   {
+    "start": "2024-03-01T01:15:12.000Z",
+    "end": "2026-04-21T23:39:53.000Z",
+    "id": "2cd809197bbb5c3c961e5c6a91f3e116",
+    "type": "port_visit",
+    "position": {
+     "lat": 33.3464,
+     "lon": -118.3224
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -118.32236349402827,
+     33.34639519382489,
+     -118.32171757809593,
+     33.351020352944104
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "a57e79646-6153-e0ea-5495-c398ce7a3d49",
+     "name": "T14 EURODAM",
+     "ssvid": "245206014",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "ab13aa05c4efe9fcc72adf41030e52c3",
+     "confidence": "2",
+     "durationHrs": 18766.41138888889,
+     "startAnchorage": {
+      "anchorageId": "80dd72a1",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.34639519382489,
+      "lon": -118.32236349402827,
+      "name": "AVALON",
+      "topDestination": "CATALINA LONG BEACH"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80dd72a1",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.34639519382489,
+      "lon": -118.32236349402827,
+      "name": "AVALON",
+      "topDestination": "CATALINA LONG BEACH"
+     },
+     "endAnchorage": {
+      "anchorageId": "80dd6d5f",
+      "atDock": true,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-avalon",
+      "lat": 33.351020352944104,
+      "lon": -118.32171757809593,
+      "name": "AVALON",
+      "topDestination": "AVALON"
+     }
+    }
+   },
+   {
+    "start": "2024-02-29T18:05:05.000Z",
+    "end": "2025-10-08T23:24:00.000Z",
+    "id": "26dbd9d9997d8a6797d6109ccb367e0a",
+    "type": "port_visit",
+    "position": {
+     "lat": 34.4081,
+     "lon": -119.6915
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "PICES",
+      "IWC",
+      "IATTC",
+      "ACAP"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -119.68241091800563,
+     34.39702064439569,
+     -119.68241091800563,
+     34.39702064439569
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "eb96dc170-01d0-8129-64b9-54f0990b9c65",
+     "name": "T13 EURODAM",
+     "ssvid": "245206013",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "0eb02a45da8d1fb1fbc32fa74b6139fa",
+     "confidence": "2",
+     "durationHrs": 14093.315277777778,
+     "startAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80e9138b",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.40805969999597,
+      "lon": -119.6915414333587,
+      "name": "SANTA BARBARA",
+      "topDestination": "KANESTRAUM"
+     },
+     "endAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     }
+    }
+   },
+   {
+    "start": "2020-06-05T04:59:34.000Z",
+    "end": "2025-11-13T16:22:02.000Z",
+    "id": "e0b404ffaa5aec674cba50e25c62e833",
+    "type": "port_visit",
+    "position": {
+     "lat": 18.3307,
+     "lon": -64.9263
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "33180"
+     ],
+     "rfmo": [
+      "ICCAT"
+     ],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [
+      "33180"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -64.92135414176312,
+     18.33535095409634,
+     -64.92135414176312,
+     18.33535095409634
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "06d5684b8-8070-75c0-774c-d7cdd65c51a9",
+     "name": null,
+     "ssvid": "245206016",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "94841fca33d4213decb0ce5c195ff7e2",
+     "confidence": "2",
+     "durationHrs": 47699.374444444446,
+     "startAnchorage": {
+      "anchorageId": "8c051a89",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33535095409634,
+      "lon": -64.92135414176312,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8c051a61",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33066664531647,
+      "lon": -64.92627692176391,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     },
+     "endAnchorage": {
+      "anchorageId": "8c051a89",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "VIR",
+      "id": "vir-stthomas",
+      "lat": 18.33535095409634,
+      "lon": -64.92135414176312,
+      "name": "ST THOMAS",
+      "topDestination": "ST THOMAS"
+     }
+    }
+   },
+   {
+    "start": "2018-12-26T21:48:40.000Z",
+    "end": "2025-10-29T19:12:27.000Z",
+    "id": "24aee28fc0c98cf31141b37f9b883d4c",
+    "type": "port_visit",
+    "position": {
+     "lat": 18.4627,
+     "lon": -66.1098
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "33179"
+     ],
+     "rfmo": [],
+     "fao": [
+      "31"
+     ],
+     "majorFao": [
+      "31"
+     ],
+     "eez12Nm": [],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -66.10984226110489,
+     18.462679159317414,
+     -66.10984226110489,
+     18.462679159317414
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 0,
+     "endDistanceFromShoreKm": 0,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "309b5a0a6-692d-1107-1204-2cd604eea554",
+     "name": null,
+     "ssvid": "245206015",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "366cd6ad0228041e214403e57dab5ac2",
+     "confidence": "2",
+     "durationHrs": 59973.39638888889,
+     "startAnchorage": {
+      "anchorageId": "8c036ec5",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "PRI",
+      "id": "pri-sanjuan",
+      "lat": 18.462679159317414,
+      "lon": -66.10984226110489,
+      "name": "SAN JUAN",
+      "topDestination": "SAN JUAN"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "8c036ec5",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "PRI",
+      "id": "pri-sanjuan",
+      "lat": 18.462679159317414,
+      "lon": -66.10984226110489,
+      "name": "SAN JUAN",
+      "topDestination": "SAN JUAN"
+     },
+     "endAnchorage": {
+      "anchorageId": "8c036ec5",
+      "atDock": true,
+      "distanceFromShoreKm": "0",
+      "flag": "PRI",
+      "id": "pri-sanjuan",
+      "lat": 18.462679159317414,
+      "lon": -66.10984226110489,
+      "name": "SAN JUAN",
+      "topDestination": "SAN JUAN"
+     }
+    }
+   },
+   {
+    "start": "2016-06-13T14:57:33.000Z",
+    "end": "2025-04-09T12:55:07.000Z",
+    "id": "1c9821a75b0ae1f9e31bad8ac919fa17",
+    "type": "port_visit",
+    "position": {
+     "lat": 34.4085,
+     "lon": -119.6816
+    },
+    "regions": {
+     "mpa": [],
+     "eez": [
+      "8456"
+     ],
+     "rfmo": [
+      "IWC",
+      "IATTC",
+      "ACAP",
+      "PICES"
+     ],
+     "fao": [
+      "77"
+     ],
+     "majorFao": [
+      "77"
+     ],
+     "eez12Nm": [
+      "8456"
+     ],
+     "highSeas": [],
+     "mpaNoTakePartial": [],
+     "mpaNoTake": []
+    },
+    "boundingBox": [
+     -119.68241091800563,
+     34.39702064439569,
+     -119.68157259038134,
+     34.408477381924
+    ],
+    "distances": {
+     "startDistanceFromShoreKm": 2,
+     "endDistanceFromShoreKm": 2,
+     "startDistanceFromPortKm": 0,
+     "endDistanceFromPortKm": 0
+    },
+    "vessel": {
+     "id": "847e83389-9011-175c-8ebb-de3766d570ad",
+     "name": null,
+     "ssvid": "245206013",
+     "flag": "NLD",
+     "type": "passenger",
+     "nextPort": null
+    },
+    "port_visit": {
+     "visitId": "868bb74b4572397935dac2becdf6a281",
+     "confidence": "3",
+     "durationHrs": 77325.95944444444,
+     "startAnchorage": {
+      "anchorageId": "80e913e5",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.39702064439569,
+      "lon": -119.68241091800563,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTA BARBARA"
+     },
+     "intermediateAnchorage": {
+      "anchorageId": "80e913ed",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.408477381924,
+      "lon": -119.68157259038134,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTABARBRA"
+     },
+     "endAnchorage": {
+      "anchorageId": "80e913ed",
+      "atDock": false,
+      "distanceFromShoreKm": "2",
+      "flag": "USA",
+      "id": "usa-santabarbara",
+      "lat": 34.408477381924,
+      "lon": -119.68157259038134,
+      "name": "SANTA BARBARA",
+      "topDestination": "SANTABARBRA"
+     }
+    }
+   }
+  ]
+ }
+}

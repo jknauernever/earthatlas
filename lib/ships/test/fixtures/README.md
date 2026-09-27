@@ -50,3 +50,24 @@ Record more live responses with `npm run ships:import-gfw -- --save <dir> …`.
 | `names-live-2026-09-26.json` | **Real** rows: 4 Washington NRC reports from `CY26.xlsx` (BLACKFISH pleasure craft 1472632, COASTAL PROGRESS, FORTRESS, MATSON KODIAK) as `import-incidents-names.mjs` stores them (CALLS responsible-party columns dropped, original row hash kept), and 4 NOAA IncidentNews CSV rows (MOLLUSK 11081, NEW ST. JOSEPH 11195, recreational CAIRDEAS 11065, NORTH AMERICAN 10785). |
 
 `incidents-db.test.js` also builds **SYNTHETIC** events (source `test-incidents`, keys `T-…`, names `TEST …`) for identifier cases the real fixtures do not cover (IMO / official number / MMSI inside and outside our observed window, conflicting identifiers), plus one Ecology row with a changed case name. Each is marked in the test name.
+
+## Port visits (docs/GFW_ACTIVITY_API.md, "Port visits for one vessel")
+
+All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]=public-global-port-visits-events:latest&vessels[i]=…`. Each file keeps the request, status, response headers and `metadata / total / limit / offset / nextOffset` as received; `entries` is a **verbatim subset** of the response (the file's `_label` says which).
+
+| File | What it is |
+|---|---|
+| `gfw-live-portvisits-american-endurance-2026-09-26.json` | AMERICAN ENDURANCE (`19004d162-…`, MMSI 369040000), 2 years: the newest 12 of 160 visits (SELBY, PORT ANGELES, a `name: null` anchorage). |
+| `gfw-live-portvisits-eurodam-2026-09-26.json` | EURODAM, one request with all 15 GFW identity ids: the newest 8 of the ship's own 467 visits (identity `6d8a6e1eb-…`, MMSI 245206000; the newest has confidence `"3"` and null names) plus **all 17** visits of its 14 tender/lifeboat identities (MMSIs 245206011–016, 545–77,326 h). The regression case for `ownIdentities`. |
+| `gfw-live-portvisits-linnea-rose-2026-09-26.json` | LINNEA ROSE (`323723207-…`), the newest 10 of 58 visits. |
+| `gfw-live-portvisits-spirit-of-vancouver-island-2026-09-26.json` | SPIRIT OF VANCOUVER ISLAND (BC Ferries), the newest 9 of 4,550 (Swartz Bay = unnamed `CAN-279`, TSAWWASSEN). |
+
+`portVisits.test.js` / `portVisits-db.test.js` also edit copies of these events (zone-less timestamp, end before start, changed confidence) and use a few `TEST-…` identities; each such case is marked **SYNTHETIC** in the test name. The DB test replays the recorded entries through a fake client (filter by id + date overlap, oldest first, limit/offset), never GFW itself.
+
+## Ports reference (docs/PORTS_SOURCES.md, "Step 2")
+
+| File | What it is |
+|---|---|
+| `ports-live-2026-09-26.json` | **Real** verbatim extracts of the four downloads made 2026-09-26 (2026-09-27 UTC) by `scripts/ships/import-ports.mjs --fetch`: 15 WPI JSON port objects (Salish Sea, Alaska, SF Bay, Port Everglades), 7 GeoNames `countryInfo.txt` lines + header, 8 UN/LOCODE 2025-1 CSV lines, 11 `anchorage_overrides.csv` rows + header (incl. repeated cells and one mangled s2id), each with its download `.meta.json`; plus one GFW port-visit event (usa-homer) exactly as stored by the step-1 fetch. |
+
+`ports.test.js` marks its few edited cases SYNTHETIC in the test name.

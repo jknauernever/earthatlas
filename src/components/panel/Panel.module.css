@@ -1,0 +1,176 @@
+/* EarthAtlas shared left-panel kit (DatasetRow, LegendTurndown, PanelGroup, SourcesFooter).
+   Look = the /ships and /inmotion dark glass panel: white names, muted descriptors, cyan accents,
+   hue-lit icon chips. Sites keep their own panel shell; these style only what sits inside it. */
+
+/* ─── Group heading ──────────────────────────────────────────────────────── */
+.group + .group { margin-top: 12px; }
+.groupHead {
+  margin: 0;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 4px 0 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Dataset row ────────────────────────────────────────────────────────── */
+.dataset + .dataset { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.dataset { padding-bottom: 1px; }
+.row { display: flex; align-items: center; gap: 2px; }
+.toggle {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 6px 7px 4px; margin: 0 0 0 -4px; border-radius: 8px;
+  border: 0; background: transparent; color: inherit; font: inherit; text-align: left;
+  cursor: pointer; user-select: none;
+}
+.toggle:hover { background: rgba(255, 255, 255, 0.05); }
+.toggle:focus-visible, .iconBtn:focus-visible, .subToggle:focus-visible, .sourcesBtn:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.6); outline-offset: -2px;
+}
+.toggle:disabled { cursor: default; opacity: 0.6; }
+.icon {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px; display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.iconOn { border-color: var(--hue-border); background: var(--hue-bg); color: var(--hue); }
+.text { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex: 1; }
+.name { font-size: 13.5px; font-weight: 600; color: rgba(255, 255, 255, 0.72); line-height: 1.3; white-space: nowrap; }
+.datasetOn .name { color: #fff; }
+.sub {
+  font-size: 11px; color: rgba(255, 255, 255, 0.5); line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+/* Small on/off switch at the end of the name, so "on" never depends on colour alone. */
+.switch {
+  position: relative; flex: none; width: 24px; height: 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.12s, border-color 0.12s;
+}
+.switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6); transition: transform 0.12s, background 0.12s;
+}
+.switchOn { background: var(--hue-bg, rgba(34, 211, 238, 0.13)); border-color: var(--hue-border, rgba(34, 211, 238, 0.6)); }
+.switchOn::after { transform: translateX(10px); background: var(--hue, #22d3ee); }
+
+/* "i" and chevron buttons: same box as the cards' × close and fold buttons (26 px, round). */
+.iconBtn {
+  width: 26px; height: 26px; flex: none; border-radius: 50%; padding: 0;
+  border: 0; background: transparent; color: rgba(243, 247, 238, 0.6); cursor: pointer;
+  display: grid; place-items: center;
+}
+.iconBtn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.iconBtnActive { color: #67e8f9; background: rgba(34, 211, 238, 0.1); }
+.iconBtnSpacer { width: 26px; height: 26px; flex: none; }
+
+/* Turndown bodies: indented to the name (28 px icon + 10 px gap). */
+.controls { margin: 2px 0 10px 38px; }
+.info {
+  margin: 2px 0 10px 38px;
+  font-size: 11px; line-height: 1.5; color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+.info a { color: rgba(120, 200, 255, 0.9); text-decoration: underline; text-underline-offset: 2px; }
+.info a:hover { color: rgba(160, 220, 255, 1); }
+.info strong { color: #fff; }
+
+/* ─── Legend turndown ────────────────────────────────────────────────────── */
+.legend { margin: 0 0 6px 38px; }
+.subToggle {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 0; margin: 0;
+  border: 0; background: none; cursor: pointer; border-radius: 6px;
+  font: inherit; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+}
+.subToggle:hover { color: #fff; }
+.subChevron { display: inline-grid; width: 16px; height: 16px; place-items: center; }
+/* Two columns: swatches (as wide as the widest, e.g. a "Registry" chip) and labels, so every label starts on one line. */
+.legendBody {
+  display: grid; grid-template-columns: max-content 1fr; column-gap: 10px; row-gap: 6px; align-items: center;
+  padding: 4px 0 8px; font-size: 11px; color: rgba(255, 255, 255, 0.78); line-height: 1.35;
+}
+.legendRow { display: contents; }
+.legendBody > :not(.legendRow) { grid-column: 1 / -1; } /* notes span both columns */
+.legendSwatch { min-width: 18px; display: inline-flex; justify-content: center; align-items: center; }
+
+/* ─── Footer: sources rollup + credit (from /shiptraffic's .methodology / .builtBy) ─ */
+.footer { margin-top: 14px; }
+.sourcesBtn {
+  display: flex; align-items: center; gap: 6px; width: 100%; margin: 0; padding: 9px 0 0;
+  border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent; color: rgba(103, 232, 249, 0.95);
+  font: inherit; font-size: 11.5px; text-align: left; cursor: pointer;
+}
+.sourcesBtn:hover { color: #a5f3fc; text-decoration: underline; text-underline-offset: 2px; }
+.builtBy {
+  margin-top: 10px; padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.45);
+}
+.builtByLink { color: rgba(120, 200, 255, 0.85); text-decoration: underline; text-underline-offset: 2px; }
+.builtByLink:hover { color: rgba(160, 220, 255, 1); }
+
+/* ─── Sources modal ──────────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.modal {
+  background: #0f1726; color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px; width: 100%; max-width: 680px; max-height: 90vh;
+  overflow-y: auto; padding: 28px 32px 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;
+}
+.modalClose {
+  position: absolute; top: 12px; right: 12px;
+  width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: transparent; color: rgba(255, 255, 255, 0.6);
+  cursor: pointer; padding: 0; display: grid; place-items: center;
+}
+.modalClose:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.modalClose:focus-visible { outline: 2px solid rgba(103, 232, 249, 0.6); }
+.modalTitle { margin: 0 40px 4px 0; font-size: 21px; font-weight: 600; color: #fff; }
+.modalIntro { font-size: 13.5px; line-height: 1.6; color: rgba(255, 255, 255, 0.8); margin-top: 8px; }
+.modalSection { margin-top: 20px; }
+.modalSection h3 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em; color: #67e8f9;
+}
+.modalText { font-size: 13px; line-height: 1.6; color: rgba(255, 255, 255, 0.82); }
+.modalText p { margin: 0 0 8px; }
+.modal a { color: #7cc4ff; text-decoration: none; }
+.modal a:hover { text-decoration: underline; color: #a8d8ff; }
+.sourceList { list-style: none; margin: 0; padding: 0; }
+.sourceItem { padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.sourceName { font-size: 13.5px; font-weight: 600; color: #fff; line-height: 1.35; }
+.sourcePublisher { font-weight: 400; color: rgba(255, 255, 255, 0.55); font-size: 12px; }
+.sourceMeta { margin-top: 2px; }
+.sourceLicence {
+  display: inline-block; font-size: 11px; line-height: 1.4; color: #bef264;
+  background: rgba(190, 242, 100, 0.08); border: 1px solid rgba(190, 242, 100, 0.22);
+  border-radius: 5px; padding: 1px 6px;
+}
+.sourceLicence a { color: inherit; }
+.sourceMethod { font-size: 12.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.75); margin-top: 4px; }
+.sourceCitation { font-size: 12px; line-height: 1.5; color: #fde68a; margin-top: 3px; }
+.modalFoot {
+  margin-top: 20px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px; color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 768px) {
+  .toggle { padding-top: 9px; padding-bottom: 9px; }
+  .iconBtn, .iconBtnSpacer { width: 34px; height: 34px; }
+  .modalBackdrop { padding: 10px; align-items: flex-end; }
+  .modal { padding: 22px 18px 18px; max-height: 88vh; }
+  .modalTitle { font-size: 18px; }
+}

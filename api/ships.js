@@ -15,6 +15,15 @@
 //
 // Exceptions to "no third-party calls" (Josh, 2026-09-26): op=lookup / op=save (click lookups) and
 // op=ports call GFW server-side with GFW_API_TOKEN; the token never reaches the browser.
+// op=photos (Josh, 2026-09-27) calls Wikimedia Commons (no key) for one ship's photos:
+//   /api/ships?op=photos&id=<uuid> → { status, images } (docs/COMMONS_PHOTOS.md). Only a vessel in our database
+//   with exactly one registry IMO, no photo yet and no Commons check in the last 30 days reaches Commons.
+// Ports on the map + port card (Josh, 2026-09-27; lib/ships/portCard.js, docs/GFW_ACTIVITY_API.md "Port visits by port"):
+//   /api/ships?op=portsLayer                                → GeoJSON of our ports (WPI + named GFW ports), cached a day
+//   /api/ships?op=port&id=<port id>&from=YYYY-MM&to=YYYY-MM[&m=YYYY-MM&limit=&offset=] → the port card
+//        GFW (server-side token) and IMF PortWatch are asked only for ports in ships.ports, only when the fetch log
+//        says the stored answer is stale, and within a daily GFW call budget.
+//   POST /api/ships?op=portShip&gfw=<GFW vessel id>        → saves a listed ship's GFW identity (only ids in stored visits)
 //
 // Rules: src/ships/CLAUDE.md.
 
@@ -26,6 +35,9 @@ import { searchVessels, vesselKinds, getVessel, getRecord, getIncidentRecord, ve
 import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
 import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
 import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
+import { commonsPlan, fetchImo, ingestImo, vesselImages } from '../lib/ships/ingestCommons.js'
+import { commonsClient } from '../scripts/ships/commonsClient.js'
+import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -146,6 +158,56 @@ export default async function handler(req, res) {
       const body = { vesselId: id, window: win, ...out, fetch, source: source ?? null, nameSources }
       return send(res, 200, body, fetch.status === 'failed' || fetch.status === 'stale_no_gfw' ? 'no-store'
         : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    if (op === 'photos') {
+      const id = p.get('id') || ''
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return send(res, 400, { error: 'id must be a vessel uuid' })
+      const plan = await commonsPlan(q, S, id)
+      if (plan.status === 'not_found') return send(res, 404, { error: 'vessel not found' })
+      let status = plan.status
+      if (plan.status === 'fetch') {
+        const pool = shipsPool()
+        try {
+          const r = await ingestImo(pool, S, await fetchImo(commonsClient({ minIntervalMs: 0, log: () => {} }), plan.imo, { maxFiles: 50 }))
+          status = r.resolution.vesselId === id ? 'fetched' : r.exists ? `fetched_not_linked:${r.resolution.reason}` : 'fetched_no_category'
+        } catch (e) {
+          console.error('ships photos fetch', id, e)
+          return send(res, 200, { vesselId: id, status: 'failed', images: await vesselImages(q, S, id) }, 'no-store')
+        } finally { await pool.end() }
+      }
+      return send(res, 200, { vesselId: id, status, imo: plan.imo ?? null, images: await vesselImages(q, S, id) },
+        'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    if (op === 'portsLayer') return send(res, 200, await portsLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    if (op === 'port') {
+      const win = parseCardWindow(p.get('from'), p.get('to'), p.get('m'))
+      if (win.error) return send(res, 400, { error: win.error })
+      const id = p.get('id') || ''
+      if (!/^\d{1,12}$/.test(id)) return send(res, 400, { error: 'id must be a port id' })
+      let fetch = { status: 'read_only' }
+      if (p.get('fetch') !== '0') {
+        const pool = shipsPool()
+        const UA = { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EarthAtlas-ships/0.1)' } }
+        try {
+          fetch = await ensurePortCard(pool, S, id, { win, gfw: gfwFor(),
+            fetchJson: async (u) => { const r = await globalThis.fetch(u, { ...UA, signal: AbortSignal.timeout(30000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() } })
+        } catch (e) { console.error('ships port fetch', id, e); fetch = { status: 'failed' } } finally { await pool.end() }
+        if (fetch.status === 'not_found') return send(res, 404, { error: 'port not found' })
+      }
+      const card = await readPortCard(q, S, id, { win, limit: p.get('limit'), offset: p.get('offset') })
+      if (!card) return send(res, 404, { error: 'port not found' })
+      const sources = await q(`SELECT id, name, publisher, homepage_url, license, license_url, commercial_use, attribution_text, attribution_url
+                                 FROM ${S}.sources WHERE id = ANY($1)`, [[...PORT_CARD_SOURCE_IDS, ...NAME_SOURCE_IDS]])
+      const partial = ['discover', 'stats', 'events', 'portwatch'].some((k) => ['failed', 'budget', 'no_gfw'].includes(fetch[k])) || fetch.status === 'failed'
+      return send(res, 200, { ...card, fetch, sources }, partial ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    if (op === 'portShip') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      const pool = shipsPool()
+      try {
+        const r = await savePortShip(pool, S, p.get('gfw') || '', gfwFor())
+        return send(res, r.vesselId ? 200 : r.status === 'bad_id' ? 400 : 404, r, 'no-store')
+      } finally { await pool.end() }
     }
     return send(res, 400, { error: 'unknown op' })
   } catch (e) {

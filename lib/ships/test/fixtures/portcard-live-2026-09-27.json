@@ -1,0 +1,5310 @@
+{
+ "recorded": "2026-09-27",
+ "note": "REAL live responses, recorded 2026-09-27 by the port-card study. GFW entries trimmed (see trimmed.kept / trimmed.received); PortWatch responses verbatim.",
+ "gfw_port_events_anacortes_2026_06": {
+  "url": "https://gateway.api.globalfishingwatch.org/v3/events?datasets%5B0%5D=public-global-port-visits-events%3Alatest&port-ids%5B0%5D=usa-anacortes&start-date=2026-06-01&end-date=2026-07-01&time-filter-mode=START-DATE&limit=1000&offset=0",
+  "datasets": "public-global-port-visits-events:v4.0",
+  "body": {
+   "metadata": {
+    "datasets": [
+     "public-global-port-visits-events:v4.0"
+    ],
+    "dateRange": {
+     "from": "2026-06-01",
+     "to": "2026-07-01"
+    }
+   },
+   "limit": 1000,
+   "offset": 0,
+   "nextOffset": null,
+   "total": 180,
+   "entries": [
+    {
+     "start": "2026-06-01T14:01:38.000Z",
+     "end": "2026-06-18T19:36:38.000Z",
+     "id": "8f4a079de93119876951dc5babdbe949",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5027,
+      "lon": -122.6046
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60464949498534,
+      48.5027037465652,
+      -122.51241434877878,
+      48.38179503625043
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "96b37fb3e-e26e-1dca-c1c1-7714cea54fe2",
+      "name": "LIVING OUR DREAM",
+      "ssvid": "338209006",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "2f654cf499e325ce44437960d3153acf",
+      "confidence": "4",
+      "durationHrs": 413.5833333333333,
+      "startAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485644d",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-345",
+       "lat": 48.38179503625043,
+       "lon": -122.51241434877878,
+       "name": null,
+       "topDestination": "AO"
+      }
+     }
+    },
+    {
+     "start": "2026-06-01T17:06:41.000Z",
+     "end": "2026-06-02T16:48:45.000Z",
+     "id": "b9c77dfc9abd35ab94189195b486688b",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "ACAP",
+       "PICES",
+       "IPHC",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.51241434877878,
+      48.38179503625043
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "4be89de54-460c-0edd-867f-a33994610329",
+      "name": "OUT OF OFFICE",
+      "ssvid": "368377520",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "a708c53df7bef089d58ec1dc4dbe6585",
+      "confidence": "4",
+      "durationHrs": 23.70111111111111,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485644d",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-345",
+       "lat": 48.38179503625043,
+       "lon": -122.51241434877878,
+       "name": null,
+       "topDestination": "AO"
+      }
+     }
+    },
+    {
+     "start": "2026-06-01T18:39:29.000Z",
+     "end": "2026-06-01T21:44:45.000Z",
+     "id": "88a5ac93f4f3aeccd993993d21d43674",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.4967,
+      "lon": -122.6006
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.6005741341157,
+      48.49673629802397,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "3795f5bdd-d486-9fbf-0605-61de1d5ad473",
+      "name": "KELP BED",
+      "ssvid": "368385330",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "b948f3451c176bb21ab1fed18fb12956",
+      "confidence": "4",
+      "durationHrs": 3.0877777777777777,
+      "startAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    },
+    {
+     "start": "2026-06-01T18:49:27.000Z",
+     "end": "2026-06-12T19:42:00.000Z",
+     "id": "45d8e5f7fda9f93a8f2a482868725ab9",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "IPHC",
+       "ACAP",
+       "PICES",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "0de7435f0-04e2-a6a3-c2bc-df8a04edf44e",
+      "name": "INTERMEZZO",
+      "ssvid": "368464910",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "a595f243fafac92d4d04009578563527",
+      "confidence": "4",
+      "durationHrs": 264.87583333333333,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    },
+    {
+     "start": "2026-06-01T21:18:47.000Z",
+     "end": "2026-06-01T22:02:34.000Z",
+     "id": "6782039e3ead76c4187079c25494d9ef",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5126,
+      "lon": -122.6078
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IPHC",
+       "IATTC",
+       "IWC",
+       "ACAP",
+       "PICES"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60777093170209,
+      48.51259570351124,
+      -122.67813732407278,
+      48.488597585191556
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "5b6aea217-7c03-7fd7-1793-8c3a049a74e9",
+      "name": "BIG BLUE",
+      "ssvid": "368367570",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "dc7b3b83d71ce20fca94e4b8b6d6dfa9",
+      "confidence": "4",
+      "durationHrs": 0.7297222222222223,
+      "startAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857967",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.488597585191556,
+       "lon": -122.67813732407278,
+       "name": null,
+       "topDestination": "AI"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T02:45:38.000Z",
+     "end": "2026-06-08T21:14:48.000Z",
+     "id": "ebc2995f1d71c2aa4483acc6a76450a8",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.4978,
+      "lon": -122.6082
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60815284003746,
+      48.497758575750176,
+      -122.60815284003746,
+      48.497758575750176
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "111ad915a-aa95-f5b1-0f1a-25eaeec2f801",
+      "name": "MAINE STAY",
+      "ssvid": "368472610",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "4b2eb6a665f94f51328c4bd0228fe019",
+      "confidence": "3",
+      "durationHrs": 162.48611111111111,
+      "startAnchorage": {
+       "anchorageId": "54857a1f",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.497758575750176,
+       "lon": -122.60815284003746,
+       "name": "ANACORTES",
+       "topDestination": "SPAIN"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857a1f",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.497758575750176,
+       "lon": -122.60815284003746,
+       "name": "ANACORTES",
+       "topDestination": "SPAIN"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857a1f",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.497758575750176,
+       "lon": -122.60815284003746,
+       "name": "ANACORTES",
+       "topDestination": "SPAIN"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T11:25:08.000Z",
+     "end": "2026-08-07T16:05:38.000Z",
+     "id": "f4b8c01c21832ce56210fe621ed674e7",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.4967,
+      "lon": -122.6006
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.6005741341157,
+      48.49673629802397,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "e1cdc42bf-f09d-df99-5463-74e78dd245f6",
+      "name": "MERCY MAE",
+      "ssvid": "368281980",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "c1a63cd3487771bbf5fe6347b4c952ff",
+      "confidence": "4",
+      "durationHrs": 1588.675,
+      "startAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T15:39:08.000Z",
+     "end": "2026-06-02T18:25:53.000Z",
+     "id": "ef2f71804139a25518fd9a2781f24207",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5126,
+      "lon": -122.6078
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "IPHC",
+       "ACAP",
+       "PICES",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60777093170209,
+      48.51259570351124,
+      -122.60246856921114,
+      48.59524309973742
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 1,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "d4ac05237-793a-5ecd-feed-1a0ce47da9fb",
+      "name": "LINTUKOTO",
+      "ssvid": "368361320",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "e673a5cd4904fdb03958af0ab508cc4b",
+      "confidence": "4",
+      "durationHrs": 2.779166666666667,
+      "startAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54859d89",
+       "atDock": false,
+       "distanceFromShoreKm": "1",
+       "flag": "USA",
+       "id": "usa-usa-1547",
+       "lat": 48.59524309973742,
+       "lon": -122.60246856921114,
+       "name": "USA-1547",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T15:48:43.000Z",
+     "end": "2026-06-22T17:25:15.000Z",
+     "id": "043ed911440da28b6906d241eefbeba2",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5037,
+      "lon": -122.6027
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60273631226738,
+      48.50373003767472,
+      -122.60273631226738,
+      48.50373003767472
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "e58bafabe-eac3-f3a1-b156-41e632048f16",
+      "name": "ANTARES",
+      "ssvid": "368426140",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "2889fd61bd8a2a2b2e75b51dab146906",
+      "confidence": "4",
+      "durationHrs": 481.6088888888889,
+      "startAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T15:52:49.000Z",
+     "end": "2026-06-02T18:28:39.000Z",
+     "id": "603f0580d37b63394c692699fdcc8e10",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5113,
+      "lon": -122.6075
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "ACAP",
+       "PICES",
+       "IPHC",
+       "IWC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60746062187106,
+      48.51128745332174,
+      -122.60746062187106,
+      48.51128745332174
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "7a0f2c0e0-0244-5424-9d22-b55f408990cb",
+      "name": null,
+      "ssvid": "368361323",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "bced6de318a49c80c40e7c5928159543",
+      "confidence": "4",
+      "durationHrs": 2.5972222222222223,
+      "startAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T16:26:34.000Z",
+     "end": "2026-06-20T18:08:31.000Z",
+     "id": "ce0fc8c4ca2570e2a13ddc511dfe1446",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5027,
+      "lon": -122.6046
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60464949498534,
+      48.5027037465652,
+      -122.60464949498534,
+      48.5027037465652
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "59335779d-d853-9339-5143-c22ab58fe6ce",
+      "name": "MISS DAISY",
+      "ssvid": "368141250",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "9788cfb1ecaa3a116c3a2fc25f4295bf",
+      "confidence": "4",
+      "durationHrs": 433.69916666666666,
+      "startAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T18:34:34.000Z",
+     "end": "2026-06-03T01:28:00.000Z",
+     "id": "7f490f81cdefb5c1cadf510fa8df58cb",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "IWC",
+       "PICES",
+       "IATTC",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.67813732407278,
+      48.488597585191556
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "d1123b96a-a858-ba62-877f-3338b9db5be8",
+      "name": "ISLAND-EXPLORER 5",
+      "ssvid": "369264000",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "44fb3b9bfdc092ae293b83e4c42a83ae",
+      "confidence": "4",
+      "durationHrs": 6.890555555555555,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857967",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.488597585191556,
+       "lon": -122.67813732407278,
+       "name": null,
+       "topDestination": "AI"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T22:03:20.000Z",
+     "end": "2026-06-08T20:27:49.000Z",
+     "id": "27c4ce97b62dd738db1249a4a2ec30e9",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IPHC",
+       "IWC",
+       "IATTC",
+       "PICES",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "bbe578705-5505-3690-f349-269fe6b07917",
+      "name": "VOYAGER",
+      "ssvid": "366783640",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "deb0230ecff1609219ce15562780dc82",
+      "confidence": "4",
+      "durationHrs": 142.40805555555556,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T22:07:24.000Z",
+     "end": "2026-06-03T20:39:53.000Z",
+     "id": "06a9faa55546adb1bb8957d3f8518866",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "IPHC",
+       "PICES",
+       "ACAP",
+       "IWC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60777093170209,
+      48.51259570351124
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "5b6aea217-7c03-7fd7-1793-8c3a049a74e9",
+      "name": "BIG BLUE",
+      "ssvid": "368367570",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "d90a6cf5dae26b5a148de41d5f783b14",
+      "confidence": "3",
+      "durationHrs": 22.54138888888889,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T22:14:29.000Z",
+     "end": "2026-09-04T17:27:24.000Z",
+     "id": "3e5bf01a6a7b0848fadf0563db92472f",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "IWC",
+       "PICES",
+       "IATTC",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.51472837567732,
+      48.72197969989979
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "9860b0221-1975-fb59-d897-ea5bc9723649",
+      "name": "AT LAST",
+      "ssvid": "368423360",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "9fad41ab8619005bfef365d8d6fd059f",
+      "confidence": "4",
+      "durationHrs": 2251.215277777778,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485a217",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-bellingham",
+       "lat": 48.72197969989979,
+       "lon": -122.51472837567732,
+       "name": "BELLINGHAM",
+       "topDestination": "BELLINGHAM"
+      }
+     }
+    },
+    {
+     "start": "2026-06-02T23:58:53.000Z",
+     "end": "2026-06-10T14:21:27.000Z",
+     "id": "97de959837b1c2716df43076a8c2fec5",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5136,
+      "lon": -122.6061
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IPHC",
+       "PICES",
+       "IWC",
+       "ACAP",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60608758951616,
+      48.51359322347689,
+      -122.60608758951616,
+      48.51359322347689
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "9d55eb680-0f8b-894c-8e4c-5a794bcbe4f5",
+      "name": "KOHOLA",
+      "ssvid": "366899960",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "0fbed2b431ce3a32936f2fcc62d46c2a",
+      "confidence": "4",
+      "durationHrs": 182.3761111111111,
+      "startAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-03T21:05:35.000Z",
+     "end": "2026-06-04T14:59:21.000Z",
+     "id": "1208b421a34df2e910ce02e950b82daa",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "PICES",
+       "IWC",
+       "ACAP",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.6767399960048,
+      48.507195405508426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "96aeaae0c-c76a-20d3-baac-d5b45a3be929",
+      "name": "NORDLAND II",
+      "ssvid": "368004090",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "1a5b1a4563ab399a6b29b1131231873f",
+      "confidence": "4",
+      "durationHrs": 17.89611111111111,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857909",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.507195405508426,
+       "lon": -122.6767399960048,
+       "name": null,
+       "topDestination": "WSF TERMINAL"
+      }
+     }
+    },
+    {
+     "start": "2026-06-03T22:20:13.000Z",
+     "end": "2026-06-10T19:49:38.000Z",
+     "id": "49358549357db7599c08f052cc3e50bf",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "ACAP",
+       "IPHC",
+       "IWC",
+       "PICES"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.87395953804263,
+      48.557032654702795
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 1,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "02e8690cd-daec-de63-5b1e-85423d7a51d4",
+      "name": "TIKEHAU",
+      "ssvid": "338471085",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "617637bc2b766a0e8233e298f96ae799",
+      "confidence": "4",
+      "durationHrs": 165.49027777777778,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54858105",
+       "atDock": true,
+       "distanceFromShoreKm": "1",
+       "flag": "USA",
+       "id": "usa-lopezisland",
+       "lat": 48.557032654702795,
+       "lon": -122.87395953804263,
+       "name": null,
+       "topDestination": "AA"
+      }
+     }
+    },
+    {
+     "start": "2026-06-04T15:38:46.000Z",
+     "end": "2026-06-04T16:22:04.000Z",
+     "id": "cc46d603b0019e2e01916f40b9d29eba",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.4967,
+      "lon": -122.6006
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.6005741341157,
+      48.49673629802397,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "e8ff9f5b2-23ec-acc2-6a7e-895580c648cd",
+      "name": "WDFW 674",
+      "ssvid": "368328470",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "362c712350eaebdc35cdf6a9f4f69b1d",
+      "confidence": "4",
+      "durationHrs": 0.7216666666666667,
+      "startAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-04T18:04:45.000Z",
+     "end": "2026-06-05T07:51:25.000Z",
+     "id": "02ec1cf1c103c0df3a14ca6a985378ba",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "IWC",
+       "PICES",
+       "ACAP",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "226c0cf04-4773-983e-d2bb-9ba626b7ec0a",
+      "name": "LYNN MARIE",
+      "ssvid": "366919770",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "bd00be8c80b6eb7fcbe63a3eacdef64c",
+      "confidence": "4",
+      "durationHrs": 13.777777777777779,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-04T19:02:45.000Z",
+     "end": "2026-06-04T19:13:41.000Z",
+     "id": "1b616f61cd13d0ee8c8adc3a492b780e",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "IPHC",
+       "ACAP",
+       "PICES",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.68328769538273,
+      48.49420500558081
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "d18effa48-86cb-6f5c-7068-0fdb36476481",
+      "name": "WILD 4 WHALES",
+      "ssvid": "316034816",
+      "flag": "CAN",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "af96319c0f753986dda13ec4f8e67286",
+      "confidence": "4",
+      "durationHrs": 0.18222222222222223,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485796b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.49420500558081,
+       "lon": -122.68328769538273,
+       "name": null,
+       "topDestination": "BOUNDS"
+      }
+     }
+    },
+    {
+     "start": "2026-06-04T21:45:44.000Z",
+     "end": "2026-06-28T21:27:36.000Z",
+     "id": "34bb8231cd6f4266f46b6e2d4cd06bb3",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5037,
+      "lon": -122.6027
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60273631226738,
+      48.50373003767472,
+      -122.60273631226738,
+      48.50373003767472
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "eec51b7d7-7659-2a00-b1b5-a01349998ee2",
+      "name": "SHES NO LADY",
+      "ssvid": "338474218",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "f5f998660f92eaa3e49a87d139fc783b",
+      "confidence": "4",
+      "durationHrs": 575.6977777777778,
+      "startAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579f9",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.50373003767472,
+       "lon": -122.60273631226738,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-04T22:18:02.000Z",
+     "end": "2026-06-25T22:36:29.000Z",
+     "id": "0b7e2970f893239e2a413a7c68e81b10",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5203,
+      "lon": -122.5842
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "ACAP",
+       "IATTC",
+       "PICES",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.58423551908362,
+      48.520253256352746,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 1,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "89edc2c72-2134-e11d-03f5-2006c0d592ab",
+      "name": "KUMRU",
+      "ssvid": "368150170",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "84556d366149e1af35b4291f7d27395e",
+      "confidence": "4",
+      "durationHrs": 504.3075,
+      "startAnchorage": {
+       "anchorageId": "54857745",
+       "atDock": false,
+       "distanceFromShoreKm": "1",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.520253256352746,
+       "lon": -122.58423551908362,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857745",
+       "atDock": false,
+       "distanceFromShoreKm": "1",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.520253256352746,
+       "lon": -122.58423551908362,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    },
+    {
+     "start": "2026-06-05T00:25:17.000Z",
+     "end": "2026-06-13T13:32:31.000Z",
+     "id": "fdeaa9be02f558ed06d874da3f6d7dcb",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5113,
+      "lon": -122.6075
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IPHC",
+       "IATTC",
+       "PICES",
+       "IWC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60746062187106,
+      48.51128745332174,
+      -122.60746062187106,
+      48.51128745332174
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "690e825fb-ba69-f144-32ac-ee9b8aaafdad",
+      "name": "SIOUX ARROW",
+      "ssvid": "366973730",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "3fa8ce86042f7560b5e1fa7c523381ed",
+      "confidence": "4",
+      "durationHrs": 205.12055555555557,
+      "startAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579fb",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51128745332174,
+       "lon": -122.60746062187106,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-06-05T18:49:05.000Z",
+     "end": "2026-06-15T20:59:01.000Z",
+     "id": "be69c1aa8dbf07d8e8418fde3854183c",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5027,
+      "lon": -122.6046
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60464949498534,
+      48.5027037465652,
+      -122.6767399960048,
+      48.507195405508426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "6caa50b6b-b68e-d1bb-5203-9065ceb73148",
+      "name": "SERENDIPITY",
+      "ssvid": "368218660",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "87f1cf9bb466aeeb2885bcb1249ac9fe",
+      "confidence": "4",
+      "durationHrs": 242.16555555555556,
+      "startAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857909",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.507195405508426,
+       "lon": -122.6767399960048,
+       "name": null,
+       "topDestination": "WSF TERMINAL"
+      }
+     }
+    }
+   ]
+  },
+  "trimmed": {
+   "kept": 25,
+   "received": 180
+  }
+ },
+ "gfw_port_stats_anacortes_2025_07_2026_06": {
+  "url": "https://gateway.api.globalfishingwatch.org/v3/events/stats",
+  "datasets": null,
+  "body": {
+   "numEvents": 1257,
+   "numFlags": 10,
+   "numVessels": 590,
+   "flags": [
+    "USA",
+    "",
+    "CAN",
+    "HTI",
+    "ISL",
+    "NOR",
+    "TCA",
+    "LBR",
+    "CHN",
+    "MHL"
+   ],
+   "timeseries": [
+    {
+     "date": "2025-07-01T00:00:00.000Z",
+     "value": 148
+    },
+    {
+     "date": "2025-08-01T00:00:00.000Z",
+     "value": 168
+    },
+    {
+     "date": "2025-09-01T00:00:00.000Z",
+     "value": 125
+    },
+    {
+     "date": "2025-10-01T00:00:00.000Z",
+     "value": 46
+    },
+    {
+     "date": "2025-11-01T00:00:00.000Z",
+     "value": 46
+    },
+    {
+     "date": "2025-12-01T00:00:00.000Z",
+     "value": 56
+    },
+    {
+     "date": "2026-01-01T00:00:00.000Z",
+     "value": 71
+    },
+    {
+     "date": "2026-02-01T00:00:00.000Z",
+     "value": 58
+    },
+    {
+     "date": "2026-03-01T00:00:00.000Z",
+     "value": 78
+    },
+    {
+     "date": "2026-04-01T00:00:00.000Z",
+     "value": 100
+    },
+    {
+     "date": "2026-05-01T00:00:00.000Z",
+     "value": 181
+    },
+    {
+     "date": "2026-06-01T00:00:00.000Z",
+     "value": 180
+    }
+   ]
+  }
+ },
+ "gfw_geometry_anacortes_2026_08": {
+  "request": "POST /v3/events?limit=200&offset=0&sort=-start {geometry: 4 km circle around WPI Anacortes 48.516667,-122.616667, startDate 2026-08-01, endDate 2026-09-01, timeFilterMode START-DATE}",
+  "body": {
+   "metadata": {
+    "datasets": [
+     "public-global-port-visits-events:v4.0"
+    ],
+    "dateRange": {
+     "from": "2026-08-01",
+     "to": "2026-09-01"
+    },
+    "geometry": {
+     "type": "FeatureCollection",
+     "features": [
+      {
+       "type": "Feature",
+       "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+         [
+          [
+           -122.56242133245028,
+           48.516667
+          ],
+          [
+           -122.56346364774159,
+           48.523724622212754
+          ],
+          [
+           -122.5665505380234,
+           48.530511023961836
+          ],
+          [
+           -122.57156337583334,
+           48.53676540763388
+          ],
+          [
+           -122.57830952062561,
+           48.54224742077187
+          ],
+          [
+           -122.5865297218391,
+           48.546746392685264
+          ],
+          [
+           -122.59590808175115,
+           48.55008943040649
+          ],
+          [
+           -122.60608419524975,
+           48.55214806287069
+          ],
+          [
+           -122.616667,
+           48.552843177986794
+          ],
+          [
+           -122.62724980475026,
+           48.55214806287069
+          ],
+          [
+           -122.63742591824887,
+           48.55008943040649
+          ],
+          [
+           -122.64680427816091,
+           48.546746392685264
+          ],
+          [
+           -122.6550244793744,
+           48.54224742077187
+          ],
+          [
+           -122.66177062416668,
+           48.53676540763388
+          ],
+          [
+           -122.6667834619766,
+           48.530511023961836
+          ],
+          [
+           -122.66987035225843,
+           48.523724622212754
+          ],
+          [
+           -122.67091266754973,
+           48.516667
+          ],
+          [
+           -122.66987035225843,
+           48.50960937778724
+          ],
+          [
+           -122.6667834619766,
+           48.50282297603816
+          ],
+          [
+           -122.66177062416668,
+           48.49656859236612
+          ],
+          [
+           -122.6550244793744,
+           48.491086579228124
+          ],
+          [
+           -122.64680427816091,
+           48.48658760731473
+          ],
+          [
+           -122.63742591824887,
+           48.48324456959351
+          ],
+          [
+           -122.62724980475026,
+           48.481185937129304
+          ],
+          [
+           -122.616667,
+           48.4804908220132
+          ],
+          [
+           -122.60608419524975,
+           48.481185937129304
+          ],
+          [
+           -122.59590808175115,
+           48.48324456959351
+          ],
+          [
+           -122.5865297218391,
+           48.48658760731473
+          ],
+          [
+           -122.57830952062561,
+           48.491086579228124
+          ],
+          [
+           -122.57156337583334,
+           48.49656859236612
+          ],
+          [
+           -122.5665505380234,
+           48.50282297603816
+          ],
+          [
+           -122.56346364774159,
+           48.50960937778724
+          ],
+          [
+           -122.56242133245028,
+           48.516667
+          ]
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "limit": 200,
+   "offset": 0,
+   "nextOffset": 200,
+   "total": 217,
+   "entries": [
+    {
+     "start": "2026-08-31T23:24:45.000Z",
+     "end": "2026-09-04T23:45:03.000Z",
+     "id": "ac2660915c6b3591279cad25f2ed0d08",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IPHC",
+       "IATTC",
+       "IWC",
+       "ACAP",
+       "PICES"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60777093170209,
+      48.51259570351124,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "6c594912e-ef12-f87a-ca87-dfe353bcf577",
+      "name": "FACING WEST",
+      "ssvid": "368251680",
+      "flag": "USA",
+      "type": "fishing",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "9496ecdcfce2f95864ea1e7cdd2e18b0",
+      "confidence": "3",
+      "durationHrs": 96.33833333333334,
+      "startAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T23:14:27.000Z",
+     "end": "2026-09-01T17:14:54.000Z",
+     "id": "1e1012a2d2bdb5833c8a4084685ac948",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "IATTC",
+       "IWC",
+       "PICES",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.6767399960048,
+      48.507195405508426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "6caa50b6b-b68e-d1bb-5203-9065ceb73148",
+      "name": "SERENDIPITY",
+      "ssvid": "368218660",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "158afd89f5bf2662f9ff37887fa87855",
+      "confidence": "4",
+      "durationHrs": 18.0075,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857909",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.507195405508426,
+       "lon": -122.6767399960048,
+       "name": null,
+       "topDestination": "WSF TERMINAL"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T22:35:38.000Z",
+     "end": "2026-09-02T11:05:38.000Z",
+     "id": "50091dded9fecdd5658facb5800a1c29",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "IWC",
+       "ACAP",
+       "PICES",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60464949498534,
+      48.5027037465652
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "ff9a67add-dcb8-a34b-4314-c1a81f2107eb",
+      "name": "HIGGINS",
+      "ssvid": "367417420",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "d8a9cc45a93893074ead64ecd4c182fa",
+      "confidence": "3",
+      "durationHrs": 36.5,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579f7",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.5027037465652,
+       "lon": -122.60464949498534,
+       "name": "ANACORTES",
+       "topDestination": "BDOKP B000"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T21:34:35.000Z",
+     "end": "2026-09-02T23:09:01.000Z",
+     "id": "4a924d65c2d408159cd27570d1810eb6",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "PICES",
+       "IATTC",
+       "IPHC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60777093170209,
+      48.51259570351124
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "17c1a5822-2789-41d0-81c7-04b32bed81da",
+      "name": null,
+      "ssvid": "366089702",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "2cf6279b873f5fe192deda2fb9617a62",
+      "confidence": "3",
+      "durationHrs": 49.57388888888889,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T17:54:43.000Z",
+     "end": "2026-09-01T16:02:12.000Z",
+     "id": "6f4c0f00b104993e5c383104f4dad7b8",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "IATTC",
+       "PICES",
+       "IWC",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.51241434877878,
+      48.38179503625043
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "ee6b94ec0-0e37-27ca-ee9f-3a1fd8bf64e3",
+      "name": "HARMONY 2.0",
+      "ssvid": "368357680",
+      "flag": "USA",
+      "type": "fishing",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "7fcec5aa0f5c70152e4a3007a8557771",
+      "confidence": "4",
+      "durationHrs": 22.12472222222222,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485644d",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-345",
+       "lat": 48.38179503625043,
+       "lon": -122.51241434877878,
+       "name": null,
+       "topDestination": "AO"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T17:07:57.000Z",
+     "end": "2026-09-01T02:58:24.000Z",
+     "id": "7bea2afd7303e770c433448986a1d3a0",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "ACAP",
+       "PICES",
+       "IPHC",
+       "IWC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.51241434877878,
+      48.38179503625043
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "d0e826e44-46a8-b3d6-8f50-436fcb132d89",
+      "name": "WILDFIRE II",
+      "ssvid": "367410640",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "4eeaf6234d15053a00c3fd18ac46a6af",
+      "confidence": "3",
+      "durationHrs": 9.840833333333334,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485644d",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-345",
+       "lat": 48.38179503625043,
+       "lon": -122.51241434877878,
+       "name": null,
+       "topDestination": "AO"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T03:06:56.000Z",
+     "end": "2026-09-09T15:55:48.000Z",
+     "id": "96abca2ef5a65bb51ad57c1a294855ec",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "PICES",
+       "ACAP",
+       "IPHC",
+       "IWC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.6005741341157,
+      48.49673629802397
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "b7639e438-8994-cf44-a292-1383d7276a54",
+      "name": "FOCUS 1",
+      "ssvid": "368397270",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "7a711230ad6bffdffc43b37ce31254a6",
+      "confidence": "4",
+      "durationHrs": 228.81444444444443,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      }
+     }
+    },
+    {
+     "start": "2026-08-31T02:35:12.000Z",
+     "end": "2026-09-06T18:59:14.000Z",
+     "id": "d26410203a9204cd21fcaf90d398c132",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "IPHC",
+       "ACAP",
+       "IATTC",
+       "PICES"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.67813732407278,
+      48.488597585191556
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "cc588bc0a-a320-c53a-5909-b50176e336c4",
+      "name": "ATITLAN",
+      "ssvid": "367488540",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "8cf5ef18573d9aee869e3b16ac662ab7",
+      "confidence": "4",
+      "durationHrs": 160.40055555555554,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857967",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.488597585191556,
+       "lon": -122.67813732407278,
+       "name": null,
+       "topDestination": "AI"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T22:54:32.000Z",
+     "end": "2026-08-30T23:32:27.000Z",
+     "id": "0aefd1dbf85c3283650011b43bb52744",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "PICES",
+       "IPHC",
+       "IWC",
+       "IATTC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "ef1990b9a-aee6-2799-7619-a7fe10e77a84",
+      "name": "LEGACY",
+      "ssvid": "368421910",
+      "flag": "USA",
+      "type": "NA",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "483e2670fdb97f8a7a78a64a62c1cf39",
+      "confidence": "4",
+      "durationHrs": 0.6319444444444444,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T19:16:37.000Z",
+     "end": "2026-08-31T11:27:55.000Z",
+     "id": "d3e35abc1c07f7d0b62822546fd71f73",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "PICES",
+       "IWC",
+       "IATTC",
+       "IPHC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.51241434877878,
+      48.38179503625043
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "cddf6b9bf-ff4a-c8a5-6c2c-cf46b27454fb",
+      "name": "SAND DOLLAR",
+      "ssvid": "338507908",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "48bc53bf8b3a8c0aace784591a8eec12",
+      "confidence": "3",
+      "durationHrs": 16.188333333333333,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485644d",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-345",
+       "lat": 48.38179503625043,
+       "lon": -122.51241434877878,
+       "name": null,
+       "topDestination": "AO"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T17:33:49.000Z",
+     "end": "2026-09-11T20:36:44.000Z",
+     "id": "774dfcf921a662a1208ee0da1a50ed2b",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "PICES",
+       "ACAP",
+       "IATTC",
+       "IWC",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "91ad2c35e-efff-2586-65a8-8b60e90ef7bc",
+      "name": "MISS SEALANEOUS",
+      "ssvid": "338165899",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "acb5b2bd71c5bf4f07e0c3e7daefcfee",
+      "confidence": "4",
+      "durationHrs": 291.0486111111111,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T17:15:31.000Z",
+     "end": "2026-09-16T02:33:29.000Z",
+     "id": "711fbcfcd4d0b8a798ae995d0a60a952",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "IATTC",
+       "IPHC",
+       "ACAP",
+       "PICES"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60608758951616,
+      48.51359322347689
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "3a4d98718-817c-204b-8fa3-596d05eeb97d",
+      "name": "LIL BIG BUDDHA",
+      "ssvid": "338426506",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "95e27f9a5e0504e97eaa73b26f91a8d3",
+      "confidence": "3",
+      "durationHrs": 393.2994444444444,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T16:44:46.000Z",
+     "end": "2026-09-03T18:03:46.000Z",
+     "id": "86987af03234eb5b28ffb2d2b8bdc113",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "PICES",
+       "IATTC",
+       "ACAP",
+       "IPHC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.70234890294887,
+      48.60212358833224
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "d3b8f7dd8-844a-c73c-3dd6-2a5bfe5b9d4e",
+      "name": "KNOTWOOD",
+      "ssvid": "367444310",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "33533fd09dd8464a549232a34de56223",
+      "confidence": "4",
+      "durationHrs": 97.31666666666666,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54859d2b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-414",
+       "lat": 48.60212358833224,
+       "lon": -122.70234890294887,
+       "name": null,
+       "topDestination": "CIMA OFF"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T01:36:55.000Z",
+     "end": "2026-09-05T23:14:42.000Z",
+     "id": "e1c80744d0e2bf7dd409d4478cec3a55",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IATTC",
+       "PICES",
+       "IWC",
+       "IPHC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60777093170209,
+      48.51259570351124
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "181b160e2-2a86-8b44-f6b8-90a4e10f2d30",
+      "name": "MCKENNA D",
+      "ssvid": "338482327",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "b4bb678b2b228d6b95422a5d69cf0b02",
+      "confidence": "4",
+      "durationHrs": 165.62972222222223,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e5",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51259570351124,
+       "lon": -122.60777093170209,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-30T01:34:35.000Z",
+     "end": "2026-08-30T12:18:39.000Z",
+     "id": "d1d2d3ec6ff9d9d47c1f5f99d16a04a2",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "IWC",
+       "PICES",
+       "ACAP",
+       "IPHC",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.60608758951616,
+      48.51359322347689
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "91ea4fe71-1cf0-e491-5790-288f9c6ebe0f",
+      "name": "PINGUINO",
+      "ssvid": "368225590",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "eb1e3ded5d5ea4c8c0879a8f162234cb",
+      "confidence": "3",
+      "durationHrs": 10.734444444444444,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-29T22:44:51.000Z",
+     "end": "2026-09-05T21:04:58.000Z",
+     "id": "510a941ecab7da817e8a6862c0f022ad",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "PICES",
+       "IATTC",
+       "IPHC",
+       "IWC",
+       "ACAP"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.68328769538273,
+      48.49420500558081
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "9ea6d9b06-6ba5-2ca7-8c49-2474041dbe91",
+      "name": "BLUEBIRD",
+      "ssvid": "368481810",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "daf8b4d349dfa9e4027e5c11ea5c9f38",
+      "confidence": "4",
+      "durationHrs": 166.33527777777778,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "5485796b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.49420500558081,
+       "lon": -122.68328769538273,
+       "name": null,
+       "topDestination": "BOUNDS"
+      }
+     }
+    },
+    {
+     "start": "2026-08-29T22:02:23.000Z",
+     "end": "2026-08-29T23:59:09.000Z",
+     "id": "c3a2c5a772449cf180d1e0e026df564c",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5136,
+      "lon": -122.6061
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "PICES",
+       "IPHC",
+       "IWC",
+       "ACAP",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60608758951616,
+      48.51359322347689,
+      -122.6767399960048,
+      48.507195405508426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "ec70d9beb-bc60-e8d0-f4ab-9467995cd153",
+      "name": "ORCA",
+      "ssvid": "338504639",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "06a8ce5a18a2f580927f2ba5db499b14",
+      "confidence": "4",
+      "durationHrs": 1.9461111111111111,
+      "startAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857909",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-399",
+       "lat": 48.507195405508426,
+       "lon": -122.6767399960048,
+       "name": null,
+       "topDestination": "WSF TERMINAL"
+      }
+     }
+    },
+    {
+     "start": "2026-08-29T21:03:59.000Z",
+     "end": "2026-08-31T00:42:14.000Z",
+     "id": "5dd26a1deb72a98d541f42f4e3e6b8ec",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5131,
+      "lon": -122.6448
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "PICES",
+       "IPHC",
+       "IWC",
+       "IATTC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [
+       "8456"
+      ],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.64479752921444,
+      48.513128209917426,
+      -122.64479752921444,
+      48.513128209917426
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "cc588bc0a-a320-c53a-5909-b50176e336c4",
+      "name": "ATITLAN",
+      "ssvid": "367488540",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "a80da6bccfd56f0ce16d058ebf64ec58",
+      "confidence": "4",
+      "durationHrs": 27.6375,
+      "startAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548579bf",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.513128209917426,
+       "lon": -122.64479752921444,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      }
+     }
+    },
+    {
+     "start": "2026-08-29T20:21:57.000Z",
+     "end": "2026-08-30T13:01:06.000Z",
+     "id": "93b696b7ea114210ef9a85abaf39bba0",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.4967,
+      "lon": -122.6006
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.6005741341157,
+      48.49673629802397,
+      -122.6005741341157,
+      48.49673629802397
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "f00771209-9b56-fa3e-e4fd-370f158ab25e",
+      "name": "DREAM CATCHER",
+      "ssvid": "368404590",
+      "flag": "USA",
+      "type": "passenger",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "a10341c2117a0b6e1acba6e3ca6ff52b",
+      "confidence": "4",
+      "durationHrs": 16.6525,
+      "startAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      },
+      "endAnchorage": {
+       "anchorageId": "54857a1b",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.49673629802397,
+       "lon": -122.6005741341157,
+       "name": "ANACORTES",
+       "topDestination": "BJIN ZHOU"
+      }
+     }
+    },
+    {
+     "start": "2026-08-29T20:19:36.000Z",
+     "end": "2026-09-05T17:21:27.000Z",
+     "id": "f48454481752993f9e601dcc5f1ae3dc",
+     "type": "port_visit",
+     "position": {
+      "lat": 48.5136,
+      "lon": -122.6061
+     },
+     "regions": {
+      "mpa": [],
+      "eez": [
+       "8456"
+      ],
+      "rfmo": [
+       "ACAP",
+       "PICES",
+       "IPHC",
+       "IATTC",
+       "IWC"
+      ],
+      "fao": [
+       "67"
+      ],
+      "majorFao": [
+       "67"
+      ],
+      "eez12Nm": [],
+      "highSeas": [],
+      "mpaNoTakePartial": [],
+      "mpaNoTake": []
+     },
+     "boundingBox": [
+      -122.60608758951616,
+      48.51359322347689,
+      -123.04769715239719,
+      48.61801158105476
+     ],
+     "distances": {
+      "startDistanceFromShoreKm": 0,
+      "endDistanceFromShoreKm": 0,
+      "startDistanceFromPortKm": 0,
+      "endDistanceFromPortKm": 0
+     },
+     "vessel": {
+      "id": "0b8770a44-4946-aad3-ce3e-698056962d56",
+      "name": "MARSHMALLOW",
+      "ssvid": "368466140",
+      "flag": "USA",
+      "type": "other",
+      "nextPort": null
+     },
+     "port_visit": {
+      "visitId": "90ab64c9980fd7467ced45a02384d59c",
+      "confidence": "4",
+      "durationHrs": 165.03083333333333,
+      "startAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "intermediateAnchorage": {
+       "anchorageId": "548579e3",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-anacortes",
+       "lat": 48.51359322347689,
+       "lon": -122.60608758951616,
+       "name": "ANACORTES",
+       "topDestination": "ANACORTES"
+      },
+      "endAnchorage": {
+       "anchorageId": "548f7d57",
+       "atDock": true,
+       "distanceFromShoreKm": "0",
+       "flag": "USA",
+       "id": "usa-usa-417",
+       "lat": 48.61801158105476,
+       "lon": -123.04769715239719,
+       "name": "USA-417",
+       "topDestination": "AY"
+      }
+     }
+    }
+   ]
+  },
+  "trimmed": {
+   "kept": 20,
+   "received": 200
+  }
+ },
+ "portwatch_ports": {
+  "url": "PortWatch_ports_database query portid IN (…)",
+  "body": {
+   "objectIdFieldName": "ObjectId",
+   "uniqueIdField": {
+    "name": "ObjectId",
+    "isSystemMaintained": true
+   },
+   "globalIdFieldName": "",
+   "geometryType": "esriGeometryPoint",
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+   },
+   "fields": [
+    {
+     "name": "portid",
+     "type": "esriFieldTypeString",
+     "alias": "portid",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portname",
+     "type": "esriFieldTypeString",
+     "alias": "portname",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "country",
+     "type": "esriFieldTypeString",
+     "alias": "country",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "ISO3",
+     "type": "esriFieldTypeString",
+     "alias": "ISO3",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "continent",
+     "type": "esriFieldTypeString",
+     "alias": "continent",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "fullname",
+     "type": "esriFieldTypeString",
+     "alias": "fullname",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "lat",
+     "type": "esriFieldTypeDouble",
+     "alias": "lat",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "lon",
+     "type": "esriFieldTypeDouble",
+     "alias": "lon",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_total",
+     "type": "esriFieldTypeInteger",
+     "alias": "vessel_count_total",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_container",
+     "type": "esriFieldTypeDouble",
+     "alias": "vessel_count_container",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_dry_bulk",
+     "type": "esriFieldTypeDouble",
+     "alias": "vessel_count_dry_bulk",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_general_cargo",
+     "type": "esriFieldTypeDouble",
+     "alias": "vessel_count_general_cargo",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_RoRo",
+     "type": "esriFieldTypeDouble",
+     "alias": "vessel_count_RoRo",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "vessel_count_tanker",
+     "type": "esriFieldTypeDouble",
+     "alias": "vessel_count_tanker",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "industry_top1",
+     "type": "esriFieldTypeString",
+     "alias": "industry_top1",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "industry_top2",
+     "type": "esriFieldTypeString",
+     "alias": "industry_top2",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "industry_top3",
+     "type": "esriFieldTypeString",
+     "alias": "industry_top3",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "share_country_maritime_import",
+     "type": "esriFieldTypeDouble",
+     "alias": "share_country_maritime_import",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "share_country_maritime_export",
+     "type": "esriFieldTypeDouble",
+     "alias": "share_country_maritime_export",
+     "sqlType": "sqlTypeFloat",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "LOCODE",
+     "type": "esriFieldTypeString",
+     "alias": "LOCODE",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "pageid",
+     "type": "esriFieldTypeString",
+     "alias": "pageid",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "countrynoaccents",
+     "type": "esriFieldTypeString",
+     "alias": "countrynoaccents",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "ObjectId",
+     "type": "esriFieldTypeOID",
+     "alias": "ObjectId",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    }
+   ],
+   "features": [
+    {
+     "attributes": {
+      "portid": "port1175",
+      "portname": "Seattle",
+      "country": "United States",
+      "ISO3": "USA",
+      "continent": "North America",
+      "fullname": "Seattle, United States",
+      "lat": 47.57185015,
+      "lon": -122.3457616,
+      "vessel_count_total": 574,
+      "vessel_count_container": 428,
+      "vessel_count_dry_bulk": 117,
+      "vessel_count_general_cargo": 15,
+      "vessel_count_RoRo": 4,
+      "vessel_count_tanker": 10,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Vegetable Products",
+      "industry_top3": "Wood & Wood Products",
+      "share_country_maritime_import": 1.11,
+      "share_country_maritime_export": 0.86,
+      "LOCODE": "US SEA",
+      "pageid": "738a0d27532846da92aa3f03b1417ea1",
+      "countrynoaccents": "United States",
+      "ObjectId": 878
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port1248",
+      "portname": "Tacoma",
+      "country": "United States",
+      "ISO3": "USA",
+      "continent": "North America",
+      "fullname": "Tacoma, United States",
+      "lat": 47.2535658,
+      "lon": -122.3912123,
+      "vessel_count_total": 868,
+      "vessel_count_container": 468,
+      "vessel_count_dry_bulk": 103,
+      "vessel_count_general_cargo": 7,
+      "vessel_count_RoRo": 272,
+      "vessel_count_tanker": 18,
+      "industry_top1": "Vegetable Products",
+      "industry_top2": "Wood & Wood Products",
+      "industry_top3": "Mineral Products",
+      "share_country_maritime_import": 1.39,
+      "share_country_maritime_export": 1.22,
+      "LOCODE": "US TIW",
+      "pageid": "aacc835c79294b21bdeb10caa650f946",
+      "countrynoaccents": "United States",
+      "ObjectId": 907
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port1350",
+      "portname": "Vancouver",
+      "country": "Canada",
+      "ISO3": "CAN",
+      "continent": "North America",
+      "fullname": "Vancouver, Canada",
+      "lat": 49.28996399,
+      "lon": -123.0289044,
+      "vessel_count_total": 2054,
+      "vessel_count_container": 296,
+      "vessel_count_dry_bulk": 1369,
+      "vessel_count_general_cargo": 102,
+      "vessel_count_RoRo": 19,
+      "vessel_count_tanker": 268,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Vegetable Products",
+      "industry_top3": "Chemical & Allied Industries",
+      "share_country_maritime_import": 26.38,
+      "share_country_maritime_export": 36.22,
+      "LOCODE": "CA VAN",
+      "pageid": "a7aa19404889484ba504bcea17dc9427",
+      "countrynoaccents": "Canada",
+      "ObjectId": 938
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port143",
+      "portname": "Bellingham",
+      "country": "United States",
+      "ISO3": "USA",
+      "continent": "North America",
+      "fullname": "Bellingham, United States",
+      "lat": 48.75638842,
+      "lon": -122.500255,
+      "vessel_count_total": 4,
+      "vessel_count_container": 0,
+      "vessel_count_dry_bulk": 1,
+      "vessel_count_general_cargo": 3,
+      "vessel_count_RoRo": 0,
+      "vessel_count_tanker": 0,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Chemical & Allied Industries",
+      "industry_top3": "Plastics, Rubber, Leather",
+      "share_country_maritime_import": 0,
+      "share_country_maritime_export": 0,
+      "LOCODE": "US BLI",
+      "pageid": "4c5c61e1288c4a1aa9d513ecdfab4ad4",
+      "countrynoaccents": "United States",
+      "ObjectId": 424
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port162",
+      "portname": "Botas",
+      "country": "Türkiye",
+      "ISO3": "TUR",
+      "continent": "Europe",
+      "fullname": "Botas, Türkiye",
+      "lat": 36.87671576,
+      "lon": 35.91857273,
+      "vessel_count_total": 528,
+      "vessel_count_container": 12,
+      "vessel_count_dry_bulk": 70,
+      "vessel_count_general_cargo": 87,
+      "vessel_count_RoRo": 0,
+      "vessel_count_tanker": 359,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Chemical & Allied Industries",
+      "industry_top3": "Stone & Glass",
+      "share_country_maritime_import": 0.44,
+      "share_country_maritime_export": 16.23,
+      "LOCODE": "TR BOT",
+      "pageid": "51d4929cbbcc46cb92837344c82833cd",
+      "countrynoaccents": "Turkiye",
+      "ObjectId": 210
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port163",
+      "portname": "Botas Natural Gas Terminal",
+      "country": "Türkiye",
+      "ISO3": "TUR",
+      "continent": "Europe",
+      "fullname": "Botas Natural Gas Terminal, Türkiye",
+      "lat": 40.9957964,
+      "lon": 27.96150412,
+      "vessel_count_total": 826,
+      "vessel_count_container": 7,
+      "vessel_count_dry_bulk": 58,
+      "vessel_count_general_cargo": 211,
+      "vessel_count_RoRo": 14,
+      "vessel_count_tanker": 536,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Chemical & Allied Industries",
+      "industry_top3": "Metals",
+      "share_country_maritime_import": 3.6,
+      "share_country_maritime_export": 1,
+      "LOCODE": "TR BOT",
+      "pageid": "468037fe51464093b4936e6ff67b8f06",
+      "countrynoaccents": "Turkiye",
+      "ObjectId": 211
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port47",
+      "portname": "Anacortes",
+      "country": "United States",
+      "ISO3": "USA",
+      "continent": "North America",
+      "fullname": "Anacortes, United States",
+      "lat": 48.486777,
+      "lon": -122.5688457,
+      "vessel_count_total": 200,
+      "vessel_count_container": 0,
+      "vessel_count_dry_bulk": 0,
+      "vessel_count_general_cargo": 0,
+      "vessel_count_RoRo": 0,
+      "vessel_count_tanker": 200,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Chemical & Allied Industries",
+      "industry_top3": "Plastics, Rubber, Leather",
+      "share_country_maritime_import": 0.42,
+      "share_country_maritime_export": 0.16,
+      "LOCODE": "US OTS",
+      "pageid": "f858ab1546ad4e4d864d3e51468761b3",
+      "countrynoaccents": "United States",
+      "ObjectId": 332
+     }
+    },
+    {
+     "attributes": {
+      "portid": "port931",
+      "portname": "Port Angeles",
+      "country": "Canada",
+      "ISO3": "CAN",
+      "continent": "North America",
+      "fullname": "Port Angeles, Canada",
+      "lat": 48.12879898,
+      "lon": -123.454329,
+      "vessel_count_total": 223,
+      "vessel_count_container": 9,
+      "vessel_count_dry_bulk": 44,
+      "vessel_count_general_cargo": 15,
+      "vessel_count_RoRo": 4,
+      "vessel_count_tanker": 151,
+      "industry_top1": "Mineral Products",
+      "industry_top2": "Vegetable Products",
+      "industry_top3": "Chemical & Allied Industries",
+      "share_country_maritime_import": 1.3,
+      "share_country_maritime_export": 0.69,
+      "LOCODE": null,
+      "pageid": "2da72ac399a44bbdae8acdae5404dc5c",
+      "countrynoaccents": "Canada",
+      "ObjectId": 879
+     }
+    }
+   ]
+  }
+ },
+ "portwatch_daily_port47_2026_06": {
+  "url": "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Ports_Data/FeatureServer/0/query?where=portid%3D%27port47%27+AND+date+%3E%3D+DATE+%272026-06-01%27+AND+date+%3C+DATE+%272026-07-01%27&outFields=date%2Cportid%2Cportcalls%2Cportcalls_container%2Cportcalls_dry_bulk%2Cportcalls_general_cargo%2Cportcalls_roro%2Cportcalls_tanker%2Cimport%2Cexport&orderByFields=date&resultOffset=0&resultRecordCount=1000&f=json",
+  "body": {
+   "objectIdFieldName": "ObjectId",
+   "uniqueIdField": {
+    "name": "ObjectId",
+    "isSystemMaintained": true
+   },
+   "globalIdFieldName": "",
+   "fields": [
+    {
+     "name": "date",
+     "type": "esriFieldTypeDateOnly",
+     "alias": "date",
+     "sqlType": "sqlTypeDate",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portid",
+     "type": "esriFieldTypeString",
+     "alias": "portid",
+     "sqlType": "sqlTypeNVarchar",
+     "length": 4000,
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls_container",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls_container",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls_dry_bulk",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls_dry_bulk",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls_general_cargo",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls_general_cargo",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls_roro",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls_roro",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "portcalls_tanker",
+     "type": "esriFieldTypeInteger",
+     "alias": "portcalls_tanker",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "import",
+     "type": "esriFieldTypeInteger",
+     "alias": "import",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    },
+    {
+     "name": "export",
+     "type": "esriFieldTypeInteger",
+     "alias": "export",
+     "sqlType": "sqlTypeInteger",
+     "domain": null,
+     "defaultValue": null
+    }
+   ],
+   "features": [
+    {
+     "attributes": {
+      "date": "2026-06-01",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-02",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-03",
+      "portid": "port47",
+      "portcalls": 2,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 2,
+      "import": 0,
+      "export": 38842
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-04",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-05",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-06",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-07",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 2973,
+      "export": 9136
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-08",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 8695,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-09",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 88469,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-10",
+      "portid": "port47",
+      "portcalls": 3,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 3,
+      "import": 2973,
+      "export": 59213
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-11",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-12",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-13",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-14",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 18604,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-15",
+      "portid": "port47",
+      "portcalls": 2,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 2,
+      "import": 0,
+      "export": 435
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-16",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 0,
+      "export": 12038
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-17",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-18",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-19",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-20",
+      "portid": "port47",
+      "portcalls": 2,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 2,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-21",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-22",
+      "portid": "port47",
+      "portcalls": 2,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 2,
+      "import": 0,
+      "export": 7309
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-23",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 0,
+      "export": 13033
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-24",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 29016,
+      "export": 2501
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-25",
+      "portid": "port47",
+      "portcalls": 2,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 2,
+      "import": 82748,
+      "export": 12528
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-26",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-27",
+      "portid": "port47",
+      "portcalls": 1,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 1,
+      "import": 3130,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-28",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-29",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    },
+    {
+     "attributes": {
+      "date": "2026-06-30",
+      "portid": "port47",
+      "portcalls": 0,
+      "portcalls_container": 0,
+      "portcalls_dry_bulk": 0,
+      "portcalls_general_cargo": 0,
+      "portcalls_roro": 0,
+      "portcalls_tanker": 0,
+      "import": 0,
+      "export": 0
+     }
+    }
+   ]
+  }
+ }
+}

@@ -323,3 +323,26 @@ Per GFW port label, over every anchorage point our stored visits carry for it (s
 Result on the dev DB 2026-09-26 (81 labels from EURODAM + AMERICAN ENDURANCE): WPI 24 (22 within 4 km, 2 clearly nearest),
 overrides 14, GFW name 21, unnamed 22. The decision for a label depends on which anchorages our stored visits contain, so a
 label can change name when more ships' visits arrive (the old decision is kept as `superseded`).
+
+---
+
+## Step 3 (ports on the map + port card): verified live 2026-09-27
+
+Code: `lib/ships/portCard.js`, `scripts/ships/import-portwatch.mjs`, migration `010_port_cards.sql`. GFW facts: docs/GFW_ACTIVITY_API.md "Port visits by port".
+
+### IMF PortWatch API
+- The FAQ's example service **`Daily_Trade_Data` does not exist**: `…/Daily_Trade_Data/FeatureServer/0?f=json` → 400 "Item does not exist or is inaccessible." The daily table is **`Daily_Ports_Data`** (§3 above).
+- `Daily_Ports_Data` layer JSON: `maxRecordCount` 1000, `dataLastEditDate` 1790076979705 (2026-09-22). Fields: `date` (**esriFieldTypeDateOnly**, returned as `"2026-09-18"`), `year, month, day, portid, portname, country, ISO3`, `portcalls_{container,dry_bulk,general_cargo,roro,tanker,cargo}`, `portcalls`, `import_*`, `export_*` (same categories), `import`, `export`, `ObjectId`.
+  In the rows seen, `portcalls_cargo` = all non-tanker calls and `portcalls` = cargo + tanker (UNVERIFIED as a definition); the card shows the five named types and the total.
+- Query used: `where=portid='port47' AND date >= DATE '2026-06-01' AND date < DATE '2026-07-01'&outFields=<10 fields>&orderByFields=date&resultOffset=0&resultRecordCount=1000&f=json` → 200, ~1.7 s, one row per day (zeros included).
+- Ports layer: 2,065 ports in 3 requests (1,000 / 1,000 / 65), each with `pageid` (e.g. Seattle `738a0d27532846da92aa3f03b1417ea1`). The card links `https://portwatch.imf.org/pages/<pageid>` (an SPA: the server answers 200 for any path, so the deep link is UNVERIFIED).
+
+### WPI ↔ PortWatch join (the only shared key is UN/LOCODE; `import-portwatch.mjs --check`)
+Rule (read time, never stored): WPI `unloCode` = exactly one PortWatch `LOCODE`, positions ≤ 25 km apart, and if other WPI ports carry the same code, this one must be the nearest to the PortWatch port.
+- 2,563 WPI ports with a code: **868 joined**, 1,669 not in PortWatch, 14 too far (26–480 km: Abu Zaby 26.4, Ningbo 32.3, Wakkanai 222, North Pulau Laut 480 …), 6 ambiguous (two PortWatch ports share the LOCODE: TR BOT, MY PKG, CN ZOS, MX ESE, AE JED), 6 lost to a nearer WPI port with the same code.
+- PortWatch: 1,478 of 2,065 ports carry a LOCODE; 868 of them join. Port Angeles (port931) has no LOCODE, so it doesn't join.
+- Salish: Seattle → port1175 (3.3 km), Tacoma → port1248 (3.8), Anacortes → port47 (4.8), Vancouver → port1350 (6.4), Bellingham → port143 (0.7), Everett → port333 (2.6), Nanaimo → port2062 (0.8), New Westminster → port814 (5.2). Not covered: Port Angeles, Victoria, Friday Harbor.
+
+### Storage and licence handling
+- PortWatch ports and each daily-series response are stored as evidence (`ships.sources` id `imf-portwatch`, commercial_use false, attribution = the FAQ's required citation). The card shows only 7-day averages with the citation and "relative trends, not official statistics", and links to PortWatch rather than to our raw copy.
+- **Open question**: the IMF terms page (imf.org/external/terms.htm) still returns 403 to scripted fetches; the FAQ is the only terms text read.

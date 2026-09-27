@@ -60,6 +60,7 @@ import ClipStudio from './ClipStudio.jsx'
 import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
+import useDockColumns from '../components/panel/useDockColumns.js'
 import styles from './SystemsApp.module.css'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
@@ -743,12 +744,15 @@ export default function SystemsApp() {
   // ⇄ full drawer (mobileView). Nothing auto-expands.
   const [panelOpen, setPanelOpen] = useState(false)
   const [mobileView, setMobileView] = useState('dock') // 'pill' | 'dock' | 'drawer'
+  // Icons per dock row: 2, or up to 6 when the window is too short for the dock (shared panel kit).
+  const dockRef = useRef(null)
   const [drawerSignal, setDrawerSignal] = useState(0)
   const [chip, setChip] = useState(null) // mobile tap confirmation { id, on }
   const chipTimerRef = useRef(0)
   const [showMethodology, setShowMethodology] = useState(false)
   const isMobile = useIsMobile()
   if (import.meta.env.DEV) window.__systemsNav = { panelOpen, mobileView, isMobile } // dev-only QA handle
+  const dockCols = useDockColumns(dockRef, `${isMobile}-${mobileView}-${panelOpen}`)
   if (import.meta.env.DEV) window.__sys = { fields: fieldsRef, instances: instancesRef, replay: replayRef, layerOn, layerStatus } // dev-only QA handle
   const [mapView, setMapView] = useState(initialCamera)
   // Bumped on every style.load; raster overlays live inside the style and
@@ -3112,7 +3116,7 @@ export default function SystemsApp() {
       {/* Control panel — floating left panel on desktop, drawer on phones */}
       {/* Icon dock — default navigation on every screen size. */}
       {((!isMobile && !panelOpen) || (isMobile && mobileView === 'dock')) && (
-        <div className={`${styles.dock} ${isMobile ? styles.dockMobile : ''}`} role="toolbar" aria-label="Layers">
+        <div ref={dockRef} style={{ '--dock-cols': dockCols }} className={`${styles.dock} ${isMobile ? styles.dockMobile : ''}`} role="toolbar" aria-label="Layers">
           <div className={styles.dockTitle}>I want to see…</div>
           <div className={styles.dockMeta}>
             <span className={styles.countChip}>{activeDefs.length} on</span>

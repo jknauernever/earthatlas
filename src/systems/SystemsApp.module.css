@@ -573,7 +573,8 @@
 
 /* ─── Icon dock (default navigation; Claude Design handoff #3a/#4b/#4c) ── */
 .dock {
-  position: absolute; top: 70px; left: 16px; z-index: 11; width: 104px;
+  /* --dock-cols (2–6) is set by useDockColumns so the dock fits short windows; 2 columns = the original 104 px. */
+  position: absolute; top: 70px; left: 16px; z-index: 11; width: calc(var(--dock-cols, 2) * 46px + 12px);
   display: flex; flex-direction: column; gap: 6px; padding: 8px;
   background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px; backdrop-filter: blur(8px);
@@ -592,7 +593,7 @@
 .dockBtnSm:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
 .dockGroup { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
 .dockGroupLabel { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.4); padding: 0 2px; }
-.dockGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.dockGrid { display: grid; grid-template-columns: repeat(var(--dock-cols, 2), 1fr); gap: 4px; }
 .dockBtn {
   position: relative; width: 42px; height: 42px; border-radius: 9px; cursor: pointer; padding: 0;
   display: grid; place-items: center;
@@ -617,7 +618,7 @@
 .dockBtn:hover .dockTip, .dockBtn:focus-visible .dockTip { opacity: 1; }
 
 /* Mobile dock (88 px, 34 px buttons, 16 px icons) + tap confirmation chip + pill. */
-.dockMobile { width: 88px; top: 52px; left: 10px; gap: 5px; padding: 6px; border-radius: 11px; }
+.dockMobile { width: calc(var(--dock-cols, 2) * 38px + 12px); top: 52px; left: 10px; gap: 5px; padding: 6px; border-radius: 11px; }
 .dockMobile .dockTitle { font-size: 10.5px; padding: 0 1px; }
 .dockMobile .countChip { font-size: 8px; padding: 2px 5px; }
 .dockMobile .dockBtnSm { width: 20px; height: 20px; font-size: 11px; }

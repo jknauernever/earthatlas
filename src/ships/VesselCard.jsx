@@ -171,13 +171,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   }, [vesselId])
 
   const sourcesById = useMemo(() => Object.fromEntries((vessel?.sources || []).map((s) => [s.id, s])), [vessel])
-  // Wikimedia Commons photos (Wikidata P18), licence-checked at import; the preferred one first.
-  const images = useMemo(() => {
-    const seen = new Set()
-    return (vessel?.assertions || []).filter((a) => a.attribute === 'image' && a.detail?.thumb_url)
-      .filter((a) => !seen.has(a.value_norm) && seen.add(a.value_norm))
-      .sort((x, y) => (y.detail.rank === 'preferred') - (x.detail.rank === 'preferred'))
-  }, [vessel])
+  // Wikimedia Commons photos (Wikidata P18 or the ship's Commons IMO category), licence-checked at import.
+  const images = useMemo(() => orderImages(vessel?.assertions || []), [vessel])
   const current = useMemo(() => currentIdentity(vessel), [vessel])
 
   // Both directions: another vessel's record may match this one, or this one's record may match another.
@@ -325,7 +320,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           </div>
 
           {tab === 'overview' && <>
-            <Photos images={images} />
+            <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />
             {renderOverview(CHAR_ROWS, null)}
             {renderOverview(ROLE_ROWS.filter(([a]) => a !== 'registry_owner'), null)}
@@ -376,11 +371,40 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   )
 }
 
-/** Photo from Wikimedia Commons with its credit and licence (each file's own licence, stored at import). */
-function Photos({ images }) {
+/**
+ * Photo claims in display order: Wikidata's own P18 choice first (a `preferred` one before
+ * the rest), then the Commons IMO-category photos in the import's order (main photo first;
+ * docs/COMMONS_PHOTOS.md). One entry per file.
+ */
+function orderImages(assertions) {
+  const seen = new Set()
+  const key = (a) => (a.detail?.via === 'commons_imo_category' ? 2 + (a.detail.photo_order ?? 0) : a.detail?.rank === 'preferred' ? 0 : 1)
+  return assertions.filter((a) => a.attribute === 'image' && a.detail?.thumb_url)
+    .sort((x, y) => key(x) - key(y))
+    .filter((a) => !seen.has(a.value_norm) && seen.add(a.value_norm))
+}
+
+/**
+ * Photo from Wikimedia Commons with its credit and licence (each file's own licence, stored at import).
+ * A ship with no photo yet asks the server once (op=photos): it looks the ship's registry IMO up on
+ * Commons, at most once per 30 days, and returns whatever it saved.
+ */
+function Photos({ images: own, vesselId, hasImo }) {
   const [i, setI] = useState(0)
+  const [fetched, setFetched] = useState(null)
+  useEffect(() => {
+    if (own.length || !hasImo) return
+    const ctl = new AbortController()
+    fetch(`/api/ships?op=photos&id=${encodeURIComponent(vesselId)}`, { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => { if (b?.images?.length) setFetched(orderImages(b.images)) })
+      .catch(() => {})
+    return () => ctl.abort()
+  }, [own.length, hasImo, vesselId])
+  const images = own.length ? own : fetched || []
   if (!images.length) return null
   const img = images[i % images.length], d = img.detail
+  const artist = d.artist || d.credit || 'unknown author'
   return (
     <figure className={styles.photo}>
       <a href={d.file_page_url} target="_blank" rel="noopener noreferrer" title="Open the photo on Wikimedia Commons">
@@ -388,9 +412,12 @@ function Photos({ images }) {
           width={d.thumb_width || undefined} height={d.thumb_height || undefined} />
       </a>
       <figcaption>
-        Photo: <a className={styles.sourceLink} href={d.file_page_url} target="_blank" rel="noopener noreferrer">{d.artist || 'unknown author'}</a>
-        {' · '}<a className={styles.sourceLink} href={d.license_url} target="_blank" rel="noopener noreferrer">{d.license_short_name}</a>
-        {' · via Wikimedia Commons'}
+        Photo: <a className={styles.sourceLink} href={d.file_page_url} target="_blank" rel="noopener noreferrer"
+          title={`${artist} · open the file page on Wikimedia Commons`}>{artist.length > 60 ? `${artist.slice(0, 57)}…` : artist}</a>
+        {', '}<a className={styles.sourceLink} href={d.license_url || d.file_page_url} target="_blank" rel="noopener noreferrer"
+          title={d.usage_terms || d.license_short_name}>{d.license_short_name}</a>
+        {' ('}<a className={styles.sourceLink} href={d.file_page_url} target="_blank" rel="noopener noreferrer"
+          title={d.via === 'commons_imo_category' ? `Filed on Wikimedia Commons under ${d.imo_category}, this ship's IMO number` : 'Chosen as this ship\'s image on Wikidata'}>Wikimedia Commons</a>{')'}
         {images.length > 1 && <button type="button" className={styles.inlineLink} onClick={() => setI((n) => n + 1)}
           title="Next photo">{` · ${(i % images.length) + 1}/${images.length} ›`}</button>}
       </figcaption>

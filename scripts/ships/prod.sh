@@ -69,6 +69,12 @@ case "${1:-}" in
     BLOB_READ_WRITE_TOKEN="$(envval BLOB_READ_WRITE_TOKEN)" npx vercel blob put "$file" --access public --pathname "ships/mpa/${url:t}" \
       --content-type application/octet-stream --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" | grep -o 'https://[^ ]*' | head -1
     ;;
+  warm-ports)
+    # Pre-load Salish Sea port cards (2026 months) so they open instantly; settled months are kept for good.
+    # Josh approved 2026-09-27. Extra args pass through (e.g. --months 2026-01..2026-06 --bbox W,S,E,N).
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/warm-port-cards.mjs "${@:2}"
+    ;;
   pack-table)
     need CRON_SECRET
     node --env-file=.env.local scripts/ships/bake-us/pack-table.mjs

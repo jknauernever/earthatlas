@@ -28,7 +28,10 @@ import { useIsMobile } from '../hooks/useMediaQuery'
 import ShipPicker from './ShipPicker.jsx'
 import TrackMonths, { TRACK_KINDS, fmtMonth } from './TrackControls.jsx'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
+import PortCard, { PORT_HUE } from './PortCard.jsx'
 import trackSource from './trackSource.json'
+import { DatasetRow, SourcesFooter, LegendSwatchRow, useDockColumns } from '../components/panel'
+import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -240,6 +243,21 @@ function mpaPopupHTML(p) {
     `</div>`
   )
 }
+// ─── Ports (World Port Index + Global Fishing Watch's named ports; Phase 3 step 3) ────────────────
+// One GeoJSON of every port (/api/ships?op=portsLayer, cached a day), sized by WPI harbour size; bigger harbours show
+// from further out. GFW-only ports (no WPI entry) are hollow rings. Click → the port card (PortCard.jsx).
+const PORT_ICON = '<path d="M12 4v16"/><circle cx="12" cy="5" r="2"/><path d="M5 12H3a9 9 0 0 0 18 0h-2"/><path d="M8 9h8"/>'
+const PORTS = {
+  id: 'ports', name: 'Ports', sub: 'harbours and the ships that call there', hue: PORT_HUE, iconSvg: PORT_ICON,
+  sourceName: 'World Port Index (NGA Pub 150)', sourceUrl: 'https://msi.nga.mil/Publications/WPI',
+}
+const PORT_TIERS = [['L', 0, 5.5], ['M', 3, 4.2], ['S', 5, 3.2], ['V', 7, 2.4]] // [WPI size, min zoom, radius px]
+const portLayerId = (t) => `ports-${t}`
+const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label']
+const portHit = (map, pt) => {
+  const live = PORT_LAYERS.filter((l) => l !== 'ports-label' && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
+  return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live }) : []
+}
 const fmtIsoDay = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 const monthStart = (ym) => `${ym}-01`
 const monthAfter = (ym) => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01` }
@@ -277,7 +295,8 @@ const Icon = ({ svg, size = 19 }) => (
 //   v   picked vessel (EarthAtlas uuid)     q  ship search text      k  kinds (comma list)
 //   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
-//   mp  '1' = Protected areas on (default off)
+//   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
+//   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -285,7 +304,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), ct: sp.get('ct'), cf: sp.get('cf'),
+    dk: sp.get('dk'), mp: sp.get('mp'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -294,6 +313,27 @@ function writeUrlQuery(qs) {
   const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
   if (url === window.location.pathname + window.location.search + window.location.hash) return
   window.history.replaceState(window.history.state, '', url)
+}
+
+/**
+ * fitBounds padding that keeps a fit clear of what floats over the map: the left panel (or icon dock) and the ship
+ * card, which hangs on the right under the search (2026-09-27: the old top-centre assumption squeezed a picked
+ * ship's tracks into a thin strip and zoomed far out). Measured live, so it follows whatever is open; if the
+ * overlays leave too little map, the padding shrinks rather than zooming out to nothing.
+ */
+function clearOfOverlays(map, isMobile) {
+  const box = map.getContainer().getBoundingClientRect()
+  if (isMobile) return { top: 70, bottom: 40, left: 30, right: 30 }
+  const edge = (sel, side) => {
+    const r = document.querySelector(sel)?.getBoundingClientRect()
+    if (!r || !r.width || !r.height) return 0
+    return side === 'left' ? r.right - box.left : box.right - r.left
+  }
+  let left = Math.max(30, edge('#ships-panel', 'left') + 24, edge('#ships-dock', 'left') + 24)
+  let right = Math.max(30, edge('[aria-label="Ship card"]', 'right') + 24)
+  const minMap = 240 // px of map the tracks must get
+  if (box.width - left - right < minMap) { const k = Math.max(0, box.width - minMap) / (left + right); left *= k; right *= k }
+  return { top: 80, bottom: 40, left: Math.round(left), right: Math.round(right) }
 }
 
 export default function ShipsApp() {
@@ -311,11 +351,18 @@ export default function ShipsApp() {
   // Navigation exactly like /inmotion: desktop dock ⇄ panel; phones pill ⇄ dock ⇄ drawer.
   const [panelOpen, setPanelOpen] = useState(true) // Josh 2026-09-26: open on every load; collapsible
   const [mobileView, setMobileView] = useState('dock')
+  // Icons per dock row: 2, or up to 6 when the window is too short for the dock (shared panel kit).
+  const dockRef = useRef(null)
 
   const [identityOn, setIdentityOn] = useState(initial.id !== '0')
   const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
-  const [darkOn, setDarkOn] = useState(initial.dk !== '0')
+  const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
+  const [portsOn, setPortsOn] = useState(initial.pt !== '0') // default on (Josh, 2026-09-27); pt=0 off, pt=1 on
+  const [portId, setPortId] = useState(/^\d{1,12}$/.test(initial.pc || '') ? initial.pc : null)
+  const [portMonth, setPortMonth] = useState(/^\d{4}-\d{2}$/.test(initial.pm || '') ? initial.pm : null)
+  const [portFolded, setPortFolded] = useState(initial.pf === '1')
+  const [backToPort, setBackToPort] = useState(null) // { id, name } when a ship was opened from a port card
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
@@ -387,6 +434,7 @@ export default function ShipsApp() {
   }, [])
   const salishMonths = trackSource.months || []
   const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || [])])].sort(), [salishMonths, usMonths])
+  const dockCols = useDockColumns(dockRef, `${allTrackMonths.length > 0}-${isMobile}-${mobileView}-${panelOpen}`)
   const defaultSel = [salishMonths[Math.max(0, salishMonths.length - TRACK_MONTH_CAP)], salishMonths[salishMonths.length - 1]]
   const [trackSel, setTrackSel] = useState(() => {
     const [a, b] = (initial.tm || '').split('_')
@@ -472,7 +520,8 @@ export default function ShipsApp() {
       map.addLayer({ id: OWN_HI, type: 'line', source: OWN_SRC, filter: ['==', ['get', 't0'], -1], layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': OWN_COLOR, 'line-width': OWN_HI_WIDTH, 'line-opacity': 1 } }, labelsId)
     }
-    const ownVis = tracksOn && identityOn && vesselId ? 'visible' : 'none'
+    // A picked ship's own (blue) tracks show even with the Ship tracks layer off (Josh, 2026-09-27).
+    const ownVis = identityOn && vesselId ? 'visible' : 'none'
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) map.setLayoutProperty(l, 'visibility', ownVis)
     const hi = pickedTrack ? ['all', ['==', ['get', 'mmsi'], pickedTrack.mmsi], ['==', ['get', 't0'], pickedTrack.t0]]
       : stopFocus?.t0s?.length ? ['in', ['get', 't0'], ['literal', stopFocus.t0s]] : ['==', ['get', 't0'], -1]
@@ -511,11 +560,7 @@ export default function ShipsApp() {
       fitToOwnRef.current = false
       const b = new mapboxgl.LngLatBounds()
       for (const f of ownTracks) for (const c of f.geometry.coordinates) b.extend(c)
-      // The card hangs from the top centre, so fit the tracks into the map below it.
-      const card = document.querySelector('[aria-label="Ship card"]')?.getBoundingClientRect()
-      const h = map.getContainer().clientHeight
-      const top = card ? Math.min(card.bottom + 24, h * 0.6) : 90
-      map.fitBounds(b, { padding: { top, bottom: 40, left: isMobile ? 30 : 140, right: isMobile ? 30 : 80 }, maxZoom: 12, duration: 1200 })
+      map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 12, duration: 1200 })
     }
   }, [ownTracks, mapReady, styleVersion, isMobile])
 
@@ -600,6 +645,7 @@ export default function ShipsApp() {
       } catch { setTrackNote('Could not look up this track’s ship.') }
     }
     const onClick = async (e) => {
+      if (portHit(map, e.point).length) return // a port marker on a lane opens the port, not the lane
       const hits = hit(e.point)
       if (!hits.length) return
       const f = hits.find((h) => h.properties.mmsi != null)
@@ -652,7 +698,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !darkOn || !gfwRange) return
     const trackLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk')).map((l) => l.id)
     const onClick = async (e) => {
-      if (!map.getLayer('gfw-dark-fill')) return
+      if (!map.getLayer('gfw-dark-fill') || portHit(map, e.point).length) return
       if (map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: trackLayers() }).length) return
       const f = map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] })[0]
       if (!f) return
@@ -719,7 +765,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !mpaOn) return
     const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
     const onClick = (e) => {
-      if (!map.getLayer('mpa-fill')) return
+      if (!map.getLayer('mpa-fill') || portHit(map, e.point).length) return
       const others = otherLayers()
       if (others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
       const hits = map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] })
@@ -737,6 +783,69 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     return () => { map.off('click', onClick); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
   }, [mapReady, mpaOn])
+
+  // ─── Ports layer ──────────────────────────────────────────────────────────────
+  // Loaded once when first switched on (one cached request, ~3,000 points). Drawn above tracks, dark cells and
+  // protected areas (re-seated when track months change, as those are re-added under the labels), under the labels.
+  const [portsData, setPortsData] = useState(null)
+  useEffect(() => {
+    if (!portsOn || portsData) return
+    fetch('/api/ships?op=portsLayer').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
+  }, [portsOn, portsData])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !portsData) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol' && !l.id.startsWith('ports'))?.id
+    if (!map.getSource('ports')) {
+      map.addSource('ports', { type: 'geojson', data: portsData,
+        attribution: '<a href="https://msi.nga.mil/Publications/WPI" target="_blank" rel="noopener">World Port Index (NGA)</a>' })
+      const gfw = ['==', ['get', 'g'], 1]
+      for (const [t, minzoom, r] of PORT_TIERS) {
+        const filter = t === 'V' ? ['any', ['==', ['get', 's'], 'V'], ['!', ['has', 's']], ['==', ['get', 's'], null]] : ['==', ['get', 's'], t]
+        map.addLayer({ id: portLayerId(t), type: 'circle', source: 'ports', minzoom, filter,
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, r, 10, r * 1.6],
+            'circle-color': ['case', gfw, 'rgba(0,0,0,0)', PORT_HUE],
+            'circle-stroke-color': ['case', gfw, PORT_HUE, '#0a0e17'],
+            'circle-stroke-width': ['case', gfw, 1.6, 1],
+            'circle-opacity': 0.95,
+          } }, labelsId)
+      }
+      map.addLayer({ id: 'ports-label', type: 'symbol', source: 'ports', minzoom: 8,
+        layout: { 'text-field': ['get', 'n'], 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true,
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
+        paint: { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.2 } })
+    }
+    for (const l of PORT_TIERS.map(([t]) => portLayerId(t))) if (map.getLayer(l)) map.moveLayer(l, labelsId)
+    for (const l of PORT_LAYERS) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', portsOn ? 'visible' : 'none')
+    // The open port, ringed.
+    const sel = portId ? ['==', ['get', 'i'], Number(portId)] : ['==', ['get', 'i'], -1]
+    for (const [t] of PORT_TIERS) {
+      if (!map.getLayer(portLayerId(t))) continue
+      map.setPaintProperty(portLayerId(t), 'circle-stroke-color', ['case', sel, '#ffffff', ['==', ['get', 'g'], 1], PORT_HUE, '#0a0e17'])
+      map.setPaintProperty(portLayerId(t), 'circle-stroke-width', ['case', sel, 2.5, ['==', ['get', 'g'], 1], 1.6, 1])
+    }
+  }, [mapReady, styleVersion, portsData, portsOn, portId, trackMonths])
+
+  // Click a port → its card. Ports win over tracks, dark cells and protected areas underneath (see those handlers).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !portsOn) return
+    const onClick = (e) => {
+      const f = portHit(map, e.point)[0]
+      if (!f) return
+      setPortId(String(f.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null)
+      setVesselId(null); setPickerOpen(false)
+    }
+    const onMove = (e) => { if (portHit(map, e.point).length) map.getCanvas().style.cursor = 'pointer' }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove) }
+  }, [mapReady, portsOn])
 
   // ─── A stop from the Ports tab on the map (Josh, 2026-09-27) ────────────────
   // Marker on GFW's stop point (the anchorage cell, not the exact berth), the ship's own track arriving
@@ -782,9 +891,7 @@ export default function ShipsApp() {
     const near = [...(before ? before.geometry.coordinates.slice(-60) : []), ...(after ? after.geometry.coordinates.slice(0, 60) : [])].filter((c) => km(c) <= 20)
     const b = new mapboxgl.LngLatBounds([v.lon - 0.01, v.lat - 0.006], [v.lon + 0.01, v.lat + 0.006])
     near.forEach((c) => b.extend(c))
-    const card = document.querySelector('[aria-label="Ship card"]')?.getBoundingClientRect()
-    map.fitBounds(b, { padding: { top: 90, bottom: 50, left: isMobile ? 30 : 330, right: isMobile ? 30 : Math.min(480, (card?.width || 400) + 60) },
-      maxZoom: 14, duration: 1200 })
+    map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 14, duration: 1200 })
   }, [ownTracks, trackMonths, isMobile])
   useEffect(() => () => { stopMarkerRef.current?.remove() }, [])
   useEffect(() => { setStopFocus(null); stopMarkerRef.current?.remove() }, [vesselId])
@@ -796,8 +903,10 @@ export default function ShipsApp() {
     const sp = new URLSearchParams()
     if (!identityOn) sp.set('id', '0')
     if (!tracksOn) sp.set('tr', '0')
-    if (!darkOn) sp.set('dk', '0')
+    if (darkOn) sp.set('dk', '1')
     if (mpaOn) sp.set('mp', '1')
+    if (!portsOn) sp.set('pt', '0')
+    if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1') }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
       const [a, b] = trackSel
       sp.set('tm', a === b ? a : `${a}_${b}`)
@@ -813,19 +922,18 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, portsOn, portId, portMonth, portFolded, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
     setIdentityOn(next)
     setPickerOpen(next && !vesselId) // turning on with nothing picked → open the search
   }
-  const pickShip = (r) => { fitToOwnRef.current = true; setPickedTrack(null); setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
+  const pickShip = (r) => { setPortId(null); setBackToPort(null); fitToOwnRef.current = true; setPickedTrack(null); setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
-  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0)
-  const anyTimed = tracksOn || darkOn
+  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0) + (portsOn ? 1 : 0)
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
@@ -861,9 +969,13 @@ export default function ShipsApp() {
               <button type="button" className={styles.inlineLink} onClick={() => setTrackNote(null)}> dismiss</button>
             </div>
           )}
+          {vesselId && backToPort && (
+            <button type="button" className={styles.trackNote} style={{ textAlign: 'left', cursor: 'pointer' }}
+              onClick={() => { setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the port card: {backToPort.name}</button>
+          )}
           {vesselId && (
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
-              onClose={() => { setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false); setPickedTrack(null) }}
+              onClose={() => { setBackToPort(null); setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false); setPickedTrack(null) }}
               onSelectVessel={(id) => setVesselId(id)}
               onShowPlace={showStop}
               onLoaded={(v) => {
@@ -874,6 +986,19 @@ export default function ShipsApp() {
               }} />
           )}
         </ShipPicker>
+      )}
+
+      {portId && !vesselId && trackMonths.length > 0 && (
+        <div className={styles.portWrap}>
+          <PortCard portId={portId} months={trackMonths} month={portMonth} onMonth={setPortMonth} folded={portFolded} onFold={setPortFolded}
+            onClose={() => { setPortId(null); setPortMonth(null); setPortFolded(false) }}
+            onOpenPort={(id) => { setPortId(id); setPortMonth(null) }}
+            onSelectVessel={(id) => {
+              const name = document.querySelector('[aria-label="Port card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'port'
+              setBackToPort({ id: portId, name }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
+              fitToOwnRef.current = true; setVesselId(id)
+            }} />
+        </div>
       )}
 
       <div className={styles.basemapMenu} ref={basemapMenuRef}>
@@ -901,7 +1026,7 @@ export default function ShipsApp() {
 
       {/* Icon dock — default navigation on every screen size (as /inmotion). */}
       {((!isMobile && !panelOpen) || (isMobile && mobileView === 'dock')) && (
-        <div className={`${styles.dock} ${isMobile ? styles.dockMobile : ''}`} role="toolbar" aria-label="Ship data">
+        <div ref={dockRef} id="ships-dock" style={{ '--dock-cols': dockCols }} className={`${styles.dock} ${isMobile ? styles.dockMobile : ''}`} role="toolbar" aria-label="Ship data">
           <div className={styles.dockTitle}>I want to see…</div>
           <div className={styles.dockMeta}>
             <span className={styles.countChip}>{activeCount} on</span>
@@ -910,42 +1035,23 @@ export default function ShipsApp() {
               <button type="button" className={styles.dockBtnSm} onClick={() => { if (isMobile) setMobileView('drawer'); else setPanelOpen(true) }} aria-label="Expand panel">▸</button>
             </div>
           </div>
+          {/* One flat list in the panel's order (Josh 2026-09-27): Ship tracks, Ports, Protected areas, Ship identity, Dark vessels. */}
           <div className={styles.dockGroup}>
-            <div className={styles.dockGroupLabel}>SHIPS</div>
             <div className={styles.dockGrid}>
-              <button type="button" className={`${styles.dockBtn} ${identityOn ? styles.dockOn : ''}`}
-                style={identityOn ? hueStyle(IDENTITY.hue) : undefined} onClick={toggleIdentity} aria-pressed={identityOn} aria-label={IDENTITY.name}>
-                <Icon svg={IDENTITY.iconSvg} size={isMobile ? 16 : 19} />
-                {identityOn && <span className={styles.liveDotHue} aria-hidden="true" />}
-                {!isMobile && <span className={styles.dockTip} aria-hidden="true">{IDENTITY.name} <span>· {IDENTITY.sub}</span></span>}
-              </button>
-              {allTrackMonths.length > 0 && (
-                <button type="button" className={`${styles.dockBtn} ${tracksOn ? styles.dockOn : ''}`}
-                  style={tracksOn ? hueStyle(TRACKS.hue) : undefined} onClick={() => setTracksOn((o) => !o)} aria-pressed={tracksOn} aria-label={TRACKS.name}>
-                  <Icon svg={TRACKS.iconSvg} size={isMobile ? 16 : 19} />
-                  {tracksOn && <span className={styles.liveDotHue} aria-hidden="true" />}
-                  {!isMobile && <span className={styles.dockTip} aria-hidden="true">{TRACKS.name} <span>· {TRACKS.sub}</span></span>}
-                </button>
-              )}
-              {[[DARK, darkOn, setDarkOn]].map(([def, on, set]) => (
-                <button key={def.id} type="button" className={`${styles.dockBtn} ${on ? styles.dockOn : ''}`}
-                  style={on ? hueStyle(def.hue) : undefined} onClick={() => set((o) => !o)} aria-pressed={on} aria-label={def.name}>
+              {[
+                allTrackMonths.length > 0 && [TRACKS, tracksOn, () => setTracksOn((o) => !o)],
+                [PORTS, portsOn, () => setPortsOn((o) => !o)],
+                [MPA, mpaOn, () => setMpaOn((o) => !o)],
+                [IDENTITY, identityOn, toggleIdentity],
+                [DARK, darkOn, () => setDarkOn((o) => !o)],
+              ].filter(Boolean).map(([def, on, toggle]) => (
+                <button key={def.id || def.name} type="button" className={`${styles.dockBtn} ${on ? styles.dockOn : ''}`}
+                  style={on ? hueStyle(def.hue) : undefined} onClick={toggle} aria-pressed={on} aria-label={def.name}>
                   <Icon svg={def.iconSvg} size={isMobile ? 16 : 19} />
                   {on && <span className={styles.liveDotHue} aria-hidden="true" />}
                   {!isMobile && <span className={styles.dockTip} aria-hidden="true">{def.name} <span>· {def.sub}</span></span>}
                 </button>
               ))}
-            </div>
-          </div>
-          <div className={styles.dockGroup}>
-            <div className={styles.dockGroupLabel}>PLACES</div>
-            <div className={styles.dockGrid}>
-              <button type="button" className={`${styles.dockBtn} ${mpaOn ? styles.dockOn : ''}`}
-                style={mpaOn ? hueStyle(MPA.hue) : undefined} onClick={() => setMpaOn((o) => !o)} aria-pressed={mpaOn} aria-label={MPA.name}>
-                <Icon svg={MPA.iconSvg} size={isMobile ? 16 : 19} />
-                {mpaOn && <span className={styles.liveDotHue} aria-hidden="true" />}
-                {!isMobile && <span className={styles.dockTip} aria-hidden="true">{MPA.name} <span>· {MPA.sub}</span></span>}
-              </button>
             </div>
           </div>
         </div>
@@ -958,7 +1064,7 @@ export default function ShipsApp() {
       )}
 
       {(!isMobile || mobileView === 'drawer') && (
-        <MapSheet title="I want to see…" summary={`${activeCount} on`}
+        <MapSheet id="ships-panel" title="I want to see…" summary={`${activeCount} on`}
           className={`${styles.panel} ${!isMobile && !panelOpen ? styles.panelHidden : ''}`}
           desktopCollapsible={false}
           onSnapChange={(snap) => { if (isMobile && snap === 'peek' && mobileView === 'drawer') setMobileView('dock') }}>
@@ -973,46 +1079,19 @@ export default function ShipsApp() {
           </div>
           {(panelOpen || isMobile) && (
             <div className={styles.panelBody}>
-              <div className={styles.group}>
-                <div className={styles.groupHead}>Ships</div>
-                {anyTimed && allTrackMonths.length > 0 && (
-                  <div className={styles.whenBlock}>
-                    <TrackMonths months={allTrackMonths} range={trackRange} onRange={setTrackRange} styles={styles} cap={TRACK_MONTH_CAP} />
-                    <div className={styles.legendNoteText}>Applies to tracks and dark vessels.</div>
-                  </div>
-                )}
-                <div className={styles.layerBlock}>
-                  <div className={styles.layerRow} role="switch" aria-checked={identityOn} tabIndex={0} onClick={toggleIdentity}
-                    onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleIdentity() } }}>
-                    <span className={`${styles.rowIcon} ${identityOn ? styles.dockOn : ''}`} style={identityOn ? hueStyle(IDENTITY.hue) : undefined} aria-hidden="true">
-                      <Icon svg={IDENTITY.iconSvg} size={16} />
-                    </span>
-                    <div className={styles.layerInfo}>
-                      <span className={styles.layerName}>{IDENTITY.name}</span>
-                      <span className={styles.layerSub}>{IDENTITY.sub}</span>
-                    </div>
-                  </div>
-                  {identityOn && (
-                    <div className={styles.liveNote}>
-                      Use the <strong>Ships</strong> pill at the top to find a ship. Every value on its card says whether the ship broadcast it
-                      (<Ev c="ais_self_reported" />) or a registry recorded it (<Ev c="registry" />). Data:{' '}
-                      <a className={styles.sourceLink} href={IDENTITY.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a>
-                    </div>
-                  )}
+              {/* Shared panel standard (src/components/panel): name toggles, ⌄ = options, Legend turndown, (i) = about + sources. */}
+              {/* One flat list in Josh's order (2026-09-27): Ship tracks, Ports, Protected areas, Ship identity, Dark vessels. */}
+              {/* The months drive tracks, dark vessels and port cards, so the picker sits above every row, always visible (Josh 2026-09-27). */}
+              {allTrackMonths.length > 0 && (
+                <div className={styles.panelWhen}>
+                  <TrackMonths months={allTrackMonths} range={trackRange} onRange={setTrackRange} styles={styles} cap={TRACK_MONTH_CAP} />
+                  <div className={styles.legendNoteText}>Applies to ship tracks, dark vessels and port cards.</div>
                 </div>
+              )}
                 {allTrackMonths.length > 0 && (
-                  <div className={styles.layerBlock}>
-                    <div className={styles.layerRow} role="switch" aria-checked={tracksOn} tabIndex={0} onClick={() => setTracksOn((o) => !o)}
-                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setTracksOn((o) => !o) } }}>
-                      <span className={`${styles.rowIcon} ${tracksOn ? styles.dockOn : ''}`} style={tracksOn ? hueStyle(TRACKS.hue) : undefined} aria-hidden="true">
-                        <Icon svg={TRACKS.iconSvg} size={16} />
-                      </span>
-                      <div className={styles.layerInfo}>
-                        <span className={styles.layerName}>{TRACKS.name}</span>
-                        <span className={styles.layerSub}>{TRACKS.sub}</span>
-                      </div>
-                    </div>
-                    {tracksOn && (
+                  <DatasetRow storageKey="ships.tracks" name={TRACKS.name} sub={TRACKS.sub} hue={TRACKS.hue}
+                    icon={<Icon svg={TRACKS.iconSvg} size={16} />} on={tracksOn} onToggle={() => setTracksOn((o) => !o)}
+                    controls={<>
                       <div className={styles.kindFilter}>
                         <div className={styles.fieldLabel}>Kind of ship</div>
                         <div className={styles.chipRow}>
@@ -1024,74 +1103,79 @@ export default function ShipsApp() {
                         </div>
                         <div className={styles.legendNoteText}>From the AIS type code each ship broadcasts, as NOAA publishes it (the Coast Guard corrects some). Tracks stay yellow; this only filters.</div>
                       </div>
-                    )}
-                    {tracksOn && (
-                      <div className={styles.liveNote}>
-                        US waters, {fmtMonth(allTrackMonths[0])} – {fmtMonth(allTrackMonths[allTrackMonths.length - 1])}, with more detailed
-                        tracks in the Salish Sea for {fmtMonth(salishMonths[0])} – {fmtMonth(salishMonths[salishMonths.length - 1])}. Zoom in and
-                        click a track for its ship; a picked ship’s own tracks show in cyan. Data:{' '}
-                        <a className={styles.sourceLink} href={TRACKS.sourceUrl} target="_blank" rel="noopener noreferrer">{TRACKS.sourceName}</a>, public domain.
-                      </div>
-                    )}
-                  </div>
+                    </>}
+                    legend={<>
+                      <LegendSwatchRow swatch={<span style={{ width: 18, height: 2, borderRadius: 1, background: TRACK_COLOR }} />}>Ship tracks; busier lanes glow brighter</LegendSwatchRow>
+                    </>}
+                    info={<>
+                      US waters, {fmtMonth(allTrackMonths[0])} – {fmtMonth(allTrackMonths[allTrackMonths.length - 1])}, with more detailed
+                      tracks in the Salish Sea for {fmtMonth(salishMonths[0])} – {fmtMonth(salishMonths[salishMonths.length - 1])}. Zoom in and
+                      click a track for its ship; a picked ship’s own tracks show in cyan. Data:{' '}
+                      <a href={TRACKS.sourceUrl} target="_blank" rel="noopener noreferrer">{TRACKS.sourceName}</a>, public domain.
+                    </>} />
                 )}
-                {[[DARK, darkOn, setDarkOn]].map(([def, on, set]) => (
-                  <div key={def.id} className={styles.layerBlock}>
-                    <div className={styles.layerRow} role="switch" aria-checked={on} tabIndex={0} onClick={() => set((o) => !o)}
-                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); set((o) => !o) } }}>
-                      <span className={`${styles.rowIcon} ${on ? styles.dockOn : ''}`} style={on ? hueStyle(def.hue) : undefined} aria-hidden="true">
-                        <Icon svg={def.iconSvg} size={16} />
-                      </span>
-                      <div className={styles.layerInfo}>
-                        <span className={styles.layerName}>{def.name}</span>
-                        <span className={styles.layerSub}>{def.sub}</span>
-                      </div>
-                    </div>
-                    {on && def.id === 'dark' && (
-                      <div className={styles.liveNote}>
-                        Hotspots of vessels seen by Sentinel-1 radar while not broadcasting AIS: the brighter the cell, the more such
-                        detections per month. Quiet areas are hidden. Not every dark vessel is doing wrong (many small boats aren’t required
-                        to carry AIS), and there are no identities. Radar misses most
-                        boats under 15 m and anything within 1 km of shore, doesn’t cover most of the open ocean, and some detections are noise.
-                        About 5–6 days behind.{' '}
-                        <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a> CC BY-NC 4.0.
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className={styles.group}>
-                <div className={styles.groupHead}>Places</div>
-                <div className={styles.layerBlock}>
-                  <div className={styles.layerRow} role="switch" aria-checked={mpaOn} tabIndex={0} onClick={() => setMpaOn((o) => !o)}
-                    onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMpaOn((o) => !o) } }}>
-                    <span className={`${styles.rowIcon} ${mpaOn ? styles.dockOn : ''}`} style={mpaOn ? hueStyle(MPA.hue) : undefined} aria-hidden="true">
-                      <Icon svg={MPA.iconSvg} size={16} />
-                    </span>
-                    <div className={styles.layerInfo}>
-                      <span className={styles.layerName}>{MPA.name}</span>
-                      <span className={styles.layerSub}>{MPA.sub}</span>
-                    </div>
-                  </div>
-                  {mpaOn && (
-                    <div className={styles.liveNote}>
-                      <div className={styles.mpaLegend}>
-                        {MPA_LEVELS.map(([k, name], i) => (
-                          <div key={k} className={styles.mpaLegendRow}>
-                            <span className={styles.mpaSwatch} style={{ background: MPA_SHADES[i], opacity: 0.35 + i * 0.12 }} aria-hidden="true" />
-                            {name}
-                          </div>
-                        ))}
-                      </div>
-                      Every US marine protected area that meets the IUCN definition: federal, state, territorial, local and jointly run. Deeper
-                      green = stricter protection. Click one for its fishing, vessel and anchoring rules. Not for navigation or legal
-                      boundaries. Data:{' '}
-                      <a className={styles.sourceLink} href={MPA.sourceUrl} target="_blank" rel="noopener noreferrer">{MPA.sourceName}</a>,
-                      as of {fmtIsoDay(trackSource.mpa.version)}, public domain.
-                    </div>
-                  )}
-                </div>
-              </div>
+                <DatasetRow storageKey="ships.ports" name={PORTS.name} sub={PORTS.sub} hue={PORTS.hue}
+                  icon={<Icon svg={PORTS.iconSvg} size={16} />} on={portsOn} onToggle={() => setPortsOn((o) => !o)}
+                  legend={<>
+                    {PORT_TIERS.map(([t, , r]) => (
+                      <LegendSwatchRow key={t} swatch={<span style={{ width: r * 2, height: r * 2, borderRadius: '50%', background: PORT_HUE, border: '1px solid #0a0e17' }} />}>
+                        {{ L: 'Large harbour', M: 'Medium harbour', S: 'Small harbour', V: 'Very small harbour' }[t]}
+                      </LegendSwatchRow>
+                    ))}
+                    <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
+                      Port named by Global Fishing Watch
+                    </LegendSwatchRow>
+                  </>}
+                  info={<>
+                    Every port in the World Port Index, sized by its harbour size; smaller harbours appear as you zoom in. Click one for the ships
+                    that called there in the months picked under Ship tracks, and, for big cargo ports, trends from IMF PortWatch. Data:{' '}
+                    <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
+                    port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0).
+                  </>} />
+                <DatasetRow storageKey="ships.mpa" name={MPA.name} sub={MPA.sub} hue={MPA.hue}
+                  icon={<Icon svg={MPA.iconSvg} size={16} />} on={mpaOn} onToggle={() => setMpaOn((o) => !o)}
+                  legend={<>
+                    {MPA_LEVELS.map(([k, name], i) => (
+                      <LegendSwatchRow key={k} swatch={<span className={styles.mpaSwatch} style={{ background: MPA_SHADES[i], opacity: 0.35 + i * 0.12 }} />}>{name}</LegendSwatchRow>
+                    ))}
+                    <div className={styles.legendNoteText} style={{ marginTop: 2 }}>Least to most restrictive, as NOAA ranks them.</div>
+                  </>}
+                  info={<>
+                    Every US marine protected area that meets the IUCN definition: federal, state, territorial, local and jointly run. Deeper
+                    green = stricter protection. Click one for its fishing, vessel and anchoring rules. Not for navigation or legal
+                    boundaries. Data:{' '}
+                    <a href={MPA.sourceUrl} target="_blank" rel="noopener noreferrer">{MPA.sourceName}</a>,
+                    as of {fmtIsoDay(trackSource.mpa.version)}, public domain.
+                  </>} />
+                <DatasetRow storageKey="ships.identity" name={IDENTITY.name} sub={IDENTITY.sub} hue={IDENTITY.hue}
+                  icon={<Icon svg={IDENTITY.iconSvg} size={16} />} on={identityOn} onToggle={toggleIdentity}
+                  legend={<>
+                    <LegendSwatchRow swatch={<Ev c="ais_self_reported" />}>Broadcast by the ship (AIS)</LegendSwatchRow>
+                    <LegendSwatchRow swatch={<Ev c="registry" />}>Recorded by a registry</LegendSwatchRow>
+                    <LegendSwatchRow swatch={<span style={{ width: 18, height: 3, borderRadius: 2, background: OWN_COLOR }} />}>Your picked ship’s tracks</LegendSwatchRow>
+                  </>}
+                  info={<>
+                    Use the <strong>Ships</strong> pill at the top to find a ship. Every value on its card says whether the ship broadcast it
+                    (<Ev c="ais_self_reported" />) or a registry recorded it (<Ev c="registry" />). Data:{' '}
+                    <a href={IDENTITY.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a>
+                  </>} />
+                <DatasetRow storageKey="ships.dark" name={DARK.name} sub={DARK.sub} hue={DARK.hue}
+                  icon={<Icon svg={DARK.iconSvg} size={16} />} on={darkOn} onToggle={() => setDarkOn((o) => !o)}
+                  legend={<>
+                    <LegendSwatchRow swatch={<span style={{ width: 18, height: 10, borderRadius: 2, background: 'linear-gradient(90deg, rgba(217,70,239,0.3), #a21caf)' }} />}>
+                      Deeper purple = more radar detections of ships not broadcasting AIS
+                    </LegendSwatchRow>
+                    <div className={styles.legendNoteText} style={{ marginTop: 2 }}>Quiet areas are hidden.</div>
+                  </>}
+                  info={<>
+                    Hotspots of vessels seen by Sentinel-1 radar while not broadcasting AIS: the brighter the cell, the more such
+                    detections per month. Quiet areas are hidden. Not every dark vessel is doing wrong (many small boats aren’t required
+                    to carry AIS), and there are no identities. Radar misses most
+                    boats under 15 m and anything within 1 km of shore, doesn’t cover most of the open ocean, and some detections are noise.
+                    About 5–6 days behind.{' '}
+                    <a href={DARK.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a> CC BY-NC 4.0.
+                  </>} />
+              <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES} />
             </div>
           )}
         </MapSheet>

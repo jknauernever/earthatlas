@@ -15,19 +15,23 @@ export function gfwClient(token, { minIntervalMs = 1000, log = console.log } = {
   let calls = 0
   let remainingDaily = null
 
-  async function get(path, params) {
+  async function get(path, params, postBody = null) {
     const qs = new URLSearchParams()
     for (const [k, v] of Object.entries(params)) {
       if (Array.isArray(v)) v.forEach((x, i) => qs.append(`${k}[${i}]`, x))
       else if (v !== undefined && v !== null) qs.append(k, String(v))
     }
-    const url = `${BASE}${path}?${qs}`
+    const q = qs.toString()
+    const url = `${BASE}${path}${q ? `?${q}` : ''}`
     for (let attempt = 0; ; attempt++) {
       const wait = last + minIntervalMs - Date.now()
       if (wait > 0) await new Promise((r) => setTimeout(r, wait))
       last = Date.now()
       calls++
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      // POST (JSON body) for the filters GET can't carry: a custom geometry, and /events/stats.
+      const res = await fetch(url, postBody
+        ? { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(postBody) }
+        : { headers: { Authorization: `Bearer ${token}` } })
       const rem = res.headers.get('x-ratelimit-daily-remaining-requests')
       if (rem !== null) remainingDaily = Number(rem)
       if (res.ok) {
@@ -71,6 +75,27 @@ export function gfwClient(token, { minIntervalMs = 1000, log = console.log } = {
         'datasets': [PORT_VISITS_DATASET], 'vessels': vesselIds,
         'start-date': from, 'end-date': to, limit, offset,
       })
+    },
+    /**
+     * One page of port-visit events at GFW port labels (docs/GFW_ACTIVITY_API.md, "Port visits by port",
+     * verified 2026-09-27): GET `port-ids[i]` matches the INTERMEDIATE anchorage's label; `time-filter-mode=START-DATE`
+     * keeps only visits that began in [from, to) (the default OVERLAP also returns years-long stays).
+     */
+    portEvents({ portIds, from, to, limit = 1000, offset = 0 }) {
+      return get('/events', {
+        'datasets': [PORT_VISITS_DATASET], 'port-ids': portIds,
+        'start-date': from, 'end-date': to, 'time-filter-mode': 'START-DATE', limit, offset,
+      })
+    },
+    /** Port-visit events whose position lies in a GeoJSON polygon (POST only; slow: 15–21 s live). Newest first. */
+    eventsInPolygon({ geometry, from, to, limit = 1000, offset = 0 }) {
+      return get('/events', { limit, offset, sort: '-start' },
+        { datasets: [PORT_VISITS_DATASET], startDate: from, endDate: to, geometry, timeFilterMode: 'START-DATE' })
+    },
+    /** Totals + a monthly series of port visits at GFW port labels, by visit start (POST /v3/events/stats). */
+    portStats({ portIds, from, to, interval = 'MONTH' }) {
+      return get('/events/stats', {},
+        { datasets: [PORT_VISITS_DATASET], startDate: from, endDate: to, portIds, timeFilterMode: 'START-DATE', timeseriesInterval: interval })
     },
   }
 }

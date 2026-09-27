@@ -396,3 +396,32 @@ Facts from these responses:
 - **Confidence**: no default filter was observed (unfiltered responses held `"3"` and `"4"`). The vessels sampled were almost all `"4"`.
 - **Several GFW ids per ship: do NOT send them all.** EURODAM's GFW entry groups 15 AIS identities: the ship (MMSI 245206000, 20.3 million messages) and 14 identities on MMSIs 245206011–016 named like `"T13 EURODAM"`, `"EURODAM T11"` or nothing (130–15,607 messages each; these look like its tenders / lifeboats, UNVERIFIED). Those 14 produced 17 "visits" of 545–77,326 hours, overlapping the ship's own visits (e.g. SANTA BARBARA 2016-06-13 → 2025-04-09). GFW's registry records list the same MMSIs, so a registry-MMSI rule does not separate them. EarthAtlas's rule (lib/ships/portVisits.js `ownIdentities`): query the identity with the most AIS messages plus any identity whose broadcast name equals a name a registry gives for the ship; record the rest as skipped.
 - **What GFW allows for the default window**: any window back to 2012 in one request (no span limit found), paged with `limit`/`offset`. EarthAtlas defaults to the last 2 years.
+
+## Port visits by port (verified live 2026-09-27, for the /ships port card)
+
+~16 requests on 2026-09-27 with our token (UA `Mozilla/5.0 (compatible; EarthAtlas-ships/0.1)`), dataset resolved to
+`public-global-port-visits-events:v4.0`. Code: `lib/ships/portCard.js`, `scripts/ships/gfwClient.js` (`portEvents`,
+`portStats`, `eventsInPolygon`). Recorded responses (trimmed, labelled): `lib/ships/test/fixtures/portcard-live-2026-09-27.json`.
+
+| # | Request | Result |
+|---|---|---|
+| 70 | `GET /v3/events?…&portIds[0]=usa-seattle&…` | **422** "portIds is an invalid query param. Available chars must contain lower case characters (plus dashes)": GET params are kebab-case. |
+| 71 | `GET /v3/events?…&port-ids[0]=usa-seattle&start-date=2026-08-01&end-date=2026-09-01&limit=5&offset=0` | 200, 1.0 s, **total 5,042** (default OVERLAP: includes stays that began in 2014). |
+| 72 | `POST /v3/events` body `{datasets, startDate, endDate, portIds:["usa-seattle"]}` | 201, 0.6 s, total 5,042: same as #71. |
+| 73 | `POST /v3/events` + `timeFilterMode:"START"` | **422** "timeFilterMode must be one of the following values: OVERLAP, START-DATE". |
+| 74 | GET #71 + `time-filter-mode=START-DATE` | 200, 4.7 s, **total 4,009** = visits that *began* in August. |
+| 75 | POST #72 + `timeFilterMode:"START-DATE"`, `limit=1000&sort=-start` | 201, 3.2 s, total 4,009. Of 1,000 entries: `intermediateAnchorage.id` = usa-seattle **1,000/1,000**; startAnchorage usa-seattle 998; endAnchorage usa-seattle 949 (others: usa-blakeisland, usa-meydenbauer, …). **`port-ids` filters on the intermediate anchorage.** Confidence 2: 4, 3: 170, 4: 826. vessel.type: passenger 761, other 172, fishing 37, NA 12, carrier 9, cargo 6, seismic 3. 464 distinct vessels. `vessel.nextPort` null. |
+| 76 | `POST /v3/events` with `geometry` = 32-point, 5 km circle around WPI Seattle, Aug 2026 (OVERLAP) | 201, **16.4 s**, total 1,909. `x-datasets` header absent on POST responses; `metadata.geometry` echoes the polygon. |
+| 77 | same + `sort=-start` | 201, 14.2 s. |
+| 78 | geometry = 4 km circle around WPI Anacortes, Aug 2026, START-DATE, `limit=200&sort=-start` | 201, **20.8 s**, total 217, all intermediate label `usa-anacortes`. |
+| 79 | geometry = 4 km circle around WPI Vancouver (49.2833, −123.1167), Jun 2026, START-DATE | 201, 15.8 s, total 71, all `can-vancouver` (named VANCOUVER). |
+| 80 | `POST /v3/events/stats` `{datasets, startDate:"2025-07-01", endDate:"2026-07-01", portIds:["usa-seattle"], timeFilterMode:"START-DATE", timeseriesInterval:"MONTH"}` | **200** (not 201), 0.8 s: `numEvents 33,216, numVessels 3,810, numFlags 41`, `timeseries` 12 months (Jul 2025 3,610 … Feb 2026 1,960 … Jun 2026 3,578); the series sums to numEvents. |
+| 81 | stats, `portIds:["usa-seattle","usa-tacoma"]`, Jun 2026 | 200, 2.9 s, numEvents 3,707, numVessels 1,071: several labels per request work. |
+
+Facts:
+- Port labels (`usa-seattle`, `can-vancouver`, `usa-usa-399`) are what `port-ids` / `portIds` take. They are the same `id` values the anchorages carry in every event (docs/PORTS_SOURCES.md §4).
+- Filtering by label is fast (0.5–5 s); by geometry it is slow (14–21 s) whatever the limit. So the port card asks by label, and uses geometry only once per port to find labels near a World Port Index port that has none yet.
+- `START-DATE` = "arrivals in the window"; OVERLAP also returns years-long open stays (liveaboards, stationary transmitters: 34,798–107,671 h in #71/#76).
+- Busy labels: Seattle ≈ 2,000–3,600 arrivals a month (mostly ferries and pleasure craft), `can-vancouver` 1,320 in Jun 2026, Tacoma 129, Anacortes 180. GFW's `usa-tacoma` label is dominated by small craft; Tacoma's container terminals appear to fall under other labels (UNVERIFIED).
+- A WPI port can have no label of its own: GFW's `can-vancouver` spans English Bay and the inner harbour; its most-visited anchorage point is 10 km from WPI Vancouver, so step 2 named it as its own port (VANCOUVER, GFW anchorages). The card for WPI Vancouver links to it.
+- GFW calls per port-card open: first open 2 (stats + 1 events page) for a small port, up to 1 + 5 for a busy one (≤ 5,000 arrivals listed; Seattle Jun 2026 = 4 pages, 26 s), +1 geometry call (≈ 20 s) the first time a WPI port without a known label is opened. Repeat opens: 0 (fetch log, 24 h; settled months 30 days).

@@ -1,0 +1,1722 @@
+{
+ "_label": "REAL, recorded live by scripts/ships/commonsClient.js",
+ "retrieved_at": "2026-09-27T07:26:34.514Z",
+ "categoryInfo": {
+  "request": "https://commons.wikimedia.org/w/api.php?action=query&prop=categoryinfo&titles=Category%3AIMO+9509401%7CCategory%3AIMO+9515395%7CCategory%3AIMO+9500001&format=json&formatversion=2&maxlag=5",
+  "response": {
+   "batchcomplete": true,
+   "query": {
+    "pages": [
+     {
+      "ns": 14,
+      "title": "Category:IMO 9500001",
+      "missing": true
+     },
+     {
+      "pageid": 21382947,
+      "ns": 14,
+      "title": "Category:IMO 9509401",
+      "categoryinfo": {
+       "size": 1,
+       "pages": 0,
+       "files": 0,
+       "subcats": 1,
+       "hidden": false
+      }
+     },
+     {
+      "pageid": 29870707,
+      "ns": 14,
+      "title": "Category:IMO 9515395",
+      "categoryinfo": {
+       "size": 1,
+       "pages": 0,
+       "files": 0,
+       "subcats": 1,
+       "hidden": false
+      }
+     }
+    ]
+   }
+  }
+ },
+ "byImo": {
+  "9509401": {
+   "members": [
+    {
+     "request": "https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category%3AIMO+9509401&cmtype=file%7Csubcat&cmlimit=500&cmprop=ids%7Ctitle%7Ctype%7Ctimestamp%7Csortkeyprefix&prop=categoryinfo&titles=Category%3AIMO+9509401&format=json&formatversion=2&maxlag=5",
+     "response": {
+      "batchcomplete": true,
+      "query": {
+       "pages": [
+        {
+         "pageid": 21382947,
+         "ns": 14,
+         "title": "Category:IMO 9509401",
+         "categoryinfo": {
+          "size": 1,
+          "pages": 0,
+          "files": 0,
+          "subcats": 1,
+          "hidden": false
+         }
+        }
+       ],
+       "categorymembers": [
+        {
+         "pageid": 21382934,
+         "ns": 14,
+         "title": "Category:Jupiter Spirit (ship, 2011)",
+         "sortkeyprefix": "",
+         "type": "subcat",
+         "timestamp": "2025-06-17T20:40:22Z"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "files": {
+    "Category:Jupiter Spirit (ship, 2011)": [
+     {
+      "request": "https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category%3AJupiter+Spirit+%28ship%2C+2011%29&gcmtype=file&gcmlimit=50&prop=imageinfo&iiprop=url%7Cextmetadata%7Csize%7Cmime%7Csha1%7Ctimestamp&iiurlwidth=640&iiextmetadatafilter=LicenseShortName%7CLicenseUrl%7CLicense%7CArtist%7CCredit%7CAttributionRequired%7CUsageTerms%7CCopyrighted%7CRestrictions%7CDateTimeOriginal%7CImageDescription%7CCategories%7CObjectName&format=json&formatversion=2&maxlag=5",
+      "response": {
+       "batchcomplete": true,
+       "query": {
+        "pages": [
+         {
+          "pageid": 21382834,
+          "ns": 6,
+          "title": "File:Car carrier Jupiter Spirit.jpg",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2012-09-16T16:34:00Z",
+            "size": 667429,
+            "width": 2048,
+            "height": 1536,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Car_carrier_Jupiter_Spirit.jpg/960px-Car_carrier_Jupiter_Spirit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 480,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Car_carrier_Jupiter_Spirit.jpg/1280px-Car_carrier_Jupiter_Spirit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Car_carrier_Jupiter_Spirit.jpg/960px-Car_carrier_Jupiter_Spirit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 480,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Car_carrier_Jupiter_Spirit.jpg/1280px-Car_carrier_Jupiter_Spirit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Car_carrier_Jupiter_Spirit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Car_carrier_Jupiter_Spirit.jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=21382834",
+            "sha1": "01eeb4375581ea0957ad28146956b6ead6183db8",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Car carrier Jupiter Spirit",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "CC-Zero|Jupiter Spirit (ship, 2011)|Self-published work|Files with coordinates missing SDC location of creation (53° N, 8° E)|Car carriers in Bremerhaven",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "The car carrier <b>Jupiter Spirit</b> of Nissan motor Car Carrier has just left the Kaiserschleuse ship lock and is now heading to the North Sea. Details of the shop: <a rel=\"nofollow\" class=\"external text\" href=\"http://www.nissancarrier.co.jp/en/ship_02.html\">external website</a>.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2012-09-04",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Tvabutzku1234\" title=\"User:Tvabutzku1234\">Tvabutzku1234</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Zero, Public Domain Dedication",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "false",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 193768877,
+          "ns": 6,
+          "title": "File:Jupiter Spirit (car carrier ship) at Port of Auckland 20250722-131005.jpg",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2026-06-13T07:13:24Z",
+            "size": 2839076,
+            "width": 3979,
+            "height": 2981,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg/960px-Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 479,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg/1280px-Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg/960px-Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 479,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg/1280px-Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/4/42/Jupiter_Spirit_%28car_carrier_ship%29_at_Port_of_Auckland_20250722-131005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Jupiter_Spirit_(car_carrier_ship)_at_Port_of_Auckland_20250722-131005.jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=193768877",
+            "sha1": "14c83e0d00e3ddb71a81c2a581e95769caae67d5",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Jupiter Spirit (car carrier ship) at Port of Auckland 20250722-131005",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Jupiter Spirit (ship, 2011)|Self-published work|Files with coordinates missing SDC location of creation|Car carriers in Auckland",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "IMO 9509401",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2025-07-22 13:10:05",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:XiaYZ2023\" title=\"User:XiaYZ2023\">XiaYZ2023</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  "9515395": {
+   "members": [
+    {
+     "request": "https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category%3AIMO+9515395&cmtype=file%7Csubcat&cmlimit=500&cmprop=ids%7Ctitle%7Ctype%7Ctimestamp%7Csortkeyprefix&prop=categoryinfo&titles=Category%3AIMO+9515395&format=json&formatversion=2&maxlag=5",
+     "response": {
+      "batchcomplete": true,
+      "query": {
+       "pages": [
+        {
+         "pageid": 29870707,
+         "ns": 14,
+         "title": "Category:IMO 9515395",
+         "categoryinfo": {
+          "size": 1,
+          "pages": 0,
+          "files": 0,
+          "subcats": 1,
+          "hidden": false
+         }
+        }
+       ],
+       "categorymembers": [
+        {
+         "pageid": 29870686,
+         "ns": 14,
+         "title": "Category:Parsifal (ship, 2011)",
+         "sortkeyprefix": "",
+         "type": "subcat",
+         "timestamp": "2025-06-18T00:22:53Z"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "files": {
+    "Category:Parsifal (ship, 2011)": [
+     {
+      "request": "https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category%3AParsifal+%28ship%2C+2011%29&gcmtype=file&gcmlimit=50&prop=imageinfo&iiprop=url%7Cextmetadata%7Csize%7Cmime%7Csha1%7Ctimestamp&iiurlwidth=640&iiextmetadatafilter=LicenseShortName%7CLicenseUrl%7CLicense%7CArtist%7CCredit%7CAttributionRequired%7CUsageTerms%7CCopyrighted%7CRestrictions%7CDateTimeOriginal%7CImageDescription%7CCategories%7CObjectName&format=json&formatversion=2&maxlag=5",
+      "response": {
+       "batchcomplete": true,
+       "query": {
+        "pages": [
+         {
+          "pageid": 29870343,
+          "ns": 6,
+          "title": "File:Merchants Passing 003.jpg",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2013-11-26T20:06:18Z",
+            "size": 2450540,
+            "width": 4000,
+            "height": 3000,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Merchants_Passing_003.jpg/960px-Merchants_Passing_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 480,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Merchants_Passing_003.jpg/1280px-Merchants_Passing_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Merchants_Passing_003.jpg/960px-Merchants_Passing_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 480,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Merchants_Passing_003.jpg/1280px-Merchants_Passing_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Merchants_Passing_003.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Merchants_Passing_003.jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=29870343",
+            "sha1": "2f4efcbe7e4b8a28c7117a667636515aaf7685c8",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Merchants Passing 003",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Chesapeake Bay|Taken with Canon PowerShot SX260 HS|Media lacking a description|Parsifal (ship, 2011)|Flickr images uploaded by Flickr upload bot",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "DateTimeOriginal": {
+              "value": "2013-08-04 17:23:55",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/Flickr\" class=\"mw-redirect\" title=\"Flickr\">Flickr</a>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/79155290@N06/10677933783\">Merchants Passing 003</a>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//www.flickr.com/people/79155290@N06\" class=\"extiw\" title=\"flickruser:79155290@N06\">bobcapra</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY 2.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution 2.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by/2.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-2.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 30507419,
+          "ns": 6,
+          "title": "File:A view of a ship in the harbor of Baltimore, MD..jpg",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2014-01-06T18:25:10Z",
+            "size": 1249165,
+            "width": 2000,
+            "height": 1325,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg/960px-A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 424,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg/1280px-A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg/960px-A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 424,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg/1280px-A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/A_view_of_a_ship_in_the_harbor_of_Baltimore%2C_MD..jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_view_of_a_ship_in_the_harbor_of_Baltimore,_MD..jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=30507419",
+            "sha1": "52b2e7adffb64ed6aed42017d3b1c9fde09a540f",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "A view of a ship in the harbor of Baltimore, MD.",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Port of Baltimore|Taken with Nikon D5100|CC-Zero|Parsifal (ship, 2011)|Self-published work|Ships in Baltimore",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "A view of a cargo ship docked in the harbor outside Baltimore, MD.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2012-08-08 05:16:39",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bruce_Emmerling\" title=\"User:Bruce Emmerling\">Bruce Emmerling</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Zero, Public Domain Dedication",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "false",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203671,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (01).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:36Z",
+            "size": 3937285,
+            "width": 4428,
+            "height": 2913,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 421,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 421,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Parsifal%2C_Fremantle%2C_2015_%2801%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(01).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203671",
+            "sha1": "fc2e7b18bf934efac79e258cd12a7e01f69c1c31",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (01)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:31:22",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203672,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (02).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:37Z",
+            "size": 2843725,
+            "width": 3906,
+            "height": 2589,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 424,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 424,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Parsifal%2C_Fremantle%2C_2015_%2802%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(02).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203672",
+            "sha1": "fb63f565a9360234cfe2935444c555f6cc491ed3",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (02)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:32:14",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203673,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (03).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:38Z",
+            "size": 3287049,
+            "width": 4303,
+            "height": 2832,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 421,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 421,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Parsifal%2C_Fremantle%2C_2015_%2803%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(03).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203673",
+            "sha1": "21f084ecf9dafa0249d76c5c571d56963adc1204",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (03)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:32:40",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203674,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (04).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:40Z",
+            "size": 3389103,
+            "width": 3968,
+            "height": 2232,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Parsifal%2C_Fremantle%2C_2015_%2804%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(04).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203674",
+            "sha1": "a6243b4f9bea46c95ccd931e77b40fe669860e30",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (04)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:29:56",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203676,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (06).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:41Z",
+            "size": 2732892,
+            "width": 3641,
+            "height": 2035,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 358,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 358,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Parsifal%2C_Fremantle%2C_2015_%2806%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(06).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203676",
+            "sha1": "670918361739747cc06f54a23fcc8ef6fc792027",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (06)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:30:30",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203677,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (05).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:42Z",
+            "size": 2596233,
+            "width": 3453,
+            "height": 1945,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Parsifal%2C_Fremantle%2C_2015_%2805%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(05).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203677",
+            "sha1": "ebe2519cacab666ef23ad54ec3a7771fac196bc5",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (05)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:30:15",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203678,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (08).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:44Z",
+            "size": 3866550,
+            "width": 3776,
+            "height": 2520,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 427,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 427,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/1/16/Parsifal%2C_Fremantle%2C_2015_%2808%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(08).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203678",
+            "sha1": "c3a985f966d71ec1e9332b85c87dafd7694edda5",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (08)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Svitzer Eagle (tugboat, 2008)|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Tugboats in Fremantle Harbour|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.  In the foreground is the tugboat <i>Svitzer Eagle</i>.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:31:37",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203679,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (07).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:45Z",
+            "size": 3373741,
+            "width": 3968,
+            "height": 2232,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Parsifal%2C_Fremantle%2C_2015_%2807%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(07).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203679",
+            "sha1": "6d20bd649debac383fea20ac71e43c45ca1e4adf",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (07)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:30:42",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203680,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (09).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:45Z",
+            "size": 3763926,
+            "width": 3968,
+            "height": 2232,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Parsifal%2C_Fremantle%2C_2015_%2809%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(09).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203680",
+            "sha1": "61a33609e766afe823fa16c04041ab502990b44b",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (09)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:32:11",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203682,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (10).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:47Z",
+            "size": 3454541,
+            "width": 3638,
+            "height": 2047,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/4/45/Parsifal%2C_Fremantle%2C_2015_%2810%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(10).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203682",
+            "sha1": "d6bb31d9009d5f16c690771d7828898a7608a888",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (10)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Leica D-Lux 6|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:32:29",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203683,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (11).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:48Z",
+            "size": 4957660,
+            "width": 4660,
+            "height": 3075,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 422,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 422,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Parsifal%2C_Fremantle%2C_2015_%2811%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(11).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203683",
+            "sha1": "bd9a68d09f8bbb5944dbd2fcd79ba9678be6b628",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (11)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:36:07",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 48203684,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2015 (12).JPG",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2016-04-15T16:12:48Z",
+            "size": 5312636,
+            "width": 4814,
+            "height": 2708,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG/960px-Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG/1280px-Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/d/da/Parsifal%2C_Fremantle%2C_2015_%2812%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2015_(12).JPG",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=48203684",
+            "sha1": "02d9a146659ee6a44e458db6da4fe34bf8a6cba2",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2015 (12)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2016|Files with coordinates missing SDC location of creation|Photographs taken on 2016-04-10|April 2016 in Fremantle|Car carriers in Fremantle Harbour|Car carriers in motion|Ships entering Fremantle Harbour",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> entering the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia, with a liner service from Melbourne. Next stop: Ningbo, China.",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2016-04-10 12:36:53",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         },
+         {
+          "pageid": 65249047,
+          "ns": 6,
+          "title": "File:Parsifal, Fremantle, 2017 (01).jpg",
+          "imagerepository": "local",
+          "imageinfo": [
+           {
+            "timestamp": "2018-01-04T15:55:25Z",
+            "size": 5393279,
+            "width": 4908,
+            "height": 2757,
+            "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg/960px-Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+            "thumbwidth": 640,
+            "thumbheight": 360,
+            "responsiveUrls": {
+             "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg/1280px-Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+            },
+            "thumbattribs": {
+             "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg/960px-Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+             "decoding": "async",
+             "loading": "lazy",
+             "width": 640,
+             "height": 360,
+             "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg/1280px-Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Parsifal%2C_Fremantle%2C_2017_%2801%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Parsifal,_Fremantle,_2017_(01).jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=65249047",
+            "sha1": "245c02d9593cf643a69bd6c75c6fd9d3c867cf30",
+            "extmetadata": {
+             "ObjectName": {
+              "value": "Parsifal, Fremantle, 2017 (01)",
+              "source": "mediawiki-metadata"
+             },
+             "Categories": {
+              "value": "Taken with Nikon D5100 and AF-S VR Zoom-Nikkor 24-85mm f/3.5-4.5G ED|Parsifal (ship, 2011)|Self-published work|Ships facing left|Images by Bahnfrend|Watercraft in Australia photographed in 2017|Files with coordinates missing SDC location of creation|December 2017 in Fremantle|Australia photographs taken on 2017-12-26|Car carriers in Fremantle Harbour|Ships moored at North Quay, North Fremantle",
+              "source": "commons-categories",
+              "hidden": ""
+             },
+             "ImageDescription": {
+              "value": "<a href=\"https://en.wikipedia.org/wiki/Wallenius_Wilhelmsen_Logistics\" class=\"extiw\" title=\"w:Wallenius Wilhelmsen Logistics\">Wallenius Wilhelmsen Logistics</a> <a href=\"https://en.wikipedia.org/wiki/car_carrier\" class=\"extiw\" title=\"w:car carrier\">car carrier</a> MV <i>Parsifal</i> berthed at North Quay, in the inner harbour of the <a href=\"https://en.wikipedia.org/wiki/Fremantle_Harbour\" class=\"extiw\" title=\"w:Fremantle Harbour\">Port of Fremantle</a>, Western Australia",
+              "source": "commons-desc-page"
+             },
+             "DateTimeOriginal": {
+              "value": "2017-12-26 15:12:42",
+              "source": "commons-desc-page"
+             },
+             "Credit": {
+              "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+              "source": "commons-desc-page"
+             },
+             "Artist": {
+              "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bahnfrend\" title=\"User:Bahnfrend\">Bahnfrend</a>",
+              "source": "commons-desc-page"
+             },
+             "LicenseShortName": {
+              "value": "CC BY-SA 4.0",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "UsageTerms": {
+              "value": "Creative Commons Attribution-Share Alike 4.0",
+              "source": "commons-desc-page"
+             },
+             "AttributionRequired": {
+              "value": "true",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "LicenseUrl": {
+              "value": "https://creativecommons.org/licenses/by-sa/4.0",
+              "source": "commons-desc-page"
+             },
+             "Copyrighted": {
+              "value": "True",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "Restrictions": {
+              "value": "",
+              "source": "commons-desc-page",
+              "hidden": ""
+             },
+             "License": {
+              "value": "cc-by-sa-4.0",
+              "source": "commons-templates",
+              "hidden": ""
+             }
+            },
+            "mime": "image/jpeg"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

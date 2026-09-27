@@ -30,6 +30,14 @@ Record more live responses with `npm run ships:import-gfw -- --save <dir> …`.
 
 `typeLookup.test.js` and the licence-filter test use small **SYNTHETIC** rows / metadata, marked as such in the test names.
 
+## Wikimedia Commons IMO categories (docs/COMMONS_PHOTOS.md)
+
+| File | What it is |
+|---|---|
+| `commons-live-imo-2026-09-27.json` | **Real, recorded live** 2026-09-27 by `scripts/ships/commonsClient.js`: one `categoryinfo` request for `Category:IMO 9500001` (missing), `9509401` and `9515395`, then for the two that exist the `categorymembers` response and the `generator=categorymembers` + `imageinfo` response for their ship subcategory (JUPITER SPIRIT, 2 files; PARSIFAL, 15 files, one also filed under a tugboat's category). Every `request` URL and `response` exactly as received. |
+
+`commons.test.js` edits a few real pages (NC licence, PDF, interior title) and `commons-db.test.js` swaps the IMO of the real GFW / NOAA EURODAM fixtures to 9509401; both are **SYNTHETIC** and marked in the test names.
+
 ## Official registries (docs/VESSEL_REGISTRIES.md)
 
 | File | What it is |
@@ -79,3 +87,9 @@ All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]
 | `anchorages-live-2026-09-27.json` | **Real** verbatim extracts of the downloads made 2026-09-27 by `scripts/ships/import-anchorages.mjs --fetch`: 9 of the 679 MarineCadastre "Anchorages" FeatureServer GeoJSON features (Cherry Point, Smith Cove West, Elliott Bay East, the Port Angeles non-anchorage area, SF Anchorage 20, LA Anchorage F, a MultiPolygon, a null-CFR row, a 110.228 row); 3 of the 117 DFO Pacific commercial anchorage features (English Bay U, English Bay 1, Royal Roads A with radius "unknown"); the proposed §110.230 text of 82 FR 10313 as GPO's plain text gives it; the eCFR Part 110 version entries for 110.214/224/228/230 plus the non-substantive ones after 2022-11-17; and 7 real GFW port-visit positions (event id + position as stored in the dev DB). |
 
 `anchorages.test.js` / `anchorages-db.test.js` mark the cases they build or edit (hole/circle shapes, an overlapping designated copy, a renamed feature) SYNTHETIC in the test name.
+
+## Port card (Phase 3 step 3)
+
+| File | What it is |
+|---|---|
+| `portcard-live-2026-09-27.json` | **Real, recorded live** 2026-09-27: GFW `GET /v3/events?port-ids[0]=usa-anacortes&time-filter-mode=START-DATE` for June 2026 (the first 25 of 180 entries kept; `total`/`nextOffset` as received), `POST /v3/events/stats` for usa-anacortes Jul 2025 – Jun 2026 (verbatim), a `POST /v3/events` geometry response around WPI Anacortes for Aug 2026 (20 of 200 entries kept), 8 IMF PortWatch port features (Salish + the two `TR BOT` ports) and PortWatch `Daily_Ports_Data` for port47 in June 2026 (verbatim). |

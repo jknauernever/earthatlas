@@ -18,6 +18,7 @@
     "ships:import-gfw": "node --env-file=.env.local scripts/ships/import-gfw.mjs",
     "ships:import-mc": "node --env-file=.env.local scripts/ships/import-mc.mjs",
     "ships:import-wikidata": "node --env-file=.env.local scripts/ships/import-wikidata.mjs",
+    "ships:import-commons": "node --env-file=.env.local scripts/ships/import-commons.mjs",
     "ships:import-fcc": "node --env-file=.env.local scripts/ships/import-fcc.mjs",
     "ships:import-psix": "node --env-file=.env.local scripts/ships/import-psix.mjs",
     "ships:import-tc": "node --env-file=.env.local scripts/ships/import-tc.mjs",
@@ -33,6 +34,7 @@
     "ships:import-anchorages-us": "node --env-file=.env.local scripts/ships/import-anchorages.mjs us",
     "ships:import-anchorages-ca": "node --env-file=.env.local scripts/ships/import-anchorages.mjs ca",
     "ships:import-anchorages-nondesignated": "node --env-file=.env.local scripts/ships/import-anchorages.mjs nondesignated",
+    "ships:import-portwatch": "node --env-file=.env.local scripts/ships/import-portwatch.mjs",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

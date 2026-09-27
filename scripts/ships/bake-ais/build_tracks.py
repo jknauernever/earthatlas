@@ -34,7 +34,10 @@ Tile properties per track: mmsi, kind, vtype, month, t0, t1 (epoch s, UTC), n.
 
 Tiles are styled exactly like /shiptraffic's (the app does that; see ShipsApp),
 and the tippecanoe settings match scripts/bake-shiptraffic/build_tracks_tiles.py
-(-Z5 -z10, --simplification=10, --drop-densest-as-needed).
+(-Z5 -z10, --simplification=10, --drop-densest-as-needed), except that the top zoom (z10) is
+NOT simplified (--simplification-at-maximum-zoom=1, v5, Josh 2026-09-26): the map overzooms z10
+tiles, and a 10x-simplified line there was ~100 m off the real track at street zoom, so the
+yellow line and the picked ship's own (full-resolution) blue track didn't line up.
 
 Also writes track_tiles/tracks-YYYY-MM.pack: EVERY drawn track, grouped by
 MMSI. The tiles are a density picture; tippecanoe's --drop-densest-as-needed
@@ -231,14 +234,14 @@ def build(ym):
       ) TO '{ident}' (FORMAT json)""")
 
     subprocess.run(["tippecanoe", "-o", out, "-l", "tracks", "-f", "-q", "-Z5", "-z10",
-                    "--simplification=10", "--drop-densest-as-needed", "--read-parallel", ndjson], check=True)
+                    "--simplification=10", "--simplification-at-maximum-zoom=1", "--drop-densest-as-needed", "--read-parallel", ndjson], check=True)
     os.remove(ndjson)
 
     manifest = dict(region=REGION, month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     source="MarineCadastre daily AIS points (NOAA/BOEM/USCG), CC0",
-                    rules=dict(version="v4", inland_m=land_mask.INLAND_M, line_step_m=LINE_STEP_M, line_land_min_m=LINE_LAND_MIN_M, land="GSHHG full-res via scripts/bake-shiptraffic/salish_land.geojson", gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S,
+                    rules=dict(version="v5", inland_m=land_mask.INLAND_M, line_step_m=LINE_STEP_M, line_land_min_m=LINE_LAND_MIN_M, land="GSHHG full-res via scripts/bake-shiptraffic/salish_land.geojson", gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S,
                                parked_m=PARKED_M, simplify_deg=SIMPLIFY_DEG,
-                               tippecanoe="-Z5 -z10 --simplification=10 --drop-densest-as-needed"),
+                               tippecanoe="-Z5 -z10 --simplification=10 --simplification-at-maximum-zoom=1 --drop-densest-as-needed"),
                     pack=dict(shards=PACK_SHARDS, simplify_deg=PACK_SIMPLIFY_DEG, bytes=os.path.getsize(pack)),
                     stats=stats, pmtiles_bytes=os.path.getsize(out), secs=round(time.time() - t0))
     with open(os.path.join(TILES, f"tracks-{ym}.json"), "w") as fh:

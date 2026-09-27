@@ -191,6 +191,12 @@ const monthAfter = (ym) => { const [y, m] = ym.split('-').map(Number); return m 
 const OWN_SRC = 'shiptrk-own'
 const OWN_LINE = 'shiptrk-own-line'
 const OWN_CASING = 'shiptrk-own-casing'
+// The one track that was clicked, drawn over the ship's other tracks that month (Josh, 2026-09-26:
+// option 1). The rest of the month dims while it's set, so "this line" and "where the ship went" both read.
+const OWN_HI = 'shiptrk-own-hi'
+const OWN_HI_CASING = 'shiptrk-own-hi-casing'
+const OWN_HI_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 2.4, 10, 3.4, 14, 4.6]
+const OWN_HI_CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 4.2, 10, 5.6, 14, 7.2]
 
 /**
  * A track belongs to the picked ship only if its MMSI is one the ship held AND
@@ -255,6 +261,7 @@ export default function ShipsApp() {
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
+  const [pickedTrack, setPickedTrack] = useState(null) // { mmsi, t0 } of a clicked line, or null
   const [ownTracks, setOwnTracks] = useState([])      // the picked ship's complete tracks (from the per-MMSI pack)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState(initial.q || '')
@@ -400,13 +407,20 @@ export default function ShipsApp() {
         paint: { 'line-color': '#0a0e17', 'line-width': OWN_CASING_WIDTH, 'line-opacity': 0.85 } }, labelsId)
       map.addLayer({ id: OWN_LINE, type: 'line', source: OWN_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': OWN_COLOR, 'line-width': OWN_WIDTH, 'line-opacity': 1 } }, labelsId)
+      map.addLayer({ id: OWN_HI_CASING, type: 'line', source: OWN_SRC, filter: ['==', ['get', 't0'], -1], layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#0a0e17', 'line-width': OWN_HI_CASING_WIDTH, 'line-opacity': 0.9 } }, labelsId)
+      map.addLayer({ id: OWN_HI, type: 'line', source: OWN_SRC, filter: ['==', ['get', 't0'], -1], layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': OWN_COLOR, 'line-width': OWN_HI_WIDTH, 'line-opacity': 1 } }, labelsId)
     }
     const ownVis = tracksOn && identityOn && vesselId ? 'visible' : 'none'
-    map.setLayoutProperty(OWN_CASING, 'visibility', ownVis)
-    map.setLayoutProperty(OWN_LINE, 'visibility', ownVis)
+    for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) map.setLayoutProperty(l, 'visibility', ownVis)
+    const hi = pickedTrack ? ['all', ['==', ['get', 'mmsi'], pickedTrack.mmsi], ['==', ['get', 't0'], pickedTrack.t0]] : ['==', ['get', 't0'], -1]
+    map.setFilter(OWN_HI_CASING, hi); map.setFilter(OWN_HI, hi)
+    map.setPaintProperty(OWN_LINE, 'line-opacity', pickedTrack ? 0.55 : 1)
+    map.setPaintProperty(OWN_CASING, 'line-opacity', pickedTrack ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
-    if (map.getLayer(OWN_CASING)) { map.moveLayer(OWN_CASING, labelsId); map.moveLayer(OWN_LINE, labelsId) }
-  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths])
+    for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
+  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths, pickedTrack])
 
   // The picked ship's own tracks: every selected month × every MMSI it held.
   useEffect(() => {
@@ -494,6 +508,7 @@ export default function ShipsApp() {
     }
     const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
     const openShip = async (mmsi, t0, month) => {
+      setPickedTrack(t0 ? { mmsi: Number(mmsi), t0: Number(t0) } : null)
       const when = new Date(t0 * 1000).toISOString()
       const resolve = async () => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)).json()
       try {
@@ -637,7 +652,7 @@ export default function ShipsApp() {
     setIdentityOn(next)
     setPickerOpen(next && !vesselId) // turning on with nothing picked → open the search
   }
-  const pickShip = (r) => { fitToOwnRef.current = true; setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
+  const pickShip = (r) => { fitToOwnRef.current = true; setPickedTrack(null); setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
@@ -680,7 +695,7 @@ export default function ShipsApp() {
           )}
           {vesselId && (
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
-              onClose={() => { setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false) }}
+              onClose={() => { setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false); setPickedTrack(null) }}
               onSelectVessel={(id) => setVesselId(id)}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')

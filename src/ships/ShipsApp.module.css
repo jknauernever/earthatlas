@@ -481,3 +481,23 @@
 .popupShipKind { display: block; font-size: 12.5px; font-weight: 600; color: #111827; }
 .popupShipMeta { display: block; font-size: 11px; color: #6b7280; font-variant-numeric: tabular-nums; }
 .popupShipType { font-weight: 400; color: #6b7280; margin-left: 4px; }
+
+/* "Show months" disclosure under the year chips (Josh, 2026-09-26). */
+.disclosure {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 3px 0;
+  border: 0; background: none; color: rgba(243, 247, 238, 0.75); font: inherit; font-size: 12px; cursor: pointer;
+}
+.disclosure:hover { color: #fff; }
+
+/* Ship card: Incidents tab. */
+.incident { padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.incidentHead { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.incidentTitle { font-size: 13px; font-weight: 600; color: #fff; }
+.incidentMeta { font-size: 11.5px; color: rgba(255, 255, 255, 0.65); margin-top: 2px; line-height: 1.4; overflow-wrap: anywhere; }
+.capNote { margin-top: 6px; font-size: 11.5px; color: #fcd34d; line-height: 1.4; }
+.recordToggle { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; padding: 0; border: 0; background: none; color: #67e8f9; font: inherit; font-size: 11.5px; cursor: pointer; }
+.record { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); font-size: 12px; color: rgba(255, 255, 255, 0.85); }
+.recordRow { display: flex; gap: 8px; padding: 2px 0; }
+.recordK { flex: 0 0 42%; color: rgba(255, 255, 255, 0.55); }
+.recordSub { margin-top: 8px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+.recordItem { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }

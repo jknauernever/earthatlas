@@ -144,6 +144,14 @@ Coordinates are rounded to whole arc-minutes (about 1.8 km of latitude). They ma
 
 ## 3. IMF PortWatch
 
+**Use terms, read 2026-09-26 from https://portwatch.imf.org/pages/faqs (the FAQ page; the general IMF terms page still returned 403):**
+- "DATA USAGE: For questions about commercial redistribution of the datasets, please contact copyright@imf.org for guidance." No other restriction is stated. EarthAtlas is non-commercial conservation use (see memory / Josh 2026-09-25), so non-commercial display with the citation below is treated as allowed.
+- Required citation (port/chokepoint activity and trade estimates): **"Sources: Kpler; UN Global Platform; IMF PortWatch (portwatch.imf.org)."** Disruptions: "Sources: Global Disaster Alert and Coordination System (GDACS); IMF PortWatch (portwatch.imf.org)."
+- A **port call = "the arrival of a vessel at berth"**, excluding (as far as possible) bunkering-only stops. Dates in **UTC**. Updated **weekly, Tuesdays 9 AM ET**; series can be revised.
+- AIS source: Kpler satellite AIS via the UN Global Platform, plus Spire/FleetMon terrestrial. Known anomalies: blackout days 2022-05-12, 2023-02-14, 2024-01-09; Hormuz spoofing (e.g. 2026-04-27/28); Mumbai May 2025 – Apr 2026.
+- API (FAQ): ArcGIS REST, `.../Daily_Trade_Data/FeatureServer/0/query?where=portid='PORT0'&outFields=*&maxRecordCountFactor=5&outSR=4326&f=json` (≤5,000 rows per call); chokepoints in `Daily_Chokepoints_Data`.
+- Aggregates only (per port per day, by vessel type): no per-vessel calls, so it feeds port cards, not a ship's ports of call.
+
 - **What it is:** IMF Research Department + Oxford (OxMarTrans), using AIS from the UN Global Platform.
   - Daily port calls and estimated import/export tonnage for **2,065 ports** (large commercial ports only).
   - The hub page says it is updated weekly (Tuesdays, 9 AM ET per search-result text; **UNVERIFIED** on a primary page).

@@ -15,7 +15,7 @@ import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
-import { searchVessels, vesselKinds, getVessel, getRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
+import { searchVessels, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -60,6 +60,12 @@ export default async function handler(req, res) {
       const r = await getRecord(q, S, p.get('id') || '')
       // Raw records are immutable, so they can be cached hard.
       return r ? send(res, 200, r, 'public, max-age=86400, s-maxage=2592000') : send(res, 404, { error: 'record not found' })
+    }
+    //   /api/ships?op=incident&id=<incident id> → { incident, refs, record, source } (narratives withheld)
+    // CGMIX / PSIX have no per-report web address, so the card shows the official record itself.
+    if (op === 'incident') {
+      const r = await getIncidentRecord(q, S, p.get('id') || '')
+      return r ? send(res, 200, r, 'public, max-age=3600, s-maxage=86400') : send(res, 404, { error: 'incident not found' })
     }
     if (op === 'mmsi') {
       const at = new Date(p.get('at') || '')

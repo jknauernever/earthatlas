@@ -313,7 +313,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
 
           {!folded && <>
           <div className={pick.tabs} role="tablist">
-            {[['overview', 'Overview'], ['history', 'History'], ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
+            {[['overview', 'Overview'], ['history', 'History'],
+              ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
+              ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id}
                 className={`${pick.tab} ${tab === id ? pick.tabOn : ''}`} onClick={() => setTab(id)}>{label}</button>
             ))}
@@ -335,6 +337,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             {renderSection(ROLE_ROWS, 'Ownership & management')}
             {renderSection(CHAR_ROWS, 'Characteristics over time')}
           </>}
+
+          {tab === 'incidents' && <Incidents list={vessel.incidents || []} />}
 
           {tab === 'matches' && candidates.length > 0 && (
             <div className={styles.section}>
@@ -412,6 +416,140 @@ function TypeLine({ c, typeClaims, Src }) {
       {c.hazardous_cargo?.length > 0 && <div className={styles.hazard}>
         ⚠︎ Carries hazardous cargo (self-declared, category {c.hazardous_cargo.join(', ')}) {aisHaz && <Src a={aisHaz} />}
       </div>}
+    </div>
+  )
+}
+
+// ─── Incidents tab (Josh, 2026-09-26) ─────────────────────────────────────────
+// Official records linked to this ship (lib/ships/incidents*.js). Privacy rules from the import:
+// injuries/deaths as counts only; narratives and people's names are never returned.
+const INCIDENT_SOURCE = {
+  'uscg-cgmix-iir': 'USCG investigation',
+  'uscg-psix': 'USCG port-state inspection',
+  'wa-ecology-spills': 'WA Ecology spill report',
+  'uscg-nrc': 'National Response Center report',
+  'noaa-incidentnews': 'NOAA IncidentNews',
+}
+const INCIDENT_TYPE = {
+  injury_or_death: 'Injury or death', person_overboard: 'Person overboard', spill: 'Spill', fire: 'Fire',
+  explosion: 'Explosion', collision: 'Collision', allision: 'Allision (hit a fixed object)', grounding: 'Grounding',
+  capsize: 'Capsize', flooding: 'Flooding', sinking: 'Sinking', loss_of_propulsion: 'Loss of propulsion',
+  loss_of_power: 'Loss of power', loss_of_steering: 'Loss of steering', equipment_failure: 'Equipment failure',
+  disabled: 'Disabled vessel', psc_deficiency: 'Inspection deficiencies', cotp_order: 'Coast Guard order',
+  detention: 'Detention', letter_of_deviation: 'Letter of deviation',
+}
+const incidentTitle = (e) => (e.event_types?.length ? e.event_types.map((t) => INCIDENT_TYPE[t] || t.replaceAll('_', ' ')).join(' · ') : (e.event_type_raw || 'Other record'))
+const plural = (n, w) => `${n} ${n === 1 ? w : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`}`
+
+// Human labels for the structured detail the import keeps (lib/ships/incidentsPublic.js INCIDENT_DETAIL_KEYS).
+const DETAIL_LABEL = {
+  classification: 'Classification', involves: 'Involves', subtypes: 'Incident type', level_of_investigation: 'Investigation',
+  vessel_damage_status: 'Vessel damage', imo_incident_type: 'IMO incident type', serious_marine_incident: 'Serious marine incident',
+  marine_board: 'Marine board of investigation', people_at_risk: 'People at risk', port_state_control_exam: 'Port-state control exam',
+  detention_action_code: 'Detention action', source_category: 'Source category', cause: 'Cause', activity: 'Activity', impact: 'Impact',
+  regulated: 'Regulated', products: 'Products', quantity_note: 'Quantity', initial_report: 'Initial report', materials: 'Materials',
+  max_potential_release_gallons: 'Maximum potential release (gallons)', caveat: 'Caveat',
+}
+const fmtVal = (v) => (Array.isArray(v) ? v.join(', ') : v === true ? 'Yes' : v === false ? 'No' : String(v))
+// Source times keep their raw offset; show them as written (see time_note), date and hh:mm only.
+const fmtRawTime = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : null)
+
+/**
+ * The official record itself, opened in the card (Josh, 2026-09-26): CGMIX and PSIX have no
+ * per-report web address, so we show what the Coast Guard's public web service returned
+ * (structured fields; narratives withheld because they can name people), with the raw reply.
+ */
+function IncidentRecord({ e }) {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState(null)
+  const [err, setErr] = useState(false)
+  useEffect(() => {
+    if (!open || data) return
+    fetch(`/api/ships?op=incident&id=${e.id}`).then((r) => (r.ok ? r.json() : Promise.reject())).then(setData).catch(() => setErr(true))
+  }, [open, data, e.id])
+  const d = data?.incident?.detail || e.detail || {}
+  const rows = Object.entries(DETAIL_LABEL).filter(([k]) => d[k] != null && d[k] !== '' && !(Array.isArray(d[k]) && !d[k].length))
+  return (
+    <div>
+      <button type="button" className={styles.recordToggle} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? 'Hide the record' : 'Show the record'} <Chevron up={open} size={13} />
+      </button>
+      {open && (
+        <div className={styles.record}>
+          {err && <div className={styles.incidentMeta}>Couldn’t load this record right now.</div>}
+          {rows.map(([k, label]) => (
+            <div key={k} className={styles.recordRow}><span className={styles.recordK}>{label}</span><span>{fmtVal(d[k])}</span></div>
+          ))}
+          {Array.isArray(d.deficiencies) && d.deficiencies.length > 0 && (<>
+            <div className={styles.recordSub}>Deficiencies</div>
+            {d.deficiencies.map((x, i) => (
+              <div key={i} className={styles.recordItem}>
+                <div>{x.system}{x.component ? ` · ${x.component}` : ''}</div>
+                <div className={styles.incidentMeta}>{[x.cause, x.action, x.resolved ? 'Resolved' : 'Not resolved'].filter(Boolean).join(' · ')}</div>
+              </div>
+            ))}
+          </>)}
+          {Array.isArray(d.controls) && d.controls.length > 0 && (<>
+            <div className={styles.recordSub}>Coast Guard controls</div>
+            {d.controls.map((x, i) => (
+              <div key={i} className={styles.recordItem}>
+                <div>{x.type}</div>
+                <div className={styles.incidentMeta}>{[x.reason, x.category, x.unit, x.imposed_raw && `imposed ${fmtRawTime(x.imposed_raw)}`,
+                  x.removed_raw ? `removed ${fmtRawTime(x.removed_raw)}` : 'not yet removed'].filter(Boolean).join(' · ')}</div>
+              </div>
+            ))}
+          </>)}
+          {data?.source && (
+            <div className={styles.incidentMeta} style={{ marginTop: 6 }}>
+              As received from the {data.source.name}{data.source.publisher ? ` (${data.source.publisher})` : ''} public web service
+              {data.record?.first_retrieved_at ? ` on ${String(data.record.first_retrieved_at).slice(0, 10)}` : ''}.
+              Free-text narratives are withheld here because they can name people.{' '}
+              {data.record && <a className={styles.sourceLink} href={`/api/ships?op=record&id=${data.record.id}`} target="_blank" rel="noopener noreferrer">Raw record</a>}
+              {e.report_url && <>{' · '}<a className={styles.sourceLink} href={e.report_url} target="_blank" rel="noopener noreferrer">{INCIDENT_SOURCE[e.source_id] || 'source'} website</a></>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Incidents({ list }) {
+  if (!list.length) return null
+  // Summary line: what kinds of records, most common first.
+  const counts = new Map()
+  for (const e of list) for (const t of (e.event_types?.length ? e.event_types : ['other'])) counts.set(t, (counts.get(t) || 0) + 1)
+  const summary = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([t, n]) => `${n} ${(INCIDENT_TYPE[t] || (t === 'other' ? 'other' : t.replaceAll('_', ' '))).toLowerCase()}`).join(', ')
+  return (
+    <div className={styles.section}>
+      <div className={styles.legendNoteText}>{plural(list.length, 'official record')}: {summary}.</div>
+      {list.map((e) => {
+        const people = [e.deaths && plural(e.deaths, 'death'), e.injuries && plural(e.injuries, 'injury'),
+          e.missing && `${e.missing} missing`].filter(Boolean).join(', ')
+        const spill = e.material ? `${e.material}${e.quantity != null ? `, ${e.quantity} ${e.quantity_unit || ''}`.trimEnd() : ''}` : null
+        const defs = e.detail?.count ? `${plural(e.detail.count, 'deficiency')}${e.detail.unresolved ? ` (${e.detail.unresolved} unresolved)` : ''}` : null
+        return (
+          <div key={e.id} className={styles.incident}>
+            <div className={styles.incidentHead}>
+              <span className={styles.incidentTitle}>{incidentTitle(e)}</span>
+              <span className={styles.period}>{e.from ? String(e.from).slice(0, 10) : 'date unknown'}</span>
+            </div>
+            {e.event_types?.length > 0 && e.event_type_raw && <div className={styles.incidentMeta}>{e.event_type_raw}</div>}
+            {[people, spill, defs, e.severity_raw].filter(Boolean).length > 0 && (
+              <div className={styles.incidentMeta}>{[people, spill, defs, e.severity_raw].filter(Boolean).join(' · ')}</div>
+            )}
+            {e.location_text && <div className={styles.incidentMeta}>{e.location_text}</div>}
+            <div className={styles.incidentMeta}>
+              <span className={`${styles.ev} ${styles.evReg}`} title="An official government record">Official record</span>{' '}
+              <span>{INCIDENT_SOURCE[e.source_id] || e.source_id}</span>
+              {e.report_ref && <span className={styles.period}> · {e.report_ref}</span>}
+            </div>
+            <IncidentRecord e={e} />
+          </div>
+        )
+      })}
+      <div className={styles.legendNoteText}>Records are linked to this ship by official number, IMO or an MMSI it held at the time; name-only matches aren’t shown. Injuries appear as counts only.</div>
     </div>
   )
 }

@@ -5,6 +5,9 @@
  * (2026-09-25).
  */
 
+import { useState } from 'react'
+import Chevron from './Chevron.jsx'
+
 export const TRACK_KINDS = [
   ['cargo', 'Cargo'], ['tanker', 'Tanker'], ['passenger', 'Passenger'], ['fishing', 'Fishing'],
   ['tug', 'Tug / tow'], ['pleasure', 'Pleasure craft'], ['other', 'Other'], ['unknown', 'Not reported'],
@@ -19,6 +22,9 @@ export const fmtMonth = (ym) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym
  * month, shift-click a span) plus All and per-year chips.
  */
 export default function TrackMonths({ months, range, onRange, styles: s, cap = Infinity }) {
+  // Years first; the month grid is a disclosure under them (Josh, 2026-09-26).
+  const [showMonths, setShowMonths] = useState(false)
+  const [capNote, setCapNote] = useState(null)
   const [a, b] = range
   const isAll = a === 0 && b === months.length - 1
   const years = [...new Set(months.map((m) => m.slice(0, 4)))]
@@ -26,7 +32,12 @@ export default function TrackMonths({ months, range, onRange, styles: s, cap = I
   const isYear = (y) => { const [ya, yb] = yearSpan(y); return a === ya && b === yb && !isAll }
   const label = isAll ? `All ${months.length} month${months.length === 1 ? '' : 's'}`
     : a === b ? fmtMonth(months[a]) : `${fmtMonth(months[a])} – ${fmtMonth(months[b])}`
-  const pick = (idx, shift) => onRange(shift ? [Math.min(a, idx), Math.max(a, idx)] : [idx, idx])
+  const pick = (idx, shift) => {
+    const lo = shift ? Math.min(a, idx) : idx, hi = shift ? Math.max(a, idx) : idx
+    // Spans over the cap are trimmed to their last `cap` months (each month is a map layer); say so.
+    setCapNote(hi - lo + 1 > cap ? `That span is ${hi - lo + 1} months; showing the last ${cap}: ${fmtMonth(months[hi - cap + 1])} – ${fmtMonth(months[hi])}.` : null)
+    onRange([lo, hi])
+  }
   return (
     <div>
       <div className={s.fieldLabel}>When · <span className={s.fieldHint}>{label}</span></div>
@@ -36,23 +47,29 @@ export default function TrackMonths({ months, range, onRange, styles: s, cap = I
           <button key={y} type="button" className={isYear(y) ? s.chipTrack : s.chip} onClick={() => onRange(yearSpan(y))}>{y}</button>
         ))}
       </div>
-      <div className={s.monthStrip}>
-        {years.map((y) => (
-          <div className={s.monthRow} key={y}>
-            <span className={s.monthYear}>’{y.slice(2)}</span>
-            {MONTH_LETTERS.map((L, mi) => {
-              const idx = months.indexOf(`${y}-${String(mi + 1).padStart(2, '0')}`)
-              if (idx < 0) return <span key={mi} className={s.monthCellEmpty} />
-              const active = idx >= a && idx <= b
-              return (
-                <button key={mi} type="button" className={active ? s.monthCellActive : s.monthCell}
-                  onClick={(e) => pick(idx, e.shiftKey)} title={fmtMonth(months[idx])}>{L}</button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-      <div className={s.legendNoteText}>Click a month · shift-click for a span{months.length > cap ? ` (up to ${cap} months)` : ''}</div>
+      <button type="button" className={s.disclosure} onClick={() => setShowMonths((v) => !v)} aria-expanded={showMonths}>
+        {showMonths ? 'Hide months' : 'Show months'} <Chevron up={showMonths} size={14} />
+      </button>
+      {showMonths && (<>
+        <div className={s.monthStrip}>
+          {years.map((y) => (
+            <div className={s.monthRow} key={y}>
+              <span className={s.monthYear}>’{y.slice(2)}</span>
+              {MONTH_LETTERS.map((L, mi) => {
+                const idx = months.indexOf(`${y}-${String(mi + 1).padStart(2, '0')}`)
+                if (idx < 0) return <span key={mi} className={s.monthCellEmpty} />
+                const active = idx >= a && idx <= b
+                return (
+                  <button key={mi} type="button" className={active ? s.monthCellActive : s.monthCell}
+                    onClick={(e) => pick(idx, e.shiftKey)} title={fmtMonth(months[idx])}>{L}</button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+        {capNote && <div className={s.capNote} role="status">{capNote}</div>}
+        <div className={s.legendNoteText}>Click a month · shift-click for a span{months.length > cap ? ` (up to ${cap} months)` : ''}</div>
+      </>)}
     </div>
   )
 }

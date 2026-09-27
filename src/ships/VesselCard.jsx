@@ -669,6 +669,12 @@ function AnchorageMarkers({ a }) {
       : <span className={styles.weakMatch} title={a.boundary_note}>older boundary</span>)}
   </>
 }
+/** A stop inside an area where anchoring is not allowed (non-anchorage area, safety/security zone): said, never "at anchor". */
+function NoAnchorZone({ v }) {
+  const z = v.no_anchor_zone
+  if (!z) return null
+  return <><span className={styles.stopKind} title={`The stop’s position (Global Fishing Watch’s anchorage point, about 0.5 km across) lies inside ${z.name}${z.citation ? ` (${z.citation})` : ''}, an area where anchoring is not allowed. Ships may pass or berth there; this does not say the ship broke a rule.`}>in no-anchoring area · {z.name}</span>{' '}<AnchorageSource a={z} /></>
+}
 /** "At anchor · Elliott Bay East" (inside), or the GFW stop kind plus "near …" (≤ 500 m) / "in …" (docked). */
 function StopKind({ v }) {
   const k = STOP_KIND[v.stop_kind], a = v.anchorage, n = !a && v.anchorage_near
@@ -686,6 +692,7 @@ function StopKind({ v }) {
     {k && <span className={styles.stopKind} title={k.title}>{k.text}</span>}
     {a && <><span className={styles.stopKind} title={`Global Fishing Watch marks the start or end of this visit at a dock, so it stays “Docked”; the stop’s position (its intermediate anchorage point) lies inside ${anchorageWhat(a)}, so the visit may include time waiting there.${also}`}>in {a.name}</span>
       <AnchorageMarkers a={a} />{' '}<AnchorageSource a={a} /></>}
+    <NoAnchorZone v={v} />
     {n && <><span className={styles.stopKind} title={`Not inside any official anchorage area, but ${n.distance_m} m from the edge of ${anchorageWhat(n)}. The stop’s position is Global Fishing Watch’s anchorage point (about 0.5 km across), so it may have been in it.`}>near {n.name} · {n.distance_m} m</span>
       <AnchorageMarkers a={n} />{' '}<AnchorageSource a={n} /></>}
   </>

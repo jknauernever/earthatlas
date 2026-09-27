@@ -11,7 +11,10 @@
 //
 // Rules: src/ships/CLAUDE.md.
 
-import { shipsHttp, DEFAULT_SCHEMA } from '../lib/ships/db.js'
+import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
+import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
+import { gfwClient } from '../scripts/ships/gfwClient.js'
+import { tracksForMmsi } from './ship-tracks.js'
 import { searchVessels, vesselKinds, getVessel, getRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
 
 const S = DEFAULT_SCHEMA
@@ -22,6 +25,15 @@ function send(res, status, body, cache = 'public, max-age=60, s-maxage=300, stal
   res.setHeader('Cache-Control', status === 200 ? cache : 'no-store')
   res.end(JSON.stringify(body))
 }
+
+// Guardrail for the click lookups (Josh, 2026-09-26): only MMSIs that really have a US track
+// in that month reach GFW or the database, so the public page can't be used as a GFW relay or
+// to fill the database with arbitrary ships.
+async function hasTrack(mmsi, month) {
+  try { return ((await tracksForMmsi(month, Number(mmsi), 'us')) || []).length > 0 } catch { return false }
+}
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_TOKEN, { minIntervalMs: 0, log: () => {} }) : null)
 
 export default async function handler(req, res) {
   const p = new URL(req.url, 'http://localhost').searchParams
@@ -53,6 +65,31 @@ export default async function handler(req, res) {
       const at = new Date(p.get('at') || '')
       if (Number.isNaN(at.getTime())) return send(res, 400, { error: 'at must be an ISO timestamp' })
       return send(res, 200, await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString()))
+    }
+    //   /api/ships?op=lookup&items=<mmsi>:<YYYY-MM>:<unix t0>,…   (≤30) → { ships: [...] }
+    if (op === 'lookup') {
+      const items = (p.get('items') || '').split(',').slice(0, 30).map((x) => x.split(':'))
+        .filter(([m, mo, t0]) => /^\d{9}$/.test(m) && MONTH.test(mo) && /^\d{9,10}$/.test(t0))
+        .map(([m, mo, t0]) => ({ mmsi: m, month: mo, at: new Date(Number(t0) * 1000).toISOString() }))
+      if (!items.length) return send(res, 400, { error: 'no valid items' })
+      const ok = await Promise.all(items.map((i) => hasTrack(i.mmsi, i.month)))
+      const real = items.filter((_, k) => ok[k])
+      const ships = real.length ? await lookupShips(q, S, real, gfwFor()) : []
+      return send(res, 200, { ships }, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    //   POST /api/ships?op=save&items=<mmsi>:<YYYY-MM>,…   (≤10) → saves GFW's identities (idempotent)
+    if (op === 'save') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      const items = (p.get('items') || '').split(',').slice(0, 10).map((x) => x.split(':'))
+        .filter(([m, mo]) => /^\d{9}$/.test(m) && MONTH.test(mo))
+      if (!items.length) return send(res, 400, { error: 'no valid items' })
+      const ok = await Promise.all(items.map(([m, mo]) => hasTrack(m, mo)))
+      const mmsis = items.filter((_, k) => ok[k]).map(([m]) => m)
+      if (!mmsis.length) return send(res, 404, { error: 'no tracks for these MMSIs in those months' })
+      const gfw = gfwFor()
+      if (!gfw) return send(res, 503, { error: 'GFW not configured' })
+      const pool = shipsPool()
+      try { return send(res, 200, await saveMmsis(pool, S, mmsis, gfw), 'no-store') } finally { await pool.end() }
     }
     return send(res, 400, { error: 'unknown op' })
   } catch (e) {

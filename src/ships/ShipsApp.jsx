@@ -127,8 +127,11 @@ function darkPaint(months) {
 }
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const KIND_LABEL = Object.fromEntries(TRACK_KINDS)
+// GFW / taxonomy enums → words ("CONTAINER_REEFER" → "Container reefer"); names → "Dole Europa".
+const typeLabel = (t) => String(t).toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+const titleCase = (n) => String(n).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase())
 const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
-function nearPopupHTML({ loading, error, total, ships, tol, months }) {
+function nearPopupHTML({ loading, error, total, ships, tol, months, ids }) {
   const s = styles
   const head = `<div class="${s.popupHead}">Ship tracks · this spot</div>`
   if (loading) return `<div class="${s.popup}">${head}<div class="${s.popupMeta}">Finding the ships that passed here…</div></div>`
@@ -136,14 +139,25 @@ function nearPopupHTML({ loading, error, total, ships, tol, months }) {
   const km = tol >= 1000 ? `${(tol / 1000).toFixed(tol >= 10000 ? 0 : 1)} km` : `${tol} m`
   const period = months.length === 1 ? fmtMonth(months[0]) : `${fmtMonth(months[0])} – ${fmtMonth(months[months.length - 1])}`
   if (!total) return `<div class="${s.popup}">${head}<div class="${s.popupTitle}">No ships within ${km}</div><div class="${s.popupMeta}">${period}. Try zooming in.</div></div>`
-  const rows = ships.map((v) => `<button type="button" class="${s.popupShip}" data-mmsi="${v.mmsi}" data-t0="${v.t0 ?? ''}">` +
-    `<span class="${s.popupShipKind}">${escapeHtml(KIND_LABEL[v.kind] || 'Vessel')}</span>` +
-    `<span class="${s.popupShipMeta}">MMSI ${v.mmsi} · ${v.months.map(fmtMonth).join(', ')}</span></button>`).join('')
+  const rows = ships.map((v) => {
+    const id = ids?.[String(v.mmsi)]
+    const named = id && (id.status === 'db' || id.status === 'gfw') && id.name
+    const kind = (named && id.type ? typeLabel(id.type) : null) || KIND_LABEL[v.kind] || 'Vessel'
+    const src = id?.status === 'gfw' ? ' · via Global Fishing Watch' : ''
+    const title = named ? `${escapeHtml(titleCase(id.name))} <span class="${s.popupShipType}">${escapeHtml(kind)}</span>`
+      : escapeHtml(kind)
+    const meta = [id?.flag, `MMSI ${v.mmsi}`, v.months.map(fmtMonth).join(', ')].filter(Boolean).join(' · ') +
+      (id?.status === 'ambiguous' ? ' · MMSI shared by several ships' : '') + src
+    return `<button type="button" class="${s.popupShip}" data-mmsi="${v.mmsi}" data-t0="${v.t0 ?? ''}" data-month="${v.months[0]}">` +
+      `<span class="${s.popupShipKind}">${title}</span><span class="${s.popupShipMeta}">${escapeHtml(meta)}</span></button>`
+  }).join('')
   return `<div class="${s.popup}">${head}` +
     `<div class="${s.popupTitle}">${fmtN(total)} ship${total === 1 ? '' : 's'} passed within ${km}</div>` +
     `<div class="${s.popupMeta}">${period}${total > ships.length ? ` · nearest ${ships.length} shown` : ''}. Pick one to see it.</div>` +
     `<div class="${s.popupList}">${rows}</div>` +
-    `<div class="${s.popupNote}">Data: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">MarineCadastre AIS (NOAA / BOEM / USCG)</a>, public domain.</div></div>`
+    (ids ? '' : `<div class="${s.popupMeta}">Looking up names…</div>`) +
+    `<div class="${s.popupNote}">Tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">MarineCadastre AIS (NOAA / BOEM / USCG)</a>, public domain. ` +
+    `Names: EarthAtlas ship records and <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0).</div></div>`
 }
 function darkPopupHTML({ count, months, period, pct, detail }) {
   const s = styles
@@ -479,18 +493,31 @@ export default function ShipsApp() {
       return map.queryRenderedFeatures([[pt.x - 4, pt.y - 4], [pt.x + 4, pt.y + 4]], { layers: live })
     }
     const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
-    const openShip = async (mmsi, t0) => {
+    const openShip = async (mmsi, t0, month) => {
       const when = new Date(t0 * 1000).toISOString()
+      const resolve = async () => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)).json()
       try {
-        const r = await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)
-        const d = await r.json()
+        let d = await resolve()
+        // Not in our database yet: save what Global Fishing Watch knows (server checks the track
+        // is real), then resolve again, so the ship opens with a full card (Josh, 2026-09-26).
+        if (d.status === 'unresolved' && month) {
+          setIdentityOn(true); setPickerOpen(false); setVesselId(null); setTrackNote(`Looking up MMSI ${mmsi} with Global Fishing Watch…`)
+          const sv = await fetch(`/api/ships?op=save&items=${mmsi}:${month}`, { method: 'POST' }).catch(() => null)
+          if (sv?.ok) d = await resolve()
+        }
+        // Several of our ships share this MMSI: GFW's identity for this exact time may settle it.
+        if (d.status === 'ambiguous' && month) {
+          const lr = await fetch(`/api/ships?op=lookup&items=${mmsi}:${month}:${t0}`).catch(() => null)
+          const hit = lr?.ok ? (await lr.json()).ships?.[0] : null
+          if (hit?.status === 'db' && hit.vesselId) d = { status: 'resolved', vesselIds: [hit.vesselId] }
+        }
         if (d.status === 'resolved') {
           setIdentityOn(true); setPickerOpen(false); setVesselName(null); setVesselId(d.vesselIds[0]); setTrackNote(null)
         } else {
           setIdentityOn(true); setPickerOpen(false); setVesselId(null); setMmsiPeriods([])
           setTrackNote(d.status === 'ambiguous'
             ? `MMSI ${mmsi} was used by ${d.vesselIds.length} different ships at ${when.slice(0, 10)}, so EarthAtlas won't guess which one this track is.`
-            : `No identity record yet for MMSI ${mmsi} on ${when.slice(0, 10)}. Its AIS track is real; the ship just isn't in the identity database.`)
+            : `No identity record for MMSI ${mmsi} on ${when.slice(0, 10)}, here or at Global Fishing Watch. Its AIS track is real; the ship just isn't identified.`)
         }
       } catch { setTrackNote('Could not look up this track’s ship.') }
     }
@@ -498,7 +525,7 @@ export default function ShipsApp() {
       const hits = hit(e.point)
       if (!hits.length) return
       const f = hits.find((h) => h.properties.mmsi != null)
-      if (f) { nearPopupRef.current?.remove(); return openShip(f.properties.mmsi, f.properties.t0) }
+      if (f) { nearPopupRef.current?.remove(); return openShip(f.properties.mmsi, f.properties.t0, f.properties.month) }
       // Zoomed out: ~6 px around the click, in metres (512 px tiles).
       const mpp = (40075016.686 * Math.cos((e.lngLat.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())
       const tol = Math.round(Math.min(25000, Math.max(200, 6 * mpp)))
@@ -513,10 +540,25 @@ export default function ShipsApp() {
         d = r.ok ? await r.json() : null
       } catch { d = null }
       if (nearPopupRef.current !== popup) return
-      popup.setHTML(nearPopupHTML(d ? { ...d, tol, months } : { error: true }))
-      popup.getElement()?.querySelectorAll('[data-mmsi]').forEach((b) => b.addEventListener('click', () => {
-        popup.remove(); openShip(Number(b.dataset.mmsi), Number(b.dataset.t0))
-      }))
+      const render = (ids) => {
+        popup.setHTML(nearPopupHTML(d ? { ...d, tol, months, ids } : { error: true }))
+        popup.getElement()?.querySelectorAll('[data-mmsi]').forEach((b) => b.addEventListener('click', () => {
+          popup.remove(); openShip(Number(b.dataset.mmsi), Number(b.dataset.t0), b.dataset.month)
+        }))
+      }
+      render(null)
+      if (!d?.ships?.length) return
+      // Names + kinds: our database first, then Global Fishing Watch; GFW finds are saved.
+      const items = d.ships.filter((v) => v.t0).map((v) => `${v.mmsi}:${v.months[0]}:${v.t0}`)
+      try {
+        const lr = await fetch(`/api/ships?op=lookup&items=${items.join(',')}`)
+        const ids = lr.ok ? Object.fromEntries((await lr.json()).ships.map((x) => [x.mmsi, x])) : {}
+        if (nearPopupRef.current === popup) render(ids)
+        const toSave = d.ships.filter((v) => ids[v.mmsi]?.status === 'gfw')
+        for (let i = 0; i < toSave.length; i += 10) {
+          fetch(`/api/ships?op=save&items=${toSave.slice(i, i + 10).map((v) => `${v.mmsi}:${v.months[0]}`).join(',')}`, { method: 'POST' }).catch(() => {})
+        }
+      } catch { /* names are a bonus; the list still works by MMSI */ }
     }
     map.on('mousemove', onMove)
     map.on('click', onClick)

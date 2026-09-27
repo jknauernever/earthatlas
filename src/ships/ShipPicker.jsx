@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import styles from './ShipPicker.module.css'
+import Chevron from './Chevron.jsx'
 
 const KIND_LABEL = {
   PASSENGER: 'Passenger', CARGO: 'Cargo', FISHING: 'Fishing', CARRIER: 'Fish carrier', BUNKER: 'Bunker',
@@ -72,7 +73,7 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
         <span className={styles.dot} aria-hidden="true" />
         <span className={styles.pillLead}>Ships:</span>
         <span className={styles.pillValue}>{shipName || 'Find a ship'}{kinds.length ? ` · ${kinds.length} kind${kinds.length === 1 ? '' : 's'}` : ''}</span>
-        <span className={styles.chev} aria-hidden="true">{open ? '▴' : '▾'}</span>
+        <span className={styles.chev} aria-hidden="true"><Chevron up={open} size={15} /></span>
       </button>
 
       {open && (

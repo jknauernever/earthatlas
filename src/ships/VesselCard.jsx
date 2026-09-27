@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
+import Chevron from './Chevron.jsx'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
@@ -288,7 +289,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   return (
     <div className={`${pick.card} ${folded ? pick.cardFolded : ''}`} role="dialog" aria-label="Ship card">
       <button type="button" className={pick.fold} onClick={() => setFolded((f) => !f)}
-        aria-label={folded ? 'Unfold ship card' : 'Fold ship card'} title={folded ? 'Show the whole card' : 'Fold the card to its name'}>{folded ? '▾' : '▴'}</button>
+        aria-label={folded ? 'Unfold ship card' : 'Fold ship card'} title={folded ? 'Show the whole card' : 'Fold the card to its name'}><Chevron up={!folded} size={16} /></button>
       <button type="button" className={pick.close} onClick={onClose} aria-label="Close ship card">×</button>
       {error && <div className={styles.errorNote}>{error}</div>}
       {!vessel && !error && <div className={styles.loadingNote}>Loading ship…</div>}
@@ -404,6 +405,7 @@ function TypeLine({ c, typeClaims, Src }) {
       <div className={styles.attrLabel}>Kind of ship</div>
       <div className={styles.typeHead} title="EarthAtlas's reading of the sources below (AIS, registries and Wikidata decide; Global Fishing Watch's model counts only when they're silent)">{label}</div>
       {c.conflict && c.group && <div className={styles.typeNote}>Sources name different sub-groups: {c.classes.join(', ').replaceAll('_', ' ')}.</div>}
+      {c.refinedBy?.length > 0 && <div className={styles.typeNote}>Sub-type from the registry record below.</div>}
       {c.dissent?.length > 0 && <div className={styles.typeNote}>
         Global Fishing Watch's model says {[...new Set(c.dissent.map((d) => (d.class || d.group).replaceAll('_', ' ')))].join(' / ')} (ranked lower than what the ship and registries report).
       </div>}

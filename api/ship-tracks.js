@@ -107,7 +107,7 @@ async function packFor(t, region) {
   packs.set(key, p)
   return p
 }
-async function tracksForMmsi(t, mmsi, region) {
+export async function tracksForMmsi(t, mmsi, region) {
   const p = await packFor(t, region)
   if (!p) return null
   const s = mmsi % p.n

@@ -34,7 +34,7 @@
 .pillAir .dot { background: #a78bfa; }
 .pillLead { color: rgba(243, 247, 238, 0.65); }
 .pillValue { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-.chev { color: rgba(243, 247, 238, 0.6); font-size: 11px; }
+.chev { color: rgba(243, 247, 238, 0.7); display: inline-flex; margin-left: 1px; }
 
 .pop {
   margin-top: 8px;
@@ -166,7 +166,7 @@
 /* Folded card: header only. */
 .fold {
   position: absolute; top: 8px; right: 38px; width: 26px; height: 26px; border-radius: 50%;
-  border: 0; background: transparent; color: rgba(243, 247, 238, 0.6); font-size: 13px; cursor: pointer;
+  border: 0; background: transparent; color: rgba(243, 247, 238, 0.6); padding: 0; cursor: pointer;
 }
 .fold:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .cardFolded { padding-bottom: 10px; }

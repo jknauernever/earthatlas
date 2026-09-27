@@ -78,6 +78,15 @@ export function commonsClient({ minIntervalMs = 500, log = console.log, fetchImp
       return { ...r, byTitle }
     },
 
+    /**
+     * The (visible) categories each of these categories sits in: for a ship's own category
+     * ("Cathlamet (ship, 1981)") these include its type ("Issaquah class ferries"). ≤ 50 titles.
+     */
+    async parents(titles) {
+      if (titles.length > 50) throw new Error('at most 50 titles per request')
+      return paged({ action: 'query', prop: 'categories', titles: titles.join('|'), clshow: '!hidden', cllimit: 'max' })
+    },
+
     /** Files and subcategories directly in one category (plus the category's own info). */
     async members(title) {
       return paged({ action: 'query', list: 'categorymembers', cmtitle: title, cmtype: 'file|subcat', cmlimit: '500',

@@ -16,7 +16,7 @@ export const EVIDENCE = {
   registry: { label: 'Registry', cls: 'evReg', title: 'A vessel registry record, as processed by Global Fishing Watch' },
   inferred: { label: 'Estimate', cls: 'evInf', title: 'Estimated by Global Fishing Watch with a computer model (mostly from how the vessel moves). Not reported by the ship or a registry' },
   derived_identity: { label: 'Matched', cls: 'evInf', title: 'Identity match made by a third party' },
-  community_curated: { label: 'Wikidata', cls: 'evCom', title: 'Wikidata: an openly edited, community-curated database (not an official registry)' },
+  community_curated: { label: 'Community', cls: 'evCom', title: 'Openly edited, community-curated (Wikidata or Wikimedia Commons), not an official registry' },
   unverified: { label: 'Unverified', cls: 'evInf', title: 'Unverified third-party information' },
 }
 
@@ -40,7 +40,7 @@ const FISHING_GEARS = new Set(['TUNA_PURSE_SEINES', 'DRIFTNETS', 'TROLLERS', 'SE
   'OTHER_FISHING', 'DREDGE_FISHING', 'SET_GILLNETS', 'FIXED_GEAR', 'TRAWLERS', 'FISHING', 'SEINERS', 'OTHER_PURSE_SEINES',
   'OTHER_SEINES', 'SQUID_JIGGER', 'POLE_AND_LINE', 'DRIFTING_LONGLINES'])
 // Short name for each source's inline link.
-const SRC_LABEL = { 'gfw-vessel-identity': 'GFW', 'marinecadastre-ais': 'NOAA', wikidata: 'Wikidata' }
+const SRC_LABEL = { 'gfw-vessel-identity': 'GFW', 'marinecadastre-ais': 'NOAA', wikidata: 'Wikidata', 'wikimedia-commons': 'Commons' }
 // How a Wikidata item was tied to this ship (lib/ships/resolve.js v1.3). Name-only is the weakest.
 const LINK_NOTE = {
   IMO_AIS_NAME: { text: 'matched by name', title: 'Wikidata entry tied to this ship by its IMO number (as broadcast over AIS) plus a matching name only. A weaker match than a registry IMO, MMSI or call sign.' },
@@ -149,7 +149,7 @@ export function Ev({ c }) {
 }
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
-export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, tab: tabProp, onTab, folded: foldedProp, onFold }) {
+export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
   const [tabOwn, setTabOwn] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
@@ -159,16 +159,19 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   const setTab = (t) => (onTab ? onTab(t) : setTabOwn(t))
   const [error, setError] = useState(null)
 
+  // rev > 0: re-read in place (no "Loading…" flash) after Commons added claims, e.g. the ship's type.
+  const [rev, setRev] = useState(0)
+  useEffect(() => { setRev(0) }, [vesselId])
   useEffect(() => {
     const ctl = new AbortController()
-    setVessel(null); setError(null)
+    if (!rev) { setVessel(null); setError(null) }
     fetch(`/api/ships?op=vessel&id=${encodeURIComponent(vesselId)}`, { signal: ctl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? 'Vessel not found' : `Load failed (${r.status})`))))
       .then((v) => { setVessel(v); onLoaded?.(v) })
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message) })
     return () => ctl.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vesselId])
+  }, [vesselId, rev])
 
   const sourcesById = useMemo(() => Object.fromEntries((vessel?.sources || []).map((s) => [s.id, s])), [vessel])
   // Wikimedia Commons photos (Wikidata P18 or the ship's Commons IMO category), licence-checked at import.
@@ -202,7 +205,10 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
       if (attr === 'gear_type' && !FISHING_GEARS.has(String(a.value_norm).toUpperCase())) continue
       const k = `${a.evidence_class}|${a.source_id}`
       const cur = byEv.get(k)
-      if (!cur || String(a.to || '9999') > String(cur.to || '9999')) byEv.set(k, a)
+      // Commons files a ship under several type categories: show the most specific (names a sub-type, not "… of <place>").
+      const specific = (x) => (x.detail?.type_class ? 2 : 0) + (/ of /.test(x.value_raw || '') ? 0 : 1)
+      if (!cur || String(a.to || '9999') > String(cur.to || '9999')
+        || (a.source_id === 'wikimedia-commons' && specific(a) > specific(cur))) byEv.set(k, a)
     }
     const order = ['ais_published', 'ais_self_reported', 'registry', 'community_curated', 'inferred', 'derived_identity', 'unverified']
     return [...byEv.values()].sort((x, y) => order.indexOf(x.evidence_class) - order.indexOf(y.evidence_class))
@@ -306,6 +312,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             <div className={styles.idNote} title="EarthAtlas's own id for this vessel. IMO and MMSI can change or be wrong; this id doesn't.">
               EarthAtlas vessel {vessel.vessel.id.slice(0, 8)}
             </div>
+            {tracksControl}
           </div>
 
           {!folded && <>
@@ -320,7 +327,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           </div>
 
           {tab === 'overview' && <>
-            <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} />
+            <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} onFetched={() => setRev((n) => n + 1)} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />
             {renderOverview(CHAR_ROWS, null)}
             {renderOverview(ROLE_ROWS.filter(([a]) => a !== 'registry_owner'), null)}
@@ -386,21 +393,26 @@ function orderImages(assertions) {
 
 /**
  * Photo from Wikimedia Commons with its credit and licence (each file's own licence, stored at import).
- * A ship with no photo yet asks the server once (op=photos): it looks the ship's registry IMO up on
- * Commons, at most once per 30 days, and returns whatever it saved.
+ * A ship with an IMO asks the server (op=photos), which looks the IMO up on Commons when it is due
+ * (commonsPlan) and returns whatever it saved. Commons also carries the ship's type categories, so a
+ * fresh fetch re-reads the card (onFetched) and the type line picks them up.
  */
-function Photos({ images: own, vesselId, hasImo }) {
+function Photos({ images: own, vesselId, hasImo, onFetched }) {
   const [i, setI] = useState(0)
   const [fetched, setFetched] = useState(null)
   useEffect(() => {
-    if (own.length || !hasImo) return
+    if (!hasImo) return
     const ctl = new AbortController()
     fetch(`/api/ships?op=photos&id=${encodeURIComponent(vesselId)}`, { signal: ctl.signal })
       .then((r) => (r.ok ? r.json() : null))
-      .then((b) => { if (b?.images?.length) setFetched(orderImages(b.images)) })
+      .then((b) => {
+        if (b?.images?.length) setFetched(orderImages(b.images))
+        if (b?.status === 'fetched') onFetched?.()
+      })
       .catch(() => {})
     return () => ctl.abort()
-  }, [own.length, hasImo, vesselId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasImo, vesselId])
   const images = own.length ? own : fetched || []
   if (!images.length) return null
   const img = images[i % images.length], d = img.detail
@@ -440,7 +452,7 @@ function TypeLine({ c, typeClaims, Src }) {
   return (
     <div className={styles.typeLine}>
       <div className={styles.attrLabel}>Kind of ship</div>
-      <div className={styles.typeHead} title="EarthAtlas's reading of the sources below (AIS, registries and Wikidata decide; Global Fishing Watch's model counts only when they're silent)">{label}</div>
+      <div className={styles.typeHead} title="EarthAtlas's reading of the sources below (AIS, registries, Wikidata and Wikimedia Commons decide; Global Fishing Watch's model counts only when they're silent)">{label}</div>
       {c.conflict && c.group && <div className={styles.typeNote}>Sources name different sub-groups: {c.classes.join(', ').replaceAll('_', ' ')}.</div>}
       {c.refinedBy?.length > 0 && <div className={styles.typeNote}>Sub-type from the registry record below.</div>}
       {c.dissent?.length > 0 && <div className={styles.typeNote}>

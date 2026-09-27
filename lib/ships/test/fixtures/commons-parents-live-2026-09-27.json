@@ -1,0 +1,208 @@
+{
+ "_label": "REAL Commons responses recorded live 2026-09-27: prop=categories (clshow=!hidden) for the ship subcategories of the recorded IMOs, plus IMO 7808138 (CATHLAMET, a Washington State ferry) members + parents",
+ "retrieved_at": "2026-09-27T17:01:16.957Z",
+ "parents": {
+  "9509401": [
+   {
+    "request": "https://commons.wikimedia.org/w/api.php?action=query&prop=categories&titles=Category%3AJupiter+Spirit+%28ship%2C+2011%29&clshow=%21hidden&cllimit=max&format=json&formatversion=2&maxlag=5",
+    "response": {
+     "batchcomplete": true,
+     "query": {
+      "pages": [
+       {
+        "pageid": 21382934,
+        "ns": 14,
+        "title": "Category:Jupiter Spirit (ship, 2011)",
+        "categories": [
+         {
+          "ns": 14,
+          "title": "Category:Car carriers"
+         },
+         {
+          "ns": 14,
+          "title": "Category:IMO 9509401"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built in 2011"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built in Japan"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships of Liberia"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships of Nissan Motor Car Carrier"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships registered in Monrovia"
+         }
+        ]
+       }
+      ]
+     },
+     "limits": {
+      "categories": 500
+     }
+    }
+   }
+  ],
+  "9515395": [
+   {
+    "request": "https://commons.wikimedia.org/w/api.php?action=query&prop=categories&titles=Category%3AParsifal+%28ship%2C+2011%29&clshow=%21hidden&cllimit=max&format=json&formatversion=2&maxlag=5",
+    "response": {
+     "batchcomplete": true,
+     "query": {
+      "pages": [
+       {
+        "pageid": 29870686,
+        "ns": 14,
+        "title": "Category:Parsifal (ship, 2011)",
+        "categories": [
+         {
+          "ns": 14,
+          "title": "Category:Car carriers"
+         },
+         {
+          "ns": 14,
+          "title": "Category:IMO 9515395"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Mark-V-Class"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built in 2011"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built in Japan"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships named Parsifal"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships of Singapore"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships of Wallenius Wilhelmsen Logistics"
+         }
+        ]
+       }
+      ]
+     },
+     "limits": {
+      "categories": 500
+     }
+    }
+   }
+  ]
+ },
+ "cathlamet": {
+  "members": [
+   {
+    "request": "https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category%3AIMO+7808138&cmtype=file%7Csubcat&cmlimit=500&cmprop=ids%7Ctitle%7Ctype%7Ctimestamp%7Csortkeyprefix&prop=categoryinfo&titles=Category%3AIMO+7808138&format=json&formatversion=2&maxlag=5",
+    "response": {
+     "batchcomplete": true,
+     "query": {
+      "pages": [
+       {
+        "pageid": 69692562,
+        "ns": 14,
+        "title": "Category:IMO 7808138",
+        "categoryinfo": {
+         "size": 1,
+         "pages": 0,
+         "files": 0,
+         "subcats": 1,
+         "hidden": false
+        }
+       }
+      ],
+      "categorymembers": [
+       {
+        "pageid": 14779130,
+        "ns": 14,
+        "title": "Category:Cathlamet (ship, 1981)",
+        "sortkeyprefix": "",
+        "type": "subcat",
+        "timestamp": "2025-06-17T17:48:11Z"
+       }
+      ]
+     }
+    }
+   }
+  ],
+  "parents": [
+   {
+    "request": "https://commons.wikimedia.org/w/api.php?action=query&prop=categories&titles=Category%3ACathlamet+%28ship%2C+1981%29&clshow=%21hidden&cllimit=max&format=json&formatversion=2&maxlag=5",
+    "response": {
+     "batchcomplete": true,
+     "query": {
+      "pages": [
+       {
+        "pageid": 14779130,
+        "ns": 14,
+        "title": "Category:Cathlamet (ship, 1981)",
+        "categories": [
+         {
+          "ns": 14,
+          "title": "Category:Automobile ferries"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Double ended ferries"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ferry ships by name"
+         },
+         {
+          "ns": 14,
+          "title": "Category:IMO 7808138"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Issaquah class ferries"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Passenger ships of the United States"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built at United Marine Shipbuilding, Seattle"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships built in 1981"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Ships registered in Seattle"
+         },
+         {
+          "ns": 14,
+          "title": "Category:Washington State Ferries vessels"
+         }
+        ]
+       }
+      ]
+     },
+     "limits": {
+      "categories": 500
+     }
+    }
+   }
+  ]
+ }
+}

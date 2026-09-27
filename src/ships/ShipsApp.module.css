@@ -402,6 +402,11 @@
   border: 1px solid rgba(253, 224, 71, 0.55); background: rgba(253, 224, 71, 0.14); color: #fef9c3;
   font: inherit; font-size: 10.5px; padding: 3px 7px; border-radius: 999px; cursor: pointer; white-space: nowrap;
 }
+/* A year only some of whose months are picked: same yellow, outline only. */
+.chipTrackPart {
+  border: 1px solid rgba(253, 224, 71, 0.55); background: transparent; color: #fef9c3;
+  font: inherit; font-size: 10.5px; padding: 3px 7px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
 .fieldHint { text-transform: none; letter-spacing: 0; color: rgba(255, 255, 255, 0.75); font-weight: 600; }
 /* Month grid: /shiptraffic's MonthStrip, yellow accent for the tracks layer. */
 .monthStrip { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
@@ -510,3 +515,13 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .pcBarsAxis { display: flex; justify-content: space-between; font-size: 9.5px; color: rgba(255, 255, 255, 0.5); margin-top: 3px; }
 .pcLine { margin-top: 8px; }
 .pcSwatch { display: inline-block; width: 10px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+
+/* Ship card: which of the picked ship's tracks to draw (all years | selected months). */
+.ownYears { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; font-size: 10.5px; color: rgba(255, 255, 255, 0.6); }
+.ownYearsBtn, .ownYearsOn {
+  font: inherit; font-size: 10.5px; padding: 3px 8px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: transparent; color: rgba(255, 255, 255, 0.75);
+}
+.ownYearsBtn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.ownYearsOn { border-color: rgba(103, 232, 249, 0.6); background: rgba(103, 232, 249, 0.14); color: #cffafe; }
+.ownYearsNote { color: rgba(255, 255, 255, 0.5); font-style: italic; }

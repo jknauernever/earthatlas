@@ -5,6 +5,9 @@
 //   /api/ship-tracks?t=<YYYY-MM>&mmsi=<9 digits>        EVERY track of one MMSI that month (GeoJSON),
 //                                                      read from tracks-YYYY-MM.pack; see
 //                                                      scripts/ships/bake-ais/build_tracks.py
+//   /api/ship-tracks?op=all&mmsi=<9 digits>&v=<key>     EVERY track of one MMSI across EVERY month we have
+//                                                      (Salish detail inside its box, US-wide elsewhere),
+//                                                      simplified for display; one request per ship
 //   /api/ship-tracks?r=mpa&z=<z>&x=<x>&y=<y>           NOAA Marine Protected Areas (MVT; one bake,
 //                                                      scripts/ships/bake-mpa/, trackSource.mpa)
 //   add &r=us for the US-wide tracks (MarineCadastre monthly track files, baked
@@ -127,6 +130,59 @@ export async function tracksForMmsi(t, mmsi, region) {
 }
 const isTileset = (t) => /^\d{4}-\d{2}$/.test(t)
 
+// ─── One ship, every month (Josh 2026-09-27: a picked ship shows all its years) ───
+// Reads each month's pack server-side in parallel, so the browser makes one request instead of ~140.
+// Salish months use the detailed pack inside the Salish box and the US pack outside it (as the page does).
+// Lines are simplified to ~60 m and rounded to 4 decimals (~10 m): a busy ferry's 11 years were 15 MB / 681k
+// points at full detail. That is under a pixel at the zooms a multi-year view uses; zoom in to a month for detail.
+function simplify(coords, tol = 0.0006) {
+  if (coords.length < 3) return coords
+  const keep = new Uint8Array(coords.length); keep[0] = keep[coords.length - 1] = 1
+  const stack = [[0, coords.length - 1]]
+  while (stack.length) {
+    const [a, b] = stack.pop()
+    const [ax, ay] = coords[a], [bx, by] = coords[b]
+    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy
+    let far = -1, fd = tol * tol
+    for (let i = a + 1; i < b; i++) {
+      const [px, py] = coords[i]
+      let u = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0
+      u = Math.max(0, Math.min(1, u))
+      const ex = ax + u * dx - px, ey = ay + u * dy - py, d = ex * ex + ey * ey
+      if (d > fd) { fd = d; far = i }
+    }
+    if (far >= 0) { keep[far] = 1; stack.push([a, far], [far, b]) }
+  }
+  return coords.filter((_, i) => keep[i]).map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4])
+}
+async function mapLimit(items, n, fn) {
+  const out = new Array(items.length); let i = 0
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k]) } }))
+  return out
+}
+export async function allTracksForMmsi(mmsi) {
+  await usUrls(manifest.months?.[0] || '2000-01') // loads the US index
+  const usM = Object.keys(usIndex?.months || {})
+  const salishM = new Set(manifest.months || [])
+  const [w, s, e, n] = manifest.bbox
+  const inside = (f) => f.geometry.coordinates.every(([x, y]) => x >= w && x <= e && y >= s && y <= n)
+  const months = [...new Set([...usM, ...salishM])].sort()
+  let failed = 0
+  const per = await mapLimit(months, 16, async (t) => {
+    const got = []
+    const read = async (region, keep) => {
+      try { const fs = await tracksForMmsi(t, mmsi, region); if (fs) got.push(...fs.filter(keep)) }
+      catch (err) { failed++; packs.delete(`${region}:${t}`); console.error('[ship-tracks] all', region, t, err?.message) }
+    }
+    if (salishM.has(t)) await read('salish', () => true)
+    if (usM.includes(t)) await read('us', salishM.has(t) ? (f) => !inside(f) : () => true)
+    return got
+  })
+  const features = per.flat()
+  for (const f of features) f.geometry.coordinates = simplify(f.geometry.coordinates)
+  return { features, months: months.length, failed }
+}
+
 // US-wide months: the bake's Blob index says where each month's files are.
 let usIndex = null, usIndexAt = 0
 async function usUrls(t) {
@@ -225,6 +281,21 @@ async function shipsNear(months, lng, lat, tol) {
 
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
+  if (searchParams.get('op') === 'all') {
+    const m = searchParams.get('mmsi') || ''
+    if (!/^\d{9}$/.test(m)) { res.statusCode = 400; return res.end('bad mmsi') }
+    let r
+    try { r = await allTracksForMmsi(Number(m)) } catch (e) { console.error('[ship-tracks] all', e?.message); res.statusCode = 502; return res.end('tracks read failed') }
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/geo+json')
+    // A partial read (a month failed) must not be cached for a month; the page's &v= key changes when months are added.
+    res.setHeader('Cache-Control', r.failed ? 'no-store' : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
+    const body = JSON.stringify({ type: 'FeatureCollection', months: r.months, failed: r.failed, features: r.features })
+    res.setHeader('Vary', 'Accept-Encoding')
+    if (!/\bgzip\b/.test(req.headers['accept-encoding'] || '')) return res.end(body)
+    res.setHeader('Content-Encoding', 'gzip')
+    return res.end(zlib.gzipSync(body))
+  }
   if (searchParams.get('op') === 'near') {
     const months = (searchParams.get('t') || '').split(',').filter(isTileset)
     const lng = Number(searchParams.get('lng')), lat = Number(searchParams.get('lat'))

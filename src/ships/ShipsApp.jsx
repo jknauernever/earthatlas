@@ -297,6 +297,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded
+//   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -304,7 +305,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'),
+    dk: sp.get('dk'), mp: sp.get('mp'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -358,6 +359,9 @@ export default function ShipsApp() {
   const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
   const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
+  // A picked ship's own tracks: every year we have (default, Josh 2026-09-27) or just the selected months.
+  const [ownAllYears, setOwnAllYears] = useState(initial.oy !== 'm')
+  const [ownLoading, setOwnLoading] = useState(false)
   const [portsOn, setPortsOn] = useState(initial.pt !== '0') // default on (Josh, 2026-09-27); pt=0 off, pt=1 on
   const [portId, setPortId] = useState(/^\d{1,12}$/.test(initial.pc || '') ? initial.pc : null)
   const [portMonth, setPortMonth] = useState(/^\d{4}-\d{2}$/.test(initial.pm || '') ? initial.pm : null)
@@ -533,12 +537,21 @@ export default function ShipsApp() {
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
   }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths, pickedTrack, stopFocus])
 
-  // The picked ship's own tracks: every selected month × every MMSI it held.
+  // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
+  // every month; api/ship-tracks op=all), or every selected month.
   useEffect(() => {
-    if (!vesselId || !mmsiPeriods.length || !trackMonths.length) { setOwnTracks([]); return }
+    if (!vesselId || !mmsiPeriods.length || (ownAllYears ? usMonths === null : !trackMonths.length)) { setOwnTracks([]); return }
     const ctl = new AbortController()
     const mmsis = [...new Set(mmsiPeriods.map((p) => p.mmsi))]
     const get = (url) => fetch(url, { signal: ctl.signal }).then((r) => (r.ok ? r.json() : { features: [] })).catch(() => ({ features: [] }))
+    const done = (fcs) => { if (!ctl.signal.aborted) { setOwnTracks(fcs.flatMap((fc) => fc.features).filter((f) => inOwnWindow(f, mmsiPeriods))); setOwnLoading(false) } }
+    setOwnLoading(true)
+    if (ownAllYears) {
+      // The key changes when a month is added to either bake, so the CDN copy is never stale.
+      const key = `${trackSource.version}.${trackSource.us.rules}.${allTrackMonths.length}`
+      Promise.all(mmsis.map((m) => get(`/api/ship-tracks?op=all&mmsi=${m}&v=${key}`))).then(done)
+      return () => ctl.abort()
+    }
     const [w, s, e, n] = trackSource.bbox
     const insideSalish = (f) => f.geometry.coordinates.every(([x, y]) => x >= w && x <= e && y >= s && y <= n)
     const salishM = new Set(trackSource.months || [])
@@ -548,9 +561,9 @@ export default function ShipsApp() {
       get(`/api/ship-tracks?r=us&t=${ym}&mmsi=${m}&v=${trackSource.us.rules}`)
         .then((fc) => ({ features: salishM.has(ym) ? fc.features.filter((f) => !insideSalish(f)) : fc.features })),
     ])))
-      .then((fcs) => { if (!ctl.signal.aborted) setOwnTracks(fcs.flatMap((fc) => fc.features).filter((f) => inOwnWindow(f, mmsiPeriods))) })
+      .then(done)
     return () => ctl.abort()
-  }, [vesselId, mmsiPeriods, trackMonths])
+  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, allTrackMonths.length])
   const fitToOwnRef = useRef(false) // set when a ship is picked from search; a track click doesn't move the map
   useEffect(() => {
     const map = mapRef.current
@@ -905,6 +918,7 @@ export default function ShipsApp() {
     if (!tracksOn) sp.set('tr', '0')
     if (darkOn) sp.set('dk', '1')
     if (mpaOn) sp.set('mp', '1')
+    if (vesselId && !ownAllYears) sp.set('oy', 'm')
     if (!portsOn) sp.set('pt', '0')
     if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1') }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
@@ -922,7 +936,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, portsOn, portId, portMonth, portFolded, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -977,6 +991,17 @@ export default function ShipsApp() {
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
               onClose={() => { setBackToPort(null); setVesselId(null); setVesselName(null); setMmsiPeriods([]); setCardTab('overview'); setCardFolded(false); setPickedTrack(null) }}
               onSelectVessel={(id) => setVesselId(id)}
+              tracksControl={identityOn && (
+                <div className={styles.ownYears} role="group" aria-label="This ship's tracks">
+                  <span>Tracks:</span>
+                  {[[true, 'All years'], [false, 'Selected months']].map(([all, label]) => (
+                    <button key={label} type="button" aria-pressed={ownAllYears === all}
+                      className={ownAllYears === all ? styles.ownYearsOn : styles.ownYearsBtn}
+                      onClick={() => { if (ownAllYears !== all) { fitToOwnRef.current = true; setOwnAllYears(all) } }}>{label}</button>
+                  ))}
+                  {ownLoading && <span className={styles.ownYearsNote}>loading…</span>}
+                </div>
+              )}
               onShowPlace={showStop}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')

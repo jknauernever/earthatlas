@@ -30,6 +30,9 @@ export default function TrackMonths({ months, range, onRange, styles: s, cap = I
   const years = [...new Set(months.map((m) => m.slice(0, 4)))]
   const yearSpan = (y) => { const idx = months.map((m, i) => (m.startsWith(y) ? i : -1)).filter((i) => i >= 0); return [idx[0], idx[idx.length - 1]] }
   const isYear = (y) => { const [ya, yb] = yearSpan(y); return a === ya && b === yb && !isAll }
+  // A year the selected months fall in lights up too (Josh 2026-09-27): fully when the whole year is picked,
+  // as an outline when only some of its months are.
+  const touchesYear = (y) => { const [ya, yb] = yearSpan(y); return !isAll && ya <= b && yb >= a }
   const label = isAll ? `All ${months.length} month${months.length === 1 ? '' : 's'}`
     : a === b ? fmtMonth(months[a]) : `${fmtMonth(months[a])} – ${fmtMonth(months[b])}`
   const pick = (idx, shift) => {
@@ -44,7 +47,7 @@ export default function TrackMonths({ months, range, onRange, styles: s, cap = I
       <div className={s.chipRow}>
         {months.length <= cap && <button type="button" className={isAll ? s.chipTrack : s.chip} onClick={() => onRange([0, months.length - 1])}>All</button>}
         {years.length > 1 && years.map((y) => (
-          <button key={y} type="button" className={isYear(y) ? s.chipTrack : s.chip} onClick={() => onRange(yearSpan(y))}>{y}</button>
+          <button key={y} type="button" className={isYear(y) ? s.chipTrack : touchesYear(y) ? s.chipTrackPart : s.chip} onClick={() => onRange(yearSpan(y))}>{y}</button>
         ))}
       </div>
       <button type="button" className={s.disclosure} onClick={() => setShowMonths((v) => !v)} aria-expanded={showMonths}>

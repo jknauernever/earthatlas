@@ -12,6 +12,7 @@ import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
 import { Loading, LoadingInline } from '../components/panel'
+import PortEmissions from './PortEmissions.jsx'
 
 export const PORT_HUE = '#fb923c'
 const IMPORT_HUE = '#3b82f6' // validated pair on the dark card (dataviz validator, 2026-09-27)
@@ -34,24 +35,25 @@ const compactT = (t) => (t >= 1e6 ? `${(t / 1e6).toFixed(t >= 1e7 ? 0 : 1)} mill
 const perDay = (v) => (v == null ? 'no value' : v >= 10 ? fmtN(Math.round(v)) : v.toFixed(1))
 
 /** GFW's monthly arrivals, one bar per month; the listed month is drawn deeper. Click / arrow keys pick a month. */
-function MonthBars({ months, month, onMonth }) {
-  const max = Math.max(1, ...months.map((m) => m.n))
+// `say(n)` words one month's value (default: arrivals); `hue` colours the bars. Also used by PortEmissions.jsx.
+export function MonthBars({ months, month, onMonth, say = (n) => plural(n, 'arrival'), hue = PORT_HUE, label = 'Arrivals per month; pick a month to list its ships', listed = true }) {
+  const max = Math.max(1e-9, ...months.map((m) => m.n || 0))
   const [hover, setHover] = useState(null)
   const shown = hover ?? months.find((m) => m.month === month)
   return (
     <div className={styles.pcBars}>
       <div className={styles.pcBarsReadout} aria-live="polite">
-        {shown ? <>{monthName(shown.month, 'long')}: <strong>{plural(shown.n, 'arrival')}</strong>{shown.month === month && !hover ? ' · listed below' : ''}</> : ' '}
+        {shown ? <>{monthName(shown.month, 'long')}: <strong>{shown.n == null ? 'not reported' : say(shown.n)}</strong>{listed && shown.month === month && !hover ? ' · listed below' : ''}</> : ' '}
       </div>
-      <div className={styles.pcBarsRow} role="listbox" aria-label="Arrivals per month; pick a month to list its ships">
+      <div className={styles.pcBarsRow} role="listbox" aria-label={label}>
         {months.map((m) => {
           const on = m.month === month
           return (
             <button key={m.month} type="button" role="option" aria-selected={on} className={styles.pcBar}
               onClick={() => onMonth(m.month)} onMouseEnter={() => setHover(m)} onMouseLeave={() => setHover(null)}
               onFocus={() => setHover(m)} onBlur={() => setHover(null)}
-              aria-label={`${monthName(m.month, 'long')}: ${plural(m.n, 'arrival')}`}>
-              <span className={styles.pcBarFill} style={{ height: `${Math.max(m.n ? 6 : 0, (100 * m.n) / max)}%`, background: PORT_HUE, opacity: on ? 1 : 0.38 }} />
+              aria-label={`${monthName(m.month, 'long')}: ${m.n == null ? 'not reported' : say(m.n)}`}>
+              <span className={styles.pcBarFill} style={{ height: `${Math.max(m.n ? 6 : 0, (100 * (m.n || 0)) / max)}%`, background: hue, opacity: on ? 1 : 0.38 }} />
             </button>
           )
         })}
@@ -221,6 +223,9 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
               </div>
             )}
           </div>
+
+          {/* Ship emissions (Climate TRACE), a summary like arrivals, so above the long ship list */}
+          <PortEmissions portId={portId} months={data.window.months} month={data.ships.month} onMonth={onMonth} />
 
           {/* Ships that called (GFW events, stored) */}
           {data.labels.length > 0 && (

@@ -35,6 +35,7 @@
     "ships:import-anchorages-ca": "node --env-file=.env.local scripts/ships/import-anchorages.mjs ca",
     "ships:import-anchorages-nondesignated": "node --env-file=.env.local scripts/ships/import-anchorages.mjs nondesignated",
     "ships:import-portwatch": "node --env-file=.env.local scripts/ships/import-portwatch.mjs",
+    "ships:import-climatetrace-ports": "node --env-file=.env.local scripts/ships/import-climatetrace-ports.mjs",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

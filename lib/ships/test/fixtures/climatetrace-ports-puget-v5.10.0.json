@@ -1,0 +1,1206 @@
+{
+"_label": "REAL Climate TRACE port sources (domestic/international shipping) from the v5.10.0 facility bake (scripts/bake-climatetrace build/features.geojsonl, 2026-09-23), Puget Sound box; monthly series (m) removed",
+"features": [
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.609731,
+48.510591
+]
+},
+"properties": {
+"id": 1934414,
+"n": "Anacortes",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 26959,
+"r": 32890,
+"q": "very low",
+"k": "323 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.676691,
+48.506991
+]
+},
+"properties": {
+"id": 1934415,
+"n": "Anacortes Roro",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 160464,
+"r": 17804,
+"q": "very low",
+"k": "3,412 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.509548,
+47.622609
+]
+},
+"properties": {
+"id": 45117376,
+"n": "Bainbridge Island,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 57399,
+"r": 25451,
+"q": "very low",
+"k": "728 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.64181,
+47.573311
+]
+},
+"properties": {
+"id": 45117407,
+"n": "Bremerton,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 3094,
+"r": 109407,
+"q": "very low",
+"k": "72 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.613492,
+47.649928
+]
+},
+"properties": {
+"id": 45119422,
+"n": "Brownsville,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1105,
+"r": 131466,
+"q": "very low",
+"k": "3 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.682991,
+48.233291
+]
+},
+"properties": {
+"id": 1998080,
+"n": "Coupeville",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 17269,
+"r": 38307,
+"q": "very low",
+"k": "213 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.391806,
+47.807477
+]
+},
+"properties": {
+"id": 45117486,
+"n": "Edmonds,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 31820,
+"r": 31265,
+"q": "very low",
+"k": "547 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.220434,
+47.991101
+]
+},
+"properties": {
+"id": 1934531,
+"n": "Everett",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 294987,
+"r": 12908,
+"q": "very low",
+"k": "1,389 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.396995,
+47.522995
+]
+},
+"properties": {
+"id": 1934538,
+"n": "Fauntleroy Ferry Seattle",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 96,
+"r": 470830,
+"q": "very low",
+"k": "4 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.521202,
+47.576025
+]
+},
+"properties": {
+"id": 45117507,
+"n": "Fort Ward,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1114,
+"r": 131276,
+"q": "very low",
+"k": "250 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-123.014324,
+48.535391
+]
+},
+"properties": {
+"id": 1934547,
+"n": "Friday Harbor",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 9542,
+"r": 49185,
+"q": "very low",
+"k": "235 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.796306,
+48.0919
+]
+},
+"properties": {
+"id": 45117521,
+"n": "Glen Cove,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 47200,
+"r": 27102,
+"q": "very low",
+"k": "337 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-123.132991,
+47.416692
+]
+},
+"properties": {
+"id": 2373358,
+"n": "Hoodsport",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1260,
+"r": 128215,
+"q": "very low",
+"k": "36 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.618283,
+47.704841
+]
+},
+"properties": {
+"id": 45117582,
+"n": "Keyport,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 126410,
+"r": 19548,
+"q": "very low",
+"k": "1,066 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.497491,
+47.795547
+]
+},
+"properties": {
+"id": 1934603,
+"n": "Kingston",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 48108,
+"r": 26925,
+"q": "very low",
+"k": "788 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.324732,
+47.963141
+]
+},
+"properties": {
+"id": 1934654,
+"n": "Mukilteo",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 28521,
+"r": 32306,
+"q": "very low",
+"k": "466 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.932992,
+48.599991
+]
+},
+"properties": {
+"id": 1934677,
+"n": "Orcas",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 78764,
+"r": 22958,
+"q": "very low",
+"k": "2,382 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.395919,
+47.77585
+]
+},
+"properties": {
+"id": 45117704,
+"n": "Point Wells,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 5664,
+"r": 65529,
+"q": "very low",
+"k": "276 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.581629,
+47.85277
+]
+},
+"properties": {
+"id": 1934710,
+"n": "Port Gamble",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 52840,
+"r": 26054,
+"q": "very low",
+"k": "835 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.628043,
+47.541499
+]
+},
+"properties": {
+"id": 45119549,
+"n": "Port Orchard,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 109,
+"r": 422102,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.763888,
+48.111725
+]
+},
+"properties": {
+"id": 45117734,
+"n": "Port Townsend,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 69881,
+"r": 23837,
+"q": "very low",
+"k": "1,004 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.653741,
+47.734296
+]
+},
+"properties": {
+"id": 45117740,
+"n": "Poulsbo,WA",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 9708,
+"r": 47672,
+"q": "very low",
+"k": "300 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.899991,
+48.449991
+]
+},
+"properties": {
+"id": 1934744,
+"n": "Richardson",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 20993,
+"r": 35590,
+"q": "very low",
+"k": "841 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.340663,
+47.597698
+]
+},
+"properties": {
+"id": 1934772,
+"n": "Seattle",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1558091,
+"r": 4236,
+"q": "very low",
+"k": "9,036 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.699991,
+47.649991
+]
+},
+"properties": {
+"id": 2043101,
+"n": "Silverdale",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 9005,
+"r": 50189,
+"q": "very low",
+"k": "84 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.501936,
+48.39027
+]
+},
+"properties": {
+"id": 1934779,
+"n": "Skagit",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 44378,
+"r": 27703,
+"q": "very low",
+"k": "420 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.570935,
+48.504031
+]
+},
+"properties": {
+"id": 1934807,
+"n": "Tesoro Refining, Anacortes",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 84392,
+"r": 22442,
+"q": "very low",
+"k": "81 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.462991,
+47.510992
+]
+},
+"properties": {
+"id": 1934824,
+"n": "Vashon Ferry Dock",
+"sec": "transportation",
+"sub": "domestic-shipping",
+"c": "USA",
+"m0": 0,
+"y": 79782,
+"r": 22859,
+"q": "very low",
+"k": "5,256 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.609731,
+48.510591
+]
+},
+"properties": {
+"id": 2802233,
+"n": "Anacortes",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 978,
+"r": 135726,
+"q": "very low",
+"k": "12 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.676691,
+48.506991
+]
+},
+"properties": {
+"id": 2851858,
+"n": "Anacortes Roro",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 4448,
+"r": 69754,
+"q": "very low",
+"k": "36 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.509548,
+47.622609
+]
+},
+"properties": {
+"id": 45127359,
+"n": "Bainbridge Island,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 38,
+"r": 635490,
+"q": "very low",
+"k": "4 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.64181,
+47.573311
+]
+},
+"properties": {
+"id": 45127374,
+"n": "Bremerton,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 671,
+"r": 152637,
+"q": "very low",
+"k": "1 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.613492,
+47.649928
+]
+},
+"properties": {
+"id": 45129360,
+"n": "Brownsville,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 0,
+"r": 726569,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.682991,
+48.233291
+]
+},
+"properties": {
+"id": 2851908,
+"n": "Coupeville",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 495,
+"r": 173506,
+"q": "very low",
+"k": "2 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.391806,
+47.807477
+]
+},
+"properties": {
+"id": 45124496,
+"n": "Edmonds,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 47,
+"r": 627064,
+"q": "very low",
+"k": "3 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.220434,
+47.991101
+]
+},
+"properties": {
+"id": 2802377,
+"n": "Everett",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 42835,
+"r": 28006,
+"q": "very low",
+"k": "33 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.521202,
+47.576025
+]
+},
+"properties": {
+"id": 45129361,
+"n": "Fort Ward,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 139,
+"r": 398844,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-123.014324,
+48.535391
+]
+},
+"properties": {
+"id": 2813167,
+"n": "Friday Harbor",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 32,
+"r": 638675,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.796306,
+48.0919
+]
+},
+"properties": {
+"id": 45127445,
+"n": "Glen Cove,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 11,
+"r": 691144,
+"q": "very low",
+"k": "4 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-123.132991,
+47.416692
+]
+},
+"properties": {
+"id": 34017705,
+"n": "Hoodsport",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 0,
+"r": 726596,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.618283,
+47.704841
+]
+},
+"properties": {
+"id": 45124535,
+"n": "Keyport,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 558,
+"r": 161126,
+"q": "very low",
+"k": "7 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.497491,
+47.795547
+]
+},
+"properties": {
+"id": 2925647,
+"n": "Kingston",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 208,
+"r": 365670,
+"q": "very low",
+"k": "3 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.324732,
+47.963141
+]
+},
+"properties": {
+"id": 2810114,
+"n": "Mukilteo",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 55,
+"r": 603670,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.932992,
+48.599991
+]
+},
+"properties": {
+"id": 2805637,
+"n": "Orcas",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1139,
+"r": 130761,
+"q": "very low",
+"k": "178 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.395919,
+47.77585
+]
+},
+"properties": {
+"id": 45124581,
+"n": "Point Wells,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 0,
+"r": 726641,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.581629,
+47.85277
+]
+},
+"properties": {
+"id": 3028353,
+"n": "Port Gamble",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 429,
+"r": 184316,
+"q": "very low",
+"k": "6 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.628043,
+47.541499
+]
+},
+"properties": {
+"id": 45128700,
+"n": "Port Orchard,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 0,
+"r": 726646,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.763888,
+48.111725
+]
+},
+"properties": {
+"id": 45124593,
+"n": "Port Townsend,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 495,
+"r": 173523,
+"q": "very low",
+"k": "30 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.653741,
+47.734296
+]
+},
+"properties": {
+"id": 45124597,
+"n": "Poulsbo,WA",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 147,
+"r": 391411,
+"q": "very low",
+"k": "2 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.899991,
+48.449991
+]
+},
+"properties": {
+"id": 2806309,
+"n": "Richardson",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1439,
+"r": 125398,
+"q": "very low",
+"k": "32 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.340663,
+47.597698
+]
+},
+"properties": {
+"id": 2802565,
+"n": "Seattle",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 529847,
+"r": 9222,
+"q": "very low",
+"k": "190 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.699991,
+47.649991
+]
+},
+"properties": {
+"id": 34016118,
+"n": "Silverdale",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 1,
+"r": 717611,
+"q": "very low"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.501936,
+48.39027
+]
+},
+"properties": {
+"id": 34017113,
+"n": "Skagit",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 919,
+"r": 137210,
+"q": "very low",
+"k": "1 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.570935,
+48.504031
+]
+},
+"properties": {
+"id": 2802583,
+"n": "Tesoro Refining, Anacortes",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 37056,
+"r": 29439,
+"q": "very low",
+"k": "7 voyages and stays"
+}
+},
+{
+"type": "Feature",
+"geometry": {
+"type": "Point",
+"coordinates": [
+-122.462991,
+47.510992
+]
+},
+"properties": {
+"id": 2802591,
+"n": "Vashon Ferry Dock",
+"sec": "transportation",
+"sub": "international-shipping",
+"c": "USA",
+"m0": 0,
+"y": 2156,
+"r": 116838,
+"q": "very low",
+"k": "1 voyages and stays"
+}
+}
+]
+}

@@ -525,3 +525,8 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .ownYearsBtn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
 .ownYearsOn { border-color: rgba(103, 232, 249, 0.6); background: rgba(103, 232, 249, 0.14); color: #cffafe; }
 .ownYearsNote { color: rgba(255, 255, 255, 0.5); font-style: italic; }
+
+/* Port card: Climate TRACE gases for the picked months (PortEmissions.jsx). */
+.pcGasList { display: grid; gap: 2px; margin: 6px 0 4px; font-size: 11.5px; }
+.pcGasRow { display: flex; justify-content: space-between; gap: 10px; color: rgba(255, 255, 255, 0.78); }
+.pcGasRow span:last-child { white-space: nowrap; color: #fff; }

@@ -28,6 +28,7 @@
 // Rules: src/ships/CLAUDE.md.
 
 import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
+import { portClimateTrace } from '../lib/ships/climateTrace.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
@@ -206,6 +207,13 @@ export default async function handler(req, res) {
                                  FROM ${S}.sources WHERE id = ANY($1)`, [[...PORT_CARD_SOURCE_IDS, ...NAME_SOURCE_IDS]])
       const partial = ['discover', 'stats', 'events', 'portwatch'].some((k) => ['failed', 'budget', 'no_gfw'].includes(fetch[k])) || fetch.status === 'failed'
       return send(res, 200, { ...card, fetch, sources }, partial ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    //   /api/ships?op=portEmissions&id=<port id> → the Climate TRACE port sources joined to this port (lib/ships/climateTrace.js)
+    if (op === 'portEmissions') {
+      const id = p.get('id') || ''
+      if (!/^\d{1,12}$/.test(id)) return send(res, 400, { error: 'id must be a port id' })
+      const r = await portClimateTrace(q, S, id)
+      return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'port not found' })
     }
     if (op === 'portShip') {
       if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })

@@ -31,7 +31,7 @@ import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
-import { searchVessels, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
+import { searchVesselsFull, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
 import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
 import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
 import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
@@ -71,7 +71,8 @@ export default async function handler(req, res) {
     if (op === 'search') {
       const text = (p.get('q') || '').slice(0, 80)
       const kinds = (p.get('kinds') || '').split(',').filter(Boolean)
-      return send(res, 200, { query: text, kinds, results: await searchVessels(q, S, text, kinds) })
+      const r = await searchVesselsFull(q, S, text, kinds)
+      return send(res, 200, { query: text, kinds, results: r.results, type: r.type, total: r.total, capped: r.capped || false })
     }
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
     if (op === 'vessel') {

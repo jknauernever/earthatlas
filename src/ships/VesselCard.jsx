@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
+import { Spinner, Loading } from '../components/panel'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
@@ -53,7 +54,8 @@ const day = (iso) => (iso ? String(iso).slice(0, 10) : null)
 function fmtValue(attr, v) {
   if (attr === 'length_m' || attr === 'width_m' || attr === 'draft_m') return String(v).endsWith(' m') ? v : `${v} m`
   if (attr === 'transceiver') return v === 'A' ? 'Class A (commercial ships)' : v === 'B' ? 'Class B (small craft)' : v
-  if (attr === 'tonnage_gt') return `${Number(v).toLocaleString()} GT`
+  // A registry value can carry its measurement note after the number (PSIX: '29447 (Convention (Subpart B), "Long Ton")').
+  if (attr === 'tonnage_gt') { const n = parseFloat(String(v)); return Number.isFinite(n) ? `${n.toLocaleString()} GT` : v }
   if (attr === 'max_capacity') return Number(v).toLocaleString()
   // Wikidata values carry their item id, e.g. "Holland America Line (Q1624735)": show the name.
   v = String(v).replace(/ \(Q\d+\)$/, '')
@@ -295,7 +297,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         aria-label={folded ? 'Unfold ship card' : 'Fold ship card'} title={folded ? 'Show the whole card' : 'Fold the card to its name'}><Chevron up={!folded} size={16} /></button>
       <button type="button" className={pick.close} onClick={onClose} aria-label="Close ship card">×</button>
       {error && <div className={styles.errorNote}>{error}</div>}
-      {!vessel && !error && <div className={styles.loadingNote}>Loading ship…</div>}
+      {!vessel && !error && <Loading className={styles.loadingNote}>Loading ship…</Loading>}
       {vessel && (
         <>
           <div className={styles.vesselHead}>
@@ -770,7 +772,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
       .finally(() => setMore(false))
   }
   if (err && !data) return <div className={styles.errorNote}>{err}</div>
-  if (!data) return <div className={styles.loadingNote}>Loading port visits… The first look asks Global Fishing Watch and can take a few seconds.</div>
+  if (!data) return <Loading className={styles.loadingNote}>Loading port visits… The first look asks Global Fishing Watch and can take a few seconds.</Loading>
   const src = data.source
   const since = data.since ? monthYear(data.since) : null
   const top = (data.topPorts || []).slice(0, 3)
@@ -832,7 +834,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
       })}
       {visits.length < data.total && (
         <button type="button" className={styles.recordToggle} onClick={loadMore} disabled={more}>
-          {more ? 'Loading…' : `Show older visits (${(data.total - visits.length).toLocaleString()} more)`} <Chevron size={13} />
+          {more ? <><Spinner size={12} /> Loading…</> : `Show older visits (${(data.total - visits.length).toLocaleString()} more)`} <Chevron size={13} />
         </button>
       )}
       {err && data && <div className={styles.incidentMeta}>{err}</div>}

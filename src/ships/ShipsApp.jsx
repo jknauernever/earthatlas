@@ -30,7 +30,7 @@ import TrackMonths, { TRACK_KINDS, fmtMonth } from './TrackControls.jsx'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
 import trackSource from './trackSource.json'
-import { DatasetRow, SourcesFooter, LegendSwatchRow, useDockColumns } from '../components/panel'
+import { DatasetRow, SourcesFooter, LegendSwatchRow, useDockColumns, Spinner } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
 
@@ -999,7 +999,7 @@ export default function ShipsApp() {
                       className={ownAllYears === all ? styles.ownYearsOn : styles.ownYearsBtn}
                       onClick={() => { if (ownAllYears !== all) { fitToOwnRef.current = true; setOwnAllYears(all) } }}>{label}</button>
                   ))}
-                  {ownLoading && <span className={styles.ownYearsNote}>loading…</span>}
+                  {ownLoading && <span className={styles.ownYearsNote}><Spinner size={11} /> loading…</span>}
                 </div>
               )}
               onShowPlace={showStop}

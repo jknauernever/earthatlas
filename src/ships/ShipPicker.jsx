@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import styles from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
+import { Spinner, Loading } from '../components/panel'
 
 const KIND_LABEL = {
   PASSENGER: 'Passenger', CARGO: 'Cargo', FISHING: 'Fishing', CARRIER: 'Fish carrier', BUNKER: 'Bunker',
@@ -17,11 +18,17 @@ const KIND_LABEL = {
 }
 export const kindLabel = (k) => KIND_LABEL[k] || String(k).replaceAll('_', ' ').toLowerCase()
 
+// Why an owner search matched (the card's role rows).
+const OWNER_LABEL = { registry_owner: 'Owner (registry)', owner: 'Owner', registered_owner: 'Registered owner', beneficial_owner: 'Beneficial owner',
+  operator: 'Operator', ship_manager: 'Ship manager', technical_manager: 'Technical manager', commercial_manager: 'Commercial manager',
+  ism_manager: 'ISM manager', bareboat_charterer: 'Bareboat charterer' }
+
 export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, onPick, open, onOpen, children }) {
   const wrapRef = useRef(null)
   const inputRef = useRef(null)
   const [kindCounts, setKindCounts] = useState(null)
   const [results, setResults] = useState(null)
+  const [found, setFound] = useState(null) // kind-of-ship reading + total (api/ships op=search `type`, `total`)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [active, setActive] = useState(-1)
@@ -52,7 +59,8 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
         if (kinds.length) qs.set('kinds', kinds.join(','))
         const r = await fetch(`/api/ships?${qs}`, { signal: ctl.signal })
         if (!r.ok) throw new Error(`Search failed (${r.status})`)
-        setResults((await r.json()).results); setError(null); setActive(-1)
+        const b = await r.json()
+        setResults(b.results); setFound(b.type ? { ...b.type, total: b.total, capped: b.capped } : null); setError(null); setActive(-1)
       } catch (e) { if (e.name !== 'AbortError') setError(e.message) } finally { setLoading(false) }
     }, 250)
     return () => { clearTimeout(t); ctl.abort() }
@@ -80,7 +88,7 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
         <div className={styles.pop} role="dialog" aria-label="Find a ship">
           <div className={styles.head}>Find a ship</div>
           <input ref={inputRef} className={styles.search} type="search" value={query} onChange={(e) => onQuery(e.target.value)} onKeyDown={onKey}
-            placeholder="Name, IMO, MMSI or call sign" aria-label="Ship name, IMO, MMSI or call sign" />
+            placeholder="Name, IMO, MMSI, owner or kind (ferry)" aria-label="Ship name, IMO, MMSI, call sign, owner or kind of ship" />
 
           <div className={styles.head}>Kind of ship</div>
           <div className={styles.chips}>
@@ -94,8 +102,11 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
           </div>
           <div className={styles.note}>Kinds are Global Fishing Watch’s classification (AIS + registries + models), not what each ship reports about itself.</div>
 
-          {(results || loading || error) && <div className={styles.head}>{results ? `${results.length === 25 ? 'First 25' : results.length} ship${results.length === 1 ? '' : 's'}` : 'Ships'}</div>}
-          {loading && !results && <div className={styles.note}>Searching…</div>}
+          {(results || loading || error) && <div className={styles.head}>{!results ? 'Ships'
+            : found ? `${found.total}${found.capped ? '+' : ''} ${found.class ? found.label.replace(/\s*\(.*\)$/, '') : `${found.label} ship`}${found.total === 1 ? '' : 's'}${found.rest ? ` · “${found.rest}”` : ''}${found.total > results.length ? ` · first ${results.length} by name` : ''}`
+            : `${results.length === 25 ? 'First 25' : results.length} ship${results.length === 1 ? '' : 's'}`}</div>}
+          {found && <div className={styles.note}>Kind of ship as EarthAtlas reads it from every source (the card’s “Kind of ship”). Add a name or owner to narrow it: “Washington ferry”.</div>}
+          {loading && !results && <Loading className={styles.note}>Searching…</Loading>}
           {error && <div className={styles.note}>{error}</div>}
           {results && !results.length && !loading && <div className={styles.note}>No ships match.</div>}
           {results?.length > 0 && (
@@ -108,6 +119,7 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
                     {[r.latest.flag?.value, r.latest.imo && `IMO ${r.latest.imo.value}`, r.latest.mmsi && `MMSI ${r.latest.mmsi.value}`,
                       r.latest.vessel_type && kindLabel(r.latest.vessel_type.value)].filter(Boolean).join(' · ')}
                   </span>
+                  {r.match?.kind === 'owner' && <span className={styles.resultMeta}>{OWNER_LABEL[r.match.attribute] || 'Owner'}: {r.match.value}</span>}
                 </button>
               ))}
             </div>

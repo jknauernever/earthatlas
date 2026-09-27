@@ -174,3 +174,15 @@
   .modal { padding: 22px 18px 18px; max-height: 88vh; }
   .modalTitle { font-size: 18px; }
 }
+
+/* ─── Spinner (shared: Spinner.jsx) ───────────────────────────────────────── */
+.spinner {
+  display: inline-block; flex: none; box-sizing: border-box; border-radius: 50%; vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.16); border-top-color: #67e8f9; border-right-color: #67e8f9;
+  animation: eaSpin 0.8s linear infinite;
+}
+@keyframes eaSpin { to { transform: rotate(360deg); } }
+@keyframes eaPulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: eaPulse 1.4s ease-in-out infinite; } }
+.loadingLine { display: flex; align-items: flex-start; gap: 8px; }
+.loadingLine > .spinner { margin-top: 1px; }

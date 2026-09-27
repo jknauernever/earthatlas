@@ -35,7 +35,9 @@ import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './ships
 import styles from './ShipsApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const DEFAULT_VIEW = { center: [-40, 24], zoom: 1.9 } // same opening globe as /inmotion
+// Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
+// A shared link's lat/lng/z still wins.
+const DEFAULT_BOUNDS = [[-125.0, 46.95], [-121.9, 50.25]]
 
 const BASEMAPS = [
   { id: 'dark', label: 'Dark', style: 'mapbox://styles/mapbox/dark-v11' },
@@ -391,8 +393,9 @@ export default function ShipsApp() {
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: basemapStyleFor(basemap),
-      center: mapView ? [mapView.lng, mapView.lat] : DEFAULT_VIEW.center,
-      zoom: mapView ? mapView.zoom : DEFAULT_VIEW.zoom,
+      ...(mapView ? { center: [mapView.lng, mapView.lat], zoom: mapView.zoom }
+        // Clear of the left panel (open on every load) on desktop.
+        : { bounds: DEFAULT_BOUNDS, fitBoundsOptions: { padding: isMobile ? 20 : { top: 60, bottom: 30, left: 340, right: 40 } } }),
       projection: 'globe',
     })
     mapRef.current = map

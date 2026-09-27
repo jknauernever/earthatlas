@@ -29,7 +29,7 @@ const fmtN = (n) => Number(n).toLocaleString('en-US')
 const plural = (n, w, ws = `${w}s`) => `${fmtN(n)} ${n === 1 ? w : ws}`
 const monthName = (ym, style = 'short') => new Date(`${ym}-01T00:00:00Z`).toLocaleString('en-US', { month: style, year: 'numeric', timeZone: 'UTC' })
 const dayName = (d) => new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-const rec = (id) => `/api/ships?op=record&id=${id}`
+const rec = (id) => `/ships/source/${id}`
 const compactT = (t) => (t >= 1e6 ? `${(t / 1e6).toFixed(t >= 1e7 ? 0 : 1)} million t` : t >= 1e3 ? `${fmtN(Math.round(t / 1e3))} thousand t` : `${fmtN(Math.round(t))} t`)
 const perDay = (v) => (v == null ? 'no value' : v >= 10 ? fmtN(Math.round(v)) : v.toFixed(1))
 

@@ -31,7 +31,7 @@ import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
-import { searchVesselsFull, vesselKinds, getVessel, getRecord, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
+import { searchVesselsFull, vesselKinds, getVessel, getRecord, getRecordView, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
 import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
 import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
 import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
@@ -78,6 +78,11 @@ export default async function handler(req, res) {
     if (op === 'vessel') {
       const v = await getVessel(q, S, p.get('id') || '')
       return v ? send(res, 200, v) : send(res, 404, { error: 'vessel not found' })
+    }
+    // Readable view of one record (the /ships/source/<id> page).
+    if (op === 'recordView') {
+      const r = await getRecordView(q, S, p.get('id') || '')
+      return r ? send(res, 200, r, 'public, max-age=3600, s-maxage=86400') : send(res, 404, { error: 'record not found' })
     }
     if (op === 'record') {
       const r = await getRecord(q, S, p.get('id') || '')

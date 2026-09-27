@@ -1,0 +1,41 @@
+/* /ships/source/<id>: a readable source record (SourceRecordPage.jsx). Same dark palette as /ships. */
+.page { min-height: 100vh; background: #0a0e17; color: rgba(255, 255, 255, 0.88); font-family: inherit; }
+.top { padding: 14px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.brand { color: #fff; text-decoration: none; font-weight: 700; font-size: 15px; }
+.brand span { color: #67e8f9; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; margin-left: 6px; }
+.main { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+.kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.title { font-size: 24px; line-height: 1.25; margin: 4px 0 4px; color: #fff; }
+.sub { font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.facts { margin: 20px 0 8px; display: grid; gap: 12px; }
+.primaryLink {
+  justify-self: start; display: inline-block; padding: 8px 14px; border-radius: 999px; text-decoration: none; font-size: 13px; font-weight: 600;
+  color: #cffafe; background: rgba(103, 232, 249, 0.14); border: 1px solid rgba(103, 232, 249, 0.5);
+}
+.primaryLink:hover { background: rgba(103, 232, 249, 0.24); }
+.ids { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.idsHint { color: rgba(255, 255, 255, 0.55); }
+.idChip { padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.7); }
+.idChip b { color: #fff; font-weight: 600; margin-left: 3px; user-select: all; }
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 4px 0 0; font-size: 13px; }
+.meta dt { color: rgba(255, 255, 255, 0.5); }
+.meta dd { margin: 0; }
+.meta a, .vessel h2 a { color: rgba(120, 200, 255, 0.95); }
+.vessel { margin-top: 26px; }
+.vessel h2 { font-size: 16px; margin: 0 0 8px; color: #fff; }
+.vessel h2 span { font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.5); margin-left: 6px; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th, .table td { text-align: left; padding: 7px 8px; border-top: 1px solid rgba(255, 255, 255, 0.07); vertical-align: top; }
+.table th { font-weight: 600; color: rgba(255, 255, 255, 0.65); width: 32%; }
+.when { color: rgba(255, 255, 255, 0.5); white-space: nowrap; }
+.note { font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.rawBox { margin-top: 30px; }
+.rawToggle { font: inherit; font-size: 12.5px; color: rgba(255, 255, 255, 0.7); background: none; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.rawToggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+.raw { font-size: 11.5px; line-height: 1.45; background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 12px; overflow-x: auto; max-height: 70vh; }
+@media (max-width: 600px) {
+  .table th { width: 38%; }
+  .when { white-space: normal; }
+  .meta { grid-template-columns: 1fr; }
+  .meta dt { margin-top: 6px; }
+}

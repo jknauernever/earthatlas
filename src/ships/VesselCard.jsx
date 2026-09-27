@@ -194,7 +194,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   const Src = ({ a }) => {
     const note = a.source_id === 'wikidata' ? LINK_NOTE[a.link_method] : null
     return (<>
-      <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
+      <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
         title={`${sourceTitle(a, sourcesById)}${note ? ` · ${note.title}` : ''}`}>{SRC_LABEL[a.source_id] || 'source'}</a>
       {note?.text && <span className={styles.weakMatch} title={note.title}>{note.text}</span>}
     </>)
@@ -230,7 +230,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         {groups.map((g) => (
           // Badge and source say the same word (Wikidata): the badge itself is the link.
           g.length === 1 && EVIDENCE[g[0].evidence_class]?.label === SRC_LABEL[g[0].source_id]
-            ? <a key={g[0].id} className={styles.srcPair} href={`/api/ships?op=record&id=${g[0].last_source_record_id}`} target="_blank" rel="noopener noreferrer"
+            ? <a key={g[0].id} className={styles.srcPair} href={`/ships/source/${g[0].last_source_record_id}`} target="_blank" rel="noopener noreferrer"
                 title={sourceTitle(g[0], sourcesById)}><Ev c={g[0].evidence_class} />{LINK_NOTE[g[0].link_method]?.text && <span className={styles.weakMatch} title={LINK_NOTE[g[0].link_method].title}>{LINK_NOTE[g[0].link_method].text}</span>}</a>
             : <span key={g[0].id} className={styles.srcPair}>
             <Ev c={g[0].evidence_class} />
@@ -551,7 +551,7 @@ function IncidentRecord({ e }) {
               As received from the {data.source.name}{data.source.publisher ? ` (${data.source.publisher})` : ''} public web service
               {data.record?.first_retrieved_at ? ` on ${String(data.record.first_retrieved_at).slice(0, 10)}` : ''}.
               Free-text narratives are withheld here because they can name people.{' '}
-              {data.record && <a className={styles.sourceLink} href={`/api/ships?op=record&id=${data.record.id}`} target="_blank" rel="noopener noreferrer">Raw record</a>}
+              {data.record && <a className={styles.sourceLink} href={`/ships/source/${data.record.id}`} target="_blank" rel="noopener noreferrer">Source record</a>}
               {e.report_url && <>{' · '}<a className={styles.sourceLink} href={e.report_url} target="_blank" rel="noopener noreferrer">{INCIDENT_SOURCE[e.source_id] || 'source'} website</a></>}
             </div>
           )}
@@ -662,7 +662,7 @@ function PortName({ p }) {
     <>
       {shown}{' '}
       {p.name_source_record_id
-        ? <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${p.name_source_record_id}`} target="_blank" rel="noopener noreferrer" title={nameWhy(p) || undefined}>{tag}</a>
+        ? <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${p.name_source_record_id}`} target="_blank" rel="noopener noreferrer" title={nameWhy(p) || undefined}>{tag}</a>
         : <span className={styles.srcLink} title={nameWhy(p) || undefined}>{tag}</span>}
       {confirmed && <span className={styles.weakMatch} title={`Ships stopping here most often broadcast “${p.top_destination}” as their AIS destination (Global Fishing Watch), which matches this nearby World Port Index port`}>ships' destination</span>}
     </>
@@ -697,7 +697,7 @@ function AnchorageSource({ a }) {
   const what = a.source_id === 'noaa-mc-anchorages' ? 'MarineCadastre “Anchorages” polygon (NOAA Office for Coastal Management and U.S. Coast Guard, from 33 CFR; public domain)'
     : a.source_id === 'dfo-pacific-commercial-anchorages' ? `DFO “Active Commercial Shipping Anchorages in Pacific Canada” point (OGL-Canada 2.0); the circle of its ${a.radius_m} m swing radius is built by EarthAtlas`
       : `the proposed-rule paragraph 33 CFR 110.230${a.paragraph || ''} in 82 FR 10313 (2017), withdrawn 2018 (US Government work)`
-  return <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${a.source_record_id}`} target="_blank" rel="noopener noreferrer"
+  return <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.source_record_id}`} target="_blank" rel="noopener noreferrer"
     title={`Anchorage area from ${what}, exactly as received — click for the raw record`}>{ANCHORAGE_SRC[a.source_id] || a.source_id}</a>
 }
 function AnchorageMarkers({ a }) {
@@ -705,7 +705,7 @@ function AnchorageMarkers({ a }) {
     {a.legal_status === 'non_designated' && <span className={styles.weakMatch}
       title={`Not a designated anchorage. The Coast Guard’s Puget Sound Vessel Traffic Service lists it among its “non-designated anchorages”; the only published boundary is in a 2017 proposed rule (82 FR 10313) that was withdrawn on 2018-04-27 (83 FR 18491) and never took effect. ${a.boundary_note || ''}`}>non-designated</span>}
     {a.source_id === 'noaa-mc-anchorages' && a.boundary_note && (a.amendment_record_id
-      ? <a className={styles.weakMatch} href={`/api/ships?op=record&id=${a.amendment_record_id}`} target="_blank" rel="noopener noreferrer"
+      ? <a className={styles.weakMatch} href={`/ships/source/${a.amendment_record_id}`} target="_blank" rel="noopener noreferrer"
           title={`${a.boundary_note}. The boundary in force today may differ — click for the eCFR amendment list`}>older boundary</a>
       : <span className={styles.weakMatch} title={a.boundary_note}>older boundary</span>)}
   </>
@@ -743,7 +743,7 @@ function PortCountry({ v }) {
   if (!v.iso3) return null
   if (!v.country_name) return <span className={styles.portCountry} title="Country of the port (ISO 3166 alpha-3), as Global Fishing Watch gives it">{v.iso3}</span>
   return (
-    <a className={styles.portCountry} href={v.country_record_id ? `/api/ships?op=record&id=${v.country_record_id}` : 'https://www.geonames.org'} target="_blank" rel="noopener noreferrer"
+    <a className={styles.portCountry} href={v.country_record_id ? `/ships/source/${v.country_record_id}` : 'https://www.geonames.org'} target="_blank" rel="noopener noreferrer"
       title={`Country of the port: Global Fishing Watch gives ${v.iso3}; the English name is from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{v.country_name}</a>
   )
 }
@@ -826,7 +826,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
               {onShowPlace && Number.isFinite(v.lat) && Number.isFinite(v.lon) && <>{' · '}
                 <button type="button" className={styles.inlineLink} onClick={() => onShowPlace({ ...v, title: plainPortName(v), stop_kind_text: STOP_KIND[v.stop_kind]?.text, ship })} title={`Show this stop on the map (${v.lat.toFixed(4)}, ${v.lon.toFixed(4)})`}>map</button></>}
               {' · '}
-              <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/api/ships?op=record&id=${v.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
+              <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${v.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
                 title={`Global Fishing Watch port-visit event ${v.event_id} (${v.dataset_version || 'public-global-port-visits-events'}), exactly as received · ${src?.license || 'CC BY-NC 4.0'} — click for the raw record`}>GFW</a>
             </div>
           </div>

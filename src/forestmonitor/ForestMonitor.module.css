@@ -1282,28 +1282,7 @@
 }
 .modalCloseBtn:hover { background: #f59e0b; }
 
-/* Override Mapbox's default popup chrome so it doesn't clash with the dark UI */
-:global(.mapboxgl-popup-content) {
-  padding: 0 !important;
-  background: #fff !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
-}
-:global(.mapboxgl-popup-tip) {
-  border-top-color: #fff !important;
-  border-bottom-color: #fff !important;
-}
-:global(.mapboxgl-popup-close-button) {
-  font-size: 20px !important;
-  color: #6b7280 !important;
-  padding: 4px 10px !important;
-  right: 2px !important;
-  top: 2px !important;
-}
-:global(.mapboxgl-popup-close-button:hover) {
-  background: rgba(0,0,0,0.05) !important;
-  color: #1f2937 !important;
-}
+/* Popup chrome (white card, close button) is site-wide: src/index.css. */
 
 /* ─── News-correlation block ──────────────────────────────────────────── */
 /* Sits at the very bottom of the popup — visually separated from the fire-

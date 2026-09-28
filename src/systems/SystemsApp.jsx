@@ -26,6 +26,7 @@ import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
+import { fitPopupToMap } from '../lib/popupFit.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { loadGridField, loadSystemsJson, SOURCE_BASES } from './windField.js'
 import { ParticleLayer } from './windParticles.js'
@@ -284,44 +285,7 @@ const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
 // reloads the page instead.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
 
-// Keep the popup card on screen AND let it use the screen: hang it off
-// whichever side of the click has more room, then cap its height to that
-// room (content scrolls inside instead of flowing off the map). Measured
-// from the anchor POINT, never from the card's current box — the old
-// version measured the side Mapbox had already picked and shrank the card
-// to it, and once shrunk, Mapbox saw a small card that "fit" and never
-// flipped: a click near the top got a 150px card jammed into the sliver
-// above it while the whole lower screen sat empty. Re-run after every
-// async growth (AI text, source naming, coverage lines).
-function fitPopupToMap(popup) {
-  const el = popup.getElement()
-  const scroller = el?.querySelector('.mapboxgl-popup-content > div')
-  const mapEl = el?.closest('.mapboxgl-map')
-  if (!el || !scroller || !mapEl) return
-  const mapRect = mapEl.getBoundingClientRect()
-  let pt
-  try { pt = popup._map.project(popup.getLngLat()) } catch { return }
-  // The top ~64px belongs to the Explain button and mode cues — cards stop
-  // short of it instead of sliding underneath.
-  const TOP_RESERVE = 64
-  const TIP = 10 + 12 // popup offset + arrow
-  const PAD = 16
-  const down = mapRect.height - pt.y - TIP - PAD
-  const up = pt.y - TOP_RESERVE - TIP - PAD
-  const ceiling = Math.floor(mapRect.height * 0.75)
-  const cur = ([...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || '').replace('mapboxgl-popup-anchor-', '')
-  const curVert = cur.startsWith('top') ? 'top' : cur.startsWith('bottom') ? 'bottom' : null
-  // Stay put only if the current side already offers all the card could use.
-  const want = curVert && (curVert === 'top' ? down : up) >= ceiling ? curVert : (down >= up ? 'top' : 'bottom')
-  if (want !== curVert) {
-    // Keep Mapbox's horizontal choice (edge clicks shift the card sideways).
-    const horiz = cur.includes('-left') ? '-left' : cur.includes('-right') ? '-right' : ''
-    popup.options.anchor = want + horiz
-    try { popup.setLngLat(popup.getLngLat()) } catch { return } // re-lays out with the new anchor
-  }
-  const room = want === 'top' ? down : up
-  scroller.style.maxHeight = `${Math.max(160, Math.min(ceiling, Math.floor(room)))}px`
-}
+// Popup fitting (hang off the roomier side, cap to that room): shared, src/lib/popupFit.js.
 
 // Scroll affordance for tall popups: a subtle ▾ pinned at the card's bottom,
 // shown only while more content is below the fold (the card itself scrolls).

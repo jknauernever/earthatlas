@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -474,7 +475,7 @@ export default function HappyWhaleApp() {
           const count = countLabel(posNum(p.minCount), posNum(p.maxCount))
 
           popupRef.current?.remove()
-          popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '280px' })
+          popupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 12, maxWidth: '280px' })
             .setLngLat(coords)
             .setHTML(
               `<div class="${styles.popup}">` +
@@ -494,7 +495,7 @@ export default function HappyWhaleApp() {
                 : '') +
               `</div>`,
             )
-            .addTo(map)
+            .addTo(map))
 
           // The popup is plain HTML (setHTML), so wire the journey button by
           // hand. Re-clicking for the already-selected whale re-zooms (the

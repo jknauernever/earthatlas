@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -383,7 +384,7 @@ export default function QuakesApp() {
           const p = f.properties
           const coords = f.geometry.coordinates.slice()
           popupRef.current?.remove()
-          popupRef.current = new mapboxgl.Popup({ offset: 12, maxWidth: '260px' })
+          popupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 12, maxWidth: '260px' })
             .setLngLat(coords)
             .setHTML(
               `<div class="${styles.popup}">` +
@@ -395,7 +396,7 @@ export default function QuakesApp() {
               `<a class="${styles.popupLink}" href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer">USGS event page ↗</a>` +
               `</div>`,
             )
-            .addTo(map)
+            .addTo(map))
         })
       }
     }

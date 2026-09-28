@@ -229,45 +229,48 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
    .mapWrap, etc.) must keep their border-radius but drop overflow:hidden. */
 .mapboxgl-map { overflow: visible !important; border-radius: inherit; }
 .mapboxgl-canvas-container { border-radius: inherit; }
-.mapboxgl-popup { z-index: 5; }
-
+/* ─── The one EarthAtlas map-popup frame (Josh 2026-09-27: /inmotion's frame, carried to every site) ───
+   A white card with an 8 px corner and a deep shadow over the dark maps; each site's popup HTML supplies its own
+   padded body. This used to be copied into every app's CSS module as :global rules — and since every app's CSS
+   loads on every page, whichever loaded last won. Keep popup CHROME here only; content styles stay per site.
+   Above persistent map chrome (replay bars z 6, Explain buttons): a card the user just asked for wins. */
+.mapboxgl-popup { z-index: 14; }
 .mapboxgl-popup .mapboxgl-popup-content {
-  background: transparent;
+  background: #fff;
   padding: 0;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 .mapboxgl-popup .mapboxgl-popup-tip {
-  border-top-color: #ffffff;
-  border-bottom-color: #ffffff;
+  border-top-color: #fff;
+  border-bottom-color: #fff;
 }
 
-/* Desktop popup close button — dark circular scrim so the × reads on both a
-   photo header and a plain white card. (Mobile bottom-sheet popups restyle
-   their own close button in the max-width block below.) */
+/* Desktop close button: a plain grey × on the white card. A popup that opens on a photo gets a dark circle behind a
+   white × instead, so it reads on the image. */
 @media (min-width: 601px) {
   .mapboxgl-popup .mapboxgl-popup-close-button {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    top: 6px;
-    right: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    top: 2px;
+    right: 2px;
+    padding: 2px 8px;
     border: none;
-    border-radius: 50%;
-    background: rgba(15, 18, 28, 0.45);
-    color: #ffffff;
-    font-size: 16px;
+    background: none;
+    color: #6b7280;
+    font-size: 18px;
     line-height: 1;
     cursor: pointer;
     z-index: 2;
   }
-  .mapboxgl-popup .mapboxgl-popup-close-button:hover {
-    background: rgba(15, 18, 28, 0.68);
+  .mapboxgl-popup .mapboxgl-popup-close-button:hover { color: #1f2937; background: rgba(0, 0, 0, 0.05); border-radius: 6px; }
+  .mapboxgl-popup .mapboxgl-popup-content:has(img:first-child, [data-popup-photo]) .mapboxgl-popup-close-button {
+    width: 24px; height: 24px; padding: 0; top: 6px; right: 6px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: rgba(15, 18, 28, 0.45); color: #fff; font-size: 16px;
   }
+  .mapboxgl-popup .mapboxgl-popup-content:has(img:first-child, [data-popup-photo]) .mapboxgl-popup-close-button:hover { background: rgba(15, 18, 28, 0.68); }
+  /* Mapbox's dynamic max-height + column-reverse scroll hides the top of bottom-anchored cards; each site's inner
+     body owns the scroll instead (was /fire's rule, already global in effect). */
+  .mapboxgl-popup .mapboxgl-popup-content { max-height: none; overflow: visible; }
 }
 
 /* ─── Mobile: bottom-sheet popups ─── */
@@ -291,8 +294,9 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18) !important;
     /* Default sheet height; dragging the grab handle (src/lib/popupSheet.js)
        rewrites the variable to extend the sheet over the map. */
-    max-height: var(--popup-sheet-h, 280px);
-    overflow-y: auto;
+    /* !important: Mapbox writes an inline max-height on the content box; the drag handle rewrites the variable. */
+    max-height: var(--popup-sheet-h, 280px) !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 

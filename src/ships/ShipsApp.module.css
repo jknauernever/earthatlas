@@ -538,3 +538,12 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .pcKpi strong { font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; }
 .pcWindow { font-size: 10.5px; color: rgba(255, 255, 255, 0.5); margin-bottom: 6px; }
 .pcAbout { margin-top: 8px; }
+
+/* Oil & gas facilities: /inmotion's Climate TRACE overlay canvas, and its light facility card as a popup. */
+.fossilCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+/* The facility card's body (the popup frame itself is site-wide, src/index.css). */
+.traceCardWrap {
+  padding: 11px 13px; font-size: 13px; color: #1f2937; line-height: 1.5; text-align: left;
+  width: min(460px, calc(100vw - 24px)); /* height cap + scrolling: keepPopupOnMap (src/lib/popupFit.js) */
+}
+.traceCardWrap a { color: #2563eb; }

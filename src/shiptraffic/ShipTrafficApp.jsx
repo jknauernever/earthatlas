@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -435,7 +436,7 @@ export default function ShipTrafficApp() {
       }
       if (!html) return
       popupRef.current?.remove()
-      popupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map)
+      popupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map))
     })
 
     // Pointer cursor over anything clickable.

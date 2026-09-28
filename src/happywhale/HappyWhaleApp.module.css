@@ -386,14 +386,6 @@
 .popupLink { display: inline-block; margin-top: 6px; font-size: 11.5px; color: #0369a1; text-decoration: none; }
 .popupLink:hover { text-decoration: underline; }
 
-:global(.mapboxgl-popup-content) {
-  padding: 0 !important;
-  background: #fff !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
-}
-:global(.mapboxgl-popup-tip) { border-top-color: #fff !important; border-bottom-color: #fff !important; }
-:global(.mapboxgl-popup-close-button) { font-size: 18px !important; color: #6b7280 !important; padding: 2px 8px !important; }
 
 /* ─── Help tip ───────────────────────────────────────────────────────────── */
 .tip {

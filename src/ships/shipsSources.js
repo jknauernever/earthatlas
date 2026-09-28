@@ -99,7 +99,7 @@ export const SHIPS_SOURCES = [
         method: 'One English country name for the ISO codes the other sources use.' },
       { name: 'Climate TRACE Emissions Inventory', href: 'https://climatetrace.org', publisher: 'Climate TRACE coalition',
         licence: 'CC BY 4.0', licenceHref: 'https://creativecommons.org/licenses/by/4.0/',
-        method: 'Port cards: Climate TRACE port estimates within 10 km (30 km with the same name), matched to our nearest port; monthly ship-voyage emissions read live from the release /inmotion uses. Modelled from AIS; each voyage split half to each end port; not port operations.' },
+        method: 'Oil & gas facilities layer: Climate TRACE fossil-fuel-operations sources, drawn and carded as on /inmotion. Port cards: Climate TRACE port estimates within 10 km (30 km with the same name), matched to our nearest port; monthly ship-voyage emissions read live from the release /inmotion uses. Modelled from AIS; each voyage split half to each end port; not port operations.' },
       { name: 'IMF PortWatch', href: 'https://portwatch.imf.org',
         publisher: 'International Monetary Fund with the University of Oxford; AIS from Kpler via the UN Global Platform',
         licence: 'IMF PortWatch terms: non-commercial display with its citation (commercial redistribution: copyright@imf.org)', licenceHref: 'https://portwatch.imf.org/pages/faqs',

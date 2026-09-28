@@ -698,40 +698,7 @@
 }
 @keyframes popupSpin { to { transform: rotate(360deg); } }
 
-/* Override Mapbox's popup chrome to match the FireApp's clean white card. */
-:global(.mapboxgl-popup-content) {
-  padding: 0 !important;
-  background: #fff !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4) !important;
-}
-/* Desktop/tablet only: neutralize Mapbox's dynamic max-height + column-reverse
-   scroll on the content box (for anchor-bottom popups it scrolls to the bottom,
-   hiding our header). Our inner .popup div owns the scroll instead — normal
-   top-down, so the header/verdict stay visible and it's capped to fit the
-   viewport. On phones (≤600px) the shell IS the scroller (bottom-sheet mode in
-   index.css) — there these two would break its height cap and drag handle. */
-@media (min-width: 601px) {
-  :global(.mapboxgl-popup-content) {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-}
-:global(.mapboxgl-popup-tip) {
-  border-top-color: #fff !important;
-  border-bottom-color: #fff !important;
-}
-:global(.mapboxgl-popup-close-button) {
-  font-size: 20px !important;
-  color: #6b7280 !important;
-  padding: 4px 10px !important;
-  right: 2px !important;
-  top: 2px !important;
-}
-:global(.mapboxgl-popup-close-button:hover) {
-  background: rgba(0, 0, 0, 0.05) !important;
-  color: #1f2937 !important;
-}
+/* Popup chrome (white card, close button, desktop scroll rule) is site-wide: src/index.css. */
 
 /* ─── Help tip (bottom center) ─────────────────────────────────────────── */
 .tip {
@@ -892,13 +859,6 @@
     overflow-y: visible;
     /* No inner scrollbar down here, so stop reserving a gutter for one. */
     scrollbar-gutter: auto;
-  }
-  /* Re-assert the sheet cap at !important strength: Mapbox writes an inline
-     max-height on the content box, and index.css's sheet rule isn't
-     !important. The drag handle rewrites the variable. */
-  :global(.mapboxgl-popup-content) {
-    max-height: var(--popup-sheet-h, 280px) !important;
-    overflow-y: auto !important;
   }
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -685,10 +686,10 @@ export default function ForestMonitor() {
       if (popupRef.current) popupRef.current.remove()
       removePatchOutline(map)
 
-      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '380px', offset: 12 })
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ closeButton: true, maxWidth: '380px', offset: 12 })
         .setLngLat([lng, lat])
         .setHTML(`<div class="${styles.popupLoading}">Looking up disturbance…</div>`)
-        .addTo(map)
+        .addTo(map))
       popupRef.current = popup
       popup.on('close', () => removePatchOutline(map))
 

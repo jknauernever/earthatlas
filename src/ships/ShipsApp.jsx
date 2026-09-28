@@ -23,10 +23,14 @@ import MapSearch from '../components/MapSearch.jsx'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import ShipPicker from './ShipPicker.jsx'
 import TrackMonths, { TRACK_KINDS, fmtMonth } from './TrackControls.jsx'
+import { TraceFacilitiesOverlay } from '../systems/traceFacilitiesOverlay.js'
+import { traceCardShell, traceCardBody } from '../systems/traceCard.js'
+import { loadTraceIndex, TRACE_URL } from '../systems/traceData.js'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
 import trackSource from './trackSource.json'
@@ -250,10 +254,18 @@ function mpaPopupHTML(p) {
 // from further out. GFW-only ports (no WPI entry) are hollow rings. Click → the port card (PortCard.jsx).
 const PORT_ICON = '<path d="M12 4v16"/><circle cx="12" cy="5" r="2"/><path d="M5 12H3a9 9 0 0 0 18 0h-2"/><path d="M8 9h8"/>'
 const PORTS = {
-  id: 'ports', name: 'Ports', sub: 'harbours and the ships that call there', hue: PORT_HUE, iconSvg: PORT_ICON,
+  id: 'ports', name: 'Ports & terminals', sub: 'harbours, refineries and the ships that call there', hue: PORT_HUE, iconSvg: PORT_ICON,
   sourceName: 'World Port Index (NGA Pub 150)', sourceUrl: 'https://msi.nga.mil/Publications/WPI',
 }
 const PORT_TIERS = [['L', 0, 5.5], ['M', 3, 4.2], ['S', 5, 3.2], ['V', 7, 2.4]] // [WPI size, min zoom, radius px]
+// Oil & gas facilities (Josh 2026-09-27): Climate TRACE's fossil-fuel-operations sources (refineries, oil & gas
+// production and transport basins, coal mines), drawn by /inmotion's own facility overlay and card.
+const FOSSIL = {
+  id: 'fossil', name: 'Oil & gas facilities', sub: 'refineries, oil & gas sites · Climate TRACE', hue: '#f43f5e',
+  iconSvg: '<path d="M3 21h18"></path><path d="M5 21V11l4 2.5V11l4 2.5V8l4 2.5V21"></path><path d="M17 8V4h2v6"></path>',
+  sourceName: 'Climate TRACE Emissions Inventory', sourceUrl: TRACE_URL,
+}
+const FOSSIL_SECTORS = new Set(['fossil-fuel-operations'])
 const portLayerId = (t) => `ports-${t}`
 const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label']
 const portHit = (map, pt) => {
@@ -361,10 +373,16 @@ export default function ShipsApp() {
   const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
   const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
+  const fossilRef = useRef(null)       // TraceFacilitiesOverlay, made on first use
+  const fossilCanvasRef = useRef(null)
+  // A click on a drawn facility is the facility's; the other click handlers step aside.
+  const facilityAt = (pt) => (fossilRef.current?.visible ? fossilRef.current.nearest(pt.x, pt.y, 14) : null)
   // A picked ship's own tracks: every year we have (default, Josh 2026-09-27) or just the selected months.
   const [ownAllYears, setOwnAllYears] = useState(initial.oy !== 'm')
   const [ownLoading, setOwnLoading] = useState(false)
   const [portsOn, setPortsOn] = useState(initial.pt !== '0') // default on (Josh, 2026-09-27); pt=0 off, pt=1 on
+  // One row, not one per source (Josh 2026-09-27): Climate TRACE's refineries & oil/gas sites ride the Ports row.
+  const fossilOn = portsOn
   const [portId, setPortId] = useState(/^\d{1,12}$/.test(initial.pc || '') ? initial.pc : null)
   const [portMonth, setPortMonth] = useState(/^\d{4}-\d{2}$/.test(initial.pm || '') ? initial.pm : null)
   const [portFolded, setPortFolded] = useState(initial.pf === '1')
@@ -662,6 +680,7 @@ export default function ShipsApp() {
       } catch { setTrackNote('Could not look up this track’s ship.') }
     }
     const onClick = async (e) => {
+      if (facilityAt(e.point)) return
       if (portHit(map, e.point).length) return // a port marker on a lane opens the port, not the lane
       const hits = hit(e.point)
       if (!hits.length) return
@@ -672,8 +691,8 @@ export default function ShipsApp() {
       const tol = Math.round(Math.min(25000, Math.max(200, 6 * mpp)))
       const months = trackMonths
       nearPopupRef.current?.remove()
-      const popup = new mapboxgl.Popup({ offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat)
-        .setHTML(nearPopupHTML({ loading: true })).addTo(map)
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat)
+        .setHTML(nearPopupHTML({ loading: true })).addTo(map))
       nearPopupRef.current = popup
       let d = null
       try {
@@ -715,6 +734,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !darkOn || !gfwRange) return
     const trackLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk')).map((l) => l.id)
     const onClick = async (e) => {
+      if (facilityAt(e.point)) return
       if (!map.getLayer('gfw-dark-fill') || portHit(map, e.point).length) return
       if (map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: trackLayers() }).length) return
       const f = map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] })[0]
@@ -728,8 +748,8 @@ export default function ShipsApp() {
       const months = trackMonths.length
       const period = months === 1 ? fmtMonth(trackMonths[0]) : `${fmtMonth(trackMonths[0])} – ${fmtMonth(trackMonths[months - 1])}`
       darkPopupRef.current?.remove()
-      const popup = new mapboxgl.Popup({ offset: 8, maxWidth: '290px' }).setLngLat(e.lngLat)
-        .setHTML(darkPopupHTML({ count, months, period, pct, detail: null })).addTo(map)
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '290px' }).setLngLat(e.lngLat)
+        .setHTML(darkPopupHTML({ count, months, period, pct, detail: null })).addTo(map))
       darkPopupRef.current = popup
       try {
         const r = await fetch(`${TILES_BASE}/api/gfw-tiles?op=cell&from=${gfwRange.from}&to=${gfwRange.to}&z=${z}&x=${x}&y=${y}&cell=${cell}`)
@@ -747,6 +767,55 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     return () => { map.off('click', onClick); map.off('mousemove', onMove); darkPopupRef.current?.remove() }
   }, [mapReady, darkOn, gfwRange, trackMonths])
+
+  // ─── Oil & gas facilities: /inmotion's Climate TRACE overlay, fossil-fuel operations only ───
+  // Sized by the last month picked on the map (the overlay draws one month; clamped to Climate TRACE's latest).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !fossilCanvasRef.current) return
+    if (!fossilOn) { fossilRef.current?.setVisible(false); return }
+    let dead = false
+    const ym = trackMonths[trackMonths.length - 1]
+    const t = ym ? Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 15) : null
+    if (fossilRef.current) { fossilRef.current.setVisible(true); fossilRef.current.setTime(t); return }
+    loadTraceIndex().then((index) => {
+      if (dead || fossilRef.current) return
+      fossilRef.current = new TraceFacilitiesOverlay(map, fossilCanvasRef.current, index, { sectors: FOSSIL_SECTORS })
+      if (import.meta.env.DEV) window.__shipsFossil = fossilRef.current // dev-only QA handle
+      fossilRef.current.setTime(t)
+    }).catch(() => {})
+    return () => { dead = true }
+  }, [mapReady, fossilOn, trackMonths])
+  useEffect(() => () => { fossilRef.current?.destroy(); fossilRef.current = null }, [])
+  const fossilPopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const onClick = (e) => {
+      if (portHit(map, e.point).length) return // a port marker wins
+      const ev = facilityAt(e.point)
+      if (!ev) return
+      fossilPopupRef.current?.remove()
+      const bodyId = `ships-trace-${ev.id}-${Date.now()}`
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 10, maxWidth: 'min(460px, calc(100vw - 24px))', focusAfterOpen: false })
+        .setLngLat(e.lngLat).setHTML(`<div class="${styles.traceCardWrap}">${traceCardShell(ev, bodyId)}</div>`).addTo(map))
+      fossilPopupRef.current = popup
+      traceCardBody(ev).then((res) => {
+        const el = document.getElementById(bodyId)
+        if (!el) return
+        if (!res) { el.innerHTML = ''; return }
+        el.innerHTML = res.body
+        const card = el.closest('[data-trace-card]')
+        const rest = card?.querySelector('[data-trace-rest]'); if (rest) rest.innerHTML = res.rest
+        const ident = card?.querySelector('[data-trace-ident]'); if (ident) ident.innerHTML = res.ident
+      }).catch(() => { const el = document.getElementById(bodyId); if (el) el.innerHTML = '' })
+    }
+    const onMove = (e) => { if (facilityAt(e.point)) map.getCanvas().style.cursor = 'pointer' }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove); fossilPopupRef.current?.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady])
 
   // ─── Marine protected areas ────────────────────────────────────────────────────
   // Fill under everything (dark cells, tracks); outline over the track lines so a boundary still
@@ -782,6 +851,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !mpaOn) return
     const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
     const onClick = (e) => {
+      if (facilityAt(e.point)) return
       if (!map.getLayer('mpa-fill') || portHit(map, e.point).length) return
       const others = otherLayers()
       if (others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
@@ -790,7 +860,7 @@ export default function ShipsApp() {
       // Overlapping sites (a reserve inside a sanctuary): show the smallest, the most specific one.
       const f = hits.reduce((a, b) => ((b.properties.AreaKm ?? Infinity) < (a.properties.AreaKm ?? Infinity) ? b : a))
       mpaPopupRef.current?.remove()
-      mpaPopupRef.current = new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(mpaPopupHTML(f.properties)).addTo(map)
+      mpaPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(mpaPopupHTML(f.properties)).addTo(map))
     }
     const onMove = (e) => {
       if (!map.getLayer('mpa-fill') || map.getCanvas().style.cursor === 'pointer') return
@@ -902,6 +972,7 @@ export default function ShipsApp() {
       `<div class="${styles.popupNote}">The marker is Global Fishing Watch’s point for this anchorage (a grid cell about 0.5 km across), not the ship’s exact berth. A ship sitting still draws no track line.</div></div>`)
     stopMarkerRef.current = new mapboxgl.Marker({ element: el }).setLngLat([v.lon, v.lat]).setPopup(popup).addTo(map)
     stopMarkerRef.current.togglePopup()
+    keepPopupOnMap(popup)
     // Fit to the stop plus the nearby ends of the arriving / leaving tracks (within 20 km); after a long
     // AIS silence those ends can be far away, so they don't count, and the view stays on the stop.
     const km = (c) => Math.hypot((c[0] - v.lon) * 111.32 * Math.cos((v.lat * Math.PI) / 180), (c[1] - v.lat) * 111.32)
@@ -955,6 +1026,7 @@ export default function ShipsApp() {
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
+      <canvas className={styles.fossilCanvas} ref={fossilCanvasRef} aria-hidden="true" />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       <div className={styles.branding}>
@@ -1147,20 +1219,25 @@ export default function ShipsApp() {
                 <DatasetRow storageKey="ships.ports" name={PORTS.name} sub={PORTS.sub} hue={PORTS.hue}
                   icon={<Icon svg={PORTS.iconSvg} size={16} />} on={portsOn} onToggle={() => setPortsOn((o) => !o)}
                   legend={<>
-                    {PORT_TIERS.map(([t, , r]) => (
-                      <LegendSwatchRow key={t} swatch={<span style={{ width: r * 2, height: r * 2, borderRadius: '50%', background: PORT_HUE, border: '1px solid #0a0e17' }} />}>
-                        {{ L: 'Large harbour', M: 'Medium harbour', S: 'Small harbour', V: 'Very small harbour' }[t]}
-                      </LegendSwatchRow>
-                    ))}
+                    <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>{PORT_TIERS.slice(0, 3).map(([t, , r]) => (
+                      <span key={t} style={{ width: r * 1.6, height: r * 1.6, borderRadius: '50%', background: PORT_HUE, border: '1px solid #0a0e17' }} />))}</span>}>
+                      Harbour; a bigger dot is a bigger harbour
+                    </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
-                      Port not in the World Port Index (from Global Fishing Watch or Climate TRACE)
+                      Port outside the World Port Index
+                    </LegendSwatchRow>
+                    <LegendSwatchRow swatch={<span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(244,63,94,0.55)', border: '1px solid #f43f5e' }} />}>
+                      Refinery or oil &amp; gas site; bigger = more emitted
                     </LegendSwatchRow>
                   </>}
                   info={<>
-                    Every port in the World Port Index, sized by its harbour size (smaller harbours appear as you zoom in), plus hollow rings for ports only Global Fishing Watch or Climate TRACE knows. Click one for the ships
-                    that called there in the months picked under Ship tracks, and, for big cargo ports, trends from IMF PortWatch. Data:{' '}
+                    Every port in the World Port Index (smaller harbours appear as you zoom in), plus hollow rings for ports only Global Fishing
+                    Watch or Climate TRACE knows. Click one for the ships that called there in the months picked above, its ship emissions and,
+                    for big cargo ports, trade trends. Pink discs are Climate TRACE’s refineries, oil &amp; gas sites and coal mines, sized by what
+                    they emitted; click one for its card. Data:{' '}
                     <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
-                    port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0).
+                    port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0);{' '}
+                    <a href={FOSSIL.sourceUrl} target="_blank" rel="noopener noreferrer">Climate TRACE</a> (CC BY 4.0).
                   </>} />
                 <DatasetRow storageKey="ships.mpa" name={MPA.name} sub={MPA.sub} hue={MPA.hue}
                   icon={<Icon svg={MPA.iconSvg} size={16} />} on={mpaOn} onToggle={() => setMpaOn((o) => !o)}

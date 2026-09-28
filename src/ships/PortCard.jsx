@@ -36,14 +36,14 @@ const perDay = (v) => (v == null ? 'no value' : v >= 10 ? fmtN(Math.round(v)) : 
 
 /** GFW's monthly arrivals, one bar per month; the listed month is drawn deeper. Click / arrow keys pick a month. */
 // `say(n)` words one month's value (default: arrivals); `hue` colours the bars. Also used by PortEmissions.jsx.
-export function MonthBars({ months, month, onMonth, say = (n) => plural(n, 'arrival'), hue = PORT_HUE, label = 'Arrivals per month; pick a month to list its ships', listed = true }) {
+export function MonthBars({ months, month, onMonth, say = (n) => plural(n, 'arrival'), hue = PORT_HUE, label = 'Arrivals per month; pick a month to list its ships', listed = true, none = 'not reported' }) {
   const max = Math.max(1e-9, ...months.map((m) => m.n || 0))
   const [hover, setHover] = useState(null)
   const shown = hover ?? months.find((m) => m.month === month)
   return (
     <div className={styles.pcBars}>
       <div className={styles.pcBarsReadout} aria-live="polite">
-        {shown ? <>{monthName(shown.month, 'long')}: <strong>{shown.n == null ? 'not reported' : say(shown.n)}</strong>{listed && shown.month === month && !hover ? ' · listed below' : ''}</> : ' '}
+        {shown ? <>{monthName(shown.month, 'long')}: <strong>{shown.n == null ? none : say(shown.n)}</strong>{listed && shown.month === month && !hover ? ' · listed below' : ''}</> : ' '}
       </div>
       <div className={styles.pcBarsRow} role="listbox" aria-label={label}>
         {months.map((m) => {
@@ -52,7 +52,7 @@ export function MonthBars({ months, month, onMonth, say = (n) => plural(n, 'arri
             <button key={m.month} type="button" role="option" aria-selected={on} className={styles.pcBar}
               onClick={() => onMonth(m.month)} onMouseEnter={() => setHover(m)} onMouseLeave={() => setHover(null)}
               onFocus={() => setHover(m)} onBlur={() => setHover(null)}
-              aria-label={`${monthName(m.month, 'long')}: ${m.n == null ? 'not reported' : say(m.n)}`}>
+              aria-label={`${monthName(m.month, 'long')}: ${m.n == null ? none : say(m.n)}`}>
               <span className={styles.pcBarFill} style={{ height: `${Math.max(m.n ? 6 : 0, (100 * (m.n || 0)) / max)}%`, background: hue, opacity: on ? 1 : 0.38 }} />
             </button>
           )
@@ -99,8 +99,11 @@ function LineChart({ dates, series, fmt, height = 74, label }) {
   )
 }
 
-/** A listed ship: opens its card (our database), or saves GFW's identity first (server checks it's a listed ship). */
-function ShipRow({ s, onSelectVessel }) {
+/**
+ * A listed ship: opens its card (our database), or saves GFW's identity first (server checks it's a listed ship).
+ * Shared with the terminal card: `count` replaces the "N arrivals" text, `kind` the GFW type, `extra` adds to the meta line.
+ */
+export function ShipRow({ s, onSelectVessel, count = null, extra = null, kind = null }) {
   const [state, setState] = useState(null)
   const open = async () => {
     if (s.vesselId) return onSelectVessel(s.vesselId)
@@ -121,13 +124,14 @@ function ShipRow({ s, onSelectVessel }) {
             title={s.vesselId ? 'Open this ship’s card' : 'Not in EarthAtlas yet: look it up with Global Fishing Watch and open its card'}>{name}</button>
           {s.flag && <span className={styles.portCountry} title="Flag state the ship broadcast (AIS, as Global Fishing Watch gives it)">{s.flag}</span>}
         </span>
-        <span className={styles.period}>{plural(s.calls, 'arrival')}</span>
+        <span className={styles.period}>{count ?? plural(s.calls, 'arrival')}</span>
       </div>
       <div className={styles.incidentMeta}>
-        {[s.mmsi && s.name && `MMSI ${s.mmsi}`, s.gfwType && (GFW_KIND[s.gfwType] || s.gfwType)].filter(Boolean).join(' · ')}
+        {[s.mmsi && s.name && `MMSI ${s.mmsi}`, kind ?? (s.gfwType && (GFW_KIND[s.gfwType] || s.gfwType))].filter(Boolean).join(' · ')}
         {' · '}last {dayName(s.lastAt)} UTC{' · '}
         <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(s.recordId)} target="_blank" rel="noopener noreferrer"
           title={`Global Fishing Watch port-visit event ${s.eventId} (the latest arrival listed), exactly as received · CC BY-NC 4.0 — click for the raw record`}>GFW</a>
+        {extra}
         {state === 'saving' && <> · looking up…</>}
         {state === 'ambiguous' && <> · several EarthAtlas ships share this identity</>}
         {(state === 'unknown' || state === 'error') && <> · couldn’t open this ship right now</>}
@@ -162,8 +166,8 @@ function OfficialLine({ o }) {
   )
 }
 
-/** A tab's notes and caveats, closed by default (the panel standard's "i" text, in card form). */
-function About({ children }) {
+/** A tab's notes and caveats, closed by default (the panel standard's "i" text, in card form). Shared with the terminal card. */
+export function About({ children }) {
   const [open, setOpen] = useState(false)
   return (
     <div className={styles.pcAbout}>

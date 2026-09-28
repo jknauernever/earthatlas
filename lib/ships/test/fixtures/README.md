@@ -101,6 +101,10 @@ All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]
 | `terminals-live-2026-09-27.json` | **Real, recorded live** 2026-09-27/28 by `scripts/ships/import-terminals.mjs --save`, cut down to the 9 terminals listed in its `terminals` field: USACE Docks features (02JT, 0USS, 0U5V, 0U5U), WA Ecology layer-132 features (OBJECTID 1, 2, 11, 13), BC Ports and Terminals WFS features (SOURCE_DATA_ID 215, 258, 260, 261), the 16 Overpass elements behind the Tacoma LNG berth, the GEM coal-terminal map-file row for T1087, and 5 Climate TRACE refinery features from the v5.10.0 bake. Request URLs kept; nothing edited. |
 | `gfw-live-portvisits-salish-terminals-2026.json` | **Real** GFW port-visit events (20), exactly as received and stored in the dev DB (`source_records`, source `gfw-port-visits`), chosen because a stop lies near a listed terminal in 2026-01..06 (Cherry Point tankers, the March Point anchorage between the two Anacortes refineries, Westridge, a Burnaby → Roberts Bank visit, Tacoma LNG). |
 
+| `gem-ggit-lng-salish-2024-12-20.json` | **Real** features copied verbatim from Global Energy Monitor's GGIT map file (`ggit_2024-12-20.geojson`, downloaded once 2026-09-28): Tilbury Island LNG units T104401 and T104402, Woodfibre LNG T037401, and a cancelled Discovery LNG unit. |
+
+`terminalCard.test.js` uses those GEM features, a REAL IMO GISIS facility row (Univar, `gisis-isps-facilities-live-2026-09-28.json`) and the REAL GFW visits above; classifications it builds by hand are marked SYNTHETIC.
+
 `terminals.test.js` / `terminals-db.test.js` also use a few **SYNTHETIC** edits (a renamed Ecology row, a moved OSM element, hand-placed berths for the 1.0 km / 1.5× boundaries, a visit stitched from two real anchorages, a terminal dropped from the list), each marked in the test name.
 
 ## Official port names / status (docs/OFFICIAL_PORT_LISTS.md, "Built")
@@ -121,3 +125,12 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | `gisis-isps-facilities-live-2026-09-28.json` | **Real** CSV lines copied verbatim (header + 18 of 12,343 rows) from the Maritime Security "Declared port facilities" export `MaritimeSecurity-CheckOnlineForLatest-20260928-05155984.csv`, downloaded once 2026-09-28 05:15 UTC. Burrard Inlet / Fraser / Howe Sound facilities (incl. rows whose GISIS position is wrong), duplicate G3 and Fraser Grain entries, the US Puget Sound Port Area, one non-North-American row, a DDMM-only coordinate row and a row without coordinates. The export has no personal contact columns. Nothing edited. |
 
 `gisis.test.js` / `gisis-db.test.js` mark what they build SYNTHETIC in the test name (a changed header, officer / email columns, wrong-hemisphere and 61-minute coordinates, crosswalk mismatches, an export without one IMO). The vessel in `gisis-db.test.js` is SYNTHETIC: the real GFW EURODAM entry with its IMO swapped to 9751509.
+
+## Terminal calls (lib/ships/terminalCalls.js)
+
+| File | What it is |
+|---|---|
+| `mc-ais-terminal-calls-alliance-grain-2025-07-15.json` | **Real** MarineCadastre AIS rows (CC0), copied 2026-09-28 from the bake-ais points cache (`salish-v6/2025-07-15.parquet`, `2025-07-16.parquet`): every row of MMSI 316040971 (MERCURY XVIII) within 170 m of the Alliance Grain berth, 77 rows, nothing edited (float32 values rounded to 4 decimals), MarineCadastre's own duplicate rows kept. Plus the two berth points + radii (bcpt-251, bcpt-252) as the dev DB export wrote them. |
+| `mc-ais-terminal-calls-shellburn-2026-01-07.json` | **Real** MarineCadastre AIS rows (CC0), copied 2026-09-28 from `salish-v6/2026-01-07.parquet`, `2026-01-08.parquet`: every row of MMSIs 316046128 (SEASPAN HARRIER) and 316052572 (TWC ENDURANCE) within 160 m of the Shellburn berth bcpt-258, 107 rows, nothing edited. Plus that berth point + radius. |
+
+`terminalCalls.test.js` / `terminalCard-db.test.js` mark what they build SYNTHETIC in the test name or comment (hand-made points for the 6 h / 15 min edges; a bake record declaring January 2026 fully read and Westshore outside the box).

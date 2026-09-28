@@ -23,7 +23,7 @@ import { startRun, finishRun } from '../../lib/ships/store.js'
 import {
   loadTerminalData, validateTerminalData, requiredKeys, resolveBerths, importTerminals, ensureTerminalSources, parseCsv,
   mapUsaceDock, mapEcologyFacility, mapBcPortTerminal, mapOsmElement,
-  USACE_DOCKS_URL, ECOLOGY_FACILITIES_URL, BC_PORTS_TERMINALS_URL, BC_PORTS_TERMINALS_LAYER, OVERPASS_URL, GEM_GCTT_URL, TERMINALS_LIST_SOURCE,
+  USACE_DOCKS_URL, ECOLOGY_FACILITIES_URL, BC_PORTS_TERMINALS_URL, BC_PORTS_TERMINALS_LAYER, OVERPASS_URL, GEM_GCTT_URL, GEM_GGIT_URL, TERMINALS_LIST_SOURCE,
 } from '../../lib/ships/terminals.js'
 
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships; terminal list import)'
@@ -79,6 +79,17 @@ osm.url = `${OVERPASS_URL}?data=${encodeURIComponent(oq)}`
 // GEM GCTT public map file (104 KB), filtered to our terminal ids.
 const gemCsv = await getText('gem-gctt', GEM_GCTT_URL)
 const gemRows = parseCsv(gemCsv.body).filter((r) => need.gem.includes(r['gem-terminal-id']))
+// GEM Global Gas Infrastructure Tracker (LNG terminals): the public map file, downloaded ONCE by hand into the gitignored
+// scripts/ships/gem/raw/ (Josh decision 4, 2026-09-28; 7.8 MB). Never re-downloaded here.
+const GGIT_FILE = 'scripts/ships/gem/raw/ggit_2024-12-20.geojson'
+let gemLng = []
+if (need.gemLng.length) {
+  let gj
+  try { gj = JSON.parse(await readFile(GGIT_FILE, 'utf8')) } catch {
+    console.error(`${GGIT_FILE} missing: download it once with\n  curl -o ${GGIT_FILE} ${GEM_GGIT_URL}`); process.exit(1)
+  }
+  gemLng = (gj.features || []).filter((f) => need.gemLng.includes(f?.properties?.id))
+}
 // Climate TRACE refineries from the local bake.
 const index = JSON.parse(await readFile('public/dev-data/trace/trace-index.json', 'utf8'))
 const release = `${index.release} (${index.build})`
@@ -94,8 +105,8 @@ for await (const line of rl) {
 const raw = {
   usace: usace.body.features || [], ecology: eco.body.features || [], bcpt: bcpt.body.features || [],
   osm: { elements: osm.body.elements || [], osmBase: osm.body.osm3s?.timestamp_osm_base ?? null },
-  gem: gemRows, ctRefinery, release,
-  urls: { usace: usace.url, ecology: eco.url, bcpt: bcpt.url, osm: osm.url, gem: gemCsv.url, ct: 'https://climatetrace.org/data' },
+  gem: gemRows, gemLng, ctRefinery, release,
+  urls: { usace: usace.url, ecology: eco.url, bcpt: bcpt.url, osm: osm.url, gem: gemCsv.url, gemLng: GEM_GGIT_URL, ct: 'https://climatetrace.org/data' },
 }
 console.log(`fetched: USACE ${raw.usace.length}, Ecology ${raw.ecology.length}, BC P&T ${raw.bcpt.length}, OSM ${raw.osm.elements.length} (base ${raw.osm.osmBase}), `
   + `GEM ${raw.gem.length} rows, CT refineries ${raw.ctRefinery.length} (${release})`)

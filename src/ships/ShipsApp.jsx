@@ -33,8 +33,10 @@ import { traceCardShell, traceCardBody } from '../systems/traceCard.js'
 import { loadTraceIndex, TRACE_URL } from '../systems/traceData.js'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
+import TerminalCard from './TerminalCard.jsx'
+import { addTerminalImages, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
 import trackSource from './trackSource.json'
-import { DatasetRow, SourcesFooter, LegendSwatchRow, useDockColumns, LoadingInline } from '../components/panel'
+import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
 
@@ -276,10 +278,40 @@ const FOSSIL_SECTORS = new Set(['fossil-fuel-operations'])
 const KIND_GROUPS = { cargo: ['cargo'], tanker: ['tanker'], passenger: ['passenger'], fishing: ['fishing'], tug: ['tug_tow', 'port_service'],
   pleasure: ['recreational'], other: ['government', 'port_service', 'research', 'offshore', 'naval', 'other'], unknown: [] }
 const portLayerId = (t) => `ports-${t}`
-const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label']
+// Terminal pins (Josh 2026-09-28, UI "A + C"): inside the Ports & terminals row, one badge per kind (src/ships/terminalIcons.js).
+const TERMINAL_LAYER = 'terminals-icon'
+const TERMINAL_SEL = 'terminals-sel'
+const TERMINAL_LABEL = 'terminals-label'
+const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL]
+// Ports and terminals: a marker under the click wins over tracks, dark cells, protected areas and facilities.
 const portHit = (map, pt) => {
-  const live = PORT_LAYERS.filter((l) => l !== 'ports-label' && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
+  const live = PORT_LAYERS.filter((l) => l !== 'ports-label' && l !== TERMINAL_LABEL && l !== TERMINAL_SEL && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
   return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live }) : []
+}
+const terminalHit = (map, pt) => portHit(map, pt).filter((f) => f.layer.id === TERMINAL_LAYER)
+function terminalPopupHTML(p, { months, summary, error }) {
+  const s = styles
+  const period = months.length === 1 ? fmtMonth(months[0]) : `${fmtMonth(months[0])} – ${fmtMonth(months[months.length - 1])}`
+  const status = p.s && p.s !== 'operating' ? `<div class="${s.popupMeta}" style="color:#b91c1c">${escapeHtml(STATUS_WORDS[p.s] || p.s)}</div>` : ''
+  let visits = `<div class="${s.popupMeta}">Counting visits…</div>`
+  if (error) visits = `<div class="${s.popupMeta}">Couldn’t count visits right now.</div>`
+  else if (summary) {
+    // Terminal-card wiring only: counts are our own AIS calls (lib/ships/terminalCalls.js, Josh 2026-09-28).
+    const c = summary.coverage, x = summary.summary
+    const src = `<a href="${c.bake ? `/ships/source/${c.bake.recordId}` : 'https://hub.marinecadastre.gov/pages/vesseltraffic'}" target="_blank" rel="noopener noreferrer" title="Calls EarthAtlas counted from MarineCadastre AIS positions (CC0): stopped within ${summary.rule?.radiusM ?? 150} m of a berth (more for long berths) for ${summary.rule?.minMinutes ?? 15}+ minutes — click for the bake record">MarineCadastre AIS</a>`
+    if (c.notCovered) visits = `<div class="${s.popupMeta}">Outside the area our AIS positions cover, so visits aren’t counted here (not zero). ${src}</div>`
+    else if (!c.months.length) visits = `<div class="${s.popupMeta}">No AIS positions for ${period} yet (we have ${fmtMonth(c.aisFrom)} – ${fmtMonth(c.aisTo)}). ${src}</div>`
+    else visits = `<div class="${s.popupRow}"><span class="${s.popupK}">Visits</span><span class="${s.popupV}">${fmtN(x.visits)} by ${fmtN(x.ships)} ship${x.ships === 1 ? '' : 's'}</span></div>` +
+      `<div class="${s.popupMeta}">${period}, ships whose kind fits this terminal, stopped at a berth${c.months.length < c.of ? ` · ${c.months.length} of ${c.of} months have AIS so far` : ''}. ${src}</div>`
+  }
+  const op = summary?.terminal
+  return `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}">Terminal · ${escapeHtml(kindWords(p.t))}</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(p.n)}</div>` + status +
+    (op?.operator ? `<div class="${s.popupMeta}">Run by <a href="${escapeHtml(op.operatorSourceUrl)}" target="_blank" rel="noopener noreferrer" title="Checked ${escapeHtml(op.operatorChecked)}">${escapeHtml(op.operator)}</a></div>` : '') +
+    visits +
+    `<button type="button" class="${s.popupShip}" data-open-terminal="${escapeHtml(p.k)}" style="margin-top:8px"><span class="${s.popupShipKind}">Open card</span>` +
+    `<span class="${s.popupShipMeta}">Ships, emissions and sources</span></button></div>`
 }
 const fmtIsoDay = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 const monthStart = (ym) => `${ym}-01`
@@ -321,6 +353,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded      pk  port card tab: 'ships' | 'emissions' | 'trade' (default traffic)
 //   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
+//   tl  open terminal card (terminal key, e.g. bc-westridge)   tf '1' = terminal card folded   tb  terminal card tab: 'emissions' | 'about' (default ships)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'emissions' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -329,6 +362,7 @@ function readUrlState() {
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
     dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
+    tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -396,7 +430,11 @@ export default function ShipsApp() {
   const [portMonth, setPortMonth] = useState(/^\d{4}-\d{2}$/.test(initial.pm || '') ? initial.pm : null)
   const [portFolded, setPortFolded] = useState(initial.pf === '1')
   const [portTab, setPortTab] = useState(initial.pk || 'traffic') // port card tab (Option A)
-  const [backToPort, setBackToPort] = useState(null) // { id, name } when a ship was opened from a port card
+  const [backToPort, setBackToPort] = useState(null) // { id, name, terminal? } when a ship was opened from a port or terminal card
+  const [terminalKey, setTerminalKey] = useState(/^(wa|bc)-[a-z0-9-]{1,60}$/.test(initial.tl || '') ? initial.tl : null)
+  const [terminalFolded, setTerminalFolded] = useState(initial.tf === '1')
+  const [terminalTab, setTerminalTab] = useState(['emissions', 'about'].includes(initial.tb) ? initial.tb : 'ships')
+  const [terminalMonth, setTerminalMonth] = useState(null)
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
@@ -922,10 +960,47 @@ export default function ShipsApp() {
   // Loaded once when first switched on (one cached request, ~3,000 points). Drawn above tracks, dark cells and
   // protected areas (re-seated when track months change, as those are re-added under the labels), under the labels.
   const [portsData, setPortsData] = useState(null)
+  const [terminalsData, setTerminalsData] = useState(null)
   useEffect(() => {
     if (!portsOn || portsData) return
     fetch('/api/ships?op=portsLayer').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
   }, [portsOn, portsData])
+  useEffect(() => {
+    if (!portsOn || terminalsData) return
+    fetch('/api/ships?op=terminalsLayer').then((r) => (r.ok ? r.json() : null)).then((d) => d && setTerminalsData(d)).catch(() => {})
+  }, [portsOn, terminalsData])
+  // Terminal pins: above the port dots, under the basemap labels; muted badges for closed / idle / under construction.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !terminalsData) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    let dead = false
+    addTerminalImages(map).then(() => {
+      if (dead || !map.style?._loaded) return
+      if (!map.getSource('terminals')) {
+        map.addSource('terminals', { type: 'geojson', data: terminalsData })
+        map.addLayer({ id: TERMINAL_SEL, type: 'circle', source: 'terminals', minzoom: 6, filter: ['==', ['get', 'k'], ''],
+          paint: { 'circle-radius': 17, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 } })
+        map.addLayer({ id: TERMINAL_LAYER, type: 'symbol', source: 'terminals', minzoom: 6,
+          layout: { 'icon-image': iconExpression(), 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.7, 9, 0.9, 12, 1],
+            'icon-allow-overlap': ['step', ['zoom'], false, 9, true], 'icon-ignore-placement': false, 'symbol-sort-key': ['case', ['in', ['get', 's'], ['literal', NOT_OPERATING]], 1, 0] },
+          paint: { 'icon-opacity': ['case', ['in', ['get', 's'], ['literal', NOT_OPERATING]], 0.5, 1] } })
+        map.addLayer({ id: TERMINAL_LABEL, type: 'symbol', source: 'terminals', minzoom: 11,
+          layout: { 'text-field': ['get', 'n'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 14, 14, 16], 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true,
+            'text-max-width': 12, 'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
+          paint: { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.6 } })
+      }
+      for (const l of [TERMINAL_SEL, TERMINAL_LAYER, TERMINAL_LABEL]) {
+        map.moveLayer(l)
+        map.setLayoutProperty(l, 'visibility', portsOn ? 'visible' : 'none')
+      }
+      map.setFilter(TERMINAL_SEL, ['==', ['get', 'k'], terminalKey || ''])
+    }).catch(() => {})
+    return () => { dead = true }
+  }, [mapReady, styleVersion, terminalsData, portsOn, terminalKey, trackMonths, portsData])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !portsData) return
@@ -970,8 +1045,11 @@ export default function ShipsApp() {
     const map = mapRef.current
     if (!map || !mapReady || !portsOn) return
     const onClick = (e) => {
-      const f = portHit(map, e.point)[0]
+      const hits = portHit(map, e.point)
+      if (hits.some((h) => h.layer.id === TERMINAL_LAYER)) return // the terminal's own handler opens its popup
+      const f = hits.find((h) => h.properties.i != null)
       if (!f) return
+      setTerminalKey(null)
       setPortId(String(f.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null)
       setVesselId(null); setPickerOpen(false)
     }
@@ -980,6 +1058,38 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     return () => { map.off('click', onClick); map.off('mousemove', onMove) }
   }, [mapReady, portsOn])
+
+  // Click a terminal pin → a small popup (shared popup frame + keepPopupOnMap) with its headline; "Open card" opens the card.
+  const terminalPopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !portsOn) return
+    const onClick = async (e) => {
+      const f = terminalHit(map, e.point)[0]
+      if (!f) return
+      const p = f.properties
+      const months = trackMonths
+      terminalPopupRef.current?.remove()
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 14, maxWidth: '300px' }).setLngLat(f.geometry.coordinates)
+        .setHTML(terminalPopupHTML(p, { months })).addTo(map))
+      terminalPopupRef.current = popup
+      const wire = () => popup.getElement()?.querySelector('[data-open-terminal]')?.addEventListener('click', () => {
+        popup.remove(); setPortId(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+        setTerminalKey(p.k); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null)
+      })
+      wire()
+      let d = null, error = false
+      try {
+        const r = await fetch(`/api/ships?op=terminal&key=${encodeURIComponent(p.k)}&from=${months[0]}&to=${months[months.length - 1]}&summary=1`)
+        d = r.ok ? await r.json() : null; error = !d
+      } catch { error = true }
+      if (terminalPopupRef.current !== popup) return
+      popup.setHTML(terminalPopupHTML(p, { months, summary: d, error }))
+      wire()
+    }
+    map.on('click', onClick)
+    return () => { map.off('click', onClick); terminalPopupRef.current?.remove() }
+  }, [mapReady, portsOn, trackMonths])
 
   // ─── A stop from the Ports tab on the map (Josh, 2026-09-27) ────────────────
   // Marker on GFW's stop point (the anchorage cell, not the exact berth), the ship's own track arriving
@@ -1042,6 +1152,7 @@ export default function ShipsApp() {
     if (mpaOn) sp.set('mp', '1')
     if (vesselId && !ownAllYears) sp.set('oy', 'm')
     if (!portsOn) sp.set('pt', '0')
+    if (terminalKey) { sp.set('tl', terminalKey); if (terminalFolded) sp.set('tf', '1'); if (terminalTab !== 'ships') sp.set('tb', terminalTab) }
     if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1'); if (portTab !== 'traffic') sp.set('pk', portTab) }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
       const [a, b] = trackSel
@@ -1060,14 +1171,14 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, trackSel, trackKinds, trackClasses, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, trackSel, trackKinds, trackClasses, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
     setIdentityOn(next)
     setPickerOpen(next && !vesselId) // turning on with nothing picked → open the search
   }
-  const pickShip = (r) => { setPortId(null); setBackToPort(null); fitToOwnRef.current = true; setPickedTrack(null); setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
+  const pickShip = (r) => { setPortId(null); setTerminalKey(null); setBackToPort(null); fitToOwnRef.current = true; setPickedTrack(null); setVesselName(r.latest?.name?.value || null); setVesselId(r.id); setPickerOpen(false) }
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
@@ -1116,7 +1227,7 @@ export default function ShipsApp() {
           )}
           {vesselId && backToPort && (
             <button type="button" className={styles.trackNote} style={{ textAlign: 'left', cursor: 'pointer' }}
-              onClick={() => { setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the port card: {backToPort.name}</button>
+              onClick={() => { if (backToPort.terminal) setTerminalKey(backToPort.id); else setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the {backToPort.terminal ? 'terminal' : 'port'} card: {backToPort.name}</button>
           )}
           {vesselId && (
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
@@ -1153,6 +1264,19 @@ export default function ShipsApp() {
             onSelectVessel={(id) => {
               const name = document.querySelector('[aria-label="Port card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'port'
               setBackToPort({ id: portId, name }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
+              fitToOwnRef.current = true; setVesselId(id)
+            }} />
+        </div>
+      )}
+
+      {terminalKey && !portId && !vesselId && trackMonths.length > 0 && (
+        <div className={styles.portWrap}>
+          <TerminalCard terminalKey={terminalKey} months={trackMonths} month={terminalMonth} onMonth={setTerminalMonth}
+            folded={terminalFolded} onFold={setTerminalFolded} tab={terminalTab} onTab={setTerminalTab}
+            onClose={() => { setTerminalKey(null); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null) }}
+            onSelectVessel={(id) => {
+              const name = document.querySelector('[aria-label="Terminal card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'terminal'
+              setBackToPort({ id: terminalKey, name, terminal: true }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
               fitToOwnRef.current = true; setVesselId(id)
             }} />
         </div>
@@ -1240,9 +1364,8 @@ export default function ShipsApp() {
               {/* One flat list in Josh's order (2026-09-27): Ship tracks, Ports, Protected areas, Ship identity, Dark vessels. */}
               {/* The months drive tracks, dark vessels and port cards, so the picker sits above every row, always visible (Josh 2026-09-27). */}
               {allTrackMonths.length > 0 && (
-                <div className={styles.panelWhen}>
+                <div className={styles.panelWhen} title="Applies to ship tracks, dark vessels and port cards">
                   <TrackMonths months={allTrackMonths} range={trackRange} onRange={setTrackRange} styles={styles} cap={TRACK_MONTH_CAP} />
-                  <div className={styles.legendNoteText}>Applies to ship tracks, dark vessels and port cards.</div>
                 </div>
               )}
                 {allTrackMonths.length > 0 && (
@@ -1281,12 +1404,11 @@ export default function ShipsApp() {
                             </div>
                           </>
                         })()}
+                        {trackClasses.length > 0 && (
                         <div className={styles.legendNoteText}>
-                          {trackClasses.length
-                            ? <>{zoomedOutForKinds && <strong>Outside the Salish Sea the map shows the whole group until you zoom in to harbour level. </strong>}Showing the {classMmsis?.vessels?.toLocaleString() ?? '…'} ships EarthAtlas classifies as {trackClasses.map((c) => (classTally?.find((x) => x.class === c)?.label || c).replace(/\s*\(.*\)$/, '').toLowerCase()).join(' or ')}, from registries, Wikimedia Commons and Coast Guard records. Ships no source names a kind for aren’t included.{' '}
+                          <>{classMmsis?.vessels?.toLocaleString() ?? '…'} ships{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
-                            : 'From the AIS type each ship broadcasts (as NOAA publishes it). Pick one to narrow it to exact kinds, from registries, Wikimedia Commons and Coast Guard records. Tracks stay yellow; this only filters.'}
-                        </div>
+                        </div>)}
                       </div>
                     </>}
                     legend={<>
@@ -1295,7 +1417,9 @@ export default function ShipsApp() {
                     info={<>
                       US waters, {fmtMonth(allTrackMonths[0])} – {fmtMonth(allTrackMonths[allTrackMonths.length - 1])}, with more detailed
                       tracks in the Salish Sea for {fmtMonth(salishMonths[0])} – {fmtMonth(salishMonths[salishMonths.length - 1])}. Zoom in and
-                      click a track for its ship; a picked ship’s own tracks show in cyan. Data:{' '}
+                      click a track for its ship; a picked ship’s own tracks show in cyan. The kinds under ⌄ come from the AIS type each ship
+                      broadcasts (as NOAA publishes it); pick one to narrow it to exact kinds from registries, Wikimedia Commons and Coast Guard
+                      records (ships no source names a kind for aren’t included). Tracks stay yellow; the kinds only filter. Data:{' '}
                       <a href={TRACKS.sourceUrl} target="_blank" rel="noopener noreferrer">{TRACKS.sourceName}</a>, public domain.
                     </>} />
                 )}
@@ -1304,20 +1428,32 @@ export default function ShipsApp() {
                   legend={<>
                     <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>{PORT_TIERS.slice(0, 3).map(([t, , r]) => (
                       <span key={t} style={{ width: r * 1.6, height: r * 1.6, borderRadius: '50%', background: PORT_HUE, border: '1px solid #0a0e17' }} />))}</span>}>
-                      Harbour; a bigger dot is a bigger harbour
+                      Harbour (bigger dot = bigger)
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
-                      Port outside the World Port Index
+                      Port not in the World Port Index
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(244,63,94,0.55)', border: '1px solid #f43f5e' }} />}>
-                      Refinery or oil &amp; gas site; bigger = more emitted
+                      Refinery or oil &amp; gas site
                     </LegendSwatchRow>
+                    <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', width: 20, height: 20, borderRadius: '50%', background: '#0a0e17', border: `2px solid ${PORT_HUE}`, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                      <Icon svg={TERMINAL_FAMILIES[0][1]} size={12} /></span>}>Terminal (badge = kind)</LegendSwatchRow>
+                    {/* The kinds fold away (Josh 2026-09-28: the panel must fit without scrolling). */}
+                    <LegendTurndown storageKey="ships.ports.terminalKinds" label={`Terminal kinds (${TERMINAL_FAMILIES.length})`}>
+                      {TERMINAL_FAMILIES.map(([id, svg, label]) => (
+                        <LegendSwatchRow key={id} swatch={<span style={{ display: 'inline-flex', width: 20, height: 20, borderRadius: '50%', background: '#0a0e17', border: `2px solid ${PORT_HUE}`, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                          <Icon svg={svg} size={12} /></span>}>{label}</LegendSwatchRow>
+                      ))}
+                      <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', width: 20, height: 20, borderRadius: '50%', background: '#0a0e17', border: `2px solid ${TERMINAL_MUTED_RING}`, opacity: 0.55, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                        <Icon svg={TERMINAL_FAMILIES[1][1]} size={12} /></span>}>Faded: closed, idle or under construction</LegendSwatchRow>
+                    </LegendTurndown>
                   </>}
                   info={<>
                     Every port in the World Port Index (smaller harbours appear as you zoom in), plus hollow rings for ports only Global Fishing
                     Watch or Climate TRACE knows. Click one for the ships that called there in the months picked above, its ship emissions and,
                     for big cargo ports, trade trends. Pink discs are Climate TRACE’s refineries, oil &amp; gas sites and coal mines, sized by what
-                    they emitted; click one for its card. Data:{' '}
+                    they emitted; click one for its card. Round badges are EarthAtlas’s hand-checked Salish Sea terminals (oil, fuel, gas, chemicals,
+                    coal, grain and other bulk); click one for the ships of a fitting kind that stopped there, its emissions and every source. Data:{' '}
                     <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
                     port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0);{' '}
                     <a href={FOSSIL.sourceUrl} target="_blank" rel="noopener noreferrer">Climate TRACE</a> (CC BY 4.0).
@@ -1325,10 +1461,17 @@ export default function ShipsApp() {
                 <DatasetRow storageKey="ships.mpa" name={MPA.name} sub={MPA.sub} hue={MPA.hue}
                   icon={<Icon svg={MPA.iconSvg} size={16} />} on={mpaOn} onToggle={() => setMpaOn((o) => !o)}
                   legend={<>
-                    {MPA_LEVELS.map(([k, name], i) => (
-                      <LegendSwatchRow key={k} swatch={<span className={styles.mpaSwatch} style={{ background: MPA_SHADES[i], opacity: 0.35 + i * 0.12 }} />}>{name}</LegendSwatchRow>
-                    ))}
-                    <div className={styles.legendNoteText} style={{ marginTop: 2 }}>Least to most restrictive, as NOAA ranks them.</div>
+                    {/* One line while on (Josh 2026-09-28: the panel must fit without scrolling); the six levels fold away. */}
+                    <LegendSwatchRow swatch={<span style={{ width: 36, height: 10, borderRadius: 2,
+                      background: `linear-gradient(90deg, ${MPA_SHADES.map((c, i) => `${c}${Math.round((0.35 + i * 0.12) * 255).toString(16).padStart(2, '0')}`).join(', ')})` }} />}>
+                      Deeper green = stricter protection
+                    </LegendSwatchRow>
+                    <LegendTurndown storageKey="ships.mpa.levels" label={`The ${MPA_LEVELS.length} levels`}>
+                      {MPA_LEVELS.map(([k, name], i) => (
+                        <LegendSwatchRow key={k} swatch={<span className={styles.mpaSwatch} style={{ background: MPA_SHADES[i], opacity: 0.35 + i * 0.12 }} />}>{name}</LegendSwatchRow>
+                      ))}
+                      <div className={styles.legendNoteText} style={{ marginTop: 2 }}>Least to most restrictive, as NOAA ranks them.</div>
+                    </LegendTurndown>
                   </>}
                   info={<>
                     Every US marine protected area that meets the IUCN definition: federal, state, territorial, local and jointly run. Deeper
@@ -1353,9 +1496,8 @@ export default function ShipsApp() {
                   icon={<Icon svg={DARK.iconSvg} size={16} />} on={darkOn} onToggle={() => setDarkOn((o) => !o)}
                   legend={<>
                     <LegendSwatchRow swatch={<span style={{ width: 18, height: 10, borderRadius: 2, background: 'linear-gradient(90deg, rgba(217,70,239,0.3), #a21caf)' }} />}>
-                      Deeper purple = more radar detections of ships not broadcasting AIS
+                      Deeper = more ships seen without AIS
                     </LegendSwatchRow>
-                    <div className={styles.legendNoteText} style={{ marginTop: 2 }}>Quiet areas are hidden.</div>
                   </>}
                   info={<>
                     Hotspots of vessels seen by Sentinel-1 radar while not broadcasting AIS: the brighter the cell, the more such

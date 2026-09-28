@@ -26,6 +26,13 @@
 //        GFW (server-side token) and IMF PortWatch are asked only for ports in ships.ports, only when the fetch log
 //        says the stored answer is stale, and within a daily GFW call budget.
 //   POST /api/ships?op=portShip&gfw=<GFW vessel id>        → saves a listed ship's GFW identity (only ids in stored visits)
+// Terminals (Josh 2026-09-28, UI "A + C"; lib/ships/terminalCard.js, docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md "Terminal card (dev)"):
+//   /api/ships?op=terminalsLayer                             → GeoJSON of our Salish terminals (k key, n name, t kind, s status)
+//   /api/ships?op=terminal&key=<terminal key>&from=YYYY-MM&to=YYYY-MM[&fetch=1][&summary=1] → the terminal card (summary=1: the
+//        map popup's headline only). Counts = our own AIS calls (terminal_calls, lib/ships/terminalCalls.js; Josh 2026-09-28), a
+//        database read. GFW port visits are only a comparison now: only with fetch=1 is GFW asked for the terminal's surrounding
+//        GFW port labels, every picked month the shared fetch log doesn't already hold (same log + daily budget as port cards).
+//   /api/ships?op=terminalEmissions&key=<terminal key>&part=ships|refinery → Climate TRACE ids the list links (op=portEmissions shape)
 //
 // Rules: src/ships/CLAUDE.md.
 
@@ -43,6 +50,7 @@ import { commonsPlan, fetchImo, ingestImo, vesselImages } from '../lib/ships/ing
 import { commonsClient } from '../scripts/ships/commonsClient.js'
 import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
+import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions } from '../lib/ships/terminalCard.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -228,6 +236,28 @@ export default async function handler(req, res) {
       if (!/^\d{1,12}$/.test(id)) return send(res, 400, { error: 'id must be a port id' })
       const r = await portClimateTrace(q, S, id)
       return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'port not found' })
+    }
+    if (op === 'terminalsLayer') return send(res, 200, await terminalsLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    if (op === 'terminal' || op === 'terminalEmissions') {
+      const key = p.get('key') || ''
+      if (!/^(wa|bc)-[a-z0-9-]{1,60}$/.test(key)) return send(res, 400, { error: 'key must be a terminal key' })
+      if (op === 'terminalEmissions') {
+        const r = await terminalEmissions(q, S, key, p.get('part') === 'refinery' ? 'refinery' : 'ships')
+        return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'terminal not found' })
+      }
+      const win = parseCardWindow(p.get('from'), p.get('to'))
+      if (win.error) return send(res, 400, { error: win.error })
+      const summaryOnly = p.get('summary') === '1'
+      let fetch = { status: 'read_only' }
+      if (p.get('fetch') === '1' && !summaryOnly) {
+        const pool = shipsPool()
+        try { fetch = await ensureTerminalCard(pool, S, key, { win, gfw: gfwFor() }) } catch (e) { console.error('ships terminal fetch', key, e); fetch = { status: 'failed' } } finally { await pool.end() }
+        if (fetch.status === 'not_found') return send(res, 404, { error: 'terminal not found' })
+      }
+      const card = await readTerminalCard(q, S, key, { win, summaryOnly })
+      if (!card) return send(res, 404, { error: 'terminal not found' })
+      const partial = fetch.status === 'failed' || ['failed', 'budget', 'no_gfw'].includes(fetch.discover) || (fetch.months && (fetch.months.failed || fetch.months.budget || fetch.months.no_gfw))
+      return send(res, 200, { ...card, fetch }, partial || summaryOnly ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
     if (op === 'portShip') {
       if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })

@@ -6,7 +6,8 @@
   "berth_basis": {
    "usace_dock": "USACE Navigation Facilities dock point (NAV_UNIT_ID)",
    "ecology_dock": "WA Ecology Class 1/3/4 facility dock point (OBJECTID; FacilityName re-checked on import)",
-   "bc_ports_terminals": "BC Ports and Terminals point (SOURCE_DATA_ID; FACILITY_NAME re-checked on import)"
+   "bc_ports_terminals": "BC Ports and Terminals point (SOURCE_DATA_ID; FACILITY_NAME re-checked on import)",
+   "gisis_facility": "IMO GISIS ISPS declared port facility point (IMO Port Facility Number; row stored by ships:import-gisis). Used only where no USACE / Ecology / BC Ports and Terminals / OSM row exists (2026-09-28)."
   },
   "built": "2026-09-27 from small Salish-bbox pulls of each source (see docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md, \"Built (dev)\"). Re-import: npm run ships:import-terminals."
  },
@@ -617,7 +618,8 @@
     "ship_port_ids": []
    },
    "notes": [
-    "Berth = centre of the untagged OSM pier and dolphin ways ≤0.08 km from the site polygon (ODbL slice)."
+    "Berth = centre of the untagged OSM pier and dolphin ways ≤0.08 km from the site polygon (ODbL slice).",
+    "Not in Global Energy Monitor’s Global Gas Infrastructure Tracker (checked in the 2024-12-20 map file): GGIT does not track terminals used solely for storage or bunkering."
    ]
   },
   {
@@ -893,7 +895,9 @@
    "notes": [
     "USACE 0UNC title (\"CHEVRON U.S.A., POINT WELLS TERMINAL WHARF\") is stale.",
     "No marine transfers since June 2020 per local reporting (Shoreline Area News, Jul 2024); restart depends on Town of Woodway permits."
-   ]
+   ],
+   "status_date": "2020-06",
+   "status_note": "No marine transfers since June 2020; restart depends on Town of Woodway permits."
   },
   {
    "id": "wa-nbk-manchester",
@@ -1363,17 +1367,16 @@
   },
   {
    "id": "wa-intalco-wharf",
-   "name": "Intalco wharf (Cherry Point)",
-   "kind": "other_bulk_terminal",
+   "name": "Ferndale LPG export terminal wharf (former Intalco wharf, Cherry Point)",
+   "kind": "lpg_terminal",
    "country": "US",
-   "operator": "AltaGas / Petrogas Energy (Ferndale LPG terminal; owns the wharf and pier)",
-   "operator_source_url": "https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
-   "operator_checked": "2026-09-27",
+   "operator": "AltaGas (ALA Energy Ferndale Terminal; formerly Petrogas Energy)",
+   "operator_source_url": "https://www.altagas.ca/infrastructure/operations/ferndale-lpg-export-facility",
+   "operator_checked": "2026-09-28",
    "status": "operating",
    "status_source_url": "https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
    "commodities": [
-    "liquefied petroleum gas",
-    "alumina"
+    "liquefied petroleum gas"
    ],
    "commodities_from": {
     "source": "usace-docks",
@@ -1401,8 +1404,18 @@
     "ship_port_ids": []
    },
    "notes": [
-    "USACE purpose: \"Receipt and shipment of liquefied petroleum gas; and receipt of alumina.\" The alumina side ended with the Intalco smelter (see the operator note).",
-    "Alumina receipt ended with the Intalco smelter, which is closed and being demolished; the wharf is used for LPG exports."
+    "USACE purpose: “Receipt and shipment of liquefied petroleum gas; and receipt of alumina.” The LPG part is current; the alumina part is history (commodities_history).",
+    "The wharf now serves only the LPG export terminal (propane and butane arriving by rail, loaded onto gas carriers)."
+   ],
+   "operator_note": "AltaGas’s own page (“ALA Energy Ferndale Terminal”) refuses scripted reads (HTTP 403, 2026-09-28); its title was read from a search listing. RE Sources (Sep 2025) also describes the Ferndale LPG terminal: https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
+   "commodities_history": [
+    {
+     "commodity": "alumina",
+     "source": "usace-docks",
+     "ref": "0UST",
+     "field": "PURPOSE",
+     "note": "Out of date: USACE still lists “receipt of alumina”, which ended when the Intalco aluminium smelter closed (2020). Kept as history, not current use."
+    }
    ]
   },
   {
@@ -2132,7 +2145,19 @@
    },
    "notes": [
     "BC Ports and Terminals still names it \"Kinder Morgan (Vancouver Wharves)\"."
-   ]
+   ],
+   "ship_fit": {
+    "classes": [
+     "oil_tanker",
+     "oil_chemical_tanker",
+     "chemical_tanker",
+     "other_tanker"
+    ],
+    "unspecified": [
+     "tanker"
+    ],
+    "why": "Pembina: Vancouver Wharves handles dry bulk AND “diesel and bio-diesel bulk liquids” (https://www.pembina.com/operations/facilities/vancouver-wharves), so tankers fit as well as bulk carriers."
+   }
   },
   {
    "id": "bc-fibreco",
@@ -2256,6 +2281,10 @@
     "osm": [
      "way/564213651",
      "way/91637399"
+    ],
+    "gem-ggit": [
+     "T104401",
+     "T104402"
     ]
    },
    "climate_trace": {
@@ -2264,7 +2293,8 @@
    },
    "notes": [
     "Not in BC Ports and Terminals: position from OpenStreetMap (ODbL slice). Pier way 91637399 carries no operator tag; 0.07 km from the LNG site polygon.",
-    "The Tilbury Marine Jetty (Tilbury Jetty Limited Partnership) was federally approved in Jul 2024 and is not built yet."
+    "The Tilbury Marine Jetty (Tilbury Jetty Limited Partnership) was federally approved in Jul 2024 and is not built yet.",
+    "Confirmed by Global Energy Monitor’s Global Gas Infrastructure Tracker: “Tilbury Island LNG Terminal”, FortisBC, operating units T104401 (1971) and T104402 (Phase 1 expansion, 2018); two proposed expansion units (T104403, T104404) are not linked."
    ]
   },
   {
@@ -2491,6 +2521,9 @@
      "way/116783075",
      "way/606189630",
      "way/606189634"
+    ],
+    "gem-ggit": [
+     "T037401"
     ]
    },
    "climate_trace": {
@@ -2501,7 +2534,8 @@
     ]
    },
    "notes": [
-    "Not in BC Ports and Terminals: piers from OpenStreetMap (ODbL slice); they may be the former pulp-mill wharves."
+    "Not in BC Ports and Terminals: piers from OpenStreetMap (ODbL slice); they may be the former pulp-mill wharves.",
+    "Confirmed by Global Energy Monitor’s Global Gas Infrastructure Tracker: “Woodfibre LNG Terminal” T037401, status construction, start year 2027."
    ]
   },
   {
@@ -2642,7 +2676,9 @@
    },
    "notes": [
     "Domtar announced the Crofton mill's permanent closure on Dec 2, 2025 (operations stopped Dec 15, 2025). Current use of the wharves is not confirmed."
-   ]
+   ],
+   "status_date": "2025-12-15",
+   "status_note": "Mill closed permanently (announced 2025-12-02; operations stopped 2025-12-15)."
   },
   {
    "id": "bc-port-mellon",
@@ -2689,7 +2725,9 @@
    },
    "notes": [
     "Domtar release of Aug 20, 2026: the Howe Sound mill is indefinitely idled."
-   ]
+   ],
+   "status_date": "2026-08-20",
+   "status_note": "Mill indefinitely idled (Domtar release of 2026-08-20)."
   },
   {
    "id": "bc-texada-quarry",
@@ -2824,6 +2862,92 @@
     "ship_port_ids": []
    },
    "notes": []
+  },
+  {
+   "id": "bc-univar-nv",
+   "name": "Univar Solutions terminal (North Vancouver)",
+   "kind": "chemical_terminal",
+   "country": "CA",
+   "operator": "Univar Solutions Canada Ltd.",
+   "operator_source_url": "https://iaac-aeic.gc.ca/050/evaluations/proj/84527",
+   "operator_checked": "2026-09-28",
+   "operator_note": "Impact Assessment Agency of Canada project “Secondary nitrogen storage tank – Univar”, proponent Univar Solutions, North Vancouver (determination 2023-10-05). IMO GISIS names the ISPS facility “Univar Solutions Canada Ltd.” (CAVAC-0001, last updated 2025-05-13).",
+   "status": "operating",
+   "status_source_url": "https://gisis.imo.org/Public/ISPS/Download.aspx",
+   "status_date": "2025-05-13",
+   "status_note": "IMO GISIS ISPS declared facility CAVAC-0001: security plan approved (2025-05-12), not withdrawn; last updated 2025-05-13.",
+   "commodities": [
+    "certain dangerous cargoes (CDC facility)"
+   ],
+   "commodities_from": {
+    "source": "imo-gisis-port-facilities",
+    "ref": "CAVAC-0001",
+    "field": "Description"
+   },
+   "berths": [
+    {
+     "key": "gisis-CAVAC-0001",
+     "name": "Univar Solutions Canada Ltd.",
+     "lat": 49.290833,
+     "lon": -123.023,
+     "basis": "gisis_facility",
+     "ref": "CAVAC-0001"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "imo-gisis-port-facilities": [
+     "CAVAC-0001"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Berth = the IMO GISIS point of ISPS facility CAVAC-0001 (degrees + decimal minutes, about 20 m); no BC Ports and Terminals or OpenStreetMap row was found (docs/IMO_GISIS.md).",
+    "The Vancouver Fraser Port Authority terminal map lists Univar as liquid-bulk terminal #16."
+   ]
+  },
+  {
+   "id": "bc-shell-bare-point",
+   "name": "Shell Bare Point terminal (Chemainus)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "operator": "Shell Canada Products",
+   "operator_source_url": "https://gisis.imo.org/Public/ISPS/Download.aspx",
+   "operator_checked": "2026-09-28",
+   "operator_note": "Named by IMO GISIS ISPS declared facility CACHM-0002 “Shell Canada Products - Bare Point Terminal” (statement of compliance issued 2025-11-20). Barchart publishes a current “Shell Chemainus, BC” wholesale rack price: https://www.barchart.com/cmdty/data/wholesale-fuel-prices/explore/RBPAW009030.CM",
+   "status": "operating",
+   "status_source_url": "https://gisis.imo.org/Public/ISPS/Download.aspx",
+   "status_date": "2025-11-20",
+   "status_note": "IMO GISIS CACHM-0002: security plan approved, reviewed 2025-11-14, statement of compliance issued 2025-11-20, not withdrawn.",
+   "commodities": [],
+   "commodities_from": null,
+   "berths": [
+    {
+     "key": "gisis-CACHM-0002",
+     "name": "Shell Canada Products - Bare Point Terminal",
+     "lat": 48.921167,
+     "lon": -123.702167,
+     "basis": "gisis_facility",
+     "ref": "CACHM-0002"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "imo-gisis-port-facilities": [
+     "CACHM-0002"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Berth = the IMO GISIS point of ISPS facility CACHM-0002 (degrees + decimal minutes, about 20 m); no BC Ports and Terminals or OpenStreetMap row was used.",
+    "No source found lists the products handled; kind “product terminal” rests on the Shell rack price for Chemainus."
+   ]
   }
  ]
 }

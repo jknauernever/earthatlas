@@ -5,6 +5,7 @@
  *
  *   npm run ships:import-mc                     # every build/identity-*.ndjson
  *   npm run ships:import-mc -- --months 2026-06
+ *   npm run ships:import-mc -- --build scripts/ships/bake-ais/build/v6 --months 2026-06   # another region's bake
  *
  * Months are aggregated first, so each value carries its overall first/last
  * seen. Re-running after new months are baked supersedes the shorter periods
@@ -19,7 +20,8 @@ import { ensureMcSource, ingestMcMmsi } from '../../lib/ships/ingestMc.js'
 import { tally } from '../../lib/ships/ingestGfw.js'
 import { startRun, finishRun } from '../../lib/ships/store.js'
 
-const BUILD = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bake-ais', 'build')
+const BUILD = process.argv.includes('--build') ? path.resolve(process.argv[process.argv.indexOf('--build') + 1]) // e.g. bake-ais/build/v6 (region.py)
+  : path.join(path.dirname(fileURLToPath(import.meta.url)), 'bake-ais', 'build')
 const args = process.argv.slice(2)
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA

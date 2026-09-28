@@ -400,3 +400,62 @@ Everything below is in the **dev** DB only. Nothing is in production. The API an
    - Weak operator sources: Shell Seattle (newest source is Aug 2021, so status "unknown"), NAS Whidbey (no source names who runs the pier), G3 (Wikipedia), Westshore (GEM.wiki).
    - Lower-precision positions: Richmond cement is an OSM site-bbox centre. Woodfibre's OSM piers may be the old pulp-mill wharves.
 8. **CHS single-ship anchorage berths** (docs/OFFICIAL_PORT_LISTS.md C4) are not used. GFW's `atDock` already separates berth from anchor for this rule. They could name the anchorage a waiting ship is at, in a later step.
+
+---
+
+## Terminal card (dev), 2026-09-28
+
+Josh approved UI "A + C" and decisions 1–6 on 2026-09-28. Everything below is on localhost and the **dev** DB only.
+
+**What's on the map:** terminal pins inside the existing "Ports & terminals" row (no new row). Each pin is a round badge with a drawn glyph for its kind family (`src/ships/terminalIcons.js`). Closed, idle and under-construction sites are drawn faded. Clicking a pin opens a small popup in the shared frame, placed with `keepPopupOnMap`. It shows the name, kind, operator (linked), and the visit count for the picked months, plus an "Open card" button. The card is `src/ships/TerminalCard.jsx`:
+- header: kind, name, operator with source, status with date and source, IMO port facility, commodities (out-of-date ones struck through)
+- headline strip: visits, ships, and refinery CO₂e (or ship CO₂e when there is no refinery plant)
+- tabs: Ships / Emissions / About
+
+URL params: `tl` = terminal key, `tf=1` = folded, `tb` = tab (`emissions` | `about`).
+
+**Rules (lib/ships/terminalCard.js):**
+- **Decision 1:** a visit counts only if the ship's kind fits the terminal (`SHIP_FIT`). The kind is EarthAtlas's classification; if there is none, GFW's AIS type is used.
+  - Tugs count at oil and fuel docks (Josh: a barge has no AIS). They are labelled "(likely moving a barge)".
+  - Tugs also count at aggregate, cement and forest-product docks.
+  - Fuel docks also count the small working craft that refuel there.
+  - Cargo ships whose exact kind isn't stated are shown as "could be" at coal, grain and bulk docks. They are listed but not counted, because at Roberts Bank they can be Deltaport container ships.
+  - Anything else is listed, folded, under "Other vessels nearby" or "Kind not known".
+- **Decision 2:** a card open fetches the GFW port labels around the terminal (one discovery call about every 30 days, then events per label and month). It uses the port-card fetch steps and the same `port_card_fetches` log (migration 015 adds `terminal_id`), so the daily budget and the "settled months are kept" rule are shared.
+- **Decisions 4–6:** GEM GGIT credits Tilbury and Woodfibre (Puget LNG is not in GGIT). Crofton, Port Mellon and Point Wells keep their status with a date and source. Intalco is now `lpg_terminal`, with "alumina" kept as out-of-date history.
+- **New terminals from IMO GISIS** (berth = the GISIS point): Univar North Vancouver (CAVAC-0001) and Shell Bare Point, Chemainus (CACHM-0002).
+- **Crosswalk links, with evidence recorded in gisis-terminal-crosswalk.json:** CAVAN-0083 → VAFFC, CAVAC-0010 → Vancouver Wharves, CANNO-0001 → Duke Point. CADEL-0003 Seaspan Tilbury stays unlinked: it is a separate berth.
+
+**Dev numbers (Jul 2025 – Jun 2026, before tugs were counted):**
+
+| Terminal | Counted visits (ships) | Could be | Other | Kind unknown |
+|---|---|---|---|---|
+| BP Cherry Point | 31 (16) | 0 | 103 | 2 |
+| Westshore | 60 (53) | 196 | 4,766 | 231 |
+| Westridge | 1 (1) | 0 | 10 | 18 |
+| Point Wells | 8 (1) | 0 | 1,606 | 26 |
+
+With tugs counted, Cherry Point is 124 visits by 43 ships, 93 of them by tugs.
+
+### Visits from our own AIS (dev), 2026-09-28
+
+Josh approved it on 2026-09-28: the card counts **calls computed from our own MarineCadastre AIS positions**, not GFW port visits. GFW logs a visit against a whole port area, so GFW-based terminal counts came out near zero. GFW visits are still shown in the card's About text as a comparison, but they are no longer counted. The card no longer triggers GFW fetches; `op=terminal&fetch=1` still can.
+
+- **Rule** (`lib/ships/terminalCalls.js`, `CALL_RULE`, bake `tc1`): a call is a ship with SOG < 0.5 kn within the berth radius. The radius is 150 m by default. If an official record gives the berth length (BC Ports & Terminals description, or USACE `BERTHING_LARGEST`), the radius is length/2 + 50 m, capped at 300 m. If two terminals' radii overlap, the nearest berth wins and the other terminal is recorded in `also_near`. A gap of more than 6 h starts a new call, and calls shorter than 15 min are dropped.
+- **Pipeline:**
+  1. `node --env-file=.env.local scripts/ships/terminal-calls.mjs berths` exports the berths and radii.
+  2. `scripts/ships/bake-ais/terminal_calls.py` finds the stopped positions near a berth, reading the salish-v6 cache one day at a time with DuckDB capped at 2 GB and 4 threads. Run it with `--export` to write the hits.
+  3. `terminal-calls.mjs import` splits the hits into calls and loads them into `terminal_calls` / `terminal_call_bakes` (migration 016). It also writes a single bake `source_records` row (source `earthatlas-terminal-calls`, CC0 input, evidence class `inferred`).
+- **Not covered** (north of 49.6° N, reported as "not covered", never 0): Squamish Terminals, Texada Quarry, Woodfibre LNG.
+- **Full pass:** 365 days, 7.82 M stopped positions, 31,477 calls from 2,011 MMSIs at 51 terminals. It took about 30 min on the laptop and made no network calls.
+
+Jul 2025 – Jun 2026 (calls / ships; "fits" includes tugs at oil docks, labelled "likely moving a barge"):
+
+| Terminal | Fits | of which non-tug | Could be | Other | Kind unknown | GFW visits (comparison, all kinds) |
+|---|---|---|---|---|---|---|
+| Shellburn | 548 / 56 | 7 / 6 tankers | 0 | 8 / 5 | 5 / 1 | 75 / 49 |
+| Westridge | 706 / 101 | 77 / 46 tankers | 0 | 7 / 6 | 3 / 1 | 29 / 20 |
+| BP Cherry Point | 462 / 49 | 82 / 25 tankers | 0 | 5 / 2 | 1 / 1 | 136 / 54 |
+| Westshore | 46 / 42 bulk carriers | — | 118 / 102 | 575 / 27 (mostly tugs) | 0 | 5,253 / 433 |
+| Point Wells | 14 / 1 (tug MIKE QUIGG) | 0 | 0 | 4 / 2 | 0 | 1,640 / 428 |
+| Intalco wharf | 59 / 22 (LPG carriers) | — | 0 | 194 / 13 (tugs) | 0 | 0 |

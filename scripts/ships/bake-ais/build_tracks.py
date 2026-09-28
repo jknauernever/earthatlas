@@ -54,17 +54,20 @@ and last time it was seen. That is the MarineCadastre identity evidence that
 /ships imports as claims.
 
 Run:  python3 build_tracks.py 2026-06
+      SHIPS_REGION=salish-v6 python3 build_tracks.py 2026-06   # region.py
 Deps: pip install duckdb ; brew install tippecanoe
 """
 import gzip, json, os, struct, subprocess, sys, time
 import land_mask
+import region
 import duckdb
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REGION = "salish"
-POINTS = os.path.join(HERE, "cache", "points", REGION)
-BUILD = os.path.join(HERE, "build")
-TILES = os.path.join(HERE, "track_tiles")
+REGION = region.NAME   # SHIPS_REGION (region.py): box, points cache, build + tile dirs
+POINTS = region.R["points"]
+BUILD = region.R["build"]
+TILES = region.R["tiles"]
+NB = 4  # MMSI groups per month (memory)
 
 GAP_MIN = 30          # minutes of silence that end a track
 MAX_KNOTS = 60        # implied speed above this = impossible jump → break
@@ -98,84 +101,91 @@ def build(ym):
     ident = os.path.join(BUILD, f"identity-{ym}.ndjson")
     con = duckdb.connect()
     os.makedirs(os.path.join(BUILD, "duckdb-tmp"), exist_ok=True)
-    con.execute(f"INSTALL spatial; LOAD spatial; SET memory_limit='6GB'; SET preserve_insertion_order=false; SET temp_directory='{os.path.join(BUILD, 'duckdb-tmp')}';")
+    con.execute(f"INSTALL spatial; LOAD spatial; SET memory_limit='6GB'; SET preserve_insertion_order=false; SET threads=4; SET temp_directory='{os.path.join(BUILD, 'duckdb-tmp')}';")
     con.execute(f"CREATE TEMP TABLE inland AS SELECT cell FROM read_parquet('{land_mask.OUT}')")
     con.execute(f"CREATE TEMP TABLE landcell AS SELECT cell FROM read_parquet('{land_mask.OUT_LAND}')")
     t0 = time.time()
 
-    # Staged into temp tables (one big statement computed `d` twice and ran out of memory).
-    con.execute(f"""
-      CREATE TEMP TABLE d AS
-      WITH p0 AS (
-        SELECT mmsi, base_date_time AS t, longitude AS lon, latitude AS lat, vessel_type,
-               CAST(floor((latitude - {land_mask.BBOX['s']}) / {land_mask.CELL_DEG}) AS BIGINT) * {land_mask.NX}
-                 + CAST(floor((longitude - {land_mask.BBOX['w']}) / {land_mask.CELL_DEG}) AS BIGINT) AS cell
-          FROM read_parquet('{files}')
-         WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
-           AND NOT (latitude = 0 AND longitude = 0)
-        QUALIFY row_number() OVER (PARTITION BY mmsi, base_date_time ORDER BY longitude, latitude) = 1
-      ), p AS (
-        SELECT p0.* EXCLUDE (cell), (lm.cell IS NOT NULL) AS inland
-          FROM p0 LEFT JOIN inland lm ON lm.cell = p0.cell
-      ), l AS (
-        SELECT *, lag(t) OVER w AS pt, lag(lon) OVER w AS plon, lag(lat) OVER w AS plat, lag(inland) OVER w AS pinland
-          FROM p WINDOW w AS (PARTITION BY mmsi ORDER BY t)
-      )
-      SELECT *,
-        -- haversine distance to the previous fix, nautical miles
-        CASE WHEN pt IS NULL THEN NULL ELSE 3440.065 * 2 * asin(sqrt(
-          power(sin(radians(lat - plat) / 2), 2) +
-          cos(radians(plat)) * cos(radians(lat)) * power(sin(radians(lon - plon) / 2), 2))) END AS nm,
-        epoch(t - pt) AS dt
-        FROM l
-    """)
-    # Segments whose straight line runs over land for LINE_LAND_MIN_M or more:
-    # sample every LINE_STEP_M, compute each sample's grid cell FIRST, then
-    # equi-join the land grid (computing the cell inside the join condition
-    # becomes a nested loop over millions of cells).
-    con.execute(f"""
-      CREATE TEMP TABLE landcross AS
-      SELECT s.mmsi, s.t FROM (
-        SELECT q.mmsi, q.t,
-               CAST(floor(((q.plat + (q.lat - q.plat) * k / q.steps) - {land_mask.BBOX['s']}) / {land_mask.CELL_DEG}) AS BIGINT) * {land_mask.NX}
-             + CAST(floor(((q.plon + (q.lon - q.plon) * k / q.steps) - {land_mask.BBOX['w']}) / {land_mask.CELL_DEG}) AS BIGINT) AS cell
-          FROM (SELECT mmsi, t, lat, lon, plat, plon, CAST(ceil(nm * 1852 / {LINE_STEP_M}) AS INTEGER) AS steps
-                  FROM d WHERE pt IS NOT NULL AND NOT inland AND NOT pinland
-                   AND nm * 1852 >= {LINE_LAND_MIN_M}) q,
-               unnest(range(1, q.steps)) u(k)
-      ) s JOIN landcell USING (cell)
-      GROUP BY s.mmsi, s.t HAVING count(*) * {LINE_STEP_M} >= {LINE_LAND_MIN_M}
-    """)
-    con.execute(f"""
-      CREATE TEMP TABLE seg AS
-      WITH b AS (
-        SELECT d.*, CASE WHEN pt IS NULL THEN 1
-                       WHEN inland OR pinland THEN 1
-                       WHEN c.t IS NOT NULL THEN 1
-                       WHEN dt > {GAP_MIN * 60} THEN 1
-                       WHEN nm / (greatest(dt, {MIN_DT_S}) / 3600.0) > {MAX_KNOTS} THEN 1
-                       ELSE 0 END AS brk
-          FROM d LEFT JOIN landcross c ON c.mmsi = d.mmsi AND c.t = d.t
-      )
-      SELECT *, sum(brk) OVER (PARTITION BY mmsi ORDER BY t ROWS UNBOUNDED PRECEDING) AS sid FROM b
-    """)
-    con.execute("DROP TABLE d")
-    land_cross = con.execute("SELECT count(*) FROM landcross").fetchone()[0]
-    stats = dict(points=con.execute("SELECT count(*) FROM seg").fetchone()[0],
-                 vessels=con.execute("SELECT count(DISTINCT mmsi) FROM seg").fetchone()[0],
-                 inland_points_not_drawn=con.execute("SELECT count(*) FROM seg WHERE inland").fetchone()[0],
-                 segments_split_over_land=land_cross)
-    con.execute("DELETE FROM seg WHERE inland")
-
-    con.execute(f"""
-      CREATE TEMP TABLE trk AS
-      SELECT mmsi, sid, min(t) AS t0, max(t) AS t1, count(*) AS n, mode(vessel_type) AS v,
-             ST_MakeLine(list(ST_Point(lon, lat) ORDER BY t)) AS g,
-             -- extent diagonal in metres (small-area approximation)
-             sqrt(power((max(lat) - min(lat)) * 111320, 2) +
-                  power((max(lon) - min(lon)) * 111320 * cos(radians(avg(lat))), 2)) AS span_m
-        FROM seg GROUP BY mmsi, sid HAVING count(*) >= 2
-    """)
+    # Ships are processed in NB groups by MMSI (every window below is PER SHIP, so the result is identical);
+    # the salish-v6 box with the OSM land grid ran out of DuckDB's 6 GB doing a whole month at once.
+    land_cross = 0
+    stats = dict(points=0, vessels=0, inland_points_not_drawn=0)
+    con.execute("""CREATE TEMP TABLE trk (mmsi INTEGER, sid HUGEINT, t0 TIMESTAMP, t1 TIMESTAMP, n BIGINT, v INTEGER,
+                                          g GEOMETRY, span_m DOUBLE)""")
+    for bk in range(NB):
+        # Staged into temp tables (one big statement computed `d` twice and ran out of memory).
+        con.execute(f"""
+          CREATE OR REPLACE TEMP TABLE d AS
+          WITH p0 AS (
+            SELECT mmsi, base_date_time AS t, longitude AS lon, latitude AS lat, vessel_type,
+                   CAST(floor((latitude - {land_mask.BBOX['s']}) / {land_mask.CELL_DEG}) AS BIGINT) * {land_mask.NX}
+                     + CAST(floor((longitude - {land_mask.BBOX['w']}) / {land_mask.CELL_DEG}) AS BIGINT) AS cell
+              FROM read_parquet('{files}')
+             WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
+               AND NOT (latitude = 0 AND longitude = 0)
+               AND mmsi % {NB} = {bk}
+            QUALIFY row_number() OVER (PARTITION BY mmsi, base_date_time ORDER BY longitude, latitude) = 1
+          ), p AS (
+            SELECT p0.* EXCLUDE (cell), (lm.cell IS NOT NULL) AS inland
+              FROM p0 LEFT JOIN inland lm ON lm.cell = p0.cell
+          ), l AS (
+            SELECT *, lag(t) OVER w AS pt, lag(lon) OVER w AS plon, lag(lat) OVER w AS plat, lag(inland) OVER w AS pinland
+              FROM p WINDOW w AS (PARTITION BY mmsi ORDER BY t)
+          )
+          SELECT *,
+            -- haversine distance to the previous fix, nautical miles
+            CASE WHEN pt IS NULL THEN NULL ELSE 3440.065 * 2 * asin(sqrt(
+              power(sin(radians(lat - plat) / 2), 2) +
+              cos(radians(plat)) * cos(radians(lat)) * power(sin(radians(lon - plon) / 2), 2))) END AS nm,
+            epoch(t - pt) AS dt
+            FROM l
+        """)
+        # Segments whose straight line runs over land for LINE_LAND_MIN_M or more:
+        # sample every LINE_STEP_M, compute each sample's grid cell FIRST, then
+        # equi-join the land grid (computing the cell inside the join condition
+        # becomes a nested loop over millions of cells).
+        con.execute(f"""
+          CREATE OR REPLACE TEMP TABLE landcross AS
+          SELECT s.mmsi, s.t FROM (
+            SELECT q.mmsi, q.t,
+                   CAST(floor(((q.plat + (q.lat - q.plat) * k / q.steps) - {land_mask.BBOX['s']}) / {land_mask.CELL_DEG}) AS BIGINT) * {land_mask.NX}
+                 + CAST(floor(((q.plon + (q.lon - q.plon) * k / q.steps) - {land_mask.BBOX['w']}) / {land_mask.CELL_DEG}) AS BIGINT) AS cell
+              FROM (SELECT mmsi, t, lat, lon, plat, plon, CAST(ceil(nm * 1852 / {LINE_STEP_M}) AS INTEGER) AS steps
+                      FROM d WHERE pt IS NOT NULL AND NOT inland AND NOT pinland
+                       AND nm * 1852 >= {LINE_LAND_MIN_M}) q,
+                   unnest(range(1, q.steps)) u(k)
+          ) s JOIN landcell USING (cell)
+          GROUP BY s.mmsi, s.t HAVING count(*) * {LINE_STEP_M} >= {LINE_LAND_MIN_M}
+        """)
+        con.execute(f"""
+          CREATE OR REPLACE TEMP TABLE segb AS
+          WITH b AS (
+            SELECT d.*, CASE WHEN pt IS NULL THEN 1
+                           WHEN inland OR pinland THEN 1
+                           WHEN c.t IS NOT NULL THEN 1
+                           WHEN dt > {GAP_MIN * 60} THEN 1
+                           WHEN nm / (greatest(dt, {MIN_DT_S}) / 3600.0) > {MAX_KNOTS} THEN 1
+                           ELSE 0 END AS brk
+              FROM d LEFT JOIN landcross c ON c.mmsi = d.mmsi AND c.t = d.t
+          )
+          SELECT *, sum(brk) OVER (PARTITION BY mmsi ORDER BY t ROWS UNBOUNDED PRECEDING) AS sid FROM b
+        """)
+        land_cross += con.execute("SELECT count(*) FROM landcross").fetchone()[0]
+        for k, v in zip(("points", "vessels", "inland_points_not_drawn"), con.execute(
+                "SELECT count(*), count(DISTINCT mmsi), count(*) FILTER (WHERE inland) FROM segb").fetchone()):
+            stats[k] += v
+        # Lines per group too: list() aggregates don't spill, a whole month of them ran out of memory.
+        con.execute(f"""
+          INSERT INTO trk
+          SELECT mmsi, sid, min(t) AS t0, max(t) AS t1, count(*) AS n, mode(vessel_type) AS v,
+                 ST_MakeLine(list(ST_Point(lon, lat) ORDER BY t)) AS g,
+                 -- extent diagonal in metres (small-area approximation)
+                 sqrt(power((max(lat) - min(lat)) * 111320, 2) +
+                      power((max(lon) - min(lon)) * 111320 * cos(radians(avg(lat))), 2)) AS span_m
+            FROM segb WHERE NOT inland GROUP BY mmsi, sid HAVING count(*) >= 2
+        """)
+        con.execute("DROP TABLE segb"); con.execute("DROP TABLE d")
+    stats["segments_split_over_land"] = land_cross
     tracks, parked = con.execute(f"SELECT count(*), count(*) FILTER (WHERE span_m < {PARKED_M}) FROM trk").fetchone()
     stats.update(tracks=tracks, parked_not_drawn=parked)
 
@@ -239,7 +249,7 @@ def build(ym):
 
     manifest = dict(region=REGION, month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     source="MarineCadastre daily AIS points (NOAA/BOEM/USCG), CC0",
-                    rules=dict(version="v5", inland_m=land_mask.INLAND_M, line_step_m=LINE_STEP_M, line_land_min_m=LINE_LAND_MIN_M, land="GSHHG full-res via scripts/bake-shiptraffic/salish_land.geojson", gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S,
+                    rules=dict(version="v5", inland_m=land_mask.INLAND_M, line_step_m=LINE_STEP_M, line_land_min_m=LINE_LAND_MIN_M, land=region.R["land_note"], bbox=region.BBOX, gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S,
                                parked_m=PARKED_M, simplify_deg=SIMPLIFY_DEG,
                                tippecanoe="-Z5 -z10 --simplification=10 --simplification-at-maximum-zoom=1 --drop-densest-as-needed"),
                     pack=dict(shards=PACK_SHARDS, simplify_deg=PACK_SIMPLIFY_DEG, bytes=os.path.getsize(pack)),

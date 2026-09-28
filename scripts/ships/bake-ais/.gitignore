@@ -2,3 +2,6 @@
 cache/
 build/
 track_tiles/
+track_tiles-*
+track_tiles
+land/

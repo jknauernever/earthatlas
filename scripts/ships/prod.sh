@@ -12,6 +12,11 @@
 #   zsh scripts/ships/prod.sh warm-ports         pre-load Salish port cards (args pass through)
 #   zsh scripts/ships/prod.sh import-ct-ports    back up, then Climate TRACE port sources (port-card Ship emissions)
 #   zsh scripts/ships/prod.sh upload-ct-voyages  upload the baked Climate TRACE voyage packs (ship-card Emissions) to Vercel Blob
+#   zsh scripts/ships/prod.sh import-official-ports  back up, then official port lists (DFO harbours, USACE port areas, Transport Canada) for the Salish box
+#   zsh scripts/ships/prod.sh import-gisis       back up, then IMO GISIS scrubber notifications + ISPS port facilities (from the saved CSVs)
+#   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
+#   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
+#   zsh scripts/ships/prod.sh import-mc-v6       back up, then MarineCadastre AIS identities from the salish-v6 bake (build/v6)
 #   zsh scripts/ships/prod.sh upload-salish      upload the baked Salish track tiles to Vercel Blob
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
@@ -60,6 +65,31 @@ case "${1:-}" in
     for step in us ca nondesignated; do
       echo "== $step"; prod_node scripts/ships/import-anchorages.mjs $step
     done
+    ;;
+  import-official-ports)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-official-ports
+    prod_node scripts/ships/import-official-ports.mjs all "${@:2}"
+    ;;
+  import-gisis)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-gisis
+    prod_node scripts/ships/import-gisis.mjs all "${@:2}"
+    ;;
+  import-terminals)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-terminals
+    prod_node scripts/ships/import-terminals.mjs "${@:2}"
+    ;;
+  import-terminal-calls)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-terminal-calls
+    prod_node scripts/ships/terminal-calls.mjs import "${@:2}"
+    ;;
+  import-mc-v6)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-mc-v6
+    prod_node scripts/ships/import-mc.mjs --build scripts/ships/bake-ais/build/v6 "${@:2}"
     ;;
   upload-salish)
     need BLOB_READ_WRITE_TOKEN

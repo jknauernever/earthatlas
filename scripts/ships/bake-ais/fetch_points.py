@@ -4,7 +4,7 @@ Step 1 of the /ships AIS bake: MarineCadastre daily points → regional Parquet 
 
 Streams NOAA's daily national CSV (ais-YYYY-MM-DD.csv.zst, ~320 MB, CC0; see
 docs/MARINECADASTRE_AIS.md), keeps only rows inside the region's bbox, and
-writes cache/points/<region>/YYYY-MM-DD.parquet with every column kept as
+writes <region points dir>/YYYY-MM-DD.parquet (region.py) with every column kept as
 published. Raw positions are evidence, so nothing is transformed here except
 the bbox cut.
 
@@ -14,18 +14,19 @@ backoff (a laptop sleep pauses a day instead of failing it).
 Run:  python3 fetch_points.py 2026-06                 # one month
       python3 fetch_points.py 2025-07 2026-06         # inclusive month range
       python3 fetch_points.py 2026-06 --jobs 3
+      SHIPS_REGION=salish-v6 python3 fetch_points.py 2026-06   # the bigger box
 Deps: pip install duckdb
 """
 import os, sys, time, datetime as dt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import duckdb
+import region
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REGION = "salish"
-# Same box as /shiptraffic (scripts/bake-shiptraffic/bake.py BBOX), so the two agree.
-BBOX = dict(w=-124.85, s=47.0, e=-122.05, n=49.0)
+# Box + cache dir come from region.py (SHIPS_REGION, default salish-v5 = /shiptraffic's box).
+BBOX = region.BBOX
 URL = "https://noaaocm.blob.core.windows.net/ais/csv2/csv{y}/ais-{d}.csv.zst"
-OUT = os.path.join(HERE, "cache", "points", REGION)
+OUT = region.R["points"]
 
 # Explicit column types (the 2015-era files are sparse, so auto-detect can guess wrong).
 COLUMNS = {

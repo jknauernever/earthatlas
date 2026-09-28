@@ -1,0 +1,158 @@
+{
+ "about": "REAL features copied verbatim from Global Energy Monitor’s public map file trackers/ggit/data/ggit_2024-12-20.geojson (downloaded once 2026-09-28 06:24 UTC, 7,846,479 bytes, sha256 03916a08c6370f4fae315ebbfd9b1a314597c40558ca08159d31c778971fe4a7). Kept: the two operating Tilbury Island LNG units, Woodfibre LNG, and one cancelled Discovery LNG unit. CC BY 4.0 (Global Energy Monitor).",
+ "url": "https://raw.githubusercontent.com/GlobalEnergyMonitor/maps/main/trackers/ggit/data/ggit_2024-12-20.geojson",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "T035101",
+    "url": "https://www.gem.wiki/Discovery_LNG_Terminal",
+    "name": "Discovery LNG Terminal",
+    "unit-name": "T1",
+    "status": "cancelled",
+    "areas": "Canada;",
+    "owner": "Rockyview Resources [100.00%]",
+    "parent": "Rockyview Resources [100.00%]",
+    "capacity": "5.0",
+    "start-year": "2030",
+    "region": "Americas",
+    "subnat": "British Columbia",
+    "Latitude": "50.024444",
+    "Longitude": "-125.2475",
+    "tracker-acro": "GGIT-lng",
+    "tracker-custom": "GGIT-export",
+    "subnat2": "",
+    "region2": "",
+    "WKTFormat": "",
+    "ea-scaling-capacity": 528.4881610712035,
+    "scaling-capacity": 219361.5,
+    "capacity-table": "5.0 mtpa of LNG",
+    "capacity-details": "",
+    "status-legend": "cancelled",
+    "areas-subnat-sat-display": "British Columbia, Canada",
+    "tracker-display": "LNG export terminal"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -125.2475,
+     50.024444
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "T037401",
+    "url": "https://www.gem.wiki/Woodfibre_LNG_Terminal",
+    "name": "Woodfibre LNG Terminal",
+    "unit-name": "",
+    "status": "construction",
+    "areas": "Canada;",
+    "owner": "Woodfibre LNG Ltd [100.00%]",
+    "parent": "RGE Group [70.00%]; Enbridge [30.00%]",
+    "capacity": "2.1",
+    "start-year": "2027",
+    "region": "Americas",
+    "subnat": "British Columbia",
+    "Latitude": "49.701722",
+    "Longitude": "-123.15875",
+    "tracker-acro": "GGIT-lng",
+    "tracker-custom": "GGIT-export",
+    "subnat2": "",
+    "region2": "",
+    "WKTFormat": "",
+    "ea-scaling-capacity": 342.4994734080878,
+    "scaling-capacity": 92131.83,
+    "capacity-table": "2.1 mtpa of LNG",
+    "capacity-details": "",
+    "status-legend": "construction-plus",
+    "areas-subnat-sat-display": "British Columbia, Canada",
+    "tracker-display": "LNG export terminal"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -123.15875,
+     49.701722
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "T104401",
+    "url": "https://www.gem.wiki/Tilbury_Island_LNG_Terminal",
+    "name": "Tilbury Island LNG Terminal",
+    "unit-name": "",
+    "status": "operating",
+    "areas": "Canada;",
+    "owner": "FortisBC [100.00%]",
+    "parent": "Fortis Inc. [100.00%]",
+    "capacity": "0.03",
+    "start-year": "1971",
+    "region": "Americas",
+    "subnat": "British Columbia",
+    "Latitude": "49.14251084",
+    "Longitude": "-123.0340825",
+    "tracker-acro": "GGIT-lng",
+    "tracker-custom": "GGIT-export",
+    "subnat2": "",
+    "region2": "",
+    "WKTFormat": "",
+    "ea-scaling-capacity": 40.93651692993109,
+    "scaling-capacity": 1316.169,
+    "capacity-table": "0.03 mtpa of LNG",
+    "capacity-details": "",
+    "status-legend": "operating",
+    "areas-subnat-sat-display": "British Columbia, Canada",
+    "tracker-display": "LNG export terminal"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -123.0340825,
+     49.14251084
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "T104402",
+    "url": "https://www.gem.wiki/Tilbury_Island_LNG_Terminal",
+    "name": "Tilbury Island LNG Terminal",
+    "unit-name": "Phase 1 Expansion",
+    "status": "operating",
+    "areas": "Canada;",
+    "owner": "FortisBC [100.00%]",
+    "parent": "Fortis Inc. [100.00%]",
+    "capacity": "0.25",
+    "start-year": "2018",
+    "region": "Americas",
+    "subnat": "British Columbia",
+    "Latitude": "49.14251084",
+    "Longitude": "-123.0340825",
+    "tracker-acro": "GGIT-lng",
+    "tracker-custom": "GGIT-export",
+    "subnat2": "",
+    "region2": "",
+    "WKTFormat": "",
+    "ea-scaling-capacity": 118.17354534590693,
+    "scaling-capacity": 10968.075,
+    "capacity-table": "0.25 mtpa of LNG",
+    "capacity-details": "",
+    "status-legend": "operating",
+    "areas-subnat-sat-display": "British Columbia, Canada",
+    "tracker-display": "LNG export terminal"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -123.0340825,
+     49.14251084
+    ]
+   }
+  }
+ ]
+}

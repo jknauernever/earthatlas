@@ -11,8 +11,8 @@ import s from './Panel.module.css'
  *          ├ legend              (always shown while on; Josh 2026-09-27)
  *          └ explanatory text    ((i) on the row; the long "what is this" text + its inline source links)
  *
- * Clicking the icon/name turns the dataset on or off. The controls and (i) turndowns start closed and remember their state
- * per viewer (localStorage, see usePanelToggle); on/off itself is owned by the site (it lives in the URL).
+ * Clicking the icon/name turns the dataset on or off. The controls turndown starts closed and remembers its state per viewer
+ * (localStorage, see usePanelToggle); (i) always starts closed and is never remembered. On/off is owned by the site (URL).
  *
  * Props
  *   storageKey  string    unique per site + dataset, e.g. "ships.tracks" (turndown memory; omit to not persist)
@@ -32,7 +32,8 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
   const uid = useId()
   const k = (part) => (storageKey ? `${storageKey}.${part}` : null)
   const [controlsOpen, toggleControls] = usePanelToggle(k('controls'))
-  const [infoOpen, toggleInfo] = usePanelToggle(k('info'))
+  // (i) text always starts closed (Josh 2026-09-28: no text blocks before anyone clicks (i)); it is not remembered.
+  const [infoOpen, toggleInfo] = usePanelToggle(null)
   const hasControls = controls != null && controls !== false
   const hasInfo = info != null && info !== false
   const hasLegend = legend != null && legend !== false

@@ -7,13 +7,15 @@
  *
  *   npm run ships:import-climatetrace-ports -- [--schema <name>] [--limit N] [--bbox W,S,E,N]
  *     --limit / --bbox  test on a few ports first (docs: test small, run big only on production)
+ *     --make-ports      also make map ports for Climate TRACE locations with no WPI / GFW port within 10 km
+ *                       (lib/ships/climateTrace.js makeCtPorts; limited to --bbox when given)
  */
 import { createReadStream } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource } from '../../lib/ships/store.js'
-import { CLIMATE_TRACE_SOURCE, CT_SHIPPING_SUBS, ingestCtPorts } from '../../lib/ships/climateTrace.js'
+import { CLIMATE_TRACE_SOURCE, CT_SHIPPING_SUBS, ingestCtPorts, makeCtPorts } from '../../lib/ships/climateTrace.js'
 
 const args = process.argv.slice(2)
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
@@ -44,4 +46,5 @@ try {
     t.stored += r.stored; t.recordsCreated += r.recordsCreated; t.errors.push(...r.errors)
   }
   console.log(JSON.stringify({ ...t, errors: t.errors.slice(0, 5) }))
+  if (args.includes('--make-ports')) console.log('map ports:', JSON.stringify(await withTx(pool, (c) => makeCtPorts(c, schema, { bbox }))))
 } finally { await pool.end() }

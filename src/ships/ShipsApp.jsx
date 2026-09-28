@@ -1153,11 +1153,11 @@ export default function ShipsApp() {
                       </LegendSwatchRow>
                     ))}
                     <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
-                      Port named by Global Fishing Watch
+                      Port not in the World Port Index (from Global Fishing Watch or Climate TRACE)
                     </LegendSwatchRow>
                   </>}
                   info={<>
-                    Every port in the World Port Index, sized by its harbour size; smaller harbours appear as you zoom in. Click one for the ships
+                    Every port in the World Port Index, sized by its harbour size (smaller harbours appear as you zoom in), plus hollow rings for ports only Global Fishing Watch or Climate TRACE knows. Click one for the ships
                     that called there in the months picked under Ship tracks, and, for big cargo ports, trends from IMF PortWatch. Data:{' '}
                     <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
                     port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0).

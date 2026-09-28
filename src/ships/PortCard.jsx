@@ -176,7 +176,7 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
   const src = useMemo(() => Object.fromEntries((data?.sources || []).map((x) => [x.id, x])), [data])
   const loading = !data || (data.port && String(data.port.id) !== String(portId))
   const p = data?.port
-  const pname = p ? (p.name_source_id === 'nga-wpi' ? p.name : titleCase(p.name || '')) : null
+  const pname = p ? (p.origin === 'gfw_port_label' ? titleCase(p.name || '') : p.name) : null
   const f = data?.fetch || {}
   const gfwTrouble = ['failed', 'budget', 'no_gfw'].some((k) => [f.stats, f.events, f.discover].includes(k))
   const em = usePortEmissions(portId, data?.window?.months || months)
@@ -200,8 +200,9 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
           <div className={styles.vesselName}>{pname}{' '}
             <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(p.name_source_record_id)} target="_blank" rel="noopener noreferrer"
               title={p.origin === 'wpi' ? `World Port Index port ${p.wpi_number} (NGA Pub 150, public domain) — click for the WPI record`
+                : p.origin === 'climate_trace' ? 'Not in the World Port Index: a port Climate TRACE estimates ship emissions for (no World Port Index or GFW port within 10 km) — click for the Climate TRACE record'
                 : `No World Port Index port here; name from ${p.name_source_id === 'gfw-anchorage-overrides' ? 'Global Fishing Watch’s reviewed anchorage-name list (Apache-2.0)' : 'Global Fishing Watch’s port-visit events'} for GFW port ${data.labels.map((l) => l.label).join(', ')} — click for the record`}>
-              {p.origin === 'wpi' ? 'WPI' : p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW'}</a>
+              {p.origin === 'wpi' ? 'WPI' : p.origin === 'climate_trace' ? 'Climate TRACE' : p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW'}</a>
           </div>
           <div className={styles.vesselSub}>
             {p.country_name

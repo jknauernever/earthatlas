@@ -1,0 +1,26 @@
+{
+ "about": "REAL rows copied verbatim (line by line) from the IMO GISIS MARPOL Annex VI Reg. 4.2 \"Download all data\" export, downloaded once by Josh’s GISIS account 2026-09-28 05:10 UTC (2026-09-27 PDT). Nothing edited. Chosen for: cruise ships (NORWEGIAN BLISS 9751509, OVATION OF THE SEAS 9697753, MAJESTIC PRINCESS 9614141), two notifications for one IMO (9880855), open / hybrid / OPEN/CLOSED loop wording, an EGCS typed row that names only a model (Yara GTM-R), non-EGCS rows (alternative fuel, thermal waste device), an exact duplicate pair (9075345, empty maker/model), an IMO failing the check digit (8912470, 9818870), and IMO fields that are not 7 digits. Used on Josh’s instruction assuming IMO permission; written permission not yet obtained.",
+ "file": "IMO-20260928-05101938.csv",
+ "file_sha256": "d87505031895da3c54f59eefaae388ea886bbf3341e7490b36fda5ae69cb5e21",
+ "file_rows": 7414,
+ "line_numbers": [
+  1,
+  8,
+  9,
+  11,
+  12,
+  33,
+  34,
+  103,
+  138,
+  207,
+  227,
+  228,
+  487,
+  512,
+  718,
+  1666,
+  7322
+ ],
+ "csv": "\"Notifying Party\",\"Type of equivalent compliance method\",\"IMO Number, if applicable\",\"Manufacturer\",\"Type or model number\",\"Submitted\",\"Has Certificate\",\"Has Additional Info\"\n\"Antigua and Barbuda\",\"Fitting\",\"IMO 9434474\",\"Cross Rip Ocean Engineering EGCS (wet, open loop scrubber system)\",\"4200T-4S  M00978 - MS  CR Ocean Engineering\",\"2020-02-17\",\"Yes\",\"No\"\n\"Antigua and Barbuda\",\"Fitting\",\"IMO 9880855\",\"PureteQ AS, PureteQ Turbo Marine Inline Hybrid Loop Scrubber System\",\"S.No.: 4527-002-TS1\",\"2021-06-28\",\"Yes\",\"No\"\n\"Antigua and Barbuda\",\"Fitting\",\"IMO 9880855\",\"PureteQ AS, PureteQ Turbo Marine Inline Hybrid Loop Scrubber System\",\"S.No.: 4527-002-TS1\",\"2021-06-30\",\"Yes\",\"Yes\"\n\"Australia\",\"Exhaust Gas Cleaning System\",\"IMO 9812468\",\"Yara Marine Technologies\",\"GTM-R\",\"2023-03-17\",\"Yes\",\"No\"\n\"Australia\",\"Exhaust Gas Cleaning System\",\"IMO 8912470\",\"Yara Marine Technologies\",\"GTM-R\",\"2023-03-17\",\"Yes\",\"No\"\n\"Bahamas\",\"Alternative fuel oils\",\"IMO 9247364\",\"N/A\",\"N/A\",\"2026-04-15\",\"Yes\",\"Yes\"\n\"Bahamas\",\"Thermal Waste Treatment Device\",\"IMO 9888560\",\"Scanship\",\"Thermal Waste Treatment Device EAP\",\"2026-05-05\",\"Yes\",\"No\"\n\"Bahamas\",\"Apparatus\",\"IMO 9751509\",\"Lang Tech Oy Ab\",\"Lang Tech Hybrid Scrubber\",\"2018-04-20\",\"Yes\",\"No\"\n\"Bahamas\",\"Apparatus\",\"IMO 9697753\",\"Wartsila Moss AS\",\"Wartsila Moss AS, WM455-HS\",\"2016-05-04\",\"Yes\",\"No\"\n\"Bahamas\",\"Apparatus\",\"IMO 9818870\",\"Wartsila Moss\",\"V-SOx 25MW\",\"2023-08-14\",\"Yes\",\"No\"\n\"Bahamas\",\"Apparatus\",\"IMO 9075345\",\"\",\"\",\"2023-02-06\",\"Yes\",\"Yes\"\n\"Bahamas\",\"Apparatus\",\"IMO 9075345\",\"\",\"\",\"2023-02-06\",\"Yes\",\"Yes\"\n\"Cyprus\",\"Apparatus\",\"IMO 9771999\",\"WÄRTSILÄ MOSS AS.\",\"Scrubber 4MW SC-200 - OPEN/CLOSED Loop – Scheme B\",\"2020-05-15\",\"Yes\",\"No\"\n\"Cyprus\",\"Apparatus\",\"IMO 9365984\",\"ZHEJIANG ENERGY MARINE ENVIRONMENTAL TECHNOLOGY CO.,LTD\",\"MPUSOx/u-2400 (OPEN/CLOSED LOOP MODE-HYBRID)/Scheme B\",\"2024-08-08\",\"Yes\",\"Yes\"\n\"France\",\"Appliance\",\"IMO N° OMI \",\"EGCS GLOBAL ECHO CO\",\"\",\"2023-12-11\",\"Yes\",\"No\"\n\"Italy\",\"Apparatus\",\"IMO 984647 \",\"CLEAN MARINE - Norway\",\"Clean Marine CleanSOx All Stream Hybrid Compact, 60k - S/N 1076-01-10221-60k\",\"2025-11-26\",\"Yes\",\"Yes\"\n\"United Kingdom\",\"Alternative Technology (EGCS)\",\"IMO 9614141\",\"\",\"MED 2008421 to be fitted to DG3 and DG4 \",\"2019-09-24\",\"Yes\",\"No\"\n"
+}

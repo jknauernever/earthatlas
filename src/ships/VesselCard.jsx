@@ -15,7 +15,7 @@ import { Loading, LoadingInline } from '../components/panel'
 export const EVIDENCE = {
   ais_self_reported: { label: 'Ship-reported', cls: 'evAis', title: 'What the ship itself broadcast over AIS (self-reported, unverified)' },
   ais_published: { label: 'Ship-reported', cls: 'evAis', title: 'What the ship broadcast over AIS, as published by NOAA MarineCadastre. The Coast Guard corrects some missing or clearly wrong values, and NOAA doesn\'t mark which' },
-  registry: { label: 'Registry', cls: 'evReg', title: 'A vessel registry record, as processed by Global Fishing Watch' },
+  registry: { label: 'Registry', cls: 'evReg', title: 'An official record: a vessel registry (directly, or as processed by Global Fishing Watch) or a flag Administration’s notification to IMO' },
   inferred: { label: 'Estimate', cls: 'evInf', title: 'Estimated by Global Fishing Watch with a computer model (mostly from how the vessel moves). Not reported by the ship or a registry' },
   derived_identity: { label: 'Matched', cls: 'evInf', title: 'Identity match made by a third party' },
   community_curated: { label: 'Community', cls: 'evCom', title: 'Openly edited, community-curated (Wikidata or Wikimedia Commons), not an official registry' },
@@ -334,6 +334,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} onFetched={() => setRev((n) => n + 1)} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />
             {renderOverview(CHAR_ROWS, null)}
+            <Reg42Lines assertions={vessel.assertions} />
             {renderOverview(ROLE_ROWS.filter(([a]) => a !== 'registry_owner'), null)}
             {renderOverview([['registry_owner', 'Owner (latest registry listing)']], null)}
             {!CHAR_ROWS.concat(ROLE_ROWS).some(([attr]) => vessel.assertions.some((a) => a.attribute === attr)) && (
@@ -380,6 +381,44 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           </>}
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * MARPOL Annex VI Reg. 4.2 notifications to IMO (IMO GISIS, lib/ships/gisis.js; docs/IMO_GISIS.md). One line per distinct
+ * notification, newest first: "Scrubber: <maker model> · <loop as the row states it, or 'loop type not stated'> · notified to
+ * IMO by <flag>, <date> [IMO]". Rows whose text doesn't say EGCS / scrubber are shown as what they are (a Reg. 4.2
+ * equivalent), never called a scrubber. No line when nothing was notified: that is NOT "no scrubber" (flags notify unevenly).
+ */
+function Reg42Lines({ assertions }) {
+  const seen = new Map()
+  for (const a of assertions || []) {
+    if (a.source_id !== 'imo-gisis-scrubbers' || !['scrubber', 'equivalent_compliance'].includes(a.attribute)) continue
+    const d = a.detail || {}
+    const k = [a.attribute, a.value_norm, d.flag, d.submitted].join('|')
+    if (!seen.has(k)) seen.set(k, a)
+  }
+  const lines = [...seen.values()].sort((x, y) => String(y.detail?.submitted || '').localeCompare(String(x.detail?.submitted || '')))
+  if (!lines.length) return null
+  const loopText = (d) => (d.loop?.length ? `${d.loop.join(' / ')} loop` : 'loop type not stated')
+  return (
+    <div className={styles.section}>
+      {lines.map((a) => {
+        const d = a.detail || {}
+        const by = `notified to IMO by ${d.flag || 'an unnamed flag'}${d.submitted ? `, ${d.submitted}` : ''}`
+        const title = `MARPOL Annex VI Regulation 4.2 notification (IMO GISIS), as the flag Administration filed it${d.type_raw ? ` · type: ${d.type_raw}` : ''}`
+          + ` · ${d.loop?.length ? 'loop type as written in the notification' : 'the notification does not say open, closed or hybrid'}`
+          + ' · a notification says equipment was accepted as an equivalent; it gives no install or removal date — click for the record'
+        return (
+          <div key={a.id} className={styles.idNote}>
+            {a.attribute === 'scrubber'
+              ? <>Scrubber: {a.value_raw} · {loopText(d)} · {by}</>
+              : <span title="The notification doesn’t say this is a scrubber (exhaust gas cleaning system)">Reg. 4.2 equivalent{d.type_raw ? ` (${d.type_raw})` : ''}: {a.value_raw} · {by}</span>}
+            {' '}<a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer" title={title}>IMO</a>
+          </div>
+        )
+      })}
     </div>
   )
 }

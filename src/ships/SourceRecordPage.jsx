@@ -17,6 +17,7 @@ const ATTR = {
   registry_owner: 'Owner (as listed by a registry)', owner: 'Owner', registered_owner: 'Registered owner',
   beneficial_owner: 'Beneficial owner', operator: 'Operator', ship_manager: 'Ship manager', image: 'Photo',
   vessel_class: 'Ship class', max_capacity: 'Capacity (people)', certificate: 'Certificate',
+  scrubber: 'Scrubber (EGCS), as notified to IMO', equivalent_compliance: 'MARPOL Annex VI Reg. 4.2 equivalent, as notified to IMO',
 }
 const ORDER = Object.keys(ATTR)
 const label = (a) => ATTR[a] || (a.charAt(0).toUpperCase() + a.slice(1)).replaceAll('_', ' ')
@@ -94,6 +95,19 @@ export default function SourceRecordPage() {
               </table>
             </section>
           )) : <p className={styles.note}>This record isn’t tied to a ship’s details (it may describe a port, an area or a visit).</p>}
+
+          {rec.terminals?.length > 0 && (
+            <section className={styles.vessel}>
+              <h2>Terminal in EarthAtlas’s list <span>EarthAtlas’s match, not the source’s</span></h2>
+              {rec.terminals.map((t) => (
+                <p key={t.key} className={styles.note}>
+                  {t.name}{t.role === 'imo_port_facility' && (t.position_agrees === false
+                    ? ' · matched by name (hand-checked); this record’s position is not used, it lies ' + (t.km ?? '?') + ' km from the terminal'
+                    : ` · matched by name and position (${t.km ?? '?'} km from the terminal’s berth)`)}
+                </p>
+              ))}
+            </section>
+          )}
 
           <section className={styles.rawBox}>
             <button type="button" className={styles.rawToggle} onClick={() => setRaw((r) => !r)} aria-expanded={raw}>

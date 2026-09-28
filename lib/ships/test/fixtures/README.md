@@ -110,3 +110,14 @@ All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]
 | `official-ports-live-2026-09-27.json` | **Real, recorded live** 2026-09-27 (UTC 2026-09-28) with the importer's own queries (Salish box -125.5,47,-122,50.5): the three DFO Small Craft Harbours ESRI layer responses **verbatim** (35 + 18 + 4 features); the USACE/BTS Port Areas response with **3 of its 9 features** kept verbatim (Clallam 4707, Everett 4727, Bellingham 4736); the two Transport Canada pages (CPA list, TC-owned ports) as fetched; **verbatim substrings** of the two Justice Laws XML files (the Canada Marine Act `<Schedule>` element; the Public Ports Regulations Schedule 1 heading + limits for Victoria); and 14 World Port Index JSON port objects exactly as downloaded 2026-09-26. |
 
 `officialPorts.test.js` / `officialPorts-db.test.js` mark the cases they build or edit (a same-named port across the border, two same-named ports, a hole / overlapping polygon, an unconfirmed hand row, a port placed at Sooke, an overlapping copy of the Everett area) SYNTHETIC in the test name.
+
+## IMO GISIS (lib/ships/gisis.js; docs/IMO_GISIS.md "Built (dev)")
+
+Used on Josh's instruction assuming IMO permission; written permission not yet obtained; the IMO Web Accounts policy otherwise forbids republishing. The full exports stay in the gitignored `scripts/ships/gisis/raw/`; only these few rows are kept here.
+
+| File | What it is |
+|---|---|
+| `gisis-reg42-live-2026-09-28.json` | **Real** CSV lines copied verbatim (header + 17 of 7,414 rows, `line_numbers` given) from the MARPOL Annex VI Reg. 4.2 "Download all data" export `IMO-20260928-05101938.csv` (sha256 in the file), downloaded once with the page's button by Josh's GISIS account 2026-09-28 05:10 UTC. Cruise ships (NORWEGIAN BLISS, OVATION OF THE SEAS, MAJESTIC PRINCESS), two rows for one IMO, open / hybrid / "OPEN/CLOSED" loop wording, non-EGCS rows, an exact duplicate pair, IMOs failing the check digit and IMO fields that are not 7 digits. Nothing edited. |
+| `gisis-isps-facilities-live-2026-09-28.json` | **Real** CSV lines copied verbatim (header + 18 of 12,343 rows) from the Maritime Security "Declared port facilities" export `MaritimeSecurity-CheckOnlineForLatest-20260928-05155984.csv`, downloaded once 2026-09-28 05:15 UTC. Burrard Inlet / Fraser / Howe Sound facilities (incl. rows whose GISIS position is wrong), duplicate G3 and Fraser Grain entries, the US Puget Sound Port Area, one non-North-American row, a DDMM-only coordinate row and a row without coordinates. The export has no personal contact columns. Nothing edited. |
+
+`gisis.test.js` / `gisis-db.test.js` mark what they build SYNTHETIC in the test name (a changed header, officer / email columns, wrong-hemisphere and 61-minute coordinates, crosswalk mismatches, an export without one IMO). The vessel in `gisis-db.test.js` is SYNTHETIC: the real GFW EURODAM entry with its IMO swapped to 9751509.

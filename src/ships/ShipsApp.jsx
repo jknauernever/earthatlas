@@ -90,6 +90,8 @@ const trkLine = (ym) => `shiptrk-${ym}-line`
 // inside the Salish box and US-wide lines fully inside it are hidden. US tiles only carry one line
 // per track (with its MMSI) from z9, which is why the handover is at 9.
 const SALISH_Z = 9
+// With exact kinds picked, the Salish detail tiles (per-ship lines from z5, bake-ais) take over this early.
+const KIND_HANDOVER_Z = 5
 
 // Mapbox 3.24's removeSource() also refreshes terrain, which reads terrain properties that only
 // exist after a frame has rendered. In a background tab (no frames) that throws and took the page
@@ -112,8 +114,10 @@ const DARK = {
   sourceName: 'Global Fishing Watch', sourceUrl: 'https://globalfishingwatch.org',
 }
 const gfwTileUrl = (l, from, to) => `${TILES_BASE}/api/gfw-tiles?l=${l}&from=${from}&to=${to}&z={z}&x={x}&y={y}`
-const SALISH_POLY = { type: 'Polygon', coordinates: [[[trackSource.bbox[0], trackSource.bbox[1]], [trackSource.bbox[2], trackSource.bbox[1]],
-  [trackSource.bbox[2], trackSource.bbox[3]], [trackSource.bbox[0], trackSource.bbox[3]], [trackSource.bbox[0], trackSource.bbox[1]]]] }
+// The Salish detail box as a polygon (US-wide lines entirely inside it are left to the detailed tiles).
+const SALISH_BOX = { type: 'Polygon', coordinates: [
+  [[trackSource.bbox[0], trackSource.bbox[1]], [trackSource.bbox[0], trackSource.bbox[3]], [trackSource.bbox[2], trackSource.bbox[3]],
+    [trackSource.bbox[2], trackSource.bbox[1]], [trackSource.bbox[0], trackSource.bbox[1]]]] }
 /**
  * Dark vessels as "areas of concern" (Josh, 2026-09-26): quiet cells are hidden, and the more
  * radar detections without AIS a cell has per month, the deeper and more opaque it draws.
@@ -266,6 +270,9 @@ const FOSSIL = {
   sourceName: 'Climate TRACE Emissions Inventory', sourceUrl: TRACE_URL,
 }
 const FOSSIL_SECTORS = new Set(['fossil-fuel-operations'])
+// AIS track kinds → EarthAtlas taxonomy groups (lib/ships/taxonomy.js), for the sub-kind chips under each.
+const KIND_GROUPS = { cargo: ['cargo'], tanker: ['tanker'], passenger: ['passenger'], fishing: ['fishing'], tug: ['tug_tow', 'port_service'],
+  pleasure: ['recreational'], other: ['government', 'port_service', 'research', 'offshore', 'naval', 'other'], unknown: [] }
 const portLayerId = (t) => `ports-${t}`
 const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label']
 const portHit = (map, pt) => {
@@ -319,7 +326,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
+    dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -477,6 +484,25 @@ export default function ShipsApp() {
     setTrackSel([allTrackMonths[ia], allTrackMonths[ib]])
   }, [allTrackMonths])
   const [trackKinds, setTrackKinds] = useState(() => (initial.tk ? initial.tk.split(',').filter(Boolean) : []))
+  // Sub-kinds (Josh 2026-09-27): EarthAtlas's own classification (registries, Commons, Coast Guard sub-types), e.g.
+  // oil tanker / ferry / trawler. Picking any filters the tracks to those ships' MMSIs (api op=classMmsis).
+  const [trackClasses, setTrackClasses] = useState(() => (initial.tc ? initial.tc.split(',').filter(Boolean) : []))
+  const [classTally, setClassTally] = useState(null)
+  const [classMmsis, setClassMmsis] = useState(null) // { key, mmsis }
+  // Outside the Salish detail area the US tiles carry MMSIs only from z9 (lines merged per kind below that).
+  const zoomedOutForKinds = trackClasses.length > 0 && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
+    && mapView.lng >= trackSource.bbox[0] && mapView.lng <= trackSource.bbox[2] && mapView.lat >= trackSource.bbox[1] && mapView.lat <= trackSource.bbox[3])
+  useEffect(() => {
+    fetch('/api/ships?op=classes').then((r) => (r.ok ? r.json() : null)).then((d) => d && setClassTally(d.classes)).catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (!trackClasses.length) { setClassMmsis(null); return }
+    const key = trackClasses.join(',')
+    let dead = false
+    fetch(`/api/ships?op=classMmsis&classes=${encodeURIComponent(key)}`).then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!dead && d) setClassMmsis({ key, mmsis: d.mmsis, vessels: d.vessels }) }).catch(() => {})
+    return () => { dead = true }
+  }, [trackClasses])
   const trackMonths = useMemo(() => allTrackMonths.slice(trackRange[0], trackRange[1] + 1), [allTrackMonths, trackRange])
   const addedMonthsRef = useRef(new Set())
   const nearPopupRef = useRef(null)
@@ -502,8 +528,17 @@ export default function ShipsApp() {
       for (const src of [trkSrc(ym), usSrc(ym)]) removeSourceSafe(map, src)
       addedMonthsRef.current.delete(ym)
     }
-    const kindFilter = trackKinds.length ? ['in', ['get', 'kind'], ['literal', trackKinds]] : null
-    const outsideSalish = ['!', ['within', SALISH_POLY]]
+    const byClass = trackClasses.length && classMmsis?.key === trackClasses.join(',')
+    const groupFilter = trackKinds.length ? ['in', ['get', 'kind'], ['literal', trackKinds]] : null
+    // Exact kinds filter by MMSI. Lines without an MMSI (US tiles below z9 merge lines per broad kind, i.e. outside the
+    // Salish detail area when zoomed out) show the picked group instead (Josh 2026-09-27: OK for now).
+    const kindFilter = byClass
+      ? ['case', ['has', 'mmsi'], ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]], groupFilter || true]
+      : groupFilter
+    // From z5 the detailed Salish tiles draw inside the box; US-wide lines lying ENTIRELY inside it are dropped. Lines
+    // that cross the box edge still draw whole (a map filter can't cut a line), so they overlap inside the box until
+    // the Salish rebake moves the edge out to sea (hiding them left a gap off Cape Flattery, 2026-09-28).
+    const outsideSalish = ['!', ['within', SALISH_BOX]]
     const usHiFilter = kindFilter ? ['all', kindFilter, outsideSalish] : outsideSalish
     // Tracks go under the basemap's labels (place names stay readable), as on /shiptraffic.
     const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
@@ -534,6 +569,14 @@ export default function ShipsApp() {
       if (map.getLayer(trkLine(ym))) map.setFilter(trkLine(ym), kindFilter)
       map.setFilter(usLo(ym), kindFilter)
       if (map.getLayer(usHi(ym))) map.setFilter(usHi(ym), usHiFilter)
+      // Exact kinds (Josh 2026-09-27): the Salish detail tiles keep every line's MMSI from z5, so hand over there at
+      // z5 instead of z9 and the picked ships show at regional zoom; the US tiles still draw outside the Salish box.
+      if (map.getLayer(trkLine(ym))) {
+        const hand = KIND_HANDOVER_Z // detailed Salish tiles from z5 (they carry every line from there)
+        map.setLayerZoomRange(trkLine(ym), hand, 24)
+        map.setLayerZoomRange(usLo(ym), 0, hand)
+        if (map.getLayer(usHi(ym))) map.setLayerZoomRange(usHi(ym), hand, 24)
+      }
     }
     if (!map.getSource(OWN_SRC)) {
       map.addSource(OWN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
@@ -557,7 +600,7 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, tracksOn, identityOn, vesselId, usMonths, pickedTrack, stopFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, tracksOn, identityOn, vesselId, usMonths, pickedTrack, stopFocus])
 
   // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
   // every month; api/ship-tracks op=all), or every selected month.
@@ -1001,6 +1044,7 @@ export default function ShipsApp() {
       sp.set('tm', a === b ? a : `${a}_${b}`)
     }
     if (trackKinds.length) sp.set('tk', trackKinds.join(','))
+    if (trackClasses.length) sp.set('tc', trackClasses.join(','))
     if (vesselId) sp.set('v', vesselId)
     if (vesselId && cardTab !== 'overview') sp.set('ct', cardTab)
     if (vesselId && cardFolded) sp.set('cf', '1')
@@ -1011,7 +1055,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, trackSel, trackKinds, trackClasses, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -1052,7 +1096,13 @@ export default function ShipsApp() {
       {/* Ships pill — /inmotion's MeasurePicker construct; the card hangs under it.
           (Track months and kinds live in the left panel, under Ship tracks.) */}
       {identityOn && (
-        <ShipPicker shipName={vesselId ? vesselName : null} query={query} onQuery={setQuery} kinds={kinds} onKinds={setKinds}
+        <ShipPicker onShowKind={(f) => {
+          // "Show all oil tankers on the map" (search → the same exact-kind track filter as the left panel).
+          setTracksOn(true); setPickerOpen(false)
+          if (f.classes?.length) { setTrackKinds(Object.entries(KIND_GROUPS).filter(([, gs]) => gs.includes(f.group)).map(([k]) => k).slice(0, 1)); setTrackClasses(f.classes) }
+          else { setTrackClasses([]); setTrackKinds(Object.entries(KIND_GROUPS).filter(([, gs]) => gs.includes(f.group)).map(([k]) => k).slice(0, 1)) }
+        }}
+         shipName={vesselId ? vesselName : null} query={query} onQuery={setQuery} kinds={kinds} onKinds={setKinds}
           onPick={pickShip} open={pickerOpen} onOpen={setPickerOpen}>
           {!vesselId && trackNote && (
             <div className={styles.trackNote} role="status">{trackNote}
@@ -1197,13 +1247,41 @@ export default function ShipsApp() {
                       <div className={styles.kindFilter}>
                         <div className={styles.fieldLabel}>Kind of ship</div>
                         <div className={styles.chipRow}>
-                          <button type="button" className={!trackKinds.length ? styles.chipTrack : styles.chip} onClick={() => setTrackKinds([])}>Every kind</button>
+                          <button type="button" className={!trackKinds.length ? styles.chipTrack : styles.chip} onClick={() => { setTrackKinds([]); setTrackClasses([]) }}>Every kind</button>
                           {TRACK_KINDS.map(([k, name]) => (
                             <button key={k} type="button" className={trackKinds.includes(k) ? styles.chipTrack : styles.chip}
-                              onClick={() => setTrackKinds(trackKinds.includes(k) ? trackKinds.filter((x) => x !== k) : [...trackKinds, k])}>{name}</button>
+                              onClick={() => {
+                                const next = trackKinds.includes(k) ? trackKinds.filter((x) => x !== k) : [...trackKinds, k]
+                                setTrackKinds(next)
+                                // Exact kinds only live under a picked group: drop any whose group is no longer picked.
+                                const keep = next.flatMap((x) => KIND_GROUPS[x] || [])
+                                setTrackClasses((cs) => cs.filter((c) => keep.includes(classTally?.find((x) => x.class === c)?.group)))
+                              }}>{name}</button>
                           ))}
                         </div>
-                        <div className={styles.legendNoteText}>From the AIS type code each ship broadcasts, as NOAA publishes it (the Coast Guard corrects some). Tracks stay yellow; this only filters.</div>
+                        {classTally && trackKinds.length > 0 && (() => {
+                          // Drill-down only (Josh 2026-09-27): a group's exact kinds appear once that group is picked.
+                          const groups = trackKinds.flatMap((k) => KIND_GROUPS[k] || [])
+                          const subs = classTally.filter((c) => c.n > 0 && groups.includes(c.group))
+                          if (!subs.length) return null
+                          return <>
+                            <div className={styles.fieldLabel} style={{ marginTop: 8 }}>Narrow to</div>
+                            <div className={styles.chipRow}>
+                              {subs.map((c) => (
+                                <button key={c.class} type="button" className={trackClasses.includes(c.class) ? styles.chipTrack : styles.chip}
+                                  onClick={() => setTrackClasses(trackClasses.includes(c.class) ? trackClasses.filter((x) => x !== c.class) : [...trackClasses, c.class])}>
+                                  {c.label.replace(/\s*\(.*\)$/, '')} <span className={styles.chipCount}>{c.n.toLocaleString()}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        })()}
+                        <div className={styles.legendNoteText}>
+                          {trackClasses.length
+                            ? <>{zoomedOutForKinds && <strong>Outside the Salish Sea the map shows the whole group until you zoom in to harbour level. </strong>}Showing the {classMmsis?.vessels?.toLocaleString() ?? '…'} ships EarthAtlas classifies as {trackClasses.map((c) => (classTally?.find((x) => x.class === c)?.label || c).replace(/\s*\(.*\)$/, '').toLowerCase()).join(' or ')}, from registries, Wikimedia Commons and Coast Guard records. Ships no source names a kind for aren’t included.{' '}
+                                <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
+                            : 'From the AIS type each ship broadcasts (as NOAA publishes it). Pick one to narrow it to exact kinds, from registries, Wikimedia Commons and Coast Guard records. Tracks stay yellow; this only filters.'}
+                        </div>
                       </div>
                     </>}
                     legend={<>

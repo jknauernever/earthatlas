@@ -136,6 +136,32 @@ function ShipRow({ s, onSelectVessel }) {
   )
 }
 
+// Why each kind of official entry is attached to this port (the link's tooltip; lib/ships/officialPorts.js).
+const OFFICIAL_WHY = {
+  ca_port_authority: 'Canada Port Authority named in the Canada Marine Act Schedule and Transport Canada’s list; EarthAtlas’s crosswalk puts this World Port Index port under it',
+  tc_public_port: 'Public port in the Public Ports and Public Port Facilities Regulations, Schedule 1, and Transport Canada’s list',
+  usace_port_area: 'The USACE port area this port’s point lies in. USACE: port boundaries are for statistical purposes only, not a determination of jurisdiction',
+  dfo_sch_harbour: 'Fisheries and Oceans Canada small craft harbour (Open Government Licence – Canada)',
+}
+const officialText = (o) => [o.name, [o.status, o.authority && o.authority !== o.name ? `managed by ${o.authority}` : null].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+
+/**
+ * "Official: <name> · <status>" under the title with its source link (Josh 2026-09-27). Further official entries for the
+ * same port (e.g. a DFO harbour inside a port authority) follow as "also <name>", each with its own link; their status is
+ * in the link's tooltip and record, so the line stays short.
+ */
+function OfficialLine({ o }) {
+  const link = (x) => x.recordId && (
+    <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(x.recordId)} target="_blank" rel="noopener noreferrer"
+      title={`${x.name}: ${[x.status, x.authority && x.authority !== x.name ? `managed by ${x.authority}` : null].filter(Boolean).join(', ')}. ${OFFICIAL_WHY[x.kind] || x.sourceName}${x.distanceKm ? ` (${x.distanceKm} km from this port’s point)` : ''} — click for the ${x.sourceShort} record`}>{x.sourceShort}</a>)
+  return (
+    <div className={styles.idNote}>
+      Official: {officialText(o)} {link(o)}
+      {(o.also || []).map((x) => <span key={`${x.kind}:${x.key}`}> · also {x.name} {link(x)}</span>)}
+    </div>
+  )
+}
+
 /** A tab's notes and caveats, closed by default (the panel standard's "i" text, in card form). */
 function About({ children }) {
   const [open, setOpen] = useState(false)
@@ -201,13 +227,15 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
             <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(p.name_source_record_id)} target="_blank" rel="noopener noreferrer"
               title={p.origin === 'wpi' ? `World Port Index port ${p.wpi_number} (NGA Pub 150, public domain) — click for the WPI record`
                 : p.origin === 'climate_trace' ? 'Not in the World Port Index: a port Climate TRACE estimates ship emissions for (no World Port Index or GFW port within 10 km) — click for the Climate TRACE record'
+                : p.origin === 'dfo_sch' ? 'Not in the World Port Index: a Fisheries and Oceans Canada small craft harbour (no World Port Index, GFW or Climate TRACE port within 4 km; Open Government Licence – Canada) — click for the DFO record'
                 : `No World Port Index port here; name from ${p.name_source_id === 'gfw-anchorage-overrides' ? 'Global Fishing Watch’s reviewed anchorage-name list (Apache-2.0)' : 'Global Fishing Watch’s port-visit events'} for GFW port ${data.labels.map((l) => l.label).join(', ')} — click for the record`}>
-              {p.origin === 'wpi' ? 'WPI' : p.origin === 'climate_trace' ? 'Climate TRACE' : p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW'}</a>
+              {p.origin === 'wpi' ? 'WPI' : p.origin === 'climate_trace' ? 'Climate TRACE' : p.origin === 'dfo_sch' ? 'DFO' : p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW'}</a>
           </div>
+          {data.official && <OfficialLine o={data.official} />}
           <div className={styles.vesselSub}>
             {p.country_name
               ? <a className={styles.pcPlainLink} href={p.country_record_id ? rec(p.country_record_id) : 'https://www.geonames.org'} target="_blank" rel="noopener noreferrer"
-                  title={`Country code ${p.iso2 || p.iso3} from ${p.origin === 'wpi' ? 'the World Port Index' : 'Global Fishing Watch'}; English name from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{p.country_name}</a>
+                  title={`Country code ${p.iso2 || p.iso3} from ${p.origin === 'wpi' ? 'the World Port Index' : p.origin === 'dfo_sch' ? 'Fisheries and Oceans Canada’s harbour list (a Canadian federal list)' : 'Global Fishing Watch'}; English name from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{p.country_name}</a>
               : (p.iso2 || p.iso3)}
             {p.harbor_size && <> · <a className={styles.pcPlainLink} href={rec(p.name_source_record_id)} target="_blank" rel="noopener noreferrer"
               title="World Port Index harbour size (NGA: based on area, facilities and wharf space, not any single factor) and type — click for the WPI record">

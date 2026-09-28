@@ -23,7 +23,7 @@ const OWNER_LABEL = { registry_owner: 'Owner (registry)', owner: 'Owner', regist
   operator: 'Operator', ship_manager: 'Ship manager', technical_manager: 'Technical manager', commercial_manager: 'Commercial manager',
   ism_manager: 'ISM manager', bareboat_charterer: 'Bareboat charterer' }
 
-export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, onPick, open, onOpen, children }) {
+export default function ShipPicker({ onShowKind, shipName, query, onQuery, kinds, onKinds, onPick, open, onOpen, children }) {
   const wrapRef = useRef(null)
   const inputRef = useRef(null)
   const [kindCounts, setKindCounts] = useState(null)
@@ -106,6 +106,11 @@ export default function ShipPicker({ shipName, query, onQuery, kinds, onKinds, o
             : found ? `${found.total}${found.capped ? '+' : ''} ${found.class ? found.label.replace(/\s*\(.*\)$/, '') : `${found.label} ship`}${found.total === 1 ? '' : 's'}${found.rest ? ` · “${found.rest}”` : ''}${found.total > results.length ? ` · first ${results.length} by name` : ''}`
             : `${results.length === 25 ? 'First 25' : results.length} ship${results.length === 1 ? '' : 's'}`}</div>}
           {found && <div className={styles.note}>Kind of ship as EarthAtlas reads it from every source (the card’s “Kind of ship”). Add a name or owner to narrow it: “Washington ferry”.</div>}
+          {found && onShowKind && found.total > 0 && (
+            <button type="button" className={styles.showKind} onClick={() => onShowKind(found)}>
+              Show all {found.class ? found.label.replace(/\s*\(.*\)$/, '').toLowerCase() : `${found.label.toLowerCase()} ship`}s on the map
+            </button>
+          )}
           {loading && !results && <Loading kind="search" className={styles.note} />}
           {error && <div className={styles.note}>{error}</div>}
           {results && !results.length && !loading && <div className={styles.note}>No ships match.</div>}

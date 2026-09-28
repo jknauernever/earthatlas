@@ -179,3 +179,11 @@
 }
 .tab:hover { color: #fff; }
 .tabOn { background: rgba(103, 232, 249, 0.16); color: #e0fbff; }
+
+/* "Show all ferries on the map" after a kind-of-ship search (Josh 2026-09-27). */
+.showKind {
+  display: block; width: calc(100% - 24px); margin: 4px 12px 8px; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; text-align: center;
+  border: 1px solid #fde047; background: rgba(253, 224, 71, 0.14); color: #fef9c3;
+}
+.showKind:hover { background: rgba(253, 224, 71, 0.26); }

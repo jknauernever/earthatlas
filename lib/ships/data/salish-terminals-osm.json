@@ -1,0 +1,136 @@
+{
+ "about": {
+  "licence": "ODbL 1.0 (share-alike). Contains information from OpenStreetMap, © OpenStreetMap contributors, https://www.openstreetmap.org/copyright",
+  "why_separate": "Berth positions derived from OpenStreetMap are a Derivative Database under ODbL; they are kept in this file and flagged odbl=true in ships.terminal_berths so the share-alike obligation stays separable. Used only where no USACE / WA Ecology / BC Ports and Terminals row exists.",
+  "method": {
+   "osm_seamark_berth": "Overpass centre of one seamark:type=berth way",
+   "osm_pier_centers": "mean of the Overpass centres of the listed man_made=pier ways",
+   "osm_site_center": "Overpass bounding-box centre of the site polygon (low precision)"
+  },
+  "osm_base": "2026-09-28T04:34:55Z (Overpass timestamp_osm_base of the pulls)",
+  "review": "lat/lon here are the reviewed values; the import recomputes them from the stored OSM elements and reports drift over 50 m."
+ },
+ "berths": [
+  {
+   "terminal": "wa-puget-lng-tacoma",
+   "key": "osm-way1295259138",
+   "label": "Pier and dolphins on the site's north edge",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1295259138",
+    "way/1295259139",
+    "way/1295259141",
+    "way/1295259142",
+    "way/1295259144",
+    "way/1295259145",
+    "way/1295259146",
+    "way/1295259147",
+    "way/1295259148",
+    "way/1295259149",
+    "way/1295259150",
+    "way/1295259151",
+    "way/1295259152",
+    "way/1295259153",
+    "way/1295259154"
+   ],
+   "lat": 47.278206,
+   "lon": -122.400005
+  },
+  {
+   "terminal": "bc-g3",
+   "key": "osm-way1184889877",
+   "label": "Pier cluster next to the site",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1184889877",
+    "way/1164689697",
+    "way/1393239515",
+    "way/1393239516",
+    "way/1393239517",
+    "way/1393239518",
+    "way/1393239519",
+    "way/1393239520",
+    "way/1393239521"
+   ],
+   "lat": 49.301137,
+   "lon": -123.045452
+  },
+  {
+   "terminal": "bc-fortis-tilbury-lng",
+   "key": "osm-way91637399",
+   "label": "Nearest pier (untagged)",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/91637399"
+   ],
+   "lat": 49.143715,
+   "lon": -123.034475
+  },
+  {
+   "terminal": "bc-vaffc-marine",
+   "key": "osm-way1445803762",
+   "label": "Pier",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1445803762"
+   ],
+   "lat": 49.140772,
+   "lon": -123.05455
+  },
+  {
+   "terminal": "bc-vaffc-marine",
+   "key": "osm-way1445803793",
+   "label": "Pier",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1445803793"
+   ],
+   "lat": 49.139127,
+   "lon": -123.056291
+  },
+  {
+   "terminal": "bc-fraser-grain",
+   "key": "osm-way1309448439",
+   "label": "OSM loading berth",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1309448439"
+   ],
+   "lat": 49.181368,
+   "lon": -122.917914
+  },
+  {
+   "terminal": "bc-lafarge-richmond",
+   "key": "osm-site",
+   "label": "Site centre (no OSM pier/berth tied to this site)",
+   "basis": "osm_site_center",
+   "osm": [
+    "way/453258520"
+   ],
+   "lat": 49.157925,
+   "lon": -123.005281
+  },
+  {
+   "terminal": "bc-woodfibre-lng",
+   "key": "osm-way116783075",
+   "label": "Pier",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/116783075"
+   ],
+   "lat": 49.664263,
+   "lon": -123.255635
+  },
+  {
+   "terminal": "bc-woodfibre-lng",
+   "key": "osm-way606189634",
+   "label": "Pier",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/606189634"
+   ],
+   "lat": 49.662059,
+   "lon": -123.258465
+  }
+ ]
+}

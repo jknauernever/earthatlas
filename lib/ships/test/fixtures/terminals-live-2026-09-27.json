@@ -1,0 +1,880 @@
+{
+ "about": "REAL responses recorded live 2026-09-27/28 by scripts/ships/import-terminals.mjs --save (filtered to the terminals listed in `terminals`); Climate TRACE refinery features from the v5.10.0 facility bake. Nothing edited.",
+ "terminals": [
+  "wa-bp-cherry-point",
+  "wa-p66-ferndale",
+  "wa-marathon-anacortes",
+  "wa-hfs-puget-sound",
+  "wa-puget-lng-tacoma",
+  "bc-westridge",
+  "bc-shellburn",
+  "bc-parkland-burnaby",
+  "bc-westshore"
+ ],
+ "usace": {
+  "url": "https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/Docks/FeatureServer/0/query?where=NAV_UNIT_ID+IN+%28%2702JT%27%2C%2702Y0%27%2C%270R69%27%2C%270R9W%27%2C%270T1S%27%2C%270T5L%27%2C%270T5M%27%2C%270T6H%27%2C%270U5P%27%2C%270U5R%27%2C%270U5U%27%2C%270U5V%27%2C%270UF1%27%2C%270UGH%27%2C%270UGJ%27%2C%270UGQ%27%2C%270UM2%27%2C%270UMS%27%2C%270UMV%27%2C%270UN7%27%2C%270UN9%27%2C%270UNC%27%2C%270USS%27%2C%270UST%27%2C%270UT9%27%2C%270UXH%27%2C%270ZF3%27%29&outFields=*&returnGeometry=false&f=json",
+  "retrieved_at": "2026-09-28T04:49:23.109Z",
+  "features": [
+   {
+    "attributes": {
+     "OBJECTID": 16394,
+     "LATITUDE": 48.860628,
+     "LONGITUDE": -122.75829,
+     "LOC_DOCK": "91565-500",
+     "NAV_UNIT_ID": "02JT",
+     "NAV_UNIT_GUID": 2951,
+     "UNLOCODE": "BWS",
+     "NAV_UNIT_NAME": "BP PRODUCTS NORTH AMERICA INC., CHERRY POINT TERMINAL",
+     "FAC_TYPE": "Dock",
+     "DATA_RECORD_STATUS": "Validated for TOWS",
+     "LOCATION_DESCRIPTION": "Strait of Georgia, Ferndale, at north side of Lummi Bay, Cherry Point.",
+     "STREET_ADDRESS": "4519 Grandview Road",
+     "CITY_OR_TOWN": "Ferndale",
+     "STATE": "WA",
+     "ZIPCODE": null,
+     "COUNTY_NAME": "Whatcom",
+     "COUNTY_FIPS_CODE": 73,
+     "CONGRESS": "113",
+     "CONGRESS_FIPS": "01",
+     "TOWS_LINK_NUM": 8419,
+     "TOWS_MILE": 5,
+     "WTWY": 4754,
+     "WTWY_NAME": "Puget Sound Area, WA, Other Ports",
+     "PORT": null,
+     "PORT_NAME": null,
+     "PSA": null,
+     "PSA_NAME": null,
+     "MILE": 5,
+     "BANK": "North",
+     "OPERATORS": null,
+     "OWNERS": "Current Owner and Operator: ARCO Products Co., a division of Atlantic Richfield Co. Phone: 360/371-1325 -1550 FAX: 360/371-1604",
+     "PURPOSE": "Receipt and shipment of petroleum products; receipt of crude oil; and bunkering vessels.",
+     "HIGHWAY_NOTE": "Via plant road, unpaved, various widths; from Jack- son and Grandview Roads, each asphalt, 20 and \r\n24 feet wide, respectively.",
+     "RAILWAY_NOTE": "Trackage serving refinery at rear; connects with Burling- ton Northern Sante Fe Railroad.",
+     "COMMODITIES": "Crude Petroleum | Gasoline, Jet Fuel, Kerosene | Distillate,Residual & Other Fuel Oils; Lube Oil & Greases | Petroleum Pitches, Coke, Asphalt, Naptha and Solvents | Petroleum Products NEC | Other Chemicals and Related Products | Non-Ferrous Ores and Scrap",
+     "CONSTRUCTION": "Steel-pipe-pile, concrete-decked offshore wharf with two concrete-capped steel-pile breasting dolphins in line with face; and row of four concrete-capped steel- pile mooring dolphins 150 feet at rear of line of face, all connected by catwalks. Wharf, fronted by rubber- cushioned steel-and-timber fenders, has a 2,400-foot angular approach.",
+     "MECHANICAL_HANDLING": "Three 16-, four 12-, and one 8-inch, swivel-jointed pipeline-loading arms; and one 5-ton, electric mast-and- boom derrick.",
+     "REMARKS": "One 20-, one 18-, and one 12-inch petroleum-product pipelines extend from wharf to eleven steel storage tanks at refinery in rear; total capacity 2,329,000 barrels. One 30-inch crude-oil pipeline extends from wharf to eight steel storage tanks at refinery in rear; total capacity 2,420,000 barrels. One 10-inch Bunker C pipeline extends from wharf to a 100,000-barrel storage tank at rear. Wharf serves an 18-inch ballast water; and 18-inch clean-effluent lines.",
+     "VERTICAL_DATUM": "MLLW (Mean Lower Low Water)",
+     "DEPTH_MIN": 65,
+     "DEPTH_MAX": 65,
+     "BERTHING_LARGEST": 1000,
+     "BERTHING_TOTAL": 1000,
+     "DECK_HEIGHT_MIN": 22,
+     "DECK_HEIGHT_MAX": 22,
+     "PARENT_OR_CHILD": null,
+     "SERVICE_INITIATION_DATE": "01-JAN-1990"
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 18148,
+     "LATITUDE": 48.826111,
+     "LONGITUDE": -122.71944,
+     "LOC_DOCK": "91560-010",
+     "NAV_UNIT_ID": "0USS",
+     "NAV_UNIT_GUID": 33278,
+     "UNLOCODE": "FDT",
+     "NAV_UNIT_NAME": "CONOCO PHILLIPS, FERNDALE REFINERY WHARF",
+     "FAC_TYPE": "Dock",
+     "DATA_RECORD_STATUS": "Validated for TOWS and Public",
+     "LOCATION_DESCRIPTION": "Strait of Georgia, Ferndale, between Sandy and Cherry Points, north of Lummi Bay.",
+     "STREET_ADDRESS": "3901 Unick Road",
+     "CITY_OR_TOWN": "Ferndale",
+     "STATE": "WA",
+     "ZIPCODE": "98248",
+     "COUNTY_NAME": "Whatcom",
+     "COUNTY_FIPS_CODE": 73,
+     "CONGRESS": "112",
+     "CONGRESS_FIPS": "02",
+     "TOWS_LINK_NUM": 8419,
+     "TOWS_MILE": 5,
+     "WTWY": 4754,
+     "WTWY_NAME": "Puget Sound Area, WA, Other Ports",
+     "PORT": null,
+     "PORT_NAME": null,
+     "PSA": null,
+     "PSA_NAME": null,
+     "MILE": 5,
+     "BANK": "North",
+     "OPERATORS": null,
+     "OWNERS": "Current Owner and Operator: Tosco Refining Co., a division of Tosco Corp. Phone: 360/384-8475 FAX: 360/384-8436",
+     "PURPOSE": "Receipt and shipment of petroleum products; receipt of crude oil; and bunkering vessels.",
+     "HIGHWAY_NOTE": "Via plant road, asphalt, 18 feet wide; from Unick Road, asphalt, 24 feet wide.",
+     "RAILWAY_NOTE": "Trackage serving refinery at rear; connects with Burling- ton Northern Sante Fe Railroad.",
+     "COMMODITIES": "Petroleum and Petroleum Products | Crude Petroleum | Gasoline, Jet Fuel, Kerosene | Distillate,Residual & Other Fuel Oils; Lube Oil & Greases | Petroleum Pitches, Coke, Asphalt, Naptha and Solvents | Other Chemicals and Related Products | All Manufactured",
+     "CONSTRUCTION": "Concrete pile, concrete-decked offshore wharf with four concrete pile, concrete-decked breasting platforms in line with face; and four at rear of line of face, each connected by catwalk. A 35-foot-wide pipeline trestle extends along north side of approach, with pipelines supported by a 240+50- by 32-foot, undecked center portion of wharf. Wharf has an 1,800- by 20-foot  timber-and-steel-pile, asphalt-surfaced timber-decked approach.",
+     "MECHANICAL_HANDLING": "Two 1 1/4-ton, pneumatic mast-and-boom derricks with \r\n30- and 40-foot booms; and one 1 1/4-ton hydraulic crane with 45-foot boom for handling hose.  Two 16- and two 12-inch, swivel-jointed unloading arms.",
+     "REMARKS": "Three 20-, four 16-, and one 10-inch petroleum-product pipelines extend from wharf to forty-five steel storage tanks at refinery in rear; total capacity 2,195,250 barrels. Tankage includes seven crude-oil storage tanks with total capacity for 1,404,000 barrels; and four bunker-fuel storage tanks with total capacity for 470,000 barrels. One 8 1/2-inch bunker-fuel line extends from storage tanks to wharf for supplying vessels with Bunker C fuel. Refinery connects to a petroleum-product pipeline extending from Seattle, WA; and to a crude-oil pipeline extending from Canada.",
+     "VERTICAL_DATUM": "MLLW (Mean Lower Low Water)",
+     "DEPTH_MIN": 35,
+     "DEPTH_MAX": 60,
+     "BERTHING_LARGEST": 883,
+     "BERTHING_TOTAL": 1605,
+     "DECK_HEIGHT_MIN": 18,
+     "DECK_HEIGHT_MAX": 18,
+     "PARENT_OR_CHILD": null,
+     "SERVICE_INITIATION_DATE": "01-JAN-1990"
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 18663,
+     "LATITUDE": 48.508333,
+     "LONGITUDE": -122.56916,
+     "LOC_DOCK": "91284-999",
+     "NAV_UNIT_ID": "0U5V",
+     "NAV_UNIT_GUID": 32567,
+     "UNLOCODE": "OTS",
+     "NAV_UNIT_NAME": "SHELL OIL CO ANACORTES REFINERY WHARF",
+     "FAC_TYPE": "Dock",
+     "DATA_RECORD_STATUS": "Validated for TOWS and Public",
+     "LOCATION_DESCRIPTION": "East shore of Fidalgo Bay, Anacortes, at northern end of March Point.",
+     "STREET_ADDRESS": "March Point Road",
+     "CITY_OR_TOWN": "Anacortes",
+     "STATE": "WA",
+     "ZIPCODE": "98221",
+     "COUNTY_NAME": "Skagit",
+     "COUNTY_FIPS_CODE": 57,
+     "CONGRESS": "113",
+     "CONGRESS_FIPS": "02",
+     "TOWS_LINK_NUM": 8374,
+     "TOWS_MILE": 9,
+     "WTWY": 4731,
+     "WTWY_NAME": "Guemes Channel, WA",
+     "PORT": "4730.00",
+     "PORT_NAME": "Port of Anacortes, WA",
+     "PSA": null,
+     "PSA_NAME": null,
+     "MILE": 9,
+     "BANK": "East",
+     "OPERATORS": null,
+     "OWNERS": "Current Owner and Operator: The Shell Anacortes Refining Co. Phone: 360/293-1484 -9138 FAX: 360/293-1673",
+     "PURPOSE": "Receipt of crude oil; and shipment of petroleum products; bunkering vessels.",
+     "HIGHWAY_NOTE": "Via W. March Point Road, asphalt, 25 feet wide; from State Highway 20.",
+     "RAILWAY_NOTE": "Trackage serving oil refinery at rear; connects with Burlington Northern Sante Fe Railroad.",
+     "COMMODITIES": "Petroleum and Petroleum Products | Crude Petroleum | Gasoline, Jet Fuel, Kerosene | Distillate,Residual & Other Fuel Oils; Lube Oil & Greases | Petroleum Pitches, Coke, Asphalt, Naptha and Solvents | Other Chemicals and Related Products | Corn | All Manuf",
+     "CONSTRUCTION": "Timber pile, timber-decked offshore wharf with steel pile, concrete-surfaced breasting platforms at face and rear of face; and one concrete-capped steel-pile moor- ing dolphin on each side, connected by walkway. Plat- forms fronted by timber-and-rubber fender system. Wharf has a 466+3,000- by 18-foot approach. ",
+     "MECHANICAL_HANDLING": "Two 16- and one 12-inch, swivel-jointed loading arms; three pneumatic mast-and-boom derricks with 20- to 30-foot booms; and two hydraulic derricks, each with 25-foot boom.",
+     "REMARKS": "One 16-inch crude-oil pipeline extends from wharf to eight steel storage tanks at refinery in rear; total capacity 2,000,000 barrels.  One 16- and five 12-inch petroleum-product and feed-stock pipelines extend from wharf to fifty-one steel storage tanks at refinery in rear; total capacity 1,600,000 barrels.  Wharf serves a 6-inch slops-return; and a 10-inch ballast-water line.  Wharf is equipped with oil skimmers; and an oil-spill containment boom. Refinery connects petroleum-product pipeline between Ferndale, WA and Portland, OR.",
+     "VERTICAL_DATUM": "MLLW (Mean Lower Low Water)",
+     "DEPTH_MIN": 38,
+     "DEPTH_MAX": 45,
+     "BERTHING_LARGEST": 974,
+     "BERTHING_TOTAL": 1634,
+     "DECK_HEIGHT_MIN": 22,
+     "DECK_HEIGHT_MAX": 22,
+     "PARENT_OR_CHILD": null,
+     "SERVICE_INITIATION_DATE": "01-JAN-1990"
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 20110,
+     "LATITUDE": 48.509409,
+     "LONGITUDE": -122.579019,
+     "LOC_DOCK": "91284-998",
+     "NAV_UNIT_ID": "0U5U",
+     "NAV_UNIT_GUID": 32566,
+     "UNLOCODE": "OTS",
+     "NAV_UNIT_NAME": "HOLLYFRONTIER  PUGET SOUND REFINERY",
+     "FAC_TYPE": "Dock",
+     "DATA_RECORD_STATUS": "Validated for TOWS and Public",
+     "LOCATION_DESCRIPTION": "East shore of Fidalgo Bay, Anacortes, at northern end of March Point.",
+     "STREET_ADDRESS": "600 S. Texas Road",
+     "CITY_OR_TOWN": "Anacortes",
+     "STATE": "WA",
+     "ZIPCODE": "98221",
+     "COUNTY_NAME": "Skagit",
+     "COUNTY_FIPS_CODE": 57,
+     "CONGRESS": "116",
+     "CONGRESS_FIPS": "02",
+     "TOWS_LINK_NUM": 8374,
+     "TOWS_MILE": 2,
+     "WTWY": 4731,
+     "WTWY_NAME": "Guemes Channel, WA",
+     "PORT": "4730.00",
+     "PORT_NAME": "Port of Anacortes, WA",
+     "PSA": null,
+     "PSA_NAME": null,
+     "MILE": 2,
+     "BANK": "East",
+     "OPERATORS": null,
+     "OWNERS": "Current Owner and Operator: Texaco Refining and Marketing, Inc. Phone: 360/293-0800-0891 FAX: 360/293-0808",
+     "PURPOSE": "Receipt of crude oil; and shipment of petroleum products;  bunkering vessels.",
+     "HIGHWAY_NOTE": "Via W. March Point Road, asphalt, 25 feet wide; from State Highway 20.",
+     "RAILWAY_NOTE": "Trackage serving oil refinery in rear; connects with Burlington Northern Sante Fe Railroad.",
+     "COMMODITIES": "Petroleum and Petroleum Products | Crude Petroleum | Gasoline, Jet Fuel, Kerosene | Distillate,Residual & Other Fuel Oils; Lube Oil & Greases | Petroleum Pitches, Coke, Asphalt, Naptha and Solvents | Other Chemicals and Related Products | Forest Products,",
+     "CONSTRUCTION": "Timber-and-concrete-pile, timber- and concrete-decked offshore wharf with steel pile, concrete-capped  breasting platforms at face and rear of face; and a steel pile, concrete-capped mooring dolphin on each side in line with face, connected by walkways. Platforms, fronted by timber-and-rubber fenders, each have a 7,150- by 32-foot pipeline-trestle approach with adjacent 5,600- by 14-foot roadway.",
+     "MECHANICAL_HANDLING": "Two 16- and six 8-inch, swivel-jointed loading arms.",
+     "REMARKS": "One 30-inch crude-oil pipeline extends from wharf to seven steel storage tanks at refinery in rear; total capacity 1,716,000 barrels. Three 14-inch and five 8-inch petroleum-product pipelines extend from wharf to eighteen steel storage tanks at refinery in rear; total capacity 1,258,000 barrels. One 12-inch Bunker C pipe- line extends from wharf to three steel storage tanks at refinery in rear; total capacity 198,000 barrels.  Wharf serves a 16-inch ballast, a 12-inch crude flush- ing, and a 6-inch compressed-air line.  Refinery also receives crude oil from pipeline in Canada, with connections to petroleum-product pipeline at Ferndale, WA and Portland, OR.",
+     "VERTICAL_DATUM": "MLLW (Mean Lower Low Water)",
+     "DEPTH_MIN": 37,
+     "DEPTH_MAX": 45,
+     "BERTHING_LARGEST": 1100,
+     "BERTHING_TOTAL": 1995,
+     "DECK_HEIGHT_MIN": 22,
+     "DECK_HEIGHT_MAX": 22,
+     "PARENT_OR_CHILD": null,
+     "SERVICE_INITIATION_DATE": "01-JAN-1990"
+    }
+   }
+  ]
+ },
+ "ecology": {
+  "url": "https://gis.ecology.wa.gov/serverext/rest/services/SPPR/Spills_map_series/MapServer/132/query?where=OBJECTID+IN+%281%2C11%2C13%2C2%2C14%2C15%2C8%2C7%2C12%2C19%2C3%2C4%2C93%2C18%2C17%2C16%2C24%2C21%29&outFields=*&returnGeometry=true&outSR=4326&f=json",
+  "retrieved_at": "2026-09-28T04:49:23.590Z",
+  "features": [
+   {
+    "attributes": {
+     "OBJECTID": 1,
+     "FacilityName": "BP Cherry Point Refinery",
+     "ClassType": "Class 1 Facility",
+     "EcologyProgram": "Spills Prevention, Preparedness, and Response",
+     "FacilityType": "REFINERY",
+     "OilProducts": "CRUDE OIL,DIESEL/MARINE GAS OIL,AVIATION GASOLINE,GASOLINE,JET FUEL/KEROSENE,CAT FEED/VGO,EDIBLE/VEGETABLE OIL,DIESEL LOW SULPHUR (ULSD),NAPTHA",
+     "DockLatNumber": 48.861111,
+     "DockLongNumber": -122.7575
+    },
+    "geometry": {
+     "x": -122.75749998333373,
+     "y": 48.86111099465599
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 2,
+     "FacilityName": "Puget Sound Refinery",
+     "ClassType": "Class 1 Facility",
+     "EcologyProgram": "Spills Prevention, Preparedness, and Response",
+     "FacilityType": "REFINERY",
+     "OilProducts": "CRUDE OIL,AVIATION GASOLINE,BUNKER OIL/HFO,DIESEL/MARINE GAS OIL,GASOLINE,CAT FEED/VGO,NONENE",
+     "DockLatNumber": 48.509445,
+     "DockLongNumber": -122.576942
+    },
+    "geometry": {
+     "x": -122.57694198260297,
+     "y": 48.50944499445215
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 11,
+     "FacilityName": "Phillips 66 Ferndale Refinery",
+     "ClassType": "Class 1 Facility",
+     "EcologyProgram": "Spills Prevention, Preparedness, and Response",
+     "FacilityType": "REFINERY",
+     "OilProducts": "BUNKER OIL/HFO,CRUDE OIL,GASOLINE,DIESEL/MARINE GAS OIL,OILY WATER MIXTURE,CAT FEED/VGO,JET FUEL/KEROSENE",
+     "DockLatNumber": 48.825996,
+     "DockLongNumber": -122.720184
+    },
+    "geometry": {
+     "x": -122.72018398260109,
+     "y": 48.8259959943727
+    }
+   },
+   {
+    "attributes": {
+     "OBJECTID": 13,
+     "FacilityName": "Anacortes Refinery",
+     "ClassType": "Class 1 Facility",
+     "EcologyProgram": "Spills Prevention, Preparedness, and Response",
+     "FacilityType": "REFINERY",
+     "OilProducts": "AVIATION GASOLINE,BUNKER OIL/HFO,CRUDE OIL,DIESEL/MARINE GAS OIL,GASOLINE,JET FUEL/KEROSENE,OILY WATER MIXTURE,CAT FEED/VGO,DECANT OIL,NAPTHA",
+     "DockLatNumber": 48.508369,
+     "DockLongNumber": -122.569374
+    },
+    "geometry": {
+     "x": -122.56937398265977,
+     "y": 48.50836899487317
+    }
+   }
+  ]
+ },
+ "bcpt": {
+  "url": "https://openmaps.gov.bc.ca/geo/pub/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=pub%3AWHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW&outputFormat=application%2Fjson&srsName=EPSG%3A4326&CQL_FILTER=SOURCE_DATA_ID+IN+%28261%2C258%2C260%2C262%2C271%2C257%2C264%2C267%2C269%2C268%2C254%2C251%2C259%2C272%2C274%2C215%2C231%2C293%2C224%2C252%2C205%2C284%2C292%2C280%2C226%29",
+  "retrieved_at": "2026-09-28T04:49:25.687Z",
+  "features": [
+   {
+    "type": "Feature",
+    "id": "WHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW.fid--5cb3b77b_1a0e63e300c_322c",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -123.156068,
+      49.01441663
+     ]
+    },
+    "geometry_name": "SHAPE",
+    "properties": {
+     "CUSTODIAN_ORG_DESCRIPTION": "Ministry of Forest, Lands and Natural Resource Operations and Rural Development - GeoBC ",
+     "BUSINESS_CATEGORY_CLASS": "waterTransportation",
+     "BUSINESS_CATEGORY_DESCRIPTION": "Water Transportation",
+     "OCCUPANT_TYPE_DESCRIPTION": "BC Ports and Terminals",
+     "SOURCE_DATA_ID": "215",
+     "SUPPLIED_SOURCE_ID_IND": "N",
+     "FACILITY_NAME": "Westshore Terminals Ltd.",
+     "DESCRIPTION": "Terminal",
+     "PHYSICAL_ADDRESS": "1 Roberts Bank, Delta, BC",
+     "OTHER_ADDRESS": "1 Roberts Bank, Delta, BC",
+     "STREET_ADDRESS": "1 Roberts Bank",
+     "POSTAL_CODE": "V4M 4G5",
+     "LOCALITY": "Delta",
+     "CONTACT_PHONE": null,
+     "CONTACT_EMAIL": null,
+     "CONTACT_FAX": null,
+     "WEBSITE_URL": "http://www.westshore.com/#/main",
+     "IMAGE_URL": null,
+     "LATITUDE": 49.0144166,
+     "LONGITUDE": -123.156068,
+     "KEYWORDS": "Westshore; Delta; Terminal; Coal; Petroleum; Strait of Georgia; Roberts Bank",
+     "DATE_UPDATED": "2025-03-06Z",
+     "SITE_GEOCODED_IND": null,
+     "AUTHORITY": "Port Metro Vancouver ",
+     "BUSINESS_OPERATOR": "Westshore Income Fund, Westar Management",
+     "COMMODITIES_HANDLED": "coal and petroleum coke",
+     "COMMODITY_STORAGE_CAPACITY": "N/A",
+     "DATA_SOURCE": "Westshore Terminals; Port Metro Vancouver; BC Ports Handbook 2014 ",
+     "FACILITY_TYPE_USE": "Breakbulk and Bulk ",
+     "TERMINAL_BERTHS_DESC": "#1: length 350 m, depth 22.9 m; #2: length 263 m, depth 19.4 m; rail access and capacity",
+     "SEQUENCE_ID": 262,
+     "SE_ANNO_CAD_DATA": null
+    }
+   },
+   {
+    "type": "Feature",
+    "id": "WHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW.fid--5cb3b77b_1a0e63e300c_322f",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.9640374,
+      49.28929159
+     ]
+    },
+    "geometry_name": "SHAPE",
+    "properties": {
+     "CUSTODIAN_ORG_DESCRIPTION": "Ministry of Forest, Lands and Natural Resource Operations and Rural Development - GeoBC ",
+     "BUSINESS_CATEGORY_CLASS": "waterTransportation",
+     "BUSINESS_CATEGORY_DESCRIPTION": "Water Transportation",
+     "OCCUPANT_TYPE_DESCRIPTION": "BC Ports and Terminals",
+     "SOURCE_DATA_ID": "258",
+     "SUPPLIED_SOURCE_ID_IND": "N",
+     "FACILITY_NAME": "Shellburn Terminal",
+     "DESCRIPTION": "Terminal",
+     "PHYSICAL_ADDRESS": "201 Kensington, Burnaby, BC",
+     "OTHER_ADDRESS": "201 Kensington, Burnaby, BC",
+     "STREET_ADDRESS": "201 Kensington",
+     "POSTAL_CODE": "V5B 4B2",
+     "LOCALITY": "Burnaby",
+     "CONTACT_PHONE": null,
+     "CONTACT_EMAIL": null,
+     "CONTACT_FAX": null,
+     "WEBSITE_URL": "http://www.shell.ca/",
+     "IMAGE_URL": null,
+     "LATITUDE": 49.2892916,
+     "LONGITUDE": -122.9640374,
+     "KEYWORDS": "Shellburn; Shell; Vancouver; Burrard Inlet; Petroleum; Terminal",
+     "DATE_UPDATED": "2025-03-06Z",
+     "SITE_GEOCODED_IND": null,
+     "AUTHORITY": "Port Metro Vancouver ",
+     "BUSINESS_OPERATOR": "Shell Canada Products",
+     "COMMODITIES_HANDLED": "petroleum products",
+     "COMMODITY_STORAGE_CAPACITY": "N/A",
+     "DATA_SOURCE": "Shell Canada; Port Metro Vancouver; BC Ports Handbook 2014 ",
+     "FACILITY_TYPE_USE": "Breakbulk and Bulk",
+     "TERMINAL_BERTHS_DESC": "Outer berth: 122 m length, depth 8.9 m with mooring dolphins",
+     "SEQUENCE_ID": 306,
+     "SE_ANNO_CAD_DATA": null
+    }
+   },
+   {
+    "type": "Feature",
+    "id": "WHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW.fid--5cb3b77b_1a0e63e300c_3232",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -123.0041762,
+      49.29198049
+     ]
+    },
+    "geometry_name": "SHAPE",
+    "properties": {
+     "CUSTODIAN_ORG_DESCRIPTION": "Ministry of Forest, Lands and Natural Resource Operations and Rural Development - GeoBC ",
+     "BUSINESS_CATEGORY_CLASS": "waterTransportation",
+     "BUSINESS_CATEGORY_DESCRIPTION": "Water Transportation",
+     "OCCUPANT_TYPE_DESCRIPTION": "BC Ports and Terminals",
+     "SOURCE_DATA_ID": "260",
+     "SUPPLIED_SOURCE_ID_IND": "N",
+     "FACILITY_NAME": "Stanovan Terminal (Chevron Canada)",
+     "DESCRIPTION": "Terminal",
+     "PHYSICAL_ADDRESS": "355 Willingdon, Burnaby, BC",
+     "OTHER_ADDRESS": "355 Willingdon, Burnaby, BC",
+     "STREET_ADDRESS": "355 Willingdon",
+     "POSTAL_CODE": "V5C 1X4",
+     "LOCALITY": "Burnaby",
+     "CONTACT_PHONE": null,
+     "CONTACT_EMAIL": null,
+     "CONTACT_FAX": null,
+     "WEBSITE_URL": "http://www.chevron.ca/our-businesses/burnaby-refinery",
+     "IMAGE_URL": null,
+     "LATITUDE": 49.2919805,
+     "LONGITUDE": -123.0041762,
+     "KEYWORDS": "Chevron; Burrard Inlet; Terminal; Petroleum Products; Vancouver; Stanovan",
+     "DATE_UPDATED": "2025-03-06Z",
+     "SITE_GEOCODED_IND": null,
+     "AUTHORITY": "Port Metro Vancouver ",
+     "BUSINESS_OPERATOR": "Chevron Canada Limited",
+     "COMMODITIES_HANDLED": "petroleum products",
+     "COMMODITY_STORAGE_CAPACITY": "N/A",
+     "DATA_SOURCE": "Chevron Canada Limited; BC Ports Handbook 2014; Port Metro Vancouver",
+     "FACILITY_TYPE_USE": "Breakbulk and Bulk ",
+     "TERMINAL_BERTHS_DESC": "length 85 m (216 m between mooring buoys), limiting draft 12.5 m",
+     "SEQUENCE_ID": 332,
+     "SE_ANNO_CAD_DATA": null
+    }
+   },
+   {
+    "type": "Feature",
+    "id": "WHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW.fid--5cb3b77b_1a0e63e300c_323d",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.9498933,
+      49.29097146
+     ]
+    },
+    "geometry_name": "SHAPE",
+    "properties": {
+     "CUSTODIAN_ORG_DESCRIPTION": "Ministry of Forest, Lands and Natural Resource Operations and Rural Development - GeoBC ",
+     "BUSINESS_CATEGORY_CLASS": "waterTransportation",
+     "BUSINESS_CATEGORY_DESCRIPTION": "Water Transportation",
+     "OCCUPANT_TYPE_DESCRIPTION": "BC Ports and Terminals",
+     "SOURCE_DATA_ID": "261",
+     "SUPPLIED_SOURCE_ID_IND": "N",
+     "FACILITY_NAME": "Kinder Morgan (Westridge Terminal)",
+     "DESCRIPTION": "Terminal",
+     "PHYSICAL_ADDRESS": "Burnaby, BC",
+     "OTHER_ADDRESS": "Burnaby, BC",
+     "STREET_ADDRESS": null,
+     "POSTAL_CODE": "V5A 4T3",
+     "LOCALITY": "Burnaby",
+     "CONTACT_PHONE": null,
+     "CONTACT_EMAIL": null,
+     "CONTACT_FAX": null,
+     "WEBSITE_URL": "http://www.kindermorgan.com/pages/business/canada/transmountain.aspx",
+     "IMAGE_URL": null,
+     "LATITUDE": 49.2909715,
+     "LONGITUDE": -122.9498933,
+     "KEYWORDS": "Kinder Morgan; Burnaby; Burrard Inlet; Terminal; Petroleum",
+     "DATE_UPDATED": "2025-03-06Z",
+     "SITE_GEOCODED_IND": null,
+     "AUTHORITY": "Port Metro Vancouver ",
+     "BUSINESS_OPERATOR": "Kinder Morgan Canada",
+     "COMMODITIES_HANDLED": "crude petroleum, petroleum products, jet fuel",
+     "COMMODITY_STORAGE_CAPACITY": "N/A",
+     "DATA_SOURCE": "Kinder Morgan Canada; BC Ports Handbook 2014; Port Metro Vancouver",
+     "FACILITY_TYPE_USE": "Breakbulk and Bulk ",
+     "TERMINAL_BERTHS_DESC": "Main dock 91.4 m long, 305 m between extreme mooring dolphins, depth 11 m for vessels up to 250 m in length",
+     "SEQUENCE_ID": 520,
+     "SE_ANNO_CAD_DATA": null
+    }
+   }
+  ]
+ },
+ "osm": {
+  "url": "https://overpass-api.de/api/interpreter",
+  "retrieved_at": "2026-09-28T04:49:35.436Z",
+  "osm_base": "2026-09-28T04:48:11Z",
+  "elements": [
+   {
+    "type": "way",
+    "id": 687278374,
+    "center": {
+     "lat": 47.2762624,
+     "lon": -122.3995657
+    },
+    "tags": {
+     "industrial": "port",
+     "name": "Tacoma Liquefied Natural Gas Facility",
+     "operator": "Puget Sound Energy,Puget LNG",
+     "pipeline": "substation",
+     "start_date": "2022",
+     "substance": "gas",
+     "substation": "transmission,storage",
+     "website": "https://web.archive.org/web/20241004021154/https://www.pse.com/en/pages/energy-supply/natural-gas-storage"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259138,
+    "center": {
+     "lat": 47.2778095,
+     "lon": -122.3985857
+    },
+    "tags": {
+     "access": "no",
+     "area": "yes",
+     "disused": "yes",
+     "man_made": "pier",
+     "surface": "concrete"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259139,
+    "center": {
+     "lat": 47.277833,
+     "lon": -122.3982479
+    },
+    "tags": {
+     "access": "no",
+     "area": "yes",
+     "floating": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259141,
+    "center": {
+     "lat": 47.2780446,
+     "lon": -122.3993051
+    },
+    "tags": {
+     "access": "no",
+     "area": "yes",
+     "man_made": "pier",
+     "ruined": "yes"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259142,
+    "center": {
+     "lat": 47.2776945,
+     "lon": -122.3978666
+    },
+    "tags": {
+     "access": "no",
+     "area": "yes",
+     "man_made": "pier",
+     "ruined": "yes"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259144,
+    "center": {
+     "lat": 47.2781242,
+     "lon": -122.4005703
+    },
+    "tags": {
+     "abandoned": "yes",
+     "access": "no",
+     "disused": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259145,
+    "center": {
+     "lat": 47.2784065,
+     "lon": -122.4007322
+    },
+    "tags": {
+     "abandoned": "yes",
+     "access": "no",
+     "area": "yes",
+     "disused": "yes",
+     "landuse": "brownfield",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259146,
+    "center": {
+     "lat": 47.2783402,
+     "lon": -122.4004307
+    },
+    "tags": {
+     "abandoned": "yes",
+     "access": "no",
+     "area": "yes",
+     "disused": "yes",
+     "landuse": "brownfield",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259147,
+    "center": {
+     "lat": 47.2783049,
+     "lon": -122.400447
+    },
+    "tags": {
+     "abandoned": "yes",
+     "access": "no",
+     "disused": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259148,
+    "center": {
+     "lat": 47.2783298,
+     "lon": -122.4007514
+    },
+    "tags": {
+     "abandoned": "yes",
+     "access": "no",
+     "disused": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259149,
+    "center": {
+     "lat": 47.2781616,
+     "lon": -122.4000647
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259150,
+    "center": {
+     "lat": 47.2781143,
+     "lon": -122.3998515
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259151,
+    "center": {
+     "lat": 47.2783891,
+     "lon": -122.400577
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259152,
+    "center": {
+     "lat": 47.2785155,
+     "lon": -122.4011014
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259153,
+    "center": {
+     "lat": 47.2782753,
+     "lon": -122.4001492
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1295259154,
+    "center": {
+     "lat": 47.2787501,
+     "lon": -122.4013882
+    },
+    "tags": {
+     "area": "yes",
+     "floating": "no",
+     "man_made": "pier",
+     "seamark:mooring:category": "dolphin",
+     "seamark:type": "mooring"
+    }
+   }
+  ]
+ },
+ "gem": {
+  "url": "https://raw.githubusercontent.com/GlobalEnergyMonitor/maps/main/trackers/coal-terminals/compilation_output/Coal%20Terminals-map-file-2025-01-15.csv",
+  "retrieved_at": "2026-09-28T04:49:35.716Z",
+  "csv": "gem-terminal-id,gem-unit/phase-id,parent-port-name,country/area,coal-terminal-name,coal-terminal-name-(detail-or-other),capacity-(mt),status,start-year,retired-year,location-accuracy,owner,lat,lng,state/province,region,url,capacity_mt_display\nT1087,T01087,Port of Vancouver,Canada,Westshore Coal Terminals,Roberts Bank,36,operating,1970,,Exact,Westshore Terminals Investment Corporation,49.01724946,-123.1637862,British Columbia,Americas,https://www.gem.wiki/Westshore_Terminals,36\n"
+ },
+ "ct_refinery": {
+  "release": "v5.10.0 (v5.10.0-202609232017)",
+  "features": [
+   {
+    "type": "Feature",
+    "tippecanoe": {
+     "minzoom": 3
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.98698,
+      49.2936
+     ]
+    },
+    "properties": {
+     "id": 3143778,
+     "n": "Parkland Burnaby Refinery",
+     "sec": "fossil-fuel-operations",
+     "sub": "oil-and-gas-refining",
+     "c": "CAN",
+     "at": "Hydroskimming",
+     "m0": 0,
+     "m": "3m23m23m23m23m23m23m23m23m23m23m23m23mj3mj3mj3mj3mj3mj3mj3mj3mj3mj3mj3mj3mf3mf3mf3mf3mf3mf3mf3mf3mf3mf3mf3mf3973973973lx3lx3lx3my3my3my3n63n63n63mp3mp3mp3ln3ln3ln3n53n53n53n63n63n63973973973lx3lx3lx",
+     "y": 363459,
+     "r": 11500,
+     "o": "Parkland Refining",
+     "q": "very low",
+     "k": "55,000 BBL per day"
+    }
+   },
+   {
+    "type": "Feature",
+    "tippecanoe": {
+     "minzoom": 2
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.734766,
+      48.884624
+     ]
+    },
+    "properties": {
+     "id": 1753291,
+     "n": "BP Ferndale Refinery",
+     "sec": "fossil-fuel-operations",
+     "sub": "oil-and-gas-refining",
+     "c": "USA",
+     "at": "Deep conversion Coking-GO-HC-5",
+     "m0": 0,
+     "m": "49p49p49p49p49p49p49p49p49p49p49p49p49z49z49z49z49z49z49z49z49z49z49z49z4a54a54a54a54a54a54a54a54a54a54a54a549x49x49x4ac4ac4ac4aq4aq4aq4ae4ae4ae49z49z49z49u49u49u4af4af4af4ae4ae4ae49x49x49x4ac4ac4ac",
+     "y": 2982135,
+     "r": 2348,
+     "o": "The Vanguard Group Inc",
+     "q": "very low",
+     "k": "238,500 BBL per day"
+    }
+   },
+   {
+    "type": "Feature",
+    "tippecanoe": {
+     "minzoom": 2
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.556244,
+      48.470693
+     ]
+    },
+    "properties": {
+     "id": 1753312,
+     "n": "HollyFrontier Anacortes Refinery",
+     "sec": "fossil-fuel-operations",
+     "sub": "oil-and-gas-refining",
+     "c": "USA",
+     "at": "Deep conversion Coking-FCC-4",
+     "m0": 0,
+     "m": "47847847847847847847847847847847847847e47e47e47e47e47e47e47e47e47e47e47e47j47j47j47j47j47j47j47j47j47j47j47j47e47e47e47n47n47n47v47v47v47o47o47o47f47f47f47c47c47c47p47p47p47o47o47o47e47e47e47n47n47n",
+     "y": 1845798,
+     "r": 3694,
+     "o": "HollyFrontier Corp",
+     "q": "very low",
+     "k": "145,000 BBL per day"
+    }
+   },
+   {
+    "type": "Feature",
+    "tippecanoe": {
+     "minzoom": 3
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.696618,
+      48.830501
+     ]
+    },
+    "properties": {
+     "id": 1753325,
+     "n": "Phillips 66 Ferndale Refinery",
+     "sec": "fossil-fuel-operations",
+     "sub": "oil-and-gas-refining",
+     "c": "USA",
+     "at": "Medium conversion-FCC-1",
+     "m0": 0,
+     "m": "42e42e42e42e42e42e42e42e42e42e42e42e43g43g43g43g43g43g43g43g43g43g43g43g44844844844844844844844844844844844843e43e43e44z44z44z46246246245645645643m43m43m43243243245845845845645645643e43e43e44z44z44z",
+     "y": 1123803,
+     "r": 5460,
+     "o": "Blackrock Advisors LLC",
+     "q": "very low",
+     "k": "105,000 BBL per day"
+    }
+   },
+   {
+    "type": "Feature",
+    "tippecanoe": {
+     "minzoom": 2
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -122.562522,
+      48.494369
+     ]
+    },
+    "properties": {
+     "id": 1753321,
+     "n": "Tesoro Anacortes Refinery",
+     "sec": "fossil-fuel-operations",
+     "sub": "oil-and-gas-refining",
+     "c": "USA",
+     "at": "Medium conversion-FCC-1",
+     "m0": 0,
+     "m": "45m45m45m45m45m45m45m45m45m45m45m45m46446446446446446446446446446446446446746746746746746746746746746746746746446446446a46a46a46g46g46g46b46b46b46446446446246246246b46b46b46b46b46b46446446446a46a46a",
+     "y": 1273644,
+     "r": 4974,
+     "o": "Blackrock Advisors LLC",
+     "q": "very low",
+     "k": "119,000 BBL per day"
+    }
+   }
+  ]
+ }
+}

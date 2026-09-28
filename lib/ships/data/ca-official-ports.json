@@ -1,0 +1,70 @@
+{
+  "_about": "Hand-kept table of Canadian official port status for /ships (docs/OFFICIAL_PORT_LISTS.md, plan approved by Josh 2026-09-27). Each row cites the pages it comes from; scripts/ships/import-official-ports.mjs fetches those pages, stores them as evidence (source 'ca-official-ports', kind web_page) and accepts a row only when its `check` text appears in every cited page. `wpi` = the World Port Index port numbers the row applies to (stable keys; our port ids differ between databases). The WPI crosswalk is EarthAtlas's interpretation (the plan's list), not a statement by Transport Canada: the pages give names and status, not port limits as geometry. Checked 2026-09-27.",
+  "checked": "2026-09-27",
+  "rows": [
+    {
+      "id": "cpa-vancouver-fraser",
+      "kind": "ca_port_authority",
+      "name": "Vancouver Fraser Port Authority",
+      "status": "Canada Port Authority",
+      "authority": "Vancouver Fraser Port Authority",
+      "legal_basis": "Canada Marine Act (S.C. 1998, c. 10), Schedule, Part 2",
+      "check": "Vancouver Fraser Port Authority",
+      "sources": [
+        "https://tc.canada.ca/en/marine-transportation/ports-harbours-anchorages/list-canada-port-authorities",
+        "https://laws-lois.justice.gc.ca/eng/XML/C-6.7.xml"
+      ],
+      "wpi": [18150, 18100, 18160, 18110, 18090],
+      "wpi_names": ["Vancouver", "New Westminster", "Port Moody", "Fraser Mills", "Steveston"],
+      "notes": "WPI list as in the approved plan (docs/OFFICIAL_PORT_LISTS.md, plan item 2). The authority's jurisdiction limits (letters patent) were not read."
+    },
+    {
+      "id": "cpa-nanaimo",
+      "kind": "ca_port_authority",
+      "name": "Nanaimo Port Authority",
+      "status": "Canada Port Authority",
+      "authority": "Nanaimo Port Authority",
+      "legal_basis": "Canada Marine Act (S.C. 1998, c. 10), Schedule, Part 1",
+      "check": "Nanaimo Port Authority",
+      "sources": [
+        "https://tc.canada.ca/en/marine-transportation/ports-harbours-anchorages/list-canada-port-authorities",
+        "https://laws-lois.justice.gc.ca/eng/XML/C-6.7.xml"
+      ],
+      "wpi": [18520, 18525],
+      "wpi_names": ["Nanaimo", "Harmac"],
+      "notes": "WPI list as in the approved plan. The authority's jurisdiction limits (letters patent) were not read."
+    },
+    {
+      "id": "cpa-port-alberni",
+      "kind": "ca_port_authority",
+      "name": "Port Alberni Port Authority",
+      "status": "Canada Port Authority",
+      "authority": "Port Alberni Port Authority",
+      "legal_basis": "Canada Marine Act (S.C. 1998, c. 10), Schedule, Part 1",
+      "check": "Port Alberni Port Authority",
+      "sources": [
+        "https://tc.canada.ca/en/marine-transportation/ports-harbours-anchorages/list-canada-port-authorities",
+        "https://laws-lois.justice.gc.ca/eng/XML/C-6.7.xml"
+      ],
+      "wpi": [18730],
+      "wpi_names": ["Port Alberni"],
+      "notes": "WPI list as in the approved plan."
+    },
+    {
+      "id": "tc-public-port-victoria",
+      "kind": "tc_public_port",
+      "name": "Victoria",
+      "status": "Transport Canada public port",
+      "authority": null,
+      "legal_basis": "Canada Marine Act s. 65; Public Ports and Public Port Facilities Regulations (SOR/2001-154), Schedule 1",
+      "check": "Victoria",
+      "sources": [
+        "https://tc.canada.ca/en/marine-transportation/ports-harbours-anchorages/list-ports-owned-transport-canada",
+        "https://laws-lois.justice.gc.ca/eng/XML/SOR-2001-154.xml"
+      ],
+      "wpi": [18670],
+      "wpi_names": ["Victoria Harbor"],
+      "notes": "TC's page: public ports are where TC has a role within the port limits; TC \"may or may not own or operate the port facilities within the port limits\". Port limits are text in the regulation, not geometry."
+    }
+  ]
+}

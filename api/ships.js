@@ -19,8 +19,10 @@
 //   /api/ships?op=photos&id=<uuid> → { status, images } (docs/COMMONS_PHOTOS.md). Only a vessel in our database
 //   with exactly one registry IMO, no photo yet and no Commons check in the last 30 days reaches Commons.
 // Ports on the map + port card (Josh, 2026-09-27; lib/ships/portCard.js, docs/GFW_ACTIVITY_API.md "Port visits by port"):
-//   /api/ships?op=portsLayer                                → GeoJSON of our ports (WPI + named GFW ports), cached a day
+//   /api/ships?op=portsLayer                                → GeoJSON of our ports (WPI + named GFW ports + Climate TRACE-only
+//        + DFO small-craft-harbour-only ports), cached a day
 //   /api/ships?op=port&id=<port id>&from=YYYY-MM&to=YYYY-MM[&m=YYYY-MM&limit=&offset=] → the port card
+//        (+ `official`: the official name / status line, lib/ships/officialPorts.js)
 //        GFW (server-side token) and IMF PortWatch are asked only for ports in ships.ports, only when the fetch log
 //        says the stored answer is stale, and within a daily GFW call budget.
 //   POST /api/ships?op=portShip&gfw=<GFW vessel id>        → saves a listed ship's GFW identity (only ids in stored visits)
@@ -29,6 +31,7 @@
 
 import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { portClimateTrace } from '../lib/ships/climateTrace.js'
+import { classIndex, mmsisOfClasses } from '../lib/ships/typeSearch.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
@@ -39,6 +42,7 @@ import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
 import { commonsPlan, fetchImo, ingestImo, vesselImages } from '../lib/ships/ingestCommons.js'
 import { commonsClient } from '../scripts/ships/commonsClient.js'
 import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
+import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -76,6 +80,14 @@ export default async function handler(req, res) {
       return send(res, 200, { query: text, kinds, results: r.results, type: r.type, total: r.total, capped: r.capped || false })
     }
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
+    //   /api/ships?op=classes                     → { classes: [{ group, class, label, n }] }  (EarthAtlas kinds of ship, counts)
+    //   /api/ships?op=classMmsis&classes=ferry,…   → { vessels, mmsis: [...] }  (a tracks filter for those kinds)
+    if (op === 'classes') return send(res, 200, { classes: (await classIndex(q, S)).tally }, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    if (op === 'classMmsis') {
+      const cls = (p.get('classes') || '').split(',').filter((c) => /^[a-z_]{2,40}$/.test(c)).slice(0, 20)
+      if (!cls.length) return send(res, 400, { error: 'classes required' })
+      return send(res, 200, await mmsisOfClasses(q, S, cls), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
     if (op === 'vessel') {
       const v = await getVessel(q, S, p.get('id') || '')
       return v ? send(res, 200, v) : send(res, 404, { error: 'vessel not found' })
@@ -203,10 +215,12 @@ export default async function handler(req, res) {
       }
       const card = await readPortCard(q, S, id, { win, limit: p.get('limit'), offset: p.get('offset') })
       if (!card) return send(res, 404, { error: 'port not found' })
+      // Official name / status (DFO, Transport Canada / Canada Marine Act, USACE port areas): accepted matches only.
+      const official = await portOfficial(q, S, card.port.id)
       const sources = await q(`SELECT id, name, publisher, homepage_url, license, license_url, commercial_use, attribution_text, attribution_url
-                                 FROM ${S}.sources WHERE id = ANY($1)`, [[...PORT_CARD_SOURCE_IDS, ...NAME_SOURCE_IDS]])
+                                 FROM ${S}.sources WHERE id = ANY($1)`, [[...PORT_CARD_SOURCE_IDS, ...NAME_SOURCE_IDS, ...OFFICIAL_SOURCE_IDS]])
       const partial = ['discover', 'stats', 'events', 'portwatch'].some((k) => ['failed', 'budget', 'no_gfw'].includes(fetch[k])) || fetch.status === 'failed'
-      return send(res, 200, { ...card, fetch, sources }, partial ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+      return send(res, 200, { ...card, official, fetch, sources }, partial ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
     //   /api/ships?op=portEmissions&id=<port id> → the Climate TRACE port sources joined to this port (lib/ships/climateTrace.js)
     if (op === 'portEmissions') {

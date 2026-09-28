@@ -6,6 +6,12 @@
 #   zsh scripts/ships/prod.sh migrate            back up prod `ships`, then apply pending migrations (additive)
 #   zsh scripts/ships/prod.sh import-ports       back up, then countries, World Port Index, GFW anchorage names, match
 #   zsh scripts/ships/prod.sh import-anchorages  back up, then official anchorage areas: US (MarineCadastre + eCFR), Canada (DFO), non-designated (82 FR 10313)
+#   zsh scripts/ships/prod.sh import-portwatch   back up, then IMF PortWatch ports (port-card trends)
+#   zsh scripts/ships/prod.sh import-commons     back up, then Wikimedia Commons photos + type categories (args pass through)
+#   zsh scripts/ships/prod.sh import-gfw         back up, then GFW vessel identities (args pass through, e.g. --mmsi-file F --resume)
+#   zsh scripts/ships/prod.sh warm-ports         pre-load Salish port cards (args pass through)
+#   zsh scripts/ships/prod.sh import-ct-ports    back up, then Climate TRACE port sources (port-card Ship emissions)
+#   zsh scripts/ships/prod.sh upload-ct-voyages  upload the baked Climate TRACE voyage packs (ship-card Emissions) to Vercel Blob
 #   zsh scripts/ships/prod.sh upload-salish      upload the baked Salish track tiles to Vercel Blob
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
@@ -75,6 +81,44 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     prod_node scripts/ships/warm-port-cards.mjs "${@:2}"
     ;;
+  import-portwatch)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-portwatch
+    prod_node scripts/ships/import-portwatch.mjs "${@:2}"
+    ;;
+  import-commons)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-commons
+    prod_node scripts/ships/import-commons.mjs --resume "${@:2}"
+    ;;
+  import-gfw)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-gfw
+    prod_node scripts/ships/import-gfw.mjs "${@:2}"
+    ;;
+  import-ct-ports)
+    # Reads the Climate TRACE facility bake (scripts/bake-climatetrace/build/features.geojsonl) QA'd on localhost.
+    need SHIPS_PROD_DATABASE_URL
+    backup import-ct-ports
+    prod_node scripts/ships/import-climatetrace-ports.mjs "${@:2}"
+    ;;
+  upload-ct-voyages)
+    # Packs baked by scripts/ships/bake-ct-voyages/bake.mjs, to the paths src/ships/trackSource.json `ctVoyages` names.
+    need BLOB_READ_WRITE_TOKEN
+    for kind in mmsi imo; do
+      url=$(python3 -c "import json; print(json.load(open('src/ships/trackSource.json'))['ctVoyages']['$kind'])")
+      file=scripts/ships/bake-ct-voyages/build/${url:t}
+      [ -f "$file" ] || { echo "prod.sh: $file not found (run the voyage bake first)" >&2; exit 2 }
+      # Judge the upload by its output and the stored size, not the CLI's exit code (it can exit non-zero after a
+      # successful upload, which under `set -e` ended this loop after the first file, 2026-09-27).
+      out=$(BLOB_READ_WRITE_TOKEN="$(envval BLOB_READ_WRITE_TOKEN)" npx vercel blob put "$file" --access public --pathname "ships/ct-voyages/${url:t}" \
+        --content-type application/octet-stream --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" 2>&1) || true
+      [[ "$out" == *Success!* ]] || { echo "prod.sh: upload of ${url:t} failed:" >&2; echo "$out" | tail -5 >&2; exit 1 }
+      remote=$(curl -sI "$url" | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}')
+      local_size=$(stat -f %z "$file")
+      [ "$remote" = "$local_size" ] && echo "uploaded $url ($local_size bytes, verified)" || echo "prod.sh: $url is $remote bytes on Blob, expected $local_size (CDN may still hold the old copy; re-check in a minute)" >&2
+    done
+    ;;
   pack-table)
     need CRON_SECRET
     node --env-file=.env.local scripts/ships/bake-us/pack-table.mjs
@@ -89,6 +133,6 @@ case "${1:-}" in
     node --env-file=.env.local scripts/ships/bake-us/build/publish-index.mjs --index "$dir"
     ;;
   *)
-    sed -n '2,16p' "$0"; exit 2
+    sed -n '2,22p' "$0"; exit 2
     ;;
 esac

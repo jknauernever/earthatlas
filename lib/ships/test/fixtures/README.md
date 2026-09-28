@@ -93,3 +93,20 @@ All four are **real, recorded live** 2026-09-26 from `GET /v3/events?datasets[0]
 | File | What it is |
 |---|---|
 | `portcard-live-2026-09-27.json` | **Real, recorded live** 2026-09-27: GFW `GET /v3/events?port-ids[0]=usa-anacortes&time-filter-mode=START-DATE` for June 2026 (the first 25 of 180 entries kept; `total`/`nextOffset` as received), `POST /v3/events/stats` for usa-anacortes Jul 2025 – Jun 2026 (verbatim), a `POST /v3/events` geometry response around WPI Anacortes for Aug 2026 (20 of 200 entries kept), 8 IMF PortWatch port features (Salish + the two `TR BOT` ports) and PortWatch `Daily_Ports_Data` for port47 in June 2026 (verbatim). |
+
+## Terminals (lib/ships/terminals.js)
+
+| File | What it is |
+|---|---|
+| `terminals-live-2026-09-27.json` | **Real, recorded live** 2026-09-27/28 by `scripts/ships/import-terminals.mjs --save`, cut down to the 9 terminals listed in its `terminals` field: USACE Docks features (02JT, 0USS, 0U5V, 0U5U), WA Ecology layer-132 features (OBJECTID 1, 2, 11, 13), BC Ports and Terminals WFS features (SOURCE_DATA_ID 215, 258, 260, 261), the 16 Overpass elements behind the Tacoma LNG berth, the GEM coal-terminal map-file row for T1087, and 5 Climate TRACE refinery features from the v5.10.0 bake. Request URLs kept; nothing edited. |
+| `gfw-live-portvisits-salish-terminals-2026.json` | **Real** GFW port-visit events (20), exactly as received and stored in the dev DB (`source_records`, source `gfw-port-visits`), chosen because a stop lies near a listed terminal in 2026-01..06 (Cherry Point tankers, the March Point anchorage between the two Anacortes refineries, Westridge, a Burnaby → Roberts Bank visit, Tacoma LNG). |
+
+`terminals.test.js` / `terminals-db.test.js` also use a few **SYNTHETIC** edits (a renamed Ecology row, a moved OSM element, hand-placed berths for the 1.0 km / 1.5× boundaries, a visit stitched from two real anchorages, a terminal dropped from the list), each marked in the test name.
+
+## Official port names / status (docs/OFFICIAL_PORT_LISTS.md, "Built")
+
+| File | What it is |
+|---|---|
+| `official-ports-live-2026-09-27.json` | **Real, recorded live** 2026-09-27 (UTC 2026-09-28) with the importer's own queries (Salish box -125.5,47,-122,50.5): the three DFO Small Craft Harbours ESRI layer responses **verbatim** (35 + 18 + 4 features); the USACE/BTS Port Areas response with **3 of its 9 features** kept verbatim (Clallam 4707, Everett 4727, Bellingham 4736); the two Transport Canada pages (CPA list, TC-owned ports) as fetched; **verbatim substrings** of the two Justice Laws XML files (the Canada Marine Act `<Schedule>` element; the Public Ports Regulations Schedule 1 heading + limits for Victoria); and 14 World Port Index JSON port objects exactly as downloaded 2026-09-26. |
+
+`officialPorts.test.js` / `officialPorts-db.test.js` mark the cases they build or edit (a same-named port across the border, two same-named ports, a hole / overlapping polygon, an unconfirmed hand row, a port placed at Sooke, an overlapping copy of the Everett area) SYNTHETIC in the test name.

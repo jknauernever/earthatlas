@@ -1,0 +1,2829 @@
+{
+ "about": {
+  "what": "Curated list of Salish Sea marine terminals and facilities that ships service (oil and gas, refineries, fuel/bunkering, coal, chemicals, LNG, grain and other significant industrial bulk terminals). Plan approved by Josh 2026-09-27 (docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md).",
+  "rules": "Facts only. Every berth position cites its source row; every operator name cites the page that states it and the date checked (operator names in the sources are often stale and are never copied). Climate TRACE refinery ids (facility emissions) and ship-port ids (voyage emissions attributed to a port) are separate lists and are never shown as one another.",
+  "licences": "USACE Docks: no use restrictions. WA Ecology: credit + link, no commercial or political use (accepted by Josh 2026-09-27). BC Ports and Terminals: Open Government Licence - British Columbia. GEM: CC BY 4.0. Climate TRACE: CC BY 4.0. OpenStreetMap-derived berth positions are NOT in this file: they are in salish-terminals-osm.json (ODbL 1.0).",
+  "berth_basis": {
+   "usace_dock": "USACE Navigation Facilities dock point (NAV_UNIT_ID)",
+   "ecology_dock": "WA Ecology Class 1/3/4 facility dock point (OBJECTID; FacilityName re-checked on import)",
+   "bc_ports_terminals": "BC Ports and Terminals point (SOURCE_DATA_ID; FACILITY_NAME re-checked on import)"
+  },
+  "built": "2026-09-27 from small Salish-bbox pulls of each source (see docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md, \"Built (dev)\"). Re-import: npm run ships:import-terminals."
+ },
+ "version": "2026-09-27",
+ "terminals": [
+  {
+   "id": "wa-bp-cherry-point",
+   "name": "BP Cherry Point Refinery marine terminal",
+   "kind": "refinery_dock",
+   "country": "US",
+   "operator": "BP (BP Products North America)",
+   "operator_source_url": "https://ecology.wa.gov/regulations-permits/permits-certifications/industrial-facilities-permits/bp-refinery",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://ecology.wa.gov/regulations-permits/permits-certifications/industrial-facilities-permits/bp-refinery",
+   "commodities": [
+    "crude oil",
+    "diesel/marine gas oil",
+    "aviation gasoline",
+    "gasoline",
+    "jet fuel/kerosene",
+    "cat feed/vgo",
+    "edible/vegetable oil",
+    "diesel low sulphur (ulsd)",
+    "naptha"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 1",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-02JT",
+     "name": "BP PRODUCTS NORTH AMERICA INC., CHERRY POINT TERMINAL",
+     "lat": 48.860628,
+     "lon": -122.75829,
+     "basis": "usace_dock",
+     "ref": "02JT",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 1",
+      "km": 0.079
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "02JT"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 1,
+      "name": "BP Cherry Point Refinery"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     1753291
+    ],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE 02JT owner text (\"ARCO Products Co.\") is decades old; operator is hand-maintained.",
+    "The Climate TRACE refinery point is the plant, not the dock.",
+    "Climate TRACE \"Birch Bay,WA\" ship port (48.8532, -122.7296) is not linked: its name is a place, not this terminal."
+   ]
+  },
+  {
+   "id": "wa-p66-ferndale",
+   "name": "Phillips 66 Ferndale Refinery wharf",
+   "kind": "refinery_dock",
+   "country": "US",
+   "operator": "Phillips 66",
+   "operator_source_url": "https://www.phillips66.com/refining/ferndale-refinery/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.phillips66.com/refining/ferndale-refinery/",
+   "commodities": [
+    "bunker oil/hfo",
+    "crude oil",
+    "gasoline",
+    "diesel/marine gas oil",
+    "oily water mixture",
+    "cat feed/vgo",
+    "jet fuel/kerosene"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 11",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0USS",
+     "name": "CONOCO PHILLIPS, FERNDALE REFINERY WHARF",
+     "lat": 48.826111,
+     "lon": -122.71944,
+     "basis": "usace_dock",
+     "ref": "0USS",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 11",
+      "km": 0.056
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0USS"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 11,
+      "name": "Phillips 66 Ferndale Refinery"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     1753325
+    ],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE 0USS owner text (\"Tosco Refining Co.\") is stale."
+   ]
+  },
+  {
+   "id": "wa-marathon-anacortes",
+   "name": "Marathon Anacortes Refinery wharf",
+   "kind": "refinery_dock",
+   "country": "US",
+   "operator": "Marathon Petroleum",
+   "operator_source_url": "https://www.marathonpetroleum.com/Operations/Refining/Anacortes-Refinery/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.marathonpetroleum.com/Operations/Refining/Anacortes-Refinery/",
+   "commodities": [
+    "aviation gasoline",
+    "bunker oil/hfo",
+    "crude oil",
+    "diesel/marine gas oil",
+    "gasoline",
+    "jet fuel/kerosene",
+    "oily water mixture",
+    "cat feed/vgo",
+    "decant oil",
+    "naptha"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 13",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0U5V",
+     "name": "SHELL OIL CO ANACORTES REFINERY WHARF",
+     "lat": 48.508333,
+     "lon": -122.56916,
+     "basis": "usace_dock",
+     "ref": "0U5V",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 13",
+      "km": 0.016
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0U5V"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 13,
+      "name": "Anacortes Refinery"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     1753321
+    ],
+    "ship_port_ids": [
+     1934807,
+     2802583
+    ]
+   },
+   "notes": [
+    "Ecology names this dock \"Anacortes Refinery\". USACE 0U5V at the same spot (0.02 km) is titled \"SHELL OIL CO ANACORTES REFINERY WHARF\": the USACE title is stale/conflicting and is not used as a name.",
+    "Climate TRACE \"Tesoro Refining, Anacortes\" ship port lies between the two Anacortes refinery docks; linked here by its name (Tesoro = the former owner of this refinery).",
+    "Next to the HF Sinclair Puget Sound Refinery dock: stops between the two are often reported as \"one of\"."
+   ]
+  },
+  {
+   "id": "wa-hfs-puget-sound",
+   "name": "HF Sinclair Puget Sound Refinery wharf",
+   "kind": "refinery_dock",
+   "country": "US",
+   "operator": "HF Sinclair",
+   "operator_source_url": "https://www.hfsinclair.com/operations/facilities/us/anacortes-wa/default.aspx",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.hfsinclair.com/operations/facilities/us/anacortes-wa/default.aspx",
+   "commodities": [
+    "crude oil",
+    "aviation gasoline",
+    "bunker oil/hfo",
+    "diesel/marine gas oil",
+    "gasoline",
+    "cat feed/vgo",
+    "nonene"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 2",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0U5U",
+     "name": "HOLLYFRONTIER  PUGET SOUND REFINERY",
+     "lat": 48.509409,
+     "lon": -122.579019,
+     "basis": "usace_dock",
+     "ref": "0U5U"
+    },
+    {
+     "key": "ecology-2",
+     "name": "Puget Sound Refinery",
+     "lat": 48.509445,
+     "lon": -122.576942,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 2"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0U5U"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 2,
+      "name": "Puget Sound Refinery"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     1753312
+    ],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Ecology names this dock \"Puget Sound Refinery\". Climate TRACE calls the plant \"HollyFrontier Anacortes Refinery\"."
+   ]
+  },
+  {
+   "id": "wa-marathon-port-angeles",
+   "name": "Port Angeles marine terminal (Ecology: \"Tesoro Port Angeles Terminal\")",
+   "kind": "bunkering_terminal",
+   "country": "US",
+   "operator": "Marathon Petroleum (filed as Tesoro Petroleum Companies)",
+   "operator_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/TesoroPASE_Sub03_2026APR.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/TesoroPASE_Sub03_2026APR.pdf",
+   "commodities": [
+    "bunker oil/hfo",
+    "diesel/marine gas oil",
+    "decant oil",
+    "cutter stock",
+    "waste oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 14",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UXH",
+     "name": "TESORO PETROLEUM CORPORATION PORT ANGELES",
+     "lat": 48.136252,
+     "lon": -123.46154,
+     "basis": "usace_dock",
+     "ref": "0UXH",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 14",
+      "km": 0.013
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UXH"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 14,
+      "name": "Tesoro Port Angeles Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE purpose: \"Mooring and supplying bunkering barges.\""
+   ]
+  },
+  {
+   "id": "wa-us-oil-tacoma",
+   "name": "U.S. Oil & Refining Tacoma refinery docks",
+   "kind": "refinery_dock",
+   "country": "US",
+   "operator": "Par Pacific (U.S. Oil & Refining Co.)",
+   "operator_source_url": "https://www.parpacific.com/operations/refining-logistics/washington",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.parpacific.com/operations/refining-logistics/washington",
+   "commodities": [
+    "asphalt/creoseote",
+    "bunker oil/hfo",
+    "cat feed/vgo",
+    "crude oil",
+    "diesel/marine gas oil",
+    "gasoline",
+    "jet fuel/kerosene",
+    "cutter stock"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 15",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0T5L",
+     "name": "U.S. Oil & Refining Co., Tacoma Terminal, Dock No. 1.",
+     "lat": 47.266389,
+     "lon": -122.39722,
+     "basis": "usace_dock",
+     "ref": "0T5L",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 15",
+      "km": 0.032
+     }
+    },
+    {
+     "key": "usace-0T5M",
+     "name": "U.S. Oil & Refining Co., Tacoma Terminal, Dock No. 2.",
+     "lat": 47.267778,
+     "lon": -122.39972,
+     "basis": "usace_dock",
+     "ref": "0T5M"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0T5L",
+     "0T5M",
+     "0R9W"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 15,
+      "name": "U.S. Oil & Refining"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     1753359
+    ],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE 0R9W (\"TACOMA TERMINAL DOCKS\") repeats Dock No. 2's position; kept as a reference, not a berth."
+   ]
+  },
+  {
+   "id": "wa-seaport-sound-tacoma",
+   "name": "SeaPort Sound Terminal (Tacoma)",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "TransMontaigne Partners (SeaPort Sound Terminal LLC)",
+   "operator_source_url": "https://www.prnewswire.com/news-releases/transmontaigne-partners-llc-announces-the-acquisition-of-pacific-northwest-assets-301428674.html",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.prnewswire.com/news-releases/transmontaigne-partners-llc-announces-the-acquisition-of-pacific-northwest-assets-301428674.html",
+   "commodities": [
+    "bunker oil/hfo",
+    "diesel/marine gas oil",
+    "cat feed/vgo",
+    "ethanol",
+    "asphalt/creoseote",
+    "crude oil",
+    "biodiesel",
+    "gasoline"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 8",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UF1",
+     "name": "SEAPORT SOUND TERMINAL TACOMA",
+     "lat": 47.276667,
+     "lon": -122.38611,
+     "basis": "usace_dock",
+     "ref": "0UF1"
+    },
+    {
+     "key": "ecology-8",
+     "name": "SeaPort Sound Terminal",
+     "lat": 47.276787,
+     "lon": -122.388664,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 8"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UF1"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 8,
+      "name": "SeaPort Sound Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-nustar-tacoma",
+   "name": "Tacoma marine terminal (Ecology: \"Nustar Energy Tacoma\")",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "NuStar Energy (Shore Terminals LLC), a Sunoco LP subsidiary",
+   "operator_source_url": "https://ecology.commentinput.com/comment/extra?id=pR6sg",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://ecology.commentinput.com/comment/extra?id=pR6sg",
+   "commodities": [
+    "cutter stock",
+    "gasoline",
+    "diesel/marine gas oil",
+    "ethanol",
+    "jet fuel/kerosene",
+    "aviation gasoline"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 7",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UGJ",
+     "name": "NUSTAR ENERGY",
+     "lat": 47.260556,
+     "lon": -122.43583,
+     "basis": "usace_dock",
+     "ref": "0UGJ",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 7",
+      "km": 0.043
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UGJ"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 7,
+      "name": "Nustar Energy Tacoma"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-p66-tacoma",
+   "name": "Phillips 66 Tacoma Terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "Phillips 66",
+   "operator_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/P66TacomaSE_Sub03_2026AUG.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/P66TacomaSE_Sub03_2026AUG.pdf",
+   "commodities": [
+    "diesel/marine gas oil",
+    "gasoline",
+    "ethanol"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 12",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UGH",
+     "name": "CONOCOPHILLIPS PIPELINE CO, TACOMA TERMINAL",
+     "lat": 47.258333,
+     "lon": -122.43416,
+     "basis": "usace_dock",
+     "ref": "0UGH",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 12",
+      "km": 0.02
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UGH"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 12,
+      "name": "Phillips 66 Tacoma Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-puget-lng-tacoma",
+   "name": "Tacoma LNG facility (Puget LNG)",
+   "kind": "lng_terminal",
+   "country": "US",
+   "operator": "Puget Sound Energy / Puget LNG LLC",
+   "operator_source_url": "https://www.portoftacoma.com/puget-sound-energy-lng-facility",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.portoftacoma.com/puget-sound-energy-lng-facility",
+   "commodities": [
+    "liquefied natural gas"
+   ],
+   "commodities_from": {
+    "source": "osm",
+    "ref": "way/687278374",
+    "field": "name"
+   },
+   "berths": [],
+   "osm_berths": [
+    "osm-way1295259138"
+   ],
+   "sources": {
+    "osm": [
+     "way/1295259138",
+     "way/1295259139",
+     "way/1295259141",
+     "way/1295259142",
+     "way/1295259144",
+     "way/1295259145",
+     "way/1295259146",
+     "way/1295259147",
+     "way/1295259148",
+     "way/1295259149",
+     "way/1295259150",
+     "way/1295259151",
+     "way/1295259152",
+     "way/1295259153",
+     "way/1295259154",
+     "way/687278374"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Berth = centre of the untagged OSM pier and dolphin ways ≤0.08 km from the site polygon (ODbL slice)."
+   ]
+  },
+  {
+   "id": "wa-km-harbor-island",
+   "name": "Kinder Morgan Harbor Island terminal (Seattle)",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "Kinder Morgan (Kinder Morgan Liquids Terminals LLC)",
+   "operator_source_url": "https://ecology.wa.gov/events/spills/safe-and-effective-reports/kinder-morgan-harbor-island-terminal",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://ecology.wa.gov/events/spills/safe-and-effective-reports/kinder-morgan-harbor-island-terminal",
+   "commodities": [
+    "aviation gasoline",
+    "bunker oil/hfo",
+    "diesel/marine gas oil",
+    "gasoline",
+    "jet fuel/kerosene"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 19",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "ecology-19",
+     "name": "Kinder Morgan Liquids Terminal - Harbor Island",
+     "lat": 47.589973,
+     "lon": -122.3461,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 19"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UN9"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 19,
+      "name": "Kinder Morgan Liquids Terminal - Harbor Island"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE 0UN9 (SSA Terminal 18, berths 2-6) names Kinder Morgan as an operator; its point is 0.7 km from Ecology's dock point and is kept as a reference only."
+   ]
+  },
+  {
+   "id": "wa-shell-seattle",
+   "name": "Shell Seattle Distribution Terminal (Harbor Island)",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "Shell (Shell Oil Products US)",
+   "operator_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/Shell_08-2021_FINAL_Safe%20and%20Effective%20Determination%20Report.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "unknown",
+   "status_source_url": null,
+   "commodities": [
+    "diesel/marine gas oil",
+    "gasoline",
+    "ethanol",
+    "jet fuel/kerosene",
+    "aviation gasoline"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 3",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "ecology-3",
+     "name": "Shell Seattle Distribution Terminal",
+     "lat": 47.588699,
+     "lon": -122.353119,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 3"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UN7"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 3,
+      "name": "Shell Seattle Distribution Terminal "
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Shares Pier 15 with the Maxum/Rainier facility (Ecology points 0.13 km apart; USACE 0UN7 lists both operators): stops there are reported as \"one of\".",
+    "Newest source found is the Aug 2021 Ecology report; not re-confirmed for 2026."
+   ]
+  },
+  {
+   "id": "wa-maxum-pier15",
+   "name": "Pier 15 fuel facility (Ecology: \"Maxum Petroleum - Pier 15 Facility\")",
+   "kind": "bunkering_terminal",
+   "country": "US",
+   "operator": "Maxum Petroleum (Pilot Thomas Logistics)",
+   "operator_source_url": "https://ecology.wa.gov/events/spills/spill-prevention-plans/maxum-petroleum-pier-15-facility",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://ecology.wa.gov/events/spills/spill-prevention-plans/maxum-petroleum-pier-15-facility",
+   "commodities": [
+    "diesel/marine gas oil",
+    "lube oil/motor oil",
+    "biodiesel"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 4",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "ecology-4",
+     "name": "Maxum Petroleum - Pier 15 Facility",
+     "lat": 47.587528,
+     "lon": -122.353142,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 4"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UN7"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 4,
+      "name": "Maxum Petroleum - Pier 15 Facility"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-seaport-seattle",
+   "name": "SeaPort Seattle Terminal (Harbor Island, Pier 11)",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "TransMontaigne Partners (SeaPort Midstream Partners LLC)",
+   "operator_source_url": "https://www.transmontaignepartners.com/wp-content/uploads/2024/01/Seattle.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.transmontaignepartners.com/wp-content/uploads/2024/01/Seattle.pdf",
+   "commodities": [
+    "diesel/marine gas oil",
+    "gasoline",
+    "ethanol",
+    "biodiesel",
+    "diesel low sulphur (ulsd)",
+    "waste oil",
+    "lube oil/motor oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 93",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UMS",
+     "name": "B P OIL CO., SEATTLE TERMINAL, PIER NO. 11",
+     "lat": 47.5825,
+     "lon": -122.35833,
+     "basis": "usace_dock",
+     "ref": "0UMS",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 93",
+      "km": 0.01
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UMS"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 93,
+      "name": "SeaPort Seattle Terminal (TLP)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE 0UMS title (\"B P OIL CO., SEATTLE TERMINAL, PIER NO. 11\") is stale; Ecology names it \"SeaPort Seattle Terminal (TLP)\"."
+   ]
+  },
+  {
+   "id": "wa-point-wells",
+   "name": "Point Wells terminal (Ecology: \"Alon Asphalt Company\")",
+   "kind": "product_terminal",
+   "country": "US",
+   "operator": "Alon Asphalt Company (Paramount of Washington LLC)",
+   "operator_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/AlonSE_Sub05_2026APR.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "idle",
+   "status_source_url": "https://fortress.wa.gov/ecy/ezshare/sppr/prevention/AlonSE_Sub05_2026APR.pdf",
+   "commodities": [
+    "bunker oil/hfo",
+    "diesel/marine gas oil",
+    "cat feed/vgo",
+    "asphalt/creoseote",
+    "decant oil",
+    "cutter stock",
+    "lube oil/motor oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 18",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UNC",
+     "name": "CHEVRON U.S.A., POINT WELLS TERMINAL WHARF",
+     "lat": 47.781422,
+     "lon": -122.398132,
+     "basis": "usace_dock",
+     "ref": "0UNC",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 18",
+      "km": 0.065
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UNC"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 18,
+      "name": "Alon Asphalt Company"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     45117704,
+     45124581
+    ]
+   },
+   "notes": [
+    "USACE 0UNC title (\"CHEVRON U.S.A., POINT WELLS TERMINAL WHARF\") is stale.",
+    "No marine transfers since June 2020 per local reporting (Shoreline Area News, Jul 2024); restart depends on Town of Woodway permits."
+   ]
+  },
+  {
+   "id": "wa-nbk-manchester",
+   "name": "Naval Base Kitsap Manchester fuel pier",
+   "kind": "military_fuel_pier",
+   "country": "US",
+   "operator": "U.S. Navy (NAVSUP Fleet Logistics Center Puget Sound)",
+   "operator_source_url": "https://www.navy.mil/Press-Office/Press-Releases/display-pressreleases/Article/2251554/manchester-fuel-depot-fuelies-celebrate-75-years/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.navy.mil/Press-Office/Press-Releases/display-pressreleases/Article/2251554/manchester-fuel-depot-fuelies-celebrate-75-years/",
+   "commodities": [
+    "diesel/marine gas oil",
+    "jet fuel/kerosene",
+    "gasoline",
+    "diesel low sulphur (ulsd)",
+    "lube oil/motor oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 17",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-02Y0",
+     "name": "MANCHESTER FUEL ANNEX",
+     "lat": 47.56323,
+     "lon": -122.536389,
+     "basis": "usace_dock",
+     "ref": "02Y0",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 17",
+      "km": 0.014
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "02Y0"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 17,
+      "name": "Naval Base Kitsap Manchester"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-naswi",
+   "name": "Naval Air Station Whidbey Island fuel pier",
+   "kind": "military_fuel_pier",
+   "country": "US",
+   "operator": "U.S. Navy (NAS Whidbey Island)",
+   "operator_source_url": "https://cnrnw.cnic.navy.mil/installations/nas-whidbey-island/",
+   "operator_checked": "2026-09-27",
+   "status": "unknown",
+   "status_source_url": null,
+   "commodities": [
+    "jet fuel/kerosene",
+    "aviation gasoline",
+    "gasoline",
+    "diesel low sulphur (ulsd)"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 16",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "ecology-16",
+     "name": "Naval Air Station Whidbey Island (NASWI)",
+     "lat": 48.284328,
+     "lon": -122.621063,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 16"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "wa-ecology-facilities": [
+     {
+      "objectid": 16,
+      "name": "Naval Air Station Whidbey Island (NASWI)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Which unit runs the fuel pier, and whether it is in use, was not confirmed."
+   ]
+  },
+  {
+   "id": "wa-maxum-fairhaven",
+   "name": "Fairhaven fuel terminal (Ecology: \"Maxum - Fairhaven Terminal\")",
+   "kind": "fuel_dock",
+   "country": "US",
+   "operator": "Maxum Petroleum (Pilot Thomas Logistics)",
+   "operator_source_url": "https://ecology.wa.gov/getattachment/9f5b39ba-216e-401a-a51d-ca22230e979f/COFR-Compliance-Report-8-19-2025.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://ecology.wa.gov/getattachment/9f5b39ba-216e-401a-a51d-ca22230e979f/COFR-Compliance-Report-8-19-2025.pdf",
+   "commodities": [
+    "diesel/marine gas oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 24",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "ecology-24",
+     "name": "Maxum - Fairhaven Terminal",
+     "lat": 48.723213,
+     "lon": -122.514481,
+     "basis": "ecology_dock",
+     "ref": "OBJECTID 24"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "wa-ecology-facilities": [
+     {
+      "objectid": 24,
+      "name": "Maxum - Fairhaven Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-covich-williams",
+   "name": "Covich-Williams fuel dock (Ballard)",
+   "kind": "fuel_dock",
+   "country": "US",
+   "operator": "Covich-Williams Co.",
+   "operator_source_url": "https://www.covichwilliams.com/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.covichwilliams.com/",
+   "commodities": [
+    "diesel/marine gas oil",
+    "lube oil/motor oil",
+    "hydraulic oil"
+   ],
+   "commodities_from": {
+    "source": "wa-ecology-facilities",
+    "ref": "OBJECTID 21",
+    "field": "OilProducts"
+   },
+   "berths": [
+    {
+     "key": "usace-0UM2",
+     "name": "COVICH-WILLIAMS CO., BALLARD MARINE PLANT PIERS",
+     "lat": 47.664167,
+     "lon": -122.38388,
+     "basis": "usace_dock",
+     "ref": "0UM2",
+     "crosscheck": {
+      "source": "wa-ecology-facilities",
+      "ref": "OBJECTID 21",
+      "km": 0.024
+     }
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UM2"
+    ],
+    "wa-ecology-facilities": [
+     {
+      "objectid": 21,
+      "name": "Covich Williams Co Inc"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-anacortes-petcoke",
+   "name": "Port of Anacortes Pier 2 and Curtis Wharf (petroleum coke)",
+   "kind": "dry_bulk_terminal",
+   "country": "US",
+   "operator": "Port of Anacortes (cargo: HF Sinclair Puget Sound Refinery petroleum coke)",
+   "operator_source_url": "https://www.anacortestoday.com/activities-journal/2024/12/18/petcoke-transfer-at-pier-2/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.anacortestoday.com/activities-journal/2024/12/18/petcoke-transfer-at-pier-2/",
+   "commodities": [
+    "petroleum coke",
+    "logs",
+    "general cargo"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0U5R, 0U5P",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0U5R",
+     "name": "PORT OF ANACORTES, PIER NO. 2.",
+     "lat": 48.521944,
+     "lon": -122.6075,
+     "basis": "usace_dock",
+     "ref": "0U5R"
+    },
+    {
+     "key": "usace-0U5P",
+     "name": "ANACORTES MARINE TERMINAL CORP., CURTIS WHARF",
+     "lat": 48.521389,
+     "lon": -122.61444,
+     "basis": "usace_dock",
+     "ref": "0U5P"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0U5R",
+     "0U5P"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "General-purpose port berths; USACE purpose lists petroleum-coke shipment at both. Cap Sante marina is ~0.5 km away, so small-craft stops can show as \"nearby\"."
+   ]
+  },
+  {
+   "id": "wa-t86-grain",
+   "name": "Terminal 86 grain terminal (Seattle)",
+   "kind": "grain_terminal",
+   "country": "US",
+   "operator": "Louis Dreyfus Company (Port of Seattle lessee)",
+   "operator_source_url": "https://www.portseattle.org/page/terminal-86-grain-facility",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.portseattle.org/page/terminal-86-grain-facility",
+   "commodities": [
+    "grain"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0UMV",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0UMV",
+     "name": "LOUIS DREYFUS CORP., TERMINAL 86, GRAIN WHARF",
+     "lat": 47.623333,
+     "lon": -122.37,
+     "basis": "usace_dock",
+     "ref": "0UMV"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UMV"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-temco-tacoma",
+   "name": "TEMCO Tacoma grain elevator",
+   "kind": "grain_terminal",
+   "country": "US",
+   "operator": "TEMCO LLC (CHS and Cargill joint venture)",
+   "operator_source_url": "https://www.ams.usda.gov/sites/default/files/media/PortProfilesTacoma.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.ams.usda.gov/sites/default/files/media/PortProfilesTacoma.pdf",
+   "commodities": [
+    "grain"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0UT9",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0UT9",
+     "name": "TACOMA EXPORT MARKETING CO., TACOMA ELEVATOR WHARF",
+     "lat": 47.266389,
+     "lon": -122.44305,
+     "basis": "usace_dock",
+     "ref": "0UT9"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UT9"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-schnitzer-tacoma",
+   "name": "Tacoma scrap-metal export dock (USACE: \"Schnitzer Steel of Tacoma Wharf\")",
+   "kind": "scrap_metal_terminal",
+   "country": "US",
+   "operator": "Radius Recycling (formerly Schnitzer Steel)",
+   "operator_source_url": "https://www.radiusrecycling.com/locations/40/tacoma-wa",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.radiusrecycling.com/locations/40/tacoma-wa",
+   "commodities": [
+    "scrap metal"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0ZF3",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0ZF3",
+     "name": "SCHNITZER STEEL OF TACOMA WHARF",
+     "lat": 47.268056,
+     "lon": -122.36888,
+     "basis": "usace_dock",
+     "ref": "0ZF3"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0ZF3"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-lafarge-seattle",
+   "name": "Seattle cement plant wharves (USACE: \"Lafarge Corp., Seattle Plant\")",
+   "kind": "cement_terminal",
+   "country": "US",
+   "operator": "Amrize (formerly Lafarge / Holcim North America)",
+   "operator_source_url": "https://www.amrize.com/content/dam/newco/language-masters/en/our-businesses/resources/document-library/epd/Seattle%20Cement_Environmental%20Product%20Declaration_Amrize.pdf",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.amrize.com/content/dam/newco/language-masters/en/our-businesses/resources/document-library/epd/Seattle%20Cement_Environmental%20Product%20Declaration_Amrize.pdf",
+   "commodities": [
+    "cement",
+    "limestone",
+    "shale",
+    "coal",
+    "slag"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0T6H, 0T1S",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0T6H",
+     "name": "Lafarge Corp., Seattle Plant Raw-Materials Wharf.",
+     "lat": 47.553889,
+     "lon": -122.34305,
+     "basis": "usace_dock",
+     "ref": "0T6H"
+    },
+    {
+     "key": "usace-0T1S",
+     "name": "Lafarge Corp., Seattle Plant Cement Wharf.",
+     "lat": 47.555278,
+     "lon": -122.345,
+     "basis": "usace_dock",
+     "ref": "0T1S"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0T6H",
+     "0T1S",
+     "0R69"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-ash-grove-seattle",
+   "name": "Ash Grove Cement Seattle wharf",
+   "kind": "cement_terminal",
+   "country": "US",
+   "operator": "Ash Grove Cement Company (a CRH company)",
+   "operator_source_url": "https://www.cement.org/profile/ash-grove-a-crh-company/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.cement.org/profile/ash-grove-a-crh-company/",
+   "commodities": [
+    "cement"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0UGQ",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0UGQ",
+     "name": "ASH GROVE CEMENT CO.",
+     "lat": 47.568333,
+     "lon": -122.34555,
+     "basis": "usace_dock",
+     "ref": "0UGQ"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UGQ"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "wa-intalco-wharf",
+   "name": "Intalco wharf (Cherry Point)",
+   "kind": "other_bulk_terminal",
+   "country": "US",
+   "operator": "AltaGas / Petrogas Energy (Ferndale LPG terminal; owns the wharf and pier)",
+   "operator_source_url": "https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
+   "commodities": [
+    "liquefied petroleum gas",
+    "alumina"
+   ],
+   "commodities_from": {
+    "source": "usace-docks",
+    "ref": "0UST",
+    "field": "PURPOSE"
+   },
+   "berths": [
+    {
+     "key": "usace-0UST",
+     "name": "INTALCO ALUMINUM CORP., FERNDALE WHARF",
+     "lat": 48.840833,
+     "lon": -122.72083,
+     "basis": "usace_dock",
+     "ref": "0UST"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "usace-docks": [
+     "0UST"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE purpose: \"Receipt and shipment of liquefied petroleum gas; and receipt of alumina.\" The alumina side ended with the Intalco smelter (see the operator note).",
+    "Alumina receipt ended with the Intalco smelter, which is closed and being demolished; the wharf is used for LPG exports."
+   ]
+  },
+  {
+   "id": "bc-westridge",
+   "name": "Westridge Marine Terminal",
+   "kind": "crude_terminal",
+   "country": "CA",
+   "operator": "Trans Mountain Corporation",
+   "operator_source_url": "https://www.transmountain.com/westridge-marine-terminal",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.transmountain.com/westridge-marine-terminal",
+   "commodities": [
+    "crude petroleum",
+    "petroleum products",
+    "jet fuel"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 261",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-261",
+     "name": "Kinder Morgan (Westridge Terminal)",
+     "lat": 49.290971,
+     "lon": -122.949893,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 261",
+     "berths_desc": "Main dock 91.4 m long, 305 m between extreme mooring dolphins, depth 11 m for vessels up to 250 m in length"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 261,
+      "name": "Kinder Morgan (Westridge Terminal)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929322,
+     2787988
+    ]
+   },
+   "notes": [
+    "BC Ports and Terminals still names it \"Kinder Morgan (Westridge Terminal)\"; the operator is hand-maintained."
+   ]
+  },
+  {
+   "id": "bc-shellburn",
+   "name": "Shellburn terminal (Burnaby)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "operator": "Shell Canada Products",
+   "operator_source_url": "https://iaac-aeic.gc.ca/050/evaluations/proj/80510",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://iaac-aeic.gc.ca/050/evaluations/proj/80510",
+   "commodities": [
+    "petroleum products"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 258",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-258",
+     "name": "Shellburn Terminal",
+     "lat": 49.289292,
+     "lon": -122.964037,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 258",
+     "berths_desc": "Outer berth: 122 m length, depth 8.9 m with mooring dolphins"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 258,
+      "name": "Shellburn Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-parkland-burnaby",
+   "name": "Burnaby Refinery marine terminal (BC Ports and Terminals: \"Stanovan Terminal (Chevron Canada)\")",
+   "kind": "refinery_dock",
+   "country": "CA",
+   "operator": "Parkland (a Sunoco LP subsidiary since Oct 31, 2025)",
+   "operator_source_url": "https://coastview.org/2025/05/10/westridge-marine-terminal-burrard-inlet/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://coastview.org/2025/05/10/westridge-marine-terminal-burrard-inlet/",
+   "commodities": [
+    "petroleum products"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 260",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-260",
+     "name": "Stanovan Terminal (Chevron Canada)",
+     "lat": 49.291981,
+     "lon": -123.004176,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 260",
+     "berths_desc": "length 85 m (216 m between mooring buoys), limiting draft 12.5 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 260,
+      "name": "Stanovan Terminal (Chevron Canada)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [
+     3143778
+    ],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "BC Ports and Terminals names the refinery's terminal after its former owner (Chevron, \"Stanovan\").",
+    "The source (May 2025) says Parkland uses the Stanovan Terminal to export refinery products; the Sunoco acquisition closed Oct 31, 2025 (BIV, Nov 3, 2025)."
+   ]
+  },
+  {
+   "id": "bc-suncor-burrard",
+   "name": "Suncor Burrard Products Terminal (BC Ports and Terminals: \"PetroCanada Terminal\")",
+   "kind": "product_terminal",
+   "country": "CA",
+   "operator": "Suncor Energy",
+   "operator_source_url": "https://www.suncor.com/en-ca/what-we-do/refining/terminals",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.suncor.com/en-ca/what-we-do/refining/terminals",
+   "commodities": [
+    "crude petroleum",
+    "petroleum products",
+    "jet fuel"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 262",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-262",
+     "name": "PetroCanada Terminal",
+     "lat": 49.290171,
+     "lon": -122.898231,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 262",
+     "berths_desc": "West: length 43 m, depth 12 m with mooring/breasting dolphin;  East: length 40 m, depth 6 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 262,
+      "name": "PetroCanada Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-ioco",
+   "name": "IOCO terminal (Port Moody)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "operator": "Imperial Oil",
+   "operator_source_url": "https://iaac-aeic.gc.ca/050/evaluations/proj/85722",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://iaac-aeic.gc.ca/050/evaluations/proj/85722",
+   "commodities": [
+    "heavy fuel oil",
+    "intermediate fuel oils",
+    "marine gas oil"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 271",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-271",
+     "name": "Ioco Terminal",
+     "lat": 49.301467,
+     "lon": -122.872362,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 271",
+     "berths_desc": "2 berths for barges and coastal tankers with mooring dolphins up to 35,000 deadweight tonnage; 2 berths without additional equipment, bunker barge loading capacity"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 271,
+      "name": "Ioco Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1977334,
+     2822135
+    ]
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-pct-port-moody",
+   "name": "Pacific Coast Terminals (Port Moody)",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "operator": "Pacific Coast Terminals Co. Ltd.",
+   "operator_source_url": "https://pct.ca/about-us/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://pct.ca/about-us/",
+   "commodities": [
+    "sulphur",
+    "ethylene glycol"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 257",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-257",
+     "name": "Pacific Coast Terminals",
+     "lat": 49.284861,
+     "lon": -122.861865,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 257",
+     "berths_desc": "Berth #1: length 237 m, limiting draft 12.5 m; #2: length 293 m, limiting draft 12 m Panamax capacity"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 257,
+      "name": "Pacific Coast Terminals"
+     }
+    ],
+    "gem-gctt": [
+     "T1407"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929256,
+     2787965
+    ]
+   },
+   "notes": [
+    "GEM lists a retired coal unit here (T1407, 2011-2013)."
+   ]
+  },
+  {
+   "id": "bc-chemtrade-nv",
+   "name": "Chemtrade North Vancouver (BC Ports and Terminals: \"Canexus Chemical\")",
+   "kind": "chemical_terminal",
+   "country": "CA",
+   "operator": "Chemtrade Logistics",
+   "operator_source_url": "https://www.chemtradelogistics.com/news/chemtrade-provides-update-on-north-vancouver-chlor-alkali-facility/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.chemtradelogistics.com/news/chemtrade-provides-update-on-north-vancouver-chlor-alkali-facility/",
+   "commodities": [
+    "chemicals",
+    "salt",
+    "caustic soda",
+    "sodium chlorate"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 264",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-264",
+     "name": "Canexus Chemical",
+     "lat": 49.297397,
+     "lon": -123.014501,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 264",
+     "berths_desc": "length 150 m (plus mooring floats 243 m apart) depth 10.50 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 264,
+      "name": "Canexus Chemical"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-neptune",
+   "name": "Neptune Terminals",
+   "kind": "coal_terminal",
+   "country": "CA",
+   "operator": "Neptune Bulk Terminals (Canada) Ltd.",
+   "operator_source_url": "https://www.neptuneterminals.com/about",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.neptuneterminals.com/about",
+   "commodities": [
+    "steelmaking",
+    "energy coal",
+    "potash",
+    "canola oil",
+    "bulk agri-products",
+    "canola oil",
+    "phosphate rock"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 267",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-267",
+     "name": "Neptune Bulk Terminals",
+     "lat": 49.303556,
+     "lon": -123.052882,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 267",
+     "berths_desc": "Berth #1: length 230 m, depth 15.24 m with floating dolphin; #2: length 230 m, depth 13.7 m with bollards; #3: length 100 m with mooring bollards depth 13 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 267,
+      "name": "Neptune Bulk Terminals"
+     }
+    ],
+    "gem-gctt": [
+     "T1050"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-g3",
+   "name": "G3 Terminal Vancouver",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "G3 Terminal Vancouver LP",
+   "operator_source_url": "https://en.wikipedia.org/wiki/G3_Canada",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://en.wikipedia.org/wiki/G3_Canada",
+   "commodities": [
+    "grain"
+   ],
+   "commodities_from": null,
+   "berths": [],
+   "osm_berths": [
+    "osm-way1184889877"
+   ],
+   "sources": {
+    "osm": [
+     "relation/15823540",
+     "way/1164689697",
+     "way/1184889877",
+     "way/1393239515",
+     "way/1393239516",
+     "way/1393239517",
+     "way/1393239518",
+     "way/1393239519",
+     "way/1393239520",
+     "way/1393239521"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Not in BC Ports and Terminals (opened 2020): berth from OpenStreetMap (ODbL slice)."
+   ]
+  },
+  {
+   "id": "bc-cargill",
+   "name": "Cargill grain terminal (North Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Cargill Limited",
+   "operator_source_url": "https://bcmarineterminals.com/cargill/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://bcmarineterminals.com/cargill/",
+   "commodities": [
+    "wheat",
+    "canola",
+    "barley",
+    "peas",
+    "other grain by-products"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 269",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-269",
+     "name": "Cargill Vancouver Terminal",
+     "lat": 49.305303,
+     "lon": -123.057026,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 269",
+     "berths_desc": "#1: length 228 m + 52 m, depth 15.3 m; #2: length 205 m, depth outshore 12.6 m at LW"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 269,
+      "name": "Cargill Vancouver Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-richardson",
+   "name": "Richardson International terminal (North Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Richardson International",
+   "operator_source_url": "https://www.richardson.ca/places/north-vancouver/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.richardson.ca/places/north-vancouver/",
+   "commodities": [
+    "canadian grain: wheat",
+    "canola",
+    "barley",
+    "barley malt",
+    "rye",
+    "flax",
+    "grain",
+    "feed products"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 268",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-268",
+     "name": "Richardson International Terminal",
+     "lat": 49.3049,
+     "lon": -123.07089,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 268",
+     "berths_desc": "length 108 m, depth 15.24 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 268,
+      "name": "Richardson International Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-viterra-pacific",
+   "name": "Pacific Terminal (BC Ports and Terminals: \"Pacific Elevators\")",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Bunge (formerly Viterra)",
+   "operator_source_url": "https://www.viterra.ca/en/What-We-Do/Port-Terminals",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.viterra.ca/en/What-We-Do/Port-Terminals",
+   "commodities": [
+    "wheat",
+    "barley",
+    "canola",
+    "flax",
+    "feed",
+    "food peas",
+    "malt",
+    "various other bulk manufactured agriforage grades"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 254",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-254",
+     "name": "Pacific Elevators",
+     "lat": 49.287961,
+     "lon": -123.067421,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 254",
+     "berths_desc": "Berth #1: length 185 m, depth 9.6 m, lay berth;  #2: length 215 m, depth 13.7 m, loading berth;  #4: length 305 m, depth 10.2 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 254,
+      "name": "Pacific Elevators"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-alliance-grain",
+   "name": "Alliance Grain Terminal (Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Alliance Grain Terminal Ltd.",
+   "operator_source_url": "https://bcmarineterminals.com/alliance-grain-terminals/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://bcmarineterminals.com/alliance-grain-terminals/",
+   "commodities": [
+    "wheat",
+    "durum",
+    "barley",
+    "canola"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 251",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-251",
+     "name": "Alliance Grain Terminal",
+     "lat": 49.28728,
+     "lon": -123.078576,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 251",
+     "berths_desc": "West: length 213 m, limiting draft 9.8 m; East: length 213 m, limiting draft 12.6 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 251,
+      "name": "Alliance Grain Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-cascadia",
+   "name": "Cascadia Terminal (Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Bunge (Cascadia Port Management Corp.)",
+   "operator_source_url": "https://www.richardson.ca/places/cascadia-terminal/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.richardson.ca/places/cascadia-terminal/",
+   "commodities": [
+    "wheat",
+    "durum",
+    "feed barley",
+    "malting barley",
+    "canola seed",
+    "specialty products"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 259",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-259",
+     "name": "Cascadia Terminal",
+     "lat": 49.291674,
+     "lon": -123.03407,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 259",
+     "berths_desc": "Berth #1: length 274 m, depth 15.2 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 259,
+      "name": "Cascadia Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-vancouver-wharves",
+   "name": "Vancouver Wharves (North Vancouver)",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "operator": "Pembina Pipeline Corporation",
+   "operator_source_url": "https://www.pembina.com/operations/facilities/vancouver-wharves",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.pembina.com/operations/facilities/vancouver-wharves",
+   "commodities": [
+    "inbound",
+    "outbound bulk concentrates",
+    "exports liquids",
+    "sulphur",
+    "fertalizers",
+    "agriproducts"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 272",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-272",
+     "name": "Kinder Morgan (Vancouver Wharves)",
+     "lat": 49.309433,
+     "lon": -123.117837,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 272",
+     "berths_desc": "Berth depths: #1:13.7 m; #2:11.2 m; #3: 11.2 m; #4: 11.6 m; #5: 11.6 m; 5 equipment berths, rail car unloader, crane, dry-bulk systems, breakbulk equipment"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 272,
+      "name": "Kinder Morgan (Vancouver Wharves)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "BC Ports and Terminals still names it \"Kinder Morgan (Vancouver Wharves)\"."
+   ]
+  },
+  {
+   "id": "bc-fibreco",
+   "name": "Fibreco Export (North Vancouver)",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "operator": "Fibreco Export Inc.",
+   "operator_source_url": "https://fibreco.com/about-us/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://fibreco.com/about-us/",
+   "commodities": [
+    "wood chips",
+    "wood pellets in bulk"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 274",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-274",
+     "name": "Fibreco Export Inc",
+     "lat": 49.310903,
+     "lon": -123.105684,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 274",
+     "berths_desc": "length 137 m with mooring dolphins, depth 11.5 m; loading and bulk discharge facility, loading rate 1200 tonnes/hour"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 274,
+      "name": "Fibreco Export Inc"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-westshore",
+   "name": "Westshore Terminals (Roberts Bank)",
+   "kind": "coal_terminal",
+   "country": "CA",
+   "operator": "Westshore Terminals LP",
+   "operator_source_url": "https://www.gem.wiki/Westshore_Terminals",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.gem.wiki/Westshore_Terminals",
+   "commodities": [
+    "coal",
+    "petroleum coke"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 215",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-215",
+     "name": "Westshore Terminals Ltd.",
+     "lat": 49.014417,
+     "lon": -123.156068,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 215",
+     "berths_desc": "#1: length 350 m, depth 22.9 m; #2: length 263 m, depth 19.4 m; rail access and capacity"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 215,
+      "name": "Westshore Terminals Ltd."
+     }
+    ],
+    "gem-gctt": [
+     "T1087"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929323,
+     2787989
+    ]
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-fortis-tilbury-lng",
+   "name": "FortisBC Tilbury LNG",
+   "kind": "lng_terminal",
+   "country": "CA",
+   "operator": "FortisBC",
+   "operator_source_url": "https://www.fortisbc.com/lng/liquefied-natural-gas-(lng)-facilities",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.fortisbc.com/lng/liquefied-natural-gas-(lng)-facilities",
+   "commodities": [
+    "liquefied natural gas"
+   ],
+   "commodities_from": {
+    "source": "osm",
+    "ref": "way/564213651",
+    "field": "industrial=lng"
+   },
+   "berths": [],
+   "osm_berths": [
+    "osm-way91637399"
+   ],
+   "sources": {
+    "osm": [
+     "way/564213651",
+     "way/91637399"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Not in BC Ports and Terminals: position from OpenStreetMap (ODbL slice). Pier way 91637399 carries no operator tag; 0.07 km from the LNG site polygon.",
+    "The Tilbury Marine Jetty (Tilbury Jetty Limited Partnership) was federally approved in Jul 2024 and is not built yet."
+   ]
+  },
+  {
+   "id": "bc-vaffc-marine",
+   "name": "Vancouver Airport Fuel Facilities Corporation marine terminal (Fraser River)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "operator": "Vancouver Airport Fuel Facilities Corporation (VAFFC)",
+   "operator_source_url": "https://vancouverairportfuelfacility.ca/marine-terminal/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://vancouverairportfuelfacility.ca/marine-terminal/",
+   "commodities": [
+    "jet fuel"
+   ],
+   "commodities_from": {
+    "source": "osm",
+    "ref": "way/1445803732",
+    "field": "name"
+   },
+   "berths": [],
+   "osm_berths": [
+    "osm-way1445803762",
+    "osm-way1445803793"
+   ],
+   "sources": {
+    "osm": [
+     "way/1445803732",
+     "way/1445803762",
+     "way/1445803793"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Not in BC Ports and Terminals: berths from OpenStreetMap (ODbL slice)."
+   ]
+  },
+  {
+   "id": "bc-fraser-grain",
+   "name": "Fraser Grain Terminal (Surrey)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "operator": "Fraser Grain Terminal Ltd.",
+   "operator_source_url": "https://grainscanada.gc.ca/en/industry/orders/2025/2025-30.html",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://grainscanada.gc.ca/en/industry/orders/2025/2025-30.html",
+   "commodities": [
+    "grain"
+   ],
+   "commodities_from": null,
+   "berths": [],
+   "osm_berths": [
+    "osm-way1309448439"
+   ],
+   "sources": {
+    "osm": [
+     "way/1309448438",
+     "way/1309448439"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Not in BC Ports and Terminals: berth from OpenStreetMap (ODbL slice)."
+   ]
+  },
+  {
+   "id": "bc-lehigh-delta",
+   "name": "Delta cement plant wharf (BC Ports and Terminals: \"Lehigh Northwest Cement\")",
+   "kind": "cement_terminal",
+   "country": "CA",
+   "operator": "Heidelberg Materials Canada",
+   "operator_source_url": "https://www.heidelbergmaterials.us/home/news/news/2023/08/22/heidelberg-materials-delta-bc-plant-now-producing-100-ecocem-portland-limestone-cement",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.heidelbergmaterials.us/home/news/news/2023/08/22/heidelberg-materials-delta-bc-plant-now-producing-100-ecocem-portland-limestone-cement",
+   "commodities": [
+    "bulk Cement"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 231",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-231",
+     "name": "Lehigh Northwest Cement",
+     "lat": 49.145972,
+     "lon": -123.029018,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 231",
+     "berths_desc": "length 182 m, depth 7.6 m FW"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 231,
+      "name": "Lehigh Northwest Cement"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929170,
+     2791988
+    ]
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-lafarge-richmond",
+   "name": "Richmond cement plant (OSM: \"Lafarge Richmond Cement Plant\")",
+   "kind": "cement_terminal",
+   "country": "CA",
+   "operator": "Amrize Canada (formerly Lafarge Canada)",
+   "operator_source_url": "https://www.cemnet.com/global-cement-report/facility/richmond-cement-plant",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.cemnet.com/global-cement-report/facility/richmond-cement-plant",
+   "commodities": [
+    "cement"
+   ],
+   "commodities_from": null,
+   "berths": [],
+   "osm_berths": [
+    "osm-site"
+   ],
+   "sources": {
+    "osm": [
+     "way/453258520"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929269,
+     2787971
+    ]
+   },
+   "notes": [
+    "Not in BC Ports and Terminals: position from OpenStreetMap (ODbL slice). Berth position is the site's bounding-box centre: low precision."
+   ]
+  },
+  {
+   "id": "bc-squamish-terminals",
+   "name": "Squamish Terminals",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "operator": "Squamish Terminals Ltd. (Western Stevedoring)",
+   "operator_source_url": "https://www.heavyliftpfi.com/business/western-acquires-squamish-terminals/14154.article",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.heavyliftpfi.com/business/western-acquires-squamish-terminals/14154.article",
+   "commodities": [
+    "steel",
+    "lumber",
+    "wood pulp",
+    "general cargo"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 293",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-293",
+     "name": "Squamish Terminals Ltd",
+     "lat": 49.684894,
+     "lon": -123.174055,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 293",
+     "berths_desc": "East Berth: length 137 m, depth 11.7 m; West berth: length 152 m, depth 12 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 293,
+      "name": "Squamish Terminals Ltd"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Climate TRACE \"Squamish\" ship port (49.6893, -123.1567) is the town and is not linked."
+   ]
+  },
+  {
+   "id": "bc-woodfibre-lng",
+   "name": "Woodfibre LNG (Howe Sound)",
+   "kind": "lng_terminal",
+   "country": "CA",
+   "operator": "Woodfibre LNG Ltd.",
+   "operator_source_url": "https://woodfibrelng.ca/news/2026/01/19/woodfibre-lng-moves-another-step-closer-to-completion-with-the-arrival-of-two-massive-modules/",
+   "operator_checked": "2026-09-27",
+   "status": "construction",
+   "status_source_url": "https://woodfibrelng.ca/news/2026/01/19/woodfibre-lng-moves-another-step-closer-to-completion-with-the-arrival-of-two-massive-modules/",
+   "commodities": [
+    "liquefied natural gas"
+   ],
+   "commodities_from": null,
+   "berths": [],
+   "osm_berths": [
+    "osm-way116783075",
+    "osm-way606189634"
+   ],
+   "sources": {
+    "osm": [
+     "way/116783075",
+     "way/606189630",
+     "way/606189634"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929327,
+     2858672
+    ]
+   },
+   "notes": [
+    "Not in BC Ports and Terminals: piers from OpenStreetMap (ODbL slice); they may be the former pulp-mill wharves."
+   ]
+  },
+  {
+   "id": "bc-harmac",
+   "name": "Harmac Pacific pulp mill dock (Nanaimo)",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "operator": "Nanaimo Forest Products Ltd. (Harmac Pacific)",
+   "operator_source_url": "https://harmacpacific.com/about-us/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://harmacpacific.com/about-us/",
+   "commodities": [
+    "softwood pulp"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 224",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-224",
+     "name": "Harmac Pulp Operations",
+     "lat": 49.140276,
+     "lon": -123.856295,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 224",
+     "berths_desc": "length 122 m, width 18 m, depth 10.2 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 224,
+      "name": "Harmac Pulp Operations"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": [
+     1929190,
+     2787939
+    ]
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-lantic",
+   "name": "Lantic sugar refinery terminal (Vancouver)",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "operator": "Lantic Inc. (a Rogers Sugar Inc. company)",
+   "operator_source_url": "https://www.lanticrogers.com/en/about-us/locations/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.lanticrogers.com/en/about-us/locations/",
+   "commodities": [
+    "bulk sugar imports",
+    "also used as a lay berth"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 252",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-252",
+     "name": "Lantic Inc",
+     "lat": 49.287817,
+     "lon": -123.080618,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 252",
+     "berths_desc": "length 130 m, depth 9.1 m at LW"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 252,
+      "name": "Lantic Inc"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-crofton",
+   "name": "Crofton mill wharves (BC Ports and Terminals: \"Stuart Channel Wharfs\")",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "operator": "Domtar (formerly Paper Excellence / Catalyst Paper)",
+   "operator_source_url": "https://www.domtar.com/press_releases/domtar-to-permanently-close-crofton-mill/",
+   "operator_checked": "2026-09-27",
+   "status": "closed",
+   "status_source_url": "https://www.domtar.com/press_releases/domtar-to-permanently-close-crofton-mill/",
+   "commodities": [
+    "forest products - woodpulp",
+    "newsprint",
+    "lumber"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 205",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-205",
+     "name": "Stuart Channel Wharfs",
+     "lat": 48.874187,
+     "lon": -123.642088,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 205",
+     "berths_desc": "Berth #1 (north) length 170 m, depth 12 m; #2: (Central) length 152 m, depth 12.2 m; #3 (south) length 138 m, depth 12 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 205,
+      "name": "Stuart Channel Wharfs"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Domtar announced the Crofton mill's permanent closure on Dec 2, 2025 (operations stopped Dec 15, 2025). Current use of the wharves is not confirmed."
+   ]
+  },
+  {
+   "id": "bc-port-mellon",
+   "name": "Port Mellon pulp mill dock (BC Ports and Terminals: \"Howe Sound Pulp and Paper\")",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "operator": "Domtar (Howe Sound Pulp and Paper)",
+   "operator_source_url": "https://www.domtar.com/press_releases/pr-howe-sound-indefinitely-idled/",
+   "operator_checked": "2026-09-27",
+   "status": "idle",
+   "status_source_url": "https://www.domtar.com/press_releases/pr-howe-sound-indefinitely-idled/",
+   "commodities": [
+    "kraft pulp",
+    "newsprint"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 284",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-284",
+     "name": "Howe Sound Pulp and Paper",
+     "lat": 49.520737,
+     "lon": -123.483824,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 284",
+     "berths_desc": "length 189 m, depth 10.67 m (@ zero tide)"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 284,
+      "name": "Howe Sound Pulp and Paper"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Domtar release of Aug 20, 2026: the Howe Sound mill is indefinitely idled."
+   ]
+  },
+  {
+   "id": "bc-texada-quarry",
+   "name": "Texada Quarrying marine terminal",
+   "kind": "dry_bulk_terminal",
+   "country": "CA",
+   "operator": "Amrize (formerly Lafarge Canada; Texada Quarrying Ltd.)",
+   "operator_source_url": "https://www.rocktoroad.com/amrize-texada-utilizes-innovative-tech-for-b-c-operations/",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.rocktoroad.com/amrize-texada-utilizes-innovative-tech-for-b-c-operations/",
+   "commodities": [
+    "limestone"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 292",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-292",
+     "name": "Texada Quarrying Marine Terminal",
+     "lat": 49.700477,
+     "lon": -124.551513,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 292",
+     "berths_desc": "depth 14.0 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 292,
+      "name": "Texada Quarrying Marine Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-sechelt-aggregates",
+   "name": "Sechelt aggregates terminal (BC Ports and Terminals: \"Construction Aggregates Marine Terminal\")",
+   "kind": "dry_bulk_terminal",
+   "country": "CA",
+   "operator": "Heidelberg Materials (Sechelt Mine)",
+   "operator_source_url": "https://www.heidelbergmaterials.us/products/aggregates/sechelt-mine",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.heidelbergmaterials.us/products/aggregates/sechelt-mine",
+   "commodities": [
+    "construction aggregate"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 280",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-280",
+     "name": "Construction Aggregates Marine Terminal",
+     "lat": 49.467692,
+     "lon": -123.748717,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 280",
+     "berths_desc": "Terminal extends 400 m from shore with traveling shiploader"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 280,
+      "name": "Construction Aggregates Marine Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-duke-point",
+   "name": "Duke Point Deep Sea Terminal (Nanaimo)",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "operator": "DP World Canada (lease from the Nanaimo Port Authority)",
+   "operator_source_url": "https://www.dpworld.com/en/canada/projects/nanaimo",
+   "operator_checked": "2026-09-27",
+   "status": "operating",
+   "status_source_url": "https://www.dpworld.com/en/canada/projects/nanaimo",
+   "commodities": [
+    "forest products",
+    "general cargo",
+    "project cargo"
+   ],
+   "commodities_from": {
+    "source": "bc-ports-terminals",
+    "ref": "SOURCE_DATA_ID 226",
+    "field": "COMMODITIES_HANDLED"
+   },
+   "berths": [
+    {
+     "key": "bcpt-226",
+     "name": "Duke Point Deep Sea Terminal",
+     "lat": 49.148877,
+     "lon": -123.877749,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 226",
+     "berths_desc": "length 170 m, depth 13.5 m"
+    }
+   ],
+   "osm_berths": [],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 226,
+      "name": "Duke Point Deep Sea Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": []
+  }
+ ]
+}

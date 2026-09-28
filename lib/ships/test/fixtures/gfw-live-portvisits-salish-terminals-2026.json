@@ -1,0 +1,1815 @@
+{
+ "about": "REAL GFW port-visit events exactly as received (payloads of source_records, source gfw-port-visits, in the dev DB; fetched by port / ship cards 2026-09-26..28), chosen because their stops lie near listed terminals in 2026-01..06. Dataset public-global-port-visits-events (v4.0 / latest as recorded per row). Nothing edited.",
+ "entries": [
+  {
+   "id": "80d62288e683a1afb5b1f9ac5225affc",
+   "end": "2026-03-14T18:40:00.000Z",
+   "type": "port_visit",
+   "start": "2026-01-09T22:03:37.000Z",
+   "vessel": {
+    "id": "127b78d03-30dd-649a-101c-66012c29e146",
+    "flag": "USA",
+    "name": "HOW SOON IS NOW",
+    "type": "other",
+    "ssvid": "338551124",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "ACAP",
+     "IATTC",
+     "IPHC",
+     "PICES",
+     "IWC"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.5143,
+    "lon": -122.5711
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "f5efee311fe60973490d40cb52524733",
+    "confidence": "4",
+    "durationHrs": 1532.606388888889,
+    "endAnchorage": {
+     "id": "usa-rocheharbor",
+     "lat": 48.603783366387624,
+     "lon": -123.1722135755037,
+     "flag": "USA",
+     "name": "ROCHE  HARBOR",
+     "atDock": true,
+     "anchorageId": "548f635b",
+     "topDestination": "SEATTLE",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51427884238353,
+     "lon": -122.57105400891268,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "5485774d",
+     "topDestination": "ANACORTES WA",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51427884238353,
+     "lon": -122.57105400891268,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "5485774d",
+     "topDestination": "ANACORTES WA",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.57105400891268,
+    48.51427884238353,
+    -123.1722135755037,
+    48.603783366387624
+   ]
+  },
+  {
+   "id": "eabfeb2777aa94252b0404f63c583501",
+   "end": "2026-03-15T00:16:37.000Z",
+   "type": "port_visit",
+   "start": "2026-03-13T14:36:42.000Z",
+   "vessel": {
+    "id": "44c53f1fd-d049-2c8c-c93b-e89bc07b9a54",
+    "flag": "USA",
+    "name": "ISLAND GIRL",
+    "type": "passenger",
+    "ssvid": "368155430",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.4987,
+    "lon": -122.6018
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 1,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "21ae5b6b1170a8c2bc149e17dde06db0",
+    "confidence": "2",
+    "durationHrs": 33.665277777777774,
+    "endAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51021531187064,
+     "lon": -122.59045961177803,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "54857755",
+     "topDestination": "ANACORTES",
+     "distanceFromShoreKm": "1"
+    },
+    "startAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.512518434906504,
+     "lon": -122.6459304991966,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": true,
+     "anchorageId": "548579bd",
+     "topDestination": "CHAM",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.49868871700935,
+     "lon": -122.60176531879044,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": true,
+     "anchorageId": "54857a1d",
+     "topDestination": "BJIN ZHOU",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.6459304991966,
+    48.512518434906504,
+    -122.59045961177803,
+    48.51021531187064
+   ]
+  },
+  {
+   "id": "c036e1b4abebaf36e19689ef890b07d5",
+   "end": "2026-07-28T23:45:49.000Z",
+   "type": "port_visit",
+   "start": "2026-04-01T14:50:09.000Z",
+   "vessel": {
+    "id": "c83a2dfb5-54fd-bc98-12ec-f9cf83d7bd8e",
+    "flag": null,
+    "name": null,
+    "type": "other",
+    "ssvid": "974010323",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IWC",
+     "PICES",
+     "IPHC",
+     "IATTC",
+     "ACAP"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.5143,
+    "lon": -122.5711
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 1,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "75ad99b05761b6578f179456488de9e2",
+    "confidence": "2",
+    "durationHrs": 2840.927777777778,
+    "endAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51427884238353,
+     "lon": -122.57105400891268,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "5485774d",
+     "topDestination": "ANACORTES WA",
+     "distanceFromShoreKm": "1"
+    },
+    "startAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51427884238353,
+     "lon": -122.57105400891268,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "5485774d",
+     "topDestination": "ANACORTES WA",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51427884238353,
+     "lon": -122.57105400891268,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "5485774d",
+     "topDestination": "ANACORTES WA",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.57105400891268,
+    48.51427884238353,
+    -122.57105400891268,
+    48.51427884238353
+   ]
+  },
+  {
+   "id": "184797e70b5b599a13732ef42faa769e",
+   "end": "2026-05-10T23:25:30.000Z",
+   "type": "port_visit",
+   "start": "2026-05-10T15:36:36.000Z",
+   "vessel": {
+    "id": "c7028d6e7-765a-13d0-e1a4-199db4f92d71",
+    "flag": "CAN",
+    "name": "MERCURY IX",
+    "type": "passenger",
+    "ssvid": "316049288",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "IWC",
+     "ACAP",
+     "IPHC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.2967,
+    "lon": -122.9479
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "f8a5b5f34564b4ebfa908534d73cc936",
+    "confidence": "4",
+    "durationHrs": 7.8149999999999995,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29673888690603,
+     "lon": -122.94792488362303,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a1f",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29673888690603,
+     "lon": -122.94792488362303,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a1f",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.94792488362303,
+    49.29673888690603,
+    -122.96880935668025,
+    49.29448507254086
+   ]
+  },
+  {
+   "id": "85c183db8579599811d0a44392fde70b",
+   "end": "2026-05-20T18:35:49.000Z",
+   "type": "port_visit",
+   "start": "2026-05-20T17:32:24.000Z",
+   "vessel": {
+    "id": "2b168e434-474b-2850-1696-82c04ee6b046",
+    "flag": "CAN",
+    "name": "KRAKEN",
+    "type": "other",
+    "ssvid": "316059464",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IWC",
+     "PICES",
+     "IATTC",
+     "ACAP",
+     "IPHC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.3178,
+    "lon": -122.9157
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "2093b4d13b0f01f8360376c7e714cef8",
+    "confidence": "3",
+    "durationHrs": 1.0569444444444445,
+    "endAnchorage": {
+     "id": "can-can-411",
+     "lat": 49.31783050862759,
+     "lon": -122.9156591142138,
+     "flag": "CAN",
+     "name": "CAN-411",
+     "atDock": true,
+     "anchorageId": "54867bcf",
+     "topDestination": "DAO",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29673888690603,
+     "lon": -122.94792488362303,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a1f",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-can-411",
+     "lat": 49.31783050862759,
+     "lon": -122.9156591142138,
+     "flag": "CAN",
+     "name": "CAN-411",
+     "atDock": true,
+     "anchorageId": "54867bcf",
+     "topDestination": "DAO",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.94792488362303,
+    49.29673888690603,
+    -122.9156591142138,
+    49.31783050862759
+   ]
+  },
+  {
+   "id": "2f61586f7b18188eeb1f5ece6561ebe5",
+   "end": "2026-06-14T19:15:48.000Z",
+   "type": "port_visit",
+   "start": "2026-06-03T15:34:25.000Z",
+   "vessel": {
+    "id": "1b5615838-8a56-9afc-6f86-f06cee479dc7",
+    "flag": "CAN",
+    "name": "NEVER QUIT",
+    "type": "fishing",
+    "ssvid": "316023416",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "ACAP",
+     "IATTC",
+     "IWC",
+     "IPHC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.2912,
+    "lon": -122.9498
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "2463b0640da6560aa117a305cf1904c3",
+    "confidence": "2",
+    "durationHrs": 267.6897222222222,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.9497994686214,
+    49.29122286227277,
+    -122.9497994686214,
+    49.29122286227277
+   ]
+  },
+  {
+   "id": "7d58c7a3261798d116520ea2ab5669df",
+   "end": "2026-08-29T19:42:03.000Z",
+   "type": "port_visit",
+   "start": "2026-06-13T18:29:43.000Z",
+   "vessel": {
+    "id": "e15609ab2-2edd-9c62-c71a-8c9d829fda68",
+    "flag": "CAN",
+    "name": null,
+    "type": "NA",
+    "ssvid": "316020870",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IATTC",
+     "IPHC",
+     "PICES",
+     "ACAP",
+     "IWC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.2921,
+    "lon": -123.0037
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 2,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "3a0f4e5d82f525a010a0c4a2b219e968",
+    "confidence": "4",
+    "durationHrs": 1849.2055555555555,
+    "endAnchorage": {
+     "id": "can-robertsbank",
+     "lat": 49.01057117614096,
+     "lon": -123.16775500643837,
+     "flag": "CAN",
+     "name": "ROBERTS BANK",
+     "atDock": true,
+     "anchorageId": "5485e4f7",
+     "topDestination": "ROBERTS BANK",
+     "distanceFromShoreKm": "2"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29212586069846,
+     "lon": -123.00368922913206,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548670bb",
+     "topDestination": "VANCOUVER BC",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29212586069846,
+     "lon": -123.00368922913206,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548670bb",
+     "topDestination": "VANCOUVER BC",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -123.00368922913206,
+    49.29212586069846,
+    -123.16775500643837,
+    49.01057117614096
+   ]
+  },
+  {
+   "id": "1cb5780273d0de12ce060d28a455c6f0",
+   "end": "2026-06-21T06:39:07.000Z",
+   "type": "port_visit",
+   "start": "2026-06-15T03:43:06.000Z",
+   "vessel": {
+    "id": "5735e80f4-4819-83df-69d4-634aeebf4aee",
+    "flag": "CAN",
+    "name": "CCG C26417BC",
+    "type": "other",
+    "ssvid": "316034822",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "ACAP",
+     "IWC",
+     "IPHC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.3317,
+    "lon": -123.2466
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "ffaf9632e2ecca7f01aa0659a06b0a45",
+    "confidence": "3",
+    "durationHrs": 146.9336111111111,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.331657850556994,
+     "lon": -123.24663125041725,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54866db3",
+     "topDestination": "CA VAN",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.331657850556994,
+     "lon": -123.24663125041725,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54866db3",
+     "topDestination": "CA VAN",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -123.24663125041725,
+    49.331657850556994,
+    -122.96880935668025,
+    49.29448507254086
+   ]
+  },
+  {
+   "id": "d8bc440ee7c6e77e4e944597a995d531",
+   "end": "2026-06-19T08:53:03.000Z",
+   "type": "port_visit",
+   "start": "2026-06-17T20:28:12.000Z",
+   "vessel": {
+    "id": "82f3f1f0e-e023-5b58-bfcd-b8e8bb588ec1",
+    "flag": "SGP",
+    "name": "TORM DAVAO",
+    "type": "other",
+    "ssvid": "563315400",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "ACAP",
+     "IWC",
+     "IATTC",
+     "IPHC"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.8628,
+    "lon": -122.7626
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "b1fce78e140b41eab79e53f43913990f",
+    "confidence": "4",
+    "durationHrs": 36.41416666666667,
+    "endAnchorage": {
+     "id": "usa-usa-1065",
+     "lat": 48.80237271066928,
+     "lon": -122.72157649190555,
+     "flag": "USA",
+     "name": null,
+     "atDock": false,
+     "anchorageId": "54859667",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.76262177910448,
+    48.86276645261441,
+    -122.72157649190555,
+    48.80237271066928
+   ]
+  },
+  {
+   "id": "6c8027631299711103a011e006205607",
+   "end": "2026-09-21T05:45:54.000Z",
+   "type": "port_visit",
+   "start": "2026-06-21T02:02:08.000Z",
+   "vessel": {
+    "id": "354ecd9c6-60f7-1139-2f63-06a836b8d09e",
+    "flag": "CAN",
+    "name": "ELIZABETH JANE",
+    "type": "passenger",
+    "ssvid": "316049866",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IPHC",
+     "PICES",
+     "ACAP",
+     "IWC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.3848,
+    "lon": -123.3291
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "2c8157e5ddba04e427524c9dcde9004d",
+    "confidence": "3",
+    "durationHrs": 2211.7294444444447,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-snugcove",
+     "lat": 49.38484892826394,
+     "lon": -123.32914779149284,
+     "flag": "CAN",
+     "name": "SNUG COVE",
+     "atDock": true,
+     "anchorageId": "54866ba5",
+     "topDestination": "GANG",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "can-snugcove",
+     "lat": 49.38484892826394,
+     "lon": -123.32914779149284,
+     "flag": "CAN",
+     "name": "SNUG COVE",
+     "atDock": true,
+     "anchorageId": "54866ba5",
+     "topDestination": "GANG",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -123.32914779149284,
+    49.38484892826394,
+    -122.96880935668025,
+    49.29448507254086
+   ]
+  },
+  {
+   "id": "d6f2e48d778fccec2cca9438b6182b9e",
+   "end": "2026-07-03T15:10:34.000Z",
+   "type": "port_visit",
+   "start": "2026-06-21T14:41:15.000Z",
+   "vessel": {
+    "id": "767a7d78e-e1ba-b4ab-bec5-1f2d8d23adca",
+    "flag": "USA",
+    "name": "LIGHTLY SALTED",
+    "type": "passenger",
+    "ssvid": "367041050",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 47.3312,
+    "lon": -122.5797
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "d5a9148a214e4742904b9608282fe3a9",
+    "confidence": "4",
+    "durationHrs": 288.4886111111111,
+    "endAnchorage": {
+     "id": "usa-tacoma",
+     "lat": 47.28004459515033,
+     "lon": -122.40051041819696,
+     "flag": "USA",
+     "name": "TACOMA",
+     "atDock": true,
+     "anchorageId": "549055d7",
+     "topDestination": "JIA",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-gigharbor",
+     "lat": 47.33123983589039,
+     "lon": -122.57970522930287,
+     "flag": "USA",
+     "name": "GIG HARBOR",
+     "atDock": true,
+     "anchorageId": "549052c3",
+     "topDestination": "BOSTON VV",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-gigharbor",
+     "lat": 47.33123983589039,
+     "lon": -122.57970522930287,
+     "flag": "USA",
+     "name": "GIG HARBOR",
+     "atDock": true,
+     "anchorageId": "549052c3",
+     "topDestination": "BOSTON VV",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.57970522930287,
+    47.33123983589039,
+    -122.40051041819696,
+    47.28004459515033
+   ]
+  },
+  {
+   "id": "53e38822be2be9735a10b75c32953cbe",
+   "end": "2026-06-22T21:31:17.000Z",
+   "type": "port_visit",
+   "start": "2026-06-21T18:37:29.000Z",
+   "vessel": {
+    "id": "28281875f-f5d8-a7fa-165c-1ecc47037bfb",
+    "flag": "USA",
+    "name": "TODD E PROPHET",
+    "type": "other",
+    "ssvid": "368013040",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "ACAP",
+     "IPHC",
+     "IWC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.8604,
+    "lon": -122.758
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "71694c559ecc2eeb74939cd07f128306",
+    "confidence": "4",
+    "durationHrs": 26.89666666666667,
+    "endAnchorage": {
+     "id": "usa-usa-1065",
+     "lat": 48.80237271066928,
+     "lon": -122.72157649190555,
+     "flag": "USA",
+     "name": null,
+     "atDock": false,
+     "anchorageId": "54859667",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86042533563068,
+     "lon": -122.75800268141256,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859577",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86042533563068,
+     "lon": -122.75800268141256,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859577",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.75800268141256,
+    48.86042533563068,
+    -122.72157649190555,
+    48.80237271066928
+   ]
+  },
+  {
+   "id": "e3a2cffc750dcf0491873e1c7c976121",
+   "end": "2026-07-05T20:23:16.000Z",
+   "type": "port_visit",
+   "start": "2026-06-22T03:13:00.000Z",
+   "vessel": {
+    "id": "e54ce35b4-477a-5c77-c0db-10692e49e223",
+    "flag": "USA",
+    "name": null,
+    "type": "passenger",
+    "ssvid": "368252751",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 47.28,
+    "lon": -122.4005
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 1,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "a38eee98ad3386f4c662b2ae1912ef49",
+    "confidence": "4",
+    "durationHrs": 329.1711111111111,
+    "endAnchorage": {
+     "id": "usa-quartermaster",
+     "lat": 47.39866464898524,
+     "lon": -122.45166505282941,
+     "flag": "USA",
+     "name": "QUARTERMASTER",
+     "atDock": true,
+     "anchorageId": "54905027",
+     "topDestination": "AO OFF",
+     "distanceFromShoreKm": "1"
+    },
+    "startAnchorage": {
+     "id": "usa-tacoma",
+     "lat": 47.28004459515033,
+     "lon": -122.40051041819696,
+     "flag": "USA",
+     "name": "TACOMA",
+     "atDock": true,
+     "anchorageId": "549055d7",
+     "topDestination": "JIA",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-tacoma",
+     "lat": 47.28004459515033,
+     "lon": -122.40051041819696,
+     "flag": "USA",
+     "name": "TACOMA",
+     "atDock": true,
+     "anchorageId": "549055d7",
+     "topDestination": "JIA",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.40051041819696,
+    47.28004459515033,
+    -122.45166505282941,
+    47.39866464898524
+   ]
+  },
+  {
+   "id": "330c48bd1ebb08017a4f1d6be707e12f",
+   "end": "2026-06-29T11:18:26.000Z",
+   "type": "port_visit",
+   "start": "2026-06-23T21:00:32.000Z",
+   "vessel": {
+    "id": "a8cc0f2ce-e5f8-9adc-9e6c-489816ba487c",
+    "flag": null,
+    "name": null,
+    "type": "NA",
+    "ssvid": "294006148",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IPHC",
+     "PICES",
+     "ACAP",
+     "IWC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.2912,
+    "lon": -122.9498
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "27e0f39698cb38d46a7041f8afafbf4c",
+    "confidence": "3",
+    "durationHrs": 134.29833333333335,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.295891330593605,
+     "lon": -123.0663502794239,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867101",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.9497994686214,
+    49.29122286227277,
+    -123.0663502794239,
+    49.295891330593605
+   ]
+  },
+  {
+   "id": "f5d1e50ad0b8a3050c349a69e6924f7f",
+   "end": "2026-06-25T19:42:38.000Z",
+   "type": "port_visit",
+   "start": "2026-06-24T06:54:57.000Z",
+   "vessel": {
+    "id": "f8aad321e-e625-e3ac-81b2-fc8c346d595b",
+    "flag": "USA",
+    "name": "DUBLIN SEA",
+    "type": "other",
+    "ssvid": "338616000",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IWC",
+     "IATTC",
+     "ACAP",
+     "IPHC",
+     "PICES"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.8628,
+    "lon": -122.7626
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 1,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "1845d871fb7d50fe559bba612dfb8617",
+    "confidence": "4",
+    "durationHrs": 36.79472222222222,
+    "endAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    },
+    "startAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.76262177910448,
+    48.86276645261441,
+    -122.76262177910448,
+    48.86276645261441
+   ]
+  },
+  {
+   "id": "4a2c282ceff7e7637f9b8a5c19858441",
+   "end": "2026-06-29T12:41:39.000Z",
+   "type": "port_visit",
+   "start": "2026-06-25T15:09:28.000Z",
+   "vessel": {
+    "id": "41e9b6945-516c-2323-e0c9-47f7ed0b2cce",
+    "flag": null,
+    "name": null,
+    "type": "other",
+    "ssvid": "294497624",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "PICES",
+     "IWC",
+     "ACAP",
+     "IPHC",
+     "IATTC"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.3117,
+    "lon": -123.1248
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "b3db7534e6c1795e1721ef078d73d68c",
+    "confidence": "3",
+    "durationHrs": 93.5363888888889,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29122286227277,
+     "lon": -122.94979946862139,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548679f7",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.31173736981193,
+     "lon": -123.1247623496264,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548671e9",
+     "topDestination": "CA VAN",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.31173736981193,
+     "lon": -123.1247623496264,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": true,
+     "anchorageId": "548671e9",
+     "topDestination": "CA VAN",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -123.1247623496264,
+    49.31173736981193,
+    -122.9497994686214,
+    49.29122286227277
+   ]
+  },
+  {
+   "id": "dd6fe80f4e85ac004e0af0d2501c6d41",
+   "end": "2026-07-05T23:19:50.000Z",
+   "type": "port_visit",
+   "start": "2026-06-25T23:51:14.000Z",
+   "vessel": {
+    "id": "71e968938-8b0a-1870-4ece-b5ffb05fff99",
+    "flag": "USA",
+    "name": "CONSTANCE",
+    "type": "passenger",
+    "ssvid": "367683730",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "ACAP",
+     "IWC",
+     "IATTC",
+     "PICES",
+     "IPHC"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.5102,
+    "lon": -122.5905
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "901d37ae62b329741c2a9f8bada8db92",
+    "confidence": "2",
+    "durationHrs": 239.47666666666666,
+    "endAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.5027037465652,
+     "lon": -122.60464949498534,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": true,
+     "anchorageId": "548579f7",
+     "topDestination": "BDOKP B000",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.5027037465652,
+     "lon": -122.60464949498534,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": true,
+     "anchorageId": "548579f7",
+     "topDestination": "BDOKP B000",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-anacortes",
+     "lat": 48.51021531187064,
+     "lon": -122.59045961177803,
+     "flag": "USA",
+     "name": "ANACORTES",
+     "atDock": false,
+     "anchorageId": "54857755",
+     "topDestination": "ANACORTES",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.60464949498534,
+    48.5027037465652,
+    -122.60464949498534,
+    48.5027037465652
+   ]
+  },
+  {
+   "id": "b22fbfcfda0609c41d49b2a6ef1db5d1",
+   "end": "2026-07-04T15:38:10.000Z",
+   "type": "port_visit",
+   "start": "2026-06-27T18:25:12.000Z",
+   "vessel": {
+    "id": "da6310455-50f3-6eb8-b503-b0674592d1a7",
+    "flag": "CAN",
+    "name": "MACH 3",
+    "type": "cargo",
+    "ssvid": "316001697",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.1245,
+    "lon": -123.191
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 2,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "90e117dcd5520737f3dec8917c193bb0",
+    "confidence": "4",
+    "durationHrs": 165.2161111111111,
+    "endAnchorage": {
+     "id": "can-robertsbank",
+     "lat": 49.01057117614096,
+     "lon": -123.16775500643837,
+     "flag": "CAN",
+     "name": "ROBERTS BANK",
+     "atDock": true,
+     "anchorageId": "5485e4f7",
+     "topDestination": "ROBERTS BANK",
+     "distanceFromShoreKm": "2"
+    },
+    "startAnchorage": {
+     "id": "can-steveston",
+     "lat": 49.1244783836925,
+     "lon": -123.19099694718592,
+     "flag": "CAN",
+     "name": "STEVESTON",
+     "atDock": true,
+     "anchorageId": "54860a75",
+     "topDestination": "CPL",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "can-steveston",
+     "lat": 49.1244783836925,
+     "lon": -123.19099694718592,
+     "flag": "CAN",
+     "name": "STEVESTON",
+     "atDock": true,
+     "anchorageId": "54860a75",
+     "topDestination": "CPL",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -123.19099694718592,
+    49.1244783836925,
+    -123.16775500643837,
+    49.01057117614096
+   ]
+  },
+  {
+   "id": "875b2cf1a65a369ef4ef258a421b4240",
+   "end": "2026-06-29T03:22:41.000Z",
+   "type": "port_visit",
+   "start": "2026-06-28T23:22:41.000Z",
+   "vessel": {
+    "id": "c9954fb01-1214-6614-80c8-1545b37bc5ed",
+    "flag": null,
+    "name": null,
+    "type": "other",
+    "ssvid": "294825463",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8493"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IATTC",
+     "ACAP",
+     "IWC",
+     "IPHC",
+     "PICES"
+    ],
+    "eez12Nm": [],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 49.2945,
+    "lon": -122.9688
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 0
+   },
+   "port_visit": {
+    "visitId": "d27298e689a6e5e1f84d1d9220e178ab",
+    "confidence": "3",
+    "durationHrs": 4,
+    "endAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    },
+    "intermediateAnchorage": {
+     "id": "can-vancouver",
+     "lat": 49.29448507254086,
+     "lon": -122.96880935668025,
+     "flag": "CAN",
+     "name": "VANCOUVER",
+     "atDock": false,
+     "anchorageId": "54867a05",
+     "topDestination": "VANCOUVER",
+     "distanceFromShoreKm": "0"
+    }
+   },
+   "boundingBox": [
+    -122.96880935668025,
+    49.29448507254086,
+    -122.96880935668025,
+    49.29448507254086
+   ]
+  },
+  {
+   "id": "fe612d6a463f5a11c2893a79b2ee63ee",
+   "end": "2026-06-30T10:47:11.000Z",
+   "type": "port_visit",
+   "start": "2026-06-29T22:55:36.000Z",
+   "vessel": {
+    "id": "46a9a356a-ac18-9170-f9ce-efc70753a526",
+    "flag": "MHL",
+    "name": "DION",
+    "type": "other",
+    "ssvid": "538011985",
+    "nextPort": null
+   },
+   "regions": {
+    "eez": [
+     "8456"
+    ],
+    "fao": [
+     "67"
+    ],
+    "mpa": [],
+    "rfmo": [
+     "IWC",
+     "PICES",
+     "IPHC",
+     "ACAP",
+     "IATTC"
+    ],
+    "eez12Nm": [
+     "8456"
+    ],
+    "highSeas": [],
+    "majorFao": [
+     "67"
+    ],
+    "mpaNoTake": [],
+    "mpaNoTakePartial": []
+   },
+   "position": {
+    "lat": 48.8628,
+    "lon": -122.7626
+   },
+   "distances": {
+    "endDistanceFromPortKm": 0,
+    "endDistanceFromShoreKm": 0,
+    "startDistanceFromPortKm": 0,
+    "startDistanceFromShoreKm": 1
+   },
+   "port_visit": {
+    "visitId": "69c799a32d3d9388df7d47f1259768fa",
+    "confidence": "4",
+    "durationHrs": 11.859722222222222,
+    "endAnchorage": {
+     "id": "usa-usa-1065",
+     "lat": 48.80237271066928,
+     "lon": -122.72157649190555,
+     "flag": "USA",
+     "name": null,
+     "atDock": false,
+     "anchorageId": "54859667",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "0"
+    },
+    "startAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    },
+    "intermediateAnchorage": {
+     "id": "usa-cherrypoint",
+     "lat": 48.86276645261441,
+     "lon": -122.76262177910448,
+     "flag": "USA",
+     "name": "CHERRY POINT",
+     "atDock": true,
+     "anchorageId": "54859571",
+     "topDestination": "CHERRY POINT",
+     "distanceFromShoreKm": "1"
+    }
+   },
+   "boundingBox": [
+    -122.76262177910448,
+    48.86276645261441,
+    -122.72157649190555,
+    48.80237271066928
+   ]
+  }
+ ]
+}

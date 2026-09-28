@@ -92,6 +92,8 @@ const trkLine = (ym) => `shiptrk-${ym}-line`
 const SALISH_Z = 9
 // With exact kinds picked, the Salish detail tiles (per-ship lines from z5, bake-ais) take over this early.
 const KIND_HANDOVER_Z = 5
+// Ship tracks open on tankers (Josh 2026-09-28).
+const DEFAULT_TRACK_KINDS = ['tanker']
 
 // Mapbox 3.24's removeSource() also refreshes terrain, which reads terrain properties that only
 // exist after a frame has rendered. In a background tab (no frames) that throws and took the page
@@ -315,7 +317,7 @@ const Icon = ({ svg, size = 19 }) => (
 
 //   v   picked vessel (EarthAtlas uuid)     q  ship search text      k  kinds (comma list)
 //   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
-//   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
+//   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list; default tanker, 'all' = every kind)
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded      pk  port card tab: 'ships' | 'emissions' | 'trade' (default traffic)
 //   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
@@ -483,7 +485,9 @@ export default function ShipsApp() {
     if (ib - ia + 1 > TRACK_MONTH_CAP) ia = ib - TRACK_MONTH_CAP + 1
     setTrackSel([allTrackMonths[ia], allTrackMonths[ib]])
   }, [allTrackMonths])
-  const [trackKinds, setTrackKinds] = useState(() => (initial.tk ? initial.tk.split(',').filter(Boolean) : []))
+  // Opens on tankers (Josh 2026-09-28); tk=all = every kind, tk=a,b = those.
+  const [trackKinds, setTrackKinds] = useState(() => (initial.tk == null ? DEFAULT_TRACK_KINDS
+    : initial.tk === 'all' ? [] : initial.tk.split(',').filter(Boolean)))
   // Sub-kinds (Josh 2026-09-27): EarthAtlas's own classification (registries, Commons, Coast Guard sub-types), e.g.
   // oil tanker / ferry / trawler. Picking any filters the tracks to those ships' MMSIs (api op=classMmsis).
   const [trackClasses, setTrackClasses] = useState(() => (initial.tc ? initial.tc.split(',').filter(Boolean) : []))
@@ -1043,7 +1047,8 @@ export default function ShipsApp() {
       const [a, b] = trackSel
       sp.set('tm', a === b ? a : `${a}_${b}`)
     }
-    if (trackKinds.length) sp.set('tk', trackKinds.join(','))
+    if (!trackKinds.length) sp.set('tk', 'all')
+    else if (trackKinds.join(',') !== DEFAULT_TRACK_KINDS.join(',')) sp.set('tk', trackKinds.join(','))
     if (trackClasses.length) sp.set('tc', trackClasses.join(','))
     if (vesselId) sp.set('v', vesselId)
     if (vesselId && cardTab !== 'overview') sp.set('ct', cardTab)

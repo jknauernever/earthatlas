@@ -298,7 +298,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   id  '0' = Ship identity layer off       tr '0' = tracks off      bm basemap    lat,lng,z camera
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list)
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
-//   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded
+//   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded      pk  port card tab: 'ships' | 'emissions' | 'trade' (default traffic)
 //   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'emissions' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
@@ -307,7 +307,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'),
+    dk: sp.get('dk'), mp: sp.get('mp'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -368,6 +368,7 @@ export default function ShipsApp() {
   const [portId, setPortId] = useState(/^\d{1,12}$/.test(initial.pc || '') ? initial.pc : null)
   const [portMonth, setPortMonth] = useState(/^\d{4}-\d{2}$/.test(initial.pm || '') ? initial.pm : null)
   const [portFolded, setPortFolded] = useState(initial.pf === '1')
+  const [portTab, setPortTab] = useState(initial.pk || 'traffic') // port card tab (Option A)
   const [backToPort, setBackToPort] = useState(null) // { id, name } when a ship was opened from a port card
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
@@ -923,7 +924,7 @@ export default function ShipsApp() {
     if (mpaOn) sp.set('mp', '1')
     if (vesselId && !ownAllYears) sp.set('oy', 'm')
     if (!portsOn) sp.set('pt', '0')
-    if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1') }
+    if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1'); if (portTab !== 'traffic') sp.set('pk', portTab) }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
       const [a, b] = trackSel
       sp.set('tm', a === b ? a : `${a}_${b}`)
@@ -939,7 +940,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, trackSel, trackKinds, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -1019,7 +1020,8 @@ export default function ShipsApp() {
       {portId && !vesselId && trackMonths.length > 0 && (
         <div className={styles.portWrap}>
           <PortCard portId={portId} months={trackMonths} month={portMonth} onMonth={setPortMonth} folded={portFolded} onFold={setPortFolded}
-            onClose={() => { setPortId(null); setPortMonth(null); setPortFolded(false) }}
+            tab={portTab} onTab={setPortTab}
+            onClose={() => { setPortId(null); setPortMonth(null); setPortFolded(false); setPortTab('traffic') }}
             onOpenPort={(id) => { setPortId(id); setPortMonth(null) }}
             onSelectVessel={(id) => {
               const name = document.querySelector('[aria-label="Port card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'port'

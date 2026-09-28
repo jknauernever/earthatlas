@@ -530,3 +530,11 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .pcGasList { display: grid; gap: 2px; margin: 6px 0 4px; font-size: 11.5px; }
 .pcGasRow { display: flex; justify-content: space-between; gap: 10px; color: rgba(255, 255, 255, 0.78); }
 .pcGasRow span:last-child { white-space: nowrap; color: #fff; }
+
+/* Port card, Option A: headline numbers for the picked months, then tabs (PortCard.jsx). */
+.pcKpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0 4px; }
+.pcKpi { background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 6px 8px; display: grid; gap: 1px; }
+.pcKpi span { font-size: 10.5px; color: rgba(255, 255, 255, 0.55); }
+.pcKpi strong { font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; }
+.pcWindow { font-size: 10.5px; color: rgba(255, 255, 255, 0.5); margin-bottom: 6px; }
+.pcAbout { margin-top: 8px; }

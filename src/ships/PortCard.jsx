@@ -12,7 +12,7 @@ import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
 import { Loading, LoadingInline } from '../components/panel'
-import PortEmissions from './PortEmissions.jsx'
+import PortEmissions, { usePortEmissions, shortTonnes } from './PortEmissions.jsx'
 
 export const PORT_HUE = '#fb923c'
 const IMPORT_HUE = '#3b82f6' // validated pair on the dark card (dataviz validator, 2026-09-27)
@@ -136,7 +136,20 @@ function ShipRow({ s, onSelectVessel }) {
   )
 }
 
-export default function PortCard({ portId, months, month, onMonth, onClose, onSelectVessel, onOpenPort, folded, onFold }) {
+/** A tab's notes and caveats, closed by default (the panel standard's "i" text, in card form). */
+function About({ children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={styles.pcAbout}>
+      <button type="button" className={styles.recordToggle} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        About this data <Chevron up={open} size={13} />
+      </button>
+      {open && <div className={styles.legendNoteText}>{children}</div>}
+    </div>
+  )
+}
+
+export default function PortCard({ portId, months, month, onMonth, onClose, onSelectVessel, onOpenPort, folded, onFold, tab: tabProp, onTab }) {
   const [data, setData] = useState(null)
   const [list, setList] = useState([])
   const [err, setErr] = useState(null)
@@ -166,6 +179,11 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
   const pname = p ? (p.name_source_id === 'nga-wpi' ? p.name : titleCase(p.name || '')) : null
   const f = data?.fetch || {}
   const gfwTrouble = ['failed', 'budget', 'no_gfw'].some((k) => [f.stats, f.events, f.discover].includes(k))
+  const em = usePortEmissions(portId, data?.window?.months || months)
+  // Tabs this port has data for; a tab from the URL that doesn't apply falls back to Traffic.
+  const tabs = [['traffic', 'Traffic'], ...(data?.labels?.length ? [['ships', 'Ships']] : []), ['emissions', 'Emissions'],
+    ...(data?.portwatch?.join === 'joined' && data.portwatch.series?.dates?.length ? [['trade', 'Trade']] : [])]
+  const tab = tabs.some(([id]) => id === tabProp) ? tabProp : 'traffic'
 
   return (
     <div className={`${pick.card} ${folded ? pick.cardFolded : ''}`} role="dialog" aria-label="Port card">
@@ -202,34 +220,53 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
           )}
         </div>
 
+        {/* Option A (Josh 2026-09-27): headline numbers for the picked months, then one topic per tab. */}
+        <div className={styles.pcKpis}>
+          <div className={styles.pcKpi}><span>Arrivals</span><strong>{data.stats ? fmtN(data.stats.numEvents) : '—'}</strong></div>
+          <div className={styles.pcKpi}><span>Ships</span><strong>{data.stats ? fmtN(data.stats.numVessels) : '—'}</strong></div>
+          <div className={styles.pcKpi} title="Ships’ voyage emissions attributed to this port by Climate TRACE (tonnes CO₂e)">
+            <span>Ship CO₂e</span><strong>{em.state === 'loading' ? '…' : em.state === 'ok' && em.reported ? shortTonnes(em.total) : '—'}</strong></div>
+        </div>
+        <div className={styles.pcWindow}>{monthName(data.window.months[0])} – {monthName(data.window.months[data.window.months.length - 1])} · the months picked on the map</div>
+
         {!folded && <>
-          {/* Arrivals per month (GFW) */}
-          <div className={styles.section}>
-            <div className={styles.sectionHead}>Ship arrivals · {monthName(data.window.months[0])} – {monthName(data.window.months[data.window.months.length - 1])}</div>
-            {data.stats ? <>
-              <div className={styles.portSummary}>
-                <strong>{plural(data.stats.numEvents, 'arrival')}</strong> by {plural(data.stats.numVessels, 'ship')}{' '}
-                <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(data.stats.recordId)} target="_blank" rel="noopener noreferrer"
-                  title="Global Fishing Watch /v3/events/stats for this port's labels, visits by start month, exactly as received — click for the raw record">GFW</a>
-              </div>
-              <MonthBars months={data.stats.months} month={data.ships.month} onMonth={onMonth} />
-            </> : (
-              <div className={styles.legendNoteText}>
-                {!data.labels.length
-                  ? <>Global Fishing Watch has no port of its own matched to this {p.origin === 'wpi' ? 'World Port Index port' : 'port'}{data.discovered ? ` (checked visits within 4 km in ${monthName(data.discovered.month, 'long')})` : ''}.
-                      {data.nearby.length > 0 && <> Ships stopping within 4 km are counted at {data.nearby.map((n, i) => <span key={n.label}>{i > 0 && ', '}<button type="button" className={styles.inlineLink} onClick={() => onOpenPort?.(String(n.port_id))}
-                        title={`Open the card of the port Global Fishing Watch label ${n.label} is matched to`}>{n.origin === 'wpi' ? n.name : titleCase(n.name || n.label)}</button></span>)}.</>}</>
-                  : gfwTrouble ? 'Couldn’t reach Global Fishing Watch right now.' : 'No arrival totals yet.'}
-              </div>
-            )}
+          <div className={pick.tabs} role="tablist">
+            {tabs.map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={tab === id}
+                className={`${pick.tab} ${tab === id ? pick.tabOn : ''}`} onClick={() => onTab(id)}>{label}</button>
+            ))}
           </div>
 
-          {/* Ship emissions (Climate TRACE), a summary like arrivals, so above the long ship list */}
-          <PortEmissions portId={portId} months={data.window.months} month={data.ships.month} onMonth={onMonth} />
-
-          {/* Ships that called (GFW events, stored) */}
-          {data.labels.length > 0 && (
+          {tab === 'traffic' && (
             <div className={styles.section}>
+            {data.stats ? <>
+                <div className={styles.portSummary}>
+                  <strong>{plural(data.stats.numEvents, 'arrival')}</strong> by {plural(data.stats.numVessels, 'ship')}{' '}
+                  <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(data.stats.recordId)} target="_blank" rel="noopener noreferrer"
+                    title="Global Fishing Watch /v3/events/stats for this port's labels, visits by start month, exactly as received — click for the raw record">GFW</a>
+                </div>
+                <MonthBars months={data.stats.months} month={data.ships.month} listed={false}
+                  onMonth={(m) => { onMonth(m); if (data.labels.length) onTab('ships') }} label="Arrivals per month; pick a month to see its ships" />
+              </> : (
+                <div className={styles.legendNoteText}>
+                  {!data.labels.length
+                    ? <>Global Fishing Watch has no port of its own matched to this {p.origin === 'wpi' ? 'World Port Index port' : 'port'}{data.discovered ? ` (checked visits within 4 km in ${monthName(data.discovered.month, 'long')})` : ''}.
+                        {data.nearby.length > 0 && <> Ships stopping within 4 km are counted at {data.nearby.map((n, i) => <span key={n.label}>{i > 0 && ', '}<button type="button" className={styles.inlineLink} onClick={() => onOpenPort?.(String(n.port_id))}
+                          title={`Open the card of the port Global Fishing Watch label ${n.label} is matched to`}>{n.origin === 'wpi' ? n.name : titleCase(n.name || n.label)}</button></span>)}.</>}</>
+                    : gfwTrouble ? 'Couldn’t reach Global Fishing Watch right now.' : 'No arrival totals yet.'}
+                </div>
+              )}
+              <About>
+                Arrivals are Global Fishing Watch port visits that began here each month (UTC), counted from ships’ AIS. Pick a month to list its
+                ships on the Ships tab.
+              </About>
+            </div>
+          )}
+
+          {tab === 'ships' && data.labels.length > 0 && (
+            <div className={styles.section}>
+              {data.stats && <MonthBars months={data.stats.months} month={data.ships.month} onMonth={onMonth} listed={false}
+                label="Pick a month to list its ships" />}
               <div className={styles.sectionHead}>Ships that called here · {monthName(data.ships.month, 'long')}</div>
               {data.ships.arrivals > 0 ? (
                 <div className={styles.portSummary}>
@@ -251,15 +288,17 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
                   {more ? <LoadingInline kind="more" /> : `Show more ships (${fmtN(data.ships.total - list.length)} more)`} <Chevron size={13} />
                 </button>
               )}
-              <div className={styles.legendNoteText}>
+              <About>
                 An arrival is a Global Fishing Watch port visit that began here that month (UTC): the ship’s AIS came within 3 km of one of the port’s anchorages,
                 stopped, and left beyond 4 km. Ships are listed by their AIS identity, most arrivals first; kinds are GFW’s AIS-based classes (most pleasure boats show as passenger or other).
                 {data.ships.fetchedAt && <> Checked with Global Fishing Watch {String(data.ships.fetchedAt).slice(0, 16).replace('T', ' ')} UTC.</>}
-              </div>
+              </About>
             </div>
           )}
 
-          {/* IMF PortWatch */}
+          {tab === 'emissions' && <PortEmissions em={em} months={data.window.months} month={data.ships.month} onMonth={onMonth} About={About} />}
+
+          {tab === 'trade' && <>
           {data.portwatch?.join === 'joined' && data.portwatch.series?.dates?.length > 0 && (() => {
             const pw = data.portwatch, s = pw.series
             const types = PW_TYPES.filter(([k]) => pw.totals[`portcalls_${k}`] > 0)
@@ -275,20 +314,18 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
                   series={[{ key: 'calls', label: 'Port calls', color: PORT_HUE, values: s.calls7 }]} />
                 <LineChart dates={s.dates} label="Estimated trade" fmt={(v) => (v == null ? 'no value' : `${compactT(v)} a day`)}
                   series={[{ key: 'import', label: 'Imports', color: IMPORT_HUE, values: s.import7 }, { key: 'export', label: 'Exports', color: EXPORT_HUE, values: s.export7 }]} />
-                <div className={styles.legendNoteText}>
+                <About>
                   7-day averages of PortWatch’s daily estimates: port calls = cargo and tanker ships arriving at berth; trade in metric tonnes, estimated from how much deeper or
                   shallower ships sit when they leave. <strong>Relative trends, not official statistics.</strong> PortWatch’s “{pw.name}” (UN/LOCODE {p.unlocode}, {pw.km} km from the World Port Index position).
                   Updated weekly; checked {String(pw.fetchedAt || '').slice(0, 10)}.
-                </div>
+                </About>
                 <div className={styles.legendNoteText}>
                   <a className={styles.sourceLink} href={pwUrl} target="_blank" rel="noopener noreferrer" title={src['imf-portwatch']?.license || 'IMF PortWatch terms'}>{PW_CITATION}</a>
                 </div>
               </div>
             )
           })()}
-          {data.portwatch?.join === 'not_covered' && (
-            <div className={styles.legendNoteText}>Not among the 2,065 large commercial ports IMF PortWatch tracks.</div>
-          )}
+          </>}
 
           <div className={styles.attribution}>
             {['gfw-port-visits', 'nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].map((id) => src[id]).filter(Boolean).map((x, i) => (

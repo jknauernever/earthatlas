@@ -342,15 +342,71 @@ const WIND_FLOW = {
  * A `base` tier (the global one, and the replay one) always qualifies — it is
  * the thing every other tier falls back to, so it cannot be gated on a box.
  *
- * A ground-radar tier (MRMS) is just a box, because a radar network's edge is
- * where the radars are.
+ * A ground-radar tier (MRMS) is its grid's box AND, when the bake supplies
+ * one, its coverage mask: the box is a 20–55°N rectangle that takes in most
+ * of Mexico, the Gulf and open Pacific, where the radar reads "out of range".
+ * Box alone handed Sonora/Baja views to a radar with nothing there and the
+ * hurricane's rain vanished at z5 (2026-09-28). No mask (an older bake) →
+ * box only, as before.
  */
 export function tierSees(tier, lat, lng) {
   if (!tier) return false
   if (tier.base) return true
   if (lat > tier.north || lat < tier.south) return false
   if (lng < tier.west || lng > tier.east) return false
+  const cv = tier.coverage
+  if (cv) {
+    const r = Math.floor((cv.north - lat) / cv.deg)
+    const c = Math.floor((lng - cv.west) / cv.deg)
+    if (r < 0 || r >= cv.ny || c < 0 || c >= cv.nx) return false
+    const i = r * cv.nx + c
+    return ((cv.bytes[i >> 3] >> (7 - (i & 7))) & 1) === 1
+  }
   return true
+}
+
+/** Bake's packed coverage bitmap (numpy packbits, row-major, MSB first) → tier.coverage. */
+function decodeCoverage(cv) {
+  if (!cv?.bits || !(cv.deg > 0) || !(cv.nx > 0) || !(cv.ny > 0)) return null
+  try {
+    const bin = atob(cv.bits)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    if (bytes.length * 8 < cv.nx * cv.ny) return null
+    const out = { deg: cv.deg, north: cv.north, west: cv.west, nx: cv.nx, ny: cv.ny, bytes }
+    out.outline = coverageOutline(out)
+    return out
+  } catch { return null }
+}
+
+/**
+ * The stitch seam: every cell edge between covered and uncovered ground, as
+ * one MultiLineString, runs merged along rows and columns (~a few hundred
+ * lines rather than thousands of 0.25° stubs).
+ */
+function coverageOutline(cv) {
+  const { nx, ny, deg, north, west, bytes } = cv
+  const on = (r, c) => r >= 0 && r < ny && c >= 0 && c < nx && ((bytes[(r * nx + c) >> 3] >> (7 - ((r * nx + c) & 7))) & 1) === 1
+  const lines = []
+  // Horizontal edges: between row r-1 and r, at latitude north - r*deg.
+  for (let r = 0; r <= ny; r++) {
+    let start = -1
+    for (let c = 0; c <= nx; c++) {
+      const edge = c < nx && on(r - 1, c) !== on(r, c)
+      if (edge && start < 0) start = c
+      if (!edge && start >= 0) { const lat = north - r * deg; lines.push([[west + start * deg, lat], [west + c * deg, lat]]); start = -1 }
+    }
+  }
+  // Vertical edges: between column c-1 and c, at longitude west + c*deg.
+  for (let c = 0; c <= nx; c++) {
+    let start = -1
+    for (let r = 0; r <= ny; r++) {
+      const edge = r < ny && on(r, c - 1) !== on(r, c)
+      if (edge && start < 0) start = r
+      if (!edge && start >= 0) { const lng = west + c * deg; lines.push([[lng, north - start * deg], [lng, north - r * deg]]); start = -1 }
+    }
+  }
+  return { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: lines } }
 }
 
 
@@ -1099,7 +1155,7 @@ export const LAYERS = [
       out.sources.push(mrms)
       // No base tier: when the radar does not qualify, nothing of this layer
       // is drawn and the parent's global field shows.
-      out.tiers.push({ key: 'mrms', minzoom: 5, centre: true, west: r.west, east: r.east, north: r.north, south: r.south })
+      out.tiers.push({ key: 'mrms', minzoom: 5, centre: true, west: r.west, east: r.east, north: r.north, south: r.south, coverage: decodeCoverage(r.coverage) })
       out.meta.valid_ms = r.valid_ms
       return out
     },

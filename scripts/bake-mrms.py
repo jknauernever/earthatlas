@@ -26,6 +26,7 @@ same cadence under the same bucket; they are separate grids and would each be
 another tier entry. CONUS first because it is where the storms are watched.
 """
 
+import base64
 import gzip
 import json
 import os
@@ -105,9 +106,11 @@ def wanted_slots():
     return [(newest - i * step) * 1000 for i in range(n, -1, -1)]
 
 
-def bake_one(key, ramp_v, ramp_c):
+def bake_one(key, ramp_v, ramp_c, good=None):
     raw_gz = http(f"{BUCKET}/{key}", timeout=180)
     src = read_grid(raw_gz)
+    if good is not None:
+        clip_to_coverage(src, good)
     lat_limit = max(abs(NORTH), abs(SOUTH))
     x0, x1, y0, y1 = tile_window(WEST, EAST, lat_limit, MINZ, MAXZ, north=NORTH, south=SOUTH)
     grid = resample(src, x0, x1, y0, y1)
@@ -115,6 +118,99 @@ def bake_one(key, ramp_v, ramp_c):
     tiles, _ = build_pyramid(grid, x0, y0, MINZ, MAXZ, ramp_v, ramp_c)
     del grid
     return write_pmtiles(tiles, "mrms-conus", WEST, EAST, lat_limit, MINZ, MAXZ), len(tiles)
+
+
+# Where the radars can actually SEE, as a coarse bitmap. The grid is a
+# 20-55N / 130-60W RECTANGLE; /inmotion hands the view to radar when its
+# centre is over the grid, so judging by the box alone blanked Hurricane
+# Polo's rain over Sonora (2026-09-28) — GSMaP switched off, radar with
+# nothing to show. PrecipRate cannot answer this: far from the radars it
+# reports 0 ("dry"), not -3, because the beam overshoots the rain. MRMS's
+# RadarQualityIndex (same 7000x3500 grid, 0..1, -3 = out of range) is the
+# product that says how well the radar sees each cell. Sampled 2026-09-29:
+# 1.0 over Santa Fe/Albuquerque/LA/Miami, 0.0 over Sonora, Hermosillo and
+# the Pacific 400 km off SF, 0.1 in the Gulf 200 km off Texas, 0.3-0.4 in
+# the Nevada and Rockies gaps. RQI >= 0.1 ("the radar has some view") keeps
+# every interior-US gap on radar, so panning inside the country never flips
+# products, and gives Mexico and the open ocean back to the satellite.
+# 0.25 deg cells, covered when at least half their pixels pass: ~5 KB, and
+# it follows radar outages as they happen.
+#
+# The same mask also CLIPS the radar tiles: /inmotion stitches the two rain
+# products along it (radar inside, GSMaP outside, Josh 2026-09-28), and an
+# unclipped radar would paint its weak overshooting returns on top of the
+# satellite field just outside the seam.
+RQI_PREFIX = "CONUS/RadarQualityIndex_00.00"
+RQI_MIN = 0.1
+COVER_DEG = 0.25
+
+
+def fill_interior_gaps(good):
+    """Radar gaps INSIDE the network (Four Corners, the Great Basin) stay radar.
+
+    Stitching them to the satellite left blocky GSMaP patches, an hour out of
+    step with the radar around them, all over the interior West (Josh,
+    2026-09-28). Only uncovered ground connected to the grid's edge — Mexico,
+    the oceans, Canada — is handed to the satellite.
+    """
+    ny, nx = good.shape
+    outside = np.zeros_like(good)
+    stack = [(r, c) for r in range(ny) for c in (0, nx - 1)] + [(r, c) for c in range(nx) for r in (0, ny - 1)]
+    while stack:
+        r, c = stack.pop()
+        if outside[r, c] or good[r, c]:
+            continue
+        outside[r, c] = True
+        if r > 0: stack.append((r - 1, c))
+        if r < ny - 1: stack.append((r + 1, c))
+        if c > 0: stack.append((r, c - 1))
+        if c < nx - 1: stack.append((r, c + 1))
+    return ~outside
+
+
+def clip_to_coverage(src, good):
+    """NaN every 1 km pixel in a 0.25 deg cell the radar cannot see (in place)."""
+    k = int(round(COVER_DEG / DEG))
+    ny, nx = good.shape
+    view = src[: ny * k, : nx * k].reshape(ny, k, nx, k)
+    view[~good[:, None, :, None].repeat(k, 1).repeat(k, 3)] = np.nan
+
+
+def rqi_key_near(ms):
+    """The RadarQualityIndex scan closest to a PrecipRate scan (same 2-min cadence)."""
+    day = datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y%m%d")
+    xml = http(f"{BUCKET}/?list-type=2&prefix={RQI_PREFIX}/{day}/&max-keys=1000", timeout=90).decode()
+    keys = re.findall(r"<Key>([^<]+)</Key>", xml)
+    if not keys:
+        raise RuntimeError(f"no RadarQualityIndex files for {day}")
+    best = min(keys, key=lambda k: abs(key_time(k).timestamp() * 1000 - ms))
+    if abs(key_time(best).timestamp() * 1000 - ms) > 30 * 60 * 1000:
+        raise RuntimeError(f"nearest RadarQualityIndex scan {best} is >30 min from the rain scan")
+    return best
+
+
+def coverage_mask(rain_ms):
+    key = rqi_key_near(rain_ms)
+    h = ec.codes_new_from_message(gzip.decompress(http(f"{BUCKET}/{key}", timeout=180)))
+    if h is None:
+        raise RuntimeError("RadarQualityIndex file held no GRIB message")
+    try:
+        if (ec.codes_get(h, "Ni"), ec.codes_get(h, "Nj")) != (NX, NY):
+            raise RuntimeError("unexpected RadarQualityIndex grid")
+        q = ec.codes_get_values(h).astype(np.float32).reshape(NY, NX)
+    finally:
+        ec.codes_release(h)
+    k = int(round(COVER_DEG / DEG))
+    ny, nx = NY // k, NX // k
+    sees = (q[: ny * k, : nx * k] >= RQI_MIN) & (q[: ny * k, : nx * k] <= 1.0)
+    good = fill_interior_gaps(sees.reshape(ny, k, nx, k).mean(axis=(1, 3)) >= 0.5)
+    return good, {
+        "deg": COVER_DEG, "north": NORTH, "west": WEST, "nx": nx, "ny": ny,
+        "bits": base64.b64encode(np.packbits(good.astype(np.uint8), axis=None).tobytes()).decode(),
+        "covered_frac": round(float(good.mean()), 4),
+        "rqi_min": RQI_MIN,
+        "source": key,
+    }
 
 
 def read_grid(raw_gz):
@@ -161,6 +257,15 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     keys = recent_keys()
     latest = keys[-1]
+    # Coverage first: every frame this run bakes is clipped to it. Best
+    # effort — without a mask the client falls back to the grid's box (the
+    # old behaviour) and frames go up unclipped; the bake never fails on it.
+    good, coverage = None, None
+    try:
+        good, coverage = coverage_mask(int(key_time(latest).timestamp() * 1000))
+        print(f"coverage: {coverage['covered_frac']:.1%} of the box, from {coverage['source']}")
+    except Exception as err:
+        print(f"coverage mask skipped: {err}")
     print(f"newest: {latest}")
 
     tape = read_tape("mrms-conus", here)
@@ -189,7 +294,7 @@ def main():
             continue
         # One archive write per run in steady state; a first run backfills the
         # window, which takes a couple of minutes and only happens once.
-        pmt, ntiles = bake_one(hit[1], ramp_v, ramp_c)
+        pmt, ntiles = bake_one(hit[1], ramp_v, ramp_c, good)
         files.append(b64file(f"systems/mrms-conus/{slot}.pmtiles",
                              "application/octet-stream", pmt))
         frames.append({"valid_ms": slot, "scan_ms": hit[0]})
@@ -202,7 +307,7 @@ def main():
             publish(files, here); files = []
 
     frames.sort(key=lambda f: f["valid_ms"])
-    live = bake_one(latest, ramp_v, ramp_c)[0]
+    live = bake_one(latest, ramp_v, ramp_c, good)[0]
     live_ms = int(key_time(latest).timestamp() * 1000)
     lat_limit = max(abs(NORTH), abs(SOUTH))
     meta = {
@@ -214,6 +319,7 @@ def main():
         "minzoom": MINZ, "maxzoom": MAXZ,
         "downsample": "max",
         "frame": latest,
+        "coverage": coverage,
         "source": "NOAA MRMS PrecipRate (Multi-Radar Multi-Sensor), 1 km, "
                   "coloured with the NASA GIBS GPM rain-rate ramp",
     }

@@ -116,8 +116,15 @@ export async function loadSystemsJson(name, expectKind) {
       if (!r.ok) throw new Error(`json ${r.status}`)
       const j = await r.json()
       if (j?.version !== 1 || (expectKind && j?.kind !== expectKind)) throw new Error('unexpected json')
-      if (base.startsWith('/dev-data') && j?.fetched_ms && Date.now() - j.fetched_ms > DEV_DATA_MAX_AGE_MS) {
-        throw new Error('dev-data file older than 24 h — falling back to blob')
+      if (base.startsWith('/dev-data')) {
+        // Tapes carry no fetched_ms: judge those by their newest frame. A
+        // Sep 22–24 mrms-conus-tape.json with no stamp slipped past this
+        // check and hid the radar from every localhost replay (2026-09-28).
+        const frames = Array.isArray(j?.frames) ? j.frames : []
+        const stamp = j?.fetched_ms ?? j?.valid_ms ?? frames.reduce((m, f) => Math.max(m, f?.valid_ms || 0), 0)
+        if (!stamp || Date.now() - stamp > DEV_DATA_MAX_AGE_MS) {
+          throw new Error('dev-data file older than 24 h (or unstamped) — falling back to blob')
+        }
       }
       return j
     } catch (err) {

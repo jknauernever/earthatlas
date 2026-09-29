@@ -371,6 +371,23 @@ function viewInsideTier(map, tier, mapView) {
   // most US views at the zoom Josh asked the radar to appear. Past radar range
   // the swap shows NO rain rather than a patch of the other product: two
   // instruments are still never drawn together.
+  //
+  // A tier with a coverage mask is STITCHED beside the parent rather than
+  // replacing it, so it claims the view as soon as any of it can see: a 5×5
+  // sample of the canvas, any hit.
+  if (tier.coverage) {
+    let W, H
+    try { ({ clientWidth: W, clientHeight: H } = map.getCanvas()) } catch { return false }
+    if (!(W > 0 && H > 0)) return false
+    for (const fy of [0, 0.25, 0.5, 0.75, 1]) {
+      for (const fx of [0, 0.25, 0.5, 0.75, 1]) {
+        let ll
+        try { ll = map.unproject([fx * W, fy * H]) } catch { continue }
+        if (ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng) && tierSees(tier, ll.lat, ll.lng)) return true
+      }
+    }
+    return false
+  }
   if (tier.centre) {
     let c
     try { c = map.getCenter() } catch { return false }
@@ -490,6 +507,32 @@ function rasterTimeState(payload, cursorMs, atLive) {
  * frame is loaded into the hidden slot and the two are swapped only once it
  * has actually arrived — the map is never without a frame.
  */
+/**
+ * The visible seam where two stitched rain products meet (US radar inside,
+ * satellite outside): one hairline, dashed so it reads as a boundary between
+ * instruments and never as a weather front. Re-added after a style swap.
+ */
+function showStitchSeam(map, id, outline) {
+  const srcId = `systems-${id}-src`
+  const layerId = `systems-${id}-layer`
+  try {
+    if (!outline) {
+      if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none')
+      return
+    }
+    if (!map.getSource(srcId)) map.addSource(srcId, { type: 'geojson', data: outline })
+    else if (map.getSource(srcId)._seamData !== outline) map.getSource(srcId).setData(outline)
+    map.getSource(srcId)._seamData = outline
+    if (!map.getLayer(layerId)) {
+      map.addLayer({
+        id: layerId, type: 'line', source: srcId,
+        paint: { 'line-color': '#ffffff', 'line-opacity': 0.55, 'line-width': 1, 'line-dasharray': [3, 3] },
+      })
+    }
+    map.setLayoutProperty(layerId, 'visibility', 'visible')
+  } catch { /* style swapped mid-flight — next paint re-adds it */ }
+}
+
 const slotIds = (defId, key, slot) => ({
   srcId: `systems-${defId}-${key}-${slot}-src`,
   layerId: `systems-${defId}-${key}-${slot}-layer`,
@@ -622,6 +665,9 @@ export default function SystemsApp() {
   const instancesRef = useRef({})    // layer id → ParticleLayer; 'scalar' slot holds {id, layer}
   const replayRef = useRef(null)     // ReplayController for the active tape layer
   const [replay, setReplay] = useState(null) // same, as state for the TransportBar
+  // At Now, a live tier on screen (US radar) is newer than the replay tape's
+  // last frame: the bar must print THAT measurement's time, not the tape's.
+  const [liveShownMs, setLiveShownMs] = useState(null)
   const [replayRange, setReplayRange] = useState({}) // layer id → 'short' | 'year' (layers with a year tape)
   const eventReplayRef = useRef(null) // ReplayController over an EventTape (quakes) when no scalar replay owns the bar
   const fireReplayRef = useRef(null)  // fire time slider: daily presence wide out, raw detections past the handoff
@@ -1567,8 +1613,8 @@ export default function SystemsApp() {
     }
 
     // Replay-capable layers swap to the tape as soon as it's loaded (the
-    // static "now" wash shows in the meantime). Earth's systems are in
-    // motion: the tape starts playing the moment it's on screen.
+    // static "now" wash shows in the meantime). The tape opens parked at
+    // Now, paused — Play runs the replay (ReplayController).
     setBasemapDimmer(map, !!active, basemap)
     const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
@@ -1606,10 +1652,8 @@ export default function SystemsApp() {
           if (wantGround) { rc.sourceName = groundDef.sourceName; rc.sourceUrl = groundDef.sourceUrl }
           const resume = resumeRef.current[active.id]
           if (resume) { delete resumeRef.current[active.id]; rc.seek(resume.t); if (resume.playing) rc.play(); else rc.pause() }
-          // Otherwise every layer opens IN MOTION: three passes over its
-          // window, then parked at Now (ReplayController.maxPasses). The
-          // air-quality layers used to open paused at Now, which left the
-          // Fire button's bundle (fire + smoke + wind) standing still.
+          // Otherwise it opens parked at Now, paused (ReplayController):
+          // current conditions first, replay only on Play.
           rc.attach(layer)
           // Observed source markers follow the gas layer's cursor: scrub
           // into the past and only sources already observed by then exist;
@@ -1792,20 +1836,32 @@ export default function SystemsApp() {
     // its parent's scalar field — never both at once. "On screen" means the
     // tier the ladder wants is the one actually drawn, so while radar tiles
     // are still loading the global field stays up instead of a blank.
+    //
+    // Stitched (Josh, 2026-09-28): a companion tier that knows where it can
+    // actually see (the radar's coverage mask) takes only THAT ground. The
+    // parent stays on screen, clipped out under the radar, so a hurricane
+    // over Baja keeps its satellite rain beside the US radar instead of the
+    // whole view going to an instrument that cannot see it.
     const applyYield = (def) => {
       if (!def.companionOf) return
       const sh = rasterSlotsRef.current[`${def.id}:__shown`]
-      const y = !!(layerOn[def.id] && sh && sh.want && sh.key === sh.want)
+      const on = !!(layerOn[def.id] && sh && sh.want && sh.key === sh.want)
+      const tier = on ? fieldsRef.current[def.id]?.tiers?.find((t) => t.key === sh.key) : null
+      const clip = tier?.coverage ? (tier.clipFn ||= (lat, lng) => tierSees(tier, lat, lng)) : null
+      const y = on && !clip // hide the parent outright only when there is no map to stitch along
+      const sc = instancesRef.current.scalar
+      if (sc && sc.id.startsWith(def.companionOf)) sc.layer.setClip?.(clip)
+      showStitchSeam(map, `${def.id}-seam`, clip ? tier.coverage.outline : null)
       const k = `${def.companionOf}:yield`
       if (rasterSlotsRef.current[k] === y) return
       rasterSlotsRef.current[k] = y
-      const sc = instancesRef.current.scalar
       if (sc && sc.id.startsWith(def.companionOf)) sc.layer.setVisible(!y && !!layerOn[def.companionOf])
     }
 
     const paint = () => {
       const atLive = !owner || owner.atLive
       const cursor = owner?.t ?? Date.now()
+      let liveMs = null
       for (const def of LAYERS) {
         if (def.kind !== 'raster' || !def.raster?.followsTime) continue
         if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') {
@@ -1836,6 +1892,10 @@ export default function SystemsApp() {
         if (!payload) continue
         const ts = rasterTimeState(payload, cursor, atLive)
         const winner = activeTierKey(map, payload, null, ts)
+        // "Now · 6:30 PM" over radar measured at 7:24 PM read as a storm
+        // appearing from nothing in half an hour (Josh, 2026-09-28): the bar
+        // prints the companion tier's (radar's) own time beside the tape's.
+        if (atLive && winner && def.companionOf && payload.meta?.valid_ms) liveMs = payload.meta.valid_ms
         const isImage = new Set((payload.images || []).map((im) => im.key))
         // EVERY piece, not just the ones with a URL to swap or a reason to
         // hide: a piece with neither (the live-only cloud image, back at Now)
@@ -1972,6 +2032,7 @@ export default function SystemsApp() {
         }
       }
       for (const def of LAYERS) if (def.companionOf) applyYield(def)
+      setLiveShownMs((prev) => (prev === liveMs ? prev : liveMs))
     }
 
     const onTick = () => {
@@ -2524,12 +2585,10 @@ export default function SystemsApp() {
       rc.fireRegime = 'detail'
       const apply = (c) => raw.setTime(c.atLive ? null : c.t)
       rc.attach({ tick: () => apply(rc) })
-      // The arrival build plays through like every other animation: three
-      // passes, then parked on Now (ReplayController.maxPasses) — the
-      // slider is the user's from there. If the page can't animate right
-      // now (hidden tab), skip straight to Now — a cursor stranded at the
-      // window start makes every back-control a no-op and the bar reads as
-      // dead.
+      // Opens parked on Now like every other replay (ReplayController);
+      // Play runs the build. toLive() below is belt-and-braces for a
+      // hidden tab — a cursor stranded at the window start makes every
+      // back-control a no-op and the bar reads as dead.
       rc.subscribe(apply)
       rc.subscribe(syncLiveOnly)
       rc.spanH = spanH
@@ -2556,12 +2615,11 @@ export default function SystemsApp() {
       const rc = new ReplayController(tape, { windowDays: 14 })
       rc.layerId = 'hotspots'
       rc.fireRegime = 'presence'
-      // Opens in motion like every other layer (three passes, then Now);
-      // a hidden tab can't animate, so it skips straight to Now instead of
-      // stranding the cursor at the window start.
+      // Opens parked on Now like every other replay (ReplayController);
+      // toLive() is belt-and-braces for a hidden tab.
       if (document.hidden) rc.toLive()
-      // Playing the presence window follows the site rule: three passes,
-      // then parked on Now (ReplayController.maxPasses).
+      // Play runs the presence window: three passes, then parked on Now
+      // (ReplayController.maxPasses).
       rc.subscribe(applyFireCursor)
       rc.subscribe(syncLiveOnly)
       fireReplayRef.current = rc
@@ -3319,6 +3377,7 @@ export default function SystemsApp() {
       {(replay || eventReplay || fireReplay) ? (
         <TransportBar
           controller={replay || eventReplay || fireReplay}
+          liveShownMs={liveShownMs}
           sourceName={(replay || eventReplay || fireReplay).sourceName || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceName}
           sourceUrl={(replay || eventReplay || fireReplay).sourceUrl || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceUrl}
           shifted={panelOpen && !isMobile}

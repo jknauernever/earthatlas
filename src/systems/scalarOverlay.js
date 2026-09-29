@@ -413,6 +413,18 @@ export class ScalarOverlayLayer {
     }
   }
 
+  /**
+   * Stitching: hide this field wherever `fn(lat, lng)` is true — a sharper
+   * product (US radar) is drawn there instead. Clipped nodes read as missing
+   * data, so the edge gets the same soft feather as a coastline. Screen mode
+   * only: the radar tier starts at z5, where the globe is never in view.
+   */
+  setClip(fn) {
+    if (this._clip === fn) return
+    this._clip = fn || null
+    if (this.visible) this._paint()
+  }
+
   setVisible(visible) {
     this.visible = visible
     if (!visible) { this._clear(); this._setImgVisible(false) }
@@ -562,6 +574,7 @@ export class ScalarOverlayLayer {
     const cols = Math.ceil(w / NODE_PX) + 1
     const rows = Math.ceil(h / NODE_PX) + 1
     const vals = new Float32Array(cols * rows).fill(NaN)
+    const clip = this._clip
     // Unit vectors per node feed the raster land mask at globe zooms.
     // Edge feather (opt-in, regional masked fields): per-node valid share.
     const covs = this._feather && typeof this.field.coverAt === 'function' ? new Float32Array(cols * rows) : null
@@ -576,7 +589,7 @@ export class ScalarOverlayLayer {
         const k = j * cols + i
         const u = toUnit(ll.lng, ll.lat)
         nodes.x[k] = u[0]; nodes.y[k] = u[1]; nodes.z[k] = u[2]; nodes.ok[k] = 1
-        const s = this.field.sampleScalar(ll.lng, ll.lat)
+        const s = clip && clip(ll.lat, ll.lng) ? null : this.field.sampleScalar(ll.lng, ll.lat)
         if (s) vals[k] = Math.min(this._max, Math.max(this._min, s.value))
         if (covs) covs[k] = s ? this.field.coverAt(ll.lng, ll.lat) : 0
       }

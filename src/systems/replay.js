@@ -3,9 +3,12 @@
  * to redraw. Plain class (no React) so the rAF loop never re-renders the
  * app; the TransportBar subscribes and keeps its own small state.
  *
- * Earth's systems are in motion: a replay-capable layer starts PLAYING the
- * moment it's switched on, loops over its window (default: the last 7 days),
- * and the bar exists to pause / scrub / step / jump to now.
+ * A replay-capable layer opens PARKED AT NOW, paused: the first thing anyone
+ * sees — including someone opening a shared link — is current conditions.
+ * Play runs the window (MAX_PASSES times, then parks at Now again); the bar
+ * exists to play / pause / scrub / step / jump to now. (Until 2026-09-28
+ * layers opened playing from the window start, so a shared /inmotion link
+ * showed two-week-old seas under a REPLAY label for the first minute.)
  */
 
 import { runWhileAwake, noteActivity } from './activity.js'
@@ -36,10 +39,10 @@ export class ReplayController {
     // the count, so the button always buys three fresh passes.
     this.passes = 0
     this.maxPasses = opts.maxPasses ?? 3
-    this.playing = true
+    this.playing = false
     this.buffering = false
     this.holding = false
-    this.t = this.windowStart
+    this.t = this.tape.end_ms
     this._listeners = new Set()
     this._raf = 0
     this._last = 0

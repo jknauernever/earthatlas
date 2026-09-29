@@ -8,8 +8,10 @@
 # GRIB2 needs eccodes, which ships as a pip wheel, so no apt in CI.
 #
 # MRMS publishes every 2 minutes. There is no point chasing that from a
-# best-effort scheduler, and each run is a ~0.7 MB download and a ~0.6 MB
-# upload, so this asks for every 10 and takes whatever is newest.
+# best-effort scheduler, and each run is two ~0.7 MB downloads (PrecipRate,
+# plus RadarQualityIndex for the coverage mask that decides where radar may
+# replace the satellite tier) and a ~0.6 MB upload, so this asks for every 10
+# and takes whatever is newest.
 name: mrms-bake
 on:
   schedule:

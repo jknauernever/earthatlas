@@ -20,7 +20,7 @@ const fmtRunShort = (ms) => {
  * unambiguous readout of the date & time on screen (UTC + viewer's local)
  * with the frame's provenance underneath.
  */
-export default function TransportBar({ controller, sourceName, sourceUrl, shifted, range, onRange, mini }) {
+export default function TransportBar({ controller, liveShownMs, sourceName, sourceUrl, shifted, range, onRange, mini }) {
   const [, force] = useState(0)
   useEffect(() => controller.subscribe(() => force((n) => n + 1)), [controller])
   useEffect(() => {
@@ -44,6 +44,12 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   // clock — a minute-by-minute clock churned 60×/s and was unreadable. Daily
   // and weekly fields are dated, not timed (every frame is the 12:00Z field).
   const shownMs = meta.valid_ms
+  // At Now, a stitched live tier (US radar) is measured at its OWN, newer
+  // time than the satellite frame beside it. One clock would be wrong for
+  // half the map, so the radar's time rides in the caveat slot.
+  const radarNote = live && liveShownMs && Math.abs(liveShownMs - shownMs) >= 60000
+    ? `US radar ${new Date(liveShownMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`
+    : ''
   const fk = meta.frame_kind
   const kindBase = meta.kindLabel ? meta.kindLabel
     : meta.event
@@ -68,7 +74,7 @@ export default function TransportBar({ controller, sourceName, sourceUrl, shifte
   const windowOptions = c.windowOptions
   // The status slot after the date is the one visible caveat line: transient
   // states first, else the frame's own note (a partial day's "so far today").
-  const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : (meta.note || '')
+  const status = c.buffering ? 'loading…' : c.holding && c.playing ? 'restarting ↻' : [meta.note, radarNote].filter(Boolean).join(' · ')
 
   if (mini) {
     // Compact pill (phones, while a popup is open): date + play/pause only.

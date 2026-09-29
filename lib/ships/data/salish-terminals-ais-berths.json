@@ -1,0 +1,229 @@
+{
+ "about": {
+  "what": "Berth points ESTIMATED from EarthAtlas's own AIS positions (Josh 2026-09-28), for terminals with several berths but only one citable position. Never an official position: stored as terminal_berths basis 'ais_inferred' (source 'earthatlas-ais-berths', evidence class inferred) and labelled \"estimated from AIS stops\" on the card.",
+  "method": "scripts/ships/bake-ais/berth_stops.py: long stops of large ships (MarineCadastre AIS, CC0; SOG < 0.5 kn for 2 h+, length >= 100 m as broadcast; position = median, spread = 90th percentile). scripts/ships/ais-berths.mjs + lib/ships/aisBerths.js: stops that spread <= 50 m are clustered (densest stop seeds a cluster of the stops within 60 m of its median); a cluster becomes a berth of terminal T only if it passes the footprint guard.",
+  "guard": "1) the cluster centre lies inside T's own mapped footprint (the OpenStreetMap site / pier elements listed under footprints) or within 80 m of it (a moored ship's AIS position lies alongside the quay); 2) no other terminal's footprint and no other named mapped facility (OSM industrial site or pier) is within 80 m or closer than 2x T's distance (else ambiguous, not attributed); 3) >= 80% of its stops are by ships whose AIS type fits T (70-79 cargo at dry bulk / grain; 80-89 tanker where T handles liquids); 4) >= 10 stops by >= 5 different ships; 5) outside every existing official / OSM berth radius of T (inside one, those ships are already counted).",
+  "positions": "lat/lon = the cluster centre (median of the stop positions), from AIS (CC0). The OSM footprint only decides WHICH terminal a cluster belongs to; no OSM coordinate is copied into a berth position.",
+  "official_lists": "The port authority and the pilotage authority publish berth lists (names, lengths, depths) for these terminals, but their terms of reuse are unclear or all-rights-reserved (flagged to Josh 2026-09-28), so nothing from them is stored here.",
+  "proposal": "scripts/ships/ais-berths.mjs run 2026-09-29 UTC (stops 2025-07-01 … 2026-06-30, 365 days; OSM base 2026-09-29T03:17:16Z): 3 accepted, 23 rejected; reviewed by hand 2026-09-28."
+ },
+ "footprints": {
+  "bc-richardson": [
+   "relation/15803613"
+  ],
+  "bc-cargill": [
+   "relation/15803612",
+   "way/525504891"
+  ],
+  "bc-vancouver-wharves": [
+   "relation/15847617"
+  ],
+  "bc-viterra-pacific": [
+   "way/1174883978"
+  ],
+  "bc-alliance-grain": [
+   "way/1173738444",
+   "way/1173738445"
+  ],
+  "bc-neptune": [
+   "way/564571990"
+  ],
+  "bc-g3": [
+   "relation/15823540"
+  ],
+  "bc-fibreco": [
+   "way/1172875700"
+  ],
+  "bc-lantic": [
+   "way/915038328"
+  ]
+ },
+ "berths": [
+  {
+   "terminal": "bc-richardson",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where bulk carriers stop at the Richardson dock",
+   "basis": "ais_inferred",
+   "lat": 49.30447,
+   "lon": -123.06706,
+   "evidence": {
+    "stops": 282,
+    "ships": 131,
+    "first": "2025-07-01T00:00:57Z",
+    "last": "2026-06-30T23:59:26Z",
+    "fit_share": 0.986,
+    "spread_p50_m": 5.5,
+    "median_length_m": 227.5,
+    "footprint": {
+     "osm": [
+      "relation/15803613"
+     ],
+     "distance_m": 22
+    },
+    "nearest_other": {
+     "id": "bc-cargill",
+     "name": "Cargill grain terminal (North Vancouver) (Cargill Grain Terminal + Cargill Grain Terminal Pier)",
+     "m": 429
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.13,
+      "s": 49.282,
+      "e": -123.045,
+      "n": 49.317
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-burrard.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-09-29T03:17:16Z"
+   }
+  },
+  {
+   "terminal": "bc-vancouver-wharves",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: west end of the wharf (bulk carriers)",
+   "basis": "ais_inferred",
+   "lat": 49.31178,
+   "lon": -123.12475,
+   "evidence": {
+    "stops": 138,
+    "ships": 44,
+    "first": "2025-07-01T00:00:24Z",
+    "last": "2026-06-30T23:52:47Z",
+    "fit_share": 1,
+    "spread_p50_m": 6.8,
+    "median_length_m": 189,
+    "footprint": {
+     "osm": [
+      "relation/15847617"
+     ],
+     "distance_m": 41
+    },
+    "nearest_other": {
+     "id": "way/1172212106",
+     "name": "Lions Gate Marine Centre (OSM way/1172212106)",
+     "m": 819
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.13,
+      "s": 49.282,
+      "e": -123.045,
+      "n": 49.317
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-burrard.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-09-29T03:17:16Z"
+   }
+  },
+  {
+   "terminal": "bc-vancouver-wharves",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: middle of the wharf (mostly tankers)",
+   "basis": "ais_inferred",
+   "lat": 49.31049,
+   "lon": -123.12146,
+   "evidence": {
+    "stops": 40,
+    "ships": 22,
+    "first": "2025-07-02T05:45:28Z",
+    "last": "2026-06-28T09:01:18Z",
+    "fit_share": 0.875,
+    "spread_p50_m": 4.3,
+    "median_length_m": 183,
+    "footprint": {
+     "osm": [
+      "relation/15847617"
+     ],
+     "distance_m": 48
+    },
+    "nearest_other": {
+     "id": "way/1172212106",
+     "name": "Lions Gate Marine Centre (OSM way/1172212106)",
+     "m": 583
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.13,
+      "s": 49.282,
+      "e": -123.045,
+      "n": 49.317
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-burrard.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-09-29T03:17:16Z"
+   }
+  }
+ ]
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Salish Sea terminal list → ships evidence + claims (lib/ships/terminals.js; data in lib/ships/data/salish-terminals*.json).
+ * AIS-inferred berths (salish-terminals-ais-berths.json, basis ais_inferred) are stored from the file itself: no fetch.
  * DEV database only unless Josh says otherwise (SHIPS_DATABASE_URL from .env.local). Idempotent: an unchanged source row
  * stores nothing new; terminals / berths / links are upserted; ones no longer listed are kept as withdrawn / retired.
  *
@@ -120,7 +121,7 @@ if (dry) {
   }
   let n = 0
   for (const t of data.main.terminals) {
-    const r = resolveBerths(t, data.osm.berths, maps)
+    const r = resolveBerths(t, data.osm.berths, maps, { aisBerths: data.ais?.berths || [] })
     n += r.berths.length
     for (const p of r.problems) console.log(`  ! ${p}`)
   }

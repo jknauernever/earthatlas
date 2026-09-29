@@ -126,6 +126,15 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 
 `gisis.test.js` / `gisis-db.test.js` mark what they build SYNTHETIC in the test name (a changed header, officer / email columns, wrong-hemisphere and 61-minute coordinates, crosswalk mismatches, an export without one IMO). The vessel in `gisis-db.test.js` is SYNTHETIC: the real GFW EURODAM entry with its IMO swapped to 9751509.
 
+## AIS-inferred berths (lib/ships/aisBerths.js)
+
+| File | What it is |
+|---|---|
+| `ais-berths-burrard-2026-09-28.json` | **Real** data, copied 2026-09-28. `stops`: 38 rows of `berth-stops-burrard.csv` (written by `scripts/ships/bake-ais/berth_stops.py` from the MarineCadastre AIS salish-v6 points cache, CC0, 2025-07-01 … 2026-06-30), nothing edited: the first 14 / 12 / 10 long stops (by start time) within 40 m of the Richardson, Cargill-pier and Pacific Terminal / Vanterm tanker clusters, plus the first 2 stops that spread > 150 m (ships swinging at anchor) near Vancouver anchorages B/C. `osm`: the outer-way geometries of 5 OpenStreetMap elements (Richardson and Cargill site relations, Cargill pier, Pacific Terminal site, GCT Vanterm) exactly as the Overpass response returned them (base in the file). © OpenStreetMap contributors, ODbL 1.0. |
+| `bc-ports-terminals-272-live-2026-09-28.json` | **Real, recorded live** 2026-09-28 by `npm run ships:import-terminals -- --save`: the one BC Ports and Terminals WFS feature SOURCE_DATA_ID 272 (Vancouver Wharves) exactly as received, with the request URL. |
+
+`aisBerths.test.js` marks what it builds SYNTHETIC in the test name (probe points, an empty footprint, a rival outline, a bad data-file entry).
+
 ## Terminal calls (lib/ships/terminalCalls.js)
 
 | File | What it is |

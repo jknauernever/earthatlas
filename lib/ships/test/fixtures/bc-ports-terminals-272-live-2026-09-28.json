@@ -1,0 +1,52 @@
+{
+ "url": "https://openmaps.gov.bc.ca/geo/pub/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=pub%3AWHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW&outputFormat=application%2Fjson&srsName=EPSG%3A4326&CQL_FILTER=SOURCE_DATA_ID+IN+%28261%2C258%2C260%2C262%2C271%2C257%2C264%2C267%2C269%2C268%2C254%2C251%2C259%2C272%2C274%2C215%2C231%2C293%2C224%2C252%2C205%2C284%2C292%2C280%2C226%29",
+ "retrieved_at": "2026-09-29T03:23:05.287Z",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "WHSE_IMAGERY_AND_BASE_MAPS.GSR_PORTS_TERMINALS_SVW.fid--5cb3b77b_1a0eb11e585_-3e8b",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -123.1178373,
+     49.30943328
+    ]
+   },
+   "geometry_name": "SHAPE",
+   "properties": {
+    "CUSTODIAN_ORG_DESCRIPTION": "Ministry of Forest, Lands and Natural Resource Operations and Rural Development - GeoBC ",
+    "BUSINESS_CATEGORY_CLASS": "waterTransportation",
+    "BUSINESS_CATEGORY_DESCRIPTION": "Water Transportation",
+    "OCCUPANT_TYPE_DESCRIPTION": "BC Ports and Terminals",
+    "SOURCE_DATA_ID": "272",
+    "SUPPLIED_SOURCE_ID_IND": "N",
+    "FACILITY_NAME": "Kinder Morgan (Vancouver Wharves)",
+    "DESCRIPTION": "Terminal",
+    "PHYSICAL_ADDRESS": "1995 West First St, North Vancouver, BC",
+    "OTHER_ADDRESS": "1995 West First St, North Vancouver, BC",
+    "STREET_ADDRESS": "1995 West First St",
+    "POSTAL_CODE": "V7P 1A8",
+    "LOCALITY": "North Vancouver",
+    "CONTACT_PHONE": null,
+    "CONTACT_EMAIL": null,
+    "CONTACT_FAX": null,
+    "WEBSITE_URL": "http://www.kindermorgan.com/pages/business/terminals/canada.aspx",
+    "IMAGE_URL": null,
+    "LATITUDE": 49.3094333,
+    "LONGITUDE": -123.1178373,
+    "KEYWORDS": "Kinder Morgan; Vancouver Wharfs; Burrard Inlet; Terminal; Petroleum",
+    "DATE_UPDATED": "2025-03-06Z",
+    "SITE_GEOCODED_IND": null,
+    "AUTHORITY": "Port Metro Vancouver ",
+    "BUSINESS_OPERATOR": "Kinder Morgan Canada Terminals LP",
+    "COMMODITIES_HANDLED": "inbound and outbound bulk concentrates, exports liquids, sulphur, fertalizers, agriproducts",
+    "COMMODITY_STORAGE_CAPACITY": "Four storage tanks, +165,000 tonnes sulphur storage, total site storage over 1 million tonnes",
+    "DATA_SOURCE": "Kinder Morgan Canada; Port Metro Vancouver; BC Ports Handbook 2014",
+    "FACILITY_TYPE_USE": "Breakbulk and Bulk ",
+    "TERMINAL_BERTHS_DESC": "Berth depths: #1:13.7 m; #2:11.2 m; #3: 11.2 m; #4: 11.6 m; #5: 11.6 m; 5 equipment berths, rail car unloader, crane, dry-bulk systems, breakbulk equipment",
+    "SEQUENCE_ID": 352,
+    "SE_ANNO_CAD_DATA": null
+   }
+  }
+ ]
+}

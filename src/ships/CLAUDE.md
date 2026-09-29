@@ -128,6 +128,19 @@ GFW specifics (full reference: `docs/GFW_VESSELS_API.md`):
 Every value shown in the UI carries its own inline, clickable source (EarthAtlas
 prime directive). No synthetic data is ever shown as real.
 
+## Public changelog (every push)
+
+earthatlas.org/ships/changelog is public and Josh reports from it to the
+people at Friends who use /ships. Every /ships change that goes live gets an
+entry in `src/ships/shipsChangelog.js` IN THE SAME PUSH (drafted with the
+commit, approved with it):
+- Newest first: `{ date, area, text }`. Enough detail to report: what changed,
+  where, and the real numbers (ships, visits, terminals) behind it.
+- Plain public language. Never: dev/prod, databases, bake/tileset versions,
+  vendors or accounts, costs, licence/permission status, unreleased work.
+- When counts change, update `COUNTS` + `COUNTS_AS_OF` from read-only prod
+  queries only; never estimate.
+
 ## Tests
 `npm run test:ships` (`node --test`, no extra dependency).
 - Pure logic (normalization, GFW mapping, resolver decisions) runs offline.

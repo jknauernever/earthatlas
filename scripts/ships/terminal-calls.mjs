@@ -81,7 +81,7 @@ async function importCalls() {
   if (dry) { for (const c of calls.slice(0, 5)) console.log(JSON.stringify(c)); return }
 
   const bake = { rule: CALL_RULE, input: meta.input, days: meta.days, months: meta.months, notCovered: meta.not_covered, hits: n, baked_at: meta.baked_at,
-    berths: bj.berths.map(({ terminal, berth, lat, lon, length_m, length_from, radius_m, in_box }) => ({ terminal, berth, lat, lon, length_m, length_from, radius_m, in_box })) }
+    berths: bj.berths.map(({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box }) => ({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box })) }
   await withTx(pool, async (c) => {
     await upsertSource(c, schema, TERMINAL_CALLS_SOURCE)
     const runId = await startRun(c, schema, TERMINAL_CALLS_SOURCE.id, { bake_version: BAKE_VERSION, days: meta.days.length })

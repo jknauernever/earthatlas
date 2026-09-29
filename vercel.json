@@ -43,6 +43,10 @@
       "destination": "/ships.html"
     },
     {
+      "source": "/ships/changelog",
+      "destination": "/ships.html"
+    },
+    {
       "source": "/inmotion",
       "destination": "/inmotion.html"
     },

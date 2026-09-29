@@ -27,6 +27,7 @@ const SRC_SHORT = {
   'usace-docks': 'USACE', 'wa-ecology-facilities': 'WA Ecology', 'bc-ports-terminals': 'BC Ports & Terminals', osm: 'OpenStreetMap',
   'gem-gctt': 'GEM', 'gem-ggit': 'GEM', 'imo-gisis-port-facilities': 'IMO GISIS', 'climate-trace': 'Climate TRACE',
   'earthatlas-terminals': 'EarthAtlas list', 'gfw-port-visits': 'GFW', 'earthatlas-terminal-calls': 'MarineCadastre AIS',
+  'earthatlas-ais-berths': 'AIS stops',
 }
 const ROLE_WORDS = {
   dock_record: 'Dock record', reference: 'Related record', osm_site: 'OpenStreetMap site', osm_berth_element: 'OpenStreetMap berth element',
@@ -37,6 +38,7 @@ const BASIS_WORDS = {
   usace_dock: 'USACE dock point', ecology_dock: 'WA Ecology dock point', bc_ports_terminals: 'BC Ports and Terminals point',
   osm_seamark_berth: 'OpenStreetMap berth', osm_pier_centers: 'centre of OpenStreetMap piers', osm_site_center: 'OpenStreetMap site centre (low precision)',
   gisis_facility: 'IMO GISIS facility point',
+  ais_inferred: 'estimated from AIS stops, not an official position',
 }
 
 function Glyph({ kind, muted, size = 16 }) {
@@ -265,6 +267,8 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
               {data.berths.map((b) => (
                 <div key={b.key} className={styles.legendNoteText}>
                   {b.name || b.key}: {BASIS_WORDS[b.basis] || b.basis}, {b.lat.toFixed(4)}, {b.lon.toFixed(4)}
+                  {b.basis === 'ais_inferred' && b.detail?.stops && <span className={styles.pcMuted}> · where {fmtN(b.detail.ships)} ships stopped {fmtN(b.detail.stops)} times
+                    {b.detail.first && b.detail.last ? `, ${monthName(b.detail.first.slice(0, 7))} – ${monthName(b.detail.last.slice(0, 7))}` : ''}</span>}
                   {data.rule.radii.find((r) => r.berth === b.key) && <span className={styles.pcMuted}> · calls within {data.rule.radii.find((r) => r.berth === b.key).m} m</span>}{' '}
                   {b.source_record_ids.map((id) => <Src key={id} id={id} source={b.source_id} title={`${src[b.source_id]?.name || b.source_id} — click for the record`} />)}
                   {b.odbl && <span className={styles.pcMuted}> (ODbL)</span>}
@@ -283,7 +287,9 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
               </>}
               <About>
                 EarthAtlas keeps a hand-checked list of the Salish Sea’s terminals. Each berth point comes from an official record (USACE docks,
-                Washington Ecology, BC Ports and Terminals, IMO GISIS) or, only where none exists, from OpenStreetMap. Operator names in those
+                Washington Ecology, BC Ports and Terminals, IMO GISIS) or, only where none exists, from OpenStreetMap. Where a terminal’s
+                cited point misses berths that ships use, a point is estimated from where large ships stop in the AIS data, next to that
+                terminal’s own mapped site; it is labelled as estimated and never shown as an official position. Operator names in those
                 records are often decades old, so the current operator is checked by hand against the linked page. Climate TRACE refinery
                 plants and ship ports are kept apart and never shown as one another.
               </About>

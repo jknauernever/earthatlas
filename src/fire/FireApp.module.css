@@ -523,7 +523,7 @@
   font-size: 13px;
   color: #1f2937;
   line-height: 1.5;
-  max-height: 72vh;
+  /* Height cap is set inline by the shared keepPopupOnMap (src/lib/popupFit.js). */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -851,9 +851,7 @@
 @media (max-width: 600px) {
   .popup {
     width: 100%;
-    /* !important so this beats the inline max-height the JSX bakes into the
-       popup HTML (maxH) — on phones the shell + drag handle own the height. */
-    max-height: none !important;
+    /* On phones the shell + drag handle own the height (keepPopupOnMap is a no-op here). */
   }
   .popupBody {
     overflow-y: visible;

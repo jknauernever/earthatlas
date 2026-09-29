@@ -36,4 +36,4 @@ scripts/bake-birdcast/raw/
 
 # Climate TRACE raw sector packages + bake outputs (scripts/bake-climatetrace) — multi-GB, never commit; upload to Blob
 scripts/bake-climatetrace/raw
-scripts/bake-climatetrace/build/
+scripts/bake-climatetrace/build

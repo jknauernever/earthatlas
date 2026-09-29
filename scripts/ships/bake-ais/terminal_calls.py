@@ -113,9 +113,12 @@ def export(con, bj, sha):
         sys.exit(f"no hits in {hd}: run the bake first")
     days = [os.path.basename(f)[:10] for f in files]
     csv = os.path.join(OUT, "hits.csv")
+    # Explicit file list (Python's glob skips dotfiles): macOS writes AppleDouble "._<day>.parquet" files on the external drive,
+    # which DuckDB's own glob would read as parquet.
+    src = "[" + ",".join("'" + f.replace("'", "''") + "'" for f in files) + "]"
     con.execute(f"""COPY (SELECT terminal, berth, mmsi, strftime(t, '%Y-%m-%dT%H:%M:%SZ') AS t, m, also, name, imo, type, length
-                            FROM read_parquet('{hd}/*.parquet') ORDER BY terminal, mmsi, t) TO '{csv}' (HEADER, DELIMITER ',')""")
-    n = con.execute(f"SELECT count(*) FROM read_parquet('{hd}/*.parquet')").fetchone()[0]
+                            FROM read_parquet({src}) ORDER BY terminal, mmsi, t) TO '{csv}' (HEADER, DELIMITER ',')""")
+    n = con.execute(f"SELECT count(*) FROM read_parquet({src})").fetchone()[0]
     months = []
     for ym in month_range(COVER_FROM, COVER_TO):
         got = sum(1 for d in days if d.startswith(ym))

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../../utils/webglSupport'
+import { keepPopupOnMap } from '../../lib/popupFit.js'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -373,25 +374,14 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
         const isMobile = window.innerWidth <= 600
 
-        // The map's box can extend past the browser fold, so "fits in the
-        // map" isn't "visible". Anchor the popup toward the bigger VISIBLE
-        // half: dot in the lower half of the on-screen map → popup opens
-        // upward, and vice versa.
-        const mapRect0 = map.getContainer().getBoundingClientRect()
-        const visTop = Math.max(mapRect0.top, 0)
-        const visBottom = Math.min(mapRect0.bottom, window.innerHeight)
-        const dotClientY = mapRect0.top + map.project([s.lng, s.lat]).y
-        const anchor = dotClientY > (visTop + visBottom) / 2 ? 'bottom' : 'top'
-
         const popup = new mapboxgl.Popup({
           offset: isMobile ? 0 : 12,
           closeButton: true,
           maxWidth: isMobile ? '100%' : '280px',
           // Default focus-on-open makes the BROWSER scroll the page to the
-          // popup, yanking the map to the top. The panBy below keeps the
-          // popup visible within the map instead.
+          // popup, yanking the map to the top. keepPopupOnMap (shared,
+          // src/lib/popupFit.js) keeps the card on the map instead.
           focusAfterOpen: false,
-          ...(isMobile ? {} : { anchor }),
         })
           .setLngLat([s.lng, s.lat])
           .setHTML(isStack
@@ -404,6 +394,10 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
                 fallbackEmoji: fallbackEmojiRef.current,
               }))
           .addTo(map)
+        // One shared placement/fit for every site: hang the card off the side
+        // with more room and scroll inside (re-fits when the roster swaps to a
+        // record card). Phones use index.css's bottom sheet.
+        keepPopupOnMap(popup)
 
         popupRef.current = popup
 
@@ -417,43 +411,6 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
             if (m) popup.setHTML(buildPopupHTML(m, { fallbackColor: fallbackColorRef.current, fallbackEmoji: fallbackEmojiRef.current }))
           })
         }
-
-        // Pan to fit popup
-        popup.on('open', () => {
-          if (isMobile) {
-            markFlying(500)
-            map.easeTo({ center: [s.lng, s.lat], duration: 300 })
-            return
-          }
-          requestAnimationFrame(() => {
-            const popupEl = popup.getElement()
-            if (!popupEl) return
-            const mapRect = map.getContainer().getBoundingClientRect()
-            const popupRect = popupEl.getBoundingClientRect()
-            const pad = 20
-            // Fit against the VISIBLE map region — the intersection of the
-            // map's box and the browser viewport — not the full container.
-            const box = {
-              left: Math.max(mapRect.left, 0),
-              right: Math.min(mapRect.right, window.innerWidth),
-              top: Math.max(mapRect.top, 0),
-              bottom: Math.min(mapRect.bottom, window.innerHeight),
-            }
-            let dx = 0, dy = 0
-            if (popupRect.left < box.left + pad)
-              dx = popupRect.left - (box.left + pad)
-            else if (popupRect.right > box.right - pad)
-              dx = popupRect.right - (box.right - pad)
-            if (popupRect.top < box.top + pad)
-              dy = popupRect.top - (box.top + pad)
-            else if (popupRect.bottom > box.bottom - pad)
-              dy = popupRect.bottom - (box.bottom - pad)
-            if (dx !== 0 || dy !== 0) {
-              markFlying(500)
-              map.panBy([dx, dy], { duration: 300, easing: t => t * (2 - t) })
-            }
-          })
-        })
       })
 
       // Cursor pointer on hover

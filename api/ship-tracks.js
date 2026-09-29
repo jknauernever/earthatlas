@@ -85,6 +85,7 @@ async function packFor(t, region) {
   const key = `${region}:${t}`
   let p = packs.get(key)
   if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); packs.delete(key); p = null }
+  if (p && !p.src.fresh && region !== 'us' && existsSync(localPathFor(t, 'pack'))) { packs.delete(key); p = null } // drive plugged back in
   if (p) return p
   let src = null
   if (region === 'us') { const u = await usUrls(t); if (u) src = new BlobRange(u.pack, u.pack_bytes) }
@@ -248,9 +249,11 @@ async function pmtilesFor(t, region) {
     return cache.get(key)
   }
   let p = cache.get(t)
+  const localPath = localPathFor(t)
   if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete(t); p = null }
+  // Local bakes can live on an external drive (symlinked): unplugged → Blob above; plugged back in → local again.
+  if (p && !p.local && existsSync(localPath)) { cache.delete(t); p = null }
   if (!p) {
-    const localPath = localPathFor(t)
     const blobUrl = manifest.tiles?.[t] || null
     if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
     else if (blobUrl) p = new PMTiles(new BlobRange(blobUrl))

@@ -724,8 +724,123 @@
      "seamark:mooring:category": "dolphin",
      "seamark:type": "mooring"
     }
+   },
+   {
+    "type": "way",
+    "id": 1308709908,
+    "center": {
+     "lat": 49.01451,
+     "lon": -123.1558993
+    },
+    "tags": {
+     "description": "Berth for loading coal",
+     "seamark:berth:category": "loading",
+     "seamark:berth:name": "2",
+     "seamark:type": "berth"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1308709912,
+    "center": {
+     "lat": 49.0102486,
+     "lon": -123.1664207
+    },
+    "tags": {
+     "description": "Berth for loading coal",
+     "seamark:berth:category": "loading",
+     "seamark:berth:name": "1",
+     "seamark:type": "berth"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1309998671,
+    "center": {
+     "lat": 49.2919846,
+     "lon": -122.9548865
+    },
+    "tags": {
+     "seamark:type": "berth"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1309998672,
+    "center": {
+     "lat": 49.2912664,
+     "lon": -122.9552149
+    },
+    "tags": {
+     "seamark:type": "berth"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1309998673,
+    "center": {
+     "lat": 49.2925642,
+     "lon": -122.9504367
+    },
+    "tags": {
+     "seamark:type": "berth"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1319906301,
+    "center": {
+     "lat": 48.8643107,
+     "lon": -122.7643025
+    },
+    "tags": {
+     "area": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1319906302,
+    "center": {
+     "lat": 48.8639864,
+     "lon": -122.7637374
+    },
+    "tags": {
+     "area": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1319906303,
+    "center": {
+     "lat": 48.8629866,
+     "lon": -122.7616686
+    },
+    "tags": {
+     "area": "yes",
+     "man_made": "pier"
+    }
+   },
+   {
+    "type": "way",
+    "id": 1319906304,
+    "center": {
+     "lat": 48.862727,
+     "lon": -122.7610327
+    },
+    "tags": {
+     "area": "yes",
+     "man_made": "pier"
+    }
    }
-  ]
+  ],
+  "added": {
+   "retrieved_at": "2026-09-28",
+   "osm_base": "2026-09-28T23:02:20Z",
+   "url": "https://overpass-api.de/api/interpreter",
+   "what": "9 elements appended 2026-09-28 (multi-berth fix): the OSM berths added to Westshore (ways 1308709912, 1308709908), Westridge (1309998671-673) and BP Cherry Point (1319906301-304), exactly as Overpass returned them (out center tags)."
+  }
  },
  "gem": {
   "url": "https://raw.githubusercontent.com/GlobalEnergyMonitor/maps/main/trackers/coal-terminals/compilation_output/Coal%20Terminals-map-file-2025-01-15.csv",

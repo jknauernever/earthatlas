@@ -8,7 +8,9 @@
    "osm_site_center": "Overpass bounding-box centre of the site polygon (low precision)"
   },
   "osm_base": "2026-09-28T04:34:55Z (Overpass timestamp_osm_base of the pulls)",
-  "review": "lat/lon here are the reviewed values; the import recomputes them from the stored OSM elements and reports drift over 50 m."
+  "review": "lat/lon here are the reviewed values; the import recomputes them from the stored OSM elements and reports drift over 50 m.",
+  "official_berth": "When an OSM berth carries a berth number that the terminal's BC Ports and Terminals berth description also states (e.g. \"#1: length 350 m\"), official_berth names it; the terminal-calls bake then uses that official length for the radius (lib/ships/terminalCalls.js berthLengthOf). Positions stay OSM; the length is the official record's.",
+  "added_2026-09-28": "Multi-berth fix (Josh 2026-09-28, task 7): Westshore, Neptune, Westridge, Alliance Grain, Cargill, BP Cherry Point, Crofton and Pacific Coast Terminals got the OSM berth/pier elements of berths that lay outside the radius of their single official point (found by stopped AIS positions just outside the radius, 12 sample days). Overpass timestamp_osm_base 2026-09-28T23:02:20Z."
  },
  "berths": [
   {
@@ -131,6 +133,146 @@
    ],
    "lat": 49.662059,
    "lon": -123.258465
+  },
+  {
+   "terminal": "bc-westshore",
+   "key": "osm-way1308709912",
+   "label": "Berth 1 (OSM seamark:berth:name 1, \"Berth for loading coal\"), south-west end of the Westshore wharf",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1308709912"
+   ],
+   "lat": 49.010249,
+   "lon": -123.166421,
+   "official_berth": "#1"
+  },
+  {
+   "terminal": "bc-westshore",
+   "key": "osm-way1308709908",
+   "label": "Berth 2 (OSM seamark:berth:name 2, \"Berth for loading coal\")",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1308709908"
+   ],
+   "lat": 49.01451,
+   "lon": -123.155899,
+   "official_berth": "#2"
+  },
+  {
+   "terminal": "bc-neptune",
+   "key": "osm-way1167455077",
+   "label": "Berth 1 (OSM seamark:berth:name 1, \"For loading metallurgical coal\"), west end",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1167455077"
+   ],
+   "lat": 49.304035,
+   "lon": -123.055515,
+   "official_berth": "#1"
+  },
+  {
+   "terminal": "bc-neptune",
+   "key": "osm-way1167455079",
+   "label": "Potash berth at the east end (OSM seamark:berth:name 2, \"For loading potash\"; OSM names two berths \"2\", so no official length is matched)",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1167455079"
+   ],
+   "lat": 49.303424,
+   "lon": -123.048288
+  },
+  {
+   "terminal": "bc-westridge",
+   "key": "osm-way1309998671",
+   "label": "Berth (OSM seamark:type=berth, unnamed), west side of the dock",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1309998671"
+   ],
+   "lat": 49.291985,
+   "lon": -122.954887
+  },
+  {
+   "terminal": "bc-westridge",
+   "key": "osm-way1309998672",
+   "label": "Berth (OSM seamark:type=berth, unnamed), west side of the dock, inner",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1309998672"
+   ],
+   "lat": 49.291266,
+   "lon": -122.955215
+  },
+  {
+   "terminal": "bc-westridge",
+   "key": "osm-way1309998673",
+   "label": "Berth (OSM seamark:type=berth, unnamed), east side of the dock",
+   "basis": "osm_seamark_berth",
+   "osm": [
+    "way/1309998673"
+   ],
+   "lat": 49.292564,
+   "lon": -122.950437
+  },
+  {
+   "terminal": "bc-alliance-grain",
+   "key": "osm-way1173738445",
+   "label": "Pier (untagged) between the West and East berths",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1173738445"
+   ],
+   "lat": 49.288203,
+   "lon": -123.079053
+  },
+  {
+   "terminal": "bc-cargill",
+   "key": "osm-way525504891",
+   "label": "Pier (OSM description \"Cargill Grain Terminal Pier\")",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/525504891"
+   ],
+   "lat": 49.305109,
+   "lon": -123.058748
+  },
+  {
+   "terminal": "wa-bp-cherry-point",
+   "key": "osm-way1319906301",
+   "label": "Mooring dolphins (untagged piers) at the north-west end of the BP Cherry Point Refinery Pier",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1319906301",
+    "way/1319906302",
+    "way/1319906303",
+    "way/1319906304"
+   ],
+   "lat": 48.863503,
+   "lon": -122.762685
+  },
+  {
+   "terminal": "bc-crofton",
+   "key": "osm-way224532602",
+   "label": "South pier (untagged, mooring=commercial) at the Crofton mill",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/224532602"
+   ],
+   "lat": 48.870445,
+   "lon": -123.640519
+  },
+  {
+   "terminal": "bc-pct-port-moody",
+   "key": "osm-way1081401265",
+   "label": "Untagged pier structures on the west side of the Pacific Coast Terminals site",
+   "basis": "osm_pier_centers",
+   "osm": [
+    "way/1081401265",
+    "way/1081401266",
+    "way/1081401267"
+   ],
+   "lat": 49.287558,
+   "lon": -122.865387
   }
  ]
 }

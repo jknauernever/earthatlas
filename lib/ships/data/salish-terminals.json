@@ -54,7 +54,9 @@
      }
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1319906301"
+   ],
    "sources": {
     "usace-docks": [
      "02JT"
@@ -75,7 +77,8 @@
    "notes": [
     "USACE 02JT owner text (\"ARCO Products Co.\") is decades old; operator is hand-maintained.",
     "The Climate TRACE refinery point is the plant, not the dock.",
-    "Climate TRACE \"Birch Bay,WA\" ship port (48.8532, -122.7296) is not linked: its name is a place, not this terminal."
+    "Climate TRACE \"Birch Bay,WA\" ship port (48.8532, -122.7296) is not linked: its name is a place, not this terminal.",
+    "USACE 02JT describes one wharf (1,000 ft berthing); tankers also stop about 350 m north-west of the USACE point, where OpenStreetMap maps four mooring dolphins on the BP Cherry Point Refinery Pier (ways 1319906301-304). Their mean position was added as a second berth 2026-09-28."
    ]
   },
   {
@@ -1370,11 +1373,11 @@
    "name": "Ferndale LPG export terminal wharf (former Intalco wharf, Cherry Point)",
    "kind": "lpg_terminal",
    "country": "US",
-   "operator": "AltaGas (ALA Energy Ferndale Terminal; formerly Petrogas Energy)",
-   "operator_source_url": "https://www.altagas.ca/infrastructure/operations/ferndale-lpg-export-facility",
+   "operator": "ALA Energy (AltaGas); permit holder of record Petrogas West LLC",
+   "operator_source_url": "https://www.whatcomcounty.us/4448/ALA-Energy-Ferndale-Terminal",
    "operator_checked": "2026-09-28",
    "status": "operating",
-   "status_source_url": "https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
+   "status_source_url": "https://earthjustice.org/press/2026/hearing-examiner-rejects-permit-that-allowed-a-major-expansion-of-a-whatcom-county-liquefied-petroleum-gas-terminal",
    "commodities": [
     "liquefied petroleum gas"
    ],
@@ -1407,7 +1410,7 @@
     "USACE purpose: “Receipt and shipment of liquefied petroleum gas; and receipt of alumina.” The LPG part is current; the alumina part is history (commodities_history).",
     "The wharf now serves only the LPG export terminal (propane and butane arriving by rail, loaded onto gas carriers)."
    ],
-   "operator_note": "AltaGas’s own page (“ALA Energy Ferndale Terminal”) refuses scripted reads (HTTP 403, 2026-09-28); its title was read from a search listing. RE Sources (Sep 2025) also describes the Ferndale LPG terminal: https://www.re-sources.org/2025/09/re-sources-joins-coalition-calling-on-whatcom-county-for-full-eis-at-ferndale-lpg-terminal/",
+   "operator_note": "Whatcom County’s project page “ALA Energy Ferndale Terminal” (4100 Unick Road, Ferndale; applications CUP2024-00006, MPP2024-00002, SEPA2024-00052) names ALA Energy as the applicant. The County’s notice “County and Petrogas Reach Agreement on Permitting Compliance Pathway” names “Petrogas West LLC” and the “Petrogas Ferndale Terminal located in Cherry Point at 4100 Unick Road”: https://www.whatcomcounty.us/CivicSend/ViewMessage/message/195837 . Earthjustice (2026-04-01) calls the company “AltaGas (ALA Energy)”. AltaGas’s own page refuses scripted reads (HTTP 403). None of these sources states who owns the wharf itself (former Intalco wharf).",
    "commodities_history": [
     {
      "commodity": "alumina",
@@ -1416,7 +1419,9 @@
      "field": "PURPOSE",
      "note": "Out of date: USACE still lists “receipt of alumina”, which ended when the Intalco aluminium smelter closed (2020). Kept as history, not current use."
     }
-   ]
+   ],
+   "status_date": "2026-04-01",
+   "status_note": "Earthjustice press release 2026-04-01: the terminal “receives, stores, and exports liquefied propane and butane”; the Whatcom County Hearing Examiner (2026-03-31) sent permits for 2 new and 31 previously unpermitted projects back to the County for new environmental review (AltaGas appealed to Skagit County Superior Court, May 2026: https://www.cascadiadaily.com/2026/may/21/altagas-appeal-asks-skagit-judge-to-approve-cherry-point-project-permits/). An advocacy group’s release, not a regulator: kept as the status source because no regulator page found states current operation."
   },
   {
    "id": "bc-westridge",
@@ -1449,7 +1454,11 @@
      "berths_desc": "Main dock 91.4 m long, 305 m between extreme mooring dolphins, depth 11 m for vessels up to 250 m in length"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1309998671",
+    "osm-way1309998672",
+    "osm-way1309998673"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -1466,7 +1475,8 @@
     ]
    },
    "notes": [
-    "BC Ports and Terminals still names it \"Kinder Morgan (Westridge Terminal)\"; the operator is hand-maintained."
+    "BC Ports and Terminals still names it \"Kinder Morgan (Westridge Terminal)\"; the operator is hand-maintained.",
+    "The BC Ports and Terminals description is of the old single dock; OpenStreetMap maps three berths (seamark:type=berth, ways 1309998671/2/3) off the Westridge Marine Terminal site. Added 2026-09-28 (tankers stopped at the west berths were outside the official point's radius)."
    ]
   },
   {
@@ -1687,7 +1697,9 @@
      "berths_desc": "Berth #1: length 237 m, limiting draft 12.5 m; #2: length 293 m, limiting draft 12 m Panamax capacity"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1081401265"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -1707,7 +1719,8 @@
     ]
    },
    "notes": [
-    "GEM lists a retired coal unit here (T1407, 2011-2013)."
+    "GEM lists a retired coal unit here (T1407, 2011-2013).",
+    "Two berths (BC Ports and Terminals: #1 237 m, #2 293 m) about 400 m apart; the OpenStreetMap pier structures on the site's west side (ways 1081401265-267) were added 2026-09-28."
    ]
   },
   {
@@ -1792,7 +1805,10 @@
      "berths_desc": "Berth #1: length 230 m, depth 15.24 m with floating dolphin; #2: length 230 m, depth 13.7 m with bollards; #3: length 100 m with mooring bollards depth 13 m"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1167455077",
+    "osm-way1167455079"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -1808,7 +1824,9 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [
+    "Three berths (BC Ports and Terminals: #1 230 m, #2 230 m, #3 100 m); OpenStreetMap maps the metallurgical-coal berth 1 (way 1167455077) west of the official point and a potash berth (way 1167455079) at the east end. Both added 2026-09-28."
+   ]
   },
   {
    "id": "bc-g3",
@@ -1883,7 +1901,9 @@
      "berths_desc": "#1: length 228 m + 52 m, depth 15.3 m; #2: length 205 m, depth outshore 12.6 m at LW"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way525504891"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -1896,7 +1916,9 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [
+    "Two berths (BC Ports and Terminals: #1 228 m + 52 m, #2 205 m); the OpenStreetMap \"Cargill Grain Terminal Pier\" centre (way 525504891) was added 2026-09-28 for ships at the pier's west end."
+   ]
   },
   {
    "id": "bc-richardson",
@@ -2032,7 +2054,9 @@
      "berths_desc": "West: length 213 m, limiting draft 9.8 m; East: length 213 m, limiting draft 12.6 m"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1173738445"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -2045,7 +2069,9 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [
+    "Two berths (BC Ports and Terminals: West and East, 213 m each) on either side of one pier; the official point is at the pier root, so the OpenStreetMap pier centre (way 1173738445) was added 2026-09-28."
+   ]
   },
   {
    "id": "bc-cascadia",
@@ -2234,7 +2260,10 @@
      "berths_desc": "#1: length 350 m, depth 22.9 m; #2: length 263 m, depth 19.4 m; rail access and capacity"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way1308709912",
+    "osm-way1308709908"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -2253,7 +2282,9 @@
      2787989
     ]
    },
-   "notes": []
+   "notes": [
+    "Two berths (BC Ports and Terminals: #1 350 m, #2 263 m) about 900 m apart; the BC Ports and Terminals point sits on berth 2, so berth 1 comes from OpenStreetMap (seamark berth \"1\", way 1308709912; berth 2 = way 1308709908). Added 2026-09-28 after stopped bulk carriers at berth 1 were found uncounted."
+   ]
   },
   {
    "id": "bc-fortis-tilbury-lng",
@@ -2661,7 +2692,9 @@
      "berths_desc": "Berth #1 (north) length 170 m, depth 12 m; #2: (Central) length 152 m, depth 12.2 m; #3 (south) length 138 m, depth 12 m"
     }
    ],
-   "osm_berths": [],
+   "osm_berths": [
+    "osm-way224532602"
+   ],
    "sources": {
     "bc-ports-terminals": [
      {
@@ -2675,7 +2708,8 @@
     "ship_port_ids": []
    },
    "notes": [
-    "Domtar announced the Crofton mill's permanent closure on Dec 2, 2025 (operations stopped Dec 15, 2025). Current use of the wharves is not confirmed."
+    "Domtar announced the Crofton mill's permanent closure on Dec 2, 2025 (operations stopped Dec 15, 2025). Current use of the wharves is not confirmed.",
+    "Three berths (BC Ports and Terminals: north 170 m, central 152 m, south 138 m); the official point is at the central berth, so the OpenStreetMap south pier (way 224532602) was added 2026-09-28."
    ],
    "status_date": "2025-12-15",
    "status_note": "Mill closed permanently (announced 2025-12-02; operations stopped 2025-12-15)."
@@ -2917,7 +2951,7 @@
    "operator": "Shell Canada Products",
    "operator_source_url": "https://gisis.imo.org/Public/ISPS/Download.aspx",
    "operator_checked": "2026-09-28",
-   "operator_note": "Named by IMO GISIS ISPS declared facility CACHM-0002 “Shell Canada Products - Bare Point Terminal” (statement of compliance issued 2025-11-20). Barchart publishes a current “Shell Chemainus, BC” wholesale rack price: https://www.barchart.com/cmdty/data/wholesale-fuel-prices/explore/RBPAW009030.CM",
+   "operator_note": "Named by IMO GISIS ISPS declared facility CACHM-0002 “Shell Canada Products - Bare Point Terminal” (statement of compliance issued 2025-11-20). Barchart publishes a current “Shell Chemainus, BC” wholesale rack price: https://www.barchart.com/cmdty/data/wholesale-fuel-prices/explore/RBPAW009030.CM Re-checked 2026-09-28 for a stronger source (BC government, Transport Canada, NRCan distribution-network page, Shell Canada): none names the Bare Point operator; only directory listings (Shell Canada Products, 9900 Bare Point Rd) do. The IMO GISIS ISPS declaration stays the source; still weak.",
    "status": "operating",
    "status_source_url": "https://gisis.imo.org/Public/ISPS/Download.aspx",
    "status_date": "2025-11-20",

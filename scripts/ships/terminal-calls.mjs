@@ -18,7 +18,7 @@ import { createInterface } from 'node:readline'
 import path from 'node:path'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource, startRun, finishRun } from '../../lib/ships/store.js'
-import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthRadiusM, inAisBox, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
+import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, berthRadiusM, inAisBox, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
 
 const DIR = 'scripts/ships/bake-ais/cache/terminal-calls'
 const args = process.argv.slice(2)
@@ -38,15 +38,18 @@ try {
 
 async function berths() {
   const rows = await q(`SELECT t.key AS terminal, t.kind, b.berth_key AS berth, b.lat, b.lon, b.basis, b.source_id, b.source_record_ids,
-                               b.detail->>'berths_desc' AS desc
+                               b.detail->>'berths_desc' AS desc, b.detail->>'official_berth' AS official_berth
                           FROM ${schema}.terminal_berths b JOIN ${schema}.terminals t ON t.id = b.terminal_id
                          WHERE b.status = 'active' AND t.list_status = 'listed' ORDER BY t.key, b.berth_key`)
   const usaceIds = rows.filter((r) => r.basis === 'usace_dock').flatMap((r) => r.source_record_ids.map(Number))
   const usace = usaceIds.length ? new Map((await q(`SELECT id, payload->>'BERTHING_LARGEST' AS ft FROM ${schema}.source_records WHERE id = ANY($1)`, [usaceIds]))
     .map((r) => [Number(r.id), r.ft])) : new Map()
+  // An OSM berth numbered like an official berth (salish-terminals-osm.json official_berth) takes that berth's official length.
+  const descOf = new Map(rows.filter((r) => r.basis === 'bc_ports_terminals' && r.desc).map((r) => [r.terminal, r.desc]))
   const out = rows.map((r) => {
     const ft = r.basis === 'usace_dock' ? r.source_record_ids.map((id) => usace.get(Number(id))).find((x) => x != null) ?? null : null
-    const len = berthLength({ desc: r.desc, usaceBerthingLargestFt: ft })
+    const own = r.official_berth ? berthLengthOf(descOf.get(r.terminal), r.official_berth) : null
+    const len = own ? { m: own, from: `BC Ports and Terminals berth description (${r.official_berth})` } : berthLength({ desc: r.desc, usaceBerthingLargestFt: ft })
     return { terminal: r.terminal, kind: r.kind, berth: r.berth, lat: r.lat, lon: r.lon, basis: r.basis,
       length_m: len?.m ?? null, length_from: len?.from ?? null, radius_m: berthRadiusM(len?.m), in_box: inAisBox(r.lat, r.lon) }
   })

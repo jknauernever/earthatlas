@@ -11,6 +11,7 @@ import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import { reverseGeocode } from '../explore/utils.js'
 import {
   buildParcelsLayer, addParcelLayers, applyParcelVisibility, applyParcelOpacity,
@@ -908,7 +909,7 @@ const HERO_NEUTRAL = { bg: '#f9fafb', bd: '#9ca3af', tx: '#6b7280' }
 // Option A layout: header (place + coords) → severity-tinted hero (one-line
 // verdict + plain-language summary) → compact one-line rows → consolidated
 // sources footer. `place` arrives async from reverseGeocode.
-function renderPopupHTML({ results, lat, lng, place, maxH }) {
+function renderPopupHTML({ results, lat, lng, place }) {
   const settled = RASTER_LAYERS.filter((l) => l.id in results).length
   const pending = settled < RASTER_LAYERS.length
   // Cross-layer wildfire verdict, computed once: tints the hero AND becomes the
@@ -1014,12 +1015,12 @@ function renderPopupHTML({ results, lat, lng, place, maxH }) {
     ? renderNewsCard({ ...results._news, named: results.usfires.name, place })
     : ''
 
-  const capStyle = maxH ? ` style="max-height:${maxH}px"` : ''
   // Fixed header (place + coords) + a separately-scrolling body. This guarantees
   // the header is never clipped no matter how tall the content or which way the
-  // popup is anchored — only the body scrolls.
+  // popup is anchored — only the body scrolls. The ONE wrapper element is what
+  // keepPopupOnMap (src/lib/popupFit.js) caps to the room on the map.
   return (
-    `<div class="${styles.popup}"${capStyle}>` +
+    `<div class="${styles.popup}">` +
     `<div class="${styles.popupHeader}">${placeLine}` +
     `<div class="${styles.popupCoords}">${lat.toFixed(4)}, ${lng.toFixed(4)}</div></div>` +
     `<div class="${styles.popupBody}">` +
@@ -1681,22 +1682,6 @@ export default function FireApp() {
       setShowNudge(false) // first interaction → retire the hint
       if (popupRef.current) popupRef.current.remove()
 
-      // Position the popup deterministically from the click pixel so it always
-      // fits the window: anchor toward whichever side has more room, and cap the
-      // body's max-height to that space (it then scrolls internally if the
-      // content is taller). Mapbox's own auto-anchor uses the popup's initial
-      // (tiny, still-loading) height, so a popup that grows after open can
-      // overflow — this avoids that entirely.
-      const cont = map.getContainer()
-      const mapW = cont.clientWidth, mapH = cont.clientHeight
-      const px = e.point.x, py = e.point.y
-      const vMargin = 24
-      const vert = (mapH - py) >= py ? 'top' : 'bottom' // 'top' anchor = popup below the point
-      const availV = (vert === 'top' ? mapH - py : py) - vMargin
-      const maxH = Math.max(180, Math.min(Math.round(mapH * 0.82), availV))
-      const horiz = px < mapW / 3 ? 'left' : px > (mapW * 2) / 3 ? 'right' : ''
-      const anchor = horiz ? `${vert}-${horiz}` : vert
-
       const results = {} // layer id → interpretation | null (key present = settled)
       let place = null   // reverse-geocoded "City, ST" — fills in async
 
@@ -1736,18 +1721,20 @@ export default function FireApp() {
 
       // Historical fire footprint under the click (synchronous).
       try { results.firehistory = queryHistoryAt(map, e.point) } catch { results.firehistory = null }
-      // maxWidth 'none' so our CSS clamp() controls width responsively; anchor
-      // fixed so the popup never re-flips into the off-screen direction as it grows.
-      const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: 'none', offset: 14, anchor })
+      // maxWidth 'none' so our CSS clamp() controls width responsively. Placement
+      // and height are the shared keepPopupOnMap (src/lib/popupFit.js): it hangs
+      // the card off the side of the click with more room, caps it to that room,
+      // and re-fits as the streaming rows below fill it in.
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ closeButton: true, maxWidth: 'none', offset: 14 })
         .setLngLat([lng, lat])
-        .setHTML(renderPopupHTML({ results, lat, lng, place, maxH }))
-        .addTo(map)
+        .setHTML(renderPopupHTML({ results, lat, lng, place }))
+        .addTo(map))
       popupRef.current = popup
       popup.on('close', () => { try { clearParcelSelection(map) } catch {} })
       const stillCurrent = () => popupRef.current === popup
       const rerender = () => {
         if (!stillCurrent()) return
-        popup.setHTML(renderPopupHTML({ results, lat, lng, place, maxH }))
+        popup.setHTML(renderPopupHTML({ results, lat, lng, place }))
         // Keep the body pinned to the top so the verdict shows first (the
         // streaming re-renders can otherwise leave it scrolled mid-content).
         const el = popup.getElement()

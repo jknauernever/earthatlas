@@ -57,6 +57,27 @@ function formatTime(timeStr) {
   } catch { return '' }
 }
 
+// ─── Popups stop above the "When are they here?" month bar ───────────────────
+// The bar (SeasonRibbon, data-map-bottom-bar) is docked over the bottom of the map, so the space it covers is
+// reserved for popups (src/lib/popupFit.js bottomReserve). Measured from the bar's real box at every fit; if the
+// bar can't be found or has no box yet, MONTH_BAR_RESERVE is used: the bar's desktop height (~123 px) + its 12 px
+// inset from the map's bottom edge.
+const MONTH_BAR_RESERVE = 135
+const MONTH_BAR_GAP = 6 // breathing room between a card and the bar
+function monthBarReserve(map) {
+  const mapEl = map?.getContainer?.()
+  if (!mapEl) return MONTH_BAR_RESERVE
+  // The bar is a sibling of the map's wrapper (ExploreApp's .mapWrap); look a few levels up, not the whole page.
+  let bar = null
+  for (let n = mapEl.parentElement, i = 0; n && i < 3 && !bar; n = n.parentElement, i++) {
+    bar = n.querySelector('[data-map-bottom-bar]')
+  }
+  const b = bar?.getBoundingClientRect()
+  if (!b || b.height <= 0) return MONTH_BAR_RESERVE
+  const mapRect = mapEl.getBoundingClientRect()
+  return Math.max(0, Math.ceil(mapRect.bottom - b.top) + MONTH_BAR_GAP)
+}
+
 // ─── Shared popup HTML builder ─────────────────────────────────────────────
 // Source link for a sighting — every record links to its origin platform.
 // eBird ids are `ebird-<subId>-<speciesCode>` (see normalizeEBirdObs), and the
@@ -397,7 +418,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // One shared placement/fit for every site: hang the card off the side
         // with more room and scroll inside (re-fits when the roster swaps to a
         // record card). Phones use index.css's bottom sheet.
-        keepPopupOnMap(popup)
+        keepPopupOnMap(popup, { bottomReserve: () => monthBarReserve(map) })
 
         popupRef.current = popup
 

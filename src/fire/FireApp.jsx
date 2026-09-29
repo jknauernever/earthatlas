@@ -1055,6 +1055,16 @@ const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0
 // the US-only fire-risk layers carry the headline story.
 const DEFAULT_VIEW = { lng: -114, lat: 39.5, zoom: 4.3 }
 
+// One-line status under a /fire layer row: never wraps (ellipsis), the full sentence is its tooltip.
+function StatusLine({ error = false, full, children }) {
+  return (
+    <div className={`${error ? styles.layerError : styles.layerHint} ${styles.layerStatusLine}`}
+      title={full || (typeof children === 'string' ? children : undefined)}>
+      {children}
+    </div>
+  )
+}
+
 // ─── URL state ────────────────────────────────────────────────────────────
 // Same shareable-link philosophy as /forestmonitor, kept compact:
 //   on=whp,lulc            (layers that are ON; omitted when none)
@@ -1998,8 +2008,9 @@ export default function FireApp() {
         summary={`${order.filter((id) => visible[id]).length} of ${order.length} on`}
         className={styles.layerPanel}
       >
-        <p className={styles.layerIntro}>
-          Click any point on Earth to assess its wildfire risk. Or jump to a place with the search bar above.
+        {/* One line (the panel must fit without scrolling with every layer on); the rest is its tooltip. */}
+        <p className={styles.layerIntro} title="Click any point on Earth to assess its wildfire risk. Or jump to a place with the search bar above.">
+          Click anywhere for its wildfire risk.
         </p>
         <div className={styles.layerPanelTitle}>Fire layers</div>
         {order.map((id) => {
@@ -2060,88 +2071,86 @@ export default function FireApp() {
                 </button>
               </div>
 
-              {/* Load-failure hint takes precedence; else coverage / zoom hint. */}
+              {/* One status line per row, never wrapping (Josh 2026-09-29: the panel must fit without scrolling with every
+                  layer on). Only live state shows here (counts, loading, zoom-in, errors), each with its source; the full
+                  sentence is the line's tooltip. Static coverage lives in the ▶ turndown with the legend and source. */}
               {isOn && loadError[layer.id] ? (
-                <div className={styles.layerError}>
-                  Couldn’t load this layer — the data service may be temporarily unavailable. Toggle off and on to retry.
-                </div>
+                <StatusLine error full="Couldn’t load this layer — the data service may be temporarily unavailable. Toggle off and on to retry.">
+                  Couldn’t load — toggle off and on to retry
+                </StatusLine>
               ) : isOn && layer.kind === 'firms' ? (
                 // FIRMS is live data: surface its load state + in-view count.
                 belowMinZoom ? (
-                  <div className={styles.layerHint}>Zoom in to load active fire detections — global, NASA FIRMS, last 48 h</div>
+                  <StatusLine full="Zoom in to load active fire detections — global, NASA FIRMS, last 48 h">Zoom in to load · NASA FIRMS, last 48 h</StatusLine>
                 ) : firmsMeta.error ? (
-                  <div className={styles.layerError}>
-                    Couldn’t load active fire data{typeof firmsMeta.error === 'string' ? ` (${firmsMeta.error})` : ''}
-                    {firmsMeta.count > 0 ? ` — showing ${firmsMeta.count.toLocaleString()} from NOAA GOES only` : ''} — toggle off and on to retry.
-                  </div>
+                  <StatusLine error full={`Couldn’t load active fire data${typeof firmsMeta.error === 'string' ? ` (${firmsMeta.error})` : ''}${firmsMeta.count > 0 ? ` — showing ${firmsMeta.count.toLocaleString()} from NOAA GOES only` : ''} — toggle off and on to retry.`}>
+                    {firmsMeta.count > 0 ? `FIRMS failed · ${firmsMeta.count.toLocaleString()} from NOAA GOES only` : 'Couldn’t load — toggle off and on to retry'}
+                  </StatusLine>
                 ) : firmsMeta.loading ? (
-                  <div className={styles.layerHint}>Loading active fire detections…</div>
+                  <StatusLine>Loading active fire detections…</StatusLine>
                 ) : (
-                  <div className={styles.layerHint}>
+                  <StatusLine full={firmsMeta.count > 0
+                    ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.geo > 0 ? ` · ${firmsMeta.geo.toLocaleString()} from GOES` : ''}${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h · NASA FIRMS${firmsMeta.geo > 0 ? ' + NOAA GOES' : ''}`
+                    : `No ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detections in this view (last 48 h)`}>
                     {firmsMeta.count > 0
-                      ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detection${firmsMeta.count === 1 ? '' : 's'} in view${firmsMeta.geo > 0 ? ` · ${firmsMeta.geo.toLocaleString()} from GOES` : ''}${firmsMeta.truncated ? ' (most recent shown)' : ''} · last 48 h`
-                      : `No ${firmsAllSources ? 'thermal' : 'wildfire-likely'} detections in this view (last 48 h)`}
-                    {' · '}
-                    <button
-                      type="button"
-                      onClick={toggleFirmsSources}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
-                      title={firmsAllSources
-                        ? 'Re-apply the wildfire-likely filter (drops low-power industrial/agricultural heat)'
-                        : 'Show every thermal detection, including industrial flares, refineries and agricultural burns'}
-                    >
-                      {firmsAllSources ? 'wildfires only' : 'show all heat sources'}
-                    </button>
-                  </div>
+                      ? `${firmsMeta.count.toLocaleString()} ${firmsAllSources ? 'heat sources' : 'wildfire-likely'} · FIRMS${firmsMeta.geo > 0 ? ' + GOES' : ''} · 48 h`
+                      : `None ${firmsAllSources ? '' : 'wildfire-likely '}in view · FIRMS · 48 h`}
+                  </StatusLine>
                 )
               ) : isOn && layer.kind === 'usfires' ? (
                 usFiresMeta.error ? (
-                  <div className={styles.layerError}>Couldn’t load active wildfires — toggle off and on to retry.</div>
+                  <StatusLine error>Couldn’t load active wildfires — toggle off and on to retry.</StatusLine>
                 ) : usFiresMeta.loading ? (
-                  <div className={styles.layerHint}>Loading active US wildfires…</div>
+                  <StatusLine>Loading active US wildfires…</StatusLine>
                 ) : (
-                  <div className={styles.layerHint}>
+                  <StatusLine full={usFiresMeta.named > 0
+                    ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'} with acreage, or reported in the last ${Math.round(ZERO_ACRE_MAX_AGE_MS / 3.6e6)} h${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
+                    : 'No active US fires in the feeds right now'}>
                     {usFiresMeta.named > 0
-                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'} with acreage, or reported in the last ${Math.round(ZERO_ACRE_MAX_AGE_MS / 3.6e6)} h${usFiresMeta.perimeters > 0 ? ` · ${usFiresMeta.perimeters.toLocaleString()} with mapped perimeters` : ''} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
+                      ? `${usFiresMeta.named.toLocaleString()} named fire${usFiresMeta.named === 1 ? '' : 's'} · NIFC + InciWeb${usFiresMeta.updatedMs ? ` · ${updatedAgo(usFiresMeta.updatedMs)}` : ''}`
                       : 'No active US fires in the feeds right now'}
-                  </div>
+                  </StatusLine>
                 )
               ) : isOn && layer.kind === 'cwfis' ? (
                 cwfisMeta.error ? (
-                  <div className={styles.layerError}>Couldn’t load CWFIS perimeters — toggle off and on to retry.</div>
+                  <StatusLine error>Couldn’t load CWFIS perimeters — toggle off and on to retry.</StatusLine>
                 ) : cwfisMeta.loading ? (
-                  <div className={styles.layerHint}>Loading active Canada wildfire perimeters…</div>
+                  <StatusLine>Loading active Canada wildfire perimeters…</StatusLine>
                 ) : (
-                  <div className={styles.layerHint}>
+                  <StatusLine>
                     {cwfisMeta.count > 0
-                      ? `${cwfisMeta.count.toLocaleString()} active Canada fire perimeter${cwfisMeta.count === 1 ? '' : 's'} · satellite (CWFIS)`
+                      ? `${cwfisMeta.count.toLocaleString()} active perimeter${cwfisMeta.count === 1 ? '' : 's'} · satellite (CWFIS)`
                       : 'No current Canada fire perimeters in the feed'}
-                  </div>
+                  </StatusLine>
                 )
               ) : isOn && layer.kind === 'firehistory' ? (
                 belowMinZoom ? (
-                  <div className={styles.layerHint}>Zoom in to about z{HISTORY_MIN_ZOOM} to load past fire perimeters — US, NIFC history</div>
+                  <StatusLine full={`Zoom in to about z${HISTORY_MIN_ZOOM} to load past fire perimeters — US, NIFC history`}>Zoom in to about z{HISTORY_MIN_ZOOM} to load · NIFC history</StatusLine>
                 ) : historyMeta.error ? (
-                  <div className={styles.layerError}>Couldn’t load fire history — toggle off and on to retry.</div>
+                  <StatusLine error>Couldn’t load fire history — toggle off and on to retry.</StatusLine>
                 ) : historyMeta.loading ? (
-                  <div className={styles.layerHint}>Loading past fire perimeters…</div>
+                  <StatusLine>Loading past fire perimeters…</StatusLine>
                 ) : (
-                  <div className={styles.layerHint}>
+                  <StatusLine>
                     {historyMeta.count > 0
-                      ? `${historyMeta.count.toLocaleString()} past fire${historyMeta.count === 1 ? '' : 's'} in view${historyMeta.truncated ? ' (most recent shown)' : ''} · NIFC history`
+                      ? `${historyMeta.count.toLocaleString()} past fire${historyMeta.count === 1 ? '' : 's'} in view${historyMeta.truncated ? ' (latest)' : ''} · NIFC history`
                       : 'No recorded past fires in this view'}
-                  </div>
+                  </StatusLine>
                 )
-              ) : isOn ? (
-                <div className={styles.layerHint}>
-                  {belowMinZoom
-                    ? `Zoom in to about z${layer.minZoom} to load this layer — ${layer.coverage}`
-                    : layer.coverage}
-                </div>
+              ) : isOn && belowMinZoom ? (
+                <StatusLine full={`Zoom in to about z${layer.minZoom} to load this layer — ${layer.coverage}`}>Zoom in to about z{layer.minZoom} to load this layer</StatusLine>
               ) : null}
 
               {isOpen && (
                 <div className={`${styles.layerBody} ${isOn ? '' : styles.layerBodyMuted}`}>
+                  {layer.kind === 'firms' && (
+                    <button type="button" className={styles.firmsSourcesBtn} onClick={toggleFirmsSources} disabled={!isOn}
+                      title={firmsAllSources
+                        ? 'Re-apply the wildfire-likely filter (drops low-power industrial/agricultural heat)'
+                        : 'Show every thermal detection, including industrial flares, refineries and agricultural burns'}>
+                      {firmsAllSources ? 'Show wildfires only' : 'Show all heat sources'}
+                    </button>
+                  )}
                   <div className={styles.opacityControl}>
                     <div className={styles.opacityHeader}>
                       <span className={styles.opacityLabel}>Opacity</span>
@@ -2180,6 +2189,7 @@ export default function FireApp() {
 
                   <div className={styles.legendBlurb}>
                     {layer.blurb}
+                    {layer.coverage && <span className={styles.legendSource}>Coverage: {layer.coverage}</span>}
                     {LAYER_RESOLUTION[layer.id] && (
                       <span className={styles.legendSource}>Resolution: {LAYER_RESOLUTION[layer.id]}</span>
                     )}

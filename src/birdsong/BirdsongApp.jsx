@@ -41,6 +41,7 @@ import {
 } from './birdsongService.js'
 import styles from './BirdsongApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
+import { LegendTurndown } from '../components/panel'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -680,10 +681,10 @@ function GlobalView({ loading, error, snapshotReady, stationsInView, counts, top
       )}
 
       {detections.length > 0 && (
-        <div className={styles.field}>
-          <label className={styles.fieldLabel}>Latest calls{counts && counts.detections > detections.length ? ` · newest ${detections.length} of ${compactNumber(counts.detections)}` : ''}</label>
+        <FeedTurndown storageKey="birdsong.latestCalls"
+          label={`Latest calls${counts && counts.detections > detections.length ? ` · newest ${detections.length} of ${compactNumber(counts.detections)}` : ` (${detections.length})`}`}>
           <DetectionFeed detections={detections} playingId={playingId} onPlay={onPlay} showStation />
-        </div>
+        </FeedTurndown>
       )}
     </>
   )
@@ -724,10 +725,9 @@ function StationDetail({ station, detections, topSpecies, loading, isMine, playi
               </div>
             )}
             {detections.length > 0 ? (
-              <div className={styles.field}>
-                <label className={styles.fieldLabel}>Recent calls</label>
+              <FeedTurndown storageKey="birdsong.stationCalls" label={`Recent calls (${detections.length})`}>
                 <DetectionFeed detections={detections} playingId={playingId} onPlay={onPlay} />
-              </div>
+              </FeedTurndown>
             ) : (
               <div className={styles.status}>No detections in this window.</div>
             )}
@@ -738,6 +738,20 @@ function StationDetail({ station, detections, topSpecies, loading, isMine, playi
 }
 
 // ─── Shared sub-components ─────────────────────────────────────────────────────
+
+// A call feed folds away under the shared panel turndown, closed by default and remembered per viewer, so the panel
+// fits without scrolling (Josh 2026-09-29, the left-panel rule). Opened, the feed scrolls inside its own box and the
+// panel still doesn't.
+function FeedTurndown({ storageKey, label, children }) {
+  return (
+    <div className={styles.field}>
+      <LegendTurndown flush storageKey={storageKey} label={label}>
+        <div className={styles.feedScroll}>{children}</div>
+      </LegendTurndown>
+    </div>
+  )
+}
+
 function TopSpeciesList({ items }) {
   const max = Math.max(1, ...items.map((s) => s.count))
   return (

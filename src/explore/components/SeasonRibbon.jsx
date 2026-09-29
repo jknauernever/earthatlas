@@ -19,7 +19,8 @@ export default function SeasonRibbon({ pattern = [], subjectLabel = null, questi
   const thisMonth = new Date().getMonth()
 
   return (
-    <div className={styles.ribbon}>
+    // data-map-bottom-bar: ExploreMap measures this bar so popups stop above it (popupFit bottomReserve).
+    <div className={styles.ribbon} data-map-bottom-bar="">
       <div className={styles.ribbonHead}>
         <div className={styles.ribbonTitle}>
           {question || (subjectLabel ? `When is the ${subjectLabel} here?` : 'When are they here?')}

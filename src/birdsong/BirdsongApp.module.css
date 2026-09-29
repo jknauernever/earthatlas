@@ -223,6 +223,8 @@
 .speciesCount { font-size: 11px; color: rgba(255, 255, 255, 0.6); font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 38px; text-align: right; }
 
 /* ─── Detection feed (recent calls with audio) ───────────────────────────── */
+/* Call feeds fold under the shared LegendTurndown (FeedTurndown); opened, the feed scrolls in its own box. */
+.feedScroll { max-height: min(220px, 24vh); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 .feed { display: flex; flex-direction: column; gap: 6px; }
 .feedRow {
   display: flex; align-items: center; gap: 9px;

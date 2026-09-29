@@ -9,6 +9,7 @@ import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
+import { LegendTurndown } from '../components/panel'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import styles from './ForestMonitor.module.css'
@@ -1361,7 +1362,7 @@ export default function ForestMonitor() {
                 />
               </div>
 
-              <div className={styles.legendBlurb}><strong>Resolution:</strong> {FOREST_RESOLUTION.opera}</div>
+              <div className={styles.legendBlurb}><strong>Resolution:</strong> {FOREST_RESOLUTION.opera} · NASA OPERA L3 DIST-ALERT</div>
 
               <div className={styles.subLabel}>View</div>
               <div className={styles.modeRow}>
@@ -1410,8 +1411,10 @@ export default function ForestMonitor() {
                     <span>Jan 2023</span>
                     <span>Today</span>
                   </div>
-                  <div className={styles.legendBlurb}>
-                    <strong>Pale yellow</strong> = oldest disturbance, <strong>bright red</strong> = most recent — same as the forest-loss (Hansen) layer. The slider above limits which pixels are shown but doesn't change the colors. Source: NASA OPERA L3 DIST-ALERT, 30 m.
+                  {/* One legend line (Josh 2026-09-29: the panel must fit without scrolling); the longer note is its tooltip. */}
+                  <div className={styles.legendBlurb}
+                    title="Same colors as the forest-loss (Hansen) layer. The date slider limits which pixels are shown but doesn’t change the colors.">
+                    <strong>Pale yellow</strong> = oldest, <strong>bright red</strong> = most recent
                   </div>
                 </>
               )}
@@ -1429,17 +1432,23 @@ export default function ForestMonitor() {
               )}
               {mode === 'status' && (
                 <>
-                  <ul className={styles.legendList}>
-                    {STATUS_SWATCHES.map((s) => (
-                      <li key={s.label}>
-                        <span className={styles.swatch} style={{ background: s.color }} />
-                        {s.label}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className={styles.legendBlurb}>
-                    Provisional = single-detection; confirmed = multi-detection.
+                  {/* One line while on; the eight statuses fold away (Josh 2026-09-29: the panel must fit without scrolling). */}
+                  <div className={styles.legendGradient} style={{ background: `linear-gradient(90deg, ${STATUS_SWATCHES.map((s) => s.color).join(', ')})` }} />
+                  <div className={styles.legendScale} title="Provisional = single-detection; confirmed = multi-detection.">
+                    <span>Alert</span>
+                    <span>High loss</span>
+                    <span>Finished</span>
                   </div>
+                  <LegendTurndown flush storageKey="forest.opera.statuses" label={`The ${STATUS_SWATCHES.length} statuses`}>
+                    <ul className={styles.legendList}>
+                      {STATUS_SWATCHES.map((s) => (
+                        <li key={s.label}>
+                          <span className={styles.swatch} style={{ background: s.color }} />
+                          {s.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </LegendTurndown>
                 </>
               )}
             </div>

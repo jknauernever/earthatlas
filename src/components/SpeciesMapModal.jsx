@@ -4,6 +4,7 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchSpeciesObservations } from '../services/iNaturalist'
 import { getTaxonMeta, formatDate } from '../utils/taxon'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import styles from './SpeciesMapModal.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
@@ -169,8 +170,8 @@ export default function SpeciesMapModal({ taxon, onClose }) {
       const quality = { research: 'Research Grade', needs_id: 'Needs ID', casual: 'Casual' }[obs.quality_grade] || ''
       const inatUrl = `https://www.inaturalist.org/observations/${obs.id}`
 
-      const popupHtml = `
-        <div style="font-family: var(--font-sans, sans-serif); width: 320px;">
+      // ONE wrapper element (no stray text nodes around it): popupFit makes `.mapboxgl-popup-content > div` the scroller.
+      const popupHtml = `<div style="font-family: var(--font-sans, sans-serif); width: 320px;">
           ${photoUrl ? `<img src="${photoUrl}" style="width:100%;height:200px;object-fit:cover;border-radius:8px 8px 0 0;display:block;" />` : ''}
           <div style="padding:14px 16px;">
             <div style="font-weight:700;font-size:16px;margin-bottom:4px;">${obsCommon}</div>
@@ -184,10 +185,14 @@ export default function SpeciesMapModal({ taxon, onClose }) {
               <a href="${inatUrl}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#b8842a;text-decoration:none;font-weight:600;">View on iNaturalist ↗</a>
             </div>
           </div>
-        </div>`
+        </div>`.trim()
 
-      const popup = new mapboxgl.Popup({ offset: 14, maxWidth: '360px', closeButton: true })
+      // The shared popup frame (index.css) + the shared fit (src/lib/popupFit.js): the card hangs off whichever side
+      // of the dot has more room and scrolls inside instead of being clipped by the modal. No focus-on-open, so the
+      // browser doesn't scroll the modal to the card.
+      const popup = new mapboxgl.Popup({ offset: 14, maxWidth: '360px', closeButton: true, focusAfterOpen: false })
         .setHTML(popupHtml)
+      popup.on('open', () => keepPopupOnMap(popup))
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([lng, lat])

@@ -16,7 +16,14 @@
 const TIP = 10 + 12 // popup offset + arrow
 const PAD = 16
 
-export function fitPopupToMap(popup, { topReserve = 64 } = {}) {
+/**
+ * Options:
+ *   topReserve     px at the top of the map kept for the site's own controls (default 64).
+ *   bottomReserve  px at the bottom of the map kept clear, e.g. a docked bar over the map (default 0 = the whole height,
+ *                  exactly the old behaviour). A number, or a function returning one (read at every fit, so a bar
+ *                  that appears, grows or goes away later is honoured).
+ */
+export function fitPopupToMap(popup, { topReserve = 64, bottomReserve = 0 } = {}) {
   const el = popup.getElement()
   const scroller = el?.querySelector('.mapboxgl-popup-content > div')
   const mapEl = el?.closest('.mapboxgl-map')
@@ -26,9 +33,12 @@ export function fitPopupToMap(popup, { topReserve = 64 } = {}) {
   let pt
   try { pt = popup._map.project(popup.getLngLat()) } catch { return }
   // The top of the map belongs to each site's own controls (search, Explain, cues): cards stop short of it.
-  const down = mapRect.height - pt.y - TIP - PAD
+  // bottomReserve does the same for anything docked along the bottom (Explore's month bar).
+  let bottom = typeof bottomReserve === 'function' ? bottomReserve() : bottomReserve
+  bottom = Number.isFinite(bottom) && bottom > 0 ? bottom : 0
+  const down = mapRect.height - bottom - pt.y - TIP - PAD
   const up = pt.y - topReserve - TIP - PAD
-  const ceiling = Math.floor(mapRect.height * 0.75)
+  const ceiling = Math.floor((mapRect.height - bottom) * 0.75)
   const cur = ([...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || '').replace('mapboxgl-popup-anchor-', '')
   const curVert = cur.startsWith('top') ? 'top' : cur.startsWith('bottom') ? 'bottom' : null
   // Stay put only if the current side already offers all the card could use.

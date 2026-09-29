@@ -15,14 +15,14 @@ const S = {
   gem: { name: 'Global Energy Monitor', href: 'https://globalenergymonitor.org' },
 }
 
-export const COUNTS_AS_OF = '2026-09-28'
+export const COUNTS_AS_OF = '2026-09-29'
 
 // { label, value, sources: [S.x | plain string] }
 export const COUNTS = [
   { label: 'Ships', value: '24,182', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
   { label: 'Ports on the map', value: '9,159', detail: 'World Port Index 2,951 · Climate TRACE 6,006 · GFW 168 · DFO harbours 34', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
   { label: 'Terminals', value: '59', detail: '81 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
-  { label: 'Terminal visits', value: '37,552', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
+  { label: 'Terminal visits', value: '37,554', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
   { label: 'Port visits', value: '96,465', sources: [S.gfw] },
   { label: 'Ship-port emission estimates', value: '17,907', sources: [S.ct] },
   { label: 'Incidents', value: '9,233', sources: ['US Coast Guard', 'NOAA IncidentNews', 'WA Dept. of Ecology'] },
@@ -35,11 +35,12 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
-  // DRAFT — NOT REVIEWED (Climate TRACE tracked-by / deadweight / port stays at terminals, 2026-09-29). Numbers from the full
-  // local run (Salish pull to 49.75° N) against the dev berth list; re-check against prod after the prod import before this goes live.
+  // Numbers below verified against production 2026-09-29 (tc4 import + readTerminalCard on the prod DB):
+  // 37,554 visits at 52 terminals; BP Cherry Point 1,122; HF Sinclair 1,039.
+  { date: '2026-09-29', area: 'Terminals', text: 'Official berth facts on terminal cards (About tab), each linked to its document: berth names, lengths and depths from the Pacific Pilotage Authority’s berth list (November 2025) and the Port of Vancouver’s berth soundings sheets, for Vancouver Wharves (Berths 1, 2/3, 4 and 5), Richardson International (one berth) and Pacific Terminal (Pacific Elevator 4). Where BC’s terminal list disagrees (it gives Richardson 108 m; the pilotage list 183 m, the port sheet 164 m), both are shown. The newer document now sets how close a stopped ship must be to count: Vancouver Wharves Berth 1 (231 m) within 166 m instead of 150 m; Pacific Terminal’s berth (270 m between mooring dolphins, not 305 m) within 185 m instead of 203 m. Ships counted at these three terminals are unchanged; 20 more other vessels are listed at Vancouver Wharves and 18 fewer at Pacific Terminal. 37,554 terminal visits in all, Jul 2025 – Jun 2026.' },
+  { date: '2026-09-29', area: 'Terminal visits', text: 'Chemical tankers now count as visits at refinery docks and crude and fuel-product terminals, the same rule the Climate TRACE port stays already use (many product tankers, which load refined fuel at these docks, are listed as chemical tankers). 7 more visits, Jul 2025 – Jun 2026: BP Cherry Point 1,122 (was 1,120), HF Sinclair Puget Sound 1,039 (was 1,034); other oil docks unchanged.' },
   { date: '2026-09-29', area: 'Terminals', text: 'Terminal cards’ Emissions tab now shows Climate TRACE’s estimate for ships while they are stopped at the terminal’s own berths (port stays): 7,262 stays by 2,092 ships of the kinds each terminal serves, at 46 of the 59 terminals, 2024–2025, about 262,000 t CO₂e. Chemical tankers count at refinery and oil docks. Stays by other kinds of ship at the same spot are listed apart, not added in; stays that could belong to two neighbouring terminals are left out.' },
   { date: '2026-09-29', area: 'Ship cards', text: 'The Emissions tab now says who tracked the ship for Climate TRACE: OceanMind (large ships) or Global Fishing Watch (smaller ships), and shows the ship’s deadweight and Climate TRACE’s modelled CO₂ per nautical mile for the 4,379 ships OceanMind tracks. Voyage and port-stay figures updated to Climate TRACE’s latest release and extended north to Vancouver harbour, Roberts Bank, Howe Sound and Nanaimo: 15,817 Climate TRACE ship entries with trips or stays that began in 2024–2025.' },
-  // END DRAFT
   { date: '2026-09-28', area: 'Terminals', text: 'Berths estimated from where ships actually stop, for Richardson and Vancouver Wharves (North Vancouver), whose one listed point missed the berths ships use. Each estimate is labelled as such on the terminal card, with how many ships and stops it rests on. Richardson now shows 42 visits by 24 bulk carriers (it showed none), plus 180 visits by cargo ships whose exact kind isn’t stated; Vancouver Wharves 64 visits by 53 ships, up from 25.' },
   { date: '2026-09-28', area: 'Terminals', text: 'Real berth positions for 8 multi-berth terminals (Westshore, Neptune, Westridge, Alliance Grain, Cargill, BP Cherry Point, Crofton, Pacific Coast Terminals), so ships at every berth are counted. Westshore now shows 62 visits by 52 bulk carriers.' },
   { date: '2026-09-28', area: 'Terminals', text: '59 Salish Sea terminals on the map (crude and fuel, refinery docks, bunkering, LNG/LPG, chemical, coal, grain, cement and aggregate, forest products), each with a card: ships that called, emissions, and every source.' },

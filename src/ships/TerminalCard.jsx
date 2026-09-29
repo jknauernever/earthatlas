@@ -27,7 +27,7 @@ const SRC_SHORT = {
   'usace-docks': 'USACE', 'wa-ecology-facilities': 'WA Ecology', 'bc-ports-terminals': 'BC Ports & Terminals', osm: 'OpenStreetMap',
   'gem-gctt': 'GEM', 'gem-ggit': 'GEM', 'imo-gisis-port-facilities': 'IMO GISIS', 'climate-trace': 'Climate TRACE',
   'earthatlas-terminals': 'EarthAtlas list', 'gfw-port-visits': 'GFW', 'earthatlas-terminal-calls': 'MarineCadastre AIS',
-  'earthatlas-ais-berths': 'AIS stops',
+  'earthatlas-ais-berths': 'AIS stops', 'ppa-berth-parameters': 'Pacific Pilotage Authority', 'vfpa-berth-soundings': 'Port of Vancouver sheet',
 }
 const ROLE_WORDS = {
   dock_record: 'Dock record', reference: 'Related record', osm_site: 'OpenStreetMap site', osm_berth_element: 'OpenStreetMap berth element',
@@ -53,6 +53,51 @@ function Src({ id, source, href, title }) {
   const url = id ? rec(id) : href
   if (!url) return null
   return <a className={`${styles.sourceLink} ${styles.srcLink}`} href={url} target="_blank" rel="noopener noreferrer" title={title}>{SRC_SHORT[source] || source}</a>
+}
+
+const DOC_SHORT = { 'ppa-berth-parameters': 'pilotage list', 'vfpa-berth-soundings': 'port sheet' }
+const DOC_LONG = { 'ppa-berth-parameters': 'Pacific Pilotage Authority, BC berth operating parameters', 'vfpa-berth-soundings': 'Vancouver Fraser Port Authority berth soundings sheet' }
+/** Inline link to the official berth document a group of facts was read from (Josh 2026-09-29, B4); the title says what it states. */
+function DocSrc({ fs }) {
+  const f = fs[0]
+  const says = fs.map((x) => `${x.fact === 'name' ? `name “${x.value}”` : `${x.what} ${x.value} m`}${x.raw ? ` (written “${x.raw}”)` : ''}${x.surveyed ? `, surveyed ${dateWords(x.surveyed)}` : ''}`).join('; ')
+  const title = `${DOC_LONG[f.source] || f.source}${f.sheet ? ` ${f.sheet}` : ''}, as of ${dateWords(f.as_of)}: ${says}. Read ${f.accessed}. Opens the document`
+  return <a className={`${styles.sourceLink} ${styles.srcLink}`} href={f.url} target="_blank" rel="noopener noreferrer" title={title}>{DOC_SHORT[f.source] || f.source}</a>
+}
+const factWords = (f) => f.fact === 'length_m' ? `${fmtN(f.value)} m${/between/.test(f.what) ? ' between dolphins' : ' long'}`
+  : f.fact === 'depth_m' ? `${f.value} m deep` : null
+/** Facts grouped by the document (URL) they came from, in the order first seen. */
+const byDoc = (facts) => [...facts.reduce((m, f) => m.set(f.url, [...(m.get(f.url) || []), f]), new Map()).values()]
+
+/** Official berths: names, lengths and depths from the berth documents, each with its own source, and how each is paired. */
+function OfficialBerths({ t, berths }) {
+  const obs = t.officialBerths || []
+  if (!obs.length && !(t.officialDockFacts || []).length) return null
+  // BC Ports and Terminals' own description, shown beside the documents where they may disagree.
+  const bcpt = berths.filter((b) => b.basis === 'bc_ports_terminals' && b.detail?.berths_desc)
+  return <>
+    <div className={styles.sectionHead}>Official berths</div>
+    {obs.map((ob) => (
+      <div key={ob.name} className={styles.legendNoteText}>
+        <strong>{ob.name}</strong>
+        {byDoc(ob.facts || []).map((fs) => {
+          const words = fs.map(factWords).filter(Boolean)
+          return <span key={fs[0].url}>{' · '}{words.length ? `${words.join(', ')} ` : 'named '}<DocSrc fs={fs} /></span>
+        })}
+        <div className={styles.pcMuted}>{ob.berth_keys?.length ? `Our berth point${ob.berth_keys.length > 1 ? 's' : ''} ${ob.berth_keys.join(', ')}. ` : ''}{ob.pairing}</div>
+      </div>
+    ))}
+    {(t.officialDockFacts || []).map((f) => (
+      <div key={`${f.url}:${f.value}`} className={styles.legendNoteText}>{f.what[0].toUpperCase() + f.what.slice(1)}: {fmtN(f.value)} m <DocSrc fs={[f]} /></div>
+    ))}
+    {bcpt.map((b) => (
+      <div key={`bcpt:${b.key}`} className={styles.legendNoteText}>
+        BC Ports and Terminals describes the berths as “{b.detail.berths_desc}”{' '}
+        {b.source_record_ids.map((id) => <Src key={id} id={id} source={b.source_id} title="BC Ports and Terminals record — click for the record" />)}
+        <span className={styles.pcMuted}> · where it differs, the newer official document sets the call radius</span>
+      </div>
+    ))}
+  </>
 }
 
 /** A folded list of ships ("Other vessels nearby" etc.). */
@@ -265,10 +310,11 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
 
           {tab === 'about' && (
             <div className={styles.section}>
+              <OfficialBerths t={t} berths={data.berths} />
               <div className={styles.sectionHead}>Berths (where calls are counted)</div>
               {data.berths.map((b) => (
                 <div key={b.key} className={styles.legendNoteText}>
-                  {b.name || b.key}: {BASIS_WORDS[b.basis] || b.basis}, {b.lat.toFixed(4)}, {b.lon.toFixed(4)}
+                  {b.name || b.key}{b.detail?.official ? <strong> = {b.detail.official.name}</strong> : ''}: {BASIS_WORDS[b.basis] || b.basis}, {b.lat.toFixed(4)}, {b.lon.toFixed(4)}
                   {b.basis === 'ais_inferred' && b.detail?.stops && <span className={styles.pcMuted}> · where {fmtN(b.detail.ships)} ships stopped {fmtN(b.detail.stops)} times
                     {b.detail.first && b.detail.last ? `, ${monthName(b.detail.first.slice(0, 7))} – ${monthName(b.detail.last.slice(0, 7))}` : ''}</span>}
                   {data.rule.radii.find((r) => r.berth === b.key) && <span className={styles.pcMuted}> · calls within {data.rule.radii.find((r) => r.berth === b.key).m} m</span>}{' '}

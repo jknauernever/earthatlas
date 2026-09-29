@@ -419,6 +419,7 @@ URL params: `tl` = terminal key, `tf=1` = folded, `tb` = tab (`emissions` | `abo
   - Tugs count at oil and fuel docks (Josh: a barge has no AIS). They are labelled "(likely moving a barge)".
   - Tugs also count at aggregate, cement and forest-product docks.
   - Fuel docks also count the small working craft that refuel there.
+  - Pure chemical tankers count at refinery docks and crude / fuel-product terminals (Josh 2026-09-29, B3; product tankers are often filed as chemical tankers). This is the same rule for AIS visits and Climate TRACE port stays: one `SHIP_FIT`, read at card time, so no rebake. Dev tc3, Jul 2025 – Jun 2026: +7 visits in all (BP Cherry Point 1,120 → 1,122; HF Sinclair Puget Sound 1,034 → 1,039); other oil docks unchanged.
   - Cargo ships whose exact kind isn't stated are shown as "could be" at coal, grain and bulk docks. They are listed but not counted, because at Roberts Bank they can be Deltaport container ships.
   - Anything else is listed, folded, under "Other vessels nearby" or "Kind not known".
 - **Decision 2:** a card open fetches the GFW port labels around the terminal (one discovery call about every 30 days, then events per label and month). It uses the port-card fetch steps and the same `port_card_fetches` log (migration 015 adds `terminal_id`), so the daily budget and the "settled months are kept" rule are shared.

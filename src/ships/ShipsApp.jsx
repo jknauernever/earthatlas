@@ -1024,10 +1024,11 @@ export default function ShipsApp() {
             'circle-opacity': 0.95,
           } }, labelsId)
       }
+      // Same size as the terminal labels (Josh 2026-09-29), a touch smaller while zoomed out where harbours crowd.
       map.addLayer({ id: 'ports-label', type: 'symbol', source: 'ports', minzoom: 8,
-        layout: { 'text-field': ['get', 'n'], 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true,
+        layout: { 'text-field': ['get', 'n'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 11, 14, 14, 16], 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true,
           'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
-        paint: { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.2 } })
+        paint: { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.6 } })
     }
     for (const l of PORT_TIERS.map(([t]) => portLayerId(t))) if (map.getLayer(l)) map.moveLayer(l, labelsId)
     for (const l of PORT_LAYERS) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', portsOn ? 'visible' : 'none')

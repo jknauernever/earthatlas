@@ -18,7 +18,7 @@ import { createInterface } from 'node:readline'
 import path from 'node:path'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource, startRun, finishRun } from '../../lib/ships/store.js'
-import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, berthRadiusM, inAisBox, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
+import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, officialBerthLength, berthRadiusM, inAisBox, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
 
 const DIR = 'scripts/ships/bake-ais/cache/terminal-calls'
 const args = process.argv.slice(2)
@@ -38,7 +38,7 @@ try {
 
 async function berths() {
   const rows = await q(`SELECT t.key AS terminal, t.kind, b.berth_key AS berth, b.lat, b.lon, b.basis, b.source_id, b.source_record_ids,
-                               b.detail->>'berths_desc' AS desc, b.detail->>'official_berth' AS official_berth
+                               b.detail->>'berths_desc' AS desc, b.detail->>'official_berth' AS official_berth, b.detail->'official' AS official
                           FROM ${schema}.terminal_berths b JOIN ${schema}.terminals t ON t.id = b.terminal_id
                          WHERE b.status = 'active' AND t.list_status = 'listed' ORDER BY t.key, b.berth_key`)
   const usaceIds = rows.filter((r) => r.basis === 'usace_dock').flatMap((r) => r.source_record_ids.map(Number))
@@ -49,7 +49,10 @@ async function berths() {
   const out = rows.map((r) => {
     const ft = r.basis === 'usace_dock' ? r.source_record_ids.map((id) => usace.get(Number(id))).find((x) => x != null) ?? null : null
     const own = r.official_berth ? berthLengthOf(descOf.get(r.terminal), r.official_berth) : null
-    const len = own ? { m: own, from: `BC Ports and Terminals berth description (${r.official_berth})` } : berthLength({ desc: r.desc, usaceBerthingLargestFt: ft })
+    // A point paired with an official berth document (salish-terminals.json official_berths, Josh 2026-09-29 B4) takes the most
+    // recent document's length first; it wins over BC Ports and Terminals where they disagree.
+    const doc = r.official ? officialBerthLength(r.official) : null
+    const len = doc || (own ? { m: own, from: `BC Ports and Terminals berth description (${r.official_berth})` } : berthLength({ desc: r.desc, usaceBerthingLargestFt: ft }))
     return { terminal: r.terminal, kind: r.kind, berth: r.berth, lat: r.lat, lon: r.lon, basis: r.basis,
       length_m: len?.m ?? null, length_from: len?.from ?? null, radius_m: berthRadiusM(len?.m), in_box: inAisBox(r.lat, r.lon) }
   })

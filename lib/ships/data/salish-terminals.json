@@ -2,14 +2,15 @@
  "about": {
   "what": "Curated list of Salish Sea marine terminals and facilities that ships service (oil and gas, refineries, fuel/bunkering, coal, chemicals, LNG, grain and other significant industrial bulk terminals). Plan approved by Josh 2026-09-27 (docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md).",
   "rules": "Facts only. Every berth position cites its source row; every operator name cites the page that states it and the date checked (operator names in the sources are often stale and are never copied). Climate TRACE refinery ids (facility emissions) and ship-port ids (voyage emissions attributed to a port) are separate lists and are never shown as one another.",
-  "licences": "USACE Docks: no use restrictions. WA Ecology: credit + link, no commercial or political use (accepted by Josh 2026-09-27). BC Ports and Terminals: Open Government Licence - British Columbia. GEM: CC BY 4.0. Climate TRACE: CC BY 4.0. OpenStreetMap-derived berth positions are NOT in this file: they are in salish-terminals-osm.json (ODbL 1.0).",
+  "licences": "USACE Docks: no use restrictions. WA Ecology: credit + link, no commercial or political use (accepted by Josh 2026-09-27). BC Ports and Terminals: Open Government Licence - British Columbia. GEM: CC BY 4.0. Climate TRACE: CC BY 4.0. OpenStreetMap-derived berth positions are NOT in this file: they are in salish-terminals-osm.json (ODbL 1.0). Pacific Pilotage Authority berth parameters and Vancouver Fraser Port Authority berth soundings sheets: only facts are recorded (berth names / numbers, lengths, depths), each cited to its document with its as-of date; no document, drawing or table is copied (Josh 2026-09-29: facts are not copyrightable).",
   "berth_basis": {
    "usace_dock": "USACE Navigation Facilities dock point (NAV_UNIT_ID)",
    "ecology_dock": "WA Ecology Class 1/3/4 facility dock point (OBJECTID; FacilityName re-checked on import)",
    "bc_ports_terminals": "BC Ports and Terminals point (SOURCE_DATA_ID; FACILITY_NAME re-checked on import)",
    "gisis_facility": "IMO GISIS ISPS declared port facility point (IMO Port Facility Number; row stored by ships:import-gisis). Used only where no USACE / Ecology / BC Ports and Terminals / OSM row exists (2026-09-28)."
   },
-  "built": "2026-09-27 from small Salish-bbox pulls of each source (see docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md, \"Built (dev)\"). Re-import: npm run ships:import-terminals."
+  "built": "2026-09-27 from small Salish-bbox pulls of each source (see docs/OIL_GAS_INFRASTRUCTURE_SOURCES.md, \"Built (dev)\"). Re-import: npm run ships:import-terminals.",
+  "official_berths": "official_berths[]: berth facts from official berth documents, each fact { fact, value, what, source, url, as_of, accessed } (as_of = the date the document states; surveyed = its survey date). berth_keys = the berth points of this terminal the official berth is paired with (pairing says how); an official length of the most recent document drives the paired point's call radius (lib/ships/terminalCalls.js officialBerthLength). official_dock_facts[] = facts about a whole dock, not one berth."
  },
  "version": "2026-09-27",
  "terminals": [
@@ -1969,7 +1970,60 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [],
+   "official_berths": [
+    {
+     "name": "Richardson International",
+     "ppa_code": "JRI",
+     "berth_keys": [
+      "ais-1",
+      "bcpt-268"
+     ],
+     "pairing": "The terminal has one berth in both documents, so every berth point EarthAtlas has here (the AIS-estimated ais-1 and the BC Ports and Terminals point bcpt-268) is that berth. Paired 2026-09-29.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Richardson International (ex James Richardson)",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 183,
+       "what": "dock length; the document writes “183 + 37” and does not say what the 37 m is, so it is not added",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "raw": "183 + 37"
+      },
+      {
+       "fact": "depth_m",
+       "value": 12.9,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2023-05-16"
+      },
+      {
+       "fact": "length_m",
+       "value": 164,
+       "what": "berth length",
+       "source": "vfpa-berth-soundings",
+       "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_23-Richardson-International.pdf",
+       "as_of": "2025-06-16",
+       "accessed": "2026-09-29",
+       "sheet": "23 of 32",
+       "surveyed": "2025-04-28"
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "bc-viterra-pacific",
@@ -2020,7 +2074,57 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [],
+   "official_berths": [
+    {
+     "name": "Pacific Elevator 4",
+     "number": "4",
+     "ppa_code": "PE4",
+     "berth_keys": [
+      "bcpt-254"
+     ],
+     "pairing": "The pilotage list (Nov 2025) has one berth at this terminal, PE4, and the port authority’s 2025 soundings sheet 09 draws one berth pocket; bcpt-254 is the terminal’s only berth point, so it is paired with PE4. BC Ports and Terminals lists three berths (#1, #2, #4); the more recent documents are used. Paired 2026-09-29.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Pacific Elevator 4 (Viterra); official terminal name Viterra Pacific Terminal",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 210,
+       "what": "dock length",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 270,
+       "what": "linear distance between the north and south dolphins",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "depth_m",
+       "value": 13.0,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2025-04-28"
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "bc-alliance-grain",
@@ -2183,7 +2287,227 @@
      "tanker"
     ],
     "why": "Pembina: Vancouver Wharves handles dry bulk AND “diesel and bio-diesel bulk liquids” (https://www.pembina.com/operations/facilities/vancouver-wharves), so tankers fit as well as bulk carriers."
-   }
+   },
+   "official_berths": [
+    {
+     "name": "Berth 1",
+     "number": "1",
+     "ppa_code": "KM1",
+     "berth_keys": [
+      "ais-1"
+     ],
+     "pairing": "By order along the dock: VFPA soundings sheet 27 (north up) draws Berth 1 at the west end of the wharf, and ais-1 is the westernmost berth point EarthAtlas has here (estimated from AIS stops at the west end). Paired 2026-09-29.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Pembina Vancouver Wharves 1 (ex Kinder Morgan 1)",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 231,
+       "what": "dock length",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "depth_m",
+       "value": 13.7,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2023-11-22"
+      },
+      {
+       "fact": "name",
+       "value": "Berth 1",
+       "what": "berth name",
+       "source": "vfpa-berth-soundings",
+       "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_27-Vancouver-Wharves-West.pdf",
+       "as_of": "2024-02-02",
+       "accessed": "2026-09-29",
+       "sheet": "27 of 32",
+       "surveyed": "2023-11-22"
+      }
+     ]
+    },
+    {
+     "name": "Berth 2/3",
+     "number": "2/3",
+     "ppa_code": "KM2 / KM3",
+     "berth_keys": [],
+     "pairing": "Not paired: the ais-2 point (middle of the wharf) could be Berth 2/3 or Berth 4; the documents give no positions to decide.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Pembina Vancouver Wharves 2/3 (ex Kinder Morgan 2/3)",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 317,
+       "what": "dock length",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "depth_m",
+       "value": 11.4,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2023-11-22"
+      },
+      {
+       "fact": "name",
+       "value": "Berth 2/3",
+       "what": "berth name",
+       "source": "vfpa-berth-soundings",
+       "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_27-Vancouver-Wharves-West.pdf",
+       "as_of": "2024-02-02",
+       "accessed": "2026-09-29",
+       "sheet": "27 of 32",
+       "surveyed": "2023-11-22"
+      }
+     ]
+    },
+    {
+     "name": "Berth 4",
+     "number": "4",
+     "ppa_code": "KM4",
+     "berth_keys": [],
+     "pairing": "Not paired.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Pembina Vancouver Wharves 4 (ex Kinder Morgan 4)",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 161,
+       "what": "dock length",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "depth_m",
+       "value": 12.8,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2023-11-22"
+      },
+      {
+       "fact": "name",
+       "value": "Berth 4",
+       "what": "berth name",
+       "source": "vfpa-berth-soundings",
+       "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_26-Vancouver-Wharves-East.pdf",
+       "as_of": "2024-02-01",
+       "accessed": "2026-09-29",
+       "sheet": "26 of 32",
+       "surveyed": "2023-11-22"
+      }
+     ]
+    },
+    {
+     "name": "Berth 5",
+     "number": "5",
+     "ppa_code": "KM5",
+     "berth_keys": [],
+     "pairing": "Not paired.",
+     "facts": [
+      {
+       "fact": "name",
+       "value": "Pembina Vancouver Wharves 5 (ex Kinder Morgan 5)",
+       "what": "berth name",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "length_m",
+       "value": 239,
+       "what": "dock length",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29"
+      },
+      {
+       "fact": "depth_m",
+       "value": 12.8,
+       "what": "controlling depth (chart datum)",
+       "source": "ppa-berth-parameters",
+       "url": "https://www.ppa.gc.ca/standard/pilotage/2026-03/Web%20Page%20Controlling%20Depths%20and%20Safe%20Operating%20Parameters%20for%20Berths_20251112.pdf",
+       "as_of": "2025-11-12",
+       "accessed": "2026-09-29",
+       "surveyed": "2023-11-22"
+      },
+      {
+       "fact": "name",
+       "value": "Berth 5",
+       "what": "berth name",
+       "source": "vfpa-berth-soundings",
+       "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_26-Vancouver-Wharves-East.pdf",
+       "as_of": "2024-02-01",
+       "accessed": "2026-09-29",
+       "sheet": "26 of 32",
+       "surveyed": "2023-11-22"
+      }
+     ]
+    }
+   ],
+   "official_dock_facts": [
+    {
+     "fact": "length_m",
+     "value": 505,
+     "what": "total berth length, Berths 1 and 2/3 (west sheet)",
+     "source": "vfpa-berth-soundings",
+     "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_27-Vancouver-Wharves-West.pdf",
+     "as_of": "2024-02-02",
+     "accessed": "2026-09-29",
+     "sheet": "27 of 32",
+     "surveyed": "2023-11-22"
+    },
+    {
+     "fact": "length_m",
+     "value": 400,
+     "what": "total berth length, Berths 4 and 5 (east sheet)",
+     "source": "vfpa-berth-soundings",
+     "url": "https://www.portvancouver.com/sites/default/files/2024-10/VFPA_Berth-Soundings-Book_26-Vancouver-Wharves-East.pdf",
+     "as_of": "2024-02-01",
+     "accessed": "2026-09-29",
+     "sheet": "26 of 32",
+     "surveyed": "2023-11-22"
+    }
+   ]
   },
   {
    "id": "bc-fibreco",

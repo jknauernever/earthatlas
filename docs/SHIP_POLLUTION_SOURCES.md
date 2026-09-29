@@ -20,7 +20,7 @@ Related house docs (read first, not repeated here):
 | # | Source | What | Ship identifier | Access | Licence | Verdict |
 |---|---|---|---|---|---|---|
 | 1 | **EU MRV (EMSA THETIS-MRV)** | Verified annual fuel, CO₂, CH₄, N₂O, CO₂eq per ship, **EU/EEA-related voyages only** | IMO | Unauthenticated JSON + one XLSX per year (2018–2025) | EMSA: "Reproduction is authorised, provided the source is acknowledged" | **Usable now.** Best official per-ship number; label its EU scope clearly |
-| 2 | **Climate TRACE voyages** | Modelled per-voyage and per-port-stay emissions (9 gases + CO₂e) | `gfw-mmsi-N`, `gfw-imo-N`, `om-imo-N` | BigQuery `shipping_voyages` only (not in downloads; "On request" per schema) | CC BY 4.0 (house doc); ship-level licence UNVERIFIED | **Usable**; Salish 2024–25 already pulled locally |
+| 2 | **Climate TRACE voyages** | Modelled per-voyage and per-port-stay emissions (9 gases + CO₂e) | `gfw-mmsi-N`, `gfw-imo-N`, `om-imo-N` | BigQuery `shipping_voyages` only (not in downloads; "On request" per schema) | CC BY 4.0 (house doc); ship-level table treated as CC BY 4.0 (Josh, 2026-09-29) | **Usable**; Salish 2024–25 already pulled locally |
 | 3 | **SkyTruth Cerulean** | Satellite (Sentinel-1 SAR) oil-slick detections + ranked possible sources (AIS vessels, infrastructure, dark vessels) | MMSI (vessel sources) | Web map + OGC API; API `robots.txt` blocks all bots; some collections need a secret key | CC BY-SA 4.0 + conservation-use-only + "not evidence of responsibility" | **Blocked on SkyTruth permission.** Draft email below |
 | 4a | IMO DCS | Fuel per ship (global) | — | Anonymised aggregates only | — | Not usable per ship |
 | 4b | UK MRV | UK-related voyages | IMO | No public per-ship release found | — | Not usable (UNVERIFIED) |
@@ -148,8 +148,8 @@ LINNEA ROSE (MMSI 368330140): **0 records** in the pull.
 
 ### Licence
 CC BY 4.0 for Climate TRACE data (house doc). Whether the "On request" ship-level tables carry the
-same licence is **UNVERIFIED** — ask Climate TRACE (Ishan Saraswat, technical contact) before publishing
-per-ship numbers. Citation: *Climate TRACE (2026), Climate TRACE Emissions Inventory v5.10.0*.
+same licence was never stated by Climate TRACE; **treated as CC BY 4.0** (Josh, 2026-09-29: the same terms
+as the rest of their data; not pursued further). Contact is now Lekha (Ishan has left WattTime). Citation: *Climate TRACE (2026), Climate TRACE Emissions Inventory v5.10.0*.
 
 ### Known caveats (from earlier analysis)
 Modelled, not measured. Pollutants are ratio-based (see facts file). Records are not monthly; some span

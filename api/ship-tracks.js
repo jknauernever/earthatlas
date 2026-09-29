@@ -328,7 +328,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json')
     res.setHeader('Cache-Control', r.local ? LOCAL_CACHE : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
     const { local, ...body } = r
-    return res.end(JSON.stringify({ kind, ...body, dataset: manifest.ctVoyages?.version || 'ct-voyages-v1' }))
+    return res.end(JSON.stringify({ kind, ...body, dataset: manifest.ctVoyages?.version || 'ct-voyages-v1', release: manifest.ctVoyages?.release || 'v5.10.0' }))
   }
   if (searchParams.get('op') === 'all') {
     const m = searchParams.get('mmsi') || ''

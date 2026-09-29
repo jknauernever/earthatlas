@@ -46,3 +46,11 @@ Asset-level ownership exists (partially or fully) for: aluminum, bauxite mining,
 ## Measured by us (release v5.10.0, sector packages)
 - CO₂ / CH₄ / N₂O packages cover the **same facilities and months** as CO2e (verified on coal mining: 4,803 mines, 316,998 rows each). Coal mining 2025: CO₂ 445 Mt, CH₄ 65 Mt, N₂O 3,474 t.
 - Pollutant packages (PM2.5, SO₂, NOx, CO) have 2025 values for power plants (~9.9k of 11.5k), all heavy-industry subsectors, ports and airports. Not yet profiled for mines, oil & gas, waste, cattle, reservoirs.
+
+## Shipping voyages — answers from Climate TRACE (email from the Climate TRACE Coalition to Josh, 2026-09-29)
+Replies to our questions about the BigQuery `shipping_voyages` table. Our contact is Lekha; Ishan has left WattTime, so the BigQuery guide's contact is out of date.
+- **Ship ID prefixes:** `om-imo-` = **OceanMind**, Climate TRACE's shipping sector lead; `gfw-mmsi-` / `gfw-imo-` = Global Fishing Watch. OceanMind tracks the large, high-information vessels; GFW tracks the smaller or low-information vessels and non-broadcasting ones. The two are combined at port level.
+- **`other11`** = CO₂ emissions factor from their RF model, in **kg [gas] per nautical mile**. **`other12`** = the ship's **deadweight**, in **tonnes**. (The schema file documents only `other1`–`other10`.)
+  - **Measured by us (release v5_11_0, pulled 2026-09-29): the data reads the OTHER way round.** `other11` behaves as deadweight (oil tankers median 299,392 t; bulk carriers 63,475 t) and `other12` as CO₂ kg/NM (trip CO₂ ÷ nautical miles ÷ `other12` has a median of 0.89 across 3,346 ships). Both are set only for `om-imo-` (OceanMind) ships. We follow the data (`CT_SHIP_FIELDS` in lib/ships/ctVoyages.js, one place to flip); the question is open with Climate TRACE.
+- **Vessel type "passenger":** comes from the classification in their input data sources; it is not a deliberate catch-all. In the Salish Sea it covers many small recreational boats and some fishing boats, so don't rely on it for small craft.
+- **Port stays** are assigned by algorithm, from where a vessel stops for longer than a set time. For many ports, stays are allocated to terminals or other locations outside the port itself. That is why a big port such as Vancouver can show voyages but no stays. See their shipping methodology documentation.

@@ -33,6 +33,8 @@
 //        database read. GFW port visits are only a comparison now: only with fetch=1 is GFW asked for the terminal's surrounding
 //        GFW port labels, every picked month the shared fetch log doesn't already hold (same log + daily budget as port cards).
 //   /api/ships?op=terminalEmissions&key=<terminal key>&part=ships|refinery → Climate TRACE ids the list links (op=portEmissions shape)
+//   /api/ships?op=terminalEmissions&key=<terminal key>&part=stays&from=YYYY-MM&to=YYYY-MM → Climate TRACE port stays placed at
+//        the terminal (lib/ships/ctStays.js rule; terminalCard.js terminalCtStays)
 //
 // Rules: src/ships/CLAUDE.md.
 
@@ -50,7 +52,7 @@ import { commonsPlan, fetchImo, ingestImo, vesselImages } from '../lib/ships/ing
 import { commonsClient } from '../scripts/ships/commonsClient.js'
 import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
-import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions } from '../lib/ships/terminalCard.js'
+import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -241,6 +243,12 @@ export default async function handler(req, res) {
     if (op === 'terminal' || op === 'terminalEmissions') {
       const key = p.get('key') || ''
       if (!/^(wa|bc)-[a-z0-9-]{1,60}$/.test(key)) return send(res, 400, { error: 'key must be a terminal key' })
+      if (op === 'terminalEmissions' && p.get('part') === 'stays') {
+        const win = parseCardWindow(p.get('from'), p.get('to'))
+        if (win.error) return send(res, 400, { error: win.error })
+        const r = await terminalCtStays(q, S, key, win)
+        return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'terminal not found' })
+      }
       if (op === 'terminalEmissions') {
         const r = await terminalEmissions(q, S, key, p.get('part') === 'refinery' ? 'refinery' : 'ships')
         return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'terminal not found' })

@@ -11,7 +11,7 @@ import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
 import { Loading } from '../components/panel'
 import { MonthBars, About, PORT_HUE } from './PortCard.jsx'
-import PortEmissions, { usePortEmissions, shortTonnes } from './PortEmissions.jsx'
+import PortEmissions, { usePortEmissions, useTerminalStays, TerminalStayEmissions, shortTonnes } from './PortEmissions.jsx'
 import { GLYPH, kindFamily, kindWords, NOT_OPERATING, STATUS_WORDS, TERMINAL_MUTED_RING } from './terminalIcons.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -122,6 +122,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   const winMonths = data?.window?.months || months
   const emShips = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=ships`)
   const emRef = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=refinery`)
+  const emStays = useTerminalStays(terminalKey, winMonths)
   const src = useMemo(() => Object.fromEntries((data?.sources || []).map((x) => [x.id, x])), [data])
   const loading = !data || data.terminal?.key !== terminalKey
   const t = data?.terminal
@@ -258,6 +259,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
             {(emRef.state !== 'none') && <PortEmissions em={emRef} months={winMonths} month={month} onMonth={onMonth} About={About} what="refinery" title="Refinery plant (Climate TRACE)" />}
             <PortEmissions em={emShips} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships’ voyages (Climate TRACE port)"
               noneText="Climate TRACE has no ship-port estimate linked to this terminal." />
+            <TerminalStayEmissions em={emStays} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships at the berth (Climate TRACE port stays)" />
             {emRef.state === 'none' && <div className={styles.legendNoteText}>No refinery plant: Climate TRACE has no facility estimate for this terminal’s own operations.</div>}
           </>}
 

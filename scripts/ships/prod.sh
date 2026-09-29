@@ -12,6 +12,7 @@
 #   zsh scripts/ships/prod.sh warm-ports         pre-load Salish port cards (args pass through)
 #   zsh scripts/ships/prod.sh import-ct-ports    back up, then Climate TRACE port sources (port-card Ship emissions)
 #   zsh scripts/ships/prod.sh upload-ct-voyages  upload the baked Climate TRACE voyage packs (ship-card Emissions) to Vercel Blob
+#   zsh scripts/ships/prod.sh import-ct-stays    Climate TRACE port stays → terminals (needs migration 018 + the voyage bake's ct-stays file)
 #   zsh scripts/ships/prod.sh import-official-ports  back up, then official port lists (DFO harbours, USACE port areas, Transport Canada) for the Salish box
 #   zsh scripts/ships/prod.sh import-gisis       back up, then IMO GISIS scrubber notifications + ISPS port facilities (from the saved CSVs)
 #   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
@@ -131,6 +132,12 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-ct-ports
     prod_node scripts/ships/import-climatetrace-ports.mjs "${@:2}"
+    ;;
+  import-ct-stays)
+    # Reads scripts/ships/bake-ct-voyages/build/ct-stays-<v>.ndjson (the bake QA'd on localhost) and prod's own berths.
+    need SHIPS_PROD_DATABASE_URL
+    backup import-ct-stays
+    prod_node scripts/ships/import-ct-stays.mjs "${@:2}"
     ;;
   upload-ct-voyages)
     # Packs baked by scripts/ships/bake-ct-voyages/bake.mjs, to the paths src/ships/trackSource.json `ctVoyages` names.

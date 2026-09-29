@@ -143,3 +143,9 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | `mc-ais-terminal-calls-shellburn-2026-01-07.json` | **Real** MarineCadastre AIS rows (CC0), copied 2026-09-28 from `salish-v6/2026-01-07.parquet`, `2026-01-08.parquet`: every row of MMSIs 316046128 (SEASPAN HARRIER) and 316052572 (TWC ENDURANCE) within 160 m of the Shellburn berth bcpt-258, 107 rows, nothing edited. Plus that berth point + radius. |
 
 `terminalCalls.test.js` / `terminalCard-db.test.js` mark what they build SYNTHETIC in the test name or comment (hand-made points for the 6 h / 15 min edges; a bake record declaring January 2026 fully read and Westshore outside the box).
+
+## Climate TRACE voyages and port stays (ctVoyages.test.js, ctStays-db.test.js)
+
+| File | What it is |
+|---|---|
+| `ct-voyages-salish-v5_11_0.json` | **Real.** `voyage_rows`: 4 rows exactly as in the 2026-09-29 Salish Sea pull of Climate TRACE's BigQuery `shipping_voyages` (table label release v5_11_0; columns trimmed, values untouched): COASTAL RENAISSANCE (om-imo-9332755) ×2, a VLCC (om-imo-9789283), a GFW-tracked boat (gfw-mmsi-316038244). `stays`: 8 port-stay lines from the voyage bake's `ct-stays-v2.ndjson` (Cherry Point tankers, a Roberts Bank container ship, an ambiguous Tacoma stop, a two-terminal Anacortes stay, an Olympia small craft, and WEST VIRGINIA's overlapping pair). `berths`: the 81 active berths of the dev database's listed terminals on 2026-09-29. |

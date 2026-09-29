@@ -4,11 +4,15 @@
  * scripts/ships/bake-ct-voyages, served by api/ship-tracks op=voyages). Climate TRACE files a ship under an MMSI
  * or an IMO; we ask for each identifier the ship has. MMSIs get reused, so an MMSI's voyages count only inside
  * the window this ship held it (as the ship's own tracks do). Every number is Climate TRACE's own.
+ * Who tracked the ship for Climate TRACE (OceanMind or Global Fishing Watch) and the ship's deadweight / modelled CO₂ per
+ * nautical mile come from the same rows (lib/ships/ctVoyages.js: trackerOf, shipFacts; Josh 2026-09-29).
  */
 import { useEffect, useMemo, useState } from 'react'
 import { MonthBars } from './PortCard.jsx'
 import { MEASURE_INFO, tonnesWord, TRACE_URL } from '../systems/traceData.js'
 import { Loading } from '../components/panel'
+import { trackerOf, shipFacts } from '../../lib/ships/ctVoyages.js'
+import trackSource from './trackSource.json'
 import styles from './ShipsApp.module.css'
 
 const HUE = '#38bdf8'
@@ -19,6 +23,11 @@ const day = (s) => String(s || '').slice(0, 10)
 const monthName = (ym) => new Date(`${ym}-01T00:00:00Z`).toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const secs = (s) => Date.parse(`${String(s).replace(' ', 'T')}Z`) / 1000
 const SLACK = 31 * 86400 // an MMSI window is when we SAW it; allow a month either side
+const releaseWords = (r) => String(r || 'v5.10.0').replaceAll('_', '.')
+const TRACKED_TITLE = {
+  oceanmind: 'OceanMind is Climate TRACE’s shipping sector lead; it tracks the large ships that carry full identity information',
+  gfw: 'Global Fishing Watch tracks the smaller ships for Climate TRACE, and those with little identity information or that don’t broadcast',
+}
 
 export default function ShipEmissions({ vessel }) {
   const ids = useMemo(() => {
@@ -36,7 +45,8 @@ export default function ShipEmissions({ vessel }) {
   useEffect(() => {
     let dead = false
     setSt({ state: 'loading' })
-    const get = (q) => fetch(`/api/ship-tracks?op=voyages&${q}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    // &v=: a new pack version is a new URL, so the edge cache never serves an older pack's answer.
+    const get = (q) => fetch(`/api/ship-tracks?op=voyages&${q}&v=${trackSource.ctVoyages?.version || 'v1'}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
     Promise.all([...ids.imos.map((i) => get(`imo=${i}`)), ...[...ids.mmsis.keys()].map((m) => get(`mmsi=${m}`))])
       .then((rs) => { if (!dead) setSt({ state: 'ok', assets: rs.filter((r) => r?.found) }) })
     return () => { dead = true }
@@ -89,6 +99,15 @@ export default function ShipEmissions({ vessel }) {
   const top = [...trips].sort((a, b) => (b.v[F.co2e] ?? 0) - (a.v[F.co2e] ?? 0)).slice(0, 8)
   const topStays = [...stays].sort((a, b) => (b.v[F.co2e] ?? 0) - (a.v[F.co2e] ?? 0)).slice(0, 4)
   const names = [...new Set(st.assets.map((a) => `${a.name || 'unnamed'} (${a.id})`))]
+  const release = releaseWords(st.assets[0]?.release)
+  // Who tracked the ship: the tracker of every Climate TRACE asset whose rows are shown here.
+  const used = new Set(rows.map((r) => r.asset))
+  const trackers = [...new Map([...used].map((a) => trackerOf(a.id)).filter(Boolean).map((x) => [x.id, x])).values()]
+  // Per-ship facts (OceanMind-tracked ships carry them): one value per asset; shown only when the assets agree.
+  const factsOf = [...used].map((a) => ({ a, f: shipFacts(a) }))
+  const one = (k) => { const vs = [...new Set(factsOf.map((x) => x.f[k]).filter((v) => v != null))]; return vs.length === 1 ? vs[0] : null }
+  const dwt = one('deadweight_t'), perNm = one('co2_kg_per_nm')
+  const factAsset = factsOf.find((x) => x.f.deadweight_t != null || x.f.co2_kg_per_nm != null)?.a
 
   return (
     <div className={styles.section}>
@@ -97,8 +116,35 @@ export default function ShipEmissions({ vessel }) {
         {stays.length.toLocaleString()} port stay{stays.length === 1 ? '' : 's'} that began {monthName(months[0])} – {monthName(months[months.length - 1])}
         {Object.keys(byYear).length > 1 && <> ({Object.entries(byYear).map(([y, v], i) => <span key={y}>{i > 0 && ', '}{y}: {t(v)}</span>)})</>}{' '}
         <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACE_URL} target="_blank" rel="noopener noreferrer"
-          title="Climate TRACE shipping voyages (release v5.10.0), CC BY 4.0: modelled estimates">Climate TRACE</a>
+          title={`Climate TRACE shipping voyages (release ${release}), CC BY 4.0: modelled estimates`}>Climate TRACE</a>
+        {trackers.map((x) => (
+          <span key={x.id} className={styles.pcMuted}> · tracked by{' '}
+            <a className={`${styles.sourceLink} ${styles.srcLink}`} href={x.url} target="_blank" rel="noopener noreferrer"
+              title={`${TRACKED_TITLE[x.id]} (Climate TRACE files it as ${[...used].filter((a) => trackerOf(a.id)?.id === x.id).map((a) => a.id).join(', ')})`}>
+              {x.name}</a>
+          </span>
+        ))}
       </div>
+      {(dwt != null || perNm != null) && (
+        <div className={styles.pcGasList}>
+          {dwt != null && (
+            <div className={styles.pcGasRow} title="The ship’s deadweight (how much it can carry: cargo, fuel, stores and crew), in tonnes, as recorded in Climate TRACE’s voyage data">
+              <span>Deadweight (Climate TRACE)</span>
+              <span>{Math.round(dwt).toLocaleString('en-US')} t{' '}
+                <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACE_URL} target="_blank" rel="noopener noreferrer"
+                  title={`Climate TRACE shipping voyages (release ${release}), ${factAsset?.id}: deadweight in tonnes, CC BY 4.0`}>Climate TRACE</a></span>
+            </div>
+          )}
+          {perNm != null && (
+            <div className={styles.pcGasRow} title="Climate TRACE’s model estimate of the CO₂ this ship emits for each nautical mile it sails (kilograms of CO₂ per nautical mile). A model figure, not a measurement">
+              <span>CO₂ per nautical mile at sea (Climate TRACE model)</span>
+              <span>about {Math.round(perNm).toLocaleString('en-US')} kg{' '}
+                <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACE_URL} target="_blank" rel="noopener noreferrer"
+                  title={`Climate TRACE shipping voyages (release ${release}), ${factAsset?.id}: CO₂ emissions factor from its model, kg per nautical mile, CC BY 4.0`}>Climate TRACE</a></span>
+            </div>
+          )}
+        </div>
+      )}
       <MonthBars months={perMonth} month={null} onMonth={() => {}} hue={HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
         label="This ship’s emissions per month (tonnes CO₂e, by the month each trip or stay began)" />
 
@@ -131,9 +177,14 @@ export default function ShipEmissions({ vessel }) {
         Climate TRACE models each trip and port stay from the ship’s AIS track and its characteristics: estimates, not measurements.
         Port stays count fuel burned while at a port (engines and boilers). Our copy covers trips and stays that began in 2024–2025 and
         touched the Salish Sea; the whole trip counts, even when it started far away. Filed by Climate TRACE as {names.join('; ')}.
+        {' '}Climate TRACE’s ships are tracked by two partners: <a className={styles.sourceLink} href="https://www.oceanmind.global" target="_blank" rel="noopener noreferrer">OceanMind</a>,
+        its shipping lead, for large ships with full identity information, and Global Fishing Watch for smaller ships, ships with little identity
+        information and ships that don’t broadcast.
+        {perNm != null && ' The CO₂ per nautical mile is Climate TRACE’s model figure for this ship under way; a trip’s own figure depends on its speed and conditions.'}
       </div>
       <div className={styles.legendNoteText}>
-        <a className={styles.sourceLink} href={TRACE_URL} target="_blank" rel="noopener noreferrer">Climate TRACE Emissions Inventory v5.10.0</a> (shipping voyages), CC BY 4.0.
+        <a className={styles.sourceLink} href={TRACE_URL} target="_blank" rel="noopener noreferrer">Climate TRACE Emissions Inventory {release}</a> (shipping voyages), CC BY 4.0.
+        {trackers.some((x) => x.id === 'gfw') && <> Ship tracking: <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a>.</>}
       </div>
     </div>
   )

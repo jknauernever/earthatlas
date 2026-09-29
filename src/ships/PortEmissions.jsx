@@ -62,6 +62,103 @@ export function usePortEmissions(portId, months, url = null) {
     beyond: months[months.length - 1] > st.lastMonth }
 }
 
+/**
+ * A terminal's Climate TRACE port stays (api op=terminalEmissions&part=stays; lib/ships/ctStays.js rule, Josh 2026-09-29):
+ * the stays Climate TRACE's algorithm placed at this terminal's berths, for `months`. Returns the API body plus `state`.
+ */
+export function useTerminalStays(terminalKey, months) {
+  const [st, setSt] = useState({ state: 'loading' })
+  const from = months[0], to = months[months.length - 1]
+  useEffect(() => {
+    let dead = false
+    setSt({ state: 'loading' })
+    fetch(`/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=stays&from=${from}&to=${to}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j) => { if (!dead) setSt(j) })
+      .catch((e) => { if (!dead) setSt({ state: 'error', error: e.message }) })
+    return () => { dead = true }
+  }, [terminalKey, from, to])
+  return st
+}
+
+const TRACKER_LINKS = { oceanmind: ['OceanMind', 'https://www.oceanmind.global'], gfw: ['Global Fishing Watch', 'https://globalfishingwatch.org'] }
+const releaseWords = (r) => String(r || '').replaceAll('_', '.')
+const dayWords = (d) => new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+/** The terminal card's "Ships at the berth (Climate TRACE port stays)" section, from useTerminalStays(). */
+export function TerminalStayEmissions({ em, months, month, onMonth, About, title = null }) {
+  if (em.state === 'loading') return <Loading kind="quick" />
+  const head = title && <div className={styles.sectionHead}>{title}</div>
+  if (em.state === 'error') return <div className={styles.section}>{head}<div className={styles.legendNoteText}>Couldn’t load Climate TRACE’s port stays right now.</div></div>
+  if (em.state === 'not_loaded') return <div className={styles.section}>{head}<div className={styles.legendNoteText}>Climate TRACE port stays aren’t loaded for this terminal yet.</div></div>
+  const rec = em.bake && <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${em.bake.recordId}`} target="_blank" rel="noopener noreferrer"
+    title={`How EarthAtlas placed Climate TRACE’s port stays at terminals: the rule, the berths it used and every stay it could not place — click for the record`}>matching record</a>
+  if (em.state === 'not_covered') {
+    return (
+      <div className={styles.section}>{head}
+        <div className={styles.capNote}>This terminal lies outside the area our copy of Climate TRACE’s port stays covers (the Salish Sea
+          {em.bake?.box ? ` south of ${em.bake.box[3]}° N` : ''}), so its stays aren’t in it: not zero, just not loaded.{' '}{rec}</div>
+      </div>
+    )
+  }
+  const f = em.fits, range = `${monthName(months[0])} – ${monthName(months[months.length - 1])}`
+  const release = releaseWords(em.bake?.release)
+  const src = <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACE_URL} target="_blank" rel="noopener noreferrer"
+    title={`Climate TRACE shipping voyages (release ${release}), CC BY 4.0: modelled estimates per port stay`}>Climate TRACE</a>
+  const others = em.other.stays + em.maybe.stays + em.unknown.stays
+  return (
+    <div className={styles.section}>
+      {head}
+      {em.months.missing.length > 0 && <div className={styles.capNote}>Our copy of Climate TRACE’s port stays covers stays that began {monthName(em.bake.startDates.from.slice(0, 7))} – {monthName(em.bake.startDates.to.slice(0, 7))};
+        {' '}{em.months.missing.length === months.length ? 'these months are' : `${em.months.missing.length} of these months are`} outside it (not zero).</div>}
+      {em.months.covered.length > 0 && <>
+        <div className={styles.portSummary}>
+          {f.stays ? <>About <strong>{t(f.co2e)} CO₂e</strong> while {f.ships === 1 ? '1 ship' : `${f.ships.toLocaleString()} ships`} of a kind this terminal serves
+            {' '}stayed at its berths ({f.stays.toLocaleString()} port stay{f.stays === 1 ? '' : 's'}, {f.hours.toLocaleString()} h), {range}</>
+            : <>No port stay by a ship of a kind this terminal serves, {range}</>}{' '}{src}
+          {Object.keys(f.trackers).filter((k) => TRACKER_LINKS[k]).map((k) => (
+            <span key={k} className={styles.pcMuted}> · {f.trackers[k].toLocaleString()} tracked by{' '}
+              <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACKER_LINKS[k][1]} target="_blank" rel="noopener noreferrer"
+                title={k === 'oceanmind' ? 'OceanMind, Climate TRACE’s shipping lead, tracks large ships with full identity information' : 'Global Fishing Watch tracks smaller ships and ships with little identity information for Climate TRACE'}>{TRACKER_LINKS[k][0]}</a></span>
+          ))}
+        </div>
+        {f.stays > 0 && <>
+          <MonthBars months={f.perMonth} month={month} onMonth={onMonth} hue={HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
+            label="Port-stay emissions per month (tonnes CO₂e, by the month each stay began)" />
+          <div className={styles.pcGasList}>
+            {GASES.filter((g) => f.gas[g] != null).map((g) => (
+              <div key={g} className={styles.pcGasRow} title={MEASURE_INFO[g].hint}><span>{MEASURE_INFO[g].label}</span><span>{t(f.gas[g])}</span></div>
+            ))}
+          </div>
+          {em.top?.length > 0 && <>
+            <div className={styles.sectionHead} style={{ marginTop: 10 }}>Biggest stays</div>
+            {em.top.map((x) => (
+              <div key={`${x.id}|${x.t0}`} className={styles.pcGasRow}>
+                <span>{x.name || x.id} <span className={styles.pcMuted}>· {dayWords(x.t0)} → {dayWords(x.t1)}</span></span><span>{t(x.co2e)}</span>
+              </div>
+            ))}
+          </>}
+        </>}
+        {others > 0 && <div className={styles.legendNoteText} style={{ marginTop: 6 }}>
+          Not counted: {others.toLocaleString()} stay{others === 1 ? '' : 's'} ({t(em.other.co2e + em.maybe.co2e + em.unknown.co2e)} CO₂e) at the same spot by other kinds of ship
+          {' '}({[...em.other.types, ...em.maybe.types, ...em.unknown.types].slice(0, 5).map((k) => `${k.n.toLocaleString()} ${k.label.replaceAll('_', ' ').replace('.', ': ')}`).join(', ')}),
+          {' '}for example at a neighbouring dock, or small craft Climate TRACE files as “passenger”.
+        </div>}
+      </>}
+      <About>
+        Climate TRACE models each <strong>port stay</strong> (fuel burned by a ship’s engines and boilers while it is stopped) and places it,
+        by its own algorithm, where the ship stopped, often at a terminal rather than at the port itself. EarthAtlas counts a stay here when
+        every position Climate TRACE gives for it lies within {Math.round(em.rule.matchKm * 1000)} m of one of this terminal’s berths and no other
+        terminal we list is about as near ({em.rule.ambiguityRatio}× the distance); stays that could belong to two terminals are left out.
+        Only ships of a kind this terminal serves are added up ({em.fitWords.join(', ')}), going by Climate TRACE’s own ship type.
+        These are modelled estimates, not measurements, and separate from the voyage figure above (which splits each trip between the ports it links).{' '}
+        {rec}{' '}·{' '}<a className={styles.sourceLink} href={TRACE_URL} target="_blank" rel="noopener noreferrer">Climate TRACE Emissions Inventory {release}</a> (shipping voyages), CC BY 4.0.
+        {f.trackers?.gfw > 0 && <> Ship tracking: <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a>.</>}
+      </About>
+    </div>
+  )
+}
+
 /** Short tonnes for the summary strip ("2.0 Mt", "456 kt", "380 t"). */
 export function shortTonnes(v) {
   if (v == null) return '—'

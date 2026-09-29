@@ -34,6 +34,7 @@ import { ScalarOverlayLayer } from './scalarOverlay.js'
 import { TapeField } from './tape.js'
 import { loadLandMask, getLandMaskSync, isLand } from './landMask.js'
 import { ReplayController } from './replay.js'
+import { readRadarAt } from './radarReadout.js'
 import { EventTape } from './eventTape.js'
 import { RasterTape } from './rasterTape.js'
 import TransportBar from './TransportBar.jsx'
@@ -125,19 +126,26 @@ function setBasemapDimmer(map, on, basemapId) {
   const opacity = DIMMER_OPACITY[basemapId] ?? 0.42
   try {
     const has = map.getLayer(DIMMER_LAYER)
-    if (on && has) map.setPaintProperty(DIMMER_LAYER, 'background-opacity', opacity)
-    if (on && !has) {
-      // Slot the veil under the first label layer: terrain and colors dim,
-      // place names and roads stay legible for wayfinding.
-      const firstSymbol = (map.getStyle().layers || []).find((l) => l.type === 'symbol')?.id
+    if (!on) { if (has) map.removeLayer(DIMMER_LAYER); return }
+    // The veil dims the BASEMAP only: it must sit under the first label AND
+    // under every one of our own map layers (US radar, clouds, seams). Placed
+    // only "under the first label", a veil re-added after the radar layers
+    // landed ON TOP of them — prod radar went dark maroon under a 42% black
+    // veil while the satellite canvas above it stayed bright (2026-09-29).
+    const layers = map.getStyle().layers || []
+    const below = layers.find((l) => l.id !== DIMMER_LAYER && (l.type === 'symbol' || l.id.startsWith('systems-')))?.id
+    if (!has) {
       map.addLayer({
         id: DIMMER_LAYER,
         type: 'background',
         paint: { 'background-color': '#0a0d12', 'background-opacity': opacity },
-      }, firstSymbol)
-    } else if (!on && has) {
-      map.removeLayer(DIMMER_LAYER)
+      }, below)
+      return
     }
+    map.setPaintProperty(DIMMER_LAYER, 'background-opacity', opacity)
+    const at = layers.findIndex((l) => l.id === DIMMER_LAYER)
+    const target = layers.findIndex((l) => l.id === below)
+    if (below && target >= 0 && at > target) map.moveLayer(DIMMER_LAYER, below)
   } catch { /* style mid-swap; the next epoch re-applies */ }
 }
 
@@ -881,7 +889,7 @@ export default function SystemsApp() {
 
     // Click anywhere → readout for every active layer, from the same grids
     // that drive the visuals.
-    map.on('click', (e) => {
+    map.on('click', async (e) => {
       const { layerOn, layerStatus, layerMeta } = stateRef.current
       const sections = []
       let plumeHit = null
@@ -1102,6 +1110,37 @@ export default function SystemsApp() {
           const gxs = gx ? gx.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
           if (s) sections.push(sectionHtml(def.ground.popup(s, tapeF ? tapeF.metaAt() : gf.meta, gxs)))
           continue
+        }
+        // Stitched US radar on screen AND covering this spot: the satellite
+        // field is hidden here, so its value would describe data that is not
+        // drawn (Josh, 2026-09-29). Read the radar tile that IS drawn.
+        {
+          const cdef = LAYERS.find((d) => d.companionOf === def.id)
+          const sh = cdef && rasterSlotsRef.current[`${cdef.id}:__shown`]
+          const payload = cdef && fieldsRef.current[cdef.id]
+          const tier = sh?.key && sh.key === sh.want ? payload?.tiers?.find((t) => t.key === sh.key) : null
+          if (tier?.coverage && tierSees(tier, e.lngLat.lat, e.lngLat.lng)) {
+            const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+            const atLive = !owner || owner.atLive
+            const ts = rasterTimeState(payload, owner?.t ?? Date.now(), atLive, false)
+            const url = ts.urls.get(tier.key)
+            const src = payload.sources.find((sr) => sr.key === tier.key)
+            const frameMs = atLive ? payload.meta?.valid_ms : src?.frameAt?.(owner.t, false)
+            const when = frameMs ? `${new Date(frameMs).toISOString().slice(0, 16).replace('T', ' ')} UTC` : 'this moment'
+            const rd = url ? await readRadarAt(url, e.lngLat.lng, e.lngLat.lat, src?.maxzoom ?? 7) : null
+            const fmt = (v) => (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString())
+            const band = rd && !rd.dry ? (rd.hi == null ? `over ${fmt(rd.lo)} mm/h` : `${fmt(rd.lo)}–${fmt(rd.hi)} mm/h`) : null
+            const mid = rd && !rd.dry ? (rd.hi == null ? rd.lo : (rd.lo + rd.hi) / 2) : 0
+            sections.push(sectionHtml({
+              head: !url ? 'No radar frame at this moment' : !rd ? 'Radar reading unavailable' : rd.dry ? 'No rain on radar' : `${(def.words.find((w) => mid < w.max) || def.words[def.words.length - 1]).label} on radar`,
+              big: band || (rd?.dry ? 'under 0.1 mm/h' : '—'),
+              alt: band ? `${(mid / 25.4).toFixed(2)} in/h` : 'NOAA ground radar',
+              meta: `US ground radar + gauges (NOAA MRMS, 1 km), measured ${when}. The rate is the colour band the radar image shows at this spot.`,
+              ai: `NOAA MRMS radar precipitation rate at the clicked point: ${band || (rd?.dry ? 'no rain (below 0.1 mm/h)' : 'unreadable')}, frame ${frameMs ? new Date(frameMs).toISOString() : 'unknown'}. This is a DIRECT radar measurement at 1 km, not the satellite estimate. Use only this value; do not mention satellite or GSMaP for this point.`,
+              link: { href: 'https://www.nssl.noaa.gov/projects/mrms/', label: 'Source: NOAA MRMS ↗' },
+            }))
+            continue
+          }
         }
         // Replay layers read the frame on screen, stamped with ITS run/time.
         const rc = replayRef.current
@@ -1615,7 +1654,9 @@ export default function SystemsApp() {
     // Replay-capable layers swap to the tape as soon as it's loaded (the
     // static "now" wash shows in the meantime). The tape opens parked at
     // Now, paused — Play runs the replay (ReplayController).
-    setBasemapDimmer(map, !!active, basemap)
+    // Precipitation opts out (Josh, 2026-09-29): radar and satellite rain
+    // read on the undimmed basemap.
+    setBasemapDimmer(map, !!active && !active.scalar?.noDimmer, basemap)
     const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
     const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
       : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null

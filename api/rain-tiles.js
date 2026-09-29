@@ -65,8 +65,11 @@ function archive(tier, frame) {
   const name = framePath(ARCHIVES[tier], frame)
   const local = localPath(name)
   let got = cache.get(name)
-  if (existsSync(local)) {
-    const mtime = statSync(local).mtimeMs
+  // A local bake wins only while FRESH (24 h, the same rule as
+  // loadSystemsJson): a forgotten Sep 23 mrms-conus.pmtiles served
+  // six-day-old radar on localhost under today's frame time (2026-09-29).
+  const mtime = existsSync(local) ? statSync(local).mtimeMs : 0
+  if (mtime && Date.now() - mtime < 24 * 60 * 60 * 1000) {
     if (!got || got.key !== local || got.mtime !== mtime) {
       got = { key: local, mtime, p: new PMTiles(new LocalFileSource(local)) }
       cache.set(name, got)

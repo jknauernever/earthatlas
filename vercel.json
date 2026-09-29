@@ -250,6 +250,18 @@
     {
       "path": "/api/cron/warm-explore",
       "schedule": "10 * * * *"
+    },
+    {
+      "path": "/api/cron/gh-dispatch?wf=mrms",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/gh-dispatch?wf=gsmap",
+      "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/gh-dispatch?wf=gmgsi",
+      "schedule": "45 * * * *"
     }
   ]
 }

@@ -1143,12 +1143,26 @@ export const LAYERS = [
         const tp = await loadSystemsJson('mrms-conus-tape', 'mrms-conus')
         const fr = (tp.frames || []).map((f) => f.valid_ms).sort((a, b) => a - b)
         const tol = (tp.step_ms || 6e5) / 2
+        // Playback uses only the half-hour frames — the GSMaP tape's own
+        // cadence. The 10-min frames (2026-09-29) are for stepping and
+        // scrubbing; swapping 1 km radar six times a second stutters and
+        // triples tile traffic for no visible gain.
+        const HALF_HOUR = 30 * 60e3
+        const coarseFr = fr.filter((ms) => ms % HALF_HOUR === 0)
+        const nearest = (t, coarse) => {
+          const list = coarse ? coarseFr : fr
+          const lim = coarse ? HALF_HOUR / 2 : tol
+          let best = null
+          for (const ms of list) if (best === null || Math.abs(ms - t) < Math.abs(best - t)) best = ms
+          return best === null || Math.abs(best - t) > lim ? null : best // outside the archive
+        }
         if (fr.length) {
-          mrms.at = (t) => {
-            let best = null
-            for (const ms of fr) if (best === null || Math.abs(ms - t) < Math.abs(best - t)) best = ms
-            if (best === null || Math.abs(best - t) > tol) return null // outside the archive
-            return `${tileUrl('mrms', r.fetched_ms)}&f=${best}`
+          mrms.frameAt = nearest
+          mrms.stepMs = tp.step_ms || null
+          mrms.lastFrameMs = fr[fr.length - 1]
+          mrms.at = (t, coarse) => {
+            const best = nearest(t, coarse)
+            return best === null ? null : `${tileUrl('mrms', r.fetched_ms)}&f=${best}`
           }
         }
       } catch { /* live-only radar */ }

@@ -20,7 +20,7 @@ const fmtRunShort = (ms) => {
  * unambiguous readout of the date & time on screen (UTC + viewer's local)
  * with the frame's provenance underneath.
  */
-export default function TransportBar({ controller, liveShownMs, sourceName, sourceUrl, shifted, range, onRange, mini }) {
+export default function TransportBar({ controller, radarShownMs, sourceName, sourceUrl, shifted, range, onRange, mini }) {
   const [, force] = useState(0)
   useEffect(() => controller.subscribe(() => force((n) => n + 1)), [controller])
   useEffect(() => {
@@ -43,13 +43,18 @@ export default function TransportBar({ controller, liveShownMs, sourceName, sour
   // The readout names the FRAME on screen (nearest), not the interpolated
   // clock — a minute-by-minute clock churned 60×/s and was unreadable. Daily
   // and weekly fields are dated, not timed (every frame is the 12:00Z field).
-  const shownMs = meta.valid_ms
-  // At Now, a stitched live tier (US radar) is measured at its OWN, newer
-  // time than the satellite frame beside it. One clock would be wrong for
-  // half the map, so the radar's time rides in the caveat slot.
-  const radarNote = live && liveShownMs && Math.abs(liveShownMs - shownMs) >= 60000
-    ? `US radar ${new Date(liveShownMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`
-    : ''
+  // US radar on screen (Precipitation, zoomed into the US): the bar names
+  // the RADAR frame — 10-min archive steps, minutes-old live frame — and the
+  // satellite frame beside it rides in the caveat slot. One clock would be
+  // wrong for half a stitched map.
+  const satMs = meta.valid_ms
+  // Negative = the radar owns this view but has no frame at this step.
+  const radarGap = radarShownMs != null && radarShownMs < 0 && !c.playing
+  const radarMs = radarShownMs != null && !daily ? Math.abs(radarShownMs) : null
+  const shownMs = radarMs && (radarShownMs > 0 || radarGap) ? radarMs : satMs
+  const fmtT = (ms) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  const radarNote = radarGap ? `no radar frame here yet · satellite ${fmtT(satMs)}`
+    : radarShownMs > 0 && Math.abs(radarShownMs - satMs) >= 60000 ? `satellite ${fmtT(satMs)}` : ''
   const fk = meta.frame_kind
   const kindBase = meta.kindLabel ? meta.kindLabel
     : meta.event
@@ -88,7 +93,8 @@ export default function TransportBar({ controller, liveShownMs, sourceName, sour
   }
 
   const monthly = !!meta.monthLabel
-  const stepTitle = monthly ? 'one month' : c.weekly ? 'one week' : daily || meta.dayLabel ? 'one day' : `${stepH} hours`
+  const fineMin = c.fineStepMs && c.fineStepMs < c.stepMs ? Math.round(c.fineStepMs / 6e4) : null
+  const stepTitle = monthly ? 'one month' : c.weekly ? 'one week' : daily || meta.dayLabel ? 'one day' : fineMin ? `${fineMin} minutes` : c.stepMs < 3.6e6 ? `${Math.round(c.stepMs / 6e4)} minutes` : `${stepH} hours`
   // A monthly tape steps one frame (= one month); every other dated tape steps days.
   const step = (dir) => (monthly ? c.stepFrames(dir) : daily || meta.dayLabel ? c.stepDays(c.weekly ? 7 * dir : dir) : c.stepFrames(dir))
   // Its last frame is the latest PUBLISHED month, not the present moment.

@@ -472,7 +472,7 @@ const RASTER_JUMP_MS = 3 * 3600e3
  * composite of two moments presented as one, which is the thing this project
  * will not do.
  */
-function rasterTimeState(payload, cursorMs, atLive) {
+function rasterTimeState(payload, cursorMs, atLive, playing = false) {
   const urls = new Map()
   const hide = new Set()
   for (const e of [...(payload?.images || []), ...(payload?.sources || [])]) {
@@ -481,7 +481,7 @@ function rasterTimeState(payload, cursorMs, atLive) {
       const u = atLive || typeof e.at !== 'function' ? null : e.at(cursorMs)
       if (u) urls.set(e.key, u); else hide.add(e.key)
     } else if (typeof e.at === 'function') {
-      const u = atLive ? (e.tiles || e.url) : e.at(cursorMs)
+      const u = atLive ? (e.tiles || e.url) : e.at(cursorMs, playing)
       if (u) urls.set(e.key, u); else hide.add(e.key)
     } else if (!atLive) {
       hide.add(e.key)
@@ -667,7 +667,7 @@ export default function SystemsApp() {
   const [replay, setReplay] = useState(null) // same, as state for the TransportBar
   // At Now, a live tier on screen (US radar) is newer than the replay tape's
   // last frame: the bar must print THAT measurement's time, not the tape's.
-  const [liveShownMs, setLiveShownMs] = useState(null)
+  const [radarShownMs, setRadarShownMs] = useState(null)
   const [replayRange, setReplayRange] = useState({}) // layer id → 'short' | 'year' (layers with a year tape)
   const eventReplayRef = useRef(null) // ReplayController over an EventTape (quakes) when no scalar replay owns the bar
   const fireReplayRef = useRef(null)  // fire time slider: daily presence wide out, raw detections past the handoff
@@ -1467,7 +1467,7 @@ export default function SystemsApp() {
       // scrub can never disagree about what should be on screen.
       const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
       const ts = def.raster?.followsTime
-        ? rasterTimeState(payload, owner?.t ?? Date.now(), !owner || owner.atLive)
+        ? rasterTimeState(payload, owner?.t ?? Date.now(), !owner || owner.atLive, !!owner?.playing)
         : null
       const winner = activeTierKey(map, payload, mapView, ts)
       for (const im of images) {
@@ -1774,7 +1774,7 @@ export default function SystemsApp() {
         // and the cursor ran ahead of IMERG tiles that had not arrived.
         const ladderUrlAt = payloadFor?.tiers?.length
           ? (ms) => {
-              const ts = rasterTimeState(payloadFor, ms, false)
+              const ts = rasterTimeState(payloadFor, ms, false, true) // warms what PLAYBACK draws
               const w = activeTierKey(map, payloadFor, null, ts)
               if (!w) return null
               const src = payloadFor.sources.find((sr) => sr.key === w)
@@ -1861,7 +1861,9 @@ export default function SystemsApp() {
     const paint = () => {
       const atLive = !owner || owner.atLive
       const cursor = owner?.t ?? Date.now()
-      let liveMs = null
+      let radarMs = null
+      let fineStep = null
+      let lastRadarMs = null
       for (const def of LAYERS) {
         if (def.kind !== 'raster' || !def.raster?.followsTime) continue
         if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') {
@@ -1890,12 +1892,28 @@ export default function SystemsApp() {
         }
         const payload = fieldsRef.current[def.id]
         if (!payload) continue
-        const ts = rasterTimeState(payload, cursor, atLive)
+        const ts = rasterTimeState(payload, cursor, atLive, !!owner?.playing)
         const winner = activeTierKey(map, payload, null, ts)
         // "Now · 6:30 PM" over radar measured at 7:24 PM read as a storm
         // appearing from nothing in half an hour (Josh, 2026-09-28): the bar
         // prints the companion tier's (radar's) own time beside the tape's.
-        if (atLive && winner && def.companionOf && payload.meta?.valid_ms) liveMs = payload.meta.valid_ms
+        // Stepping back from Now also follows the radar: 10-min archive frames
+        // (Josh, 2026-09-29), and the bar names the radar frame on screen.
+        // Whether the radar owns the VIEW is judged by camera alone (no clock):
+        // gating it on "a frame exists at the cursor" made a step onto a
+        // missing 10-min frame drop the extension, which snapped the cursor
+        // back to Now.
+        const viewKey = def.companionOf ? activeTierKey(map, payload, null, null) : null
+        if (viewKey) {
+          const src = payload.sources?.find((sr) => sr.key === viewKey)
+          fineStep = src?.stepMs || null
+          lastRadarMs = src?.lastFrameMs || null
+          const fr = atLive ? payload.meta?.valid_ms ?? null : src?.frameAt?.(cursor, !!owner?.playing) ?? null
+          // No archived frame at this step (backfill still running, or a
+          // missed scan): name the cursor's own time and say so, rather than
+          // falling back to a satellite time half an hour away.
+          radarMs = fr != null && winner === viewKey ? fr : -Math.round(cursor)
+        }
         const isImage = new Set((payload.images || []).map((im) => im.key))
         // EVERY piece, not just the ones with a URL to swap or a reason to
         // hide: a piece with neither (the live-only cloud image, back at Now)
@@ -2032,7 +2050,11 @@ export default function SystemsApp() {
         }
       }
       for (const def of LAYERS) if (def.companionOf) applyYield(def)
-      setLiveShownMs((prev) => (prev === liveMs ? prev : liveMs))
+      setRadarShownMs((prev) => (prev === radarMs ? prev : radarMs))
+      if (owner) {
+        owner.fineStepMs = fineStep
+        owner.setEndExtension?.(fineStep ? lastRadarMs : null)
+      }
     }
 
     const onTick = () => {
@@ -3377,7 +3399,7 @@ export default function SystemsApp() {
       {(replay || eventReplay || fireReplay) ? (
         <TransportBar
           controller={replay || eventReplay || fireReplay}
-          liveShownMs={liveShownMs}
+          radarShownMs={radarShownMs}
           sourceName={(replay || eventReplay || fireReplay).sourceName || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceName}
           sourceUrl={(replay || eventReplay || fireReplay).sourceUrl || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceUrl}
           shifted={panelOpen && !isMobile}

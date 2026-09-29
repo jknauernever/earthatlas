@@ -37,11 +37,13 @@ export class ReplayController {
     // (paused) — an endless loop kept re-telling the story to someone who has
     // seen it, and made "now" a moment you could never rest on. Play resets
     // the count, so the button always buys three fresh passes.
+    this.fineStepMs = null
     this.passes = 0
     this.maxPasses = opts.maxPasses ?? 3
     this.playing = false
     this.buffering = false
     this.holding = false
+    this.endExtension = null
     this.t = this.tape.end_ms
     this._listeners = new Set()
     this._raf = 0
@@ -57,14 +59,17 @@ export class ReplayController {
   }
 
   get start_ms() { return this.tape.start_ms }
-  get end_ms() { return this.tape.end_ms }
+  // A sharper layer on screen whose archive runs past the tape (US radar,
+  // newer than the last GSMaP frame) extends the bar to its newest frame;
+  // the tape holds its last frame over that stretch.
+  get end_ms() { return Math.max(this.tape.end_ms, this.endExtension || 0) }
   // First archive frame inside the window, so the loop starts ON a frame.
   get windowStart() {
     const lo = this.tape.end_ms - this.windowDays * 8.64e7
     const f = this.tape.frames.find((fr) => fr.valid_ms >= lo)
     return f ? f.valid_ms : this.tape.start_ms
   }
-  get atLive() { return this.t >= this.tape.end_ms - 1 }
+  get atLive() { return this.t >= this.end_ms - 1 }
   get stepMs() { return this.tape.step_ms || 3 * 3.6e6 }
   get tapeDays() { return (this.tape.end_ms - this.tape.start_ms) / 8.64e7 }
   /** Window choices worth offering: only when the tape has ≥2× the frames of the shorter window. */
@@ -92,15 +97,33 @@ export class ReplayController {
 
   _apply() {
     this.tape.setTime(this.t)
-    this.t = this.tape.t
+    if (this.t <= this.tape.end_ms) this.t = this.tape.t // past the tape: the extension owns t
     this.overlay?.tick()
+  }
+
+  /** Extend (or stop extending) the bar past the tape; parked at Now stays at Now. */
+  setEndExtension(ms) {
+    const next = ms && ms > this.tape.end_ms ? ms : null
+    if (next === (this.endExtension || null)) return
+    const wasLive = this.atLive
+    this.endExtension = next
+    if (wasLive || this.t > this.end_ms) this.t = this.end_ms
+    this._apply(); this._emit()
   }
 
   play() { if (this.atLive) { this.t = this.windowStart; this.passes = 0 } this.playing = true; this.holding = false; this._holdUntil = 0; this._apply(); this._emit() }
   pause() { this.playing = false; this._emit() }
   toggle() { this.playing ? this.pause() : this.play() }
   seek(t) { this.t = Math.max(this.start_ms, Math.min(this.end_ms, t)); this.holding = false; this._holdUntil = 0; this.tape.prefetch(this.t, 3); this._apply(); this._emit() }
-  stepFrames(n) { this.pause(); this.daily ? this._stepSnap(n) : this.seek(this.t + n * this.stepMs) }
+  // fineStepMs: a sharper layer on screen with a finer archive (US radar,
+  // 10-min frames) — step by ITS frames, snapped to its grid.
+  stepFrames(n) {
+    this.pause()
+    if (this.daily) return this._stepSnap(n)
+    const f = this.fineStepMs
+    if (f && f < this.stepMs) return this.seek(Math.min(this.end_ms, (Math.round(this.t / f) + n) * f))
+    this.seek(this.t + n * this.stepMs)
+  }
   // Daily tapes: a day IS a frame — snap to the adjacent frame stamp (12:00Z)
   // rather than jumping 24 h from wherever t sits between two frames.
   stepDays(n) { this.pause(); this.daily ? this._stepSnap(n) : this.seek(this.t + n * 8.64e7) } // manual steps hold the frame

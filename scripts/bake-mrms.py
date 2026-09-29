@@ -64,13 +64,19 @@ MINZ, MAXZ = 5, 7
 # hours of 1 km radar costs almost nothing and is what a reader actually
 # wants when they have zoomed in.
 #
-# 30-minute spacing over 48 hours: 97 frames, ~58 MB — the WHOLE replay
-# window, matching the half-hourly global rain tape frame for frame. At 3
-# hours (the first cut) a US zoom showed radar only at Now: the rest of the
-# two-day loop fell back to 11 km (Josh, 2026-09-23). Backfilled from S3 on
-# the first run so the loop is useful immediately.
-ARCHIVE_SPACING_MIN = 30
+# 10-minute spacing over 48 hours: 289 frames, ~250 MB — the WHOLE replay
+# window. At 3 hours (the first cut) a US zoom showed radar only at Now: the
+# rest of the two-day loop fell back to 11 km (Josh, 2026-09-23). At 30 min
+# (to 2026-09-29) stepping back from Now jumped half an hour while the live
+# radar was minutes old; Josh chose 10-min steps. The :00/:30 frames still
+# line up with the half-hourly GSMaP tape, and playback uses only those.
+ARCHIVE_SPACING_MIN = 10
 ARCHIVE_HOURS = 48
+# Backfill is capped per run, newest slots first: a run bakes ~20 s per
+# frame, so filling ~190 missing frames at once would outlast the job's
+# timeout. At 6 per run and a run every 10 min the archive fills in ~5 h,
+# and the recent past (what a reader steps back into) fills first.
+MAX_NEW_PER_RUN = 6
 
 
 def day_keys(day):
@@ -285,15 +291,13 @@ def main():
                     by_slot[slot] = (ms, k)
 
     files, frames, baked = [], [], 0
-    for slot in slots:
+    for slot in sorted(slots, reverse=True):  # newest first: the cap spends itself on the recent past
         if slot in have:
             frames.append(have[slot])
             continue
         hit = by_slot.get(slot)
-        if not hit:
+        if not hit or baked >= MAX_NEW_PER_RUN:
             continue
-        # One archive write per run in steady state; a first run backfills the
-        # window, which takes a couple of minutes and only happens once.
         pmt, ntiles = bake_one(hit[1], ramp_v, ramp_c, good)
         files.append(b64file(f"systems/mrms-conus/{slot}.pmtiles",
                              "application/octet-stream", pmt))

@@ -43,18 +43,17 @@ const MILES_TO_METERS = 1609.34
 
 const DAY = 86400e3
 // The API caps a search at 10,000 encounters; since HappyWhale's 2026-08-28
-// fix, a capped result keeps the NEWEST rows (verified on beta), so wide
-// windows degrade gracefully into "the most recent 10,000". Default is
-// 9 months — the widest worldwide window that currently stays under the cap,
-// i.e. genuinely complete rather than truncated.
+// Windows sized for the live API's 10k-encounter cap (a month ≈ 4.3k
+// worldwide and current; 90 days caps globally, where the cap keeps the
+// NEWEST rows, so it degrades into "the most recent 10,000"). NB the API's
+// date filter is day-granular, so "24 hours" means "since yesterday".
 const TIME_PRESETS = [
-  { id: '30d', label: '30 days', days: 30 },
+  { id: '24h', label: '24 hours', days: 1 },
+  { id: '7d', label: '7 days', days: 7 },
+  { id: '1m', label: 'Month', days: 30 },
   { id: '90d', label: '90 days', days: 90 },
-  { id: '6m', label: '6 months', days: 183 },
-  { id: '9m', label: '9 months', days: 274 },
-  { id: '1y', label: 'Year', days: 365 },
 ]
-const DEFAULT_PRESET = '9m'
+const DEFAULT_PRESET = '1m'
 
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
@@ -155,6 +154,27 @@ function lngLatBoundsFor(coords) {
   return b
 }
 
+// A species can have sightings in several oceans, and a box around all of
+// them centers the camera on empty water between the clusters (bottlenose:
+// Hawaii + Atlantic → mid-Pacific at z2). Fly to the biggest cluster instead;
+// the panel's totals still say how many exist worldwide.
+function largestClusterBounds(encs) {
+  if (!encs.length) return null
+  const clusters = []
+  for (const e of encs) {
+    let home = null
+    for (const c of clusters) {
+      let dLng = Math.abs(e.lng - c.lng)
+      if (dLng > 180) dLng = 360 - dLng
+      if (dLng <= 15 && Math.abs(e.lat - c.lat) <= 15) { home = c; break }
+    }
+    if (home) home.pts.push([e.lng, e.lat])
+    else clusters.push({ lng: e.lng, lat: e.lat, pts: [[e.lng, e.lat]] })
+  }
+  clusters.sort((a, b) => b.pts.length - a.pts.length)
+  return lngLatBoundsFor(clusters[0].pts)
+}
+
 function zoomForRadius(miles) {
   if (miles <= 25) return 8.5
   if (miles <= 50) return 7.5
@@ -240,6 +260,8 @@ export default function HappyWhaleApp() {
   const suppressFlyRef = useRef(!!(initialCamera || initialCenter))
   // Read by the camera effect without re-triggering it on journey changes.
   const selectedIndRef = useRef(null)
+  // Read by the journey fetch without re-triggering it on data refreshes.
+  const encountersRef = useRef([])
   // A shared link with both a camera and a journey shouldn't fit-bounds away
   // from the shared camera on load.
   const suppressTrackFitRef = useRef(!!(initialCamera && Number.isFinite(initial.ind)))
@@ -253,6 +275,7 @@ export default function HappyWhaleApp() {
 
   const isGlobal = !center
   selectedIndRef.current = selectedInd
+  encountersRef.current = encounters
 
   const speciesByKey = useMemo(
     () => Object.fromEntries(speciesConfig.map((s) => [s.code, s])),
@@ -469,7 +492,21 @@ export default function HappyWhaleApp() {
           // can come back as null, undefined, or the string 'null'. Normalize.
           const str = (v) => (v == null || v === 'null' || v === '' ? null : String(v))
           const posNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null }
-          const identified = posNum(p.indId) != null
+          // One click opens the whale card for identified whales — no
+          // intermediate popup, and no camera move (the card's "Zoom to
+          // journey" is the explicit way to fly; close restores the view).
+          const indId = posNum(p.indId)
+          if (indId != null) {
+            if (selectedIndRef.current == null) {
+              const c = map.getCenter()
+              preJourneyCameraRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() }
+            }
+            suppressTrackFitRef.current = true
+            setSelectedInd(indId)
+            popupRef.current?.remove()
+            return
+          }
+
           const placeBits = [str(p.location), str(p.region)].filter(Boolean)
           const seaBits = [str(p.sea), str(p.ocean)].filter(Boolean)
           const count = countLabel(posNum(p.minCount), posNum(p.maxCount))
@@ -483,16 +520,10 @@ export default function HappyWhaleApp() {
                 ? `<img class="${styles.popupPhoto}" src="${escapeHtml(str(p.photoUrl))}" alt="" loading="lazy" />`
                 : '') +
               `<div class="${styles.popupSpecies}"><span class="${styles.popupDot}" style="background:${escapeHtml(p.color)}"></span>${escapeHtml(p.speciesName)}</div>` +
-              (identified
-                ? `<div class="${styles.popupInd}">${SEX_GLYPH[p.sex] ? SEX_GLYPH[p.sex] + ' ' : ''}<strong>${escapeHtml(str(p.nickname) || 'Identified individual')}</strong>${str(p.primaryId) ? ' · ' + escapeHtml(str(p.primaryId)) : ''}</div>`
-                : (count ? `<div class="${styles.popupInd}">${escapeHtml(count)}</div>` : '')) +
+              `<div class="${styles.popupInd}"><strong>Individual not identified</strong>${count ? ' · ' + escapeHtml(count) : ''}</div>` +
               `<div class="${styles.popupMeta}">${escapeHtml(fmtDate(p.date))}</div>` +
               (placeBits.length ? `<div class="${styles.popupMeta}">${escapeHtml(placeBits.join(' · '))}</div>` : '') +
               (seaBits.length ? `<div class="${styles.popupMeta}">${escapeHtml(seaBits.join(' · '))}</div>` : '') +
-              (identified ? `<button class="${styles.popupTrackBtn}" data-hw-ind="${escapeHtml(p.indId)}">⟶ Show this whale's journey</button>` : '') +
-              (identified
-                ? `<a class="${styles.popupLink}" href="${escapeHtml(individualUrl(p.indId))}" target="_blank" rel="noopener noreferrer">View on HappyWhale ↗</a>`
-                : '') +
               `</div>`,
             )
             .addTo(map))
@@ -500,20 +531,6 @@ export default function HappyWhaleApp() {
           // The popup is plain HTML (setHTML), so wire the journey button by
           // hand. Re-clicking for the already-selected whale re-zooms (the
           // state doesn't change, so the fit effect alone would never re-run).
-          popupRef.current.getElement()?.querySelector('[data-hw-ind]')?.addEventListener('click', (ev) => {
-            const id = Number(ev.currentTarget.getAttribute('data-hw-ind'))
-            if (Number.isFinite(id)) {
-              // Entering journey mode from browsing? Remember where the user
-              // was, so closing the journey card can take them back.
-              if (selectedIndRef.current == null) {
-                const c = map.getCenter()
-                preJourneyCameraRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() }
-              }
-              setSelectedInd(id)
-              fitTrackRef.current?.(id)
-            }
-            popupRef.current?.remove()
-          })
         })
       }
     }
@@ -586,6 +603,18 @@ export default function HappyWhaleApp() {
       .then((res) => {
         if (ac.signal.aborted) return
         if (!res.individual) { setSelectedInd(null); return }
+        if (!res.encounters.length) {
+          // Upstream inconsistency: /encounters links sightings to this
+          // individual but /individual/info lists none (seen live 2026-09,
+          // presumably fresh matches not yet propagated). Fall back to the
+          // sightings already loaded on the map, and let the card say so.
+          const local = encountersRef.current
+            .filter((e) => e.individual?.id === selectedInd)
+            .slice()
+            .sort((a, b) => a.time - b.time)
+          setTrack({ ...res, encounters: local, partial: true })
+          return
+        }
         setTrack(res)
       })
       .catch((err) => {
@@ -623,6 +652,17 @@ export default function HappyWhaleApp() {
       .catch(() => { if (!cancelled) setJourneyLegs(null) })
     return () => { cancelled = true }
   }, [track])
+
+  // A partial journey (upstream listed no sightings) may have resolved before
+  // the map's encounter data — fill it in when that data lands.
+  useEffect(() => {
+    if (!track?.partial || track.encounters.length) return
+    const local = encounters
+      .filter((e) => e.individual?.id === track.individual.id)
+      .slice()
+      .sort((a, b) => a.time - b.time)
+    if (local.length) setTrack((t) => (t && t.partial && !t.encounters.length ? { ...t, encounters: local } : t))
+  }, [encounters, track])
 
   // Draw (or clear) the routed legs + direction arrows.
   useEffect(() => {
@@ -766,6 +806,27 @@ export default function HappyWhaleApp() {
     if (b) map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1200, essential: true })
   }, [filteredEncounters])
 
+  // Species pill click = filter AND fly to those results (Josh 2026-09-29:
+  // the globe should center what you just asked for).
+  const handleSpeciesSelect = useCallback((key) => {
+    setSpecies(key)
+    // A pill click supersedes an open journey. Without this, journey mode
+    // keeps every non-journey dot ghosted (opacity 0.07) and the flight
+    // lands on a seemingly empty map.
+    if (selectedIndRef.current != null) {
+      setSelectedInd(null)
+      preJourneyCameraRef.current = null
+      mapRef.current?.getSource('hw-track')?.setData({ type: 'FeatureCollection', features: [] })
+    }
+    const subset = key === 'all' ? encounters : encounters.filter((e) => e.speciesKey === key)
+    const map = mapRef.current
+    if (!map || !subset.length) return
+    const b = key === 'all'
+      ? lngLatBoundsFor(subset.map((e) => [e.lng, e.lat]))
+      : largestClusterBounds(subset)
+    if (b) map.fitBounds(b, { padding: 90, maxZoom: 8, duration: 1200, essential: true })
+  }, [encounters])
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className={styles.container}>
@@ -866,48 +927,32 @@ export default function HappyWhaleApp() {
               </button>
             )}
 
-            {/* Journey card */}
-            {trackInd && (
-              <div className={styles.journeyCard}>
-                <div className={styles.journeyHead}>
-                  {trackInd.avatar?.thumbUrl
-                    ? <img className={styles.journeyAvatar} src={trackInd.avatar.thumbUrl} alt="" />
-                    : <span className={styles.journeyDot} style={{ background: speciesColor(trackInd.speciesKey) }} />}
-                  <span className={styles.journeyName}>
-                    {SEX_GLYPH[trackInd.sex] ? `${SEX_GLYPH[trackInd.sex]} ` : ''}{trackInd.nickname || 'Identified individual'}
-                  </span>
-                  <button className={styles.journeyClose} onClick={handleClearJourney} aria-label="Clear journey">✕</button>
-                </div>
-                <div className={styles.journeyMeta}>
-                  {speciesName(trackInd.speciesKey)}
-                  {trackInd.primaryId ? ` · ${trackInd.primaryId}` : ''}
-                </div>
-                <div className={styles.journeyMeta}>
-                  {track.encounters.length} encounters
-                  {trackSpan ? ` · ${fmtDate(trackSpan[0])} → ${fmtDate(trackSpan[1])}` : ''}
-                </div>
-                <div className={styles.journeyMeta}>
-                  Stops numbered on the map, ① oldest → newest
-                </div>
-                <div className={styles.journeyDisclaimer}>
-                  Exact routes of whales between points are not known, but estimated.
-                </div>
-                {trackInd.bio && <div className={styles.journeyBio}>{renderMarkdownLite(trackInd.bio)}</div>}
-                <button type="button" className={styles.journeyZoom} onClick={() => fitToTrack()}>
-                  ⟶ Zoom to journey
-                </button>
-                <a className={styles.journeyLink} href={individualUrl(trackInd.id)} target="_blank" rel="noopener noreferrer">
-                  View on HappyWhale ↗
-                </a>
+            {/* Time range — first, per the cross-site panel standard (time
+                picker on top), then the overview stats, then species. */}
+            <div className={styles.field}>
+              <label className={styles.fieldLabel}>Time range</label>
+              <div className={styles.chipRow}>
+                {TIME_PRESETS.map((p) => (
+                  <button key={p.id} className={preset === p.id ? styles.chipActive : styles.chip} onClick={() => setPreset(p.id)}>
+                    {p.label}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Stats */}
+            <div className={styles.statGrid}>
+              <div className={styles.statBox}><span className={styles.statVal}>{stats.count.toLocaleString()}</span><span className={styles.statKey}>encounters</span></div>
+              <div className={styles.statBox}><span className={styles.statVal}>{stats.individuals.toLocaleString()}</span><span className={styles.statKey}>known whales</span></div>
+              <div className={styles.statBox}><span className={styles.statVal}>{stats.species.toLocaleString()}</span><span className={styles.statKey}>species</span></div>
+            </div>
 
             {/* Species filter — long live taxonomy, so cap the list at 10
                 (plus the active selection, which must never hide). */}
             <div className={styles.field}>
               <label className={styles.fieldLabel}>Species</label>
               <div className={styles.chipRow}>
-                <button className={species === 'all' ? styles.chipActive : styles.chip} onClick={() => setSpecies('all')}>
+                <button className={species === 'all' ? styles.chipActive : styles.chip} onClick={() => handleSpeciesSelect('all')}>
                   All
                 </button>
                 {(() => {
@@ -918,7 +963,7 @@ export default function HappyWhaleApp() {
                     if (active) visible = [...visible, active]
                   }
                   return visible.map(([key, n]) => (
-                    <button key={key} className={species === key ? styles.chipActive : styles.chip} onClick={() => setSpecies(key)}>
+                    <button key={key} className={species === key ? styles.chipActive : styles.chip} onClick={() => handleSpeciesSelect(key)}>
                       <span className={styles.chipDot} style={{ background: speciesColor(key) }} />
                       {speciesName(key)} · {n}
                     </button>
@@ -929,18 +974,6 @@ export default function HappyWhaleApp() {
                     {speciesExpanded ? '− Show fewer' : `+ ${speciesCounts.length - 10} more`}
                   </button>
                 )}
-              </div>
-            </div>
-
-            {/* Time range */}
-            <div className={styles.field}>
-              <label className={styles.fieldLabel}>Time range</label>
-              <div className={styles.chipRow}>
-                {TIME_PRESETS.map((p) => (
-                  <button key={p.id} className={preset === p.id ? styles.chipActive : styles.chip} onClick={() => setPreset(p.id)}>
-                    {p.label}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -958,16 +991,9 @@ export default function HappyWhaleApp() {
               </div>
             )}
 
-            {/* Stats */}
-            <div className={styles.statGrid}>
-              <div className={styles.statBox}><span className={styles.statVal}>{stats.count.toLocaleString()}</span><span className={styles.statKey}>encounters</span></div>
-              <div className={styles.statBox}><span className={styles.statVal}>{stats.individuals.toLocaleString()}</span><span className={styles.statKey}>known whales</span></div>
-              <div className={styles.statBox}><span className={styles.statVal}>{stats.species.toLocaleString()}</span><span className={styles.statKey}>species</span></div>
-            </div>
-
             <div className={styles.legendNote}>
-              Rings mark photo-identified whales — click one, then “Show this
-              whale's journey” to follow it across oceans.
+              Rings mark photo-identified whales — click one to open its story
+              and journey.
             </div>
 
             <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>
@@ -982,7 +1008,23 @@ export default function HappyWhaleApp() {
             </div>
       </MapSheet>
 
-      <div className={styles.tip}>Click an encounter for details · ringed dots are identified whales with journeys</div>
+      <div className={styles.tip}>Click a ringed dot to open that whale's journey · other dots show sighting details</div>
+
+      {trackInd && (
+        <WhaleCard
+          key={selectedInd}
+          track={track}
+          speciesName={speciesName}
+          scientificName={speciesByKey[trackInd.speciesKey]?.scientific || null}
+          onClose={handleClearJourney}
+          onZoomJourney={() => fitToTrack()}
+          onSelectRelative={(id) => { setSelectedInd(id) }}
+          onZoomStop={(e) => {
+            const map = mapRef.current
+            if (map) map.flyTo({ center: [e.lng, e.lat], zoom: Math.max(map.getZoom(), 9.5), duration: 900, essential: true })
+          }}
+        />
+      )}
 
       {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} />}
     </div>
@@ -990,6 +1032,207 @@ export default function HappyWhaleApp() {
 }
 
 // ─── "How this is sourced" modal ────────────────────────────────────────────
+// ─── Right-hand whale card (the /ships card idiom: glass card, segmented
+// tabs). Tab state lives here; the parent remounts the card per whale
+// (key={selectedInd}) so a new whale always opens on Overview. ────────────────
+
+// Relatives are not a structured API field — researchers encode them as
+// happywhale.com/individual links in the bio ("Mother of [**Scuba**](…)").
+function familyLinks(bio, selfId) {
+  if (!bio) return []
+  const out = []
+  const seen = new Set()
+  const re = /\[([^\]]+)\]\(https?:\/\/happywhale\.com\/individual\/(\d+)\/?\)/g
+  let m
+  while ((m = re.exec(bio))) {
+    const id = Number(m[2])
+    if (id === selfId || seen.has(id)) continue
+    seen.add(id)
+    out.push({ id, label: m[1].replace(/\*\*/g, '') })
+  }
+  return out
+}
+
+const havKmApp = (lat1, lng1, lat2, lng2) => {
+  const r = Math.PI / 180
+  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lng2 - lng1) * r) / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(a))
+}
+
+const SEX_WORDS = { MALE: 'Male', FEMALE: 'Female' }
+
+// "British Columbia, Canada" → "British Columbia": the card is tight on
+// width and the country rarely disambiguates; full text stays in tooltips.
+const regionShort = (r) => (r || '').split(',')[0].trim()
+
+function WhaleCard({ track, speciesName, scientificName, onClose, onZoomJourney, onSelectRelative, onZoomStop }) {
+  const [tab, setTab] = useState('overview')
+  const ind = track.individual
+  const encs = track.encounters
+  const fam = useMemo(() => familyLinks(ind.bio, ind.id), [ind])
+  const span = encs.length ? [encs[0].date, encs[encs.length - 1].date] : null
+  // Overview facts, all derived from the loaded sightings.
+  const facts = useMemo(() => {
+    const heroEnc = [...encs].reverse().find((e) => e.media?.url || e.media?.thumbUrl)
+    let distKm = 0
+    for (let i = 1; i < encs.length; i++) distKm += havKmApp(encs[i - 1].lat, encs[i - 1].lng, encs[i].lat, encs[i].lng)
+    const regionCount = new Map()
+    for (const e of encs) if (e.region) regionCount.set(e.region, (regionCount.get(e.region) || 0) + 1)
+    const regions = [...regionCount.entries()].sort((a, b) => b[1] - a[1])
+    const years = new Set(encs.map((e) => (e.date || '').slice(0, 4)).filter(Boolean))
+    return {
+      hero: heroEnc ? (heroEnc.media.url || heroEnc.media.thumbUrl) : null,
+      heroDate: heroEnc?.date || null,
+      distKm: Math.round(distKm),
+      regions,
+      years: years.size,
+    }
+  }, [encs])
+  const tabs = [
+    ['overview', 'Overview'],
+    ['family', fam.length ? `Family · ${fam.length}` : 'Family'],
+    ['sightings', `Sightings · ${encs.length}`],
+  ]
+  return (
+    <div className={styles.wcWrap}>
+      <div className={styles.wcCard} role="dialog" aria-label="Whale card">
+        <button type="button" className={styles.wcClose} onClick={onClose} aria-label="Close whale card">×</button>
+
+        <div className={styles.wcHead}>
+          {ind.avatar?.thumbUrl
+            ? <img className={styles.wcAvatar} src={ind.avatar.thumbUrl} alt="" />
+            : <span className={styles.journeyDot} style={{ background: speciesColor(ind.speciesKey) }} />}
+          <div>
+            <div className={styles.wcName}>
+              {SEX_GLYPH[ind.sex] ? `${SEX_GLYPH[ind.sex]} ` : ''}{ind.nickname || 'Identified individual'}
+            </div>
+            <div className={styles.journeyMeta}>
+              {speciesName(ind.speciesKey)}{ind.primaryId ? ` · ${ind.primaryId}` : ''}
+            </div>
+            <div className={styles.journeyMeta}>
+              {encs.length} encounters{span ? ` · ${fmtDate(span[0])} → ${fmtDate(span[1])}` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.wcTabs} role="tablist">
+          {tabs.map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id}
+              className={`${styles.wcTab} ${tab === id ? styles.wcTabOn : ''}`} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+
+        {tab === 'overview' && (
+          <div>
+            {track.partial && (
+              <div className={styles.journeyDisclaimer}>
+                HappyWhale's record for this whale doesn't list its sightings yet —
+                showing {encs.length ? `the ${encs.length}` : 'none'} from the current map search.
+              </div>
+            )}
+            {facts.hero && (
+              <img className={styles.wcHero} src={facts.hero} alt=""
+                title={facts.heroDate ? `Photographed ${fmtDate(facts.heroDate)} — © the contributing photographer, via HappyWhale` : ''} />
+            )}
+            {(scientificName || SEX_WORDS[ind.sex]) && (
+              <div className={styles.journeyMeta}>
+                {scientificName && <em>{scientificName}</em>}
+                {scientificName && SEX_WORDS[ind.sex] ? ' · ' : ''}{SEX_WORDS[ind.sex] || ''}
+              </div>
+            )}
+            {encs.length > 0 && (
+              <div className={styles.statGrid}>
+                <div className={styles.statBox}><span className={styles.statVal}>{facts.years}</span><span className={styles.statKey}>{facts.years === 1 ? 'year seen' : 'years seen'}</span></div>
+                <div className={styles.statBox}><span className={styles.statVal}>{facts.distKm >= 100 ? `${facts.distKm.toLocaleString()}` : '—'}</span><span className={styles.statKey}>km ≥ traveled</span></div>
+                <div className={styles.statBox}><span className={styles.statVal}>{facts.regions.length}</span><span className={styles.statKey}>{facts.regions.length === 1 ? 'region' : 'regions'}</span></div>
+              </div>
+            )}
+            {(facts.regions.length > 0 || encs.length > 0) && (
+              <div className={styles.wcKVs}>
+                {facts.regions.length > 0 && (
+                  <div className={styles.wcKV}>
+                    <span className={styles.wcK}>Seen in</span>
+                    <span className={styles.wcV} title={facts.regions.map(([r, n]) => `${r} (${n})`).join(' · ')}>
+                      {facts.regions.slice(0, 3).map(([r, n]) => `${regionShort(r)} (${n})`).join(' · ')}
+                      {facts.regions.length > 3 ? ` · +${facts.regions.length - 3} more` : ''}
+                    </span>
+                  </div>
+                )}
+                {encs.length > 0 && (
+                  <div className={styles.wcKV}>
+                    <span className={styles.wcK}>First seen</span>
+                    <span className={styles.wcV}>{fmtDate(encs[0].date)}{encs[0].region ? ` · ${regionShort(encs[0].region)}` : ''}</span>
+                  </div>
+                )}
+                {encs.length > 0 && (
+                  <div className={styles.wcKV}>
+                    <span className={styles.wcK}>Last seen</span>
+                    <span className={styles.wcV}>{fmtDate(encs[encs.length - 1].date)}{encs[encs.length - 1].region ? ` · ${regionShort(encs[encs.length - 1].region)}` : ''}</span>
+                  </div>
+                )}
+                <div className={styles.wcKV}>
+                  <span className={styles.wcK}>On the map</span>
+                  <span className={styles.wcV}>Stops numbered ① oldest → newest</span>
+                </div>
+              </div>
+            )}
+            <div className={styles.journeyDisclaimer}>
+              Exact routes of whales between points are not known, but estimated. Distance
+              is the shortest path between sightings — the whale swam at least this far.
+            </div>
+            {ind.bio && <div className={styles.journeyBio}>{renderMarkdownLite(ind.bio)}</div>}
+            <button type="button" className={styles.journeyZoom} onClick={onZoomJourney}>⟶ Zoom to journey</button>
+            <a className={styles.journeyLink} href={individualUrl(ind.id)} target="_blank" rel="noopener noreferrer">
+              View on HappyWhale ↗
+            </a>
+          </div>
+        )}
+
+        {tab === 'family' && (
+          <div>
+            {fam.length === 0 && (
+              <div className={styles.journeyMeta}>
+                No relatives linked in this whale's records yet — family appears when
+                researchers link relatives in the HappyWhale bio.
+              </div>
+            )}
+            {fam.map((f) => (
+              <button key={f.id} type="button" className={styles.wcRow} onClick={() => onSelectRelative(f.id)}
+                title="Open this relative's journey">
+                <span className={styles.wcRowMain}>{f.label}</span>
+                <span className={styles.wcRowAction}>journey ⟶</span>
+              </button>
+            ))}
+            {fam.length > 0 && (
+              <div className={styles.journeyDisclaimer}>
+                Relatives as linked by researchers in the HappyWhale bio.
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'sightings' && (
+          <div>
+            {encs.map((e, i) => (
+              <button key={e.id} type="button" className={styles.wcRow} onClick={() => onZoomStop(e)}
+                title="Zoom to this sighting on the map">
+                <span className={styles.wcSeq}>{i + 1}</span>
+                {e.media?.thumbUrl && <img className={styles.wcThumb} src={e.media.thumbUrl} alt="" loading="lazy" />}
+                <span className={styles.wcRowMain}>
+                  {fmtDate(e.date)}
+                  <span className={styles.wcRowSub}>{[e.location, e.region].filter(Boolean).join(' · ') || e.ocean || ''}</span>
+                </span>
+                <span className={styles.wcRowAction}>⌖</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function MethodologyModal({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }

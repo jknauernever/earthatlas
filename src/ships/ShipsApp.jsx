@@ -473,6 +473,16 @@ export default function ShipsApp() {
   const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
   const [vesselName, setVesselName] = useState(null)
+  // Phones: the ship / port / terminal card and the ship search span the screen's width, so the icon dock would sit on
+  // top of them (Josh 2026-09-30, shared link). While one is open the dock folds to its small button; it comes back
+  // when they close, unless the user changed the view meanwhile.
+  const cardUp = !!(vesselId || portId || terminalKey || pickerOpen)
+  const dockAutoFolded = useRef(false)
+  useEffect(() => {
+    if (!isMobile) return
+    if (cardUp) setMobileView((v) => { if (v === 'dock') { dockAutoFolded.current = true; return 'pill' } return v })
+    else if (dockAutoFolded.current) { dockAutoFolded.current = false; setMobileView((v) => (v === 'pill' ? 'dock' : v)) }
+  }, [cardUp, isMobile])
 
   // ─── Map init (once) — globe + atmosphere, as /inmotion ───────────────────
   useEffect(() => {

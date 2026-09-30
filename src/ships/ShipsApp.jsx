@@ -525,7 +525,7 @@ export default function ShipsApp() {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [basemapMenuOpen])
 
-  useEffect(() => { document.title = 'Ships — vessel identity over time · EarthAtlas' }, [])
+  useEffect(() => { document.title = 'Ships — the open record of every ship · EarthAtlas' }, [])
 
   // ─── Track layers (one source per selected month, stacked) ─────────────────
   // Months = the detailed Salish months plus every month the US-wide bake has published (its

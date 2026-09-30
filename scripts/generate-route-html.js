@@ -102,13 +102,13 @@ const ROUTES = [
   {
     out: 'ships.html',
     url: 'https://earthatlas.org/ships',
-    title: 'Ships — vessel identity over time · EarthAtlas',
+    title: 'Ships — the open record of every ship · EarthAtlas',
     description:
-      'Look up any ship by name, IMO, MMSI or call sign and see how its identity changed over time: names, MMSIs, flags, owners and registry records, each with its source, and whether the ship broadcast it or a registry recorded it. Powered by Global Fishing Watch. An EarthAtlas tool.',
+      'The open record of every ship: where it’s sailed, what it’s burned, and the impact it may leave behind. Look up any ship by name, IMO, MMSI or call sign for its tracks, port calls, emissions and identity history (names, flags, owners), each value linked to its source. Powered by Global Fishing Watch. An EarthAtlas tool.',
     image: 'https://earthatlas.org/ships-social.jpg',
     imageAlt: 'EarthAtlas Ships — the open record of every ship: ship tracks on a map with one ship’s voyage highlighted and its vessel profile (identity, flag history, owners, port calls, emissions over time)',
     keywords:
-      'ship identity, vessel lookup, IMO number lookup, MMSI lookup, vessel history, ship name changes, flag changes, ship ownership, Global Fishing Watch vessels, AIS identity',
+      'ship tracking, vessel tracks, ship emissions, ship environmental impact, ship identity, vessel lookup, IMO number lookup, MMSI lookup, vessel history, ship name changes, flag changes, ship ownership, Global Fishing Watch vessels, AIS identity',
   },
   {
     out: 'inmotion.html',

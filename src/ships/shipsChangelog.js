@@ -38,7 +38,7 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
-  { date: '2026-09-30', area: 'Sharing', text: 'Links to earthatlas.org/ships now preview with their own picture, “The open record of every ship”, instead of the general EarthAtlas card.' },
+  { date: '2026-09-30', area: 'Sharing', text: 'Links to earthatlas.org/ships now preview with their own picture, “The open record of every ship”, instead of the general EarthAtlas card, and the page’s title and description now read “Ships — the open record of every ship”: where it’s sailed, what it’s burned, and the impact it may leave behind.' },
   // Numbers below verified against production 2026-09-30 (read-only counts after the anchorage and MEP imports):
   // 15,448 stays / 3,338 vessels / 108 anchorages; Vendovi South 87 stays by 51 ships; MEP 334 by IMO, 31 + 32 by name;
   // scrubber filter 594 ships (IMO 460, MEP 365, both 231).

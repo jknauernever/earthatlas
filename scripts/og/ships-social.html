@@ -1,0 +1,81 @@
+<!-- Source for public/ships-social.jpg (1200x630 og:image for /ships). Illustrative artwork, no real vessel data.
+     Re-export: headless Chrome --force-device-scale-factor=2 --window-size=1200,630 --screenshot, then downscale to 1200x630 JPEG q90. -->
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#050b14;font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif}
+svg{position:absolute;inset:0}
+.t{position:absolute;left:60px;top:0;height:630px;display:flex;flex-direction:column;justify-content:center;z-index:2}
+h1{margin:0;font-size:124px;font-weight:800;letter-spacing:-.03em;line-height:.92;color:#fff}
+.h{margin-top:22px;font-size:30px;font-weight:700;color:#fde047}
+.sub{margin-top:8px;font-size:25px;line-height:1.35;color:#cbd5e1;max-width:430px}
+.brand{position:absolute;left:62px;top:40px;font-size:24px;color:#e5e7eb;z-index:3}
+.brand b{color:#fff}.brand i{color:#22d3ee;font-weight:600}
+.card{position:absolute;left:880px;top:322px;width:270px;padding:16px 18px;background:rgba(8,18,30,.9);border:1px solid rgba(253,224,71,.55);border-radius:10px;z-index:3;font:600 13px ui-monospace,Menlo,monospace;letter-spacing:.1em;color:#7dd3fc;box-shadow:0 0 30px rgba(253,224,71,.12)}
+.card .hd{display:flex;align-items:center;gap:8px;color:#fde047;font-size:14px;margin-bottom:12px}
+.card .hd:before{content:"";width:9px;height:9px;border-radius:50%;background:#fde047;box-shadow:0 0 8px #fde047}
+.row{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+.bar{height:8px;border-radius:4px;background:#1e3a52}.bar i{display:block;height:100%;border-radius:4px;background:#22d3ee}
+.spark{margin-top:12px;border-top:1px solid #1e3a52;padding-top:10px}
+</style></head><body>
+<svg width="1200" height="630"><defs>
+<linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="#050b14"/><stop offset=".36" stop-color="#050b14" stop-opacity=".93"/><stop offset=".52" stop-color="#050b14" stop-opacity="0"/></linearGradient>
+<radialGradient id="sea" cx="820" cy="330" r="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0b2233"/><stop offset="1" stop-color="#050b14"/></radialGradient>
+<filter id="gl"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="1200" height="630" fill="url(#sea)"/>
+<g stroke="#15314a" stroke-width="1" opacity=".5"><path d="M0 105H1200M0 210H1200M0 315H1200M0 420H1200M0 525H1200M150 0V630M300 0V630M450 0V630M600 0V630M750 0V630M900 0V630M1050 0V630"/></g>
+<!-- land: two masses forming a strait -->
+<path d="M620 -10 C660 40 700 70 760 90 C820 110 850 160 900 175 C950 190 990 170 1040 200 C1090 230 1140 215 1210 240 L1210 -10Z" fill="#0f2119" stroke="#2a5140" stroke-width="1.5"/>
+<path d="M700 640 C720 590 780 560 820 520 C860 480 900 470 950 420 C990 380 1050 390 1100 360 C1140 340 1180 350 1210 330 L1210 640Z" fill="#0f2119" stroke="#2a5140" stroke-width="1.5"/>
+<circle cx="1015" cy="190" r="4" fill="#fde047" opacity=".9"/><circle cx="1015" cy="190" r="10" fill="none" stroke="#fde047" stroke-opacity=".5"/>
+<g id="T"></g>
+<rect width="1200" height="630" fill="url(#fade)"/>
+</svg>
+<div class="brand"><b>Earth</b><i>Atlas</i></div>
+<div class="card"><div class="hd">VESSEL PROFILE</div>
+<div class="row">NAME<span class="bar" style="width:120px"><i style="width:100%;background:#e5e7eb"></i></span></div>
+<div class="row">IMO · MMSI<span class="bar" style="width:120px"><i style="width:70%;background:#e5e7eb"></i></span></div>
+<div class="row">FLAG HISTORY<span style="display:flex;gap:3px"><span class="bar" style="width:34px;background:#7dd3fc"></span><span class="bar" style="width:22px;background:#fde047"></span><span class="bar" style="width:40px;background:#fb923c"></span></span></div>
+<div class="row">OWNERS<span class="bar" style="width:120px"><i style="width:55%"></i></span></div>
+<div class="row">PORT CALLS<span class="bar" style="width:120px"><i style="width:80%"></i></span></div>
+<div class="row" style="color:#fca5a5">CO₂ · EMISSIONS<span class="bar" style="width:120px"><i style="width:65%;background:#f87171"></i></span></div>
+<div class="spark" style="color:#fca5a5">EMISSIONS · OVER TIME<svg width="234" height="52" style="position:static;display:block;margin-top:8px">
+<defs><linearGradient id="ef" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f87171" stop-opacity=".55"/><stop offset="1" stop-color="#f87171" stop-opacity="0"/></linearGradient></defs>
+<path d="M0 38 L0 30 L33 27 L66 22 L99 25 L132 16 L165 19 L198 11 L234 7 L234 38 Z" fill="url(#ef)"/>
+<polyline fill="none" stroke="#f87171" stroke-width="2" stroke-linejoin="round" points="0,30 33,27 66,22 99,25 132,16 165,19 198,11 234,7"/>
+<g fill="#f87171"><circle cx="0" cy="30" r="2.5"/><circle cx="33" cy="27" r="2.5"/><circle cx="66" cy="22" r="2.5"/><circle cx="99" cy="25" r="2.5"/><circle cx="132" cy="16" r="2.5"/><circle cx="165" cy="19" r="2.5"/><circle cx="198" cy="11" r="2.5"/><circle cx="234" cy="7" r="3.5" fill="#fecaca"/></g>
+<line x1="0" y1="38.5" x2="234" y2="38.5" stroke="#1e3a52"/>
+<g stroke="#335b7a"><line x1="0" y1="38" x2="0" y2="42"/><line x1="33" y1="38" x2="33" y2="42"/><line x1="66" y1="38" x2="66" y2="42"/><line x1="99" y1="38" x2="99" y2="42"/><line x1="132" y1="38" x2="132" y2="42"/><line x1="165" y1="38" x2="165" y2="42"/><line x1="198" y1="38" x2="198" y2="42"/><line x1="233" y1="38" x2="233" y2="42"/></g>
+<text x="0" y="51" fill="#6b8aa3" font-size="10" font-family="Menlo,monospace">YEAR 1</text><text x="234" y="51" text-anchor="end" fill="#6b8aa3" font-size="10" font-family="Menlo,monospace">NOW</text>
+</svg></div></div>
+<div class="t"><h1>Ships</h1><div class="h">The open record of every ship.</div><div class="sub">Where it’s sailed, what it’s burned, and the impact it may leave behind.</div></div>
+<script>
+const NS='http://www.w3.org/2000/svg',el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+let sd=11;const R=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const T=document.getElementById('T');
+// Catmull-Rom sampler
+function sample(P,n){const out=[];for(let i=0;i<P.length-1;i++){const p0=P[i-1]||P[i],p1=P[i],p2=P[i+1],p3=P[i+2]||p2;for(let k=0;k<n;k++){const t=k/n,t2=t*t,t3=t2*t;out.push([0,1].map(j=>.5*((2*p1[j])+(-p0[j]+p2[j])*t+(2*p0[j]-5*p1[j]+4*p2[j]-p3[j])*t2+(-p0[j]+3*p1[j]-3*p2[j]+p3[j])*t3)))}}out.push(P[P.length-1]);return out}
+function jit(P,a){return P.map(q=>[q[0]+(R()-.5)*a,q[1]+(R()-.5)*a])}
+// lanes through the strait (west→east and east→west), plus coastal & fishing
+const lanes=[
+ [[380,420],[560,360],[700,300],[820,285],[940,280],[1060,275],[1220,270]],
+ [[1220,300],[1080,300],[950,305],[830,310],[700,330],[560,400],[420,500]],
+ [[430,120],[560,170],[690,230],[810,280],[930,290],[1050,290],[1220,285]],
+ [[1220,255],[1070,258],[1015,200]],
+];
+const ships=[];
+for(let i=0;i<34;i++){const L=lanes[Math.floor(R()*lanes.length)];const pts=sample(jit(L,26),10);
+ const end=Math.floor(pts.length*(.25+R()*.75)),len=Math.floor(8+R()*26);ships.push({pts:pts.slice(Math.max(0,end-len),end),c:R()<.15?'#67e8f9':'#22d3ee',w:1.3})}
+// highlighted voyage: long track, yellow, through strait into port
+const hi=sample([[260,580],[380,520],[500,450],[620,380],[740,320],[860,300],[960,295],[1000,250],[1015,200]],12);
+ships.push({pts:hi.slice(0,-6),c:'#fde047',w:3,hi:true});
+for(const s of ships){const p=s.pts;if(p.length<2)continue;
+ const d='M'+p.map(q=>q[0].toFixed(1)+' '+q[1].toFixed(1)).join('L');
+ if(s.hi)el('path',{d,fill:'none',stroke:s.c,'stroke-width':8,'stroke-opacity':.25,filter:'url(#gl)'},T);
+ el('path',{d,fill:'none',stroke:s.c,'stroke-width':s.w,'stroke-opacity':s.hi?.95:.45,'stroke-linecap':'round'},T);
+ p.forEach((q,i)=>{if(i%(s.hi?4:3))return;el('circle',{cx:q[0],cy:q[1],r:s.hi?3.2:1.7,fill:s.c,'fill-opacity':(.25+.75*i/p.length).toFixed(2)},T)});
+ const a=p[p.length-2],b=p[p.length-1],ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;
+ const g=el('g',{transform:`translate(${b[0]},${b[1]}) rotate(${ang}) scale(${s.hi?1.5:.85})`},T);
+ if(s.hi){el('circle',{r:16,fill:'none',stroke:s.c,'stroke-opacity':.45},g);el('circle',{r:28,fill:'none',stroke:s.c,'stroke-opacity':.2},g)}
+ el('path',{d:'M10 0 L-7 -6 L-3.5 0 L-7 6 Z',fill:s.c,stroke:'#050b14','stroke-width':1},g);}
+const tip=ships[ships.length-1].pts.slice(-1)[0];
+el('path',{d:`M${tip[0]} ${tip[1]} L${tip[0]} 318 L900 318 L900 330`,fill:'none',stroke:'#fde047','stroke-width':1.4,'stroke-dasharray':'4 4','stroke-opacity':.8},T);
+</script></body></html>

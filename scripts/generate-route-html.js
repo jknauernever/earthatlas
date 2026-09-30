@@ -105,8 +105,8 @@ const ROUTES = [
     title: 'Ships — vessel identity over time · EarthAtlas',
     description:
       'Look up any ship by name, IMO, MMSI or call sign and see how its identity changed over time: names, MMSIs, flags, owners and registry records, each with its source, and whether the ship broadcast it or a registry recorded it. Powered by Global Fishing Watch. An EarthAtlas tool.',
-    image: 'https://earthatlas.org/earthatlas-social.jpg',
-    imageAlt: 'EarthAtlas Ships — vessel identity history with sources',
+    image: 'https://earthatlas.org/ships-social.jpg',
+    imageAlt: 'EarthAtlas Ships — the open record of every ship: ship tracks on a map with one ship’s voyage highlighted and its vessel profile (identity, flag history, owners, port calls, emissions over time)',
     keywords:
       'ship identity, vessel lookup, IMO number lookup, MMSI lookup, vessel history, ship name changes, flag changes, ship ownership, Global Fishing Watch vessels, AIS identity',
   },

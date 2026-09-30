@@ -1,7 +1,7 @@
 # /ships Phase 4 — ship pollution sources (study)
 
-Written 2026-09-27. **Study only. Phase 4 is NOT authorized** (see `src/ships/CLAUDE.md`).
-Nothing here has been built, imported, or written to any database.
+Written 2026-09-27 as a study. Since then: Climate TRACE voyages / port stays and IMO scrubbers are live; **EU MRV authorized
+2026-09-29 and built on dev** (§1 "Verified and extended 2026-09-29" and "Built (dev)"). Cerulean still waits on SkyTruth.
 
 Conventions: "live 2026-09-27" = checked against a primary page or a live response today.
 **UNVERIFIED** = from secondary sources, memory notes, or inference; confirm before relying on it.
@@ -112,6 +112,135 @@ portal. Commercial use: not restricted by that wording. Record in `ships.sources
 IMO (ship) — checksum-valid, registry-class under our resolver rules, so `IMO_EXACT` applies. The
 company IMO number is a separate identifier (an owner/ISM-company number), useful later as a
 `ism_manager` / company assertion — **do not** confuse it with the ship IMO (both columns are headed `IMO Number`).
+
+### Verified and extended 2026-09-29 (live checks; files in gitignored `scripts/ships/mrv/raw/`)
+
+**robots / terms.** `mrv.emsa.europa.eu/robots.txt` → 404 (none). `www.emsa.europa.eu/robots.txt` is a stock Joomla file
+(`User-agent: *`, disallows only `/administrator/`, `/cache/`, `/components/` … — nothing on the MRV host). No rate limit is
+published or signalled in response headers; the app's own config has `USE_RECAPTCHA:false`. We keep to a handful of requests
+with ≥1 s between file downloads and a generic browser User-Agent.
+
+**Licence (exact wording, EMSA disclaimer page, "Copyright" section, re-read 2026-09-29):** "Reproduction is authorised, provided
+the source is acknowledged, save where otherwise stated. Where prior permission must be obtained for the reproduction or use of
+textual and multimedia information (sound, images, software, etc.), such permission shall cancel the above mentioned general
+permission and indicate clearly any restrictions on use." The MRV portal states nothing otherwise (`configuration.disclaimer:false`).
+Attribution used: "Source: EMSA THETIS-MRV, EU MRV publication of information", linked per value to EMSA's page for that ship
+and year. Recorded in `ships.sources` (`emsa-thetis-mrv`, commercial_use = true since the wording doesn't restrict it).
+
+**The portal's own public text (GHG Emission Report tab, 2026-09-29):** publication under Art. 21 of Reg. (EU) 2015/757;
+"2021 is the first reporting period reflecting the impact of the United Kingdom's withdrawal from the EU"; "2024 is the first
+reporting period following the MRV amendments for the inclusion of new GHGs in addition to CO2 (methane and nitrous oxide). For
+the reporting periods 2024 and 2025, only CO2 emissions will be covered under EU ETS scope. Starting 2024, the downloadable
+spreadsheet include, in a dedicated sheet, the information reported through the submission of partial emissions reports as
+required by Article 11(2)". (So the CO₂eq "to be reported under Directive 2003/87/EC" column is shown on the card only as CO₂.)
+
+**Every public endpoint** (from `app.js`, all under `https://mrv.emsa.europa.eu/api/public-emission-report`):
+
+| Endpoint | Result 2026-09-29 |
+|---|---|
+| `reporting-periods` | 2018–2025 |
+| `downloadable-files` | newest file per year: 2025 v58 (15-09-2026), 2024 **v245** (29-09-2026), 2023 v92 (29-09-2026), 2022 v241 (06-02-2026), 2021 v219 (25-09-2026), 2020 v210 (25-09-2026), 2019 v228 (13-08-2026), 2018 v275 (29-03-2026) |
+| `reporting-period-document/binary/{year}/{version}` | the XLSX (sizes: 3.9–4.3 MB for 2018–2023, 9.5 MB 2024, 11.7 MB 2025; 45 MB total) |
+| `reporting-period-history/{year}?page=1&limit=N&orderByCol=version&orderByType=DESC` | **every** earlier version is listed (2024: 245 versions since the first; 2018: v1 = 30-06-2019) |
+| `reporting-period-document/binary/{year}/{version}/{date}` | a historical version (not fetched) |
+| `?imoNumbers=…&reportingPeriod=…&page=1&limit=10&orderByCol=reportingPeriod&orderByType=DESC` | the search grid (JSON: emissionReportId, imo, name, shipType, company, reportingPeriod, totalCo2Emissions, totalCo2EqEmissions, …). Without `orderByCol` → 400 "Please insert pagination sort column" |
+| `details/{emissionReportId}` | one report as the portal shows it (fuel, emissions per gas and per voyage category, time at sea, efficiency with units, DoC dates, monitoring methods with names, verifier with address + accreditation, company). **Fuel by type is not public** (`consumptions: null`, `showConsumptions: false/null`) |
+| `smart-search/ship-name?query=` | `[]` for EURODAM (needs other params; not explored) |
+| `active` | `{"value":true}` |
+| `configuration`, `ship-types` | as on 2026-09-27 |
+| `stats`, `flags` | 400 "not enabled" |
+| `supporting-materials/binary/{erId}/{id}` | not tried |
+
+**Deep link per ship and year** (route in `app.js`: `public/emission-report/ship/:imoNumber/rp/:reportingPeriod`):
+`https://mrv.emsa.europa.eu/#public/emission-report/ship/9285615/rp/2024` opens the search pre-filled with that IMO and year
+(checked in Chrome 2026-09-29; it shows the "Full Reporting Period" coverage by default). This is each value's inline source link.
+
+**Rows per file (all ships, all IMOs checksum-valid, no duplicate IMO in a Full sheet):**
+2018 12,260 · 2019 12,420 · 2020 12,118 · 2021 12,485 · 2022 13,474 · 2023 12,829 · 2024 14,170 full + 1,027 partial rows
+(1,008 ships) · 2025 17,177 full + 1,520 partial rows (1,482 ships). 26,053 distinct ships across all years.
+Published CO₂ totals (Full sheets): 145.4 Mt (2018), 147.3, 129.7, 126.8, 137.5, 128.6, 147.2, 151.0 Mt (2025).
+
+**Two layouts** (parse by header text, never position; `lib/ships/euMrv.js` `mrvLayout`):
+- **2018–2023, 62 columns, one sheet named by the year.** Ship: IMO Number, Name, Ship type, Reporting Period (e.g. `2021.0`),
+  Technical efficiency, Port of Registry, Home Port, Ice Class · DoC issue / expiry (DD/MM/YYYY) · Verifier Number, Name, NAB,
+  Address, City, Accreditation number, Country · Monitoring methods A, B, C, D, D · Totals: total fuel [m tonnes], fuel on laden,
+  total CO₂, CO₂ between / departed from / to MS ports / at berth in MS ports, CO₂ to passenger / freight transport / on laden
+  [m tonnes], annual time at sea [hours] (2018–19 "Annual Total time…", 2020–23 "Annual Time…") · Average energy efficiency:
+  fuel and CO₂ per distance [kg / n mile] and per transport work (mass [g / m tonnes · n miles], volume [g / m³ · n miles],
+  dwt [g / dwt carried · n miles], pax [g / pax · n miles], freight [g / m tonnes · n miles]) · Voluntary: through ice [n miles],
+  time at sea, time through ice [hours], the same efficiency set on laden voyages, additional information, average cargo density
+  [m tonnes / m³]. **No company columns; no CH₄ / N₂O / CO₂eq; no total distance.**
+- **2024 onward, 113 columns, two sheets "YYYY Full ERs" and "YYYY Partial ERs".** Adds Company IMO Number + Name; drops Verifier
+  Number; fuel: total, fuel benefitting from a derogation (Annex II Part C 1.2, voluntary), on laden, cargo heating, dynamic
+  positioning [m tonnes]; for **each of CO₂, CH₄, N₂O and CO₂eq**: total, between / departed / to MS ports, at berth, "within ports
+  under a MS jurisdiction", on laden, passenger, freight, and "to be reported under Directive 2003/87/EC" (the ETS share; the CO₂
+  header is written "CO2" in ASCII) [m tonnes]; CO₂eq benefitting from a derogation; Distance through ice [n miles], Time spent
+  at sea [hours], time through ice; efficiency per distance and per transport work for fuel, CO₂ **and CO₂eq**, each with an
+  "on laden voyages" twin, plus fuel / CO₂ / CO₂eq **per time at sea** [m tonnes / hour] (the CO₂eq-per-time header's unit is
+  printed "[m tonnes CO₂eq / m tonnes · n miles]", an EMSA typo). Still **no total distance and no fuel by type**.
+- Units: "m tonnes" = metric tonnes. `N/A` = not applicable; blank cells are omitted from the XML (parse by cell reference).
+- Technical efficiency strings: `EIV|EEDI|EEXI (N gCO₂/t·nm)`, `Not Applicable`, `Not Applicable (N gCO₂/t·nm)`,
+  bare `N gCO₂/t·nm`, bare `EEDI`/`EIV`, or blank. EEXI appears from 2022 and dominates from 2023.
+- Monitoring method letters map to the portal's names (details API): A = "BDN and period stock takes of fuel tanks",
+  C = "Flow meters for applicable combustion processes" (B = on-board tank monitoring, D = direct CO₂ measurement per Annex I).
+
+**Revisions and duplicates.**
+- Each year's file is regenerated as reports are submitted or corrected; the version number climbs (2024 went v244 → v245
+  between 26 and 29 Sept 2026). All versions stay downloadable. Importer rule: a ship-year's evidence is hash-versioned, so a
+  new version stores a new record only where that ship's cells changed; claims the new version no longer makes are superseded
+  (kept); a ship-year gone from its year's file has its claims superseded, never deleted.
+- One ship appears once per year in the Full sheet. **Partial ERs** (2024+) are per-company parts of a year after a change of
+  company (`2024 (1/1 - 24/10)`, day/month); a ship can have several. 726 of 1,008 partial-report ships in 2024 (1,006 of 1,482
+  in 2025) also have a Full row; the Full row was **never smaller** than the sum of that ship's partial rows (equal for 199 in
+  2024, 360 in 2025), i.e. the Full row covers the whole year. So partial rows are never added to the Full figure; the card shows
+  them on their own line.
+- Across years there is no linkage other than IMO; company names change (EURODAM: "Holland America Line N.V." 2024 vs "Holland
+  America Line Limited" 2025, same company IMO 5375992).
+
+**Cross-check.** For EURODAM 2024 the file row equals the portal's `details/267085` response on every compared figure (CO₂ 298.0592,
+CH₄ 0.00474, N₂O 0.01706, CO₂eq 302.71282, fuel 94.8 t, 27.03 h, 1,052.47 kg CO₂/n mile, verifier DNV). The ETS column checks
+against the rule: 8.34 at berth + ½ × (166.21 + 123.51) = 153.2 t CO₂.
+
+### Match against EarthAtlas ships (read-only, 2026-09-29)
+Rule = the resolver's: the MRV IMO held as a checksum-valid **registry-class** IMO by exactly one vessel (no IMO in our databases
+is on two vessels). "Salish-seen" = the vessel has an accepted MarineCadastre AIS identity from our Salish Sea tracks (Jul 2025 – Jun 2026).
+Production ran inside `READ ONLY` transactions, SELECT only.
+
+| Year | MRV ships | Prod matched | Prod Salish-seen | Dev matched | Dev Salish-seen |
+|---|---|---|---|---|---|
+| 2018 | 12,260 | 766 | 705 | 724 | 704 |
+| 2019 | 12,420 | 783 | 725 | 746 | 723 |
+| 2020 | 12,118 | 784 | 724 | 745 | 723 |
+| 2021 | 12,485 | 833 | 771 | 794 | 770 |
+| 2022 | 13,474 | 932 | 865 | 892 | 864 |
+| 2023 | 12,829 | 890 | 833 | 855 | 832 |
+| 2024 | 14,452 | 956 | 893 | 917 | 892 |
+| 2025 | 17,653 | 1,048 | 984 | 1,008 | 983 |
+| any year | 26,053 | **1,767** | **1,652** | 1,693 | 1,650 |
+
+Prod holds 3,362 vessels with a registry IMO (2,959 Salish-seen). A further **172** prod IMOs (141 dev) that appear in MRV are held
+only from AIS: under the resolver rule they stay unresolved (stored as evidence by `--known`, not shown) until a registry source
+confirms the IMO.
+
+### Built (dev) 2026-09-29
+- Migration `019_eu_mrv.sql` (additive): evidence class **`verified_report`**, attribute **`emissions_report`**.
+- `lib/ships/euMrv.js` (layout by header text, mapping with units, ship-year grouping, claims, persistence), `lib/ships/euMrvFormat.js`,
+  resolver **v1.8** (`decideMrvImo`: registry IMO held by exactly one vessel; never by name; no candidates).
+- `scripts/ships/import-eu-mrv.mjs` (`--imo` / `--known` / `--all`, `--years`, `--download`, `--dry-run`). Evidence: one
+  `eu_mrv_file` record per file version (its header rows) + one `eu_mrv_ship_year` record per ship-year (its cells by column letter).
+  Claims: one per published row, period = the row's reporting period (validity), value = total CO₂ [t], detail = every mapped figure.
+- Dev import: 6 ships only (EURODAM 9378448, AEGEAN DREAM 9645425, ELENA VE 9453066, EXTREMADURA KNUTSEN 9918157, MORNING CALM
+  9285615 incl. its 2024 partial row, ANTHEM OF THE SEAS 9656101): 30 ship-years, 31 claims, all attached by IMO_EXACT.
+- Ship card: Emissions tab → "Verified: EU MRV reports" block (newest year in full, earlier years one line each) above the
+  "Modelled: Climate TRACE estimates" block; per-value "EU MRV" links to the portal's ship-year page.
+- "Small EU share" note (Josh 2026-09-29): when a year's whole-year EU MRV CO₂ is **under 25%** of Climate TRACE's modelled CO₂
+  (the CO₂ gas) for the same ship and calendar year, the verified block says, in a highlighted line, that the EU figures cover
+  only the ship's EU/EEA voyages, a small part of its year. Climate TRACE's figure is only our Salish Sea trips and stays, so it
+  under-states the ship's year: the test is conservative. Partial-year rows are not compared; no modelled figure → only the normal
+  scope note. The two numbers are compared, never added or shown together (`lib/ships/euMrvFormat.js` `smallEuShare`,
+  `smallShareYears`). EURODAM: 298 t (2024) and 853 t (2025) EU vs 54,500 / 56,500 t CO₂e modelled → note shown for both years.
+- Size estimate for prod `--known`: ≈7.4k ship-years ≈ 1.5 kB evidence + ≈1.5 kB claim detail each ≈ 20–25 MB (prod DB is 1.2 GB).
+  `--all` (≈115k ship-years) would be ≈300 MB and is not proposed.
 
 ---
 

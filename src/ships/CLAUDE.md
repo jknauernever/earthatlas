@@ -30,7 +30,7 @@ deviations, assumptions, open issues, and the proposed next phase. Then stop.
 | 1 | Identity/provenance schema + GFW Vessels import + tests + basic /ships search page (identity history with inline sources) | authorized 2026-09-24 |
 | 2 | First AIS source (MarineCadastre, CC0), resolved by MMSI + timestamp; tracks on the map | authorized 2026-09-24; built; prod rollout 2026-09-25 |
 | 3 | Global context: GFW presence / dark-vessel (SAR) detections, ports (World Port Index), port visits | authorized 2026-09-25 (study first) |
-| 4 | Pollution: EU MRV CO₂, Climate TRACE voyages, SkyTruth Cerulean slicks | not authorized |
+| 4 | Pollution: EU MRV CO₂, Climate TRACE voyages, SkyTruth Cerulean slicks | Climate TRACE voyages + port stays, IMO scrubbers: authorized and live (2026-09-27/29); EU MRV authorized 2026-09-29; Cerulean waiting on SkyTruth's permission |
 | 5 | Live AIS (Digitraffic / Kystverket; needs an always-on worker, which is a new infrastructure decision) | not authorized |
 
 Each phase ends with something Josh can look at on localhost:5173. That is
@@ -69,7 +69,10 @@ EarthAtlas's workflow: QA on localhost, then merge to main.
 ### Evidence classes (never collapse them)
 `registry` (authoritative registry record, here as processed by GFW),
 `derived_identity` (a trusted third party's identity match, e.g. GFW's
-grouping), `ais_self_reported`, `inferred` (models), `unverified`.
+grouping), `ais_self_reported`, `inferred` (models), `unverified`, and
+`verified_report` (migration 019: a company's legally required report, checked by an
+accredited verifier and published by the authority, e.g. EU MRV emissions; never
+shown as a registry fact or mixed with modelled figures).
 "AIS reported this" and "a registry says this" must stay distinguishable
 everywhere, including the UI.
 

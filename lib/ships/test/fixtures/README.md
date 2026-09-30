@@ -149,3 +149,11 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | File | What it is |
 |---|---|
 | `ct-voyages-salish-v5_11_0.json` | **Real.** `voyage_rows`: 4 rows exactly as in the 2026-09-29 Salish Sea pull of Climate TRACE's BigQuery `shipping_voyages` (table label release v5_11_0; columns trimmed, values untouched): COASTAL RENAISSANCE (om-imo-9332755) ×2, a VLCC (om-imo-9789283), a GFW-tracked boat (gfw-mmsi-316038244). `stays`: 8 port-stay lines from the voyage bake's `ct-stays-v2.ndjson` (Cherry Point tankers, a Roberts Bank container ship, an ambiguous Tacoma stop, a two-terminal Anacortes stay, an Olympia small craft, and WEST VIRGINIA's overlapping pair). `berths`: the 81 active berths of the dev database's listed terminals on 2026-09-29. |
+
+## EU MRV (lib/ships/euMrv.js; docs/SHIP_POLLUTION_SOURCES.md §1)
+
+| File | What it is |
+|---|---|
+| `eu-mrv-live-2026-09-29.json` | **Real** rows copied verbatim from two EMSA THETIS-MRV "EU MRV Publication of information" files downloaded 2026-09-29 (UTC 2026-09-30 01:29–01:31): 2021 v219 (62-column layout; EURODAM 9378448) and 2024 v245 (113-column layout; both sheets: EURODAM, AEGEAN DREAM 9645425, MORNING CALM 9285615 with its Full and Partial rows). Each sheet's three header rows are kept whole; cells are exactly as `lib/ships/xlsx.js` `sheetRows` reads them; file names, generation dates and sha256 are recorded. Plus the portal's own `details/267085` response (EURODAM 2024), verbatim, used to cross-check the file's numbers. Nothing edited. The full files stay in the gitignored `scripts/ships/mrv/raw/`. |
+
+`euMrv.test.js` / `euMrv-db.test.js` mark what they build SYNTHETIC in the test name (a renamed header, holder lists for the resolver, a revised file version, a file without one ship).

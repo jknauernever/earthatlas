@@ -15,6 +15,7 @@ import { Loading, LoadingInline } from '../components/panel'
 export const EVIDENCE = {
   ais_self_reported: { label: 'Ship-reported', cls: 'evAis', title: 'What the ship itself broadcast over AIS (self-reported, unverified)' },
   ais_published: { label: 'Ship-reported', cls: 'evAis', title: 'What the ship broadcast over AIS, as published by NOAA MarineCadastre. The Coast Guard corrects some missing or clearly wrong values, and NOAA doesn\'t mark which' },
+  verified_report: { label: 'Verified report', cls: 'evReg', title: 'Reported by the ship’s company to a public authority under a legal duty, checked by an accredited verifier and published by that authority (EU MRV). Not a registry fact and not a model' },
   registry: { label: 'Registry', cls: 'evReg', title: 'An official record: a vessel registry (directly, or as processed by Global Fishing Watch) or a flag Administration’s notification to IMO' },
   inferred: { label: 'Estimate', cls: 'evInf', title: 'Estimated by Global Fishing Watch with a computer model (mostly from how the vessel moves). Not reported by the ship or a registry' },
   derived_identity: { label: 'Matched', cls: 'evInf', title: 'Identity match made by a third party' },

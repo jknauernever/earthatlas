@@ -6,6 +6,7 @@
  * the window this ship held it (as the ship's own tracks do). Every number is Climate TRACE's own.
  * Who tracked the ship for Climate TRACE (OceanMind or Global Fishing Watch) and the ship's deadweight / modelled CO₂ per
  * nautical mile come from the same rows (lib/ships/ctVoyages.js: trackerOf, shipFacts; Josh 2026-09-29).
+ * Above them, in its own block: the ship's VERIFIED EU MRV reports (ShipMrv.jsx; Phase 4, Josh 2026-09-29). The two are never mixed.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { MonthBars } from './PortCard.jsx'
@@ -13,6 +14,7 @@ import { MEASURE_INFO, tonnesWord, TRACE_URL } from '../systems/traceData.js'
 import { Loading } from '../components/panel'
 import { trackerOf, shipFacts } from '../../lib/ships/ctVoyages.js'
 import trackSource from './trackSource.json'
+import ShipMrv from './ShipMrv.jsx'
 import styles from './ShipsApp.module.css'
 
 const HUE = '#38bdf8'
@@ -52,7 +54,15 @@ export default function ShipEmissions({ vessel }) {
     return () => { dead = true }
   }, [ids])
 
-  if (st.state === 'loading') return <Loading kind="quick" />
+  // Verified EU MRV reports first, then Climate TRACE's modelled estimates: two blocks, never one number (Josh 2026-09-29).
+  const mrv = (co2ByYear = null) => <ShipMrv vessel={vessel} modelledCo2ByYear={co2ByYear} />
+  const modelledHead = (
+    <div className={styles.sectionHead} style={{ marginTop: 14 }}>
+      Modelled: Climate TRACE estimates{' '}
+      <span className={`${styles.ev} ${styles.evInf}`} title="Estimated by Climate TRACE with a computer model from the ship’s AIS track and characteristics; not reported or measured">estimate</span>
+    </div>
+  )
+  if (st.state === 'loading') return <>{mrv()}{modelledHead}<Loading kind="quick" /></>
 
   // Keep MMSI-filed rows inside this ship's windows for that MMSI; drop exact duplicates across Climate TRACE assets.
   const rows = []
@@ -72,12 +82,12 @@ export default function ShipEmissions({ vessel }) {
     }
   }
   if (!rows.length) {
-    return (
+    return (<>{mrv()}{modelledHead}
       <div className={styles.legendNoteText}>
         No Climate TRACE voyage estimates for this ship in our Salish Sea set (voyages to or from Salish Sea ports that began in 2024–2025).
         {!ids.imos.length && !ids.mmsis.size && ' It has no IMO or MMSI to look up.'}
       </div>
-    )
+    </>)
   }
 
   const sum = (list, i) => list.reduce((a, r) => a + (r.v[i] ?? 0), 0)
@@ -96,6 +106,9 @@ export default function ShipEmissions({ vessel }) {
   })
   const byYear = {}
   for (const r of rows) { const y = r.v[F.start].slice(0, 4); byYear[y] = (byYear[y] || 0) + (r.v[F.co2e] ?? 0) }
+  // Modelled CO₂ (the CO₂ gas, not CO₂e) per calendar year, for the "small EU share" note only (euMrvFormat.smallEuShare).
+  const co2ByYear = {}
+  for (const r of rows) { const y = r.v[F.start].slice(0, 4); co2ByYear[y] = (co2ByYear[y] || 0) + (r.v[10] ?? 0) }
   const top = [...trips].sort((a, b) => (b.v[F.co2e] ?? 0) - (a.v[F.co2e] ?? 0)).slice(0, 8)
   const topStays = [...stays].sort((a, b) => (b.v[F.co2e] ?? 0) - (a.v[F.co2e] ?? 0)).slice(0, 4)
   const names = [...new Set(st.assets.map((a) => `${a.name || 'unnamed'} (${a.id})`))]
@@ -109,8 +122,9 @@ export default function ShipEmissions({ vessel }) {
   const dwt = one('deadweight_t'), perNm = one('co2_kg_per_nm')
   const factAsset = factsOf.find((x) => x.f.deadweight_t != null || x.f.co2_kg_per_nm != null)?.a
 
-  return (
+  return (<>{mrv(co2ByYear)}
     <div className={styles.section}>
+      {modelledHead}
       <div className={styles.portSummary}>
         About <strong>{t(total)} CO₂e</strong> from {trips.length.toLocaleString()} trip{trips.length === 1 ? '' : 's'} and{' '}
         {stays.length.toLocaleString()} port stay{stays.length === 1 ? '' : 's'} that began {monthName(months[0])} – {monthName(months[months.length - 1])}
@@ -187,5 +201,5 @@ export default function ShipEmissions({ vessel }) {
         {trackers.some((x) => x.id === 'gfw') && <> Ship tracking: <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a>.</>}
       </div>
     </div>
-  )
+  </>)
 }

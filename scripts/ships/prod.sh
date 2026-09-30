@@ -15,6 +15,7 @@
 #   zsh scripts/ships/prod.sh import-ct-stays    Climate TRACE port stays → terminals (needs migration 018 + the voyage bake's ct-stays file)
 #   zsh scripts/ships/prod.sh import-official-ports  back up, then official port lists (DFO harbours, USACE port areas, Transport Canada) for the Salish box
 #   zsh scripts/ships/prod.sh import-gisis       back up, then IMO GISIS scrubber notifications + ISPS port facilities (from the saved CSVs)
+#   zsh scripts/ships/prod.sh import-eu-mrv      back up, then EU MRV verified ship emissions for ships we hold (from the saved XLSX files; needs migration 019)
 #   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-mc-v6       back up, then MarineCadastre AIS identities from the salish-v6 bake (build/v6)
@@ -76,6 +77,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-gisis
     prod_node scripts/ships/import-gisis.mjs all "${@:2}"
+    ;;
+  import-eu-mrv)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-eu-mrv
+    prod_node scripts/ships/import-eu-mrv.mjs --known "${@:2}"
     ;;
   import-terminals)
     need SHIPS_PROD_DATABASE_URL

@@ -111,6 +111,16 @@ export const SHIPS_SOURCES = [
     ],
   },
   {
+    heading: 'Ship emissions (verified)',
+    sources: [
+      { name: 'EU MRV: EMSA THETIS-MRV publication of information', href: 'https://mrv.emsa.europa.eu/#public/emission-report',
+        publisher: 'European Maritime Safety Agency; reports by shipping companies under Regulation (EU) 2015/757, checked by accredited verifiers',
+        licence: 'EMSA: “Reproduction is authorised, provided the source is acknowledged, save where otherwise stated.”', licenceHref: 'https://www.emsa.europa.eu/disclaimer.html',
+        method: 'Ship cards (Emissions tab): each ship’s published annual report, 2018 onward: CO₂ (from 2024 also CH₄, N₂O and CO₂-equivalent), fuel burned, hours at sea, CO₂ per nautical mile, design efficiency, verifier. Only voyages to, from and between EU/EEA ports and time at berth in them, for ships over 5,000 GT; not the ship’s whole year. Figures copied as published, matched to our ships by registry IMO only; a part-year report after a change of company is shown on its own line, never added in.',
+        citation: 'Source: EMSA THETIS-MRV, EU MRV publication of information.' },
+    ],
+  },
+  {
     heading: 'Anchorages at stops',
     sources: [
       { name: 'Anchorages (MarineCadastre.gov)', href: 'https://www.fisheries.noaa.gov/inport/item/48849',

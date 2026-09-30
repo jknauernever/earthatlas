@@ -268,12 +268,20 @@ async function handleSpecies(req, url) {
 // ─── /<map tool>?<view state> — per-view share card ──────────────────────────
 async function handleToolShare(url, tool) {
   if (!url.search) return // bare route → static SEO html (designed hero card)
-  const id = await sha1Hex(url.pathname + url.search)
-  // Existence check goes through our own node API — @vercel/blob's SDK can't
-  // run on the Edge runtime (node:stream deps), and this keeps the blob store
-  // URL out of both the middleware and the markup.
-  const check = await fetch(`${url.origin}/api/share-card?id=${id}&check=1`)
-  if (!check.ok || !(await check.json()).exists) return // no snapshot → static html
+  // The app keys snapshots by its own URL, where URLSearchParams writes spaces
+  // as '+' (?q=linnea+rose), but Vercel hands middleware that query with
+  // '%20' — so try the '+' form too or searched views never find their card.
+  const searches = [...new Set([url.search, url.search.replace(/%20/g, '+')])]
+  let id = null
+  for (const search of searches) {
+    const candidate = await sha1Hex(url.pathname + search)
+    // Existence check goes through our own node API — @vercel/blob's SDK can't
+    // run on the Edge runtime (node:stream deps), and this keeps the blob store
+    // URL out of both the middleware and the markup.
+    const check = await fetch(`${url.origin}/api/share-card?id=${candidate}&check=1`)
+    if (check.ok && (await check.json()).exists) { id = candidate; break }
+  }
+  if (!id) return // no snapshot → static html
   const canonical = `${SITE}${url.pathname}${url.search}`
   return botHtml({
     title: tool.title,

@@ -30,6 +30,7 @@ export const config = {
     '/birdsong',
     '/happywhale',
     '/shiptraffic',
+    '/ships',
     '/bears',
     '/birds',
     '/butterflies',
@@ -90,6 +91,8 @@ const TOOLS = {
                    description: 'Explore whale encounters from HappyWhale’s photo-ID network — search any coast, filter by species and time, and follow a named whale’s journey across oceans. An EarthAtlas tool.' },
   shiptraffic:   { title: 'Ship Traffic & Whales — Salish Sea · EarthAtlas',
                    description: 'Explore vessel traffic by class against observed whale presence across the Salish Sea, for any month/year range — with a derived interaction surface showing where heavy traffic overlaps whales. An EarthAtlas tool.' },
+  ships:         { title: 'Ships — the open record of every ship · EarthAtlas',
+                   description: 'The open record of every ship: where it’s sailed, what it’s burned, and the impact it may leave behind. Look up any ship by name, IMO, MMSI or call sign for its tracks, port calls, emissions and identity history (names, flags, owners), each value linked to its source. Powered by Global Fishing Watch. An EarthAtlas tool.' },
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────

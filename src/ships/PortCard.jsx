@@ -8,6 +8,7 @@
  * Every number links to where it came from (EarthAtlas inline-provenance rule). Data: lib/ships/portCard.js.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
@@ -353,7 +354,7 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
                   Updated weekly; checked {String(pw.fetchedAt || '').slice(0, 10)}.
                 </About>
                 <div className={styles.legendNoteText}>
-                  <a className={styles.sourceLink} href={pwUrl} target="_blank" rel="noopener noreferrer" title={src['imf-portwatch']?.license || 'IMF PortWatch terms'}>{PW_CITATION}</a>
+                  <a className={styles.sourceLink} href={pwUrl} target="_blank" rel="noopener noreferrer" title={publicLicense(src['imf-portwatch']) || 'IMF PortWatch'}>{PW_CITATION}</a>
                 </div>
               </div>
             )
@@ -364,7 +365,7 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
             {['gfw-port-visits', 'nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].map((id) => src[id]).filter(Boolean).map((x, i) => (
               <span key={x.id}>{i > 0 && ' · '}
                 <a className={styles.sourceLink} href={x.attribution_url || x.homepage_url} target="_blank" rel="noopener noreferrer" title={x.name}>{x.attribution_text}</a>{' '}
-                <a className={styles.sourceLink} href={x.license_url} target="_blank" rel="noopener noreferrer">{x.license.split(' (')[0]}</a>
+                {publicLicense(x) && publicLicense(x) !== x.attribution_text && <a className={styles.sourceLink} href={x.license_url || x.homepage_url} target="_blank" rel="noopener noreferrer">{publicLicense(x)}</a>}
               </span>
             ))}
           </div>

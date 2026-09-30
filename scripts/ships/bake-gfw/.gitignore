@@ -1,0 +1,4 @@
+# Raw GFW reports, land data, work files and baked tiles: never commit (tiles go to Vercel Blob).
+cache
+cache/
+build/

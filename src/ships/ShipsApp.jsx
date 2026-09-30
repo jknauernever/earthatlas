@@ -35,6 +35,7 @@ import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
 import TerminalCard from './TerminalCard.jsx'
 import { addTerminalImages, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
+import { anchoragePopupHTML, ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
 import trackSource from './trackSource.json'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
@@ -104,11 +105,32 @@ function removeSourceSafe(map, id) {
   if (!map.getSource(id)) return
   try { map.removeSource(id) } catch (e) { if (map.getSource(id)) throw e; map.triggerRepaint() }
 }
+// GFW hourly-position lines (scripts/ships/bake-gfw/, tileset trackSource.gfw): the months and places NOAA
+// doesn't cover (the bake drops GFW positions where NOAA has published that month). Estimated stretches
+// (est=1, our path along the water between two hourly positions) draw dashed.
+const gfwSrc = (ym) => `shiptrk-gfw-${ym}`
+const gfwObs = (ym) => `shiptrk-gfw-${ym}-obs`
+const gfwEst = (ym) => `shiptrk-gfw-${ym}-est`
+const gfwTrackTileUrl = (ym) =>
+  `${TILES_BASE}/api/ship-tracks?r=gfw&t=${ym}&v=${trackSource.gfw.rules}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const GFW_TRACK_ATTRIBUTION = 'Ship tracks outside NOAA coverage: <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a>'
+  + ' hourly positions; estimated paths along the water use coastlines © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>,'
+  + ' <a href="https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Physical_AlaskaCoast/MapServer/4" target="_blank" rel="noopener">Alaska DNR</a>,'
+  + ' <a href="https://open.canada.ca/data/en/dataset/a4b190fe-e090-4e6d-881e-b87956c07977" target="_blank" rel="noopener">NRCan National Hydro Network</a>'
 const usSrc = (ym) => `shiptrk-us-${ym}`
 const usLo = (ym) => `shiptrk-us-${ym}-lo`
 const usHi = (ym) => `shiptrk-us-${ym}-hi`
 const usTileUrl = (ym) =>
   `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+// ─── DEV-ONLY PROTOTYPE (Josh 2026-09-29): GFW hourly positions drawn as track lines, BC + Alaska ───
+// Localhost only: ?gh=raw|routed, and only in dev builds (import.meta.env.DEV), so production never loads it.
+// Tiles: api/ship-tracks?r=gfwproto (local bake, scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Same line style as
+// our tracks in a different hue; in the routed version, dashed = OUR estimate of the path along the water.
+const GH_COLOR = '#fb923c'
+const GH_LAYERS = ['gfwproto-obs', 'gfwproto-est']
+const ghTileUrl = (v, stamp) => `${TILES_BASE}/api/ship-tracks?r=gfwproto&t=${v}&b=${stamp}&dev=1&z={z}&x={x}&y={y}`
+const ghEsc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const ghTime = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '')
 // ─── Worldwide context from Global Fishing Watch (Phase 3) ────────────────────
 // Tiles come through api/gfw-tiles.js (token stays server-side). Square grid
 // cells of radar detections with no AIS match, drawn as hotspots (see darkPaint).
@@ -262,7 +284,7 @@ function mpaPopupHTML(p) {
 // from further out. GFW-only ports (no WPI entry) are hollow rings. Click → the port card (PortCard.jsx).
 const PORT_ICON = '<path d="M12 4v16"/><circle cx="12" cy="5" r="2"/><path d="M5 12H3a9 9 0 0 0 18 0h-2"/><path d="M8 9h8"/>'
 const PORTS = {
-  id: 'ports', name: 'Ports & terminals', sub: 'harbours, refineries and the ships that call there', hue: PORT_HUE, iconSvg: PORT_ICON,
+  id: 'ports', name: 'Ports & terminals', sub: 'harbours, anchorages, refineries and their ships', hue: PORT_HUE, iconSvg: PORT_ICON,
   sourceName: 'World Port Index (NGA Pub 150)', sourceUrl: 'https://msi.nga.mil/Publications/WPI',
 }
 const PORT_TIERS = [['L', 0, 5.5], ['M', 3, 4.2], ['S', 5, 3.2], ['V', 7, 2.4]] // [WPI size, min zoom, radius px]
@@ -282,7 +304,7 @@ const portLayerId = (t) => `ports-${t}`
 const TERMINAL_LAYER = 'terminals-icon'
 const TERMINAL_SEL = 'terminals-sel'
 const TERMINAL_LABEL = 'terminals-label'
-const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL]
+const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL, ANCHORAGE_LABEL] // an anchorage's name opens its popup
 // Ports and terminals: a marker under the click wins over tracks, dark cells, protected areas and facilities.
 const portHit = (map, pt) => {
   const live = PORT_LAYERS.filter((l) => l !== 'ports-label' && l !== TERMINAL_LABEL && l !== TERMINAL_SEL && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
@@ -361,8 +383,9 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
+    dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'),
+    gh: sp.get('gh'), // DEV-ONLY prototype layer (GFW hourly lines), see GH_COLOR
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
@@ -506,7 +529,13 @@ export default function ShipsApp() {
       .then((idx) => setUsMonths(Object.keys(idx?.months || {}))).catch(() => setUsMonths([]))
   }, [])
   const salishMonths = trackSource.months || []
-  const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || [])])].sort(), [salishMonths, usMonths])
+  // GFW months (hourly lines where NOAA has no data): the dev API serves a local bake, else the Blob index.
+  const [gfwMonths, setGfwMonths] = useState([])
+  useEffect(() => {
+    fetch('/api/ship-tracks?op=gfwindex').then((r) => (r.ok ? r.json() : null))
+      .then((idx) => setGfwMonths(Object.keys(idx?.months || {}).sort())).catch(() => setGfwMonths([]))
+  }, [])
+  const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || []), ...gfwMonths])].sort(), [salishMonths, usMonths, gfwMonths])
   const dockCols = useDockColumns(dockRef, `${allTrackMonths.length > 0}-${isMobile}-${mobileView}-${panelOpen}`)
   const defaultSel = [salishMonths[Math.max(0, salishMonths.length - TRACK_MONTH_CAP)], salishMonths[salishMonths.length - 1]]
   const [trackSel, setTrackSel] = useState(() => {
@@ -531,8 +560,18 @@ export default function ShipsApp() {
   const [trackClasses, setTrackClasses] = useState(() => (initial.tc ? initial.tc.split(',').filter(Boolean) : []))
   const [classTally, setClassTally] = useState(null)
   const [classMmsis, setClassMmsis] = useState(null) // { key, mmsis }
+  // Scrubber-fitted only (sc=1): ships with an IMO GISIS scrubber notification OR on a MEP Alliance list (accepted links only;
+  // api op=scrubberMmsis, lib/ships/scrubberFilter.js). Combines with the kinds above (both must hold).
+  const [scrubOnly, setScrubOnly] = useState(() => initial.sc === '1')
+  const [scrubMmsis, setScrubMmsis] = useState(null) // { vessels, mmsis, by }
+  useEffect(() => {
+    if (!scrubOnly || scrubMmsis) return
+    let dead = false
+    fetch('/api/ships?op=scrubberMmsis').then((r) => (r.ok ? r.json() : null)).then((d) => { if (!dead && d) setScrubMmsis(d) }).catch(() => {})
+    return () => { dead = true }
+  }, [scrubOnly, scrubMmsis])
   // Outside the Salish detail area the US tiles carry MMSIs only from z9 (lines merged per kind below that).
-  const zoomedOutForKinds = trackClasses.length > 0 && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
+  const zoomedOutForKinds = (trackClasses.length > 0 || scrubOnly) && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
     && mapView.lng >= trackSource.bbox[0] && mapView.lng <= trackSource.bbox[2] && mapView.lat >= trackSource.bbox[1] && mapView.lat <= trackSource.bbox[3])
   useEffect(() => {
     fetch('/api/ships?op=classes').then((r) => (r.ok ? r.json() : null)).then((d) => d && setClassTally(d.classes)).catch(() => {})
@@ -565,16 +604,21 @@ export default function ShipsApp() {
     const opacity = Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, trackMonths.length)))
     // Drop months no longer selected (a basemap swap already dropped everything).
     for (const ym of [...addedMonthsRef.current]) {
-      if (trackMonths.includes(ym) && map.getSource(usSrc(ym))) continue
-      for (const l of [trkLine(ym), usLo(ym), usHi(ym)]) if (map.getLayer(l)) map.removeLayer(l)
-      for (const src of [trkSrc(ym), usSrc(ym)]) removeSourceSafe(map, src)
+      if (trackMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)))) continue
+      for (const l of [trkLine(ym), usLo(ym), usHi(ym), gfwObs(ym), gfwEst(ym)]) if (map.getLayer(l)) map.removeLayer(l)
+      for (const src of [trkSrc(ym), usSrc(ym), gfwSrc(ym)]) removeSourceSafe(map, src)
       addedMonthsRef.current.delete(ym)
     }
     const byClass = trackClasses.length && classMmsis?.key === trackClasses.join(',')
     const groupFilter = trackKinds.length ? ['in', ['get', 'kind'], ['literal', trackKinds]] : null
     // Exact kinds filter by MMSI. Lines without an MMSI (US tiles below z9 merge lines per broad kind, i.e. outside the
     // Salish detail area when zoomed out) show the picked group instead (Josh 2026-09-27: OK for now).
-    const kindFilter = byClass
+    const byScrub = scrubOnly && scrubMmsis
+    const scrubIn = byScrub ? ['in', ['get', 'mmsi'], ['literal', scrubMmsis.mmsis.length ? scrubMmsis.mmsis : [-1]]] : null
+    // Scrubber-fitted: a line without an MMSI can't be checked, so it is hidden (unlike the kind fallback above).
+    const kindFilter = byScrub
+      ? ['case', ['has', 'mmsi'], ['all', scrubIn, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true], false]
+      : byClass
       ? ['case', ['has', 'mmsi'], ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]], groupFilter || true]
       : groupFilter
     // From z5 the detailed Salish tiles draw inside the box; US-wide lines lying ENTIRELY inside it are dropped. Lines
@@ -585,6 +629,23 @@ export default function ShipsApp() {
     // Tracks go under the basemap's labels (place names stay readable), as on /shiptraffic.
     const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
     for (const ym of trackMonths) {
+      if (gfwMonths.includes(ym) && !map.getSource(gfwSrc(ym))) {
+        addedMonthsRef.current.add(ym)
+        map.addSource(gfwSrc(ym), { type: 'vector', tiles: [gfwTrackTileUrl(ym)], minzoom: trackSource.gfw.minzoom, maxzoom: trackSource.gfw.maxzoom,
+          attribution: GFW_TRACK_ATTRIBUTION })
+        map.addLayer({ id: gfwObs(ym), type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer, filter: ['!=', ['get', 'est'], 1],
+          layout: { 'line-join': 'round' }, paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, labelsId)
+        map.addLayer({ id: gfwEst(ym), type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer, filter: ['==', ['get', 'est'], 1],
+          paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-opacity': opacity * 0.65, 'line-dasharray': [2, 2] } }, labelsId)
+      }
+      for (const [l, estimated] of [[gfwObs(ym), false], [gfwEst(ym), true]]) {
+        if (!map.getLayer(l)) continue
+        map.setLayoutProperty(l, 'visibility', tracksOn ? 'visible' : 'none')
+        map.setPaintProperty(l, 'line-opacity', estimated ? opacity * 0.65 : opacity)
+        map.setFilter(l, ['all', estimated ? ['==', ['get', 'est'], 1] : ['!=', ['get', 'est'], 1], kindFilter || true])
+      }
+      // Months with no US-wide bake (GFW-only months after NOAA's latest) get no US source.
+      if (!(usMonths || []).includes(ym) && !salishMonths.includes(ym)) continue
       if (!map.getSource(usSrc(ym))) {
         addedMonthsRef.current.add(ym)
         const paint = { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity }
@@ -609,7 +670,7 @@ export default function ShipsApp() {
         map.setPaintProperty(l, 'line-opacity', opacity)
       }
       if (map.getLayer(trkLine(ym))) map.setFilter(trkLine(ym), kindFilter)
-      map.setFilter(usLo(ym), kindFilter)
+      if (map.getLayer(usLo(ym))) map.setFilter(usLo(ym), kindFilter)
       if (map.getLayer(usHi(ym))) map.setFilter(usHi(ym), usHiFilter)
       // Exact kinds (Josh 2026-09-27): the Salish detail tiles keep every line's MMSI from z5, so hand over there at
       // z5 instead of z9 and the picked ships show at regional zoom; the US tiles still draw outside the Salish box.
@@ -642,7 +703,7 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, tracksOn, identityOn, vesselId, usMonths, pickedTrack, stopFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, pickedTrack, stopFocus])
 
   // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
   // every month; api/ship-tracks op=all), or every selected month.
@@ -655,7 +716,7 @@ export default function ShipsApp() {
     setOwnLoading(true)
     if (ownAllYears) {
       // The key changes when a month is added to either bake, so the CDN copy is never stale.
-      const key = `${trackSource.version}.${trackSource.us.rules}.${allTrackMonths.length}`
+      const key = `${trackSource.version}.${trackSource.us.rules}.${trackSource.gfw.rules}.${allTrackMonths.length}`
       Promise.all(mmsis.map((m) => get(`/api/ship-tracks?op=all&mmsi=${m}&v=${key}`))).then(done)
       return () => ctl.abort()
     }
@@ -667,10 +728,11 @@ export default function ShipsApp() {
       // US-wide pack: in Salish months only the tracks outside the box (the detailed pack covers inside).
       get(`/api/ship-tracks?r=us&t=${ym}&mmsi=${m}&v=${trackSource.us.rules}`)
         .then((fc) => ({ features: salishM.has(ym) ? fc.features.filter((f) => !insideSalish(f)) : fc.features })),
+      ...(gfwMonths.includes(ym) ? [get(`/api/ship-tracks?r=gfw&t=${ym}&mmsi=${m}&v=${trackSource.gfw.rules}`)] : []),
     ])))
       .then(done)
     return () => ctl.abort()
-  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, allTrackMonths.length])
+  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, gfwMonths, allTrackMonths.length])
   const fitToOwnRef = useRef(false) // set when a ship is picked from search; a track click doesn't move the map
   useEffect(() => {
     const map = mapRef.current
@@ -727,7 +789,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !trackMonths.length) return
     // Lines with an MMSI (Salish tracks, US-wide from z9) open their ship. Zoomed-out US tiles
     // merge lines per type (no MMSI), so a click there lists the ships that passed (op=near).
-    const layers = trackMonths.flatMap((ym) => [trkLine(ym), usHi(ym), usLo(ym)])
+    const layers = trackMonths.flatMap((ym) => [trkLine(ym), usHi(ym), usLo(ym), gfwObs(ym), gfwEst(ym)])
     const hit = (pt) => {
       const live = layers.filter((l) => map.getLayer(l))
       if (!live.length) return []
@@ -808,7 +870,7 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     map.on('click', onClick)
     return () => { map.off('mousemove', onMove); map.off('click', onClick); nearPopupRef.current?.remove() }
-  }, [mapReady, trackMonths])
+  }, [mapReady, trackMonths, gfwMonths])
 
   // ─── Dark-vessel cell popup: regional context for one grid cell ───────────
   // (nearPopupRef: the zoomed-out "ships that passed here" popup, opened by the tracks click handler)
@@ -938,6 +1000,7 @@ export default function ShipsApp() {
     const onClick = (e) => {
       if (facilityAt(e.point)) return
       if (!map.getLayer('mpa-fill') || portHit(map, e.point).length) return
+      if (map.getLayer(ANCHORAGE_FILL) && map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] }).length) return // the anchorage's popup
       const others = otherLayers()
       if (others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
       const hits = map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] })
@@ -955,6 +1018,54 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     return () => { map.off('click', onClick); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
   }, [mapReady, mpaOn])
+
+  // ─── DEV-ONLY PROTOTYPE: GFW hourly lines (?gh=raw|routed on localhost; see GH_COLOR) ───
+  // The water-routed version is now part of the normal Ship tracks row (GFW months); gh=raw stays for comparison.
+  const ghProto = import.meta.env.DEV && initial.gh === 'raw' ? 'raw' : null
+  const ghPopupRef = useRef(null)
+  const [ghStamp, setGhStamp] = useState(null) // the bake's file stamp: a new bake gets new tile URLs
+  useEffect(() => {
+    if (!ghProto) return
+    fetch(`/api/ship-tracks?r=gfwproto&t=${ghProto}&meta=1`).then((r) => (r.ok ? r.json() : null)).then((d) => d?.stamp && setGhStamp(d.stamp)).catch(() => {})
+  }, [ghProto])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ghProto || !ghStamp || !map || !mapReady) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    if (!map.getSource('gfwproto')) {
+      const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
+      map.addSource('gfwproto', { type: 'vector', tiles: [ghTileUrl(ghProto, ghStamp)], minzoom: 5, maxzoom: 10,
+        attribution: '<a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch.</a>' })
+      // /shiptraffic's opacity rule for one month (0.7 / sqrt(1)); estimated stretches dashed and fainter.
+      map.addLayer({ id: 'gfwproto-obs', type: 'line', source: 'gfwproto', 'source-layer': 'tracks', filter: ['!=', ['get', 'est'], 1],
+        layout: { 'line-join': 'round' }, paint: { 'line-color': GH_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': 0.7 } }, labelsId)
+      map.addLayer({ id: 'gfwproto-est', type: 'line', source: 'gfwproto', 'source-layer': 'tracks', filter: ['==', ['get', 'est'], 1],
+        paint: { 'line-color': GH_COLOR, 'line-width': TRACK_WIDTH, 'line-opacity': 0.45, 'line-dasharray': [2, 2] } }, labelsId)
+    }
+    const onMove = (e) => {
+      const f = map.queryRenderedFeatures([[e.point.x - 3, e.point.y - 3], [e.point.x + 3, e.point.y + 3]], { layers: GH_LAYERS.filter((l) => map.getLayer(l)) })[0]
+      ghPopupRef.current?.remove()
+      if (!f) return
+      const p = f.properties
+      const st = styles
+      const row = (k, v) => (v == null || v === '' ? '' : `<div class="${st.popupRow}"><span class="${st.popupK}">${k}</span><span class="${st.popupV}">${ghEsc(v)}</span></div>`)
+      ghPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ closeButton: false, offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(
+        `<div class="${st.popup}">` +
+        `<div class="${st.popupHead}">${p.est === 1 ? 'Estimated path (prototype)' : 'GFW hourly track (prototype)'}</div>` +
+        `<div class="${st.popupTitle}">${ghEsc(p.name || 'Unnamed vessel')}</div>` +
+        `<div class="${st.popupMeta}">${[p.mmsi && `MMSI ${p.mmsi}`, p.imo && `IMO ${p.imo}`, p.flag].filter(Boolean).map(ghEsc).join(' · ')}</div>` +
+        row('Type', p.gtype ? `${p.gtype} (${p.kind})` : p.kind) +
+        row('From', ghTime(p.t0)) + row('To', ghTime(p.t1)) +
+        (p.est === 1 ? '' : row('Positions', `${p.n} hourly`)) +
+        `<div class="${st.popupMeta}">` + (p.est === 1 ? 'Path between hourly positions estimated along the water (EarthAtlas)'
+          : 'Hourly positions: <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a>') + '</div></div>').addTo(map))
+    }
+    map.on('mousemove', onMove)
+    return () => { map.off('mousemove', onMove); ghPopupRef.current?.remove() }
+  }, [ghProto, ghStamp, mapReady, styleVersion])
 
   // ─── Ports layer ──────────────────────────────────────────────────────────────
   // Loaded once when first switched on (one cached request, ~3,000 points). Drawn above tracks, dark cells and
@@ -1047,7 +1158,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !portsOn) return
     const onClick = (e) => {
       const hits = portHit(map, e.point)
-      if (hits.some((h) => h.layer.id === TERMINAL_LAYER)) return // the terminal's own handler opens its popup
+      if (hits.some((h) => h.layer.id === TERMINAL_LAYER || h.layer.id === ANCHORAGE_LABEL)) return // the terminal's / anchorage's own handler opens its popup
       const f = hits.find((h) => h.properties.i != null)
       if (!f) return
       setTerminalKey(null)
@@ -1090,6 +1201,94 @@ export default function ShipsApp() {
     }
     map.on('click', onClick)
     return () => { map.off('click', onClick); terminalPopupRef.current?.remove() }
+  }, [mapReady, portsOn, trackMonths])
+
+  // ─── Anchorage areas (Josh 2026-09-30; src/ships/anchoragePopup.js, lib/ships/anchorageCard.js) ─────────────
+  // Inside the Ports & terminals row: outlines from zoom 8 (loaded once, the first time the map is that close), a click inside
+  // one opens its popup: also-known-as names and the stays EarthAtlas counted from MarineCadastre AIS. Tracks, dark cells,
+  // ports, terminals and facilities take the click first; anchorages win over protected areas (the smaller, specific area).
+  const [anchoragesData, setAnchoragesData] = useState(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !portsOn || anchoragesData) return
+    let dead = false
+    const load = () => {
+      if (dead || map.getZoom() < ANCHORAGE_MINZOOM - 1) return
+      dead = true
+      fetch('/api/ships?op=anchoragesLayer').then((r) => (r.ok ? r.json() : null)).then((d) => d && setAnchoragesData(d)).catch(() => {})
+    }
+    load()
+    map.on('moveend', load)
+    return () => { dead = true; map.off('moveend', load) }
+  }, [mapReady, portsOn, anchoragesData])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !anchoragesData) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    const layers = map.getStyle().layers
+    const below = layers.find((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill' || l.id.startsWith('ports-'))?.id || layers.find((l) => l.type === 'symbol')?.id
+    if (!map.getSource(ANCHORAGE_SRC)) {
+      map.addSource(ANCHORAGE_SRC, { type: 'geojson', data: anchoragesData })
+      map.addLayer({ id: ANCHORAGE_FILL, type: 'fill', source: ANCHORAGE_SRC, minzoom: ANCHORAGE_MINZOOM,
+        paint: { 'fill-color': ANCHORAGE_COLOR, 'fill-opacity': ['case', ['has', 'x'], 0.02, 0.07] } }, below)
+      map.addLayer({ id: ANCHORAGE_LINE, type: 'line', source: ANCHORAGE_SRC, minzoom: ANCHORAGE_MINZOOM, layout: { 'line-join': 'round' },
+        paint: { 'line-color': ANCHORAGE_COLOR, 'line-opacity': 0.8, 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 1.6],
+          'line-dasharray': ['case', ['==', ['get', 'l'], 'n'], ['literal', [1, 2]], ['has', 'x'], ['literal', [0.5, 3]], ['literal', [3, 2]]] } }, below)
+      map.addLayer({ id: ANCHORAGE_LABEL, type: 'symbol', source: ANCHORAGE_SRC, minzoom: ANCHORAGE_LABEL_MINZOOM,
+        layout: { 'text-field': ['get', 'n'], 'text-size': 12.5, 'text-max-width': 10, 'text-optional': true, 'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
+        paint: { 'text-color': ANCHORAGE_COLOR, 'text-halo-color': '#0a0e17', 'text-halo-width': 1.4 } })
+    } else if (below) { map.moveLayer(ANCHORAGE_FILL, below); map.moveLayer(ANCHORAGE_LINE, below) }
+    if (map.getLayer(ANCHORAGE_LABEL)) map.moveLayer(ANCHORAGE_LABEL)
+    for (const id of [ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL]) map.setLayoutProperty(id, 'visibility', portsOn ? 'visible' : 'none')
+  }, [mapReady, styleVersion, anchoragesData, portsOn, trackMonths, portsData])
+  const anchoragePopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !portsOn) return
+    const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
+    const onClick = async (e) => {
+      if (!map.getLayer(ANCHORAGE_FILL) || facilityAt(e.point)) return
+      // The anchorage's name wins over everything under it; elsewhere inside the area, ports, tracks and dark cells come first.
+      const ph = portHit(map, e.point)
+      const label = ph.find((h) => h.layer.id === ANCHORAGE_LABEL)
+      if (!label && ph.length) return
+      const others = otherLayers()
+      if (!label && others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
+      const hits = label ? [label] : map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] })
+      if (!hits.length) return
+      // Overlapping areas: an anchorage over a no-anchoring area, then the smallest one on screen.
+      const size = (f) => { const b = f.geometry.coordinates.flat(2); let a = Infinity, c = -Infinity, d = Infinity, g = -Infinity
+        for (let k = 0; k < b.length; k += 2) { a = Math.min(a, b[k]); c = Math.max(c, b[k]); d = Math.min(d, b[k + 1]); g = Math.max(g, b[k + 1]) } return (c - a) * (g - d) }
+      const f = [...hits].sort((x, y) => (x.properties.x ? 1 : 0) - (y.properties.x ? 1 : 0) || size(x) - size(y))[0]
+      const p = f.properties, months = trackMonths
+      anchoragePopupRef.current?.remove()
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat)
+        .setHTML(anchoragePopupHTML(p, { months }, styles)).addTo(map))
+      anchoragePopupRef.current = popup
+      let data = null, error = false
+      try {
+        const r = await fetch(`/api/ships?op=anchorage&id=${p.i}&from=${months[0]}&to=${months[months.length - 1]}`)
+        data = r.ok ? await r.json() : null; error = !data
+      } catch { error = true }
+      if (anchoragePopupRef.current !== popup) return
+      popup.setHTML(anchoragePopupHTML(p, { months, data, error }, styles))
+      popup.getElement()?.querySelectorAll('[data-vessel]').forEach((b) => b.addEventListener('click', () => {
+        popup.remove(); setPortId(null); setTerminalKey(null); setBackToPort(null)
+        setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
+        fitToOwnRef.current = true; setVesselId(b.dataset.vessel)
+      }))
+    }
+    const onMove = (e) => {
+      if (!map.getLayer(ANCHORAGE_FILL) || map.getCanvas().style.cursor === 'pointer') return
+      if (map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] }).length) map.getCanvas().style.cursor = 'pointer'
+    }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove); anchoragePopupRef.current?.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, portsOn, trackMonths])
 
   // ─── A stop from the Ports tab on the map (Josh, 2026-09-27) ────────────────
@@ -1153,6 +1352,7 @@ export default function ShipsApp() {
     if (mpaOn) sp.set('mp', '1')
     if (vesselId && !ownAllYears) sp.set('oy', 'm')
     if (!portsOn) sp.set('pt', '0')
+    if (ghProto) sp.set('gh', ghProto)
     if (terminalKey) { sp.set('tl', terminalKey); if (terminalFolded) sp.set('tf', '1'); if (terminalTab !== 'ships') sp.set('tb', terminalTab) }
     if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1'); if (portTab !== 'traffic') sp.set('pk', portTab) }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
@@ -1162,6 +1362,7 @@ export default function ShipsApp() {
     if (!trackKinds.length) sp.set('tk', 'all')
     else if (trackKinds.join(',') !== DEFAULT_TRACK_KINDS.join(',')) sp.set('tk', trackKinds.join(','))
     if (trackClasses.length) sp.set('tc', trackClasses.join(','))
+    if (scrubOnly) sp.set('sc', '1')
     if (vesselId) sp.set('v', vesselId)
     if (vesselId && cardTab !== 'overview') sp.set('ct', cardTab)
     if (vesselId && cardFolded) sp.set('cf', '1')
@@ -1172,7 +1373,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, trackSel, trackKinds, trackClasses, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -1189,6 +1390,18 @@ export default function ShipsApp() {
       <div className={styles.mapWrap} ref={containerRef} />
       <canvas className={styles.fossilCanvas} ref={fossilCanvasRef} aria-hidden="true" />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {ghProto && (
+        <div style={{ position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 5, maxWidth: 'min(640px, calc(100vw - 32px))',
+          background: 'rgba(10,14,23,0.88)', color: '#e5e7eb', border: `1px solid ${GH_COLOR}`, borderRadius: 8, padding: '6px 10px', font: '12px/1.4 system-ui, sans-serif' }}>
+          <b style={{ color: GH_COLOR }}>DEV PROTOTYPE ({ghProto === 'routed' ? 'water-routed' : 'raw straight lines'}):</b>{' '}
+          <a href="https://globalfishingwatch.org/our-apis/" target="_blank" rel="noopener" style={{ color: GH_COLOR }}>Global Fishing Watch hourly positions (prototype)</a>,
+          {' '}Aug 2026 (Salish Sea: Jun 2026, to compare with our yellow NOAA tracks). Powered by Global Fishing Watch.
+          {ghProto === 'routed' && <> Dashed = path between hourly positions estimated along the water (EarthAtlas), using coastlines from{' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style={{ color: GH_COLOR }}>© OpenStreetMap contributors</a>,{' '}
+            <a href="https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Physical_AlaskaCoast/MapServer/4" target="_blank" rel="noopener" style={{ color: GH_COLOR }}>Alaska Department of Natural Resources</a> and{' '}
+            <a href="https://open.canada.ca/data/en/dataset/a4b190fe-e090-4e6d-881e-b87956c07977" target="_blank" rel="noopener" style={{ color: GH_COLOR }}>Natural Resources Canada, National Hydro Network</a>.</>}
+        </div>
+      )}
 
       <div className={styles.branding}>
         <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
@@ -1410,12 +1623,42 @@ export default function ShipsApp() {
                           <>{classMmsis?.vessels?.toLocaleString() ?? '…'} ships{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
                         </div>)}
+                        <div className={styles.chipRow} style={{ marginTop: 8 }}>
+                          <button type="button" className={scrubOnly ? styles.chipTrack : styles.chip} onClick={() => setScrubOnly((v) => !v)}
+                            title="Only ships with an exhaust scrubber: notified to IMO by their flag (IMO GISIS), or on the MEP Alliance scrubber lists. Combines with the kinds above.">
+                            Scrubber-fitted{scrubMmsis && <> <span className={styles.chipCount}>{scrubMmsis.vessels.toLocaleString()}</span></>}
+                          </button>
+                        </div>
+                        {scrubOnly && (
+                          <div className={styles.legendNoteText}>
+                            {scrubMmsis ? scrubMmsis.vessels.toLocaleString() : '…'} ships: notified to{' '}
+                            <a className={styles.sourceLink} href="https://gisis.imo.org/Public/MARPOL6/Notifications.aspx?Reg=4.2" target="_blank" rel="noopener noreferrer"
+                              title={`IMO GISIS, MARPOL Annex VI Reg. 4.2 scrubber notifications by flag Administrations${scrubMmsis ? `: ${scrubMmsis.by.gisis.toLocaleString()} ships` : ''}`}>IMO</a>{' '}
+                            or listed by{' '}
+                            <a className={styles.sourceLink} href="https://www.mepalliance.org/list-of-scrubber-fitted-ships" target="_blank" rel="noopener noreferrer"
+                              title={`MEP Alliance scrubber lists, reported by an advocacy group${scrubMmsis ? `: ${scrubMmsis.by.mep.toLocaleString()} ships (${scrubMmsis.by.both.toLocaleString()} also notified to IMO; ${scrubMmsis.by.mep_inferred.toLocaleString()} matched by name only, inferred)` : ''}`}>MEP Alliance</a>
+                            {zoomedOutForKinds && ' (zoom in outside the Salish Sea)'}.{' '}
+                            <button type="button" className={styles.inlineLink} onClick={() => setScrubOnly(false)}>Clear</button>
+                          </div>
+                        )}
                       </div>
                     </>}
                     legend={<>
-                      <LegendSwatchRow swatch={<span style={{ width: 18, height: 2, borderRadius: 1, background: TRACK_COLOR }} />}>Ship tracks; busier lanes glow brighter</LegendSwatchRow>
+                      {/* One row (panel must fit with every dataset on): the dashed swatch joins the track line when hourly data shows;
+                          coverage detail + "Powered by Global Fishing Watch" live in (i) and the map attribution. */}
+                      <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ width: 18, height: 2, borderRadius: 1, background: TRACK_COLOR }} />
+                        {gfwMonths.length > 0 && <span style={{ width: 18, height: 0, borderTop: `2px dashed ${TRACK_COLOR}`, opacity: 0.7 }} />}
+                      </span>}>{gfwMonths.length > 0 ? 'Brighter = busier; dashed = estimated' : 'Ship tracks; busier lanes glow brighter'}</LegendSwatchRow>
                     </>}
                     info={<>
+                      {gfwMonths.length > 0 && <>
+                        Salish Sea: NOAA per-minute tracks to {fmtMonth(salishMonths[salishMonths.length - 1])}, then hourly positions
+                        (<a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a>) until
+                        NOAA publishes each month. BC and Alaska: hourly positions from Global Fishing Watch
+                        ({fmtMonth(gfwMonths[0])}{gfwMonths.length > 1 ? ` – ${fmtMonth(gfwMonths[gfwMonths.length - 1])}` : ''}); dashed stretches are
+                        EarthAtlas’s estimate of the path along the water between two hourly positions.{' '}
+                      </>}
                       US waters, {fmtMonth(allTrackMonths[0])} – {fmtMonth(allTrackMonths[allTrackMonths.length - 1])}, with more detailed
                       tracks in the Salish Sea for {fmtMonth(salishMonths[0])} – {fmtMonth(salishMonths[salishMonths.length - 1])}. Zoom in and
                       click a track for its ship; a picked ship’s own tracks show in cyan. The kinds under ⌄ come from the AIS type each ship
@@ -1508,7 +1751,8 @@ export default function ShipsApp() {
                     About 5–6 days behind.{' '}
                     <a href={DARK.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a> CC BY-NC 4.0.
                   </>} />
-              <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES} />
+              <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
+                changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }} />
             </div>
           )}
         </MapSheet>

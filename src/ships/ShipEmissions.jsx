@@ -14,7 +14,7 @@ import { MEASURE_INFO, tonnesWord, TRACE_URL } from '../systems/traceData.js'
 import { Loading } from '../components/panel'
 import { trackerOf, shipFacts } from '../../lib/ships/ctVoyages.js'
 import trackSource from './trackSource.json'
-import ShipMrv from './ShipMrv.jsx'
+import ShipMrv, { mrvReports } from './ShipMrv.jsx'
 import styles from './ShipsApp.module.css'
 
 const HUE = '#38bdf8'
@@ -55,14 +55,16 @@ export default function ShipEmissions({ vessel }) {
   }, [ids])
 
   // Verified EU MRV reports first, then Climate TRACE's modelled estimates: two blocks, never one number (Josh 2026-09-29).
-  const mrv = (co2ByYear = null) => <ShipMrv vessel={vessel} modelledCo2ByYear={co2ByYear} />
+  // Only sources WITH figures get a block; with none, one plain line says so (Josh 2026-09-30).
+  const hasMrv = mrvReports(vessel.assertions).length > 0
+  const mrv = (co2ByYear = null) => (hasMrv ? <ShipMrv vessel={vessel} modelledCo2ByYear={co2ByYear} /> : null)
   const modelledHead = (
-    <div className={styles.sectionHead} style={{ marginTop: 14 }}>
-      Modelled: Climate TRACE estimates{' '}
+    <div className={styles.sectionHead} style={{ marginTop: hasMrv ? 14 : 0 }}>
+      Climate TRACE estimates{' '}
       <span className={`${styles.ev} ${styles.evInf}`} title="Estimated by Climate TRACE with a computer model from the ship’s AIS track and characteristics; not reported or measured">estimate</span>
     </div>
   )
-  if (st.state === 'loading') return <>{mrv()}{modelledHead}<Loading kind="quick" /></>
+  if (st.state === 'loading') return <>{mrv()}<Loading kind="quick" /></>
 
   // Keep MMSI-filed rows inside this ship's windows for that MMSI; drop exact duplicates across Climate TRACE assets.
   const rows = []
@@ -82,11 +84,20 @@ export default function ShipEmissions({ vessel }) {
     }
   }
   if (!rows.length) {
-    return (<>{mrv()}{modelledHead}
-      <div className={styles.legendNoteText}>
-        No Climate TRACE voyage estimates for this ship in our Salish Sea set (voyages to or from Salish Sea ports that began in 2024–2025).
-        {!ids.imos.length && !ids.mmsis.size && ' It has no IMO or MMSI to look up.'}
-      </div>
+    if (!hasMrv) {
+      return (
+        <div className={styles.section}>
+          <div className={styles.typeHead}>No emissions data for this ship yet</div>
+          <div className={styles.typeNote}>
+            Neither source we use has figures for it: the EU’s verified emissions reports (EU MRV: large ships calling at EU/EEA
+            ports) and Climate TRACE’s modelled estimates (voyages to or from Salish Sea ports, 2024–2025).
+            {!ids.imos.length && !ids.mmsis.size && ' It also has no IMO or MMSI to look up.'}
+          </div>
+        </div>
+      )
+    }
+    return (<>{mrv()}
+      <div className={styles.legendNoteText} style={{ marginTop: 12 }}>No Climate TRACE estimate for this ship’s Salish Sea voyages (2024–2025).</div>
     </>)
   }
 

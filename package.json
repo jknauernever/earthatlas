@@ -40,6 +40,7 @@
     "ships:import-terminals": "node --env-file=.env.local scripts/ships/import-terminals.mjs",
     "ships:import-gisis": "node --env-file=.env.local scripts/ships/import-gisis.mjs",
     "ships:import-eu-mrv": "node --env-file=.env.local scripts/ships/import-eu-mrv.mjs",
+    "ships:import-mep": "node --env-file=.env.local scripts/ships/import-mep.mjs",
     "ships:export-type-lookup": "node --env-file=.env.local scripts/ships/export-type-lookup.mjs"
   },
   "dependencies": {

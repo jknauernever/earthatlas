@@ -303,7 +303,7 @@ All four are Passenger/Cruise ships.
 
 **Terms:** IMO §3 as above. Publishing needs IMO authorization.
 
-**Comparison:** https://www.mepalliance.org/list-of-scrubber-fitted-ships is an advocacy list with names and owners only, no IMO numbers and no reuse terms (per coordinator; not checked here). GISIS is the authoritative, IMO-keyed source, but it is incomplete and gives loop type only as free text.
+**Comparison (updated 2026-09-30, checked live):** MEP Alliance (mepalliance.org) is an advocacy group with two kinds of list. (1) https://www.mepalliance.org/list-of-scrubber-fitted-ships ("Polluting Scrubber Voyages") has 492 reported voyages of 309 ship names, with owner, charterer and reported date: **names only, no IMO numbers**. (2) Four vessel-type lists (`/bulk-carriers`, `/tankers`, `/container-ships`, `/cruise-ships`) are **IMO-keyed**: 3,536 ships "with scrubbers installed (or pending)", with controller, builder and year, undated. The site's Terms & Conditions allow personal use only and forbid distribution and robots/spiders. EarthAtlas's use relies on the permission given via Friends of the San Juans (a MEP Alliance founding member), 2026-09-30. Full terms, permission and caveats are in the MEP source notes (`lib/ships/mepAlliance.js` `VOYAGES_SOURCE` / `FITTED_SOURCE`, stored in `ships.sources`). GISIS stays the authoritative flag-notified source; it is incomplete and gives loop type only as free text. The ship card shows both sources side by side and never merges them.
 
 ---
 

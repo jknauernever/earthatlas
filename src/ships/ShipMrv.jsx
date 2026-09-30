@@ -125,7 +125,7 @@ export default function ShipMrv({ vessel, modelledCo2ByYear = null }) {
   return (
     <div className={styles.section}>
       <div className={styles.sectionHead}>
-        Verified: EU MRV reports{' '}
+        EU MRV reports{' '}
         <span className={`${styles.ev} ${styles.evReg}`} title="Reported by the ship’s company under EU law, checked by an accredited verifier, published by the European Maritime Safety Agency">verified</span>
       </div>
       {reports.length ? <>

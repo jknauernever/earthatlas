@@ -4,6 +4,7 @@
  * each ship, where to see it at the source, and, for anyone who wants it, the data exactly as received.
  */
 import { useEffect, useState } from 'react'
+import { publicLicense } from './publicLicense.js'
 import { useParams } from 'react-router-dom'
 import { Ev } from './VesselCard.jsx'
 import { Loading } from '../components/panel'
@@ -70,7 +71,7 @@ export default function SourceRecordPage() {
             )}
             <dl className={styles.meta}>
               <dt>Licence</dt>
-              <dd>{s?.license_url ? <a href={s.license_url} target="_blank" rel="noopener noreferrer">{s.license}</a> : (s?.license || 'Not stated')}</dd>
+              <dd>{publicLicense(s) ? (s?.license_url ? <a href={s.license_url} target="_blank" rel="noopener noreferrer">{publicLicense(s)}</a> : publicLicense(s)) : 'See the source'}</dd>
               {s?.attribution_text && <><dt>Credit</dt><dd>{s.attribution_url ? <a href={s.attribution_url} target="_blank" rel="noopener noreferrer">{s.attribution_text}</a> : s.attribution_text}</dd></>}
               <dt>Retrieved by EarthAtlas</dt>
               <dd>{day(rec.first_retrieved_at)}{day(rec.last_retrieved_at) !== day(rec.first_retrieved_at) && `, last checked ${day(rec.last_retrieved_at)}`}</dd>

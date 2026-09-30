@@ -13,6 +13,9 @@
 //                                                      scripts/ships/bake-ct-voyages; ship card Emissions tab)
 //   /api/ship-tracks?r=mpa&z=<z>&x=<x>&y=<y>           NOAA Marine Protected Areas (MVT; one bake,
 //                                                      scripts/ships/bake-mpa/, trackSource.mpa)
+//   /api/ship-tracks?r=gfw&t=<YYYY-MM>&z=&x=&y= | &mmsi=   GFW hourly-position lines (scripts/ships/bake-gfw/, index
+//                                                      trackSource.gfw.index; months/places NOAA doesn't cover)
+//   /api/ship-tracks?op=gfwindex                       the GFW months (local bake in dev, else the Blob index)
 //   add &r=us for the US-wide tracks (MarineCadastre monthly track files, baked
 //   in GitHub Actions by scripts/ships/bake-us/; file URLs come from the Blob
 //   index at trackSource.us.index). Default r=salish.
@@ -85,11 +88,15 @@ async function packFor(t, region) {
   const key = `${region}:${t}`
   let p = packs.get(key)
   if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); packs.delete(key); p = null }
-  if (p && !p.src.fresh && region !== 'us' && existsSync(localPathFor(t, 'pack'))) { packs.delete(key); p = null } // drive plugged back in
+  if (p && !p.src.fresh && region === 'salish' && existsSync(localPathFor(t, 'pack'))) { packs.delete(key); p = null } // drive plugged back in
   if (p) return p
   let src = null
   if (region === 'us') { const u = await usUrls(t); if (u) src = new BlobRange(u.pack, u.pack_bytes) }
-  else {
+  else if (region === 'gfw') {
+    const local = gfwLocal(t, 'pack')
+    if (local) src = new LocalFileSource(local)
+    else { const u = (await gfwIndexNow()).months?.[t]; if (u?.pack) src = new BlobRange(u.pack, u.pack_bytes) }
+  } else {
     const local = localPathFor(t, 'pack')
     src = existsSync(local) ? new LocalFileSource(local) : manifest.packs?.[t] ? new BlobRange(manifest.packs[t]) : null
   }
@@ -127,7 +134,8 @@ export async function tracksForMmsi(t, mmsi, region) {
   for (const line of raw.split('\n')) {
     if (!line || !line.startsWith(`{"mmsi":${mmsi},`)) continue
     const r = JSON.parse(line)
-    out.push({ type: 'Feature', properties: { mmsi: r.mmsi, kind: r.kind, vtype: r.vtype, t0: r.t0, t1: r.t1, n: r.n, month: t },
+    out.push({ type: 'Feature', properties: { mmsi: r.mmsi, kind: r.kind, vtype: r.vtype, t0: r.t0, t1: r.t1, n: r.n, month: t,
+      ...(region === 'gfw' ? { src: 'gfw', ...(r.est ? { est: 1 } : {}) } : {}) },
       geometry: { type: 'LineString', coordinates: r.c } })
   }
   return out
@@ -213,8 +221,14 @@ export async function allTracksForMmsi(mmsi) {
     return got
   })
   const features = per.flat()
+  // GFW hourly lines for the months and places NOAA doesn't cover (the bake already dropped NOAA-covered positions).
+  const gfwM = Object.keys((await gfwIndexNow().catch(() => ({ months: {} }))).months || {})
+  const gfwPer = await mapLimit(gfwM, 8, async (t) => {
+    try { return (await tracksForMmsi(t, mmsi, 'gfw')) || [] } catch (err) { failed++; packs.delete(`gfw:${t}`); console.error('[ship-tracks] all gfw', t, err?.message); return [] }
+  })
+  features.push(...gfwPer.flat())
   for (const f of features) f.geometry.coordinates = simplify(f.geometry.coordinates)
-  return { features, months: months.length, failed }
+  return { features, months: new Set([...months, ...gfwM]).size, failed }
 }
 
 // US-wide months: the bake's Blob index says where each month's files are.
@@ -226,6 +240,29 @@ async function usUrls(t) {
     usIndex = await r.json(); usIndexAt = Date.now()
   }
   return usIndex.months?.[t] || null
+}
+
+// GFW hourly lines (scripts/ships/bake-gfw/, tileset gfw-v1): one PMTiles + pack per month, listed in an
+// index (Blob: trackSource.gfw.index). In dev a local bake (cache/out/gfw-v1/) wins over Blob.
+const gfwLocalDir = () => resolve(process.cwd(), `scripts/ships/bake-gfw/cache/out/${manifest.gfw?.rules || 'gfw-v1'}`)
+let gfwIndex = null, gfwIndexAt = 0
+export async function gfwIndexNow() {
+  const local = resolve(gfwLocalDir(), 'index.json')
+  if (process.env.VERCEL_ENV !== 'production' && existsSync(local)) {
+    const { readFileSync } = await import('node:fs')
+    return { ...JSON.parse(readFileSync(local, 'utf8')), local: true }
+  }
+  if (!manifest.gfw?.index) return { months: {} }
+  if (!gfwIndex || Date.now() - gfwIndexAt > 5 * 60 * 1000) {
+    const r = await fetch(`${manifest.gfw.index}?t=${Math.floor(Date.now() / 300000)}`)
+    gfwIndex = r.ok ? await r.json() : { months: {} } // no index yet (404) = no GFW months
+    gfwIndexAt = Date.now()
+  }
+  return gfwIndex
+}
+function gfwLocal(t, ext) {
+  const f = resolve(gfwLocalDir(), t, `tracks.${ext}`)
+  return process.env.VERCEL_ENV !== 'production' && existsSync(f) ? f : null
 }
 
 // Local bakes change under us while developing: never let a browser keep them.
@@ -240,6 +277,18 @@ async function pmtilesFor(t, region) {
       if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
       else p = new PMTiles(new BlobRange(manifest.mpa.tiles))
       cache.set('mpa', p)
+    }
+    return p
+  }
+  if (region === 'gfw') {
+    const key = `gfw:${t}`
+    let p = cache.get(key)
+    if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete(key); p = null } // a rebake replaced the file
+    if (!p) {
+      const local = gfwLocal(t, 'pmtiles')
+      if (local) { const src = new LocalFileSource(local); p = new PMTiles(src); p.local = src }
+      else { const u = (await gfwIndexNow()).months?.[t]; if (!u?.tiles) return null; p = new PMTiles(new BlobRange(u.tiles, u.pmtiles_bytes)) }
+      cache.set(key, p)
     }
     return p
   }
@@ -315,6 +364,29 @@ async function shipsNear(months, lng, lat, tol) {
     .map((s) => ({ ...s, dist: Math.round(s.dist), months: [...s.months].sort() }))
 }
 
+const gfwProto = new Map()
+async function gfwProtoTile(searchParams, res) {
+  const t = searchParams.get('t')
+  const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
+  const path = resolve(process.cwd(), `scripts/ships/bake-ais/cache/sources/gfw/tracks-proto/gfw-${t}.pmtiles`)
+  if (process.env.VERCEL_ENV === 'production' || !['raw', 'routed'].includes(t) || !existsSync(path)) { res.statusCode = 404; return res.end('not available') }
+  if (searchParams.get('meta') === '1') { // the page puts this stamp in its tile URLs, so a rebake never mixes tiles
+    res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', LOCAL_CACHE)
+    return res.end(JSON.stringify({ stamp: stampOf(path).replace(/[^0-9]/g, '').slice(-12) }))
+  }
+  if (![z, x, y].every(Number.isInteger)) { res.statusCode = 400; return res.end('bad tile coords') }
+  let p = gfwProto.get(t)
+  if (p && !p.local.fresh()) { p.local.close(); p = null }
+  if (!p) { const local = new LocalFileSource(path); p = new PMTiles(local); p.local = local; gfwProto.set(t, p) }
+  const tile = await p.getZxy(z, x, y).catch(() => null)
+  res.setHeader('Cache-Control', LOCAL_CACHE)
+  if (!tile) { res.statusCode = 204; return res.end() }
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/x-protobuf')
+  res.setHeader('Content-Encoding', 'gzip')
+  return res.end(zlib.gzipSync(Buffer.from(tile.data)))
+}
+
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, 'http://localhost')
   if (searchParams.get('op') === 'voyages') {
@@ -345,6 +417,15 @@ export default async function handler(req, res) {
     res.setHeader('Content-Encoding', 'gzip')
     return res.end(zlib.gzipSync(body))
   }
+  if (searchParams.get('op') === 'gfwindex') {
+    let idx
+    try { idx = await gfwIndexNow() } catch (e) { console.error('[ship-tracks] gfw index', e?.message); idx = { months: {} } }
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Cache-Control', idx.local ? LOCAL_CACHE : 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600')
+    return res.end(JSON.stringify({ version: idx.version, updated: idx.updated, local: !!idx.local,
+      months: Object.fromEntries(Object.entries(idx.months || {}).map(([m, e]) => [m, { areas: e.areas, built: e.built, noaa_excluded: e.noaa_excluded }])) }))
+  }
   if (searchParams.get('op') === 'near') {
     const months = (searchParams.get('t') || '').split(',').filter(isTileset)
     const lng = Number(searchParams.get('lng')), lat = Number(searchParams.get('lat'))
@@ -358,7 +439,10 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ total: ships.length, ships: ships.slice(0, 30) }))
   }
   const region = searchParams.get('r') || 'salish'
-  if (region !== 'salish' && region !== 'us' && region !== 'mpa') { res.statusCode = 400; return res.end('bad region') }
+  // DEV-ONLY PROTOTYPE (2026-09-29): GFW hourly positions → lines for BC + Alaska, read from a local bake
+  // (scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Never served in production; 404 when the file is absent.
+  if (region === 'gfwproto') return gfwProtoTile(searchParams, res)
+  if (!['salish', 'us', 'mpa', 'gfw'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
   const t = region === 'mpa' ? 'mpa' : searchParams.get('t')
   const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
   if (region !== 'mpa' && !isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
@@ -370,7 +454,7 @@ export default async function handler(req, res) {
     if (!features) { res.statusCode = 404; return res.end('month not built') }
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/geo+json')
-    res.setHeader('Cache-Control', region === 'salish' && existsSync(localPathFor(t, 'pack')) ? LOCAL_CACHE
+    res.setHeader('Cache-Control', (region === 'salish' && existsSync(localPathFor(t, 'pack'))) || (region === 'gfw' && gfwLocal(t, 'pack')) ? LOCAL_CACHE
       : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
     return res.end(JSON.stringify({ type: 'FeatureCollection', features }))
   }
@@ -383,7 +467,7 @@ export default async function handler(req, res) {
     tile = await p.getZxy(z, x, y)
   } catch (e) {
     console.error('[ship-tracks] tile', region, t, z, x, y, e?.message)
-    cache.delete(region === 'us' ? `us:${t}` : t) // (t is 'mpa' for r=mpa)
+    cache.delete(region === 'us' || region === 'gfw' ? `${region}:${t}` : t) // (t is 'mpa' for r=mpa)
     res.statusCode = 502
     res.setHeader('Cache-Control', 'no-store')
     return res.end('tile read failed')

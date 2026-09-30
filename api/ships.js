@@ -35,12 +35,18 @@
 //   /api/ships?op=terminalEmissions&key=<terminal key>&part=ships|refinery → Climate TRACE ids the list links (op=portEmissions shape)
 //   /api/ships?op=terminalEmissions&key=<terminal key>&part=stays&from=YYYY-MM&to=YYYY-MM → Climate TRACE port stays placed at
 //        the terminal (lib/ships/ctStays.js rule; terminalCard.js terminalCtStays)
+// Anchorages (Josh 2026-09-30; lib/ships/anchorageCard.js):
+//   /api/ships?op=anchoragesLayer                           → GeoJSON of the official / listed anchorage areas (i id, n name, l legal
+//        status, x no-anchoring, a stays counted), cached a day
+//   /api/ships?op=anchorage&id=<anchorage id>&from=YYYY-MM&to=YYYY-MM → the anchorage popup: the area, its "also known as" names
+//        (anchorage_aliases) and the stays EarthAtlas counted from MarineCadastre AIS (anchorage_stays, lib/ships/anchorageStays.js)
 //
 // Rules: src/ships/CLAUDE.md.
 
 import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { portClimateTrace } from '../lib/ships/climateTrace.js'
 import { classIndex, mmsisOfClasses } from '../lib/ships/typeSearch.js'
+import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
@@ -53,6 +59,7 @@ import { commonsClient } from '../scripts/ships/commonsClient.js'
 import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
 import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
+import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
 
 const S = DEFAULT_SCHEMA
 
@@ -66,8 +73,13 @@ function send(res, status, body, cache = 'public, max-age=60, s-maxage=300, stal
 // Guardrail for the click lookups (Josh, 2026-09-26): only MMSIs that really have a US track
 // in that month reach GFW or the database, so the public page can't be used as a GFW relay or
 // to fill the database with arbitrary ships.
+// GFW hourly lines (scripts/ships/bake-gfw/) count too: a ship we only know from those lines gets its
+// identity from GFW on the first click, the same way.
 async function hasTrack(mmsi, month) {
-  try { return ((await tracksForMmsi(month, Number(mmsi), 'us')) || []).length > 0 } catch { return false }
+  for (const region of ['us', 'gfw']) {
+    try { if (((await tracksForMmsi(month, Number(mmsi), region)) || []).length > 0) return true } catch { /* next */ }
+  }
+  return false
 }
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_TOKEN, { minIntervalMs: 0, log: () => {} }) : null)
@@ -93,6 +105,9 @@ export default async function handler(req, res) {
     //   /api/ships?op=classes                     → { classes: [{ group, class, label, n }] }  (EarthAtlas kinds of ship, counts)
     //   /api/ships?op=classMmsis&classes=ferry,…   → { vessels, mmsis: [...] }  (a tracks filter for those kinds)
     if (op === 'classes') return send(res, 200, { classes: (await classIndex(q, S)).tally }, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    //   /api/ships?op=scrubberMmsis               → { vessels, mmsis, by: { gisis, mep, both, mep_inferred } }  (Scrubber-fitted
+    //                                               tracks filter: IMO GISIS Reg. 4.2 scrubber notifications OR MEP Alliance lists, accepted links only)
+    if (op === 'scrubberMmsis') return send(res, 200, await scrubberMmsis(q, S), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     if (op === 'classMmsis') {
       const cls = (p.get('classes') || '').split(',').filter((c) => /^[a-z_]{2,40}$/.test(c)).slice(0, 20)
       if (!cls.length) return send(res, 400, { error: 'classes required' })
@@ -266,6 +281,15 @@ export default async function handler(req, res) {
       if (!card) return send(res, 404, { error: 'terminal not found' })
       const partial = fetch.status === 'failed' || ['failed', 'budget', 'no_gfw'].includes(fetch.discover) || (fetch.months && (fetch.months.failed || fetch.months.budget || fetch.months.no_gfw))
       return send(res, 200, { ...card, fetch }, partial || summaryOnly ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    if (op === 'anchoragesLayer') return send(res, 200, await anchoragesLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    if (op === 'anchorage') {
+      const id = p.get('id') || ''
+      if (!/^\d{1,12}$/.test(id)) return send(res, 400, { error: 'id must be an anchorage id' })
+      const win = parseCardWindow(p.get('from'), p.get('to'))
+      if (win.error) return send(res, 400, { error: win.error })
+      const r = await readAnchorageCard(q, S, id, { win })
+      return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'anchorage not found' })
     }
     if (op === 'portShip') {
       if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })

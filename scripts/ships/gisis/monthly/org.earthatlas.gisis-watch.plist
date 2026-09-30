@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Watches ~/EarthAtlas-inbox (macOS blocks background jobs from reading ~/Downloads) for a new IMO GISIS Reg 4.2 export and imports it to production (watch-import.sh).
+     Installed at ~/Library/LaunchAgents/org.earthatlas.gisis-watch.plist. Remove: launchctl bootout gui/$(id -u)/org.earthatlas.gisis-watch -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.earthatlas.gisis-watch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/jknauer/Projects/earthatlas/scripts/ships/gisis/monthly/watch-import.sh</string>
+  </array>
+  <key>WatchPaths</key>
+  <array><string>/Users/jknauer/EarthAtlas-inbox</string></array>
+  <key>EnvironmentVariables</key>
+  <dict><key>INBOX</key><string>/Users/jknauer/EarthAtlas-inbox</string></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardErrorPath</key><string>/Users/jknauer/Projects/earthatlas/scripts/ships/.logs/gisis-watch.err.log</string>
+</dict>
+</plist>

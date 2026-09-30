@@ -5,6 +5,7 @@
  * raw source record (EarthAtlas inline-provenance rule).
  */
 import { useEffect, useMemo, useState } from 'react'
+import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
@@ -84,7 +85,7 @@ function sourceTitle(a, sourcesById) {
   const src = sourcesById[a.source_id]
   const regs = a.detail?.registries?.length ? ` · registries: ${a.detail.registries.join(', ')}` : ''
   const basis = a.detail?.period_basis ? ` · dates = ${a.detail.period_basis}` : ''
-  return `${src?.name || a.source_id}${regs}${basis} · ${src?.license || ''} — click for the raw source record`
+  return `${src?.name || a.source_id}${regs}${basis}${publicLicense(src) ? ` · ${publicLicense(src)}` : ''} — click for the raw source record`
 }
 
 /** Collapse identical claims (same value, evidence and dates) that several sub-records repeat. */
@@ -308,9 +309,28 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               {current.imo && <>IMO {current.imo.value_raw} · </>}{current.flag && <>{current.flag.value_raw} · </>}
               {current.mmsi && <>MMSI {current.mmsi.value_raw}</>}
             </div>
+            {(() => {
+              // Owner and operator right under the name (Josh 2026-09-30): the newest claim, preferring a registry's word.
+              const pickRole = (attrs) => {
+                const all = attrs.flatMap((attr) => latestPerSource(attr))
+                const rank = (a) => (a.evidence_class === 'registry' ? 0 : a.evidence_class === 'derived_identity' ? 1 : 2)
+                return all.sort((x, y) => rank(x) - rank(y) || String(y.to || '9999').localeCompare(String(x.to || '9999')))[0] || null
+              }
+              const owner = pickRole(['registered_owner', 'owner', 'registry_owner', 'beneficial_owner'])
+              const operator = pickRole(['operator', 'commercial_manager', 'ship_manager'])
+              if (!owner && !operator) return null
+              return (
+                <div className={styles.vesselRoles}>
+                  {owner && <span><span className={styles.vesselRoleLabel}>Owner</span> <b>{String(owner.value_raw).replace(/\s*\(Q\d+\)$/, '')}</b> <Src a={owner} /></span>}
+                  {operator && <span><span className={styles.vesselRoleLabel}>{operator.attribute === 'operator' ? 'Operator' : operator.attribute === 'commercial_manager' ? 'Commercial manager' : 'Manager'}</span> <b>{String(operator.value_raw).replace(/\s*\(Q\d+\)$/, '')}</b> <Src a={operator} /></span>}
+                </div>
+              )
+            })()}
             {vessel.vessel.needs_review && (
               <div className={styles.review} title="EarthAtlas found evidence that conflicts with this identity. It did not merge anything automatically.">
-                Identity needs review: see the Matches tab.
+                {candidates.length
+                  ? <>Identity needs review: see the <button type="button" className={styles.inlineLink} onClick={() => setTab('matches')}>Matches</button> tab.</>
+                  : 'Identity needs review: some sources disagree about this ship. EarthAtlas kept them separate rather than guess.'}
               </div>
             )}
             <div className={styles.idNote} title="EarthAtlas's own id for this vessel. IMO and MMSI can change or be wrong; this id doesn't.">
@@ -321,11 +341,12 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
 
           {!folded && <>
           <div className={pick.tabs} role="tablist">
-            {[['overview', 'Overview'], ['history', 'History'],
+            {[['overview', 'Overview'],
               ...(hasGfw ? [['ports', 'Ports']] : []),
               ...(current.imo || current.mmsi ? [['emissions', 'Emissions']] : []),
               ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
-              ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : [])].map(([id, label]) => (
+              ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : []),
+              ['history', 'History']].map(([id, label]) => ( // History last (Josh 2026-09-30)
               <button key={id} type="button" role="tab" aria-selected={tab === id}
                 className={`${pick.tab} ${tab === id ? pick.tabOn : ''}`} onClick={() => setTab(id)}>{label}</button>
             ))}
@@ -334,10 +355,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {tab === 'overview' && <>
             <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} onFetched={() => setRev((n) => n + 1)} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />
+            <ScrubberBlock assertions={vessel.assertions} />
             {renderOverview(CHAR_ROWS, null)}
-            <Reg42Lines assertions={vessel.assertions} />
-            {renderOverview(ROLE_ROWS.filter(([a]) => a !== 'registry_owner'), null)}
-            {renderOverview([['registry_owner', 'Owner (latest registry listing)']], null)}
+            {/* Owner and operator now sit under the name; the full ownership & management record is on History. */}
             {!CHAR_ROWS.concat(ROLE_ROWS).some(([attr]) => vessel.assertions.some((a) => a.attribute === attr)) && (
               <div className={styles.legendNoteText}>No characteristics published for this ship yet.</div>
             )}
@@ -372,10 +392,11 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           )}
           {/* Every source this card draws on, with its licence (from ships.sources). */}
           <div className={styles.attribution}>
-            {vessel.sources.map((src, i) => (
+            {/* The two MEP Alliance lists share one attribution and permission: one entry, linking the voyage list. */}
+            {vessel.sources.filter((src, _, all) => src.id !== 'mep-alliance-fitted-ships' || !all.some((x) => x.id === 'mep-alliance-voyages')).map((src, i) => (
               <span key={src.id}>{i > 0 && ' · '}
-                <a className={styles.sourceLink} href={src.attribution_url || src.homepage_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>{' '}
-                <a className={styles.sourceLink} href={src.license_url} target="_blank" rel="noopener noreferrer">{src.license}</a>
+                <a className={styles.sourceLink} href={src.attribution_url || src.homepage_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>
+                {publicLicense(src) && publicLicense(src) !== src.attribution_text && <>{' '}<a className={styles.sourceLink} href={src.license_url || src.homepage_url} target="_blank" rel="noopener noreferrer">{publicLicense(src)}</a></>}
               </span>
             ))}
           </div>
@@ -404,22 +425,118 @@ function Reg42Lines({ assertions }) {
   if (!lines.length) return null
   const loopText = (d) => (d.loop?.length ? `${d.loop.join(' / ')} loop` : 'loop type not stated')
   return (
-    <div className={styles.section}>
+    <>
       {lines.map((a) => {
         const d = a.detail || {}
-        const by = `notified to IMO by ${d.flag || 'an unnamed flag'}${d.submitted ? `, ${d.submitted}` : ''}`
+        const by = `Filed with the IMO by ${d.flag || 'the ship’s flag country'}${d.flag ? ', where the ship is registered' : ''}${d.submitted ? ` · ${d.submitted}` : ''}`
         const title = `MARPOL Annex VI Regulation 4.2 notification (IMO GISIS), as the flag Administration filed it${d.type_raw ? ` · type: ${d.type_raw}` : ''}`
           + ` · ${d.loop?.length ? 'loop type as written in the notification' : 'the notification does not say open, closed or hybrid'}`
           + ' · a notification says equipment was accepted as an equivalent; it gives no install or removal date — click for the record'
         return (
-          <div key={a.id} className={styles.idNote}>
-            {a.attribute === 'scrubber'
-              ? <>Scrubber: {a.value_raw} · {loopText(d)} · {by}</>
-              : <span title="The notification doesn’t say this is a scrubber (exhaust gas cleaning system)">Reg. 4.2 equivalent{d.type_raw ? ` (${d.type_raw})` : ''}: {a.value_raw} · {by}</span>}
-            {' '}<a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer" title={title}>IMO</a>
+          <div key={a.id} className={styles.scrubRow}>
+            <div className={styles.scrubSrc} title="Under the international ship-pollution rules (MARPOL Annex VI, Regulation 4), the country a ship is registered in must tell the International Maritime Organization when it approves a scrubber">Official filing</div>
+            <div>
+              <strong>{by}</strong>
+              {' '}<a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer" title={title}>IMO</a>
+              <div className={styles.scrubMeta}>
+                {a.attribute === 'scrubber'
+                  ? <>Equipment: {a.value_raw} · {loopText(d)}</>
+                  : <span title="The notification doesn’t say this is a scrubber (exhaust gas cleaning system)">Approved equivalent{d.type_raw ? ` (${d.type_raw})` : ''}: {a.value_raw}</span>}
+              </div>
+            </div>
           </div>
         )
       })}
+    </>
+  )
+}
+
+// How a MEP Alliance list row was tied to this ship (lib/ships/resolve.js v1.9 decideMep). Name matches are weaker than an IMO.
+const MEP_MATCH = {
+  IMO_EXACT: { text: null, title: 'The list gives this ship\'s IMO number, and a vessel registry confirms it' },
+  MEP_NAME_CORROBORATED: { text: 'matched by name', title: 'The list has no IMO number. Tied to this ship by its name, the only ship we hold with that name, plus a second fact that agrees (owner or charterer company, build year, or the list\'s own IMO for that name)' },
+  MEP_NAME_SALISH_SIZE: { text: 'matched by name (inferred)', title: 'The list has no IMO number. EarthAtlas INFERRED the match: this is the only large ship with this name that we have seen in the Salish Sea. Nothing else confirms it' },
+}
+const MEP_REPORTED = 'Reported by MEP Alliance, an advocacy group: a list of reported facts, not a registry record or a flag Administration’s notification to IMO'
+const BENEFIT_TEXT = { owner: 'owner', charterer: 'charterer', shared: 'owner and charterer' }
+
+/**
+ * MEP Alliance scrubber lists (lib/ships/mepAlliance.js). Shown beside the IMO GISIS notifications, never merged with them:
+ *   "Scrubber: fitted (MEP Alliance list, reported <date>)" for the voyage list (newest report; owner and charterer as the list
+ *   names the companies, never a person's contact details), and "Scrubber: fitted or pending (MEP Alliance list: <type>)" for the
+ *   vessel-type list. Each value carries its own source link; a name-only match says so.
+ */
+function MepLines({ assertions }) {
+  const mine = (assertions || []).filter((a) => a.attribute === 'scrubber' && ['mep-alliance-voyages', 'mep-alliance-fitted-ships'].includes(a.source_id))
+  if (!mine.length) return null
+  const reports = mine.filter((a) => a.detail?.list === 'voyages').sort((x, y) => String(y.detail?.reported || '').localeCompare(String(x.detail?.reported || '')))
+  const listed = mine.filter((a) => a.detail?.list === 'fitted')
+  const Badge = () => <span className={`${styles.ev} ${styles.evInf}`} title={MEP_REPORTED}>Reported</span>
+  const Match = ({ a }) => (MEP_MATCH[a.link_method]?.text
+    ? <span className={styles.weakMatch} title={MEP_MATCH[a.link_method].title}>{MEP_MATCH[a.link_method].text}</span> : null)
+  const Src = ({ a, what }) => (
+    <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
+      title={`${what}: MEP Alliance, “${a.detail?.list_title || 'scrubber list'}”, as listed${a.detail?.reported_raw ? ` (reported ${a.detail.reported_raw})` : ''}. ${MEP_REPORTED}. ${MEP_MATCH[a.link_method]?.title || ''} Click for the record.`}>MEP</a>)
+  const top = reports[0]
+  const d = top?.detail || {}
+  const dates = reports.map((a) => a.detail?.reported).filter(Boolean)
+  return (
+    <>
+      {top && (
+        <div className={styles.scrubRow}>
+          <div className={styles.scrubSrc}>MEP Alliance</div>
+          <div>
+          <strong>{reports.length > 1 ? `Reported ${reports.length} times, ${dates.at(-1)} to ${dates[0]}` : `Reported ${d.reported || d.reported_raw || 'undated'}`}</strong>{' '}
+          <Badge /> <Src a={top} what="Scrubber-fitted" /> <Match a={top} />
+        {(d.owner || d.charterer || d.owner_withheld || d.charterer_withheld) && (
+          <div className={styles.scrubMeta}>
+            {(d.owner || d.owner_withheld) && <>Owner (as listed): {d.owner || <span title="The list gives a person's name here that EarthAtlas could not separate from the company name, so it isn't shown. See the source.">not shown</span>} <Src a={top} what="Owner" /></>}
+            {(d.owner || d.owner_withheld) && (d.charterer || d.charterer_withheld) && ' · '}
+            {(d.charterer || d.charterer_withheld) && <>Charterer (as listed): {d.charterer || <span title="The list gives a person's name here that EarthAtlas could not separate from the company name, so it isn't shown. See the source.">not shown</span>} <Src a={top} what="Charterer (customer leasing the ship)" /></>}
+            {(d.owner_benefit || d.charterer_benefit) && <> · fuel saving goes to the {BENEFIT_TEXT[d.charterer_benefit || d.owner_benefit]} (as listed)</>}
+          </div>
+        )}
+          </div>
+        </div>
+      )}
+      {listed.slice(0, 1).map((a) => (
+        <div key={a.id} className={styles.scrubRow}>
+          <div className={styles.scrubSrc}>{top ? '' : 'MEP Alliance'}</div>
+          <div>
+            <strong>Fitted or pending</strong> (list of {listed.map((x) => x.detail?.category).filter((c, i, all) => c && all.indexOf(c) === i).join(', ')}; undated){' '}
+            <Badge /> <Src a={a} what="Scrubber-fitted or pending" /> <Match a={a} />
+            {a.detail?.controller && <div className={styles.scrubMeta}>Controller (as listed): {a.detail.controller}</div>}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+/**
+ * The Scrubber block (Josh 2026-09-30: "bold and top level, well designed"): right under Kind of ship, same heading style.
+ * Heading = what the evidence says ("Fitted", plus the loop type when an IMO notification states it); below it one labelled
+ * row per source (IMO notification, MEP Alliance), each with its own badge and link. Sources are shown side by side, never
+ * merged. No block when no source mentions a scrubber: that is NOT "no scrubber" (flags notify unevenly, lists are partial).
+ */
+function ScrubberBlock({ assertions }) {
+  const all = assertions || []
+  const imoScrub = all.filter((a) => a.source_id === 'imo-gisis-scrubbers' && a.attribute === 'scrubber')
+  const imoEquiv = all.filter((a) => a.source_id === 'imo-gisis-scrubbers' && a.attribute === 'equivalent_compliance')
+  const mep = all.filter((a) => a.attribute === 'scrubber' && ['mep-alliance-voyages', 'mep-alliance-fitted-ships'].includes(a.source_id))
+  if (!imoScrub.length && !imoEquiv.length && !mep.length) return null
+  const loops = [...new Set(imoScrub.flatMap((a) => a.detail?.loop || []))]
+  const head = imoScrub.length || mep.length
+    ? `Fitted${loops.length ? ` · ${loops.join(' / ')} loop` : ''}`
+    : 'Approved equivalent (not stated as a scrubber)'
+  return (
+    <div className={`${styles.typeLine} ${styles.scrubBox}`}>
+      <div className={`${styles.attrLabel} ${styles.scrubLabel}`}>Scrubber (exhaust gas cleaning system)</div>
+      <div className={styles.typeHead} title={loops.length ? 'Loop type as written in the IMO notification' : 'Neither source states open, closed or hybrid loop'}>{head}</div>
+      <div className={styles.scrubRows}>
+        <Reg42Lines assertions={all} />
+        <MepLines assertions={all} />
+      </div>
     </div>
   )
 }
@@ -871,7 +988,7 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
                 <button type="button" className={styles.inlineLink} onClick={() => onShowPlace({ ...v, title: plainPortName(v), stop_kind_text: STOP_KIND[v.stop_kind]?.text, ship })} title={`Show this stop on the map (${v.lat.toFixed(4)}, ${v.lon.toFixed(4)})`}>map</button></>}
               {' · '}
               <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${v.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
-                title={`Global Fishing Watch port-visit event ${v.event_id} (${v.dataset_version || 'public-global-port-visits-events'}), exactly as received · ${src?.license || 'CC BY-NC 4.0'} — click for the raw record`}>GFW</a>
+                title={`Global Fishing Watch port-visit event ${v.event_id} (${v.dataset_version || 'public-global-port-visits-events'}), exactly as received · ${publicLicense(src) || 'CC BY-NC 4.0'} — click for the raw record`}>GFW</a>
             </div>
           </div>
         )
@@ -895,21 +1012,21 @@ function PortsOfCall({ vesselId, onShowPlace, ship }) {
       {src && (
         <div className={styles.legendNoteText}>
           Source: <a className={styles.sourceLink} href={src.homepage_url} target="_blank" rel="noopener noreferrer">Global Fishing Watch port-visit events</a>{' · '}
-          <a className={styles.sourceLink} href={src.license_url} target="_blank" rel="noopener noreferrer">{src.license}</a>{' · '}
+          {publicLicense(src) && <><a className={styles.sourceLink} href={src.license_url || src.homepage_url} target="_blank" rel="noopener noreferrer">{publicLicense(src)}</a>{' · '}</>}
           <a className={styles.sourceLink} href={src.attribution_url} target="_blank" rel="noopener noreferrer">{src.attribution_text}</a>
         </div>
       )}
       {anchSources.length > 0 && (
         <div className={styles.legendNoteText}>
           Anchorage areas: {anchSources.sort((a, b) => ANCHORAGE_SOURCE_IDS.indexOf(a.id) - ANCHORAGE_SOURCE_IDS.indexOf(b.id)).map((x, i) => (
-            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name} — ${x.license}`}>{x.attribution_text}</a></span>
+            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name}${publicLicense(x) ? ` — ${publicLicense(x)}` : ''}`}>{x.attribution_text}</a></span>
           ))}
         </div>
       )}
       {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits' && !ANCHORAGE_SOURCE_IDS.includes(x.id)).length > 0 && (
         <div className={styles.legendNoteText}>
           Names: {(data.nameSources || []).filter((x) => x.id !== 'gfw-port-visits' && !ANCHORAGE_SOURCE_IDS.includes(x.id)).sort((a, b) => ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(a.id) - ['nga-wpi', 'gfw-anchorage-overrides', 'geonames-countries'].indexOf(b.id)).map((x, i) => (
-            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name} — ${x.license}`}>{x.attribution_text}</a></span>
+            <span key={x.id}>{i > 0 && ' · '}<a className={styles.sourceLink} href={x.homepage_url} target="_blank" rel="noopener noreferrer" title={`${x.name}${publicLicense(x) ? ` — ${publicLicense(x)}` : ''}`}>{x.attribution_text}</a></span>
           ))}
         </div>
       )}

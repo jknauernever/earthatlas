@@ -58,6 +58,13 @@
     "minzoom": 3,
     "maxzoom": 10
   },
+  "gfw": {
+    "index": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/gfw-v1/index.json",
+    "rules": "gfw-v1",
+    "sourceLayer": "tracks",
+    "minzoom": 5,
+    "maxzoom": 10
+  },
   "mpa": {
     "version": "2025-01-15",
     "sourceLayer": "mpa",

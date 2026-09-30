@@ -175,9 +175,10 @@ read 2026-09-25.
   - §1.C: noncommercial use only, under CC BY-NC 4.0 (CC BY-NC itself allows adapted and
     shared material with attribution, for non-commercial use).
   - §2.E: you may not "create any derivative products from the API". The sentence is
-    about reverse-engineering and modifying the API's source code. **UNVERIFIED** whether
-    GFW reads it as also covering derived data products; ask GFW before publishing baked
-    tiles.
+    about reverse-engineering and modifying the API's source code. **Settled (Josh,
+    2026-09-29):** it covers the API itself, not visual products built from the data it
+    provides, so baked tiles/track lines need no extra permission. Attribution (§3.A.1,
+    §3.B) and non-commercial use (§1.C) still apply.
   - §3.A.1: websites and visuals must show "Powered by Global Fishing Watch." linked to
     globalfishingwatch.org, or the full dataset citation.
   - §3.B: attribution must be "communicated and maintained by any partners or downstream

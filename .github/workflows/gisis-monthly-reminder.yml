@@ -1,0 +1,41 @@
+# Monthly reminder to refresh the IMO GISIS scrubber list (Josh, 2026-09-30: option A).
+# The GISIS login has a Cloudflare Turnstile CAPTCHA, so a person downloads the file; everything after that is automatic (scripts/ships/gisis/monthly/watch-import.sh, a launchd job on Josh's Mac watching ~/EarthAtlas-inbox, imports it to prod).
+# This opens an issue assigned to Josh on the 1st of each month; GitHub emails him about it.
+name: gisis-monthly-reminder
+
+on:
+  schedule:
+    - cron: '0 16 1 * *'   # 1st of each month, 16:00 UTC (09:00 Pacific)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open the monthly reminder issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          month=$(date -u +%Y-%m)
+          title="Monthly IMO GISIS scrubber update ($month)"
+          # One issue per month: skip if this month's is already open.
+          if gh issue list --state open --search "\"$title\" in:title" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "already open"; exit 0
+          fi
+          gh issue create --title "$title" --assignee jknauernever --body "$(cat <<'EOF'
+          Time for the monthly refresh of the IMO scrubber list on EarthAtlas Ships (about a minute):
+
+          1. Sign in at https://gisis.imo.org/Public/Default.aspx
+          2. Open **MARPOL Annex VI** → Regulation 4.2 (equivalents) and click **Download all data**.
+          3. Drag the downloaded file (`IMO-….csv`) into **~/EarthAtlas-inbox** on your Mac.
+
+          That's it. The watcher on the Mac notices the file in the inbox, checks it, backs up production, imports it, and shows a
+          notification with what changed (log: `scripts/ships/.logs/gisis-monthly.log`). Close this issue when done.
+
+          Why manual: the GISIS sign-in has a CAPTCHA, so it can't be automated.
+          EOF
+          )"

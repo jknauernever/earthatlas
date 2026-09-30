@@ -17,8 +17,9 @@ import s from './Panel.module.css'
  *       citation      a citation the provider requires, shown verbatim
  *   notes     array     optional [{ heading, body }] for caveats / method notes after the sources
  *   title     string    'How this is sourced'
+ *   changelog node      optional { href, label } — a quiet "What's new" link at the foot of the sources dialog (e.g. /ships/changelog)
  */
-export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes }) {
+export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes, changelog }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef(null)
   return (
@@ -31,7 +32,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
         <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a>
       </div>
       {open && (
-        <SourcesModal title={title} intro={intro} sections={sections} notes={notes}
+        <SourcesModal title={title} intro={intro} sections={sections} notes={notes} changelog={changelog}
           onClose={() => { setOpen(false); btnRef.current?.focus() }} />
       )}
     </div>
@@ -42,7 +43,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
  * The sources rollup dialog. Rendered into document.body: map panels use backdrop-filter, which would
  * otherwise trap a position:fixed overlay inside the panel.
  */
-export function SourcesModal({ title = 'How this is sourced', intro, sections = [], notes = [], onClose }) {
+export function SourcesModal({ title = 'How this is sourced', intro, sections = [], notes = [], changelog, onClose }) {
   const titleId = useId()
   const closeRef = useRef(null)
   useEffect(() => {
@@ -91,6 +92,7 @@ export function SourcesModal({ title = 'How this is sourced', intro, sections = 
           </section>
         ))}
         <div className={s.modalFoot}>
+          {changelog?.href && <><a href={changelog.href}>{changelog.label || 'What’s new (changelog)'}</a>{' · '}</>}
           EarthAtlas is built by{' '}
           <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
         </div>

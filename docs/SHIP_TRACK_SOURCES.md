@@ -156,3 +156,135 @@ In the gitignored `scripts/ships/bake-ais/cache/sources/esri/`: Esri
 `US_Vessel_Traffic_2025_06_optimized` tiles `vt_4_5_2.pbf`, `vt_8_89_40.pbf`,
 `vt_11_708_322.pbf`, `vt_12_1416_645.pbf`, `vt_13_2832_1291.pbf` (≈1.4 MB total; all gzip MVT). These were
 used for the decode above.
+
+---
+
+## BC coast + Southeast Alaska (2026-09-29)
+
+Goal: Salish-style detailed track lines from Seattle north to Yakutat (the whole BC coast
+plus Southeast Alaska). Facts only. All pages were opened on 2026-09-29. **UNVERIFIED**
+marks anything not confirmed on a primary page or a live endpoint.
+
+Already established before this pass: MarineCadastre stops at 51.5° N and drops all Alaska
+records. DFO "Vessel Density Mapping" is Northwest Atlantic only. open.canada.ca has only
+the BC recreational traffic *model* (2022) and whale-watching layers.
+
+### Leads Josh sent (checked first)
+
+| Lead | Finding |
+|---|---|
+| ONC DOI [10.34943/1a27517e-…](https://data.oceannetworks.ca/DatasetLandingPage?doidataset=10.34943/1a27517e-9cea-4e09-9fcc-b578bffb9055) | Metadata (from ONC's own `DOIDatasetService?doidataset=…`): "**Kugluktuk** Automatic Identification Systems Receiver Deployed 2019-08-07". One Shine Micro receiver at **67.8248° N, −115.0901°**, Coronation Gulf, **Nunavut**. Co-owners: Angoniatit Niovikvia Ltd., Marine Institute (Memorial University), Nunavut Tunngavik Inc., ONC. Format "txt". Rights: "Please refer to our data policy page". **Arctic, not BC.** Its size, and whether it has per-vessel positions, were not checked. Neither the ONC API (`/api/locations`, `/api/devices`: "Either token or appToken must be specified") nor ONC's ERDDAP (a search for "AIS Receiver" found nothing) can list ONC's other AIS receivers without an account. |
+| DFO [5b86e2d2…](https://open.canada.ca/data/en/dataset/5b86e2d2-cec1-4956-a9d5-12d487aca11b) | "Vessel Density Mapping of **2023** AIS Data in the **Northwest Atlantic**". DFO Maritimes (BIO). GeoTIFF + Esri REST, OGL-Canada. **Not Pacific.** |
+| CCG e-Navigation [100ca303…](https://e-navigation.canada.ca/gn/description/eng/100ca303-b91a-431d-80de-bd358c648577) | "Physical AIS Aids to Navigation". A directory of AIS-equipped buoys and beacons (WFS, KML, CSV, GeoJSON). Regions listed: Great Lakes, St. Lawrence, Maritimes, NL. **Not ship positions.** The whole e-Navigation catalogue has **41 records**, and its "Vessel Traffic Services" category holds **0**. The rest are lights lists, marine weather, water levels, ice, notices and charts. No vessel-traffic or AIS-position dataset. |
+
+### Findings table
+
+"Tracks?" means: per-vessel positions or lines (**Yes**), or aggregate only (**No**).
+
+| Source | Area | Years | Cadence | Access / format | Tracks? | Licence / terms | Cost | URL |
+|---|---|---|---|---|---|---|---|---|
+| **GFW 4Wings report, presence, HOURLY + HIGH + group-by VESSEL_ID** | Global, so the **whole Seattle–Yakutat coast** | 2012 → ~96 h ago | **1 position per vessel per hour**, snapped to **0.01° cells** (≈1.1 km N–S, ≈0.65 km E–W at 54° N) | `POST /v3/4wings/report?datasets[0]=public-global-presence:latest&temporal-resolution=HOURLY&spatial-resolution=HIGH&spatial-aggregation=false&group-by=VESSEL_ID&format=JSON` + a GeoJSON polygon. **Tested live**: Prince Rupert box (130.6–130.1° W, 54.1–54.4° N), 2026-08-01 (1 day) returned **2,018 rows, 138 vessels**, at most one row per vessel-hour. Each row has `vesselId, mmsi, imo, shipName, callsign, flag, vesselType, date "YYYY-MM-DD HH:00", lat, lon, hours`. 969 KB JSON | **Yes** (hourly vertices; coarse) | API is "only available for non-commercial purposes" (GFW docs). Already our GFW terms | Free with our existing token | [docs](https://globalfishingwatch.org/our-apis/documentation); sample in `scripts/ships/bake-ais/cache/sources/gfw/` |
+| GFW vessel tracks endpoint | Global | — | — | `/v3/vessels/{id}/tracks` is reported to return 422 "dataset should be a tracks:* type" for public tokens. The source is a user post on GFW's feedback board, not GFW staff (**UNVERIFIED**; not tested) | — | — | — | [feedback post](https://feedback.globalfishingwatch.org/data-requests/p/vessels-api) |
+| **Marine Exchange of Alaska (MXAK) Historical Data** | Alaska regions: Arctic, Western AK, Aleutians, AK Peninsula, Cook Inlet, PWS, **Southeast Alaska**; plus satellite Zones 1–3 | "more than 10 years" of retention | Raw AIS position reports. Rate **UNVERIFIED** (the 2009 TNC use of MXAK data cites 6-second intervals, **UNVERIFIED**) | **Request form** (not submitted). "Multiple Tracklines" = "position reports for multiple or all vessels within a specified time or geographic area … CSV format with accompanying graphic or shapefile" | **Yes**, raw positions | **No licence or redistribution terms on the page.** Must be asked in the request. **UNVERIFIED** whether public web display is allowed | Multiple Tracklines, terrestrial+satellite, **per region per year: $600 non-member / $300 member** (Chief Mate or Captain). 2 regions × 1–2 yr = $2,400 / $1,200. Membership $700–$2,900/yr; no non-profit tier listed | [mxak.org/?p=6761](https://mxak.org/?p=6761), [membership](https://www.mxak.org/membership/) |
+| MXAK / Axiom / AOOS heatmaps ([ais.axds.co](https://ais.axds.co/)) | US EEZ Alaska (MXAK terrestrial); USCG terrestrial and satellite for Alaska, Pacific, Continental; MarineCadastre 2009–14 | MXAK **2013–2018**; USCG **2015–2016** | Monthly grids by ship type (All, Passenger, Tanker, Cargo, Other) | Public S3 GeoTIFF zips, e.g. `axds-aisdata/datasets/marine_exchange_terrestrial/Marine_Exchange_Terrestrial_USEEZAlaska_AllShips_2018_Heatmaps.geotiff.zip` (11.3 MB). **500 m**, Alaska Albers. Receiver sites: `axds-aisdata/static/MXAK_Sites.geojson` | No (density) | ISO metadata has **no constraints element** (no licence stated) | Free | [ais.axds.co](https://ais.axds.co/) |
+| Kapsar et al. 2022, North Pacific & Arctic marine traffic (exactEarth) | Bounding box **160° E–145° W**, 50–74° N. **Excludes Southeast Alaska and BC** (Yakutat is ~139.7° W) | 2015–2020 | Monthly | Arctic Data Center: hex, 10 km, 25 km, and a 1 km coastal raster (within 10 km of shore) | No | Article CC BY 4.0; the data are anonymised "to comply with AIS data licensing agreements" | Free | [Data in Brief 108531](https://doi.org/10.1016/j.dib.2022.108531) |
+| **ONC (Oceans 3.0), CCG terrestrial AIS** | CCG Pacific network. The WAVE project got a bounding box "including Vancouver Island and Puget Sound" | WAVE received 2019–2021; the full archive range is **UNVERIFIED** | CCG terrestrial (rate **UNVERIFIED**) | ONC "harvests … from the Canadian Coast Guard for vessel tracking applications based on … AIS data" via web services ([Frontiers 2022](https://www.frontiersin.org/articles/10.3389/fmars.2022.806452/pdf)). No public listing; needs an ONC account/token, and access is **UNVERIFIED** | **Yes** (raw AIS) | "provided by the Canadian Coast Guard (CCG) via a licensing agreement between the CCG and ONC for the **non-commercial use** of CCG AIS Data" ([WAVE record](https://open.canada.ca/data/en/dataset/8a80c6f7-86a7-49e8-97c2-5229068e64cd)). ONC's Data Restrictions wiki page is behind a bot check and was not read. Public redistribution **UNVERIFIED** | Unknown | [ONC data policy](https://www.oceannetworks.ca/data/data-policy/) |
+| DFO "Commercial Whale Watching in BC" (WAVE) | S. Vancouver Island + Puget Sound | 2019–2021 | — | FGDB + Esri REST; grid-cell summaries of whale-watch trips | No | OGL-Canada (the product only) | Free | [8a80c6f7…](https://open.canada.ca/data/en/dataset/8a80c6f7-86a7-49e8-97c2-5229068e64cd) |
+| Transport Canada **EMSA** platform | Canada, incl. BC partner communities | Live | Near-real-time | Closed partner platform (13 Indigenous partner communities). "fused presentation of: Canadian Coast Guard (CCG) terrestrial AIS data [and] ExactEarth satellite AIS data". The deck quotes the IMO MSC 79 position discouraging web publication of AIS | Yes (inside the platform) | Not public | — | [TC webinar PDF 2022](https://clearseas.org/wp-content/uploads/2022-CMSRF-AIS-Webinar-EMSA-Transport-Canada.pdf) |
+| TC **Marine and Port Dashboard**, "AIS trackline monthly data 2013-2025" | Canada, by AOI (Atlantic, St. Lawrence, Pacific …) | 2013–2025 | Monthly | `L1M_AIS-trackline-monthly_byMMSI_2013-2025_v3.zip` (18.4 MB, 149 MB CSV, 954,535 rows). Downloaded to the cache. Columns: `MMSI, YEAR, MONTH, AOI_1, KM_SAILED, AvgSOG, MaxSOG, VESS_NAME, types, dims, flag, ACTIVE_DAYS…` | **No geometry**: per-vessel monthly km/speed statistics only | Page lists sources (exactEarth, Spire, CCG, MarineTraffic/FleetMon); no licence text seen | Free | [dashboard](https://tdih-cdit.tc.canada.ca/en/dashboard/marine-and-port-dashboard) |
+| TC Cumulative Effects of Marine Shipping | 6 pilot areas incl. North and South Coast BC | — | — | Esri REST polygons | No (area outlines only) | OGL-Canada | Free | [e218c8cb…](https://open.canada.ca/data/en/dataset/e218c8cb-5039-4706-b58f-d54c6c11a6fc) |
+| Clear Seas / Nuka "Vessel Traffic in Canada's Pacific Region" | BC coast + offshore | **2014–2016** | — | 118-page report PDF only. "Clear Seas obtained the AIS data from exactEarth" (91 M points) | No data release | Report only | Free | [project page](https://clearseas.org/research_project/vessel-traffic-in-canadas-pacific-region) |
+| BCMCA shipping density | BC Pacific waters (137.4–122.2° W, 46.1–55.7° N) | 2007 (seasonal); 2010 per search snippet | — | 5 km grid from CCG MCTS | No | "Not to be reproduced or distributed without permission from the data custodian" | — | [metadata](https://bcmca.ca/datafiles/individualfiles/bcmca_hu_shippingtrans_tugvesseldensity_summer2007_metadata.htm) |
+| TNC "Southeast Alaska Vessel Traffic Index" | SE Alaska | 2009 | — | Point density (1 km radius) from MXAK data | No | **UNVERIFIED** (the catalogue page refused connection) | — | [EPSCoR catalogue](https://catalog.epscor.alaska.edu/dataset/southeast-alaska-vessel-traffic-index-tnc-2009) |
+| USCG NAIS historical (Level C) | US incl. Alaska | Up to 3 years back | Raw | Historical Data Requests only for government ("Government Point of Contact (May not be a Contractor)"). **Public route is FOIA only** | Yes | "shall not retransmit or redistribute AIS information … in any form other than those intended for the disclosure" | — | [NAVCEN policy](https://navcen.uscg.gov/node/465), [HDR form](https://www.navcen.uscg.gov/contact/ais-historical-request) |
+| Kpler (now also Spire Maritime) | Global, terrestrial + satellite | From 2015 | Raw | Josh's account has an API key, but AIS is **not entitled** (see memory note). Historical queries are limited to ≤55,000 km² per 1 day, or ≤10 vessels. Billed per row. `historical.ais.spire.com` now 301-redirects to `kpler.com/spireMT/product` | Yes | Commercial; terms **UNVERIFIED** for public display | Per-row billing; price **UNVERIFIED** | — |
+| AISHub / aisstream.io | Volunteer receivers | Live only | — | See §2A | Only by recording | See §2A | — | BC/SE Alaska receiver coverage **UNVERIFIED** (coverage map is JS-only) |
+| CSA RCM AIS | Global | — | — | Government-first; the public data policy found covers RCM **SAR** imagery, not AIS. No public AIS archive found (**UNVERIFIED**) | — | — | — | [RCM SAR data policy](https://www.csa-asc.gc.ca/pdf/eng/publications/rcm-sar-data-policy.pdf) |
+| MERIDIAN (Dalhousie), ECHO (VFPA), Port of Prince Rupert, BC Data Catalogue, CIOOS Pacific, Statistics Canada | — | — | — | No public AIS position or ≤1 km density product found on any of them. ECHO publishes reports and noise data. MERIDIAN's site lists no downloadable AIS dataset. The only TC/StatCan AIS product found is the dashboard row above | — | — | — | — |
+
+### Best options (ranked)
+
+1. **GFW 4Wings hourly per-vessel presence** is the only source that is **open to us today**, covers the **whole Seattle–Yakutat coast**, and is current (2012 → ~4 days ago). It has identity and vessel type. **Limit: one vertex per hour at 0.01°.** A 15 kn ship moves ~28 km between vertices, so lines through Inside Passage bends will cut corners. They will not look like the Salish MarineCadastre lines. Non-commercial terms, which EarthAtlas meets. Next step: one 1-day test of the full Seattle–Yakutat polygon, to measure row count and any report size limit (**UNVERIFIED**).
+2. **MXAK Multiple Tracklines, Southeast Alaska region**: raw positions (CSV/shapefile), terrestrial + satellite, **$600 per region per year** for non-members. This is the only route to Salish-quality detail for SE Alaska. **Blocker: licence/redistribution terms are not published**, so we must ask MXAK (info@mxak.org) whether public web display of derived track lines is allowed. MXAK asked NOAA to strip Alaska from MarineCadastre, which suggests they may say no (inference, not verified).
+3. **ONC / CCG terrestrial AIS** is the only route to raw BC-coast positions at fine cadence. It needs an ONC account plus access to the CCG-licensed stream, **non-commercial only**, and public redistribution of derived lines is **UNVERIFIED**. Ask ONC (and/or CCG) directly.
+4. **Kpler/Spire (commercial)** covers everything, but the account lacks AIS entitlement. The query limits (55,000 km² × 1 day) and per-row billing make a coast-long, multi-month bake expensive, and display terms are unknown.
+
+**No clear open winner.** Nothing open gives Salish-quality (minute-level) tracks north of
+51.5° N. For open data, GFW hourly is the best available. For SE Alaska detail, MXAK
+paid tracklines are the best, subject to their terms. For BC detail, ONC/CCG is the
+route, subject to their terms.
+
+### GFW hourly lines prototype, BC + Alaska (localhost only, 2026-09-29)
+
+Built to let Josh judge GFW hourly positions as track lines by eye. **Nothing in production.**
+Code: `scripts/ships/bake-ais/gfw/{fetch_hourly.py, gfw_land.py, build_gfw_tracks.py}`; dev layer
+`/ships?gh=raw|routed` (dev builds only), tiles via `api/ship-tracks?r=gfwproto` (404 unless the
+local file exists and never in `VERCEL_ENV=production`). Raw reports, land caches and PMTiles are
+gitignored on "Josh WD 4TB" (`cache/sources/gfw/hourly-2026-0{6,8}/`, `cache/land/gfwproto/`,
+`cache/sources/gfw/tracks-proto/`).
+
+- **Request** (same as the Prince Rupert test): `POST /v3/4wings/report?datasets[0]=public-global-presence:latest&temporal-resolution=HOURLY&spatial-resolution=HIGH&spatial-aggregation=false&group-by=VESSEL_ID&format=JSON&date-range=…` + a bbox polygon.
+  Verified live: **no pagination** (`nextOffset:null`, every report complete), a 7-day report
+  costs about the same time as a 1-day one (20–100 s; one report at a time), a 2-day Salish
+  report was 135k rows / 64 MB with no error. 14 bbox tiles cover BC + Alaska (Aleutians split
+  at 180°); a gap was left at 126.3–134° W × 46.9–49.6° N (open ocean off Vancouver Island).
+- **Run**: August 2026 for BC + Alaska (7-day requests), June 2026 for the Salish Sea (2-day
+  requests; June is our latest month of real NOAA tracks, so they can be compared).
+  **93 report requests, 3.45 M rows, 13,359 GFW vessels, 1.62 GB JSON (378 MB gzip'd), ~50 min.**
+- **Positions are 0.01° cell centres; hours are UTC** — verified against our NOAA points: for
+  12,317 vessel-hours on 2026-06-01, the NOAA mean position in [H, H+1) minus the GFW lat has
+  median 0.0001° and is uniform within ±0.005°.
+- **Water model for routing** (`gfw_land.py`): a spot is water if ANY source says water:
+  - OSM land polygons (osmdata.openstreetmap.de `land-polygons-split-4326`), © OpenStreetMap contributors, ODbL.
+  - **Alaska DNR "Alaska 1:63,360"** coastline (digitised from USGS quads), `https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Physical_AlaskaCoast/MapServer/4`, accessed 2026-09-29, all 37,362 polygons (38 pages, 2.28 M vertices; 3 `lagoon` features treated as water). State of Alaska no-warranty disclaimer, no use restrictions; credit "Alaska Department of Natural Resources". Applied in Alaska only (outside the NHN work-unit index = Canada, and outside a crude Russia rule).
+  - **NRCan National Hydro Network (NHN, GeoBase), 1:50,000 or better**, `https://open.canada.ca/data/en/dataset/a4b190fe-e090-4e6d-881e-b87956c07977`, shapefiles per work unit from `ftp.maps.canada.ca/pub/nrcan_rncan/vector/geobase_nhn_rhn/shp_en/08/`, accessed 2026-09-29, **Open Government Licence – Canada**; credit "Natural Resources Canada, National Hydro Network". 48 BC coastal work units downloaded (~1 GB zip), all with littoral lines. NHN has **no ocean polygon** (Water Definition codes are canal, conduit, ditch, lake, reservoir, watercourse, tidal river, liquid waste; catalogue v1.2 p. 53-54): the sea is bounded by `HN_LITTORAL_1` lines, with "the waterbody located to the right of the littoral" (catalogue p. 16). So NHN sea = faces of polygonize(work-unit limit + littoral) that the littoral puts on its right, minus `HD_ISLAND_2` (some island rings do not close and merge into the sea face); tidal river / watercourse / canal waterbodies also count as water.
+  - Guard: another source may only open water that OSM calls land where that extra water is **narrower than 400 m** (morphological opening). In units where the littoral does not close (e.g. 08FG005 Pitt Island, 08GF001) whole mainlands otherwise came out as "sea".
+- **Line rules** (`build_gfw_tracks.py`): per GFW vessel id, break at gaps > 3 h or straight-line speed > 40 kn; drop lines with < 2 distinct cells or extent < 1.5 km. *raw* = straight segments. *routed* = positions on land moved to the nearest water within 2 km (else dropped, line breaks); segments with ≥ 150 m of land along them replaced by the shortest 8-connected water path on a ~50 m raster window (padding max(4 km, 0.35 × length), ≤ 1,400 cells a side), then "string-pulled" into the fewest straight water-only legs (the raw grid path is a 0/45/90° staircase; the first bake without this drew grid patterns in open water), Douglas–Peucker simplified; rejected (line breaks) if no water path exists in the window or path length / time > 40 kn. Routed stretches are separate features with `est=1` (dashed on the map: "path between hourly positions estimated along the water (EarthAtlas)").
+
+### GFW hourly lines: production pipeline (built 2026-09-29, not live)
+
+Code: `scripts/ships/bake-gfw/` (`areas.py` area config + NOAA preference boxes, `fetch.py`, `land.py`,
+`prepare_water.py`, `lines.py`, `bake.py route|tile|index`, `publish.mjs`, `test_lines.py`) and
+`.github/workflows/ships-gfw-tracks-bake.yml`. Tileset `gfw-v1`: one PMTiles + per-MMSI pack + manifest per
+month on Blob (`ships/tracks/gfw-v1/YYYY-MM/`), listed in `ships/tracks/gfw-v1/index.json`
+(`trackSource.json` → `gfw.index`). The site reads the index at runtime (`/api/ship-tracks?op=gfwindex`;
+in dev a local bake in `scripts/ships/bake-gfw/cache/out/gfw-v1/` wins), so new months need no code push.
+
+- **Preference rule**: where NOAA per-minute AIS exists for a month and area, NOAA wins. `areas.NOAA_AREAS`
+  lists NOAA's boxes (the Salish detail box, whose months come from `trackSource.json`, and approximate
+  US-EEZ boxes, whose months come from the US-wide index). GFW positions inside a box in a month NOAA has
+  published are dropped before lines are built, so there are never double lines; when NOAA publishes a
+  month, re-running that month drops GFW there.
+- **Line rules** as in the prototype (lines.py), plus: lines break at month boundaries; longitudes are
+  unwrapped per line and split at ±180° on output (the 2026-09-29 "horizontal bands" across Alaska were
+  segments crossing the antimeridian drawn the long way round); water paths are string-pulled.
+- **GFW constraint that shapes the pipeline**: one running 4Wings report per user, so all fetching is
+  serial (the workflow's fetch matrix has max-parallel 1). Measured for this area: a report costs
+  20–40 s whether it spans 1 or 7 days (no pagination; 2-day Salish reports were 135k rows / 64 MB).
+  Pacific Canada + Alaska + Salish ≈ **100 requests, 3.5 M rows, 1.7 GB JSON, ~55 min per month**.
+- **Coastline data on runners**: `prepare_water.py` downloads OSM land polygons (~0.9 GB zip), the Alaska
+  DNR layer and 48 NHN units once and builds `extras-v1.pkl` (195 MB); the workflow keeps it in the Actions
+  cache (key `gfw-water-v1`). Only OSM polygons inside a job's boxes are loaded.
+- **Upload**: one-file tokens from `api/cron/ships-upload-token.js` (CRON_SECRET). Its allowlist currently
+  only admits `ships/tracks/us-v<N>/`; going live needs `(us|gfw)-v\d+` in both regexes (one-line change).
+- **Routing v2 (Josh 2026-09-30)**, applied before launch:
+  - *Tidal flats and marsh are land.* High-water coastlines plus the "water if any source says water"
+    rule left tidal flats open; cruise ships' estimated paths crossed the Mendenhall Wetlands beside Juneau
+    airport. `fetch_flats.py` pulls OSM `natural=wetland` (any `wetland=*`), `natural=mud`, `natural=shoal`
+    and `tidal=yes` flats (natural = wetland/mud/sand/shoal/shingle; a tidal river stays water) from the
+    Overpass API per 5° box (split on timeouts, mirror fallback), cached; they are drawn as land in every
+    routing window, for every vessel (GFW rows carry no length, so small craft get no exception).
+    Flats alone did NOT fix Juneau: OSM leaves a narrow water channel across the flats (the
+    Mendenhall Bar channel).
+  - *Traffic-informed cost.* `traffic.py`: distinct vessels per GFW 0.01° cell, widened ±600 m; cost 1
+    (≥ 3 vessels), 1.6 (1–2), 8 (none). A path with no water route, or with > 10% of it where no ship has
+    been, is searched again in a bigger window and the cheaper (traffic-weighted) path wins. At Juneau the
+    wetland corridor has 0 vessels and Gastineau Channel at the docks 39–82, so the estimate now goes
+    around Douglas Island (59 km instead of 30 km across the flats). String-pulling may not cut into
+    costlier water. Not weighted by vessel size (no length in the hourly rows).
+  - *Where the traffic raster comes from*: `bake.py traffic` writes one raster per month
+    (`cache/land/traffic-v1/YYYY-MM.npz`); a route job sums every month present (plus the month being
+    baked). In the workflow each fetch job writes its month's raster, route jobs read the cumulative set
+    from the Actions cache plus this run's months, and a final job saves the merged set (key
+    `gfw-traffic-v1-<run id>`), so the lanes sharpen as months accumulate.
+

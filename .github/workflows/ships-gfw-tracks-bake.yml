@@ -1,0 +1,297 @@
+# Bakes /ships track lines from Global Fishing Watch HOURLY per-vessel positions for the waters
+# NOAA doesn't cover (scripts/ships/bake-gfw/, docs/SHIP_TRACK_SOURCES.md "GFW hourly lines") and
+# publishes them to Vercel Blob (ships/tracks/gfw-v1/), with an index the site reads at runtime.
+#
+#   weekly = the incremental mode, run DAILY by the cron below (or Run workflow → mode=weekly): every month touched by the days since the
+#     index's fetched_through minus 5 (GFW revises recent days) up to 4 days ago is re-fetched WHOLE
+#     and rebaked (raw reports are not kept between runs; pacnw ≈ 100 requests per month).
+#   backfill (Run workflow → mode=backfill, from=2025-01): fetch and bake every month from `from`.
+#   stage: which areas (areas.py): pacnw (BC + Alaska + Salish gap fill), us, world.
+#
+# GFW runs ONE report per user at a time, so fetching is serial (fetch matrix max-parallel 1, one
+# month per job, each well under 6 h). Routing is parallel (route matrix: month × area group).
+# PLANNED (Josh 2026-09-30): once the bulk backfill to date is done, change the incremental run to fetch ONLY the days
+#   since the last update (+ the few days GFW may revise) and rebuild only the tiles those days touch, instead of
+#   re-fetching and re-baking the whole current month every day.
+# Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET), never a Blob token.
+# Secrets: GFW_API_TOKEN (GFW API, server/CI only), CRON_SECRET (existing).
+name: ships-gfw-tracks-bake
+on:
+  schedule:
+    - cron: '17 6 * * *'   # daily 06:17 UTC (Josh 2026-09-30: daily updates; GFW data is ~4 days behind)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'weekly (new days + 5-day re-fetch) or backfill'
+        type: choice
+        options: [weekly, backfill]
+        default: weekly
+      stage:
+        description: 'Area set (areas.py): pacnw | us | world'
+        default: pacnw
+      from:
+        description: 'Backfill start month (YYYY-MM)'
+        default: '2025-01'
+      months:
+        description: 'Optional: only these months (YYYY-MM list) — overrides the plan'
+        default: ''
+
+concurrency:
+  group: ships-gfw-tracks-bake
+  cancel-in-progress: false
+
+env:
+  STAGE: ${{ github.event.inputs.stage || 'pacnw' }}
+  GFW_INDEX: https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/gfw-v1/index.json
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      fetch: ${{ steps.plan.outputs.fetch }}     # [{month, from, to}]
+      route: ${{ steps.plan.outputs.route }}     # [{month, group, areas}]
+      months: ${{ steps.plan.outputs.months }}
+      fetched_through: ${{ steps.plan.outputs.fetched_through }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          MODE: ${{ github.event.inputs.mode || 'weekly' }}
+          FROM: ${{ github.event.inputs.from || '2025-01' }}
+          ONLY: ${{ github.event.inputs.months || '' }}
+        run: |
+          cd scripts/ships/bake-gfw
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import datetime as dt, json, os, urllib.request
+          import areas
+          today = dt.date.today()
+          last = today - dt.timedelta(days=4)                  # GFW lags ~4 days
+          mode, stage = os.environ['MODE'], os.environ['STAGE']
+          try:
+              idx = json.load(urllib.request.urlopen(os.environ['GFW_INDEX'] + f'?t={today}'))
+          except Exception:
+              idx = {}
+          if mode == 'backfill' or not idx.get('fetched_through'):
+              start = dt.date.fromisoformat(os.environ['FROM'] + '-01')
+          else:                                                  # weekly: new days + re-fetch the 5 before
+              start = dt.date.fromisoformat(idx['fetched_through']) - dt.timedelta(days=5)
+          months, d = [], start.replace(day=1)
+          while d <= last:
+              months.append(d.strftime('%Y-%m'))
+              d = (d.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+          if os.environ['ONLY'].strip():
+              months = [m for m in os.environ['ONLY'].split() if m in months] or os.environ['ONLY'].split()
+          fetch = []
+          for m in months:
+              a = dt.date.fromisoformat(m + '-01')              # whole month (raw is not kept between runs)
+              nxt = (dt.date.fromisoformat(m + '-01').replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+              b = min(nxt, last + dt.timedelta(days=1))
+              fetch.append(dict(month=m, **{'from': a.isoformat(), 'to': b.isoformat()}))
+          # Route groups: the whole stage in one group for pacnw/us; the world in ~30° longitude bands.
+          tiles = areas.stage(stage)
+          if stage == 'world':
+              bands = {}
+              for t in tiles:
+                  bands.setdefault(f'band{int((t[1] + 180) // 30):02d}', []).append(t[0])
+              groups = bands
+          else:
+              groups = {stage: [t[0] for t in tiles]}
+          route = [dict(month=m, group=g, areas=','.join(a)) for m in months for g, a in groups.items()]
+          print('fetch=' + json.dumps(fetch))
+          print('route=' + json.dumps(route))
+          print('months=' + json.dumps(months))
+          print('fetched_through=' + last.isoformat())
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+  fetch:
+    needs: plan
+    if: needs.plan.outputs.months != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 1          # GFW: one running report per user
+      matrix:
+        job: ${{ fromJson(needs.plan.outputs.fetch) }}
+    env:
+      GFW_API_TOKEN: ${{ secrets.GFW_API_TOKEN }}
+      GFW_RAW: ${{ github.workspace }}/raw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      - name: Fetch ${{ matrix.job.month }} (${{ matrix.job.from }} → ${{ matrix.job.to }})
+        run: |
+          cd scripts/ships/bake-gfw
+          python3 fetch.py --stage "$STAGE" --from "${{ matrix.job.from }}" --to "${{ matrix.job.to }}" --span 7 --raw "$GFW_RAW" --budget 20000
+      - name: Traffic raster for ${{ matrix.job.month }} (distinct vessels per 0.01° cell)
+        env:
+          GFW_LAND_DIR: ${{ github.workspace }}/land
+        run: cd scripts/ships/bake-gfw && python3 bake.py traffic --stage "$STAGE" --months "${{ matrix.job.month }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raw-${{ matrix.job.month }}
+          path: raw
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: traffic-${{ matrix.job.month }}
+          path: land/traffic-v1
+          retention-days: 7
+
+  route:
+    needs: [plan, fetch]
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        job: ${{ fromJson(needs.plan.outputs.route) }}
+    env:
+      GFW_RAW: ${{ github.workspace }}/raw
+      GFW_WORK: ${{ github.workspace }}/work
+      GFW_LAND_DIR: ${{ github.workspace }}/land
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: |
+          sudo apt-get update -q && sudo apt-get install -yq gdal-bin
+          pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      - name: Restore coastline data (OSM land polygons + Alaska DNR + NRCan NHN + OSM tidal flats)
+        id: water
+        uses: actions/cache@v4
+        with:
+          path: |
+            land/osm
+            land/extras-v1.pkl
+            land/flats-v1.pkl
+          key: gfw-water-v2-${{ env.STAGE }}
+      - name: Prepare coastline data (cache miss only, ~25 min + Overpass ~1.5 h for pacnw)
+        if: steps.water.outputs.cache-hit != 'true'
+        run: |
+          cd scripts/ships/bake-gfw
+          python3 prepare_water.py --sources "$RUNNER_TEMP/water-sources"
+          python3 fetch_flats.py --stage "$STAGE" --raw "$RUNNER_TEMP/overpass-flats"
+      - name: Restore cumulative traffic rasters (earlier runs)
+        uses: actions/cache/restore@v4
+        with:
+          path: land/traffic-v1
+          key: gfw-traffic-v1-${{ github.run_id }}
+          restore-keys: gfw-traffic-v1-
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: traffic-*
+          path: land/traffic-v1
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-${{ matrix.job.month }}
+          path: raw
+      - name: Route ${{ matrix.job.month }} / ${{ matrix.job.group }}
+        run: |
+          cd scripts/ships/bake-gfw
+          python3 bake.py route --month "${{ matrix.job.month }}" --stage "$STAGE" --areas "${{ matrix.job.areas }}" --group "${{ matrix.job.group }}" --workers 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: part-${{ matrix.job.month }}-${{ matrix.job.group }}
+          path: work
+          retention-days: 7
+
+  tile:
+    needs: [plan, route]
+    if: always() && needs.route.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      GFW_WORK: ${{ github.workspace }}/work
+      GFW_OUT: ${{ github.workspace }}/out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: part-${{ matrix.month }}-*
+          path: work
+          merge-multiple: true
+      - name: Tile ${{ matrix.month }}
+        run: cd scripts/ships/bake-gfw && python3 bake.py tile --month "${{ matrix.month }}"
+      - name: Upload ${{ matrix.month }} to Blob
+        run: |
+          mkdir -p "$RUNNER_TEMP/entries"
+          node scripts/ships/bake-gfw/publish.mjs "${{ matrix.month }}" "$GFW_OUT" --entry-out "$RUNNER_TEMP/entries/${{ matrix.month }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.month }}
+          path: ${{ runner.temp }}/entries/${{ matrix.month }}.json
+          retention-days: 7
+
+  index:
+    needs: [plan, tile]
+    if: always() && needs.tile.result != 'skipped'
+    runs-on: ubuntu-latest
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      FETCHED_THROUGH: ${{ needs.plan.outputs.fetched_through }}
+      EXPECT_MONTHS: ${{ needs.plan.outputs.months }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: entry-*
+          path: entries
+      - name: Add finished months to the index (one write)
+        run: node scripts/ships/bake-gfw/publish.mjs --index entries
+
+  traffic-cache:
+    needs: [plan, route]
+    if: always() && needs.route.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          path: land/traffic-v1
+          key: gfw-traffic-v1-${{ github.run_id }}
+          restore-keys: gfw-traffic-v1-
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: traffic-*
+          path: land/traffic-v1
+          merge-multiple: true
+      - name: Save the merged per-month traffic rasters for the next run
+        uses: actions/cache/save@v4
+        with:
+          path: land/traffic-v1
+          key: gfw-traffic-v1-${{ github.run_id }}

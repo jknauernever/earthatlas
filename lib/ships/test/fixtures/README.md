@@ -157,3 +157,20 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | `eu-mrv-live-2026-09-29.json` | **Real** rows copied verbatim from two EMSA THETIS-MRV "EU MRV Publication of information" files downloaded 2026-09-29 (UTC 2026-09-30 01:29–01:31): 2021 v219 (62-column layout; EURODAM 9378448) and 2024 v245 (113-column layout; both sheets: EURODAM, AEGEAN DREAM 9645425, MORNING CALM 9285615 with its Full and Partial rows). Each sheet's three header rows are kept whole; cells are exactly as `lib/ships/xlsx.js` `sheetRows` reads them; file names, generation dates and sha256 are recorded. Plus the portal's own `details/267085` response (EURODAM 2024), verbatim, used to cross-check the file's numbers. Nothing edited. The full files stay in the gitignored `scripts/ships/mrv/raw/`. |
 
 `euMrv.test.js` / `euMrv-db.test.js` mark what they build SYNTHETIC in the test name (a renamed header, holder lists for the resolver, a revised file version, a file without one ship).
+
+## Anchorage aliases and stays (lib/ships/anchorageAliases.js, lib/ships/anchorageStays.js)
+
+| File | What it is |
+|---|---|
+| `anchorage-aliases-dev-2026-09-30.json` | **Real** rows read 2026-09-30 from the dev ships DB: nine Salish anchorages (Vendovi South / East, Cap Sante, Jack Island South, Vancouver Harbour A / B, Trincomali 2, Commencement Bay, Ruston) as `lib/ships/anchorages.js` imported them, and the 132 Global Fishing Watch named points near them (`gfwAnchoragePoints`: pipe-anchorages overrides rows + port-visit anchorage cells with our port for each label). Nothing edited. |
+| `mc-ais-anchorage-vendovi-south.json` | **Real** MarineCadastre AIS rows (CC0), copied 2026-09-30 from the bake-ais points cache (`salish-v6/2026-04-26..28.parquet`): every row of MMSIs 366341000 (PRIDE) and 366973730 (SIOUX ARROW) within 0.002° of Vendovi South's bounding box, 686 rows, nothing edited (lat/lon rounded to 6 decimals, SOG to 2). `expected` = the four stays the as1 bake stored for them in the dev DB. |
+
+`anchorageStays.test.js` / `anchorageCard-db.test.js` mark what they build SYNTHETIC in the test name or comment (hand-made points for the 6 h / 60 min edges; a bake record declaring only April 2026 read).
+
+## MEP Alliance scrubber lists (lib/ships/mepAlliance.js)
+
+| File | What it is |
+|---|---|
+| `mep-live-2026-09-30.json` | **Real**, copied verbatim from www.mepalliance.org pages retrieved 2026-09-30 (the full pages stay in the gitignored `scripts/ships/mep/raw/`): the "Polluting Scrubber Voyages" table header, five of its rows (GOLDEN FELLOW, OCEANA, SHANDONG XIN DE, KONKAR ASTERI, UM JIANGSU (66K/2025)) and five "Polluters" dropdown options; the Cruise Ships list header and three rows (Adventure of the Seas, AIDAbella, Eurodam). Rows were chosen whose contact cells hold only company addresses (no person's email). Nothing is edited; the tests join the fragments in order. |
+
+`mepAlliance-db.test.js` renames the real GOLDEN FELLOW row to EURODAM to exercise name matching; that case is **SYNTHETIC** and marked in the test names.

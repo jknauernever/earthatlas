@@ -6,6 +6,7 @@
  * Visits = our own AIS calls (lib/ships/terminalCalls.js, Josh 2026-09-28); GFW port visits are only a comparison (About).
  */
 import { useEffect, useMemo, useState } from 'react'
+import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
@@ -345,7 +346,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
                 {(data.sources || []).map((x, i) => (
                   <span key={x.id}>{i > 0 && ' · '}
                     <a className={styles.sourceLink} href={x.attribution_url || x.homepage_url || '#'} target="_blank" rel="noopener noreferrer" title={x.name}>{x.attribution_text}</a>
-                    {x.license_url && <> <a className={styles.sourceLink} href={x.license_url} target="_blank" rel="noopener noreferrer">{String(x.license).split(' (')[0]}</a></>}
+                    {x.license_url && publicLicense(x) && publicLicense(x) !== x.attribution_text && <> <a className={styles.sourceLink} href={x.license_url} target="_blank" rel="noopener noreferrer">{publicLicense(x)}</a></>}
                   </span>
                 ))}
               </div>

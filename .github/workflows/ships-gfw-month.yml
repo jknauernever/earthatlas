@@ -107,6 +107,8 @@ jobs:
       GFW_WORK: ${{ github.workspace }}/work
       GFW_OUT: ${{ github.workspace }}/out
       FETCHED_THROUGH: ${{ inputs.through }}
+      # EarthAtlas's own ship types by MMSI (secret-locked; bake.py sends CRON_SECRET), so the kind filter works on GFW lines.
+      GFW_TYPE_LOOKUP: https://earthatlas.org/api/ships?op=typeLookup
       EXPECT_MONTHS: '["${{ inputs.month }}"]'
     steps:
       - uses: actions/checkout@v4

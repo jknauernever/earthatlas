@@ -170,6 +170,63 @@ def cmd_route(a):
     print(json.dumps(stats), flush=True)
 
 
+# EarthAtlas's own ship type by MMSI (2026-10-01). GFW's vessel types lump tankers into CARGO / OTHER, so under the
+# Ship tracks kind filter (default: tankers) most GFW lines vanished. The tile step re-types each line from the SAME
+# MMSI → type-over-time lookup the NOAA bake uses (lib/ships/typeLookup.js, served at /api/ships?op=typeLookup):
+# only when exactly one type is known for that MMSI during the line's own time span, never for an MMSI shared by
+# two vessels (a: 1) or with conflicting sources (x: 1). Otherwise GFW's type stays. The line keeps vtype (GFW's own).
+GROUP_KIND = {'cargo': 'cargo', 'tanker': 'tanker', 'passenger': 'passenger', 'fishing': 'fishing', 'tug_tow': 'tug',
+              'port_service': 'tug', 'recreational': 'pleasure', 'government': 'other', 'research': 'other',
+              'offshore': 'other', 'naval': 'other', 'other': 'other'}
+
+
+class ShipTypes:
+    def __init__(self, lookup):
+        self.m = lookup or {}
+        self.stats = Counter()
+
+    @classmethod
+    def load(cls, src):
+        if not src:
+            return cls(None)
+        if src.startswith('http'):
+            hdr = {'User-Agent': 'earthatlas-bake/1.0 (+https://earthatlas.org)', 'Accept-Encoding': 'gzip'}
+            if os.environ.get('CRON_SECRET'):          # the op is secret-locked (api/ships.js BAKE_OPS)
+                hdr['Authorization'] = f"Bearer {os.environ['CRON_SECRET']}"
+            req = urllib.request.Request(src, headers=hdr)
+            with urllib.request.urlopen(req, timeout=300) as r:
+                body = r.read()
+                if r.headers.get('Content-Encoding') == 'gzip':
+                    body = gzip.decompress(body)
+            d = json.loads(body)
+        else:
+            d = json.load(open(src))
+        print(f'type lookup: {len(d.get("mmsi", {}))} MMSIs ({d.get("meta", {}).get("generated_at")})', flush=True)
+        return cls(d.get('mmsi'))
+
+    @staticmethod
+    def _secs(iso):
+        return None if iso is None else calendar.timegm(time.strptime(iso[:19], '%Y-%m-%dT%H:%M:%S'))
+
+    def apply(self, pr):
+        if not self.m or 'mmsi' not in pr:
+            return
+        kinds = set()
+        for e in self.m.get(str(pr['mmsi']), []):
+            f, t = self._secs(e.get('f')), self._secs(e.get('t'))
+            if (f is not None and f > pr['t1']) or (t is not None and t < pr['t0']):
+                continue
+            if e.get('a') or e.get('x') or not e.get('g'):
+                kinds.add(None); continue
+            kinds.add(GROUP_KIND.get(e['g'], 'other'))
+        if len(kinds) == 1 and None not in kinds:
+            k = kinds.pop()
+            self.stats['retyped' if k != pr.get('kind') else 'confirmed'] += 1
+            pr['kind'] = k
+        else:
+            self.stats['gfw_type_kept'] += 1
+
+
 def cmd_tile(a):
     wd = os.path.join(WORK, a.month)
     parts = sorted(glob.glob(os.path.join(wd, '*.ndjson.gz')))
@@ -181,11 +238,13 @@ def cmd_tile(a):
     nd = os.path.join(od, 'tracks.ndjson')
     shards = [[] for _ in range(PACK_SHARDS)]
     n_feat, vessels, est1 = 0, set(), 0
+    typer = ShipTypes.load(os.environ.get('GFW_TYPE_LOOKUP'))
     with open(nd, 'w') as fh:
         for p in parts:
             for line in gzip.open(p, 'rt'):
-                fh.write(line)
                 f = json.loads(line); pr = f['properties']
+                typer.apply(pr)
+                fh.write(json.dumps(f, separators=(',', ':')) + '\n')
                 n_feat += 1; vessels.add(pr['vid']); est1 += pr.get('est', 0)
                 if 'mmsi' in pr:
                     cs = f['geometry']['coordinates']
@@ -213,7 +272,7 @@ def cmd_tile(a):
                     source='Global Fishing Watch 4Wings presence, HOURLY, HIGH (0.01°), group-by VESSEL_ID; CC BY-NC 4.0',
                     rules=L.RULES, areas=sorted({x for g in groups for x in g['areas']}),
                     noaa_excluded=groups[0]['noaa_excluded'] if groups else [],
-                    stats=dict(lines=n_feat, estimated_features=est1, vessels=len(vessels)),
+                    stats=dict(lines=n_feat, estimated_features=est1, vessels=len(vessels), ship_types=dict(typer.stats)),
                     groups={g['group']: dict(load=g['load'], route=g['route'], secs=g['secs']) for g in groups},
                     pmtiles_bytes=os.path.getsize(os.path.join(od, 'tracks.pmtiles')), pack=dict(shards=PACK_SHARDS, bytes=os.path.getsize(pk)),
                     secs=round(time.time() - t0))

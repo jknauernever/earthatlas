@@ -60,6 +60,9 @@ import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
 import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
+import { typeLookup } from '../lib/ships/typeLookup.js'
+import { timingSafeEqual } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 
 const S = DEFAULT_SCHEMA
 
@@ -84,9 +87,21 @@ async function hasTrack(mmsi, month) {
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_TOKEN, { minIntervalMs: 0, log: () => {} }) : null)
 
+// Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
+// only with the CRON_SECRET bearer the GitHub bakes hold; browsers and everyone else get 401 and never reach the DB.
+const BAKE_OPS = new Set(['typeLookup'])
+function bakeAuthorized(req) {
+  const secret = process.env.CRON_SECRET
+  const auth = String(req.headers['authorization'] || '')
+  if (!secret || !auth.startsWith('Bearer ')) return false
+  const a = Buffer.from(auth.slice(7)), b = Buffer.from(secret)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 export default async function handler(req, res) {
   const p = new URL(req.url, 'http://localhost').searchParams
   const op = p.get('op')
+  if (BAKE_OPS.has(op) && !bakeAuthorized(req)) return send(res, 401, { error: 'Unauthorized' })
   let q
   try {
     const sql = shipsHttp()
@@ -102,6 +117,16 @@ export default async function handler(req, res) {
       return send(res, 200, { query: text, kinds, results: r.results, type: r.type, total: r.total, capped: r.capped || false })
     }
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
+    //   /api/ships?op=typeLookup  (CRON_SECRET bearer only)  → MMSI → EarthAtlas type over time (lib/ships/typeLookup.js), the same
+    //                                               lookup the NOAA track bake uses; the GFW track bake re-types its lines with it
+    if (op === 'typeLookup') {   // gzipped: the whole table is MBs and Vercel caps a function response at 4.5 MB
+      const body = gzipSync(JSON.stringify(await typeLookup(q, S)))
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.setHeader('Content-Encoding', 'gzip')
+      res.setHeader('Cache-Control', 'private, no-store')
+      return res.end(body)
+    }
     //   /api/ships?op=classes                     → { classes: [{ group, class, label, n }] }  (EarthAtlas kinds of ship, counts)
     //   /api/ships?op=classMmsis&classes=ferry,…   → { vessels, mmsis: [...] }  (a tracks filter for those kinds)
     if (op === 'classes') return send(res, 200, { classes: (await classIndex(q, S)).tally }, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')

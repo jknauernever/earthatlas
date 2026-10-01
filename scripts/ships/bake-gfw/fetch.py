@@ -84,7 +84,8 @@ def report(tok, box, day, span, stats):
                         return body, h
                     raise TooBig(f'last-report error: {body[:200]!r}')
                 raise TooBig('last-report never finished')
-            if e.code in (429, 500, 502, 503):
+            # 520–523: Cloudflare in front of GFW lost the origin for a moment (2026-10-01 killed July's fetch); retry.
+            if e.code in (429, 500, 502, 503, 520, 521, 522, 523):
                 time.sleep(30 * (attempt + 1)); continue
             raise RuntimeError(f'http {e.code}: {e.read()[:300]!r}')
         except (TimeoutError, OSError):

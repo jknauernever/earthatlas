@@ -104,6 +104,56 @@ jobs:
           EOF
           cat "$GITHUB_OUTPUT"
 
+  # Coastline + tidal-flats data, built ONCE per stage and cached (2026-10-01: every route job used to build it on a
+  # cache miss, so three months hit Overpass at once and one failed). Runs beside the fetch jobs, so it adds no time.
+  water:
+    needs: plan
+    if: needs.plan.outputs.months != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GFW_LAND_DIR: ${{ github.workspace }}/land
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore coastline data (OSM land polygons + Alaska DNR + NRCan NHN + OSM tidal flats)
+        id: water
+        uses: actions/cache@v4
+        with:
+          path: |
+            land/osm
+            land/extras-v1.pkl
+            land/flats-v1.pkl
+          key: gfw-water-v2-${{ env.STAGE }}
+      - uses: actions/setup-python@v5
+        if: steps.water.outputs.cache-hit != 'true'
+        with: { python-version: '3.12' }
+      - name: Install tools
+        if: steps.water.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq gdal-bin
+          pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      # Overpass answers already downloaded survive a failed attempt, so a rerun resumes instead of starting over.
+      - name: Restore tidal-flats downloads (earlier attempts)
+        if: steps.water.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: overpass-flats
+          key: gfw-flats-raw-${{ env.STAGE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: gfw-flats-raw-${{ env.STAGE }}-
+      - name: Prepare coastline data (cache miss only, ~25 min + Overpass ~1.5 h for pacnw)
+        if: steps.water.outputs.cache-hit != 'true'
+        run: |
+          cd scripts/ships/bake-gfw
+          mkdir -p "$GITHUB_WORKSPACE/overpass-flats"
+          python3 prepare_water.py --sources "$RUNNER_TEMP/water-sources"
+          python3 fetch_flats.py --stage "$STAGE" --raw "$GITHUB_WORKSPACE/overpass-flats"
+      - name: Keep tidal-flats downloads for a rerun
+        if: always() && steps.water.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: overpass-flats
+          key: gfw-flats-raw-${{ env.STAGE }}-${{ github.run_id }}-${{ github.run_attempt }}
+
   fetch:
     needs: plan
     if: needs.plan.outputs.months != '[]'
@@ -142,7 +192,7 @@ jobs:
           retention-days: 7
 
   route:
-    needs: [plan, fetch]
+    needs: [plan, fetch, water]
     runs-on: ubuntu-latest
     timeout-minutes: 340
     strategy:
@@ -161,21 +211,15 @@ jobs:
       - run: |
           sudo apt-get update -q && sudo apt-get install -yq gdal-bin
           pip install --quiet numpy scipy scikit-image shapely pyshp pillow
-      - name: Restore coastline data (OSM land polygons + Alaska DNR + NRCan NHN + OSM tidal flats)
-        id: water
-        uses: actions/cache@v4
+      - name: Restore coastline data (built by the water job)
+        uses: actions/cache/restore@v4
         with:
           path: |
             land/osm
             land/extras-v1.pkl
             land/flats-v1.pkl
           key: gfw-water-v2-${{ env.STAGE }}
-      - name: Prepare coastline data (cache miss only, ~25 min + Overpass ~1.5 h for pacnw)
-        if: steps.water.outputs.cache-hit != 'true'
-        run: |
-          cd scripts/ships/bake-gfw
-          python3 prepare_water.py --sources "$RUNNER_TEMP/water-sources"
-          python3 fetch_flats.py --stage "$STAGE" --raw "$RUNNER_TEMP/overpass-flats"
+          fail-on-cache-miss: true
       - name: Restore cumulative traffic rasters (earlier runs)
         uses: actions/cache/restore@v4
         with:

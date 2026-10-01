@@ -37,6 +37,8 @@ def query(bbox):
             f'nwr["tidal"="yes"]["natural"~"^({"|".join(TIDAL_NATURAL)})$"]({b}););out geom;')
 
 
+# Two public mirrors, more patient retries: one busy or unreachable server no longer fails the bake (2026-10-01: overpass-api.de 504s /
+# network unreachable from a GitHub runner for ~2 h failed a route job).
 MIRRORS = [URL, 'https://overpass.kumi.systems/api/interpreter']
 
 
@@ -47,7 +49,7 @@ def fetch(bbox, raw_dir, depth=0):
     if os.path.exists(f):
         return json.load(gzip.open(f)).get('elements', [])
     data = urllib.parse.urlencode({'data': query(bbox)}).encode()
-    for attempt in range(4):
+    for attempt in range(6):
         try:
             with urllib.request.urlopen(urllib.request.Request(MIRRORS[attempt % len(MIRRORS)], data=data, headers={'User-Agent': UA}), timeout=400) as r:
                 body = r.read()
@@ -59,7 +61,7 @@ def fetch(bbox, raw_dir, depth=0):
             return j.get('elements', [])
         except Exception as e:
             print(f'  retry {key}: {e}', flush=True)
-            time.sleep(15 * (attempt + 1))
+            time.sleep(min(30 * (attempt + 1), 120))
     if depth >= 3:
         raise RuntimeError(f'overpass failed for {bbox}')
     w, s_, e, n = bbox

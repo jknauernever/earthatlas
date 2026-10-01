@@ -1,0 +1,139 @@
+# Routes, tiles and publishes ONE month of GFW hourly track lines (scripts/ships/bake-gfw/), started by
+# ships-gfw-tracks-bake.yml's fetch job as soon as that month's download finishes, so it runs while the
+# next month downloads (2026-10-01). Reads the fetching run's artifacts (raw-<month>, traffic-*).
+# Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET), never a Blob token.
+name: ships-gfw-month
+run-name: ships-gfw-month ${{ inputs.month }} (${{ inputs.stage }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      month: { description: 'YYYY-MM', required: true }
+      stage: { description: 'Area set (areas.py)', default: pacnw }
+      source_run: { description: 'Run id of the ships-gfw-tracks-bake run that fetched it', required: true }
+      through: { description: 'fetched_through to record when this month publishes (the newest month only)', default: '' }
+
+concurrency:
+  group: ships-gfw-month-${{ inputs.stage }}-${{ inputs.month }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  STAGE: ${{ inputs.stage }}
+  MONTH: ${{ inputs.month }}
+
+jobs:
+  # Its own job so a long wait (only on the very first build) never eats into routing's time limit.
+  water:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for the coastline data (built once per stage by the fetching run's water job)
+        run: |
+          for i in $(seq 1 345); do
+            [ "$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)" != "0" ] && exit 0
+            sleep 60
+          done
+          echo "coastline cache gfw-water-v2-$STAGE never appeared"; exit 1
+
+  route:
+    needs: water
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      GFW_RAW: ${{ github.workspace }}/raw
+      GFW_WORK: ${{ github.workspace }}/work
+      GFW_LAND_DIR: ${{ github.workspace }}/land
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: |
+          sudo apt-get update -q && sudo apt-get install -yq gdal-bin
+          pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      - name: Restore coastline data
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            land/osm
+            land/extras-v1.pkl
+            land/flats-v1.pkl
+          key: gfw-water-v2-${{ env.STAGE }}
+          fail-on-cache-miss: true
+      - name: Restore cumulative traffic rasters (earlier runs)
+        uses: actions/cache/restore@v4
+        with:
+          path: land/traffic-v1
+          key: gfw-traffic-v1-none
+          restore-keys: gfw-traffic-v1-
+      - name: This backfill's traffic rasters so far
+        uses: actions/download-artifact@v4
+        with:
+          pattern: traffic-*
+          path: land/traffic-v1
+          merge-multiple: true
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-${{ inputs.month }}
+          path: raw
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+      - name: Route ${{ inputs.month }} / ${{ inputs.stage }}
+        run: |
+          cd scripts/ships/bake-gfw
+          tiles=$(python3 -c "import areas; print(','.join(t[0] for t in areas.stage('$STAGE')))")
+          python3 bake.py route --month "$MONTH" --stage "$STAGE" --areas "$tiles" --group "$STAGE" --workers 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: part-${{ inputs.month }}
+          path: work
+          retention-days: 7
+
+  publish:
+    needs: route
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      GFW_WORK: ${{ github.workspace }}/work
+      GFW_OUT: ${{ github.workspace }}/out
+      FETCHED_THROUGH: ${{ inputs.through }}
+      EXPECT_MONTHS: '["${{ inputs.month }}"]'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          name: part-${{ inputs.month }}
+          path: work
+      - name: Tile ${{ inputs.month }}
+        run: cd scripts/ships/bake-gfw && python3 bake.py tile --month "$MONTH"
+      - name: Upload ${{ inputs.month }} to Blob and add it to the index
+        run: node scripts/ships/bake-gfw/publish.mjs "$MONTH" "$GFW_OUT"

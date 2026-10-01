@@ -51,23 +51,42 @@ async function upload(pathname, file, contentType) {
   }
 }
 
+async function readIndex(pathname, tileset) {
+  const cur = await fetch(`${BLOB_BASE}/${pathname}?t=${Date.now()}`, { cache: 'no-store' })
+  if (cur.ok) return cur.json()
+  if (cur.status !== 404) throw new Error(`reading ${pathname}: HTTP ${cur.status}`)
+  return { version: tileset, months: {} }
+}
+
+// Months now publish one at a time from separate runs (.github/workflows/ships-gfw-month.yml, 2026-10-01), so two runs
+// can update the index at nearly the same moment and one could drop the other's month. Read → merge → write, then
+// re-read: if any of our months is missing (another writer won), merge again. Converges; months are never removed here.
 async function writeIndex(entries) {
   const tileset = entries[0].tileset
   if (entries.some((e) => e.tileset !== tileset)) throw new Error('entries span several tilesets')
   const pathname = `ships/tracks/${tileset}/index.json`
-  let index = { version: tileset, months: {} }
-  const cur = await fetch(`${BLOB_BASE}/${pathname}?t=${Date.now()}`, { cache: 'no-store' })
-  if (cur.ok) index = await cur.json()
-  else if (cur.status !== 404) throw new Error(`reading ${pathname}: HTTP ${cur.status}`)
-  for (const e of entries) index.months[e.month] = e.entry
-  index.months = Object.fromEntries(Object.entries(index.months).sort(([a], [b]) => a.localeCompare(b)))
-  index.updated = new Date().toISOString()
-  // The weekly run starts from fetched_through − 5 days; only advance it when every planned month published.
+  const ours = entries.map((e) => e.month)
+  // The daily run starts from fetched_through − 5 days; only advance it when every planned month published, never move it back.
   const expect = JSON.parse(process.env.EXPECT_MONTHS || '[]')
-  if (process.env.FETCHED_THROUGH && expect.every((m) => entries.some((e) => e.month === m))) index.fetched_through = process.env.FETCHED_THROUGH
-  const token = await tokenFor(pathname)
-  await put(pathname, JSON.stringify(index, null, 1), { access: 'public', token, contentType: 'application/json' })
-  console.log(`index ${pathname}: ${Object.keys(index.months).length} months; wrote ${entries.map((e) => e.month).join(' ')}`)
+  const through = process.env.FETCHED_THROUGH && expect.every((m) => ours.includes(m)) ? process.env.FETCHED_THROUGH : null
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    const index = await readIndex(pathname, tileset)
+    for (const e of entries) index.months[e.month] = e.entry
+    index.months = Object.fromEntries(Object.entries(index.months).sort(([a], [b]) => a.localeCompare(b)))
+    index.updated = new Date().toISOString()
+    if (through && !(index.fetched_through && index.fetched_through > through)) index.fetched_through = through
+    const token = await tokenFor(pathname)
+    await put(pathname, JSON.stringify(index, null, 1), { access: 'public', token, contentType: 'application/json' })
+    await new Promise((r) => setTimeout(r, 4000 + Math.random() * 6000))
+    const check = await readIndex(pathname, tileset)
+    const missing = ours.filter((m) => !check.months?.[m] || check.months[m].built !== entries.find((e) => e.month === m).entry.built)
+    if (!missing.length) {
+      console.log(`index ${pathname}: ${Object.keys(check.months).length} months; wrote ${ours.join(' ')}`)
+      return
+    }
+    console.warn(`  index write raced (missing ${missing.join(' ')}), merging again (${attempt})`)
+  }
+  throw new Error('index: could not confirm our months after 8 attempts')
 }
 
 if (args[0] === '--index') {

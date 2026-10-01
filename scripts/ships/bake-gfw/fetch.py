@@ -95,7 +95,7 @@ def report(tok, box, day, span, stats):
 
 def rows_of(body):
     j = json.loads(body)
-    return sum(len(v) for e in j.get('entries', []) for v in e.values())
+    return sum(len(v or []) for e in (j.get("entries") or []) for v in (e or {}).values())   # GFW sends null for an empty area
 
 
 def fetch_piece(tok, area, box, day, span, out, stats, log, budget, part=''):

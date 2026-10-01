@@ -67,9 +67,9 @@ def load(ym, area_names, boxes_excl):
     ident, pts, st = {}, defaultdict(dict), Counter()
     for area in area_names:
         for f in raw_files(area, ym):
-            for e in json.load(gzip.open(f))['entries']:
-                for rows in e.values():
-                    for r in rows:
+            for e in json.load(gzip.open(f)).get('entries') or []:
+                for rows in (e or {}).values():
+                    for r in rows or []:          # GFW sends null for an area with no vessels
                         t = calendar.timegm(time.strptime(r['date'], '%Y-%m-%d %H:%M'))
                         if not a <= t < b:
                             continue

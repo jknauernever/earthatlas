@@ -11,7 +11,7 @@ Minutes instead of hours, and it scales to the US / world stages (pick the extra
 
 Source: OpenStreetMap via Geofabrik extracts (download.geofabrik.de), © OpenStreetMap contributors, ODbL 1.0.
 """
-import argparse, json, os, pickle, subprocess, time, urllib.request
+import argparse, datetime as dt, json, os, pickle, subprocess, time, urllib.error, urllib.request
 import shapely
 from shapely.geometry import shape, box as sbox
 import areas, land
@@ -32,15 +32,27 @@ EXTRACTS = {
 
 
 def download(path, sources):
+    """The -latest file, or else the newest daily dated copy (2026-10-01: Geofabrik's -latest links redirected to
+    themselves / 404 while the dated YYMMDD files served fine)."""
     f = os.path.join(sources, path.replace('/', '_') + '-latest.osm.pbf')
-    if not os.path.exists(f):
-        os.makedirs(sources, exist_ok=True)
-        req = urllib.request.Request(f'{GEOFABRIK}/{path}-latest.osm.pbf', headers={'User-Agent': UA})
-        with urllib.request.urlopen(req, timeout=600) as r, open(f + '.tmp', 'wb') as out:
-            while chunk := r.read(1 << 20):
-                out.write(chunk)
+    if os.path.exists(f):
+        return f
+    os.makedirs(sources, exist_ok=True)
+    today = dt.date.today()
+    names = ['latest'] + [(today - dt.timedelta(days=k)).strftime('%y%m%d') for k in range(0, 8)]
+    for name in names:
+        url = f'{GEOFABRIK}/{path}-{name}.osm.pbf'
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': UA}), timeout=600) as r, open(f + '.tmp', 'wb') as out:
+                while chunk := r.read(1 << 20):
+                    out.write(chunk)
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            print(f'  {url}: {e}', flush=True)
+            continue
         os.replace(f + '.tmp', f)
-    return f
+        print(f'  downloaded {url} ({os.path.getsize(f) / 1e6:.0f} MB)', flush=True)
+        return f
+    raise RuntimeError(f'no Geofabrik extract for {path}')
 
 
 def features(pbf, work):

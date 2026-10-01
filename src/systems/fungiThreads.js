@@ -8,7 +8,7 @@
  * facts. SPUN measures how DENSE the networks are, not their paths or what
  * flows through them. What IS data here: where threads may start and grow.
  * A thread is seeded or extended only with a probability set by SPUN's hyphal
- * density at that spot (the same 0.1° field the popups read), so dense
+ * density at that spot (read from the same ~1 km tiles that paint the map), so dense
  * networks teem with threads, sparse land barely flickers, and masked ground
  * (oceans, deserts, cities) gets none. The paths and pulses are invented.
  *
@@ -21,11 +21,14 @@ import { runWhileAwake } from './activity.js'
 import { getGlobeGeometry } from './globeGeom.js'
 
 // Density → chance a thread may start or keep growing here: none below
-// 3.6 m/cm³ (the lower quarter of mapped land), near 1 in the dense top 5%.
+// 4.1 m/cm³, where the map's pink first becomes visible (fungiData.js
+// HYPHAE_STOPS), so threads only live on ground that is visibly coloured
+// (Josh, 2026-09-30: threads were running across untinted ground); near 1
+// in the dense top 5%.
 // Softer than a smoothstep so middling networks fill in instead of showing
 // lone threads (Josh: "increase the density where there are individual spark
 // lines"), while the densest ground still gets the most.
-const LO = 3.6
+const LO = 4.1
 const HI = 5.7
 const chance = (d) => {
   if (d == null) return 0
@@ -37,10 +40,16 @@ const MAX_THREADS = 1300
 const STEP_PX = 3
 
 export class FungiThreadsLayer {
-  constructor(map, canvas, field) {
+  // getSampler: returns a TileValueSampler (fungiTiles.js) reading the very
+  // tiles that paint the map, so threads match the colour pixel for pixel
+  // (asked lazily: the tiles overlay may arrive after the threads). The 0.1°
+  // field is the fallback when the tiles are unavailable.
+  constructor(map, canvas, field, getSampler) {
     this.map = map
     this.canvas = canvas
     this.field = field
+    this._getSampler = getSampler
+    this.sampler = null
     this.threads = []
     this.visible = true
     this._moving = false
@@ -48,12 +57,19 @@ export class FungiThreadsLayer {
     this._geo = null
     this._geoAt = 0
     this._onMoveStart = () => { this._moving = true; this.threads = []; this._clear() }
-    this._onMoveEnd = () => { this._moving = false; this._geo = null }
+    this._onMoveEnd = () => { this._moving = false; this._geo = null; this.sampler?.prepare(map) }
+    this._attachSampler()
     this._onResize = () => { this._geo = null }
     map.on('movestart', this._onMoveStart)
     map.on('moveend', this._onMoveEnd)
     map.on('resize', this._onResize)
     this._stop = runWhileAwake((now) => this._frame(now))
+  }
+
+  _attachSampler() {
+    if (this.sampler || !this._getSampler) return
+    this.sampler = this._getSampler() || null
+    this.sampler?.prepare(this.map)
   }
 
   setVisible(v) {
@@ -73,6 +89,7 @@ export class FungiThreadsLayer {
     let ll
     try { ll = this.map.unproject([x, y]) } catch { return null }
     if (!ll || !Number.isFinite(ll.lat)) return null
+    if (this.sampler) return this.sampler.value(ll.lng, ll.lat)
     return this.field.sampleScalar(ll.lng, ll.lat)?.value ?? null
   }
 
@@ -165,6 +182,7 @@ export class FungiThreadsLayer {
     const dt = Math.min(0.1, this._last ? (now - this._last) / 1000 : 0.016)
     this._last = now
     if (!this.visible || this._moving) return
+    if (!this.sampler) this._attachSampler()
     if (!this._geo || now - this._geoAt > 2000) {
       this._geo = getGlobeGeometry(this.map, w, h) || { cx: w / 2, cy: h / 2, r: Infinity }
       this._geoAt = now

@@ -2,11 +2,11 @@
 //
 //   /api/spun-tiles?m=<measure>&z=<z>&x=<x>&y=<y>&v=<bake>
 //
-// One PMTiles pyramid per map (scripts/bake-spun/tiles.py), z0-z6, one grey
-// byte per pixel carrying the VALUE (0 = no prediction); the browser colours
-// it with Mapbox `raster-color`. Same shape as api/rain-tiles.js (range-read
-// the archive, hand back the stored image; Mapbox's native pmtiles source
-// breaks under Vite's dev pipeline). Tiles never change within a bake, so the
+// One PMTiles pyramid per map (scripts/bake-spun/tiles.py), z0-z8, clipped to
+// land, one grey byte per pixel carrying the VALUE (0 = no prediction); the
+// browser colours it with Mapbox `raster-color`. Same shape as
+// api/rain-tiles.js (range-read the archive, hand back the stored image;
+// Mapbox's native pmtiles source breaks under Vite's dev pipeline). Tiles never change within a bake, so the
 // CDN caches hard and a new bake busts it through `v`.
 //
 // Local dev range-reads public/dev-data; production reads Blob.
@@ -21,8 +21,11 @@ const BLOB_PUBLIC_BASE =
 const MEASURES = new Set(['hyphae', 'am-rich', 'ecm-rich', 'am-rare', 'am-rare-emp', 'ecm-rare', 'ecm-rare-emp', 'am-hot', 'ecm-hot'])
 // Ocean and masked land are never stored; they must still decode (see rain-tiles).
 const EMPTY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=', 'base64')
-const localPath = (m) => resolve(process.cwd(), `public/dev-data/systems/spun-${m}.pmtiles`)
-const blobUrl = (m) => `${BLOB_PUBLIC_BASE}/systems/spun-${m}.pmtiles`
+// The pyramid depth is in the file name (tiles.py): a re-bake never overwrites
+// a live archive under the CDN's cache.
+const FILE = (m) => `spun-${m}-z8.pmtiles`
+const localPath = (m) => resolve(process.cwd(), `public/dev-data/systems/${FILE(m)}`)
+const blobUrl = (m) => `${BLOB_PUBLIC_BASE}/systems/${FILE(m)}`
 
 class LocalFileSource {
   constructor(path) { this.fd = openSync(path, 'r'); this.path = path }

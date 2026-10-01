@@ -2399,7 +2399,7 @@ export default function SystemsApp() {
     loadFungiField('hyphae')
       .then((field) => {
         if (cancelled || inst.fungiThreads || !canvasEls.current.fungithreads) return
-        inst.fungiThreads = new FungiThreadsLayer(map, canvasEls.current.fungithreads, field)
+        inst.fungiThreads = new FungiThreadsLayer(map, canvasEls.current.fungithreads, field, () => instancesRef.current.fungiTiles?.sampler('hyphae'))
       })
       .catch(() => { /* no field, no threads: the map itself still shows */ })
     return () => { cancelled = true }

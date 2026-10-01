@@ -8,7 +8,9 @@
  * points at them, and spun-tiles.json (the tiles index) last. A static
  * research product, so a short CDN max-age just keeps re-bakes from going stale.
  *
- * Usage: node --env-file=.env.blob.local scripts/bake-spun/upload.mjs
+ * Usage: node --env-file=.env.blob.local scripts/bake-spun/upload.mjs [file ...]
+ * With file names, uploads only those (e.g. the new pyramids before the code
+ * that reads them ships, and spun-tiles.json after).
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -18,7 +20,8 @@ import { put } from '@vercel/blob'
 const DIR = 'public/dev-data/systems'
 if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error('BLOB_READ_WRITE_TOKEN missing (use --env-file=.env.blob.local)')
 
-const files = readdirSync(DIR).filter((f) => f.startsWith('spun-'))
+const only = process.argv.slice(2)
+const files = only.length ? only : readdirSync(DIR).filter((f) => f.startsWith('spun-'))
 const rank = (f) => (f === 'spun-tiles.json' ? 3 : f.endsWith('-meta.json') ? 2 : 1)
 files.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
 const type = (f) => (f.endsWith('.json') ? 'application/json' : 'application/octet-stream')

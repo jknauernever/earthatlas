@@ -1,0 +1,56 @@
+# Builds the coastline + tidal-flats data the GFW track routing needs, ONCE per stage, into the Actions cache
+# (gfw-water-v2-<stage>) that ships-gfw-month.yml waits for. Tidal flats come from Geofabrik regional OSM extracts
+# (scripts/ships/bake-gfw/fetch_flats_pbf.py, minutes) instead of the Overpass API (3+ hours for pacnw; 2026-10-01).
+# Run it by hand (Run workflow) or let ships-gfw-tracks-bake.yml's water job build it on a cache miss.
+name: ships-gfw-water
+run-name: ships-gfw-water (${{ inputs.stage }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage: { description: 'Area set (areas.py)', default: pacnw }
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  STAGE: ${{ inputs.stage }}
+
+jobs:
+  water:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GFW_LAND_DIR: ${{ github.workspace }}/land
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Already built?
+        id: have
+        run: |
+          n=$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)
+          echo "built=$([ "$n" != "0" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        if: steps.have.outputs.built != 'true'
+        with: { python-version: '3.12' }
+      - name: Install tools
+        if: steps.have.outputs.built != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq gdal-bin osmium-tool
+          pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      - name: Coastlines (OSM land polygons + Alaska DNR + NRCan NHN)
+        if: steps.have.outputs.built != 'true'
+        run: cd scripts/ships/bake-gfw && python3 prepare_water.py --sources "$RUNNER_TEMP/water-sources"
+      - name: Tidal flats from Geofabrik extracts
+        if: steps.have.outputs.built != 'true'
+        run: cd scripts/ships/bake-gfw && python3 fetch_flats_pbf.py --stage "$STAGE" --sources "$RUNNER_TEMP/geofabrik"
+      - name: Save coastline data
+        if: steps.have.outputs.built != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            land/osm
+            land/extras-v1.pkl
+            land/flats-v1.pkl
+          key: gfw-water-v2-${{ env.STAGE }}

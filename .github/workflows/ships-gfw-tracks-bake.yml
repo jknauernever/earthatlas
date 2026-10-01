@@ -148,7 +148,7 @@ jobs:
       - name: Install tools
         if: steps.have.outputs.built != 'true' && steps.wait.outputs.built != 'true'
         run: |
-          sudo apt-get update -q && sudo apt-get install -yq gdal-bin
+          sudo apt-get update -q && sudo apt-get install -yq gdal-bin osmium-tool
           pip install --quiet numpy scipy scikit-image shapely pyshp pillow
       # Overpass answers already downloaded survive a failed attempt, so a rerun resumes instead of starting over.
       - name: Restore tidal-flats downloads (earlier attempts)
@@ -158,13 +158,14 @@ jobs:
           path: overpass-flats
           key: gfw-flats-raw-${{ env.STAGE }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: gfw-flats-raw-${{ env.STAGE }}-
-      - name: Prepare coastline data (~25 min + Overpass ~1.5 h+ for pacnw)
+      - name: Prepare coastline data (~25 min coastlines + a few min tidal flats)
         if: steps.have.outputs.built != 'true' && steps.wait.outputs.built != 'true'
         run: |
           mkdir -p "$GITHUB_WORKSPACE/overpass-flats"
           cd scripts/ships/bake-gfw
           python3 prepare_water.py --sources "$RUNNER_TEMP/water-sources"
-          python3 fetch_flats.py --stage "$STAGE" --raw "$GITHUB_WORKSPACE/overpass-flats"
+          # Tidal flats from Geofabrik extracts (minutes); the Overpass route (fetch_flats.py) took 3+ hours (2026-10-01).
+          python3 fetch_flats_pbf.py --stage "$STAGE" --sources "$RUNNER_TEMP/geofabrik"
       - name: Keep tidal-flats downloads for a rerun
         if: always() && steps.have.outputs.built != 'true' && steps.wait.outputs.built != 'true'
         uses: actions/cache/save@v4

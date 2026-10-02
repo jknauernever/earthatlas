@@ -883,6 +883,19 @@ export default defineConfig(({ mode }) => {
   server: {
     port: 5173,
     open: true,
+    // Mirrors the /eapipe PostHog reverse-proxy rewrites in vercel.json.
+    proxy: {
+      '^/eapipe/(static|array)/': {
+        target: 'https://us-assets.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/eapipe/, ''),
+      },
+      '/eapipe': {
+        target: 'https://us.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/eapipe/, ''),
+      },
+    },
   },
   }
 })

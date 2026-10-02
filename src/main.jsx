@@ -112,7 +112,11 @@ if (sentryDsn && import.meta.env.PROD) {
 const phKey = import.meta.env.VITE_POSTHOG_KEY
 if (phKey) {
   posthog.init(phKey, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
+    // Same-origin reverse proxy (vercel.json /eapipe rewrites; vite.config.js
+    // in dev) so ad blockers don't drop events sent straight to posthog.com.
+    // Deliberately not named /ingest or /posthog — blocklists match those.
+    api_host: import.meta.env.VITE_POSTHOG_HOST || '/eapipe',
+    ui_host: 'https://us.posthog.com',
     person_profiles: 'identified_only',
     capture_pageview: true,
     autocapture: true,

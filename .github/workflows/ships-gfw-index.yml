@@ -1,0 +1,38 @@
+# The ONE writer of the GFW track index (ships/tracks/gfw-v1/index.json): rebuilds it from every month's published
+# manifest (scripts/ships/bake-gfw/publish.mjs --rebuild-index), so concurrent month publishes can't lose each other's
+# entries (2026-10-02). One run at a time; a newer request replaces a waiting one, and every run rebuilds everything.
+# Then starts the GFW ship-records import (ships-gfw-identities.yml), which reads this index.
+name: ships-gfw-index
+
+on:
+  workflow_dispatch:
+    inputs:
+      through: { description: 'fetched_through to record (only moves forward); empty keeps the current one', default: '' }
+
+concurrency:
+  group: ships-gfw-index
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      FETCHED_THROUGH: ${{ inputs.through }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild the index from the month manifests
+        run: node scripts/ships/bake-gfw/publish.mjs --rebuild-index gfw-v1
+      - name: Start the ship-records import
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ships-gfw-identities.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

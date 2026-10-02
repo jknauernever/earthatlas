@@ -161,11 +161,12 @@ jobs:
         run: cd scripts/ships/bake-gfw && python3 bake.py vessels --month "$MONTH" --stage "$STAGE"
       - name: Tile ${{ inputs.month }}
         run: cd scripts/ships/bake-gfw && python3 bake.py tile --month "$MONTH"
-      - name: Upload ${{ inputs.month }} to Blob and add it to the index
-        run: node scripts/ships/bake-gfw/publish.mjs "$MONTH" "$GFW_OUT"
-      # Every ship in the published (completed) months becomes / updates an EarthAtlas ship record. One import at a time
-      # (its own workflow, concurrency group); a newer request replaces a waiting one, and each covers all months.
-      - name: Start the ship-records import
+      # Upload only: the index is written by ONE job (ships-gfw-index.yml) that rebuilds it from every month's manifest
+      # (2026-10-02: 21 month runs writing the index at once lost each other's updates). That job then starts the
+      # ship-records import.
+      - name: Upload ${{ inputs.month }} to Blob
+        run: node scripts/ships/bake-gfw/publish.mjs "$MONTH" "$GFW_OUT" --entry-out "$RUNNER_TEMP/entry.json"
+      - name: Rebuild the index (and then the ship records)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ships-gfw-identities.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+        run: gh workflow run ships-gfw-index.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f through="$FETCHED_THROUGH"

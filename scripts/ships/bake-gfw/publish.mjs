@@ -90,7 +90,36 @@ async function writeIndex(entries) {
   throw new Error('index: could not confirm our months after 8 attempts')
 }
 
-if (args[0] === '--index') {
+// The ONE index writer (2026-10-02: 21 month runs publishing at once lost each other's index updates). Rebuilds the whole
+// index from every month's published manifest (fixed paths, no random suffix), so a run never depends on what another
+// wrote; .github/workflows/ships-gfw-index.yml runs it one at a time. fetched_through only ever moves forward.
+async function rebuildIndex(tileset, first = '2025-01') {
+  const pathname = `ships/tracks/${tileset}/index.json`
+  const cur = await readIndex(pathname, tileset)
+  const base = `${BLOB_BASE}/ships/tracks/${tileset}`
+  const months = {}
+  const end = new Date(); end.setUTCDate(1)
+  for (let d = new Date(`${first}-01T00:00:00Z`); d <= end; d.setUTCMonth(d.getUTCMonth() + 1)) {
+    const ym = d.toISOString().slice(0, 7)
+    const r = await fetch(`${base}/${ym}/manifest.json?t=${Date.now()}`, { cache: 'no-store' })
+    if (!r.ok) { if (r.status !== 404) throw new Error(`manifest ${ym}: HTTP ${r.status}`); continue }
+    const m = await r.json()
+    months[ym] = { tiles: `${base}/${ym}/tracks.pmtiles`, pack: `${base}/${ym}/tracks.pack`, manifest: `${base}/${ym}/manifest.json`,
+      ...(m.vessels ? { vessels_url: `${base}/${ym}/vessels.json.gz` } : {}),
+      built: m.built, rules: m.rules?.version, areas: m.areas, noaa_excluded: m.noaa_excluded, pmtiles_bytes: m.pmtiles_bytes,
+      pack_bytes: m.pack?.bytes, lines: m.stats?.lines, vessels: m.stats?.vessels }
+  }
+  const thr = [cur.fetched_through, process.env.FETCHED_THROUGH].filter(Boolean).sort().pop()
+  const index = { version: tileset, months, updated: new Date().toISOString(), ...(thr ? { fetched_through: thr } : {}) }
+  if (process.env.DRY_RUN) { console.log(JSON.stringify(Object.fromEntries(Object.entries(months).map(([k, v]) => [k, [v.built, v.lines, v.vessels, !!v.vessels_url]])))); console.log('DRY_RUN: not written', thr); return }
+  const token = await tokenFor(pathname)
+  await put(pathname, JSON.stringify(index, null, 1), { access: 'public', token, contentType: 'application/json' })
+  console.log(`index ${pathname} rebuilt: ${Object.keys(months).length} months (${Object.keys(months)[0]} … ${Object.keys(months).pop()}), fetched_through ${thr}`)
+}
+
+if (args[0] === '--rebuild-index') {
+  await rebuildIndex(args[1] || 'gfw-v1')
+} else if (args[0] === '--index') {
   const dir = resolve(args[1] || '.')
   const files = readdirSync(dir, { recursive: true }).filter((f) => String(f).endsWith('.json'))
   const entries = files.map((f) => JSON.parse(readFileSync(resolve(dir, String(f)), 'utf8')))

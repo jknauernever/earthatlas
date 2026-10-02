@@ -64,13 +64,14 @@ export function shapeKey(group, cls) {
   return 'other'
 }
 
-const TYPICAL_M = { tanker: 180, cargo: 180, cruise: 250, ferry: 100, fishing: 25, tug: 30, sail: 12, other: 60 }
+// Used when the ship's length isn't known: pleasure / sailing craft default small (Josh 2026-10-02, LINNEA ROSE).
+const TYPICAL_M = { tanker: 180, cargo: 180, cruise: 250, ferry: 100, fishing: 25, tug: 30, sail: 8, other: 60 }
 
 /** → { svg, w, h, key } for the marker element. lengthM: the ship's length when known. */
 export function shipIcon({ group, cls, lengthM }) {
   const key = shapeKey(group, cls)
   const L = Number(lengthM) > 2 && Number(lengthM) < 500 ? Number(lengthM) : TYPICAL_M[key]
-  const h = Math.round(1.5 * Math.max(40, Math.min(80, 28 + 10 * Math.log2(L / 8))))   // small craft 60 px … 300 m ≈ 120 px (Josh: +50%)
+  const h = Math.round(Math.max(30, Math.min(120, 1.5 * (28 + 10 * Math.log2(L / 8)))))   // 8 m ≈ 42 px … 25 m ≈ 67 … 300 m+ = 120 px
   const w = Math.round(h * 40 / 60)
   const svg = `<svg viewBox="0 0 40 60" width="${w}" height="${h}" aria-hidden="true"><g stroke="${K}" stroke-width="1.1" stroke-linejoin="round">${shapes[key]}</g></svg>`
   return { svg, w, h, key }

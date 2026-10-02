@@ -12,6 +12,7 @@ on:
       stage: { description: 'Area set (areas.py)', default: pacnw }
       source_run: { description: 'Run id of the ships-gfw-tracks-bake run that fetched it', required: true }
       through: { description: 'fetched_through to record when this month publishes (the newest month only)', default: '' }
+      route_run: { description: 'Optional: re-tile + publish only, reusing the routed lines (part-<month>) of this earlier ships-gfw-month run', default: '' }
 
 concurrency:
   group: ships-gfw-month-${{ inputs.stage }}-${{ inputs.month }}
@@ -28,6 +29,7 @@ env:
 jobs:
   # Its own job so a long wait (only on the very first build) never eats into routing's time limit.
   water:
+    if: inputs.route_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
@@ -43,6 +45,7 @@ jobs:
 
   route:
     needs: water
+    if: inputs.route_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 345
     env:
@@ -99,6 +102,8 @@ jobs:
 
   publish:
     needs: route
+    # After a route in this run, or (route_run) straight from an earlier run's routed lines: tile changes need no re-route.
+    if: always() && (needs.route.result == 'success' || inputs.route_run != '')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -136,6 +141,8 @@ jobs:
         with:
           name: part-${{ inputs.month }}
           path: work
+          run-id: ${{ inputs.route_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Tile ${{ inputs.month }}
         run: cd scripts/ships/bake-gfw && python3 bake.py tile --month "$MONTH"
       - name: Upload ${{ inputs.month }} to Blob and add it to the index

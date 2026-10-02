@@ -62,9 +62,15 @@ def raw_files(area, ym):
     return sorted(out)
 
 
+IDV_FIELDS = [('mmsi', 'mmsi'), ('name', 'shipName'), ('callsign', 'callsign'), ('imo', 'imo'), ('flag', 'flag'), ('gfw_type', 'vesselType')]
+
+
 def load(ym, area_names, boxes_excl):
     a, b = month_bounds(ym)
     ident, pts, st = {}, defaultdict(dict), Counter()
+    # Every identity value each vessel's rows carried this month, with first/last hour seen (vessels.json, the GFW ship
+    # records import, lib/ships/gfwAis.js). Taken before the NOAA-area drop: the ship broadcast it either way.
+    idv = defaultdict(lambda: defaultdict(dict))
     for area in area_names:
         for f in raw_files(area, ym):
             for e in json.load(gzip.open(f)).get('entries') or []:
@@ -77,6 +83,15 @@ def load(ym, area_names, boxes_excl):
                         vid = r['vesselId']
                         if not vid:
                             st['rows_no_vessel'] += 1; continue
+                        for attr, key in IDV_FIELDS:
+                            v = r.get(key)
+                            if v in (None, ''):
+                                continue
+                            cur = idv[vid][attr].get(str(v))
+                            if cur is None:
+                                idv[vid][attr][str(v)] = [t, t, 1]
+                            else:
+                                cur[0] = min(cur[0], t); cur[1] = max(cur[1], t); cur[2] += 1
                         la, lo = r['lat'], r['lon']
                         if any(w <= lo <= e_ and s <= la <= n for w, s, e_, n in boxes_excl):
                             st['rows_in_noaa_area'] += 1; continue
@@ -87,6 +102,7 @@ def load(ym, area_names, boxes_excl):
                             ident[vid] = dict(vid=vid, name=r.get('shipName') or '', mmsi=r.get('mmsi') or '', imo=r.get('imo') or '',
                                               flag=r.get('flag') or '', gtype=r.get('vesselType') or '')
     st['vessels'] = len(pts)
+    load.idv = idv   # read by cmd_route (vessels file); a module-level hand-off keeps load()'s return shape
     return ident, {v: sorted(p.items()) for v, p in pts.items()}, st
 
 
@@ -167,6 +183,7 @@ def cmd_route(a):
     stats = dict(month=a.month, group=group, areas=[t[0] for t in tiles], noaa_excluded=excl, load=dict(st), route=dict(rc),
                  secs=round(time.time() - t0), rules=L.RULES)
     json.dump(stats, open(os.path.join(wd, f'{group}.stats.json'), 'w'), indent=1)
+    write_vessels(os.path.join(wd, f'{group}.vessels.json.gz'), getattr(load, 'idv', {}))
     print(json.dumps(stats), flush=True)
 
 
@@ -227,6 +244,35 @@ class ShipTypes:
             self.stats['gfw_type_kept'] += 1
 
 
+def iso(t):
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t))
+
+
+def write_vessels(path, idv):
+    """{vid: {attr: {value: [first, last, n]}}} → gzipped JSON list, one item per GFW vessel id (times as ISO UTC)."""
+    out = [dict(vid=vid, values=[dict(attr=attr, value=v, first=iso(f), last=iso(l), n=n)
+                                 for attr, vals in sorted(attrs.items()) for v, (f, l, n) in sorted(vals.items())])
+           for vid, attrs in sorted(idv.items())]
+    with gzip.open(path + '.tmp', 'wt', compresslevel=6) as fh:
+        json.dump(out, fh, separators=(',', ':'))
+    os.replace(path + '.tmp', path)
+
+
+def merge_vessels(paths):
+    """Several groups' vessels files → one list (a vessel seen in two groups: earliest first, latest last, n summed)."""
+    m = defaultdict(dict)
+    for p in paths:
+        for it in json.load(gzip.open(p, 'rt')):
+            for v in it['values']:
+                k = (v['attr'], v['value'])
+                cur = m[it['vid']].get(k)
+                if cur is None:
+                    m[it['vid']][k] = dict(v)
+                else:
+                    cur['first'] = min(cur['first'], v['first']); cur['last'] = max(cur['last'], v['last']); cur['n'] += v['n']
+    return [dict(vid=vid, values=sorted(vals.values(), key=lambda v: (v['attr'], v['value']))) for vid, vals in sorted(m.items())]
+
+
 def cmd_tile(a):
     wd = os.path.join(WORK, a.month)
     parts = sorted(glob.glob(os.path.join(wd, '*.ndjson.gz')))
@@ -258,7 +304,8 @@ def cmd_tile(a):
     # kind + est (coalesced, nothing dropped, the kind filter and dashed estimates still work); z9-10: one line per
     # track with every property. Disjoint zoom ranges, so tile-join is a plain concatenation.
     low, high, tmp = (os.path.join(od, f'tracks.{x}.pmtiles') for x in ('low', 'high', 'tmp'))
-    subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', '-Z5', '-z8', '-D10', '--simplification=10',
+    # From z3 like the US tiles (2026-10-02: at z3–4 the US lines showed but BC / Alaska did not).
+    subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', '-Z3', '-z8', '-D10', '--simplification=10',
                     '-y', 'kind', '-y', 'est', '--coalesce', '--reorder', '--no-feature-limit', '--no-tile-size-limit',
                     '--read-parallel', nd], check=True)
     subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', '-Z9', '-z10', '--simplification=10',
@@ -285,6 +332,14 @@ def cmd_tile(a):
                     groups={g['group']: dict(load=g['load'], route=g['route'], secs=g['secs']) for g in groups},
                     pmtiles_bytes=os.path.getsize(os.path.join(od, 'tracks.pmtiles')), pack=dict(shards=PACK_SHARDS, bytes=os.path.getsize(pk)),
                     secs=round(time.time() - t0))
+    # The month's ship identities (what each vessel's rows carried), for the GFW ship records import (lib/ships/gfwAis.js).
+    vfiles = sorted(glob.glob(os.path.join(wd, '*.vessels.json.gz')))
+    if vfiles:
+        vs = merge_vessels(vfiles)
+        with gzip.open(os.path.join(od, 'vessels.json.gz.tmp'), 'wt', compresslevel=6) as fh:
+            json.dump(vs, fh, separators=(',', ':'))
+        os.replace(os.path.join(od, 'vessels.json.gz.tmp'), os.path.join(od, 'vessels.json.gz'))
+        manifest['vessels'] = dict(count=len(vs), bytes=os.path.getsize(os.path.join(od, 'vessels.json.gz')))
     json.dump(manifest, open(os.path.join(od, 'manifest.json'), 'w'), indent=1)
     print(json.dumps({k: manifest[k] for k in ('month', 'stats', 'pmtiles_bytes', 'pack', 'secs')}), flush=True)
 

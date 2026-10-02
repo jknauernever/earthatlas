@@ -151,7 +151,10 @@ def osm_for(boxes, margin=1.0):
     for f in out:
         for line in open(f):
             j = json.loads(line)
-            k = (j.get('properties') or {}).get('FID', line[:120])
+            # Duplicates (a polygon inside two overlapping boxes) by the WHOLE line. 2026-10-02: the old key, line[:120],
+            # collided on CI's GDAL 3.8, which writes '{ "type": "Feature", … }' with spaces, so 120 characters held almost no
+            # coordinates and ~87% of the OSM land was dropped as "duplicates" (lines crossed whole islands).
+            k = (j.get('properties') or {}).get('FID') or hashlib.sha1(line.encode()).hexdigest()
             if k in seen:
                 continue
             seen.add(k)

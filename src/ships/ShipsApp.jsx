@@ -111,8 +111,10 @@ function removeSourceSafe(map, id) {
 const gfwSrc = (ym) => `shiptrk-gfw-${ym}`
 const gfwObs = (ym) => `shiptrk-gfw-${ym}-obs`
 const gfwEst = (ym) => `shiptrk-gfw-${ym}-est`
-const gfwTrackTileUrl = (ym) =>
-  `${TILES_BASE}/api/ship-tracks?r=gfw&t=${ym}&v=${trackSource.gfw.rules}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+// b = the month's build time from the index: a rebaked month gets new tile URLs, so neither the browser's 1-hour tile
+// cache nor the edge serves the previous build (2026-10-02: retyped months kept showing old types for up to an hour).
+const gfwTrackTileUrl = (ym, built) =>
+  `${TILES_BASE}/api/ship-tracks?r=gfw&t=${ym}&v=${trackSource.gfw.rules}${built ? `&b=${encodeURIComponent(built)}` : ''}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
 const GFW_TRACK_ATTRIBUTION = 'Ship tracks outside NOAA coverage: <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a>'
   + ' hourly positions; estimated paths along the water use coastlines © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>,'
   + ' <a href="https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Physical_AlaskaCoast/MapServer/4" target="_blank" rel="noopener">Alaska DNR</a>,'
@@ -550,9 +552,13 @@ export default function ShipsApp() {
   const salishMonths = trackSource.months || []
   // GFW months (hourly lines where NOAA has no data): the dev API serves a local bake, else the Blob index.
   const [gfwMonths, setGfwMonths] = useState([])
+  const gfwBuiltRef = useRef({}) // month → build time (tile URL cache key)
   useEffect(() => {
     fetch('/api/ship-tracks?op=gfwindex').then((r) => (r.ok ? r.json() : null))
-      .then((idx) => setGfwMonths(Object.keys(idx?.months || {}).sort())).catch(() => setGfwMonths([]))
+      .then((idx) => {
+        gfwBuiltRef.current = Object.fromEntries(Object.entries(idx?.months || {}).map(([m, v]) => [m, v?.built]))
+        setGfwMonths(Object.keys(idx?.months || {}).sort())
+      }).catch(() => setGfwMonths([]))
   }, [])
   const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || []), ...gfwMonths])].sort(), [salishMonths, usMonths, gfwMonths])
   const dockCols = useDockColumns(dockRef, `${allTrackMonths.length > 0}-${isMobile}-${mobileView}-${panelOpen}`)
@@ -698,7 +704,7 @@ export default function ShipsApp() {
     for (const ym of trackMonths) {
       if (gfwMonths.includes(ym) && !map.getSource(gfwSrc(ym))) {
         addedMonthsRef.current.add(ym)
-        map.addSource(gfwSrc(ym), { type: 'vector', tiles: [gfwTrackTileUrl(ym)], minzoom: trackSource.gfw.minzoom, maxzoom: trackSource.gfw.maxzoom,
+        map.addSource(gfwSrc(ym), { type: 'vector', tiles: [gfwTrackTileUrl(ym, gfwBuiltRef.current[ym])], minzoom: trackSource.gfw.minzoom, maxzoom: trackSource.gfw.maxzoom,
           attribution: GFW_TRACK_ATTRIBUTION })
         map.addLayer({ id: gfwObs(ym), type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer, filter: ['!=', ['get', 'est'], 1],
           layout: { 'line-join': 'round' }, paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, labelsId)

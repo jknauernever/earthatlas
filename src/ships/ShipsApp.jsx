@@ -428,6 +428,21 @@ function clearOfOverlays(map, isMobile) {
   return { top: 80, bottom: 40, left: Math.round(left), right: Math.round(right) }
 }
 
+// A GFW hourly line whose ship isn't in our records (Josh 2026-10-02): show what the ship broadcast, labelled as such and
+// linked to its source, instead of only "no identity record". Not stored as an identity (that's the planned lookup chain).
+const GFW_KIND_LABEL = { PASSENGER: 'passenger vessel', CARGO: 'cargo vessel', TANKER: 'tanker', FISHING: 'fishing vessel', CARRIER: 'reefer / carrier',
+  BUNKER: 'bunker vessel', SUPPORT: 'support vessel', SEISMIC_VESSEL: 'seismic vessel', GEAR: 'fishing gear' }
+function broadcastNote(mmsi, when, line) {
+  const bits = [line.flag && `flag ${line.flag}`, line.imo && `IMO ${line.imo}`, GFW_KIND_LABEL[line.vtype]].filter(Boolean)
+  return (
+    <>
+      <b>{line.name}</b> (MMSI {mmsi}){bits.length ? `, ${bits.join(', ')}` : ''}: as broadcast by the ship (AIS), via{' '}
+      <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a>, {when.slice(0, 10)}.
+      {' '}Not yet in EarthAtlas&rsquo;s ship records, so there is no card for it.
+    </>
+  )
+}
+
 export default function ShipsApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
@@ -898,7 +913,9 @@ export default function ShipsApp() {
       return map.queryRenderedFeatures([[pt.x - 4, pt.y - 4], [pt.x + 4, pt.y + 4]], { layers: live })
     }
     const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
-    const openShip = async (mmsi, t0, month) => {
+    // line: the clicked line's own properties. GFW hourly lines carry the name, flag, IMO and GFW type that came with the
+    // positions (what the ship's AIS broadcast, as GFW serves it), so an unidentified ship still gets its name shown.
+    const openShip = async (mmsi, t0, month, line = null) => {
       setPickedTrack(t0 ? { mmsi: Number(mmsi), t0: Number(t0) } : null)
       setStopFocus(null); stopMarkerRef.current?.remove()
       const when = new Date(t0 * 1000).toISOString()
@@ -924,6 +941,7 @@ export default function ShipsApp() {
           setIdentityOn(true); setPickerOpen(false); setVesselId(null); setMmsiPeriods([])
           setTrackNote(d.status === 'ambiguous'
             ? `MMSI ${mmsi} was used by ${d.vesselIds.length} different ships at ${when.slice(0, 10)}, so EarthAtlas won't guess which one this track is.`
+            : line?.src === 'gfw' && line.name ? broadcastNote(mmsi, when, line)
             : `No identity record for MMSI ${mmsi} on ${when.slice(0, 10)}, here or at Global Fishing Watch. Its AIS track is real; the ship just isn't identified.`)
         }
       } catch { setTrackNote('Could not look up this track’s ship.') }
@@ -934,7 +952,7 @@ export default function ShipsApp() {
       const hits = hit(e.point)
       if (!hits.length) return
       const f = hits.find((h) => h.properties.mmsi != null)
-      if (f) { nearPopupRef.current?.remove(); return openShip(f.properties.mmsi, f.properties.t0, f.properties.month) }
+      if (f) { nearPopupRef.current?.remove(); return openShip(f.properties.mmsi, f.properties.t0, f.properties.month, f.properties) }
       // Zoomed out: ~6 px around the click, in metres (512 px tiles).
       const mpp = (40075016.686 * Math.cos((e.lngLat.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())
       const tol = Math.round(Math.min(25000, Math.max(200, 6 * mpp)))

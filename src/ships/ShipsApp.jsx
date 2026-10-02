@@ -712,7 +712,11 @@ export default function ShipsApp() {
     const kindFilter = byScrub
       ? ['case', ['has', 'mmsi'], ['all', scrubIn, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true], false]
       : byClass
-      ? ['case', ['has', 'mmsi'], ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]], groupFilter || true]
+      // Zoomed-out GFW lines carry no MMSI but our class (bake-gfw, cls): filter them by it; one without a known class is
+      // hidden under a "Narrow to" pick rather than shown as its whole group (2026-10-02 QA: ferries under Cruise ship).
+      ? ['case', ['has', 'mmsi'], ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]],
+        ['==', ['get', 'src'], 'gfw'], ['in', ['coalesce', ['get', 'cls'], ''], ['literal', trackClasses]],
+        groupFilter || true]
       : groupFilter
     // From z5 the detailed Salish tiles draw inside the box; US-wide lines lying ENTIRELY inside it are dropped. Lines
     // that cross the box edge still draw whole (a map filter can't cut a line), so they overlap inside the box until

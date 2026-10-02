@@ -228,18 +228,23 @@ class ShipTypes:
     def apply(self, pr):
         if not self.m or 'mmsi' not in pr:
             return
-        kinds = set()
+        kinds, classes = set(), set()
         for e in self.m.get(str(pr['mmsi']), []):
             f, t = self._secs(e.get('f')), self._secs(e.get('t'))
             if (f is not None and f > pr['t1']) or (t is not None and t < pr['t0']):
                 continue
             if e.get('a') or e.get('x') or not e.get('g'):
-                kinds.add(None); continue
+                kinds.add(None); classes.add(None); continue
             kinds.add(GROUP_KIND.get(e['g'], 'other'))
+            classes.add(e.get('c'))
         if len(kinds) == 1 and None not in kinds:
             k = kinds.pop()
             self.stats['retyped' if k != pr.get('kind') else 'confirmed'] += 1
             pr['kind'] = k
+            # Our specific class (cruise_ship, ferry, oil_tanker…), so the "Narrow to" filters work on the zoomed-out
+            # tiles too, where lines are merged and carry no MMSI (2026-10-02 QA: ferries under "Cruise ship" at z8).
+            if len(classes) == 1 and None not in classes:
+                pr['cls'] = classes.pop()
         else:
             self.stats['gfw_type_kept'] += 1
 
@@ -306,7 +311,7 @@ def cmd_tile(a):
     low, high, tmp = (os.path.join(od, f'tracks.{x}.pmtiles') for x in ('low', 'high', 'tmp'))
     # From z3 like the US tiles (2026-10-02: at z3–4 the US lines showed but BC / Alaska did not).
     subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', '-Z3', '-z8', '-D10', '--simplification=10',
-                    '-y', 'kind', '-y', 'est', '--coalesce', '--reorder', '--no-feature-limit', '--no-tile-size-limit',
+                    '-y', 'kind', '-y', 'est', '-y', 'cls', '-y', 'src', '--coalesce', '--reorder', '--no-feature-limit', '--no-tile-size-limit',
                     '--read-parallel', nd], check=True)
     subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', '-Z9', '-z10', '--simplification=10',
                     '--simplification-at-maximum-zoom=1', '--drop-densest-as-needed', '--read-parallel', nd], check=True)

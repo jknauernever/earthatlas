@@ -267,5 +267,6 @@
       "path": "/api/cron/gh-dispatch?wf=gmgsi",
       "schedule": "45 * * * *"
     }
-  ]
+  ],
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
 }

@@ -7,7 +7,6 @@
   "scripts": {
     "predev": "node scripts/ensure-dev-data.js",
     "dev": "vite",
-    "prebuild": "node scripts/prebuild-stats.js",
     "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && node scripts/generate-sitemap.js && node scripts/generate-birdsong-stations.js && vite build && node scripts/generate-route-html.js",
     "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",

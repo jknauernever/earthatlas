@@ -20,7 +20,7 @@ export const COUNTS_AS_OF = '2026-10-02'
 
 // { label, value, sources: [S.x | plain string] }
 export const COUNTS = [
-  { label: 'Ships', value: '24,232', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
+  { label: 'Ships', value: '41,153', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
   { label: 'Ports on the map', value: '9,159', detail: 'World Port Index 2,951 · Climate TRACE 6,006 · GFW 168 · DFO harbours 34', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
   { label: 'Terminals', value: '59', detail: '81 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
   { label: 'Terminal visits', value: '37,554', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
@@ -39,6 +39,7 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  { date: '2026-10-02', area: 'Ship cards · Ship tracks', text: 'Hover over a picked ship’s own tracks to see where it was: a top-down ship icon sits on the line pointing the way it was heading, drawn by kind of ship (tanker, cargo, cruise ship, ferry, fishing boat, tug, sailboat) and sized by its length, with its name, kind of ship, the local time there, its speed and its heading. On NOAA tracks and on estimated (dashed) paths the time is spread along the line from its start and end (marked ≈) and the speed is the average for the line. Ship cards also gain “View in” links to the ship’s public page on MarineTraffic (by IMO number), VesselFinder and MyShipTracking (by MMSI).' },
   { date: '2026-10-02', area: 'Ship records', text: 'Every ship seen in the hourly ship-track lines (British Columbia, Alaska and the Salish Sea since July 2026) is being added to EarthAtlas’s ship records with what it broadcast: name, MMSI, call sign, IMO number and flag (AIS, as served by Global Fishing Watch), and Global Fishing Watch’s vessel type, each with the first and last time it was seen. Ships we already held are linked by their IMO number, or by MMSI plus the same name or call sign; an MMSI alone never merges two ships. So clicking one of these lines now opens a ship card, filled in as far as the data goes. Records are added for each completed month.' },
   { date: '2026-10-02', area: 'Ship tracks', text: 'The hourly ship-track lines for British Columbia and Alaska are being re-drawn against the full coastline: some lines cut straight across islands and headlands (for example Digby and Kaien Islands at Prince Rupert) because part of the coastline was missing when they were drawn. Clicking an hourly line of a ship that is not yet in our ship records now shows the name, flag and IMO number the ship broadcast (AIS), as served by Global Fishing Watch, instead of only “no identity record”.' },
   // Numbers from the published GFW index 2026-10-02 (21 months, 1,970,155 lines; ships per month 1,647–12,206).

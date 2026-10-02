@@ -567,3 +567,13 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 
 /* Count inside a kind chip (Kind of ship picker). */
 .chipCount { opacity: 0.65; font-weight: 400; margin-left: 2px; font-variant-numeric: tabular-nums; }
+
+/* "View in" outside lookups (src/ships/viewIn.jsx): ship card Overview + unidentified-ship note. */
+.viewIn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 10px; font-size: 12px; }
+.viewInLabel { font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(243, 247, 238, 0.55); }
+
+/* Hover readout on the picked ship's track: ship icon pointing along the line + a small label. */
+.hoverShip { pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+.hoverTip { pointer-events: none; }
+/* While the hover readout shows, the ship icon IS the pointer: no cursor on any part of the map to cover it. */
+.hoverCrosshair, .hoverCrosshair * { cursor: none !important; }

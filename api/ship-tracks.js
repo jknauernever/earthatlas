@@ -135,7 +135,7 @@ export async function tracksForMmsi(t, mmsi, region) {
     if (!line || !line.startsWith(`{"mmsi":${mmsi},`)) continue
     const r = JSON.parse(line)
     out.push({ type: 'Feature', properties: { mmsi: r.mmsi, kind: r.kind, vtype: r.vtype, t0: r.t0, t1: r.t1, n: r.n, month: t,
-      ...(region === 'gfw' ? { src: 'gfw', ...(r.est ? { est: 1 } : {}) } : {}) },
+      ...(region === 'gfw' ? { src: 'gfw', ...(r.est ? { est: 1 } : {}) } : {}), ...(Array.isArray(r.ts) ? { ts: r.ts } : {}) },
       geometry: { type: 'LineString', coordinates: r.c } })
   }
   return out

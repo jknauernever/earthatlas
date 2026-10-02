@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
+import { ViewIn } from './viewIn.jsx'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
@@ -361,6 +362,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             {!CHAR_ROWS.concat(ROLE_ROWS).some(([attr]) => vessel.assertions.some((a) => a.attribute === attr)) && (
               <div className={styles.legendNoteText}>No characteristics published for this ship yet.</div>
             )}
+            <ViewIn mmsi={current.mmsi?.value_norm || current.mmsi?.value_raw}
+              imo={current.imo && current.imo.detail?.checksum_ok !== false ? current.imo.value_norm || current.imo.value_raw : null} styles={styles} />
           </>}
 
           {tab === 'history' && <>

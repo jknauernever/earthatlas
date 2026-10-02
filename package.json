@@ -47,6 +47,7 @@
     "@anthropic-ai/sdk": "^0.120.0",
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@neondatabase/serverless": "^1.0.2",
+    "@photostructure/tz-lookup": "11.7.0",
     "@sentry/react": "^10.53.1",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.4.0",

@@ -167,15 +167,19 @@ def cmd_route(a):
     with gzip.open(part + '.tmp', 'wt', compresslevel=6) as fh, ctx.Pool(a.workers) as pool:
         for k, ((vid, _), (runs, c)) in enumerate(zip(drawn, pool.imap(_piece, [p for _, p in drawn], chunksize=8))):
             rc.update(c)
-            for est, coords, ta, tb, n in runs:
+            for est, coords, ta, tb, n, times in runs:
                 if len(set(coords)) < 2:
                     continue
                 parts = L.to180_parts(coords)
                 if not parts:
                     continue
                 geom = {'type': 'LineString', 'coordinates': parts[0]} if len(parts) == 1 else {'type': 'MultiLineString', 'coordinates': parts}
-                fh.write(json.dumps({'type': 'Feature', 'geometry': geom, 'properties': props(ident[vid], a.month, ta, tb, n, est)},
-                                    separators=(',', ':')) + '\n')
+                pr = props(ident[vid], a.month, ta, tb, n, est)
+                # The hour of each vertex (observed lines), for the picked ship's hover readout; kept in the pack, not the
+                # tiles. Dropped when the antimeridian split or the 5-decimal dedupe changed the vertex count.
+                if times and len(parts) == 1 and len(parts[0]) == len(times):
+                    pr['ts'] = times
+                fh.write(json.dumps({'type': 'Feature', 'geometry': geom, 'properties': pr}, separators=(',', ':')) + '\n')
                 rc[f'features_est{est}'] += 1
             if (k + 1) % 5000 == 0:
                 print(f'  {k + 1}/{len(drawn)} {time.time()-t0:.0f}s', flush=True)
@@ -302,7 +306,8 @@ def cmd_tile(a):
                     for c in ([cs] if f['geometry']['type'] == 'LineString' else cs):
                         shards[pr['mmsi'] % PACK_SHARDS].append(json.dumps(
                             {'mmsi': pr['mmsi'], 'kind': pr['kind'], 'vtype': pr.get('vtype'), 't0': pr['t0'], 't1': pr['t1'], 'n': pr['n'],
-                             'est': pr.get('est', 0), 'vid': pr['vid'], 'c': c}, separators=(',', ':')))
+                             'est': pr.get('est', 0), 'vid': pr['vid'], 'c': c, **({'ts': pr['ts']} if pr.get('ts') and len(pr['ts']) == len(c) else {})},
+                            separators=(',', ':')))
     # Two passes, as the NOAA US bake does (scripts/ships/bake-us/build_us_tracks.py), 2026-10-02: with one pass,
     # --drop-densest-as-needed thinned busy coastal tiles (Cook Inlet, Prince William Sound) to ~1% at z5-8 and the
     # dropped lines included the tankers, so under the kind filter whole tiles came up empty. z5-8: lines merged per
@@ -313,7 +318,7 @@ def cmd_tile(a):
     subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', '-Z3', '-z8', '-D10', '--simplification=10',
                     '-y', 'kind', '-y', 'est', '-y', 'cls', '-y', 'src', '--coalesce', '--reorder', '--no-feature-limit', '--no-tile-size-limit',
                     '--read-parallel', nd], check=True)
-    subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', '-Z9', '-z10', '--simplification=10',
+    subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', '-Z9', '-z10', '-x', 'ts', '--simplification=10',
                     '--simplification-at-maximum-zoom=1', '--drop-densest-as-needed', '--read-parallel', nd], check=True)
     subprocess.run(['tile-join', '-o', tmp, '-f', '--no-tile-size-limit', low, high], check=True)
     os.replace(tmp, os.path.join(od, 'tracks.pmtiles')); os.remove(low); os.remove(high); os.remove(nd)

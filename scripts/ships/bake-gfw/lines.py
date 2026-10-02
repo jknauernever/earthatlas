@@ -259,19 +259,19 @@ class Router:
                 pts.append((t, nz))
             else:
                 pts.append((t, (la, lo)))
-        runs, obs = [], None   # obs = [coords, t0, t_last, n]
+        runs, obs = [], None   # obs = [coords, t0, t_last, n, times]: times = the hour of each vertex (hover readout)
 
         def flush():
             nonlocal obs
             if obs and len(obs[0]) >= 2:
-                runs.append((0, obs[0], obs[1], obs[2], obs[3]))
+                runs.append((0, obs[0], obs[1], obs[2], obs[3], obs[4]))
             obs = None
         prev = None
         for t, p in pts:
             if p is None:
                 flush(); prev = None; c['breaks_inland'] += 1; continue
             if prev is None:
-                obs = [[p], t, t, 1]; prev = (t, p); continue
+                obs = [[p], t, t, 1, [t]]; prev = (t, p); continue
             pt, pp = prev
             c['segments'] += 1
             c['seg_km_' + kmbin(float(hav_m(pp[0], pp[1], p[0], p[1])) / 1000)] += 1
@@ -285,16 +285,16 @@ class Router:
                     c['route_found_on_retry_window'] += 1
                 if r is None:
                     c['route_failed_' + info] += 1
-                    flush(); obs = [[p], t, t, 1]; prev = (t, p); continue
+                    flush(); obs = [[p], t, t, 1, [t]]; prev = (t, p); continue
                 c['segments_routed'] += 1
                 c['routed_path_km_' + kmbin(info / 1000)] += 1
                 ratio = info / max(1.0, float(hav_m(pp[0], pp[1], p[0], p[1])))
                 c['routed_detour_x' + ('<1.2' if ratio < 1.2 else '<1.5' if ratio < 1.5 else '<2' if ratio < 2 else '<3' if ratio < 3 else '>=3')] += 1
                 flush()
-                runs.append((1, r, pt, t, 2))
-                obs = [[p], t, t, 1]
+                runs.append((1, r, pt, t, 2, None))
+                obs = [[p], t, t, 1, [t]]
             else:
-                obs[0].append(p); obs[2] = t; obs[3] += 1
+                obs[0].append(p); obs[2] = t; obs[3] += 1; obs[4].append(t)
             prev = (t, p)
         flush()
         return runs, c

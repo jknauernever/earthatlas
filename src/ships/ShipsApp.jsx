@@ -27,6 +27,8 @@ import { keepPopupOnMap } from '../lib/popupFit.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import ShipPicker from './ShipPicker.jsx'
+import { ViewIn } from './viewIn.jsx'
+import { shipIcon } from './shipIcon.js'
 import TrackMonths, { TRACK_KINDS, fmtMonth } from './TrackControls.jsx'
 import { TraceFacilitiesOverlay } from '../systems/traceFacilitiesOverlay.js'
 import { traceCardShell, traceCardBody } from '../systems/traceCard.js'
@@ -439,6 +441,7 @@ function broadcastNote(mmsi, when, line) {
       <b>{line.name}</b> (MMSI {mmsi}){bits.length ? `, ${bits.join(', ')}` : ''}: as broadcast by the ship (AIS), via{' '}
       <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a>, {when.slice(0, 10)}.
       {' '}Not yet in EarthAtlas&rsquo;s ship records, so there is no card for it.
+      <ViewIn mmsi={mmsi} imo={line.imo} styles={styles} />
     </>
   )
 }
@@ -499,6 +502,7 @@ export default function ShipsApp() {
   const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
   const [vesselName, setVesselName] = useState(null)
+  const [vesselShape, setVesselShape] = useState(null)   // { group, cls, lengthM } for the hover icon (shipIcon.js)
   // Phones: the ship / port / terminal card and the ship search span the screen's width, so the icon dock would sit on
   // top of them (Josh 2026-09-30, shared link). While one is open the dock folds to its small button; it comes back
   // when they close, unless the user changed the view meanwhile.
@@ -866,6 +870,98 @@ export default function ShipsApp() {
       map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 12, duration: 1200 })
     }
   }, [ownTracks, mapReady, styleVersion, isMobile])
+
+  // Hover readout on the picked ship's own tracks (Josh 2026-10-02, after GFW's vessel view): a ship icon on the line,
+  // pointing along it, with the time and speed there. GFW lines baked since 2026-10-02 carry the hour of each vertex
+  // (pack 'ts'): exact time, and speed from one hourly position to the next. Otherwise (NOAA lines, older GFW months,
+  // dashed estimated paths) the time is spread along the line from its start/end and marked ≈, with the line's average speed.
+  const shipName = vesselName
+  // Local time where the ship was (Josh 2026-10-02: not UTC). The time-zone lookup (offline, nautical zones at sea) loads on
+  // the first hover only, so it costs the page nothing until then.
+  const tzLookupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !vesselId || !ownTracks.length) return
+    const el = document.createElement('div')
+    el.className = styles.hoverShip
+    // Inline, so no stylesheet can undo it: the icon sits right under the cursor, and if it took the pointer the map
+    // would see the mouse "leave" and hide the readout at once (2026-10-02: it vanished as soon as it appeared).
+    el.style.pointerEvents = 'none'
+    // A top-down silhouette of this kind of ship, sized by its length (shipIcon.js), pointing up; the marker rotates it.
+    const icon = shipIcon(vesselShape || {})
+    el.innerHTML = icon.svg
+    const marker = new mapboxgl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+    // Clear of the icon whatever its heading: half its length plus a little.
+    const tip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: Math.round(icon.h / 2) + 6, className: styles.hoverTip, maxWidth: '260px' })
+    const R = 6371008.8, rad = Math.PI / 180
+    const dist = (a, b) => { const dl = (b[1] - a[1]) * rad, dn = (b[0] - a[0]) * rad, x = Math.sin(dl / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(x))) }
+    const bearing = (a, b) => { const y = Math.sin((b[0] - a[0]) * rad) * Math.cos(b[1] * rad), x = Math.cos(a[1] * rad) * Math.sin(b[1] * rad) - Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos((b[0] - a[0]) * rad); return (Math.atan2(y, x) / rad + 360) % 360 }
+    const key = (p) => `${p.month}|${p.t0}|${p.t1}|${p.est ? 1 : 0}`
+    const byKey = new Map(ownTracks.map((f) => [key(f.properties), f]))
+    let shown = false
+    const hide = () => { map.getContainer().classList.remove(styles.hoverCrosshair); if (shown) { marker.remove(); tip.remove(); shown = false } }
+    const onMove = (e) => {
+      const hits = map.getLayer(OWN_LINE) ? map.queryRenderedFeatures([[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]], { layers: [OWN_LINE] }) : []
+      let best = null
+      for (const h of hits) {
+        const f = byKey.get(key(h.properties))
+        if (!f) continue
+        const c = f.geometry.coordinates
+        for (let i = 0; i + 1 < c.length; i++) {
+          const A = map.project(c[i]), B = map.project(c[i + 1])
+          const dx = B.x - A.x, dy = B.y - A.y, L2 = dx * dx + dy * dy
+          const u = L2 ? Math.max(0, Math.min(1, ((e.point.x - A.x) * dx + (e.point.y - A.y) * dy) / L2)) : 0
+          const d2 = (A.x + u * dx - e.point.x) ** 2 + (A.y + u * dy - e.point.y) ** 2
+          if (!best || d2 < best.d2) best = { d2, f, i, u }
+        }
+      }
+      if (!best || best.d2 > 144) { hide(); return }
+      const { f, i, u } = best, c = f.geometry.coordinates, p = f.properties
+      const a = c[i], b = c[i + 1], pt = [a[0] + u * (b[0] - a[0]), a[1] + u * (b[1] - a[1])]
+      let t, kn, exact = false
+      if (Array.isArray(p.ts) && p.ts.length === c.length && !p.est) {
+        exact = true
+        t = p.ts[i] + u * (p.ts[i + 1] - p.ts[i])
+        kn = p.ts[i + 1] > p.ts[i] ? dist(a, b) / (p.ts[i + 1] - p.ts[i]) * 1.943844 : null
+      } else {
+        const seg = c.slice(1).map((q, k) => dist(c[k], q)), total = seg.reduce((x, y) => x + y, 0)
+        const along = seg.slice(0, i).reduce((x, y) => x + y, 0) + u * seg[i]
+        t = p.t0 + (total ? along / total : 0) * (p.t1 - p.t0)
+        kn = p.t1 > p.t0 ? total / (p.t1 - p.t0) * 1.943844 : null
+      }
+      const hdg = Math.round(bearing(a, b))
+      marker.setLngLat(pt).setRotation(hdg)
+      let when
+      if (tzLookupRef.current) {
+        let tz = 'UTC'
+        try { tz = tzLookupRef.current(pt[1], pt[0]) } catch { /* keep UTC */ }
+        when = new Date(t * 1000).toLocaleString('en-US', { timeZone: tz, month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+      } else {
+        when = new Date(t * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
+        import('@photostructure/tz-lookup').then((m) => { tzLookupRef.current = m.default || m }).catch(() => {})
+      }
+      // The shared white popup card (src/index.css); this body supplies its own padding and dark text.
+      tip.setLngLat(pt).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">`
+        + `<b>${(shipName || '').replace(/[<>&]/g, '')}</b>`
+        + `${vesselShape?.kindLabel ? `<br><span style="color:#4b5563">${vesselShape.kindLabel.replace(/[<>&]/g, '')}</span>` : ''}`
+        + `<br>${exact ? '' : '≈ '}${when}<br>`
+        + `${kn != null ? `${exact ? '' : 'avg '}${kn.toFixed(1)} kn · ` : ''}heading ${String(hdg).padStart(3, '0')}°`
+        + `${p.est ? '<br><span style="color:#6b7280">estimated path (dashed)</span>' : ''}</div>`)
+      // The ship icon replaces the cursor while it shows (Josh 2026-10-02: the hand covered it). A class with an !important
+      // rule on the whole map: Mapbox and the other hover handlers set grab / pointer cursors on its parts.
+      map.getContainer().classList.add(styles.hoverCrosshair)
+      if (!shown) {
+        marker.addTo(map); tip.addTo(map); shown = true
+        const pe = tip.getElement(); if (pe) pe.style.pointerEvents = 'none'
+      }
+    }
+    // Only when the pointer really leaves the map, not when it passes over the icon or label.
+    const onOut = (e) => { const to = e.originalEvent?.relatedTarget; if (!to || !map.getContainer().contains(to)) hide() }
+    map.on('mousemove', onMove)
+    map.on('mouseout', onOut)
+    return () => { map.off('mousemove', onMove); map.off('mouseout', onOut); hide() }
+  }, [mapReady, vesselId, ownTracks, shipName, vesselShape])
 
   // ─── Worldwide GFW layers, driven by the same month grid as the tracks ─────
   const gfwRange = useMemo(() => (trackMonths.length && usMonths !== null
@@ -1585,6 +1681,13 @@ export default function ShipsApp() {
               onShowPlace={showStop}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')
+                const len = v.assertions.filter((a) => a.attribute === 'length_m' && Number(a.value_norm) > 0)
+                  .sort((x, y) => String(y.to || '9999').localeCompare(String(x.to || '9999')))[0]
+                const c = v.classification
+                // The same wording as the card's "Kind of ship" line (VesselCard TypeLine).
+                const kindLabel = !c || !c.group || c.group === 'unknown' ? null
+                  : c.class && !String(c.class).endsWith('_unspecified') ? `${c.groupLabel} · ${c.classLabel}` : c.groupLabel
+                setVesselShape({ group: c?.group || null, cls: c?.class || null, lengthM: len ? Number(len.value_norm) : null, kindLabel })
                 const secs = (x) => (x ? Math.floor(new Date(x).getTime() / 1000) : null)
                 setMmsiPeriods(v.assertions.filter((a) => a.attribute === 'mmsi' && /^\d{9}$/.test(a.value_norm) && a.period_kind !== 'unknown')
                   .map((a) => ({ mmsi: Number(a.value_norm), from: secs(a.from), to: secs(a.to) })))

@@ -30,3 +30,19 @@ All four `:v4.0` datasets answered (MEASURED 2026-10-02).
 ## Decision for Josh (not yet made)
 Keep v4 for the 21 published months and use v5 from the next month boundary, or re-fetch all months under v5
 (~12 h of GFW time, free). Either way, flip the `:v4.0` pins in one commit.
+
+## Full-day comparison (MEASURED 2026-10-02): all 15 Pacific-Northwest areas, 2026-09-27, v4.0 vs v5.0
+| | v4.0 | v5.0 |
+|---|---|---|
+| rows (vessel-hours) | 93,569 | 93,342 |
+| vessels | 4,976 | 4,938 (4,889 shared ids; 87 only v4, 49 only v5) |
+| fields | – | adds `speed` (knots, per vessel-hour) |
+| positions, same MMSI + hour | 92,541 shared; 82.6 % identical | moved ones are ships under way (median 4.5 km): v5 picks a different point within the hour |
+| identity per MMSI (4,889) | | 1,633 type changes (OTHER → PASSENGER 558, OTHER → OTHER_NON_FISHING 533, FISHING → PASSENGER 176, …); 2 names; 1 call sign |
+| new type labels | | INACTIVE, INSUFFICIENT_DATA, OTHER_NON_FISHING, '' |
+Verdict: no field removed, nothing breaks; not more complete, different within-hour sampling.
+
+## Decision (Josh 2026-10-02)
+Keep v4 for everything published (through 2026-09, including its late revisions); every month from 2026-10 is fetched in
+v5.0 from its first day (`scripts/ships/bake-gfw/fetch.py` `dataset_for` / `V5_FROM_MONTH`), so no month mixes versions.
+Follow-up: v5's `speed` could feed the hover readout for v5 months.

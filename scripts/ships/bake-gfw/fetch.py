@@ -54,11 +54,20 @@ def _call(req):
         return body, r.headers
 
 
+# One GFW version per month, never mixed (Josh 2026-10-02): months up to 2026-09 stay v4.0 (published, and their late
+# revisions keep v4); from 2026-10 every month is v5.0 from its first day. docs/GFW_V5.md has the comparison.
+V5_FROM_MONTH = '2026-10'
+DATASET = 'public-global-presence:v4.0'   # set per run in main(); --dataset overrides
+
+
+def dataset_for(month):
+    return 'public-global-presence:v5.0' if month >= V5_FROM_MONTH else 'public-global-presence:v4.0'
+
+
 def report(tok, box, day, span, stats):
     d1 = (dt.date.fromisoformat(day) + dt.timedelta(days=span)).isoformat()
-    # Pinned to v4.0 (2026-10-02): GFW makes v5 the 'latest' on 2026-10-21 (identities / types may change); keep one
-    # version per month until we switch deliberately.
-    qs = urllib.parse.urlencode({'datasets[0]': 'public-global-presence:v4.0', 'temporal-resolution': 'HOURLY',
+    # The version is per month (dataset_for): v4.0 through 2026-09, v5.0 from 2026-10. Never 'latest'.
+    qs = urllib.parse.urlencode({'datasets[0]': DATASET, 'temporal-resolution': 'HOURLY',
                                  'spatial-resolution': 'HIGH', 'spatial-aggregation': 'false', 'group-by': 'VESSEL_ID',
                                  'format': 'JSON', 'date-range': f'{day},{d1}'})
     hdr = {'Authorization': f'Bearer {tok}', 'User-Agent': UA, 'Accept-Encoding': 'gzip', 'Content-Type': 'application/json'}
@@ -153,10 +162,16 @@ def main():
     ap.add_argument('--span', type=int, default=7)
     ap.add_argument('--raw', default=os.path.join(HERE, 'cache', 'raw'))
     ap.add_argument('--budget', type=int, default=5000)
+    ap.add_argument('--dataset', help='4Wings presence dataset id (default public-global-presence:v4.0)')
     ap.add_argument('--refetch-after', help='YYYY-MM-DD: re-fetch files starting on/after this day')
     ap.add_argument('--drop-overlapping', help='YYYY-MM-DD: delete kept pieces (and split markers) that reach into this day '
                     'or later, so the incremental run re-fetches that window once with GFW\'s revised data and nothing overlaps')
     a = ap.parse_args()
+    global DATASET
+    DATASET = a.dataset or dataset_for(a.frm[:7])
+    if a.frm[:7] != (dt.date.fromisoformat(a.to) - dt.timedelta(days=1)).isoformat()[:7] and not a.dataset:
+        sys.exit('fetch spans two months: run one month at a time so each gets its own GFW version')
+    print(f'dataset {DATASET}', flush=True)
     tok = token()
     tiles = areas.stage(a.stage)
     if a.areas:

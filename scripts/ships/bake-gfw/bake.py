@@ -252,10 +252,19 @@ def cmd_tile(a):
                         shards[pr['mmsi'] % PACK_SHARDS].append(json.dumps(
                             {'mmsi': pr['mmsi'], 'kind': pr['kind'], 'vtype': pr.get('vtype'), 't0': pr['t0'], 't1': pr['t1'], 'n': pr['n'],
                              'est': pr.get('est', 0), 'vid': pr['vid'], 'c': c}, separators=(',', ':')))
-    tmp = os.path.join(od, 'tracks.tmp.pmtiles')
-    subprocess.run(['tippecanoe', '-o', tmp, '-l', 'tracks', '-f', '-q', '-Z5', '-z10', '--simplification=10',
+    # Two passes, as the NOAA US bake does (scripts/ships/bake-us/build_us_tracks.py), 2026-10-02: with one pass,
+    # --drop-densest-as-needed thinned busy coastal tiles (Cook Inlet, Prince William Sound) to ~1% at z5-8 and the
+    # dropped lines included the tankers, so under the kind filter whole tiles came up empty. z5-8: lines merged per
+    # kind + est (coalesced, nothing dropped, the kind filter and dashed estimates still work); z9-10: one line per
+    # track with every property. Disjoint zoom ranges, so tile-join is a plain concatenation.
+    low, high, tmp = (os.path.join(od, f'tracks.{x}.pmtiles') for x in ('low', 'high', 'tmp'))
+    subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', '-Z5', '-z8', '-D10', '--simplification=10',
+                    '-y', 'kind', '-y', 'est', '--coalesce', '--reorder', '--no-feature-limit', '--no-tile-size-limit',
+                    '--read-parallel', nd], check=True)
+    subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', '-Z9', '-z10', '--simplification=10',
                     '--simplification-at-maximum-zoom=1', '--drop-densest-as-needed', '--read-parallel', nd], check=True)
-    os.replace(tmp, os.path.join(od, 'tracks.pmtiles')); os.remove(nd)
+    subprocess.run(['tile-join', '-o', tmp, '-f', '--no-tile-size-limit', low, high], check=True)
+    os.replace(tmp, os.path.join(od, 'tracks.pmtiles')); os.remove(low); os.remove(high); os.remove(nd)
     blobs = [gzip.compress(('\n'.join(sh) + '\n').encode(), 9) if sh else b'' for sh in shards]
     offs, pos = [], 0
     for b_ in blobs:

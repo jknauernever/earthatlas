@@ -89,7 +89,10 @@ jobs:
               nxt = (dt.date.fromisoformat(m + '-01').replace(day=28) + dt.timedelta(days=4)).replace(day=1)
               b = min(nxt, last + dt.timedelta(days=1))
               # through: the month whose window reaches `last` carries the index's new fetched_through (publish.mjs).
-              fetch.append(dict(month=m, through=last.isoformat() if b == last + dt.timedelta(days=1) else '', **{'from': a.isoformat(), 'to': b.isoformat()}))
+              # inc: incremental (daily) runs re-fetch only from here when the month's earlier downloads are in the Actions
+              # cache (fetch job); otherwise the whole month (2026-10-02: Josh, only download the new days).
+              inc = max(a, start).isoformat() if mode != 'backfill' and idx.get('fetched_through') else ''
+              fetch.append(dict(month=m, through=last.isoformat() if b == last + dt.timedelta(days=1) else '', inc=inc, **{'from': a.isoformat(), 'to': b.isoformat()}))
           if mode == 'backfill':
               fetch.reverse()                                     # newest first: the most recent months appear first
           # Route groups: the whole stage in one group for pacnw/us; the world in ~30° longitude bands.
@@ -203,10 +206,40 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install --quiet numpy scipy scikit-image shapely pyshp pillow
+      # The month's earlier downloads (daily runs): with them, only the days from `inc` are fetched again.
+      - name: Restore ${{ matrix.job.month }}'s earlier downloads
+        id: rawcache
+        if: matrix.job.inc != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: raw
+          key: gfw-raw-${{ env.STAGE }}-${{ matrix.job.month }}-${{ github.run_id }}
+          restore-keys: gfw-raw-${{ env.STAGE }}-${{ matrix.job.month }}-
       - name: Fetch ${{ matrix.job.month }} (${{ matrix.job.from }} → ${{ matrix.job.to }})
         run: |
           cd scripts/ships/bake-gfw
-          python3 fetch.py --stage "$STAGE" --from "${{ matrix.job.from }}" --to "${{ matrix.job.to }}" --span 7 --raw "$GFW_RAW" --budget 20000
+          if [ -n "${{ matrix.job.inc }}" ] && [ -n "${{ steps.rawcache.outputs.cache-matched-key }}" ]; then
+            echo "incremental: keeping the downloads before ${{ matrix.job.inc }} (${{ steps.rawcache.outputs.cache-matched-key }})"
+            python3 fetch.py --stage "$STAGE" --from "${{ matrix.job.inc }}" --to "${{ matrix.job.to }}" --drop-overlapping "${{ matrix.job.inc }}" --span 7 --raw "$GFW_RAW" --budget 20000
+          else
+            python3 fetch.py --stage "$STAGE" --from "${{ matrix.job.from }}" --to "${{ matrix.job.to }}" --span 7 --raw "$GFW_RAW" --budget 20000
+          fi
+      # Keep the month's downloads for tomorrow's run (only months a daily run will touch again), then drop older copies
+      # of the same month so the cache holds one per month.
+      - name: Keep ${{ matrix.job.month }}'s downloads for the next daily run
+        if: matrix.job.inc != '' || matrix.job.through != ''
+        uses: actions/cache/save@v4
+        with:
+          path: raw
+          key: gfw-raw-${{ env.STAGE }}-${{ matrix.job.month }}-${{ github.run_id }}
+      - name: Drop older copies of ${{ matrix.job.month }}'s downloads
+        if: matrix.job.inc != '' || matrix.job.through != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          keep="gfw-raw-$STAGE-${{ matrix.job.month }}-$GITHUB_RUN_ID"
+          gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-raw-$STAGE-${{ matrix.job.month }}-" --json key --jq '.[].key' \
+            | while read -r k; do [ "$k" != "$keep" ] && gh cache delete "$k" --repo "$GITHUB_REPOSITORY" || true; done
       - name: Traffic raster for ${{ matrix.job.month }} (distinct vessels per 0.01° cell)
         env:
           GFW_LAND_DIR: ${{ github.workspace }}/land

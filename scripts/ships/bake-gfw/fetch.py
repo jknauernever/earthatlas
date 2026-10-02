@@ -21,7 +21,7 @@ Request (docs/SHIP_TRACK_SOURCES.md, "GFW hourly lines"):
 - --budget caps the number of report requests this run may make (GFW limit: 50,000/day).
 Output: RAW/<area>/<area>_<YYYY-MM-DD>_<n>d[_q<k>].json.gz   (raw body, gzip'd) + RAW/fetch-log.ndjson
 """
-import argparse, datetime as dt, gzip, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, datetime as dt, gzip, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 import areas
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -98,6 +98,10 @@ def rows_of(body):
     return sum(len(v or []) for e in (j.get("entries") or []) for v in (e or {}).values())   # GFW sends null for an empty area
 
 
+# area_YYYY-MM-DD_<span>d[_q<k>…].json.gz, plus '.split' markers for pieces that had to be split.
+PIECE = re.compile(r'^[a-z0-9]+_(?P<day>\d{4}-\d{2}-\d{2})_(?P<span>\d+)d(?:_q\d)*\.json\.gz(?:\.split)?$')
+
+
 def fetch_piece(tok, area, box, day, span, out, stats, log, budget, part=''):
     """Fetch one (box, day, span); split on failure or size. Writes one or more files."""
     f = os.path.join(out, f'{area}_{day}_{span}d{part}.json.gz')
@@ -148,6 +152,8 @@ def main():
     ap.add_argument('--raw', default=os.path.join(HERE, 'cache', 'raw'))
     ap.add_argument('--budget', type=int, default=5000)
     ap.add_argument('--refetch-after', help='YYYY-MM-DD: re-fetch files starting on/after this day')
+    ap.add_argument('--drop-overlapping', help='YYYY-MM-DD: delete kept pieces (and split markers) that reach into this day '
+                    'or later, so the incremental run re-fetches that window once with GFW\'s revised data and nothing overlaps')
     a = ap.parse_args()
     tok = token()
     tiles = areas.stage(a.stage)
@@ -161,11 +167,18 @@ def main():
     for name, *box in tiles:
         out = os.path.join(a.raw, name)
         os.makedirs(out, exist_ok=True)
+        d = dt.date.fromisoformat(a.frm)
+        if a.drop_overlapping:
+            cut = dt.date.fromisoformat(a.drop_overlapping)
+            for fn in os.listdir(out):
+                m = PIECE.match(fn)
+                if m and dt.date.fromisoformat(m['day']) + dt.timedelta(days=int(m['span'])) > cut:
+                    os.remove(os.path.join(out, fn))
+                    d = min(d, dt.date.fromisoformat(m['day']))   # a dropped piece that began before the cut: re-fetch from its start
         if a.refetch_after:
             for fn in os.listdir(out):
                 if (fn.endswith('.json.gz') or fn.endswith('.split')) and fn.split('_')[1] >= a.refetch_after:
                     os.remove(os.path.join(out, fn))
-        d = dt.date.fromisoformat(a.frm)
         while d < end:
             span = min(a.span, (end - d).days)
             fetch_piece(tok, name, tuple(box), d.isoformat(), span, out, stats, log, a.budget)

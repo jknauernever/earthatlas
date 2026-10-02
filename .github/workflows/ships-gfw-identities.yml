@@ -1,0 +1,38 @@
+# GFW ship records import (Josh 2026-10-02): every ship seen in the published GFW track months becomes / updates an
+# EarthAtlas ship record (lib/ships/gfwAis.js), with what it broadcast (name, MMSI, call sign, IMO, flag) and GFW's
+# vessel type, linked by the resolver's usual rules. Started by ships-gfw-month.yml after each publish.
+# The work happens server-side (api/ships.js op=importGfwVessels, CRON_SECRET-locked: no database credentials in
+# GitHub), in resumable batches; unchanged ships are skipped, so a re-run is cheap.
+name: ships-gfw-identities
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ships-gfw-identities
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Import in batches until done
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          offset=0; tries=0
+          while :; do
+            r=$(curl -sS -m 290 -X POST -H "Authorization: Bearer $CRON_SECRET" -H 'Content-Type: application/json' \
+                -d "{\"offset\":$offset}" "https://earthatlas.org/api/ships?op=importGfwVessels") || r=''
+            echo "$r" | head -c 600; echo
+            next=$(echo "$r" | python3 -c "import json,sys
+          try: j=json.load(sys.stdin); print('done' if j.get('done') else j.get('next',''))
+          except Exception: print('')")
+            if [ "$next" = "done" ]; then echo "import complete"; break; fi
+            if [ -z "$next" ]; then tries=$((tries+1)); [ $tries -ge 5 ] && { echo "import failed 5 times"; exit 1; }; sleep 30; continue; fi
+            tries=0; offset=$next
+          done

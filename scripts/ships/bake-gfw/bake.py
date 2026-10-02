@@ -345,8 +345,22 @@ def cmd_tile(a):
             json.dump(vs, fh, separators=(',', ':'))
         os.replace(os.path.join(od, 'vessels.json.gz.tmp'), os.path.join(od, 'vessels.json.gz'))
         manifest['vessels'] = dict(count=len(vs), bytes=os.path.getsize(os.path.join(od, 'vessels.json.gz')))
+    elif os.path.exists(os.path.join(od, 'vessels.json.gz')):   # written by `bake.py vessels` from the raw downloads
+        n = len(json.load(gzip.open(os.path.join(od, 'vessels.json.gz'), 'rt')))
+        manifest['vessels'] = dict(count=n, bytes=os.path.getsize(os.path.join(od, 'vessels.json.gz')))
     json.dump(manifest, open(os.path.join(od, 'manifest.json'), 'w'), indent=1)
     print(json.dumps({k: manifest[k] for k in ('month', 'stats', 'pmtiles_bytes', 'pack', 'secs')}), flush=True)
+
+
+def cmd_vessels(a):
+    """The month's ship identities straight from its raw downloads (no routing): OUT/<month>/vessels.json.gz, for months
+    whose routed lines were made before route wrote them (2026-10-02). Same content as route's per-group files."""
+    tiles = areas.stage(a.stage)
+    load(a.month, [t[0] for t in tiles], [])
+    od = os.path.join(OUT, a.month)
+    os.makedirs(od, exist_ok=True)
+    write_vessels(os.path.join(od, 'vessels.json.gz'), getattr(load, 'idv', {}))
+    print(f'vessels {a.month}: {len(getattr(load, "idv", {}))}', flush=True)
 
 
 def cmd_traffic(a):
@@ -382,9 +396,10 @@ def main():
     r.add_argument('--areas'); r.add_argument('--group'); r.add_argument('--workers', type=int, default=4); r.add_argument('--force', action='store_true')
     t = sp.add_parser('tile'); t.add_argument('--month', required=True)
     sp.add_parser('index')
+    v = sp.add_parser('vessels'); v.add_argument('--month', required=True); v.add_argument('--stage', default='pacnw')
     tr = sp.add_parser('traffic'); tr.add_argument('--stage', default='pacnw'); tr.add_argument('--months', help='space-separated YYYY-MM (default: every raw month on disk)')
     a = ap.parse_args()
-    {'route': cmd_route, 'tile': cmd_tile, 'index': cmd_index, 'traffic': cmd_traffic}[a.cmd](a)
+    {'route': cmd_route, 'tile': cmd_tile, 'index': cmd_index, 'traffic': cmd_traffic, 'vessels': cmd_vessels}[a.cmd](a)
 
 
 if __name__ == '__main__':

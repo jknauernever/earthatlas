@@ -61,6 +61,7 @@ import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js
 import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
+import { importBatch } from '../lib/ships/gfwAis.js'
 import { timingSafeEqual } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 
@@ -89,7 +90,7 @@ const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_
 
 // Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
 // only with the CRON_SECRET bearer the GitHub bakes hold; browsers and everyone else get 401 and never reach the DB.
-const BAKE_OPS = new Set(['typeLookup'])
+const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels'])
 function bakeAuthorized(req) {
   const secret = process.env.CRON_SECRET
   const auth = String(req.headers['authorization'] || '')
@@ -119,6 +120,19 @@ export default async function handler(req, res) {
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
     //   /api/ships?op=typeLookup  (CRON_SECRET bearer only)  → MMSI → EarthAtlas type over time (lib/ships/typeLookup.js), the same
     //                                               lookup the NOAA track bake uses; the GFW track bake re-types its lines with it
+    //   POST /api/ships?op=importGfwVessels { offset }  (CRON_SECRET bearer only) → one resumable batch of the GFW ship-records
+    //        import (lib/ships/gfwAis.js): { total, next, done, months, ingested, skipped, actions }
+    if (op === 'importGfwVessels') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { body = {} }
+      }
+      const pool = shipsPool()
+      try { return send(res, 200, await importBatch(pool, S, { offset: body.offset }), 'no-store') } finally { await pool.end() }
+    }
     if (op === 'typeLookup') {   // gzipped: the whole table is MBs and Vercel caps a function response at 4.5 MB
       const body = gzipSync(JSON.stringify(await typeLookup(q, S)))
       res.statusCode = 200

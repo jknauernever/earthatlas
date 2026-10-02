@@ -15,7 +15,7 @@
 import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client'
 
 // One folder per rules version and month; index.json lists the months.
-const MONTH_FILE = /^ships\/tracks\/(us|gfw)-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(tracks\.pmtiles|tracks\.pack|manifest\.json)$/
+const MONTH_FILE = /^ships\/tracks\/(us|gfw)-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(tracks\.pmtiles|tracks\.pack|manifest\.json|vessels\.json\.gz)$/
 const INDEX = /^ships\/tracks\/(us|gfw)-v\d+\/index\.json$/
 
 export default async function handler(req, res) {

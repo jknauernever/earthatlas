@@ -105,12 +105,16 @@ jobs:
     # After a route in this run, or (route_run) straight from an earlier run's routed lines: tile changes need no re-route.
     if: always() && (needs.route.result == 'success' || inputs.route_run != '')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write            # download artifacts of earlier runs; start the ship-records import
     timeout-minutes: 120
     env:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
       GFW_WORK: ${{ github.workspace }}/work
       GFW_OUT: ${{ github.workspace }}/out
+      GFW_RAW: ${{ github.workspace }}/raw
       FETCHED_THROUGH: ${{ inputs.through }}
       # EarthAtlas's own ship types by MMSI (secret-locked; bake.py sends CRON_SECRET), so the kind filter works on GFW lines.
       GFW_TYPE_LOOKUP: https://earthatlas.org/api/ships?op=typeLookup
@@ -143,7 +147,25 @@ jobs:
           path: work
           run-id: ${{ inputs.route_run || github.run_id }}
           github-token: ${{ github.token }}
+      # Re-tile runs reuse routed lines made before route wrote the month's ship list: build it from the raw downloads.
+      - name: Raw downloads (re-tile runs)
+        if: inputs.route_run != '' && inputs.source_run != '0' && inputs.source_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-${{ inputs.month }}
+          path: raw
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+      - name: Ship list from the raw downloads (re-tile runs)
+        if: inputs.route_run != '' && inputs.source_run != '0' && inputs.source_run != ''
+        run: cd scripts/ships/bake-gfw && python3 bake.py vessels --month "$MONTH" --stage "$STAGE"
       - name: Tile ${{ inputs.month }}
         run: cd scripts/ships/bake-gfw && python3 bake.py tile --month "$MONTH"
       - name: Upload ${{ inputs.month }} to Blob and add it to the index
         run: node scripts/ships/bake-gfw/publish.mjs "$MONTH" "$GFW_OUT"
+      # Every ship in the published (completed) months becomes / updates an EarthAtlas ship record. One import at a time
+      # (its own workflow, concurrency group); a newer request replaces a waiting one, and each covers all months.
+      - name: Start the ship-records import
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ships-gfw-identities.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

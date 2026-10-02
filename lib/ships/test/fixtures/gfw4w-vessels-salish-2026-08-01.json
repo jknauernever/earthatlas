@@ -1,0 +1,85 @@
+{
+ "_note": "REAL: two vessels as bake-gfw (bake.py load/write_vessels) wrote them from GFW 4Wings HOURLY rows for the Salish area, 2026-08-01 (one day), retrieved 2026-10-01. Unedited.",
+ "vessels": [
+  {
+   "vid": "1fea3c99b-bcaf-37da-61a5-9b0ee79d4b97",
+   "values": [
+    {
+     "attr": "flag",
+     "value": "CAN",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 11
+    },
+    {
+     "attr": "gfw_type",
+     "value": "PASSENGER",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 11
+    },
+    {
+     "attr": "mmsi",
+     "value": "316059231",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 11
+    },
+    {
+     "attr": "name",
+     "value": "SALISH SEA GLORY",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 11
+    }
+   ]
+  },
+  {
+   "vid": "6d8a6e1eb-b3d2-0380-37fd-33d6c9a79741",
+   "values": [
+    {
+     "attr": "callsign",
+     "value": "PHOS",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    },
+    {
+     "attr": "flag",
+     "value": "NLD",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    },
+    {
+     "attr": "gfw_type",
+     "value": "PASSENGER",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    },
+    {
+     "attr": "imo",
+     "value": "9378448",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    },
+    {
+     "attr": "mmsi",
+     "value": "245206000",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    },
+    {
+     "attr": "name",
+     "value": "EURODAM",
+     "first": "2026-08-01T00:00:00Z",
+     "last": "2026-08-01T23:00:00Z",
+     "n": 24
+    }
+   ]
+  }
+ ]
+}

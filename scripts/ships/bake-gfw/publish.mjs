@@ -107,8 +107,10 @@ if (args[0] === '--index') {
   const base = `ships/tracks/${m.tileset}/${ym}`
   const tiles = await upload(`${base}/tracks.pmtiles`, resolve(dir, 'tracks.pmtiles'), 'application/vnd.pmtiles')
   const pack = await upload(`${base}/tracks.pack`, resolve(dir, 'tracks.pack'), 'application/octet-stream')
+  // The month's ship identities (bake.py: vessels.json.gz) for the GFW ship-records import (lib/ships/gfwAis.js).
+  const vessels = existsSync(resolve(dir, 'vessels.json.gz')) ? await upload(`${base}/vessels.json.gz`, resolve(dir, 'vessels.json.gz'), 'application/gzip') : null
   const manifest = await upload(`${base}/manifest.json`, resolve(dir, 'manifest.json'), 'application/json')
-  const e = { tileset: m.tileset, month: ym, entry: { tiles, pack, manifest, built: m.built, rules: m.rules.version, areas: m.areas,
+  const e = { tileset: m.tileset, month: ym, entry: { tiles, pack, manifest, ...(vessels ? { vessels, vessels_count: m.vessels?.count } : {}), built: m.built, rules: m.rules.version, areas: m.areas,
     noaa_excluded: m.noaa_excluded, pmtiles_bytes: m.pmtiles_bytes, pack_bytes: m.pack.bytes, lines: m.stats.lines, vessels: m.stats.vessels } }
   const i = args.indexOf('--entry-out')
   if (i > 0) { writeFileSync(args[i + 1], JSON.stringify(e)); console.log(`entry → ${args[i + 1]}`) }

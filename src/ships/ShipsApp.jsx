@@ -437,7 +437,7 @@ function broadcastNote(mmsi, when, line) {
   return (
     <>
       <b>{line.name}</b> (MMSI {mmsi}){bits.length ? `, ${bits.join(', ')}` : ''}: as broadcast by the ship (AIS), via{' '}
-      <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a>, {when.slice(0, 10)}.
+      <a className={styles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a>, {when.slice(0, 10)}.
       {' '}Not yet in EarthAtlas&rsquo;s ship records, so there is no card for it.
     </>
   )
@@ -1555,8 +1555,8 @@ export default function ShipsApp() {
          shipName={vesselId ? vesselName : null} query={query} onQuery={setQuery} kinds={kinds} onKinds={setKinds}
           onPick={pickShip} open={pickerOpen} onOpen={setPickerOpen}>
           {!vesselId && trackNote && (
-            <div className={styles.trackNote} role="status">{trackNote}
-              <button type="button" className={styles.inlineLink} onClick={() => setTrackNote(null)}> dismiss</button>
+            <div className={styles.trackNote} role="status">{trackNote}{' '}
+              <button type="button" className={styles.inlineLink} onClick={() => setTrackNote(null)}>dismiss</button>
             </div>
           )}
           {vesselId && backToPort && (

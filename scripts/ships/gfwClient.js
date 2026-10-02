@@ -6,8 +6,9 @@
  * docs/GFW_VESSELS_API.md.
  */
 const BASE = 'https://gateway.api.globalfishingwatch.org/v3'
-export const DATASET = 'public-global-vessel-identity:latest'
-export const PORT_VISITS_DATASET = 'public-global-port-visits-events:latest'
+// Pinned to v4.0 (2026-10-02): GFW makes v5 the 'latest' on 2026-10-21; switch deliberately after comparing.
+export const DATASET = 'public-global-vessel-identity:v4.0'
+export const PORT_VISITS_DATASET = 'public-global-port-visits-events:v4.0'
 
 export function gfwClient(token, { minIntervalMs = 1000, log = console.log } = {}) {
   if (!token) throw new Error('GFW_API_TOKEN not set (add it to .env.local; see docs/GFW_VESSELS_API.md)')

@@ -46,7 +46,7 @@ RULES = dict(version='gfw-v1', gap_h=GAP_H, max_kn=MAX_KN, parked_m=PARKED_M, nu
 # tankers; exact sub-kinds (oil tanker, …) come from the MMSI-based "Narrow to" chips.
 KIND = {'FISHING': 'fishing', 'PASSENGER': 'passenger', 'CARGO': 'cargo', 'CARRIER': 'cargo', 'TANKER': 'tanker',
         'BUNKER': 'tanker', 'SUPPORT': 'other', 'SEISMIC_VESSEL': 'other', 'OTHER_NON_FISHING': 'other',
-        'OTHER': 'other', 'GEAR': 'other', 'DISCREPANCY': 'unknown', 'INSUFFICIENT_DATA': 'unknown', '': 'unknown'}
+        'OTHER': 'other', 'GEAR': 'other', 'DISCREPANCY': 'unknown', 'INSUFFICIENT_DATA': 'unknown', 'INACTIVE': 'unknown', '': 'unknown'}  # INACTIVE: GFW v5
 
 
 def hav_m(lat1, lon1, lat2, lon2):

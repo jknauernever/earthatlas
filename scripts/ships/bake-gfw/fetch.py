@@ -6,7 +6,7 @@ Fetch GFW 4Wings hourly per-vessel presence for named area tiles (areas.py), cac
                    [--raw DIR] [--budget 2000] [--refetch-after 2026-08-25]
 
 Request (docs/SHIP_TRACK_SOURCES.md, "GFW hourly lines"):
-  POST /v3/4wings/report?datasets[0]=public-global-presence:latest&temporal-resolution=HOURLY
+  POST /v3/4wings/report?datasets[0]=public-global-presence:v4.0&temporal-resolution=HOURLY
        &spatial-resolution=HIGH&spatial-aggregation=false&group-by=VESSEL_ID&format=JSON&date-range=a,b
   body {"geojson": <bbox polygon>}
 
@@ -56,7 +56,9 @@ def _call(req):
 
 def report(tok, box, day, span, stats):
     d1 = (dt.date.fromisoformat(day) + dt.timedelta(days=span)).isoformat()
-    qs = urllib.parse.urlencode({'datasets[0]': 'public-global-presence:latest', 'temporal-resolution': 'HOURLY',
+    # Pinned to v4.0 (2026-10-02): GFW makes v5 the 'latest' on 2026-10-21 (identities / types may change); keep one
+    # version per month until we switch deliberately.
+    qs = urllib.parse.urlencode({'datasets[0]': 'public-global-presence:v4.0', 'temporal-resolution': 'HOURLY',
                                  'spatial-resolution': 'HIGH', 'spatial-aggregation': 'false', 'group-by': 'VESSEL_ID',
                                  'format': 'JSON', 'date-range': f'{day},{d1}'})
     hdr = {'Authorization': f'Bearer {tok}', 'User-Agent': UA, 'Accept-Encoding': 'gzip', 'Content-Type': 'application/json'}

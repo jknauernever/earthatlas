@@ -631,6 +631,11 @@ export default function ShipsApp() {
     // the filter would draw. "Narrow to" classes: the on-screen MMSIs go to the server, which answers with counts only.
     let ctl = null, lastKey = ''
     const count = () => {
+      // Zoomed out, the tiles merge lines per kind and carry no MMSIs (US and GFW below z9; the Salish detail tiles from
+      // z5 inside their box), so nothing can be counted: show no numbers rather than a misleading 0 (Josh 2026-10-02).
+      const z = map.getZoom(), c = map.getCenter(), bb = trackSource.bbox
+      const inSalish = c.lng >= bb[0] && c.lng <= bb[2] && c.lat >= bb[1] && c.lat <= bb[3]
+      if (z < SALISH_Z && !(inSalish && z >= KIND_HANDOVER_Z)) { lastKey = ''; setInView({ scrub: null, cls: null, selected: null }); return }
       const sFeats = scrubMmsis ? drawnBy(GHOST_S) : null
       const scrub = new Set()
       for (const p of sFeats || []) if (p.mmsi != null && groupOk(p)) scrub.add(scrubV(p.mmsi))

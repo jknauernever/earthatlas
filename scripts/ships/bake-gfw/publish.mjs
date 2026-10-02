@@ -37,7 +37,8 @@ async function upload(pathname, file, contentType) {
       const token = await tokenFor(pathname)
       const body = size > 8e6 ? createReadStream(file) : readFileSync(file)
       const res = await put(pathname, body, { access: 'public', token, contentType, multipart: size > 8e6 })
-      const probe = await fetch(res.url, { headers: { Range: `bytes=${size - 1}-${size - 1}` }, cache: 'no-store' })
+      // A cache-busting query: right after an overwrite the Blob CDN can still answer with the previous copy (2026-10-02).
+      const probe = await fetch(`${res.url}?verify=${Date.now()}`, { headers: { Range: `bytes=${size - 1}-${size - 1}` }, cache: 'no-store' })
       const total = Number((probe.headers.get('content-range') || '').split('/')[1])
       await probe.arrayBuffer()
       if (probe.status !== 206 || total !== size) throw new Error(`verify ${pathname}: HTTP ${probe.status}, total ${total || 'missing'} vs ${size}`)

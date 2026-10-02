@@ -45,7 +45,7 @@
 
 import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { portClimateTrace } from '../lib/ships/climateTrace.js'
-import { classIndex, mmsisOfClasses } from '../lib/ships/typeSearch.js'
+import { classIndex, mmsisOfClasses, classCountsFor } from '../lib/ships/typeSearch.js'
 import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
@@ -133,6 +133,22 @@ export default async function handler(req, res) {
     //   /api/ships?op=scrubberMmsis               → { vessels, mmsis, by: { gisis, mep, both, mep_inferred } }  (Scrubber-fitted
     //                                               tracks filter: IMO GISIS Reg. 4.2 scrubber notifications OR MEP Alliance lists, accepted links only)
     if (op === 'scrubberMmsis') return send(res, 200, await scrubberMmsis(q, S), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    //   POST /api/ships?op=classCounts  { mmsis: [≤20000 on-screen MMSIs], classes: [picked], scrub: bool }
+    //        → { cls: { class: ships }, selected: ships | null }   ("Narrow to" chips' in-view counts). Only counts go out:
+    //        the MMSI → class table stays on the server (Josh 2026-10-02).
+    if (op === 'classCounts') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) { chunks.push(c); if (chunks.reduce((n, x) => n + x.length, 0) > 400e3) return send(res, 413, { error: 'too large' }) }
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { return send(res, 400, { error: 'bad json' }) }
+      }
+      const mmsis = [...new Set((Array.isArray(body.mmsis) ? body.mmsis : []).map(Number).filter((x) => x >= 1e8 && x < 1e9))].slice(0, 20000)
+      const classes = (Array.isArray(body.classes) ? body.classes : []).filter((c) => /^[a-z_]{2,40}$/.test(c)).slice(0, 20)
+      const scrubSet = body.scrub ? new Set((await scrubberMmsis(q, S)).mmsis) : null
+      return send(res, 200, await classCountsFor(q, S, mmsis, classes, scrubSet), 'no-store')
+    }
     if (op === 'classMmsis') {
       const cls = (p.get('classes') || '').split(',').filter((c) => /^[a-z_]{2,40}$/.test(c)).slice(0, 20)
       if (!cls.length) return send(res, 400, { error: 'classes required' })

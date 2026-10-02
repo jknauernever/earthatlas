@@ -120,6 +120,15 @@ const GFW_TRACK_ATTRIBUTION = 'Ship tracks outside NOAA coverage: <a href="https
 const usSrc = (ym) => `shiptrk-us-${ym}`
 const usLo = (ym) => `shiptrk-us-${ym}-lo`
 const usHi = (ym) => `shiptrk-us-${ym}-hi`
+// Invisible copies of each track layer (same source, zoom range and structural filter), only for the filter chips'
+// in-view counts: the map can only report lines it draws, and an unpicked chip must say what picking it would draw.
+// Each copy holds just the lines one set of chips can reach, so counting stays about as cheap as the drawn lines:
+//   GHOST_S: the scrubber-fitted ships' lines under the other picks (= what the Scrubber-fitted filter draws);
+//   GHOST_C: every line with an MMSI (under Scrubber-fitted, only those ships): the "Narrow to" chips count classes by MMSI,
+//            on the server (op=classCounts), so the MMSI → class table never reaches the browser (Josh 2026-10-02).
+// Not 'shiptrk…', so clicks and hovers never hit them.
+const GHOST_S = 'ghostS-'
+const GHOST_C = 'ghostC-'
 const usTileUrl = (ym) =>
   `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
 // ─── DEV-ONLY PROTOTYPE (Josh 2026-09-29): GFW hourly positions drawn as track lines, BC + Alaska ───
@@ -573,13 +582,18 @@ export default function ShipsApp() {
   // Scrubber-fitted only (sc=1): ships with an IMO GISIS scrubber notification OR on a MEP Alliance list (accepted links only;
   // api op=scrubberMmsis, lib/ships/scrubberFilter.js). Combines with the kinds above (both must hold).
   const [scrubOnly, setScrubOnly] = useState(() => initial.sc === '1')
-  const [scrubMmsis, setScrubMmsis] = useState(null) // { vessels, mmsis, by }
+  const [scrubMmsis, setScrubMmsis] = useState(null) // { vessels, mmsis, vesselOf, by }
+  // The chip's number is a filter preview (Josh 2026-09-30): the scrubber-fitted ships among the track lines on screen now,
+  // counted as ships (vesselOf), so switching the filter on leaves exactly that many ships' lines. Loaded with the tracks.
+  // In-view counts for every filter chip: { scrub, cls: { class: n }, selected } (ships, not lines), read from the
+  // unfiltered ghost track layers so an unpicked chip can say what picking it would draw.
+  const [inView, setInView] = useState(null)
   useEffect(() => {
-    if (!scrubOnly || scrubMmsis) return
+    if (!(scrubOnly || tracksOn) || scrubMmsis) return
     let dead = false
     fetch('/api/ships?op=scrubberMmsis').then((r) => (r.ok ? r.json() : null)).then((d) => { if (!dead && d) setScrubMmsis(d) }).catch(() => {})
     return () => { dead = true }
-  }, [scrubOnly, scrubMmsis])
+  }, [scrubOnly, tracksOn, scrubMmsis])
   // Outside the Salish detail area the US tiles carry MMSIs only from z9 (lines merged per kind below that).
   const zoomedOutForKinds = (trackClasses.length > 0 || scrubOnly) && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
     && mapView.lng >= trackSource.bbox[0] && mapView.lng <= trackSource.bbox[2] && mapView.lat >= trackSource.bbox[1] && mapView.lat <= trackSource.bbox[3])
@@ -595,6 +609,49 @@ export default function ShipsApp() {
     return () => { dead = true }
   }, [trackClasses])
   const trackMonths = useMemo(() => allTrackMonths.slice(trackRange[0], trackRange[1] + 1), [allTrackMonths, trackRange])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !tracksOn) { setInView(null); return }
+    // The same rule as the track layers' kindFilter (track effect below), per feature: scrubber-fitted needs an MMSI on
+    // the list AND the picked classes (if any) AND the picked groups; picked classes alone decide lines with an MMSI;
+    // otherwise the picked groups.
+    const scrubV = (m) => scrubMmsis?.vesselOf[m]
+    const groupOk = (p) => !trackKinds.length || trackKinds.includes(p.kind)
+    const drawnBy = (pfx) => {
+      const layers = map.getStyle().layers.filter((l) => l.id.startsWith(pfx) && map.getLayoutProperty(l.id, 'visibility') !== 'none').map((l) => l.id)
+      return layers.length ? map.queryRenderedFeatures({ layers }).map((f) => f.properties) : null
+    }
+    // Scrubber-fitted: counted here (the scrubber list is public, op=scrubberMmsis); GHOST_S already holds exactly the lines
+    // the filter would draw. "Narrow to" classes: the on-screen MMSIs go to the server, which answers with counts only.
+    let ctl = null, lastKey = ''
+    const count = () => {
+      const sFeats = scrubMmsis ? drawnBy(GHOST_S) : null
+      const scrub = new Set()
+      for (const p of sFeats || []) if (p.mmsi != null && groupOk(p)) scrub.add(scrubV(p.mmsi))
+      setInView((v) => ({ ...(v || {}), scrub: sFeats ? scrub.size : scrubMmsis ? 0 : null }))
+      if (!trackKinds.length) { setInView((v) => ({ ...(v || {}), cls: null, selected: null })); return }
+      const cFeats = drawnBy(GHOST_C)
+      const mmsis = [...new Set((cFeats || []).map((p) => p.mmsi).filter((m) => m != null))].sort((a, b) => a - b)
+      const key = `${mmsis.length}:${mmsis[0]}:${mmsis[mmsis.length - 1]}:${trackClasses.join(',')}:${scrubOnly}`
+      if (key === lastKey) return
+      lastKey = key
+      ctl?.abort(); ctl = new AbortController()
+      fetch('/api/ships?op=classCounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
+        body: JSON.stringify({ mmsis: mmsis.slice(0, 20000), classes: trackClasses, scrub: scrubOnly }) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d) setInView((v) => ({ ...(v || {}), cls: d.cls, selected: d.selected })) })
+        .catch(() => {})
+    }
+    // Not 'idle': something on this map keeps repainting, so idle never fires. Recount once the view settles and as
+    // track tiles arrive (debounced).
+    let t = 0
+    const soon = () => { clearTimeout(t); t = setTimeout(count, 250) }
+    const onData = (e) => { if (e.sourceId?.startsWith('shiptrk')) soon() }
+    soon()
+    map.on('moveend', soon)
+    map.on('sourcedata', onData)
+    return () => { clearTimeout(t); ctl?.abort(); map.off('moveend', soon); map.off('sourcedata', onData) }
+  }, [mapReady, styleVersion, tracksOn, scrubMmsis, scrubOnly, trackMonths, trackKinds, trackClasses])
   const addedMonthsRef = useRef(new Set())
   const nearPopupRef = useRef(null)
   useEffect(() => {
@@ -615,7 +672,7 @@ export default function ShipsApp() {
     // Drop months no longer selected (a basemap swap already dropped everything).
     for (const ym of [...addedMonthsRef.current]) {
       if (trackMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)))) continue
-      for (const l of [trkLine(ym), usLo(ym), usHi(ym), gfwObs(ym), gfwEst(ym)]) if (map.getLayer(l)) map.removeLayer(l)
+      for (const l of [trkLine(ym), usLo(ym), usHi(ym), gfwObs(ym), gfwEst(ym)].flatMap((id) => [GHOST_S + id, GHOST_C + id, id])) if (map.getLayer(l)) map.removeLayer(l)
       for (const src of [trkSrc(ym), usSrc(ym), gfwSrc(ym)]) removeSourceSafe(map, src)
       addedMonthsRef.current.delete(ym)
     }
@@ -689,6 +746,30 @@ export default function ShipsApp() {
         map.setLayerZoomRange(trkLine(ym), hand, 24)
         map.setLayerZoomRange(usLo(ym), 0, hand)
         if (map.getLayer(usHi(ym))) map.setLayerZoomRange(usHi(ym), hand, 24)
+      }
+    }
+    // Filter-chip count copies (GHOST_S / GHOST_C above); their filters mirror kindFilter's rules.
+    const scrubAny = scrubMmsis ? ['in', ['get', 'mmsi'], ['literal', scrubMmsis.mmsis.length ? scrubMmsis.mmsis : [-1]]] : null
+    const ghostS = scrubAny && ['all', scrubAny, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true]
+    const ghostC = trackKinds.length ? ['all', ['has', 'mmsi'], byScrub ? scrubAny : true] : null
+    // Source, source-layer and zoom range from the style JSON (map.getLayer() is a runtime object without 'source-layer';
+    // reading it there left the copies with none, and Mapbox refused them).
+    const styleLayer = Object.fromEntries(map.getStyle().layers.map((l) => [l.id, l]))
+    for (const ym of trackMonths) {
+      for (const [id, structural] of [[gfwObs(ym), ['!=', ['get', 'est'], 1]], [gfwEst(ym), ['==', ['get', 'est'], 1]],
+        [usLo(ym), null], [usHi(ym), outsideSalish], [trkLine(ym), null]]) {
+        const l = styleLayer[id]
+        if (!l) continue
+        for (const [pfx, chips] of [[GHOST_S, ghostS], [GHOST_C, ghostC]]) {
+          const g = pfx + id
+          if (!map.getLayer(g)) {
+            map.addLayer({ id: g, type: 'line', source: l.source, 'source-layer': l['source-layer'],
+              paint: { 'line-width': TRACK_WIDTH, 'line-opacity': 0 } }, labelsId)
+          }
+          map.setFilter(g, chips ? (structural ? ['all', structural, chips] : chips) : false)
+          map.setLayerZoomRange(g, l.minzoom ?? 0, l.maxzoom ?? 24)
+          map.setLayoutProperty(g, 'visibility', tracksOn && chips ? 'visible' : 'none')
+        }
       }
     }
     if (!map.getSource(OWN_SRC)) {
@@ -1622,7 +1703,7 @@ export default function ShipsApp() {
                               {subs.map((c) => (
                                 <button key={c.class} type="button" className={trackClasses.includes(c.class) ? styles.chipTrack : styles.chip}
                                   onClick={() => setTrackClasses(trackClasses.includes(c.class) ? trackClasses.filter((x) => x !== c.class) : [...trackClasses, c.class])}>
-                                  {c.label.replace(/\s*\(.*\)$/, '')} <span className={styles.chipCount}>{c.n.toLocaleString()}</span>
+                                  {c.label.replace(/\s*\(.*\)$/, '')}{inView?.cls && <> <span className={styles.chipCount}>{(inView.cls[c.class] || 0).toLocaleString()}</span></>}
                                 </button>
                               ))}
                             </div>
@@ -1630,18 +1711,19 @@ export default function ShipsApp() {
                         })()}
                         {trackClasses.length > 0 && (
                         <div className={styles.legendNoteText}>
-                          <>{classMmsis?.vessels?.toLocaleString() ?? '…'} ships{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
+                          <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : '…'}{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
                         </div>)}
                         <div className={styles.chipRow} style={{ marginTop: 8 }}>
                           <button type="button" className={scrubOnly ? styles.chipTrack : styles.chip} onClick={() => setScrubOnly((v) => !v)}
                             title="Only ships with an exhaust scrubber: notified to IMO by their flag (IMO GISIS), or on the MEP Alliance scrubber lists. Combines with the kinds above.">
-                            Scrubber-fitted{scrubMmsis && <> <span className={styles.chipCount}>{scrubMmsis.vessels.toLocaleString()}</span></>}
+                            Scrubber-fitted{inView?.scrub != null && <> <span className={styles.chipCount}>{inView.scrub.toLocaleString()}</span></>}
                           </button>
                         </div>
                         {scrubOnly && (
                           <div className={styles.legendNoteText}>
-                            {scrubMmsis ? scrubMmsis.vessels.toLocaleString() : '…'} ships: notified to{' '}
+                            {inView?.scrub != null ? `${inView.scrub.toLocaleString()} ${inView.scrub === 1 ? 'ship' : 'ships'} with tracks in view, of ` : ''}
+                            {scrubMmsis ? scrubMmsis.vessels.toLocaleString() : '…'} scrubber-fitted ships on record: notified to{' '}
                             <a className={styles.sourceLink} href="https://gisis.imo.org/Public/MARPOL6/Notifications.aspx?Reg=4.2" target="_blank" rel="noopener noreferrer"
                               title={`IMO GISIS, MARPOL Annex VI Reg. 4.2 scrubber notifications by flag Administrations${scrubMmsis ? `: ${scrubMmsis.by.gisis.toLocaleString()} ships` : ''}`}>IMO</a>{' '}
                             or listed by{' '}

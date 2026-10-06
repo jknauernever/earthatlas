@@ -21,7 +21,7 @@ Request (docs/SHIP_TRACK_SOURCES.md, "GFW hourly lines"):
 - --budget caps the number of report requests this run may make (GFW limit: 50,000/day).
 Output: RAW/<area>/<area>_<YYYY-MM-DD>_<n>d[_q<k>].json.gz   (raw body, gzip'd) + RAW/fetch-log.ndjson
 """
-import argparse, datetime as dt, gzip, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, datetime as dt, gzip, http.client, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 import areas
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -99,7 +99,8 @@ def report(tok, box, day, span, stats):
             if e.code in (429, 500, 502, 503, 520, 521, 522, 523):
                 time.sleep(30 * (attempt + 1)); continue
             raise RuntimeError(f'http {e.code}: {e.read()[:300]!r}')
-        except (TimeoutError, OSError):
+        # A body cut off mid-stream (gzip EOFError / IncompleteRead) is transient too (2026-10-06 killed September's backfill).
+        except (TimeoutError, OSError, EOFError, http.client.IncompleteRead):
             time.sleep(30 * (attempt + 1))
     raise RuntimeError('gave up')
 

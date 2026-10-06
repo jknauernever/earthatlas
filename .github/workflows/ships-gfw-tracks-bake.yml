@@ -92,7 +92,10 @@ jobs:
               # inc: incremental (daily) runs re-fetch only from here when the month's earlier downloads are in the Actions
               # cache (fetch job); otherwise the whole month (2026-10-02: Josh, only download the new days).
               inc = max(a, start).isoformat() if mode != 'backfill' and idx.get('fetched_through') else ''
-              fetch.append(dict(month=m, through=last.isoformat() if b == last + dt.timedelta(days=1) else '', inc=inc, **{'from': a.isoformat(), 'to': b.isoformat()}))
+              # keep: save the month's downloads for the daily runs that will re-fetch its last days (also after a backfill,
+              # 2026-10-05: else the next daily run rebuilt the month from an older cache missing the backfilled areas).
+              keep = 'true' if inc or m >= (last - dt.timedelta(days=7)).strftime('%Y-%m') else ''
+              fetch.append(dict(month=m, through=last.isoformat() if b == last + dt.timedelta(days=1) else '', inc=inc, keep=keep, **{'from': a.isoformat(), 'to': b.isoformat()}))
           if mode == 'backfill':
               fetch.reverse()                                     # newest first: the most recent months appear first
           # Route groups: the whole stage in one group for pacnw/us; the world in ~30° longitude bands.
@@ -130,7 +133,7 @@ jobs:
       - name: Already built?
         id: have
         run: |
-          n=$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)
+          n=$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v3-$STAGE" --json key --jq length)
           echo "built=$([ "$n" != "0" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       # Another run's water job already building it? Wait for that instead of hitting Overpass twice; if it ends
       # without a cache, build here (resuming its saved downloads).
@@ -139,7 +142,7 @@ jobs:
         if: steps.have.outputs.built != 'true'
         run: |
           for i in $(seq 1 330); do
-            [ "$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)" != "0" ] && { echo "built=true" >> "$GITHUB_OUTPUT"; exit 0; }
+            [ "$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v3-$STAGE" --json key --jq length)" != "0" ] && { echo "built=true" >> "$GITHUB_OUTPUT"; exit 0; }
             busy=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ships-gfw-tracks-bake.yml --status in_progress --json databaseId --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)] | length")
             [ "$busy" = "0" ] && break
             sleep 60
@@ -183,7 +186,7 @@ jobs:
             land/osm
             land/extras-v1.pkl
             land/flats-v1.pkl
-          key: gfw-water-v2-${{ env.STAGE }}
+          key: gfw-water-v3-${{ env.STAGE }}
 
   fetch:
     needs: plan
@@ -227,13 +230,13 @@ jobs:
       # Keep the month's downloads for tomorrow's run (only months a daily run will touch again), then drop older copies
       # of the same month so the cache holds one per month.
       - name: Keep ${{ matrix.job.month }}'s downloads for the next daily run
-        if: matrix.job.inc != '' || matrix.job.through != ''
+        if: matrix.job.keep != '' || matrix.job.through != ''
         uses: actions/cache/save@v4
         with:
           path: raw
           key: gfw-raw-${{ env.STAGE }}-${{ matrix.job.month }}-${{ github.run_id }}
       - name: Drop older copies of ${{ matrix.job.month }}'s downloads
-        if: matrix.job.inc != '' || matrix.job.through != ''
+        if: matrix.job.keep != '' || matrix.job.through != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

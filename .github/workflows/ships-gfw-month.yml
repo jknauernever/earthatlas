@@ -38,10 +38,10 @@ jobs:
       - name: Wait for the coastline data (built once per stage by the fetching run's water job)
         run: |
           for i in $(seq 1 345); do
-            [ "$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)" != "0" ] && exit 0
+            [ "$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v3-$STAGE" --json key --jq length)" != "0" ] && exit 0
             sleep 60
           done
-          echo "coastline cache gfw-water-v2-$STAGE never appeared"; exit 1
+          echo "coastline cache gfw-water-v3-$STAGE never appeared"; exit 1
 
   route:
     needs: water
@@ -67,7 +67,7 @@ jobs:
             land/osm
             land/extras-v1.pkl
             land/flats-v1.pkl
-          key: gfw-water-v2-${{ env.STAGE }}
+          key: gfw-water-v3-${{ env.STAGE }}
           fail-on-cache-miss: true
       - name: Restore cumulative traffic rasters (earlier runs)
         uses: actions/cache/restore@v4

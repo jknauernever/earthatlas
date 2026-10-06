@@ -22,10 +22,11 @@ GEOFABRIK = 'https://download.geofabrik.de'
 FLATS = os.path.join(land.LAND_DIR, 'flats-v1.pkl')
 TIDAL_NATURAL = ('wetland', 'mud', 'sand', 'shoal', 'shingle')
 
-# Extracts whose land touches each stage's boxes (areas.py). pacnw: Salish (WA, OR's Columbia mouth, BC), BC, Alaska,
+# Extracts whose land touches each stage's boxes (areas.py). pacnw: Salish + the US West Coast (WA, OR, CA), BC, Alaska,
 # the Yukon / NWT Arctic coast, and the Russian side of the Bering Sea / western Aleutian boxes (170–180°E).
 EXTRACTS = {
-    'pacnw': ['north-america/us/washington', 'north-america/us/oregon', 'north-america/canada/british-columbia',
+    'pacnw': ['north-america/us/washington', 'north-america/us/oregon', 'north-america/us/california',
+              'north-america/canada/british-columbia',
               'north-america/us/alaska', 'north-america/canada/yukon', 'north-america/canada/northwest-territories',
               'russia/far-eastern-fed-district'],
 }

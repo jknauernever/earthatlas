@@ -1,5 +1,5 @@
 # Builds the coastline + tidal-flats data the GFW track routing needs, ONCE per stage, into the Actions cache
-# (gfw-water-v2-<stage>) that ships-gfw-month.yml waits for. Tidal flats come from Geofabrik regional OSM extracts
+# (gfw-water-v3-<stage>) that ships-gfw-month.yml waits for. Tidal flats come from Geofabrik regional OSM extracts
 # (scripts/ships/bake-gfw/fetch_flats_pbf.py, minutes) instead of the Overpass API (3+ hours for pacnw; 2026-10-01).
 # Run it by hand (Run workflow) or let ships-gfw-tracks-bake.yml's water job build it on a cache miss.
 name: ships-gfw-water
@@ -29,7 +29,7 @@ jobs:
       - name: Already built?
         id: have
         run: |
-          n=$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v2-$STAGE" --json key --jq length)
+          n=$(gh cache list --repo "$GITHUB_REPOSITORY" --key "gfw-water-v3-$STAGE" --json key --jq length)
           echo "built=$([ "$n" != "0" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         if: steps.have.outputs.built != 'true'
@@ -53,4 +53,4 @@ jobs:
             land/osm
             land/extras-v1.pkl
             land/flats-v1.pkl
-          key: gfw-water-v2-${{ env.STAGE }}
+          key: gfw-water-v3-${{ env.STAGE }}

@@ -36,11 +36,13 @@ PACNW = [
     ('aleutw',    170.0, 50.0,  180.0, 58.0),
     ('beringw',   170.0, 58.0,  180.0, 66.0),
     ('arctic',   -180.0, 66.0, -122.0, 72.5),
+    # US West Coast south of the Salish box to San Diego (Josh 2026-10-05: Pacific coast daily, US-wide not yet).
+    # NOAA's us-west box covers it, so GFW is drawn here only for months NOAA hasn't published (Jul 2026 on).
+    ('uswest',   -130.5, 30.0, -116.5, 46.9),
 ]
 
-# US waters outside PACNW (stage 2: GFW only for months after NOAA's latest).
+# US waters outside PACNW (stage 2: GFW only for months after NOAA's latest). uswest moved into PACNW 2026-10-05.
 US = [
-    ('uswest',  -130.5, 30.0, -116.5, 46.9),
     ('usgulf',   -98.0, 23.5,  -80.0, 31.0),
     ('useast',   -82.0, 24.0,  -65.0, 45.5),
     ('hawaii',  -179.9, 16.0, -150.0, 30.0),

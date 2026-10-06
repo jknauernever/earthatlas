@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useSEO } from '../hooks/useSEO.js'
 import styles from './NewsArticlePage.module.css'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 // Species accent colors — matches explore configs
 const SPECIES_THEME = {
@@ -185,6 +186,7 @@ export default function NewsArticlePage() {
             ← Explore {theme.label}
           </Link>
         </div>
+        <BuiltByCredit variant="light" />
       </div>
     </div>
   )

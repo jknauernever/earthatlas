@@ -1,0 +1,17 @@
+/* BuiltByCredit's light (document page) and corner (over a map) variants; the panel
+   variant reuses Panel.module.css .builtBy / .builtByLink. */
+.light {
+  margin: 28px auto 8px; padding-top: 12px; max-width: 760px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px; color: rgba(0, 0, 0, 0.5); text-align: center;
+}
+.light .link { color: #0369a1; }
+.corner {
+  position: absolute; left: 10px; bottom: 6px; z-index: 5;
+  padding: 3px 8px; border-radius: 6px;
+  background: rgba(10, 14, 23, 0.6); backdrop-filter: blur(4px);
+  font-size: 10.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.6);
+  pointer-events: auto;
+}
+.corner .link { color: rgba(120, 200, 255, 0.9); }
+.link { text-decoration: underline; text-underline-offset: 2px; }

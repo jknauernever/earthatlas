@@ -5,6 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchAllRecent } from './liveService'
 import { useQueryParams } from '../hooks/useQueryParams'
 import styles from './LiveGlobe.module.css'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 // URL-shareable filters for /live. Source, basemap, and labels-on/off are
 // persisted so a specific view can be copy-pasted as a link.
@@ -1121,6 +1122,7 @@ export default function LiveGlobe() {
         )}
       </div>
 
+      <BuiltByCredit variant="corner" />
     </div>
   )
 }

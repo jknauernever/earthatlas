@@ -6,6 +6,7 @@ import { fetchRecentINat, fetchRecentEBird } from './liveService'
 import GeoSearch from '../components/GeoSearch.jsx'
 import styles from './LiveGlobe.module.css'
 import localStyles from './LiveLocal.module.css'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
@@ -661,6 +662,8 @@ export default function LiveLocal() {
           )}
         </div>
       )}
+      {/* Above the place-search overlay (z-index 20), which covers the landing view */}
+      <BuiltByCredit variant="corner" className={localStyles.creditAbove} />
     </div>
   )
 }

@@ -58,6 +58,9 @@ addUrl('/fire')
 // Quakes
 addUrl('/quakes')
 
+// San Juan County docks
+addUrl('/sanjuan-docks')
+
 // Carbon
 addUrl('/carbon')
 

@@ -816,6 +816,101 @@ function systemsExplainPlugin(anthropicKey, mapboxKey) {
   }
 }
 
+// Dev middleware: the /sanjuan-docks/review labelling page. Serves the dock-detection
+// pilot's local aerial tiles + overlays (data/sanjuan-docks/ml, never deployed) and
+// saves the reviewer's marks to data/sanjuan-docks/ml/review/labels.json. Dev only.
+function dockReviewPlugin() {
+  const ROOT = `${process.cwd()}/data/sanjuan-docks/ml`
+  // One rebuild at a time; adds during a run queue one more run. `okStartedAt` is when
+  // the last successful run started — every dock added before then is in the data.
+  let dockRebuild = { running: false, queued: false, okStartedAt: 0, failed: false }
+  const runRebuild = async () => {
+    if (dockRebuild.running) { dockRebuild.queued = true; return }
+    const { spawn } = await import('node:child_process')
+    const log = (await import('node:fs')).openSync(`${ROOT}/rebuild-last.log`, 'w')
+    const startedAt = Date.now()
+    dockRebuild = { ...dockRebuild, running: true, queued: false }
+    const child = spawn('zsh', ['scripts/sanjuan-docks/rebuild.sh'], { cwd: process.cwd(), stdio: ['ignore', log, log] })
+    child.on('exit', (code) => {
+      dockRebuild = { ...dockRebuild, running: false, failed: code !== 0, okStartedAt: code === 0 ? startedAt : dockRebuild.okStartedAt }
+      if (dockRebuild.queued) runRebuild()
+    })
+  }
+  return {
+    name: 'dock-review',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/dock-review', async (req, res) => {
+        const fs = await import('node:fs/promises')
+        const send = (body, type = 'application/json') => {
+          res.statusCode = 200
+          res.setHeader('content-type', type)
+          res.setHeader('cache-control', 'no-store')
+          res.end(body)
+        }
+        try {
+          const path = new URL(req.url, 'http://localhost').pathname
+          if (path === '/tasks') {
+            const manifest = JSON.parse(await fs.readFile(`${ROOT}/manifest.json`, 'utf8'))
+            const { queue, area_bbox: areaBbox } = JSON.parse(await fs.readFile(`${ROOT}/review/queue.json`, 'utf8'))
+            const [x0, y0, x1, y1] = areaBbox ?? manifest.pilot_bbox
+            const known = JSON.parse(await fs.readFile(`${process.cwd()}/public/hpa/dock-locations.geojson`, 'utf8')).features
+              .filter((f) => {
+                const c = f.geometry.type === 'Point' ? f.geometry.coordinates : f.geometry.coordinates.flat(2).slice(0, 2)
+                return c[0] >= x0 - 0.002 && c[0] <= x1 + 0.002 && c[1] >= y0 - 0.002 && c[1] <= y1 + 0.002
+              })
+              .map((f) => ({ type: 'Feature', geometry: f.geometry, properties: { kind: f.properties.kind, located_by: f.properties.located_by, facility_id: f.properties.facility_id } }))
+            // Only the photos worth a look, most informative first (scripts/sanjuan-docks/ml/review_queue.py).
+            const byId = new Map(manifest.tiles.map((t) => [t.id, t]))
+            send(JSON.stringify({
+              px: manifest.px,
+              tiles: queue.map((q) => ({ ...byId.get(q.tile), kind: q.kind, reasons: q.reasons })),
+              detections: JSON.parse(await fs.readFile(`${ROOT}/review/detections.geojson`, 'utf8')).features.filter((f) => f.properties.kind === 'shape'),
+              known,
+            }))
+          } else if (path.startsWith('/tile/')) {
+            const id = path.slice(6)
+            if (!/^[a-z]+_\d+$/.test(id)) { res.statusCode = 400; res.end(); return }
+            send(await fs.readFile(`${ROOT}/images/${id}.jpg`), 'image/jpeg')
+          } else if (path === '/add-dock' && req.method === 'POST') {
+            // A dock drawn on the /sanjuan-docks map ("Add a missing dock"): appended to
+            // the reviewer's drawn docks, then the dataset is rebuilt in the background.
+            let body = ''
+            for await (const chunk of req) body += chunk
+            const { coords } = JSON.parse(body)
+            if (!Array.isArray(coords) || coords.length < 2 || coords.some((c) => !Array.isArray(c) || c.length !== 2 || !c.every(Number.isFinite))) {
+              res.statusCode = 400; res.end('{"error":"need 2+ [lon,lat] points"}'); return
+            }
+            const file = `${ROOT}/review/labels.json`
+            const labels = JSON.parse(await fs.readFile(file, 'utf8').catch(() => '{}'))
+            const addedAt = Date.now()
+            const id = `m${addedAt}`
+            labels.drawn = [...(labels.drawn ?? []), { id, coords, tile: null, source: 'map', added_at: new Date(addedAt).toISOString() }]
+            await fs.writeFile(file, JSON.stringify({ ...labels, saved_at: new Date().toISOString() }, null, 1))
+            runRebuild()
+            send(JSON.stringify({ ok: true, id, addedAt }))
+          } else if (path === '/rebuild-status') {
+            send(JSON.stringify({ ...dockRebuild, now: Date.now() }))
+          } else if (path === '/labels' && req.method === 'POST') {
+            let body = ''
+            for await (const chunk of req) body += chunk
+            const labels = JSON.parse(body)
+            await fs.writeFile(`${ROOT}/review/labels.json`, JSON.stringify({ ...labels, saved_at: new Date().toISOString() }, null, 1))
+            send('{"ok":true}')
+          } else if (path === '/labels') {
+            send(await fs.readFile(`${ROOT}/review/labels.json`, 'utf8').catch(() => '{}'))
+          } else {
+            res.statusCode = 404; res.end()
+          }
+        } catch (err) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: String(err) }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // Load all env (incl. non-VITE_ vars) so the eBird dev proxy can read the
   // server-side token under `npm run dev`. Never bundled into the client.
@@ -857,6 +952,7 @@ export default defineConfig(({ mode }) => {
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),
+    dockReviewPlugin(),
     shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || ''),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev

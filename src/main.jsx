@@ -36,6 +36,8 @@ import LiveLocal from './live/LiveLocal.jsx'
 import ForestMonitor from './forestmonitor/ForestMonitor.jsx'
 import FireApp from './fire/FireApp.jsx'
 import QuakesApp from './quakes/QuakesApp.jsx'
+import HpaDocksApp from './hpa/HpaDocksApp.jsx'
+import DockReview from './hpa/DockReview.jsx'
 import CarbonApp from './carbon/CarbonApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
@@ -150,6 +152,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/forestmonitor" element={<ForestMonitor />} />
           <Route path="/fire" element={<FireApp />} />
           <Route path="/quakes" element={<QuakesApp />} />
+          <Route path="/sanjuan-docks" element={<HpaDocksApp />} />
+          {import.meta.env.DEV && <Route path="/sanjuan-docks/review" element={<DockReview />} />}
           <Route path="/carbon" element={<CarbonApp />} />
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />

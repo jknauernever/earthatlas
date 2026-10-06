@@ -31,6 +31,10 @@
       "destination": "/quakes.html"
     },
     {
+      "source": "/sanjuan-docks",
+      "destination": "/sanjuan-docks.html"
+    },
+    {
       "source": "/carbon",
       "destination": "/carbon.html"
     },

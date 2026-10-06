@@ -53,6 +53,18 @@ const ROUTES = [
       'earthquake map, live earthquakes, USGS earthquakes, seismic activity, recent earthquakes near me, magnitude, earthquake tracker, real-time earthquakes',
   },
   {
+    out: 'sanjuan-docks.html',
+    url: 'https://earthatlas.org/sanjuan-docks',
+    title: 'Docks & dock permits — San Juan County · EarthAtlas',
+    description:
+      'Every known dock in San Juan County, WA, with its county and state permit history — from OpenStreetMap, the Friends of the San Juans shoreline survey, WDFW and county permits, and docks found in the 2025 county aerial photos. An EarthAtlas tool.',
+    // TODO: dedicated sanjuan-docks-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas dock map of San Juan County, Washington',
+    keywords:
+      'San Juan County docks, dock permits, WDFW HPA, shoreline permits, San Juan Islands, overwater structures, Friends of the San Juans, nearshore habitat',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

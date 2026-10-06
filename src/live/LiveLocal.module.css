@@ -338,3 +338,6 @@
     padding: 32px 24px;
   }
 }
+
+/* BuiltByCredit sits above the place-search overlay */
+.creditAbove { z-index: 21; }

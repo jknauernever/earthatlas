@@ -1,0 +1,72 @@
+/* /sanjuan-docks/review — dev-only labelling page: the photo fills the left, the
+   controls and instructions sit in a fixed column on the right. */
+
+.page {
+  position: fixed; inset: 0;
+  display: flex; gap: 0;
+  background: #0a0e17; color: #e5e7eb;
+  font: 13px/1.45 system-ui, -apple-system, sans-serif;
+}
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; min-width: 0; }
+.frame { position: relative; height: min(calc(100vh - 32px), calc(100vw - 372px)); aspect-ratio: 1; }
+.photo { width: 100%; height: 100%; display: block; user-select: none; }
+.overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.drawingCursor { cursor: crosshair; }
+
+.known { fill: none; stroke: #22d3ee; stroke-width: 2; opacity: 0.8; pointer-events: none; }
+.knownMissed { fill: none; stroke: #22d3ee; stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
+.knownNum { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #22d3ee; color: #22d3ee; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
+.why { padding: 9px 11px; border-radius: 8px; background: rgba(37, 99, 235, 0.18); border: 1px solid rgba(37, 99, 235, 0.5); color: #fff; }
+.knownPt { fill: none; stroke: #22d3ee; stroke-width: 2.5; pointer-events: none; }
+.det { fill: rgba(236, 72, 153, 0.12); stroke: #ec4899; stroke-width: 3; stroke-dasharray: 8 5; cursor: pointer; }
+.det:hover { fill: rgba(236, 72, 153, 0.3); }
+.detYes { fill: rgba(34, 197, 94, 0.25); stroke: #22c55e; stroke-dasharray: none; }
+.detNo { fill: rgba(239, 68, 68, 0.2); stroke: #ef4444; stroke-dasharray: 3 4; }
+.drawn { fill: none; stroke: #facc15; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; cursor: pointer; }
+.drawnSelected { stroke: #fff; }
+.drawnLive { fill: none; stroke: #facc15; stroke-width: 5; stroke-dasharray: 10 6; pointer-events: none; }
+
+.side {
+  width: 340px; flex: none; padding: 18px 18px 16px; overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.08); background: #111827;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.title { font-size: 16px; font-weight: 600; color: #fff; }
+.meta { color: rgba(229, 231, 235, 0.75); font-size: 12px; }
+.meta a { color: #fbbf24; text-decoration: none; }
+.progress { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.progress div { height: 100%; background: #22c55e; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.buttons button {
+  padding: 7px 12px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06); color: #fff; font: inherit; cursor: pointer;
+}
+.buttons button:hover { background: rgba(255, 255, 255, 0.12); }
+.buttons .primary { background: #2563eb; border-color: #2563eb; }
+.buttons .primary:hover { background: #1d4ed8; }
+.card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 9px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.cardTitle { font-weight: 600; color: #fff; }
+.detRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.detNum { width: 22px; height: 22px; border-radius: 50%; background: #ec4899; color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
+.detText { flex: 1; min-width: 120px; color: rgba(229, 231, 235, 0.85); font-size: 12px; }
+.detRow button { padding: 5px 9px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.06); color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.detRow button.onYes { background: #16a34a; border-color: #16a34a; }
+.detRow button.onNo { background: #dc2626; border-color: #dc2626; }
+.badge circle { fill: #ec4899; stroke: #fff; stroke-width: 2; }
+.badge text { fill: #fff; font: 700 15px system-ui, sans-serif; text-anchor: middle; pointer-events: none; }
+.badge { pointer-events: none; }
+.saveFail { padding: 10px 12px; border-radius: 8px; background: #7f1d1d; border: 1px solid #ef4444; color: #fff; font-weight: 600; }
+.done { margin: auto; max-width: 440px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.done p { margin: 0; color: rgba(229, 231, 235, 0.85); }
+.help p { margin: 0 0 8px; color: rgba(229, 231, 235, 0.85); }
+.help b { color: #fff; }
+.yes { color: #22c55e; font-weight: 600; }
+.no { color: #ef4444; font-weight: 600; }
+.legendRow { display: flex; gap: 8px; align-items: flex-start; }
+.swKnown { width: 14px; height: 3px; margin-top: 8px; background: #22d3ee; border-radius: 2px; flex: none; }
+
+@media (max-width: 760px) {
+  .page { flex-direction: column; }
+  .frame { height: auto; width: calc(100vw - 32px); }
+  .side { width: auto; border-left: none; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+}

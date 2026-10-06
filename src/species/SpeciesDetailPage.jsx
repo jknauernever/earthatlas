@@ -26,6 +26,7 @@ import {
   resolveInatId,
 } from './speciesService.js'
 import styles from './SpeciesDetailPage.module.css'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -722,6 +723,8 @@ export default function SpeciesDetailPage() {
       </div>
 
       {/* ─── Lightbox ─── */}
+      <BuiltByCredit variant="light" />
+
       {lightboxIdx !== null && photos[lightboxIdx] && (
         <div className={styles.lightbox} onClick={() => setLightboxIdx(null)}>
           <img

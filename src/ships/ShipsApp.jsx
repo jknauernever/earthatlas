@@ -1019,7 +1019,9 @@ export default function ShipsApp() {
       setPickedTrack(t0 ? { mmsi: Number(mmsi), t0: Number(t0) } : null)
       setStopFocus(null); stopMarkerRef.current?.remove()
       const when = new Date(t0 * 1000).toISOString()
-      const resolve = async () => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}`)).json()
+      // fresh: the re-ask after a save bypasses the browser and edge caches, which may still hold the first "unresolved".
+      const resolve = async (fresh = false) => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}${fresh ? `&fresh=${Date.now()}` : ''}`,
+        fresh ? { cache: 'no-store' } : undefined)).json()
       try {
         let d = await resolve()
         // Not in our database yet: save what Global Fishing Watch knows (server checks the track
@@ -1027,7 +1029,7 @@ export default function ShipsApp() {
         if (d.status === 'unresolved' && month) {
           setIdentityOn(true); setPickerOpen(false); setVesselId(null); setTrackNote(`Looking up MMSI ${mmsi} with Global Fishing Watch…`)
           const sv = await fetch(`/api/ships?op=save&items=${mmsi}:${month}`, { method: 'POST' }).catch(() => null)
-          if (sv?.ok) d = await resolve()
+          if (sv?.ok) d = await resolve(true)
         }
         // Several of our ships share this MMSI: GFW's identity for this exact time may settle it.
         if (d.status === 'ambiguous' && month) {

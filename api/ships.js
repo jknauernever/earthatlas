@@ -191,7 +191,10 @@ export default async function handler(req, res) {
     if (op === 'mmsi') {
       const at = new Date(p.get('at') || '')
       if (Number.isNaN(at.getTime())) return send(res, 400, { error: 'at must be an ISO timestamp' })
-      return send(res, 200, await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString()))
+      // An "unresolved" answer is never cached: the page saves GFW's identity right after it and asks again (2026-10-06:
+      // the cached "unresolved" hid THEA KNUTSEN's just-saved record).
+      const r = await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString())
+      return send(res, 200, r, r.status === 'unresolved' ? 'no-store' : undefined)
     }
     //   /api/ships?op=lookup&items=<mmsi>:<YYYY-MM>:<unix t0>,…   (≤30) → { ships: [...] }
     if (op === 'lookup') {

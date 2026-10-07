@@ -60,6 +60,7 @@ import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
 import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
+import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
 import { importBatch } from '../lib/ships/gfwAis.js'
 import { timingSafeEqual } from 'node:crypto'
@@ -313,6 +314,21 @@ export default async function handler(req, res) {
       return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'port not found' })
     }
     if (op === 'terminalsLayer') return send(res, 200, await terminalsLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    //   /api/ships?op=terminalPermits&key=<terminal key> → the facility the terminal serves, its EPA permits / enforcement and
+    //   WA SEPA reviews (lib/ships/facilities.js; pilot: BP Cherry Point, Marathon Anacortes). facilities: [] when none is linked.
+    if (op === 'terminalPermits') {
+      const key = p.get('key') || ''
+      if (!/^(wa|bc)-[a-z0-9-]{1,60}$/.test(key)) return send(res, 400, { error: 'key must be a terminal key' })
+      const r = await terminalPermits(q, S, key)
+      return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'terminal not found' })
+    }
+    //   /api/ships?op=permit&key=<permit id>[&system=<EPA system>] → one permit, readable (the /ships/permit/<id> page)
+    if (op === 'permit') {
+      const key = p.get('key') || '', system = p.get('system') || null
+      if (!/^[A-Za-z0-9._-]{2,40}$/.test(key) || (system && !/^[A-Za-z0-9 -]{2,20}$/.test(system))) return send(res, 400, { error: 'bad permit id' })
+      const r = await permitPage(q, S, key, system)
+      return r ? send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400') : send(res, 404, { error: 'permit not found' })
+    }
     if (op === 'terminal' || op === 'terminalEmissions') {
       const key = p.get('key') || ''
       if (!/^(wa|bc)-[a-z0-9-]{1,60}$/.test(key)) return send(res, 400, { error: 'key must be a terminal key' })

@@ -174,3 +174,10 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | `mep-live-2026-09-30.json` | **Real**, copied verbatim from www.mepalliance.org pages retrieved 2026-09-30 (the full pages stay in the gitignored `scripts/ships/mep/raw/`): the "Polluting Scrubber Voyages" table header, five of its rows (GOLDEN FELLOW, OCEANA, SHANDONG XIN DE, KONKAR ASTERI, UM JIANGSU (66K/2025)) and five "Polluters" dropdown options; the Cruise Ships list header and three rows (Adventure of the Seas, AIDAbella, Eurodam). Rows were chosen whose contact cells hold only company addresses (no person's email). Nothing is edited; the tests join the fragments in order. |
 
 `mepAlliance-db.test.js` renames the real GOLDEN FELLOW row to EURODAM to exercise name matching; that case is **SYNTHETIC** and marked in the test names.
+
+## Facilities, permits, SEPA (2026-10-06)
+
+| File | What it is |
+|---|---|
+| `facilities-live-2026-10-06.json` | **Real, recorded live** 2026-10-06 by `scripts/ships/import-facilities.mjs`: EPA ECHO `dfr_rest_services.get_dfr` JSON for BP Cherry Point (FRS 110070752633) and its AMP5 project record (110071668371); the WA Ecology SEPA Register search page "Applicant: bp Cherry Point" (page 1) and record pages 202303911 (bp Advance Mitigation Project 5), 201801445 (BP West Coast Products fill at a Jackson Road church site: a candidate) and 201204345 (Tesoro Station 68404, Skagit: a candidate). DFR demographic sections and MapOutput removed for size; all else verbatim. |
+| `permit-documents-live-2026-10-06.json` | **Real, recorded live** 2026-10-06, trimmed to verbatim slices: PARIS document list for WA0000761 (page 1 of 2, from the results grid on), WA Ecology Industrial Section `tesoro-refinery` page (from `<main>`), and the two NWCAA Air Operating Permits rows (BP Cherry Point, Tesoro (Marathon) Anacortes). |

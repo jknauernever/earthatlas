@@ -577,3 +577,16 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .hoverTip { pointer-events: none; }
 /* While the hover readout shows, the ship icon IS the pointer: no cursor on any part of the map to cover it. */
 .hoverCrosshair, .hoverCrosshair * { cursor: none !important; }
+/* "Show on map" on the terminal card (Josh 2026-10-06): a text button, same weight as the card's plain links. */
+.locateLink { background: none; border: 0; padding: 0; margin: 0 0 0 4px; font: inherit; font-size: 12px; font-weight: 400; vertical-align: middle; color: rgba(160, 220, 255, 0.95); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.locateLink:hover { color: #fff; }
+/* Permits tab: a permit block is one click target that opens /ships/permit/<id> (Josh 2026-10-06). */
+.permitRow { cursor: pointer; border-radius: 8px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; transition: background 0.12s; }
+.permitRow:hover, .permitRow:focus-visible { background: rgba(103, 232, 249, 0.08); outline: none; }
+.permitOpen { font-size: 12px; color: rgba(160, 220, 255, 0.95); margin-top: 3px; }
+.permitRow:hover .permitOpen { color: #fff; }
+/* Permits tab: a permit whose own text names the dock (permit_terminal_coverage, cited). */
+.coverBadge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 6px;
+  border-radius: 4px; background: rgba(52, 211, 153, 0.16); color: #a7f3d0; vertical-align: 1px; }
+.coverNote { font-size: 12px; color: rgba(255, 255, 255, 0.78); margin-top: 3px; font-style: italic; }
+.coverNote .coverBadge { font-style: normal; }

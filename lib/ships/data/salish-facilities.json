@@ -1,0 +1,334 @@
+{
+ "about": {
+  "what": "Curated list of facilities (plants / sites) that Salish Sea terminals serve, with the EPA FRS records, Climate TRACE sources and WA Ecology SEPA Register searches that describe them. Two-refinery pilot approved by Josh 2026-10-06 (docs/PERMITS_SOURCES.md).",
+  "rules": "Facts only. FRS ids were found with ECHO facility-name searches on 2026-10-06; each related id says why it is the same site (FRS name / street address exactly as ECHO lists them). Ids left out on purpose are listed with the reason. SEPA Register records are linked by rule (lib/ships/facilities.js sepaMatch): the applicant names one of applicant_words, the county matches, and the proposal or location names one of place_words; other search hits are kept as candidates and not shown.",
+  "licences": "EPA ECHO: US Government work. WA Ecology SEPA Register: public record (credit + link). Climate TRACE: CC BY 4.0.",
+  "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06.",
+  "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed."
+ },
+ "version": "2026-10-06",
+ "facilities": [
+  {
+   "id": "wa-bp-cherry-point-refinery",
+   "name": "BP Cherry Point Refinery",
+   "kind": "refinery",
+   "country": "US",
+   "admin_area": "Whatcom County",
+   "terminals": [
+    {
+     "key": "wa-bp-cherry-point",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110070752633",
+   "frs_related": [
+    {
+     "id": "110071650865",
+     "why": "FRS name \"BP CHERRY POINT REFINERY FINAL EFFLUENT INTEGRITY MANAGEMENT PROJECT - PHASE 3\", 4519 GRANDVIEW RD (the refinery's address)"
+    },
+    {
+     "id": "110072071372",
+     "why": "FRS name \"BP CHERRY POINT REFINERY MS-3/MS-4 MAIN SUBSTATION UPGRADE PROJECT\", 4519 GRANDVIEW RD"
+    },
+    {
+     "id": "110071396798",
+     "why": "FRS name \"BP CHERRY POINT REFINERY WEST AVENUE D LAYDOWN AREA\", 4519 GRANDVIEW RD"
+    },
+    {
+     "id": "110071668371",
+     "why": "FRS name \"BP CHERRY POINT REFINERY/ ADVANCE MITIGATION PROJECT 5 (AMP5)\""
+    },
+    {
+     "id": "110067122394",
+     "why": "FRS name \"ARCO BP CHERRY POINT WETLAND MITIGATION SITE\""
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110070912527",
+     "why": "Olympic Pipe Line Co Cherry Point Station: a pipeline company's station, not the refinery"
+    }
+   ],
+   "ct_refinery": [
+    1753291
+   ],
+   "sepa": {
+    "county": "WHATCOM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "BP Products"
+     },
+     {
+      "field": "Applicant",
+      "text": "BP West Coast"
+     },
+     {
+      "field": "Applicant",
+      "text": "bp Cherry Point"
+     },
+     {
+      "field": "Applicant",
+      "text": "ARCO"
+     },
+     {
+      "field": "Location",
+      "text": "Cherry Point"
+     }
+    ],
+    "applicant_words": [
+     "BP",
+     "ARCO"
+    ],
+    "place_words": [
+     "Cherry Point",
+     "Grandview",
+     "refinery"
+    ]
+   },
+   "documents": {
+    "ecology_page": "bp-refinery",
+    "rcra": "WAD069548154",
+    "nwcaa": {
+     "location": "BP Cherry Point Refinery",
+     "aop": "015R2",
+     "icis_air": "WANCA0005307310007"
+    }
+   },
+   "paris_facility_ids": [
+    "13"
+   ],
+   "coverage": [
+    {
+     "terminal": "wa-bp-cherry-point",
+     "permit": {
+      "system": "ICIS-Air",
+      "key": "WANCA0005307310007"
+     },
+     "doc_url": "https://nwcleanairwa.gov/wp-content/uploads/2025/10/BP-Final-AOP-015R2-1-1.pdf",
+     "doc_title": "Air Operating Permit 015R2 (NWCAA)",
+     "where": "emission units table, p. 19",
+     "says": "Marine Terminal, North Dock (35-160) … South Dock (35-162)"
+    },
+    {
+     "terminal": "wa-bp-cherry-point",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0022900"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=411452",
+     "doc_title": "NPDES permit WA0022900 (2022)",
+     "where": "condition S1.F, p. 17",
+     "says": "stormwater at Outfall 006 … risk of overflowing the dock on-shore sump"
+    }
+   ]
+  },
+  {
+   "id": "wa-marathon-anacortes-refinery",
+   "name": "Marathon Anacortes Refinery",
+   "kind": "refinery",
+   "country": "US",
+   "admin_area": "Skagit County",
+   "terminals": [
+    {
+     "key": "wa-marathon-anacortes",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000537250",
+   "frs_related": [
+    {
+     "id": "110072245380",
+     "why": "FRS name \"TESORO ANACORTES REFINERY\", 10200 MARCH'S POINT RD (the refinery's address)"
+    },
+    {
+     "id": "110072293027",
+     "why": "FRS name \"TESORO REFINING & MARKETING COMPANY LLC ANACORTES REFINERY\", 10200 MARCHS POINT RD"
+    },
+    {
+     "id": "110070242683",
+     "why": "FRS name \"ANACORTES REFINERY\", W MARCH POINT RD"
+    },
+    {
+     "id": "110070753910",
+     "why": "FRS name \"TESORO REFINING & MARKETING COMPANY LLC\", W MARCH PT RD, Anacortes"
+    },
+    {
+     "id": "110070317169",
+     "why": "FRS name \"TESORO PETROLEUM CORPORATION\", WEST MARCH POINT ROAD PO BOX 700, Anacortes"
+    },
+    {
+     "id": "110059710852",
+     "why": "FRS name \"TESORO TRUCK LOADING FACILITY\", W MARCH PT RD (the refinery's truck rack)"
+    },
+    {
+     "id": "110070288943",
+     "why": "FRS name \"WA317936423 - TESORO REFINING & MARKETING COMPANY LLC\", 10200 W MARCH POINT ROAD"
+    },
+    {
+     "id": "110070285504",
+     "why": "FRS name \"WA317935129 - TESORO REFINING & MARKETING COMPANY LLC\", MARCH POINT ROAD"
+    },
+    {
+     "id": "110071374324",
+     "why": "FRS name \"TESORO NORTHWEST COMPANY-02200C/ANACORTES\", PO BOX 700 (the refinery's mailing address)"
+    },
+    {
+     "id": "110071374325",
+     "why": "FRS name \"TESORO NORTHWEST COMPANY-02200C/ANACORTES\", PO BOX 700"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110070750340",
+     "why": "Dunkin & Bush Inc Tesoro: a contractor's record at a street corner, not the refinery"
+    },
+    {
+     "id": "110015968817",
+     "why": "Dunkin & Bush Inc Tesoro: a contractor's record at a street corner, not the refinery"
+    }
+   ],
+   "ct_refinery": [
+    1753321
+   ],
+   "sepa": {
+    "county": "SKAGIT",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Tesoro"
+     },
+     {
+      "field": "Applicant",
+      "text": "Marathon"
+     },
+     {
+      "field": "Applicant",
+      "text": "Andeavor"
+     },
+     {
+      "field": "Location",
+      "text": "March Point"
+     }
+    ],
+    "applicant_words": [
+     "Tesoro",
+     "Marathon",
+     "Andeavor"
+    ],
+    "place_words": [
+     "March Point",
+     "Marchs Point",
+     "March's Point",
+     "refinery"
+    ]
+   },
+   "documents": {
+    "ecology_page": "tesoro-refinery",
+    "rcra": "WAD009275082",
+    "nwcaa": {
+     "location": "Tesoro (Marathon) Anacortes Refinery",
+     "aop": "013R2M1",
+     "icis_air": "WANCA0005305700005"
+    }
+   },
+   "paris_facility_ids": [
+    "6"
+   ],
+   "coverage": [
+    {
+     "terminal": "wa-marathon-anacortes",
+     "permit": {
+      "system": "ICIS-Air",
+      "key": "WANCA0005305700005"
+     },
+     "doc_url": "https://nwcleanairwa.gov/wp-content/uploads/2025/10/Tesoro-Anacortes-Refinery-AOP-013R2M1-09252026.pdf",
+     "doc_title": "Air Operating Permit 013R2M1 (NWCAA)",
+     "where": "section 1.11 Wharf/Logistics Area, p. 16",
+     "says": "Marine Terminal … 1993 … 40 CFR 63 Subpart Y"
+    },
+    {
+     "terminal": "wa-marathon-anacortes",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0000761"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=478691",
+     "doc_title": "NPDES permit WA0000761 (2024)",
+     "where": "condition S1.F, p. 13",
+     "says": "receive untreated wastewater from the … Wharf Facility for treatment"
+    }
+   ]
+  },
+  {
+   "id": "wa-tlo-anacortes",
+   "name": "Tesoro Logistics Operations, Anacortes",
+   "kind": "logistics_terminal",
+   "country": "US",
+   "admin_area": "Skagit County",
+   "terminals": [
+    {
+     "key": "wa-marathon-anacortes",
+     "relation": "owned_by",
+     "source_url": "https://ecology.wa.gov/regulations-permits/permits-certifications/industrial-facilities-permits/tesoro-logistics-anacortes",
+     "says": "Ecology: Tesoro Logistics “operates a wharf” next to the refinery; the refinery’s NPDES fact sheet (2024) lists the Wharf Facility among TLO’s five operations."
+    }
+   ],
+   "frs_primary": "110055599277",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "6344"
+   ],
+   "ct_refinery": [],
+   "documents": {
+    "ecology_page": "tesoro-logistics-anacortes"
+   },
+   "coverage": [
+    {
+     "terminal": "wa-marathon-anacortes",
+     "permit": {
+      "system": "WA-PARIS",
+      "key": "ST0045528"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=648588",
+     "doc_title": "Draft fact sheet, State Waste Discharge permit ST0045528 (2026)",
+     "where": "p. 9",
+     "says": "The Tesoro Logistics Wharf Facility loads and unloads barges and tanker vessels"
+    }
+   ],
+   "sepa": {
+    "county": "SKAGIT",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Tesoro Logistics"
+     },
+     {
+      "field": "Applicant",
+      "text": "MPLX"
+     }
+    ],
+    "applicant_words": [
+     "Tesoro Logistics",
+     "MPLX",
+     "TLO"
+    ],
+    "place_words": [
+     "Anacortes",
+     "March Point",
+     "Texas Road",
+     "wharf",
+     "refinery"
+    ]
+   },
+   "notes": [
+    "FRS 110055599277 \"TESORO LOGISTICS ANACORTES CROF\", 7969 N TEXAS RD: the address Ecology and PARIS (FacilityId 6344) give for Tesoro Logistics.",
+    "Sends its wastewater and stormwater to the Marathon refinery’s treatment plant (Ecology TLO page; refinery NPDES permit WA0000761 condition S1.F)."
+   ],
+   "permit_holder_names": [
+    "Tesoro Logistics"
+   ]
+  }
+ ]
+}

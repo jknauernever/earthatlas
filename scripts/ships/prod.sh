@@ -18,6 +18,7 @@
 #   zsh scripts/ships/prod.sh import-eu-mrv      back up, then EU MRV verified ship emissions for ships we hold (from the saved XLSX files; needs migration 019)
 #   zsh scripts/ships/prod.sh import-mep         back up, then the MEP Alliance scrubber lists (from the saved pages in scripts/ships/mep/raw; needs migration 021)
 #   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
+#   zsh scripts/ships/prod.sh import-facilities  back up, then facilities + EPA permits/enforcement + WA SEPA reviews + permit documents (lib/ships/data/salish-facilities.json; reuses the cached responses in scripts/ships/facilities/cache; needs migrations 022-024)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-anchorage-stays back up, then anchorage stays counted from our AIS (cache/anchorage-stays/hits.csv; needs migration 020)
 #   zsh scripts/ships/prod.sh import-anchorage-aliases back up, then "also known as" names for anchorages (GFW names already stored + the USCG VTS manual p. 3-6 record; needs migration 020)
@@ -95,6 +96,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-terminals
     prod_node scripts/ships/import-terminals.mjs "${@:2}"
+    ;;
+  import-facilities)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-facilities
+    prod_node scripts/ships/import-facilities.mjs "${@:2}"
     ;;
   import-terminal-calls)
     need SHIPS_PROD_DATABASE_URL
@@ -194,6 +200,6 @@ case "${1:-}" in
     node --env-file=.env.local scripts/ships/bake-us/build/publish-index.mjs --index "$dir"
     ;;
   *)
-    sed -n '2,23p' "$0"; exit 2
+    sed -n '2,24p' "$0"; exit 2
     ;;
 esac

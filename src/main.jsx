@@ -44,6 +44,7 @@ import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
 import ShipTrafficApp from './shiptraffic/ShipTrafficApp.jsx'
 import ShipsApp from './ships/ShipsApp.jsx'
 import SourceRecordPage from './ships/SourceRecordPage.jsx'
+import PermitPage from './ships/PermitPage.jsx'
 import ShipsChangelogPage from './ships/ChangelogPage.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
@@ -160,6 +161,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/shiptraffic" element={<ShipTrafficApp />} />
           <Route path="/ships" element={<ShipsApp />} />
           <Route path="/ships/source/:id" element={<SourceRecordPage />} />
+          <Route path="/ships/permit/:id" element={<PermitPage />} />
           <Route path="/ships/changelog" element={<ShipsChangelogPage />} />
           <Route path="/inmotion" element={<SystemsApp />} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />

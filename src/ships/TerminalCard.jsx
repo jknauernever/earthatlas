@@ -1,7 +1,7 @@
 /**
  * The terminal card (/ships; Josh 2026-09-28, UI "A"): opened from a terminal pin's popup ("Open card").
  * Built like the port card (Option A): header, headline strip for the months picked on the map, then Ships / Emissions /
- * About tabs. Shares PortCard's MonthBars / About and PortEmissions (refinery plant and ship-port estimates,
+ * Permits (where a facility is linked: TerminalPermits.jsx) / About tabs. Shares PortCard's MonthBars / About and PortEmissions (refinery plant and ship-port estimates,
  * labelled apart). Every value links to where it came from. Data: api op=terminal (lib/ships/terminalCard.js).
  * Visits = our own AIS calls (lib/ships/terminalCalls.js, Josh 2026-09-28); GFW port visits are only a comparison (About).
  */
@@ -13,6 +13,7 @@ import Chevron from './Chevron.jsx'
 import { Loading } from '../components/panel'
 import { MonthBars, About, PORT_HUE } from './PortCard.jsx'
 import PortEmissions, { usePortEmissions, useTerminalStays, TerminalStayEmissions, shortTonnes } from './PortEmissions.jsx'
+import TerminalPermits, { useTerminalPermits } from './TerminalPermits.jsx'
 import { GLYPH, kindFamily, kindWords, NOT_OPERATING, STATUS_WORDS, TERMINAL_MUTED_RING } from './terminalIcons.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -148,7 +149,7 @@ function CallShip({ s, onSelectVessel, rule }) {
   )
 }
 
-export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, folded, onFold, tab: tabProp, onTab }) {
+export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, onLocate, folded, onFold, tab: tabProp, onTab }) {
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [slow, setSlow] = useState(false)
@@ -169,10 +170,12 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   const emShips = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=ships`)
   const emRef = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=refinery`)
   const emStays = useTerminalStays(terminalKey, winMonths)
+  const permits = useTerminalPermits(terminalKey)
   const src = useMemo(() => Object.fromEntries((data?.sources || []).map((x) => [x.id, x])), [data])
   const loading = !data || data.terminal?.key !== terminalKey
   const t = data?.terminal
-  const tabs = [['ships', 'Ships'], ['emissions', 'Emissions'], ['about', 'About']]
+  // Permits only where a facility is linked (pilot 2026-10-06: BP Cherry Point, Marathon Anacortes).
+  const tabs = [['ships', 'Ships'], ['emissions', 'Emissions'], ...(permits.state === 'ok' ? [['permits', 'Permits']] : []), ['about', 'About']]
   const tab = tabs.some(([id]) => id === tabProp) ? tabProp : 'ships'
   const muted = t && NOT_OPERATING.includes(t.status)
   const s = data?.summary
@@ -186,6 +189,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
     return l?.source_record_id ?? null
   }
   const imo = (data?.links || []).filter((l) => l.role === 'imo_port_facility')
+  const berthPts = useMemo(() => (data?.berths || []).map((b) => [b.lon, b.lat]), [data])
   const cov = data?.coverage && { missing: [], of: 0, ...data.coverage } // tolerate an older response shape
   const bakeRec = cov?.bake?.recordId
   const noAis = cov && (cov.notCovered || !cov.months.length)
@@ -202,6 +206,8 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
           <div className={styles.pcKicker}><Glyph kind={t.kind} muted={muted} size={14} />{kindWords(t.kind)}</div>
           <div className={styles.vesselName}>{t.name}{' '}
             <Src id={t.entryRecordId} source="earthatlas-terminals" title="EarthAtlas’s hand-checked terminal list entry — click for the record" />
+            {onLocate && berthPts.length > 0 && <>{' '}<button type="button" className={styles.locateLink} onClick={() => onLocate(berthPts)}
+              title="Zoom the map to this terminal’s berths">Show on map</button></>}
           </div>
           <div className={styles.vesselSub}>
             {t.operator ? <>Run by <a className={styles.pcPlainLink} href={t.operatorSourceUrl} target="_blank" rel="noopener noreferrer"
@@ -308,6 +314,8 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
             <TerminalStayEmissions em={emStays} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships at the berth (Climate TRACE port stays)" />
             {emRef.state === 'none' && <div className={styles.legendNoteText}>No refinery plant: Climate TRACE has no facility estimate for this terminal’s own operations.</div>}
           </>}
+
+          {tab === 'permits' && <TerminalPermits permits={permits} onLocate={onLocate && ((pts) => onLocate([...berthPts, ...pts]))} />}
 
           {tab === 'about' && (
             <div className={styles.section}>

@@ -388,7 +388,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded      pk  port card tab: 'ships' | 'emissions' | 'trade' (default traffic)
 //   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
-//   tl  open terminal card (terminal key, e.g. bc-westridge)   tf '1' = terminal card folded   tb  terminal card tab: 'emissions' | 'about' (default ships)
+//   tl  open terminal card (terminal key, e.g. bc-westridge)   tf '1' = terminal card folded   tb  terminal card tab: 'emissions' | 'permits' | 'about' (default ships)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'emissions' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
   if (typeof window === 'undefined') return {}
@@ -424,7 +424,7 @@ function clearOfOverlays(map, isMobile) {
     return side === 'left' ? r.right - box.left : box.right - r.left
   }
   let left = Math.max(30, edge('#ships-panel', 'left') + 24, edge('#ships-dock', 'left') + 24)
-  let right = Math.max(30, edge('[aria-label="Ship card"]', 'right') + 24)
+  let right = Math.max(30, edge('[aria-label="Ship card"], [aria-label="Terminal card"], [aria-label="Port card"]', 'right') + 24)
   const minMap = 240 // px of map the tracks must get
   if (box.width - left - right < minMap) { const k = Math.max(0, box.width - minMap) / (left + right); left *= k; right *= k }
   return { top: 80, bottom: 40, left: Math.round(left), right: Math.round(right) }
@@ -485,7 +485,7 @@ export default function ShipsApp() {
   const [backToPort, setBackToPort] = useState(null) // { id, name, terminal? } when a ship was opened from a port or terminal card
   const [terminalKey, setTerminalKey] = useState(/^(wa|bc)-[a-z0-9-]{1,60}$/.test(initial.tl || '') ? initial.tl : null)
   const [terminalFolded, setTerminalFolded] = useState(initial.tf === '1')
-  const [terminalTab, setTerminalTab] = useState(['emissions', 'about'].includes(initial.tb) ? initial.tb : 'ships')
+  const [terminalTab, setTerminalTab] = useState(['emissions', 'permits', 'about'].includes(initial.tb) ? initial.tb : 'ships')
   const [terminalMonth, setTerminalMonth] = useState(null)
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
@@ -1716,6 +1716,14 @@ export default function ShipsApp() {
         <div className={styles.portWrap}>
           <TerminalCard terminalKey={terminalKey} months={trackMonths} month={terminalMonth} onMonth={setTerminalMonth}
             folded={terminalFolded} onFold={setTerminalFolded} tab={terminalTab} onTab={setTerminalTab}
+            onLocate={(pts) => {
+              // "Show on map" (Josh 2026-10-06): fit the terminal's berths (and, from the Permits tab, its refinery) clear of the card.
+              const map = mapRef.current
+              if (!map || !pts.length) return
+              const b = new mapboxgl.LngLatBounds()
+              for (const [lon, lat] of pts) b.extend([lon - 0.004, lat - 0.0025]).extend([lon + 0.004, lat + 0.0025])
+              map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 15, duration: 1200 })
+            }}
             onClose={() => { setTerminalKey(null); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null) }}
             onSelectVessel={(id) => {
               const name = document.querySelector('[aria-label="Terminal card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'terminal'

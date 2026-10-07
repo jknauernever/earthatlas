@@ -26,11 +26,14 @@ const KIND = {
   ICIS: 'EPA enforcement-system facility id', 'WA-PARIS': 'Washington State permit (WA Ecology)',
   'BC-EMA': 'BC waste discharge authorization (Environmental Management Act)',
   'MV-AQ': 'Metro Vancouver air quality permit',
+  PSCAA: 'Puget Sound Clean Air Agency permit', ORCAA: 'Olympic Region Clean Air Agency permit', SWCAA: 'Southwest Clean Air Agency permit',
 }
+const AIR_SRC = { 'pscaa-documents': 'Puget Sound Clean Air Agency', 'orcaa-permits': 'Olympic Region Clean Air Agency', 'swcaa-permits': 'Southwest Clean Air Agency' }
 const BC_DOC_SEARCH = 'https://j200.gov.bc.ca/pub/ams/Default.aspx?PossePresentation=DocumentSearch'   // BC's authorization document search
 const AREA = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
-const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency', 'bc-nrced': 'BC NRCED', 'metro-vancouver-aq-permits': 'Metro Vancouver' }
+const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency', 'bc-nrced': 'BC NRCED', 'metro-vancouver-aq-permits': 'Metro Vancouver', ...AIR_SRC }
 const AGENCY = { Local: 'Local agency', State: 'State', EPA: 'EPA', Federal: 'EPA' }
+const LOCAL_AIR = { WAPSC: 'Puget Sound Clean Air Agency', WANCA: 'Northwest Clean Air Agency' }   // ICIS-Air id prefix → the local agency
 const GAS = [['co2', 'CO₂'], ['no2', 'NO₂'], ['so2', 'SO₂'], ['voc', 'VOC'], ['co', 'CO'], ['pm10', 'PM10']]
 
 // Document kinds (PARIS's own document types): the permit itself first, routine submittals last.
@@ -45,7 +48,7 @@ const DOC_KINDS = [
   ['submittal', 'Monitoring & other reports', (d) => /submittal/i.test(d.type || '')],
 ]
 const kindOf = (d) => DOC_KINDS.find(([, , t]) => t(d))?.[0] ?? 'other'
-const fileTag = (d) => /\.(pdf|docx?|xlsx?)/i.exec(d.title)?.[1]?.toUpperCase() || (/\.pdf|DownloadDocument|ViewDocument|wp-content\/uploads/i.test(d.url) ? 'PDF' : 'Page')
+const fileTag = (d) => /\.(pdf|docx?|xlsx?)/i.exec(d.title)?.[1]?.toUpperCase() || (/\.pdf|DownloadDocument|ViewDocument|wp-content\/uploads|DocumentCenter\/View/i.test(d.url) ? 'PDF' : 'Page')
 
 function Fact({ label, children }) {
   if (children == null || children === false || children === '') return null
@@ -107,7 +110,9 @@ const KIND_WORD = { formal: 'Formal action', notice: 'Notice', agency: 'Ecology 
 const vText = (v) => [v.parameter, v.value != null ? `${v.value}` : null, v.max_limit != null ? `limit ${v.max_limit}` : v.min_limit != null ? `min ${v.min_limit}` : null,
   v.point ? `outfall ${v.point}` : null].filter(Boolean).join(' · ')
 
-function Enforcement({ rows, window, onViolations }) {
+function Enforcement({ rows, window, onViolations, on }) {
+  if (!rows.length && on?.length) return <p className={styles.note}>The agency’s notices of violation and penalties for this site are recorded against its EPA air program
+    record{on.length > 1 ? 's' : ''}, not against this order: {on.map((x, i) => <span key={x.key}>{i > 0 && ', '}<a href={`/ships/permit/${encodeURIComponent(x.key)}?s=${encodeURIComponent(x.system)}&tab=enforcement`}>{x.key}</a></span>)}.</p>
   if (!rows.length) return <p className={styles.note}>No notice, action or inspection is recorded against this permit.</p>
   return <>
     <table className={styles.grid}>
@@ -130,7 +135,7 @@ function Enforcement({ rows, window, onViolations }) {
                   {x.violations.length > 4 && <button type="button" className={styles.linkBtn} onClick={onViolations}>All {fmtN(x.violations.length)} in Violations ›</button>}
                 </div>
               )}
-              <div className={styles.sub}>{KIND_WORD[x.kind] || x.kind} · {AGENCY[x.agency] || x.agency}{x.inspectionId ? ` · PARIS inspection ${x.inspectionId}` : ''}
+              <div className={styles.sub}>{KIND_WORD[x.kind] || x.kind} · {(x.agency === 'Local' && LOCAL_AIR[String(x.permit_key || '').slice(0, 5)]) || AGENCY[x.agency] || x.agency}{x.inspectionId ? ` · PARIS inspection ${x.inspectionId}` : ''}
                 {x.legislation?.length ? ` · ${x.legislation.join('; ')}` : ''}
                 {' · '}{x.source === 'paris'
                   ? <a href={rec(x.record_id ?? x.documents?.[0]?.record_id)} target="_blank" rel="noopener noreferrer">WA Ecology PARIS</a>
@@ -154,7 +159,7 @@ function Enforcement({ rows, window, onViolations }) {
     </table>
     {window && <p className={styles.small}>From EPA ECHO (about the last five years) and WA Ecology PARIS, matched by permit and date. “Ecology’s decision” is PARIS’s
       enforcement entry on the same day. Violations under a notice are the ones PARIS recorded for this permit since the previous action, grouped by EarthAtlas by date.
-      For air permits, Northwest Clean Air Agency doesn’t publish its orders; the ECHO case report shows status, penalty and settlement.</p>}
+      For air permits, the local clean air agencies (Northwest, Puget Sound) don’t publish their penalty orders; the ECHO case report shows status, penalty and settlement.</p>}
     {rows.some((x) => x.source === 'nrced') && <p className={styles.small}>From BC’s Natural Resource Compliance and Enforcement Database (NRCED):
       the records issued to the holder that name this authorization.</p>}
   </>
@@ -232,6 +237,7 @@ export default function PermitPage() {
     const air = (d, re) => (d.source === 'nwcaa-aop' || d.source === 'pscaa-title-v') && re.test(d.type || '')
     const top = docs.find((d) => /^permit[,\s]/i.test(d.description || '')) || docs.find((d) => air(d, /^(AOP|Air Operating Permit)$/i))
       || docs.find((d) => d.source === 'metro-vancouver-aq-permits' && d.type === 'Air quality permit')
+      || docs.find((d) => AIR_SRC[d.source] && /^(Order of Approval|Air Discharge Permit|Proposed Order of Approval)$/.test(d.type || ''))
     const sheet = docs.find((d) => /^fact sheet/i.test(d.description || '')) || docs.find((d) => air(d, /^(SOB|Statement of Basis)$/i))
     return [top && ['Read the permit', top], sheet && [/^(nwcaa-aop|pscaa-title-v)$/.test(sheet.source) ? 'Statement of Basis' : 'Fact sheet', sheet]].filter(Boolean)
   }, [data])
@@ -251,7 +257,7 @@ export default function PermitPage() {
         <div className={styles.head}>
           <div className={styles.headMain}>
             <div className={styles.kicker}>{KIND[p.system] || p.system}</div>
-            <h1 className={styles.title}>{p.key}
+            <h1 className={styles.title}>{p.waAir?.label || p.key}
               {p.status && <span className={`${styles.status} ${/^(Effective|Operating|Active)/.test(p.status) ? styles.statusOn : ''}`}
                 title={`${statusSource(p)} lists it as “${p.status}”${sw ? `: ${sw.long}` : ''}`}>{sw?.short ?? p.status}</span>}
             </h1>
@@ -274,6 +280,12 @@ export default function PermitPage() {
               <Fact label="Type">{[p.universe, p.areas && (p.bcEma ? `waste type: ${p.areas.toLowerCase()}` : p.areas.split(/,\s*/).map((a) => AREA[a] || a).join(', '))].filter(Boolean).join(' · ')}</Fact>
               {p.bcEma && <Fact label="Site">{p.bcEma.address}{p.bcEma.facility_type && <div className={styles.muted}>{oncePhrase(p.bcEma.facility_type)}</div>}</Fact>}
               {p.bcEma && <Fact label="Issued">{day(p.bcEma.issued)}</Fact>}
+              {p.waAir && <Fact label="Site">{p.waAir.address}{(p.waAir.registration || p.waAir.source_class) && <div className={styles.muted}>
+                {[p.waAir.registration && `agency registration / id ${p.waAir.registration}`, p.waAir.source_class && `source class ${p.waAir.source_class}`].filter(Boolean).join(' · ')}</div>}</Fact>}
+              {p.waAir?.issued && <Fact label="Issued">{day(p.waAir.issued)}</Fact>}
+              {p.waAir?.what && <Fact label="What it covers">{p.waAir.what}</Fact>}
+              {p.waAir?.status_note && <Fact label="Note">{p.waAir.status_note}</Fact>}
+              {p.waAir?.why && <Fact label="Why it’s this site">{p.waAir.why}</Fact>}
               {p.mv && <Fact label="Site">{p.mv.address}{p.mv.authorizes && <div className={styles.muted}>{p.mv.authorizes}</div>}</Fact>}
               {p.mv && (p.mv.issued || p.mv.amended) && <Fact label="Issued">{[p.mv.issued && day(p.mv.issued), p.mv.amended && `amended ${day(p.mv.amended)}`].filter(Boolean).join(', ')}</Fact>}
               {p.mv?.application && <Fact label="Application">{p.mv.application.gva}: {p.mv.application.purpose}
@@ -281,7 +293,8 @@ export default function PermitPage() {
               <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && !p.mv && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
               {data.air && <Fact label="Air permit">{data.air.aop} · dated {data.air.permitDate}<div className={styles.muted}>{data.air.status}</div></Fact>}
               <Fact label="Records">
-                {p.mv ? <><a href={p.mv.doc_url || p.mv.application_url} target="_blank" rel="noopener noreferrer">Metro Vancouver</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
+                {p.waAir ? <><a href={p.waAir.page_url || p.waAir.main_url} target="_blank" rel="noopener noreferrer">{data.issuer}</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
+                  : p.mv ? <><a href={p.mv.doc_url || p.mv.application_url} target="_blank" rel="noopener noreferrer">Metro Vancouver</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
                   : p.bcEma ? <><a href={p.registerUrl} target="_blank" rel="noopener noreferrer">BC authorizations register</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored row</a></>
                   : p.echoUrl ? <><a href={p.echoUrl} target="_blank" rel="noopener noreferrer">EPA ECHO</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
                   : <><a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">WA Ecology PARIS</a> <span className={styles.muted}>(state permit; not in EPA’s records)</span></>}
@@ -334,7 +347,7 @@ export default function PermitPage() {
               : p.bcEma ? <p className={styles.note}>No document is linked to this authorization yet. The register lists the authorization only;
                 BC’s <a href={BC_DOC_SEARCH} target="_blank" rel="noopener noreferrer">authorization document search</a> holds its documents.</p>
               : <p className={styles.note}>No document listing found for this permit yet. EPA ECHO lists the permit id only.</p>)}
-            {tab === 'enforcement' && <Enforcement rows={data.enforcement} window={data.enforcementWindow} onViolations={() => setParam('tab', 'violations', 'documents')} />}
+            {tab === 'enforcement' && <Enforcement rows={data.enforcement} window={data.enforcementWindow} on={p.enforcementOn} onViolations={() => setParam('tab', 'violations', 'documents')} />}
             {tab === 'violations' && <Violations rows={data.violations || []} />}
             {tab === 'sepa' && <Sepa rows={data.sepa} issuer={data.issuer} />}
             {tab === 'documents' && data.listings.length > 0 && (

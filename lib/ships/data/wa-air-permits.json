@@ -1,0 +1,449 @@
+{
+  "about": "Hand-checked permits from Washington's local clean air agencies for our terminals' facilities (PSCAA, ORCAA; SWCAA pilot), 2026-10-07. One entry per terminal and agency. Every permit's number and holder are checked against the agency's own document text at import (lib/ships/waAirAgencies.js); 'why' says how the holder and site were matched (company + the site address the agency gives). 'covers' quotes a permit document's own words about the dock, ship loading or vessel fueling, with page. 'none' is shown where nothing was found, with what was searched. Notices of violation and penalties are not published by these agencies; PSCAA's reach EPA ECHO and are shown from there. Sources and method: docs/PERMITS_SOURCES.md (WA local clean air agencies).",
+  "version": "2026-10-07",
+  "searches": {
+    "pscaa-title-v": { "short": "Title V list", "agency": "pscaa", "title": "PSCAA list of approved Title V operating permits", "url": "https://pscleanair.gov/182/List-of-Approved-Permits", "date": "2026-10-07" },
+    "pscaa-posted": { "short": "posted orders and notices", "agency": "pscaa", "title": "PSCAA permit documents and public notices posted on pscleanair.gov (searched by company and site)", "url": "https://pscleanair.gov/DocumentCenter", "date": "2026-10-07" },
+    "pscaa-projects": { "short": "permitting projects", "agency": "pscaa", "title": "PSCAA permitting projects, new construction projects and permits open for comment", "url": "https://pscleanair.gov/460/Recent-Permitting-Projects", "date": "2026-10-07" },
+    "orcaa-registered": { "short": "registered sources list", "agency": "orcaa", "title": "ORCAA list of all registered sources (April 24, 2025)", "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "date": "2026-10-07" },
+    "orcaa-notices": { "short": "notices", "agency": "orcaa", "title": "ORCAA notices and hearings (site search by company and place)", "url": "https://www.orcaa.org/news-notices/notices-hearings/", "date": "2026-10-07" },
+    "orcaa-aop": { "short": "Air Operating Permits", "agency": "orcaa", "title": "ORCAA Air Operating Permits (Title V) page", "url": "https://www.orcaa.org/for-business/air-operating-permits-aop/", "date": "2026-10-07" },
+    "swcaa-adp": { "short": "permit search", "agency": "swcaa", "title": "SWCAA Air Discharge Permit search", "url": "https://www.swcleanair.gov/permits/permitADPsearch.asp", "date": "2026-10-07" }
+  },
+  "entries": [
+    {
+      "terminal": "wa-km-harbor-island", "agency": "pscaa", "facility": "wa-km-harbor-island-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for this site online: it is not on PSCAA’s Title V list, and no order of approval or notice for Kinder Morgan’s Harbor Island terminal is posted on pscleanair.gov (searched 7 Oct 2026). PSCAA’s notices of violation for the site are under Enforcement, from EPA ECHO."
+    },
+    {
+      "terminal": "wa-shell-seattle", "agency": "pscaa", "facility": "wa-shell-seattle-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for this site online: it is not on PSCAA’s Title V list, and no order of approval or notice for Shell’s Harbor Island terminal is posted on pscleanair.gov (searched 7 Oct 2026). PSCAA’s notices for the site are under Enforcement, from EPA ECHO."
+    },
+    {
+      "terminal": "wa-seaport-seattle", "agency": "pscaa", "facility": "wa-seaport-seattle-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for this site online: it is not on PSCAA’s Title V list, and no order of approval or notice for SeaPort’s Seattle terminal is posted on pscleanair.gov (searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-maxum-pier15", "agency": "pscaa", "facility": "wa-maxum-pier15-facility",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for this site is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-covich-williams", "agency": "pscaa", "facility": "wa-covich-williams-fuel-dock",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for this site is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-t86-grain", "agency": "pscaa", "facility": "wa-t86-grain-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for this grain terminal online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026). PSCAA’s notice of violation for the site is under Enforcement, from EPA ECHO."
+    },
+    {
+      "terminal": "wa-point-wells", "agency": "pscaa", "facility": "wa-point-wells-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for the Point Wells terminal online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026). PSCAA’s notices of violation for the site are under Enforcement, from EPA ECHO."
+    },
+    {
+      "terminal": "wa-nbk-manchester", "agency": "pscaa", "facility": "wa-nbk-manchester-fuel-depot",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for the Manchester fuel depot is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-lafarge-seattle", "agency": "pscaa", "facility": "wa-lafarge-seattle-plant",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for the Seattle cement plant online: it is not on PSCAA’s current Title V list, and no order of approval for it is posted on pscleanair.gov (searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nustar-tacoma", "agency": "pscaa", "facility": "wa-nustar-tacoma-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "Puget Sound Clean Air Agency publishes no permit for NuStar’s Tacoma terminal online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026). PSCAA’s notices of violation for the site are under Enforcement, from EPA ECHO."
+    },
+    {
+      "terminal": "wa-p66-tacoma", "agency": "pscaa", "facility": "wa-p66-tacoma-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for the Phillips 66 Tacoma terminal is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-temco-tacoma", "agency": "pscaa", "facility": "wa-temco-tacoma-elevator",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for the TEMCO Tacoma elevator is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-seaport-sound-tacoma", "agency": "pscaa", "facility": "wa-seaport-sound-tacoma-terminal",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "permits": [
+        {
+          "number": "11265", "label": "Order of Approval 11265", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "Targa Sound Terminal LLC", "holder_words": ["Targa Sound Terminal"], "address": "2628 Marine View Dr, Tacoma, WA 98422", "registration": "13828",
+          "status": "Approved", "issued": "2018-02-07",
+          "what": "Modification of four storage tanks (T-208H to T-211H) to store gasoline, isooctane, denatured ethanol and natural gasoline, including marine loading of natural gasoline (151,500,000 gal/yr).",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/3161", "title": "Order of Approval 11265 and engineering worksheet (with responses to public comments)", "type": "Order of Approval" }
+          ],
+          "page_url": "https://pscleanair.gov/300/Documents",
+          "why": "PSCAA’s order names Targa Sound Terminal LLC at installation address 2628 Marine View Dr, Tacoma, EPA’s address for SeaPort Sound Terminal (the same terminal, renamed after TransMontaigne bought it); PSCAA registration 13828 is the same on SeaPort Sound’s 2020 application 11917.",
+          "covers": [
+            { "terminal": "wa-seaport-sound-tacoma", "doc": "https://pscleanair.gov/DocumentCenter/View/3161", "where": "Order of Approval p. 1; worksheet section A (PDF p. 4)", "says": "The project includes marine loading of natural gasoline" }
+          ]
+        },
+        {
+          "number": "11917", "label": "Proposed Order of Approval 11917", "kind": "Order of Approval (Notice of Construction), proposed",
+          "holder": "SeaPort Sound Terminal LLC", "address": "2628 Marine View Dr, Tacoma, WA 98422", "registration": "13828",
+          "status": "Proposed", "issued": null, "status_note": "PSCAA posted the proposed order for comment on 26 Oct 2020 (comments until 7 Dec 2020, with an online hearing); the final order is not posted online.",
+          "what": "Mist eliminators with carbon absorbers for the asphalt tanks and asphalt truck loading rack, and blending of butane into existing gasoline storage tanks.",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4184", "title": "Engineering worksheet, Notice of Construction 11917", "type": "Worksheet" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4181", "title": "Draft Order of Approval 11917", "type": "Proposed Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4180", "title": "Notice of Construction application 11917", "type": "Application" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4182", "title": "Public notice, 11917", "type": "Public notice" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4183", "title": "Response, December 2011 (attached to 11917)", "type": "Correspondence" }
+          ],
+          "page_url": "https://pscleanair.gov/CivicAlerts.aspx?AID=94&ARC=414",
+          "why": "PSCAA’s worksheet names SeaPort Sound Terminal LLC at 2628 Marine View Drive, Tacoma (EPA’s address for this terminal), registration 13828."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-puget-lng-tacoma", "agency": "pscaa", "facility": "wa-puget-lng-tacoma-facility",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "permits": [
+        {
+          "number": "11386A", "label": "Order of Approval 11386A", "kind": "Order of Approval (Notice of Construction), revised",
+          "holder": "Puget Sound Energy", "address": "1001 Alexander Ave E, Tacoma, WA 98421", "registration": "30022",
+          "status": "Approved", "issued": "2022-09-14",
+          "what": "The LNG processing facility and the TOTE marine vessel LNG fueling system; revises Order 11386 to require continuous emissions monitoring of VOC and SO2 from the enclosed flare (Pollution Control Hearings Board case 19-087c).",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6544", "title": "Order of Approval 11386A (issued September 2022)", "type": "Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4870", "title": "Order of Approval 11386A and basis statement", "type": "Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4869", "title": "Pollution Control Hearings Board decision on the order’s issues", "type": "Appeal decision" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/4867", "title": "Pollution Control Hearings Board decision on SEPA issues", "type": "Appeal decision" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6506", "title": "Washington Court of Appeals decision upholding the Board’s decision", "type": "Appeal decision" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6507", "title": "Washington Supreme Court decision declining review", "type": "Appeal decision" }
+          ],
+          "page_url": "https://pscleanair.gov/636/PSE---LNG-Facility-Tacoma",
+          "why": "PSCAA’s order names Puget Sound Energy at installation address 1001 Alexander Ave E, Tacoma, the address EPA gives for the Tacoma LNG facility; registration 30022.",
+          "covers": [
+            { "terminal": "wa-puget-lng-tacoma", "doc": "https://pscleanair.gov/DocumentCenter/View/6544", "where": "Order of Approval 11386A, p. 1", "says": "Totem Ocean Trailer Express (TOTE) Marine Vessel" }
+          ]
+        },
+        {
+          "number": "11386", "label": "Order of Approval 11386", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "Puget Sound Energy", "address": "1001 E Alexander Ave, Tacoma, WA 98421", "registration": "30022",
+          "status": "Superseded", "issued": "2019-12-10", "replaced_by": "11386A",
+          "what": "One LNG processing facility and the Totem Ocean Trailer Express (TOTE) marine vessel LNG fueling system: LNG vaporizer, enclosed ground flare, pretreatment heaters and an 8 million gallon LNG storage tank.",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/3935", "title": "Final Order of Approval 11386", "type": "Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/3932", "title": "Final engineering review worksheet, Notice of Construction 11386", "type": "Worksheet" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/3933", "title": "Appendix A: comments and responses", "type": "Response to comments" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/2684", "title": "Notice of Construction application, Tacoma LNG facility", "type": "Application" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/3616", "title": "Final Supplemental EIS, Tacoma LNG", "type": "SEPA document" }
+          ],
+          "page_url": "https://pscleanair.gov/636/PSE---LNG-Facility-Tacoma",
+          "why": "PSCAA’s order names Puget Sound Energy at installation address 1001 E Alexander Ave, Tacoma (EPA’s address for the Tacoma LNG facility); registration 30022. Replaced by 11386A.",
+          "covers": [
+            { "terminal": "wa-tote-tacoma", "doc": "https://pscleanair.gov/DocumentCenter/View/3932", "doc_title": "Engineering worksheet, Notice of Construction 11386", "where": "worksheet, fugitive emissions (PDF p. 46)", "says": "LNG bunkering of ships at the TOTE terminal" }
+          ]
+        },
+        {
+          "number": "12449", "label": "Proposed Order of Approval 12449", "kind": "Order of Approval (Notice of Construction), proposed revision",
+          "holder": "Puget Sound Energy", "address": "1001 Alexander Ave E, Tacoma, WA 98421", "registration": "30022",
+          "status": "Proposed", "issued": null, "status_note": "Open for public comment until 4:30 PM on 13 Nov 2026; online public hearing 12 Nov 2026 (PSCAA notice).",
+          "what": "Would revise Order 11386A: the LNG storage tank’s volume, the storage temperature condition and the sulfur reporting method. PSCAA says it authorizes no physical change and no increase in production or emissions.",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6543", "title": "Draft Order of Approval 12449", "type": "Proposed Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6542", "title": "Engineering worksheet 12449", "type": "Worksheet" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6545", "title": "Application 12449", "type": "Application" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6546", "title": "Correspondence, 12449", "type": "Correspondence" }
+          ],
+          "page_url": "https://pscleanair.gov/736/PSE-LNG-Tacoma",
+          "why": "PSCAA’s draft order names Puget Sound Energy at 1001 Alexander Ave E, Tacoma, registration 30022, and revises Order 11386A.",
+          "covers": [
+            { "terminal": "wa-puget-lng-tacoma", "doc": "https://pscleanair.gov/DocumentCenter/View/6543", "where": "Draft Order of Approval 12449, p. 1", "says": "Totem Ocean Trailer Express (TOTE) Marine Vessel" }
+          ]
+        }
+      ]
+    },
+    {
+      "terminal": "wa-schnitzer-tacoma", "agency": "pscaa", "facility": "wa-schnitzer-tacoma-yard",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "permits": [
+        {
+          "number": "11986", "label": "Order of Approval 11986", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "Schnitzer Steel Industries", "address": "1902 Marine View Dr, Tacoma, WA 98422", "registration": "21432",
+          "status": "Approved", "issued": "2024-04-11",
+          "what": "A shredder emission control system (enclosure, wet venturi scrubbers, two regenerative thermal oxidizers and acid gas scrubbers) for 3,000 tons a day of shredder feed, and a facility-wide synthetic-minor limit on VOC emissions.",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5457", "title": "Final Order of Approval 11986", "type": "Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5456", "title": "Final engineering worksheet 11986 (with responses to comments)", "type": "Worksheet" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5201", "title": "Determination of Nonsignificance (SEPA), 11986", "type": "SEPA document" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5203", "title": "Updated SEPA checklist, 11986", "type": "SEPA document" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5200", "title": "Application with appendices, 11986", "type": "Application" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/5205", "title": "Public notice, 11986", "type": "Public notice" }
+          ],
+          "page_url": "https://www.pscleanair.gov/CivicAlerts.aspx?AID=150&ARC=652",
+          "why": "PSCAA’s order names Schnitzer Steel Industries at installation address 1902 Marine View Dr, Tacoma, EPA’s address for General Metals of Tacoma (this yard); its registration 21432 matches the site’s EPA air program id (WAPSC0000000021432)."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-ash-grove-seattle", "agency": "pscaa", "facility": "wa-ash-grove-seattle-plant",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "permits": [
+        {
+          "number": "12003", "label": "Order of Approval 12003", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "Ash Grove Cement Company", "address": "3801 E Marginal Way S, Seattle, WA 98134", "registration": "11339",
+          "status": "Approved", "issued": "2025-12-05",
+          "what": "Whole tires as replacement fuel at the calciner: the tire share of fuel may rise from a 30% daily limit to about 37%, with emission tests to confirm no increase.",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6238", "title": "Final Order of Approval 12003", "type": "Order of Approval" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6237", "title": "Worksheet and response to comments, 12003", "type": "Worksheet" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6198", "title": "Comments submitted on the draft order and operating permit", "type": "Public comments" }
+          ],
+          "page_url": "https://pscleanair.gov/709/Ash-Grove-Cement",
+          "why": "PSCAA’s order names Ash Grove Cement Company at 3801 E Marginal Way S, Seattle (EPA’s address for this plant); registration 11339 is also its Title V permit number."
+        }
+      ],
+      "attach": [
+        {
+          "permit": { "system": "ICIS-Air", "key": "WAPSC0005303300099" },
+          "page_url": "https://pscleanair.gov/709/Ash-Grove-Cement",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6239", "title": "Air Operating Permit 11339, as modified for Order 12003 (PSCAA 11339)", "type": "Air Operating Permit", "description": "Modification incorporating Order of Approval 12003; EPA did not object (PSCAA)" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6240", "title": "Statement of Basis for the modification (PSCAA 11339)", "type": "Statement of Basis" }
+          ]
+        },
+        {
+          "permit": { "system": "ICIS-Air", "key": "WAPSC0005303300099" },
+          "page_url": "https://pscleanair.gov/CivicAlerts.aspx?AID=183&ARC=748",
+          "docs": [
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6243", "title": "Draft Air Operating Permit renewal (PSCAA 11339)", "type": "Draft Air Operating Permit", "description": "Draft renewal posted for comment 5 Dec 2025 – 10 Feb 2026" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6244", "title": "Draft Statement of Basis for the renewal (PSCAA 11339)", "type": "Statement of Basis" },
+            { "url": "https://pscleanair.gov/DocumentCenter/View/6235", "title": "Renewal application, submitted 2008 (PSCAA 11339)", "type": "Application" }
+          ]
+        }
+      ]
+    },
+    {
+      "terminal": "wa-us-oil-tacoma", "agency": "pscaa", "facility": "wa-us-oil-tacoma-refinery",
+      "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "attach": [
+        {
+          "permit": { "system": "ICIS-Air", "key": "WAPSC0005305300022" },
+          "docs": [],
+          "covers": [
+            { "terminal": "wa-us-oil-tacoma", "doc": "https://pscleanair.gov/DocumentCenter/View/292", "doc_title": "Air Operating Permit 12593 (PSCAA)", "where": "section II.F, Marine Loading Terminal, p. 251", "says": "from marine tank loading" }
+          ]
+        }
+      ],
+      "none": "Puget Sound Clean Air Agency’s orders of approval for the refinery are listed inside its Title V permit; the orders themselves are not posted online (searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-pos-t91-smith-cove", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 91 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-pos-pier66-bell-street", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Pier 66 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-t5", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 5 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-t18", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 18 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-t30", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 30 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-t46", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 46 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-husky", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Husky Terminal is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-pct", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Pierce County Terminal is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-wut", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Washington United Terminals is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-nwsa-west-sitcum", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for West Sitcum Terminal is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-tote-tacoma", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit held by TOTE for this terminal is published online (searched 7 Oct 2026). The LNG fueling of TOTE’s ships here is covered by Puget Sound Energy’s Order of Approval 11386 for the Tacoma LNG facility."
+    },
+    {
+      "terminal": "wa-pot-t7", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for Terminal 7 is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-pot-blair", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for the Blair Waterway terminal wharf is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-poe-seaport", "agency": "pscaa", "searched": ["pscaa-title-v", "pscaa-posted", "pscaa-projects"],
+      "none": "No Puget Sound Clean Air Agency permit for the Port of Everett’s seaport terminals is published online (PSCAA’s Title V list, permitting project pages and posted documents searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-marathon-port-angeles", "agency": "orcaa", "facility": "wa-tesoro-port-angeles-terminal",
+      "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "none": "No Olympic Region Clean Air Agency permit or registration found for this terminal: ORCAA’s list of registered sources (April 24, 2025) has no source at 1720 W Ediz Hook Rd or under Tesoro or Marathon, it holds no Air Operating Permit, and ORCAA’s notices name none (searched 7 Oct 2026)."
+    },
+    {
+      "terminal": "wa-popa-marine-terminal", "agency": "orcaa", "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "permits": [
+        {
+          "key": "REG PORT OF PORT ANGELES", "label": "Registered source: Port of Port Angeles", "kind": "Registered air pollution source (ORCAA registration)",
+          "holder": "Port of Port Angeles", "holder_words": ["PORT OF PORT ANGELES", "1433 MARINE DR"], "address": "1433 Marine Dr, Port Angeles, WA 98363", "source_class": "RC5",
+          "status": "Registered", "status_note": "ORCAA’s list gives the class (RC5) and category (wood products); it publishes no permit document for it.",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "title": "ORCAA list of all registered sources (April 24, 2025)", "type": "Registered sources list" }
+          ],
+          "why": "ORCAA lists the Port of Port Angeles, the terminal’s owner and operator, as a registered source at 1433 Marine Dr, on the Marine Drive waterfront along the port’s terminals; the list’s category is wood products. Which port activity the registration covers is not stated."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-poo-marine-terminal", "agency": "orcaa", "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "permits": [
+        {
+          "key": "REG PORT OF OLYMPIA", "label": "Registered source: Port of Olympia", "kind": "Registered air pollution source (ORCAA registration)",
+          "holder": "Port of Olympia", "holder_words": ["PORT OF OLYMPIA", "915 Washington St Warehouse A"], "address": "915 Washington St (Warehouse A), Olympia, WA 98501", "source_class": "RC4",
+          "status": "Registered", "status_note": "ORCAA’s list gives the class (RC4); it publishes no permit document for it.",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "title": "ORCAA list of all registered sources (April 24, 2025)", "type": "Registered sources list" }
+          ],
+          "why": "ORCAA lists the Port of Olympia at 915 Washington St, Warehouse A: the port’s marine terminal address (915 Washington St NE)."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-pogh-t1", "agency": "orcaa", "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "permits": [
+        {
+          "number": "24NOC1693", "label": "Order of Approval 24NOC1693", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "BWC Terminals, LLC", "holder_words": ["BWC Terminals", "3128 Port"], "address": "3128 Port Industrial Rd, Hoquiam, WA 98550", "source_class": "RC2",
+          "status": "Approved", "issued": "2025-04-25", "status_note": "Supersedes Order 21NOC1533.",
+          "what": "Methanol and MDI storage tanks with vapor combustion, methanol and MDI loading to rail cars and trucks, marine vessel MDI compartment washing, boilers; raises the permitted monochlorobenzene throughput from 10,000 to 40,000 gallons a year.",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/FinalDetermination-24NOC1693-25Apr2025.pdf", "title": "Final Determination and Order of Approval 24NOC1693", "type": "Order of Approval" },
+            { "url": "https://www.orcaa.org/wp-content/uploads/24NOC1693-application.pdf", "title": "Application 24NOC1693", "type": "Application" },
+            { "url": "https://www.orcaa.org/wp-content/uploads/addendum-24NOC1693-27Jan2025.pdf", "title": "Application addendum, 27 Jan 2025", "type": "Application" }
+          ],
+          "page_url": "https://www.orcaa.org/notices/notice-of-construction-bwc-terminals-llc-2/",
+          "why": "ORCAA’s order grants BWC Terminals, LLC approval at 3128 Port Industrial Road, Hoquiam, the liquid-bulk tank terminal served by Port of Grays Harbor Terminal 1.",
+          "covers": [
+            { "terminal": "wa-pogh-t1", "doc": "https://www.orcaa.org/wp-content/uploads/FinalDetermination-24NOC1693-25Apr2025.pdf", "doc_title": "Order of Approval 24NOC1693 (ORCAA)", "where": "condition 1, emission unit EU9, p. 2", "says": "Marine Vessel MDI Compartment" }
+          ]
+        },
+        {
+          "key": "REG BWC TERMINALS", "label": "Registered source: BWC Terminals", "kind": "Registered air pollution source (ORCAA registration)",
+          "holder": "BWC Terminals", "holder_words": ["BWC TERMINALS", "3128 Port Industrial Rd"], "address": "3128 Port Industrial Rd, Hoquiam, WA 98550", "source_class": "RC2",
+          "status": "Registered", "status_note": "ORCAA’s list gives the class (RC2).",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "title": "ORCAA list of all registered sources (April 24, 2025)", "type": "Registered sources list" }
+          ],
+          "why": "ORCAA lists BWC Terminals at 3128 Port Industrial Rd, Hoquiam, the same address as its Order of Approval 24NOC1693."
+        },
+        {
+          "key": "REG REG GRAYS HARBOR", "label": "Registered source: REG Grays Harbor", "kind": "Registered air pollution source (ORCAA registration)",
+          "holder": "REG Grays Harbor LLC", "holder_words": ["REG GRAYS HARBOR LLC", "3122 Port Industrial Road"], "address": "3122 Port Industrial Rd, Hoquiam, WA 98550", "source_class": "RC2",
+          "status": "Registered", "status_note": "ORCAA’s list gives the class (RC2). ORCAA posted REG Grays Harbor’s application 21NOC1481 (replace a thermal oxidizer, add a dust control system) on 5 Mar 2021; the order is not posted online.",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "title": "ORCAA list of all registered sources (April 24, 2025)", "type": "Registered sources list" },
+            { "url": "https://www.orcaa.org/notices/public-comment-due-03-20-2021-for-permit-applications/", "title": "ORCAA notice: application 21NOC1481, REG Grays Harbor LLC (posted 5 Mar 2021)", "type": "Application notice" }
+          ],
+          "why": "ORCAA lists REG Grays Harbor LLC (Renewable Energy Group’s biodiesel plant) at 3122 Port Industrial Road, Hoquiam, beside BWC Terminals; the terminal’s operator page names Renewable Energy Group as a Terminal 1 liquid-bulk user."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-pogh-t2", "agency": "orcaa", "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "permits": [
+        {
+          "key": "REG AGP PORT OF GRAYS HARBOR", "label": "Registered source: AGP, Port of Grays Harbor", "kind": "Registered air pollution source (ORCAA registration)",
+          "holder": "Ag Processing Inc. (AGP)", "holder_words": ["AGP - PORT OF GRAYS HARBOR", "2621 Port Industrial Rd"], "address": "2621 Port Industrial Rd, Aberdeen, WA 98520", "source_class": "RC2",
+          "status": "Registered", "status_note": "ORCAA’s list gives the class (RC2) and category (food processing).",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf", "title": "ORCAA list of all registered sources (April 24, 2025)", "type": "Registered sources list" }
+          ],
+          "why": "ORCAA lists “AGP - Port of Grays Harbor” at 2621 Port Industrial Rd, Aberdeen; ORCAA’s own notice for AGP’s 2024 application calls this source “AGP Port of Grays Harbor Terminal 2” at the same address."
+        }
+      ]
+    },
+    {
+      "terminal": "wa-pogh-t4", "agency": "orcaa", "searched": ["orcaa-registered", "orcaa-notices", "orcaa-aop"],
+      "permits": [
+        {
+          "number": "23NOC1627", "label": "Order of Approval 23NOC1627", "kind": "Order of Approval (Notice of Construction)",
+          "holder": "Ag Processing, Inc. (AGP)", "holder_words": ["Ag Processing, Inc.", "Terminal 4"], "address": "Terminal Way, Terminal 4, Port of Grays Harbor", "source_class": "RC2",
+          "status": "Approved", "issued": "2024-06-13",
+          "what": "A commodity transload facility: rail receiving buildings and pits, conveyors and ship loaders with nine baghouses, for soda ash, soybean meal, corn, wheat, DDGS and similar agricultural commodities.",
+          "docs": [
+            { "url": "https://www.orcaa.org/wp-content/uploads/23NOC1627-FinalDetermination.pdf", "title": "Final Determination and Order of Approval 23NOC1627", "type": "Order of Approval" },
+            { "url": "https://www.orcaa.org/wp-content/uploads/AGP-23NOC1627-Preliminary-Draft-4-16-2024.pdf", "title": "Preliminary Determination to approve, 23NOC1627", "type": "Proposed Order of Approval" },
+            { "url": "https://www.orcaa.org/wp-content/uploads/AGP-23NOC1627-PublicNotice.pdf", "title": "Public notice and hearing, 23NOC1627", "type": "Public notice" },
+            { "url": "https://www.orcaa.org/wp-content/uploads/23NOC1627-Application-1.pdf", "title": "Application 23NOC1627", "type": "Application" }
+          ],
+          "page_url": "https://www.orcaa.org/notices/notice-of-public-hearing-ag-processing-inc-agp-permit/",
+          "why": "ORCAA’s order grants Ag Processing, Inc. a transload facility at Terminal Way, Terminal 4, Port of Grays Harbor; its Table 1 is titled for AGP Terminal 4.",
+          "covers": [
+            { "terminal": "wa-pogh-t4", "doc": "https://www.orcaa.org/wp-content/uploads/23NOC1627-FinalDetermination.pdf", "doc_title": "Order of Approval 23NOC1627 (ORCAA)", "where": "condition 2, Table 1, p. 2", "says": "Stationary Sources Located at AGP Terminal 4" }
+          ]
+        }
+      ]
+    },
+    {
+      "terminal": "wa-united-grain-vancouver", "agency": "swcaa", "searched": ["swcaa-adp"],
+      "permits": [
+        {
+          "number": "12-3005", "label": "Air Discharge Permit 12-3005", "kind": "Air Discharge Permit",
+          "holder": "United Grain Corporation", "address": "1905 NW Harborside Dr, Vancouver, WA 98660", "registration": "0983",
+          "status": "Final", "issued": "2012-03-13", "status_note": "The newest of the 25 permits and letters SWCAA lists for this plant (back to 1971).",
+          "what": "Grain terminal expansion project: grain receiving, storage, shipping and the marine leg, with dust filters.",
+          "docs": [
+            { "url": "https://www.swcleanair.gov/docs/permits/Final/12-3005ADP.pdf", "title": "Air Discharge Permit 12-3005", "type": "Air Discharge Permit" },
+            { "url": "https://www.swcleanair.gov/docs/permits/Final/12-3005TSD.pdf", "title": "Technical Support Document, 12-3005", "type": "Technical Support Document" }
+          ],
+          "page_url": "https://www.swcleanair.gov/permits/permitADPlist.asp", "page_form": { "SelType": "PLT", "PlantID": "883~United Grain Corporation" },
+          "why": "SWCAA’s permit names United Grain Corporation/Vancouver Facility at 1905 NW Harborside Dr, Vancouver (SWCAA id 0983); SWCAA lists the plant’s earlier name United Harvest LLC, the name USACE gives this wharf.",
+          "covers": [
+            { "terminal": "wa-united-grain-vancouver", "doc": "https://www.swcleanair.gov/docs/permits/Final/12-3005ADP.pdf", "doc_title": "Air Discharge Permit 12-3005 (SWCAA)", "where": "equipment list, item 5, p. 4", "says": "Receiving Grain from Barge" }
+          ]
+        }
+      ]
+    },
+    {
+      "terminal": "wa-egt-longview", "agency": "swcaa", "searched": ["swcaa-adp"],
+      "permits": [
+        {
+          "number": "23-3607", "label": "Air Discharge Permit 23-3607", "kind": "Air Discharge Permit",
+          "holder": "EGT, LLC", "address": "150 E. Mill Road, Longview, WA 98632", "registration": "2292",
+          "status": "Final", "issued": "2023-11-20", "status_note": "The newest of the 8 permits SWCAA lists for this plant (back to 2007).",
+          "what": "New storage silos and grain handling equipment and modification of existing grain handling equipment.",
+          "docs": [
+            { "url": "https://www.swcleanair.gov/docs/permits/Final/23-3607ADP.pdf", "title": "Air Discharge Permit 23-3607", "type": "Air Discharge Permit" },
+            { "url": "https://www.swcleanair.gov/docs/permits/Final/23-3607TSD.pdf", "title": "Technical Support Document, 23-3607", "type": "Technical Support Document" }
+          ],
+          "page_url": "https://www.swcleanair.gov/permits/permitADPlist.asp", "page_form": { "SelType": "PLT", "PlantID": "2672~EGT LLC" },
+          "why": "SWCAA’s permit is issued to EGT, LLC, 150 E. Mill Road, Longview (SWCAA id 2292; earlier name EGT Development, LLC): the grain terminal at Port of Longview berth 9.",
+          "covers": [
+            { "terminal": "wa-egt-longview", "doc": "https://www.swcleanair.gov/docs/permits/Final/23-3607ADP.pdf", "doc_title": "Air Discharge Permit 23-3607 (SWCAA)", "where": "equipment list, item 106, p. 7", "says": "East Ship Loader Spout TSP61" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -19,11 +19,18 @@ export const STATUS_WORDS = {
   'amendment applied for': { short: 'Amendment applied for', long: 'the holder applied to amend it; Metro Vancouver is reviewing the application' },
   'renewal applied for': { short: 'Renewal applied for', long: 'the holder applied for a new permit; Metro Vancouver is reviewing the application' },
   'report filed 2023': { short: 'Report filed 2023', long: 'a 2023 report filed with Metro Vancouver lists this permit; the permit document is not online' },
+  // WA local clean air agencies (PSCAA, ORCAA, SWCAA): orders of approval, air discharge permits and registrations.
+  approved: { short: 'Approved', long: 'approved by the agency; an order of approval stays in force for the life of the equipment unless a later order replaces it' },
+  proposed: { short: 'Proposed', long: 'a proposed order the agency posted for public comment; not yet final' },
+  superseded: { short: 'Replaced', long: 'replaced by a later order of the agency' },
+  registered: { short: 'Registered', long: 'listed by the agency as a registered air pollution source; registration has no permit document' },
+  final: { short: 'Final', long: 'issued in final form by the agency' },
   withdrawn: { short: 'Withdrawn', long: 'withdrawn; not in force' },
   abandoned: { short: 'Abandoned', long: 'listed as abandoned; not in force' },
 }
 export const statusKey = (s) => String(s || '').split(/[;(]/)[0].trim().toLowerCase()
-const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register', 'MV-AQ': 'Metro Vancouver' }
+const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register', 'MV-AQ': 'Metro Vancouver',
+  PSCAA: 'Puget Sound Clean Air Agency', ORCAA: 'Olympic Region Clean Air Agency', SWCAA: 'Southwest Clean Air Agency' }
 export const statusSource = (p) => SOURCE_OF[p.system] || 'EPA ECHO'
 
 /** "In force" etc. for a card row (p = a permits row: epa_system + program_status). */

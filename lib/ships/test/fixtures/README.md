@@ -201,3 +201,11 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 | `wa-leases-live-2026-10-07.json` | **Real, recorded live** 2026-10-07 by `scripts/ships/import-wa-leases.mjs`: 26 DNR AQ_ENC_Public_Prod features (layers 1, 2, 3, 25) for the leases the tests name, verbatim except the staff-name fields EDIT_NM / PERSON_RESPONSIBLE (dropped, as the importer drops them); the Whatcom County notice of application for SHR2020-00002 (pdftotext text, bytes, sha256) and the two SEPA Register record pages that name it. |
 
 `waLeases.test.js` / `waLeases-db.test.js` add a few **SYNTHETIC** cases (wrong lessee words, a lease on the wrong terminal, stand-in terminal rows), each marked.
+
+## WA local clean air agencies (docs/PERMITS_SOURCES.md "WA local clean air agencies", lib/ships/waAirAgencies.js)
+
+| File | What it is |
+|---|---|
+| `wa-air-live-2026-10-07.json` | **Real, recorded live** 2026-10-07 by `scripts/ships/air-fetch.mjs`, trimmed to verbatim slices: ORCAA's BWC Terminals notice page (24NOC1693) HTML from its intro section to the comments section; SWCAA's Air Discharge Permit search result for EGT LLC (posted form `SelType=PLT&PlantID=2672~EGT LLC`) from the printable block through its first two permits; PSCAA Order of Approval 11386A text (first 1,500 characters), draft Order 12449 (first 2,500) and the 11386 worksheet (first 600 characters + the passage on LNG bunkering at the TOTE terminal, joined by a form feed). `bytes` / `sha256` describe the whole files. |
+
+`waAirAgencies.test.js` / `waAirAgencies-db.test.js` also use **SYNTHETIC** variants (broken data entries, a wrong quote, a wrong holder, an entry cut to one order without its listing page, a bare facility row), each marked in the test.

@@ -202,8 +202,8 @@ PARIS 88394523; air = Puget Sound Clean Air Agency, ICIS-Air WAPSC0005303316002;
 letter names the site "KMLT LLC Harbor Island Terminal N Dock"; no SEPA Register record with Kinder Morgan as applicant in King
 County) and Tesoro Port Angeles (FRS 110032897015; no water or air permit in EPA's records, no PARIS facility, not on ORCAA's
 2025-04-24 registered-sources list; SEPA: Tesoro Logistics' 2016 "Port Angeles Dock Piping Replacement Project", City of Port
-Angeles lead). Migration 026 widens facility kinds. PSCAA and ORCAA publish no per-facility permit / enforcement records online
-(PSCAA: rules, Title V, permits open for comment; ORCAA: Title V AOPs + a registered-sources PDF) — public records requests.
+Angeles lead). Migration 026 widens facility kinds. PSCAA and ORCAA publish no per-facility permit search or enforcement list online; what they do publish (posted orders
+of approval, notices, registered sources) is catalogued in "WA local clean air agencies" below (2026-10-07).
 Fixed: `--only` imports no longer withdraw the facilities they weren't given.
 
 ## WA DNR aquatic land leases (2026-10-07)
@@ -285,3 +285,72 @@ county's portal (Skagit and Grays Harbor need accounts; Whatcom blocks scripts) 
 the same join for city leads (Seattle SDCI "Land Use / Master Use Permit – Shoreline" has a public permit search, Tacoma and
 Vancouver have portals) — a separate city catalogue. (3) Ecology receives every shoreline permit decision (permit data sheets);
 no public searchable list of them was found; if Ecology holds one, it would cover all jurisdictions at once (a question for Josh to put to Ecology, not asked).
+
+## WA local clean air agencies: PSCAA, ORCAA, SWCAA (catalogue + build, dev 2026-10-07)
+
+Facts only, read live 2026-10-07 (79 agency requests, ≥ 1.5 s apart, EarthAtlas User-Agent, all cached under
+`scripts/ships/facilities/cache/air-*`; request log `air-requests.log`; plus ~17 web searches). No login, form protection or CAPTCHA
+met or bypassed; terms pages not read (public agency records cleared by Josh 2026-10-06). NWCAA: see §5 above (already built).
+Code `lib/ships/waAirAgencies.js`, data `lib/ships/data/wa-air-permits.json`, import `npm run ships:import-wa-air`
+(prod: `zsh scripts/ships/prod.sh import-wa-air`, 0 requests from the cache), fetch helper `scripts/ships/air-fetch.mjs`
+(scanned PDFs read with macOS Vision OCR by `scripts/ships/ocr-pdf.swift`; the stored text says so).
+
+### Puget Sound Clean Air Agency (PSCAA): King, Pierce, Snohomish, Kitsap — pscleanair.gov (CivicPlus CMS)
+
+| What | Where | Scriptable? |
+|---|---|---|
+| **Title V (Air Operating Permits)**: 24 sources, permit no., name, issue + amendment dates, AOP / Statement of Basis / attachments PDFs | `/182/List-of-Approved-Permits` (one HTML table) | yes, plain GET (already read by `parsePscaaRow`) |
+| **Orders of Approval (Notices of Construction, NOC)**: the construction permits; no list or search. Only orders PSCAA chose to post: project pages (`/460` Recent Permitting Projects → e.g. `/709` Ash Grove, `/636` + `/736` PSE LNG), News Flash public notices (`/CivicAlerts.aspx?AID=<n>`: notice text + application, worksheet, draft / final order, SEPA docs), and Document Center files (`/DocumentCenter/View/<n>`, e.g. "NOC Order of Approval 11265 & Worksheet - Targa Sound Terminal" linked from `/300/Documents`) | per URL, plain GET; the Document Center folder tree and the News Flash archive lists load by script and were **not** enumerated; documents were found by site-restricted web search + the agency's own pages |
+| Worksheets carry: NOC number, **registration number**, installation address, applied date, description, permit history (earlier NOC numbers), SEPA basis, BACT review, responses to comments | the worksheet PDFs | text layer (some scanned pages: OCR) |
+| New construction projects (current applications, 15-day comment window), permits open for comment | `/176`, `/175`, `/183` | plain GET; only what is current |
+| **Registrations** (annual-fee sources) | no public list ("We do not issue registration certificates", `/396`) | — |
+| **Notices of Violation / civil penalties**: not published per facility (`/223` explains how to respond to a penalty; no list). PSCAA reports them to EPA ICIS-Air: ECHO shows them as `LeadAgency: Local` under the site's ICIS-Air id (prefix **WAPSC**), and formal actions' `CaseFormalActions.CaseName` carries PSCAA's own penalty number (e.g. "23-0086CP") | ECHO DFR (already stored) | yes (ECHO) |
+| Board packets (`/AgendaCenter/ViewFile/Agenda/_<date>-<n>`): budget/vouchers; no enforcement list found in the July 2026 packet | PDF | yes |
+
+ICIS-Air ids: newer PSCAA sources are `WAPSC00000000` + the PSCAA registration number (Schnitzer 21432 and PSE LNG 30022 match the
+registration on their PSCAA orders); older ones use the AFS plant id (`WAPSC000530` + county FIPS + plant number), which is not the
+registration number (SeaPort Sound: registration 13828, ICIS-Air WAPSC0005305300021).
+
+### Olympic Region Clean Air Agency (ORCAA): Clallam, Jefferson, Grays Harbor, Mason, Pacific, Thurston — orcaa.org (WordPress)
+
+| What | Where | Scriptable? |
+|---|---|---|
+| **List of all registered sources** (~700: name, registration class OP1/OP2/RC0–RC5, category, address, city, zip) | `/wp-content/uploads/RegisteredAOPSources-24Apr2025.pdf`, linked from `/for-business/notices-registered-businesses/` | PDF, text layer |
+| **Air Operating Permits**: 11 sources, AOP + Technical Support Document PDFs | `/for-business/air-operating-permits-aop/` | plain GET |
+| **NOC notices** (one page per application since ~2023: Notice Type, Posted, Name of Business, Address, Source class, Notice #, Status, **Date Finalized**, Application, related files, **Final Determination** = the Order of Approval PDF); older ones (2018–2022) are multi-applicant pages "Public Comment Due mm/dd/yyyy" with Applicant / Location / NOC number / description only | `/notices/<slug>/` | plain GET; found through the site search `/?s=<words>` (HTML, paged) |
+| Orders of Approval / Final Determinations | `/wp-content/uploads/<n>NOC<n>-FinalDetermination.pdf` | PDF, often **scanned** (OCR) |
+| **Enforcement**: no list of NOVs or penalties; occasional news releases (e.g. "Olympia plant agrees to settlement…") | site search | — |
+| Tesoro Port Angeles is not on the April 2025 registered-sources list (no source at 1720 W Ediz Hook Rd), holds no AOP, and no notice names it | | |
+
+### Southwest Clean Air Agency (SWCAA): Clark, Cowlitz, Lewis, Skamania, Wahkiakum — swcleanair.gov (classic ASP)
+
+| What | Where | Scriptable? |
+|---|---|---|
+| **Air Discharge Permit search** (all active sources; ~1,190 plant names, each `<id>~<name>`) → per plant: previous names, every permit since the 1970s (number, ADP + TSD PDFs, public notice dates, **Date Final**, appeal end, SEPA determination no.) | `/permits/permitADPsearch.asp` (form) → POST `permitADPlist.asp` `SelType=PLT&PlantID=<id~name>` | yes: a public search form, one POST per plant (also by ADP number, business, date) |
+| Title V permits, Title V opt-out permits, recent ADPs, applications received, permits open for comment, SEPA actions | `/permits/title5final.asp`, `/permits/t5OptOutSearch.asp`, `/permits/adpfinal.asp`, `/permits/applications.asp`, … | plain GET (not read) |
+| **Annual facility inspection reports** per facility | `/epages/annualinspection.asp` → POST `INSList.asp` | public form (not read) |
+| Facility details, equipment, source tests, annual emissions | `/epages/*` | public forms (not read) |
+| Enforcement: no NOV / penalty list seen; news releases | `/agency/newsrelease.asp` | not read |
+| Our terminals in the plant list: Port of Vancouver USA (679), United Grain Corporation (883), NuStar Terminals Service Main (360) + Annex (170), Kalama Export Company (1024), Port of Kalama (1639), TEMCO (611), Lanxess Corporation (464), Port of Longview Berth 1, 5, 6 and 7 (678), EGT LLC (2672), Weyerhaeuser Longview Export Yard (2958) | | |
+
+**Pilot (2 terminals)**: United Grain Vancouver (ADP 12-3005, final 2012-03-13; 25 permits and letters listed back to 1971) and EGT
+Longview (ADP 23-3607, issued 2023-11-20; 8 permits back to 2007), each with a cited dock quote. **The rest** (~10 more Columbia River
+terminals) takes 1 POST per plant + 1–2 PDFs (newest ADP, OCR when scanned) ≈ 25–35 requests, then hand-checking holder and address,
+and the facility entries for those terminals.
+
+### What was built (dev)
+
+- 39 terminal × agency entries: PSCAA 31 (17 existing facilities + 14 port terminals), ORCAA 6, SWCAA 2. Each stores what was searched,
+  when and the result; "none found" words are shown on the terminal's Permits tab with the searched sources linked.
+- Permits (system PSCAA / ORCAA / SWCAA, statute "WA air"; number + holder checked in the agency's own text): PSCAA 11265 + 11917
+  (SeaPort Sound), 11386 / 11386A / 12449 (Puget LNG), 11986 (Schnitzer / General Metals), 12003 (Ash Grove); ORCAA 24NOC1693 + 3
+  registrations (Grays Harbor T1: BWC Terminals, REG Grays Harbor), AGP registration (T2), 23NOC1627 (AGP, T4), Port of Olympia and
+  Port of Port Angeles registrations; SWCAA 12-3005, 23-3607. Documents added to EPA-listed permits: Ash Grove AOP 11339 modification
+  + draft renewal.
+- "Covers this dock" quotes: 11265 (marine loading of natural gasoline), 11386A + 12449 (TOTE marine vessel LNG fueling), 11386
+  worksheet → TOTE terminal (LNG bunkering of ships at the TOTE terminal), US Oil AOP 12593 (marine tank loading), 24NOC1693 (marine
+  vessel MDI compartment washing), 23NOC1627 (AGP Terminal 4), 12-3005 (receiving grain from barge), 23-3607 (east ship loader).
+- Enforcement: ECHO "Local" actions are now named by agency (WAPSC → PSCAA, WANCA → NWCAA) and formal actions show the agency's case /
+  penalty number with a link to ECHO's case report.
+- Permits of terminals whose facility entry doesn't exist yet (ORCAA ports, SWCAA) are stored once the facility exists (re-run the
+  import; the import reports them meanwhile).

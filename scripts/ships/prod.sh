@@ -22,6 +22,7 @@
 #   zsh scripts/ships/prod.sh scrubber-edition   freeze the scrubber report as a dated edition (args pass through: --id 2026-10 --from 2025-01 --to 2026-06; needs migration 029)
 #   zsh scripts/ships/prod.sh import-facilities  back up, then facilities + EPA permits/enforcement + WA SEPA reviews + permit documents (lib/ships/data/salish-facilities.json; reuses the cached responses in scripts/ships/facilities/cache; needs migrations 022-024)
 #   zsh scripts/ships/prod.sh import-bc-permits  back up, then BC facilities + EMA authorizations + NRCED records + EAO projects + Metro Vancouver air permits (the bc- entries of salish-facilities.json; reuses the cached responses and PDFs in scripts/ships/facilities/cache, 0 requests when cached; needs migration 027)
+#   zsh scripts/ships/prod.sh import-wa-air      back up, then WA local clean air agency permits (PSCAA, ORCAA, SWCAA pilot; lib/ships/data/wa-air-permits.json) for the US facilities; run after import-facilities; reuses the cached pages and PDFs in scripts/ships/facilities/cache (0 requests when cached); no migration
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-anchorage-stays back up, then anchorage stays counted from our AIS (cache/anchorage-stays/hits.csv; needs migration 020)
 #   zsh scripts/ships/prod.sh import-anchorage-aliases back up, then "also known as" names for anchorages (GFW names already stored + the USCG VTS manual p. 3-6 record; needs migration 020)
@@ -119,6 +120,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-bc-permits
     prod_node scripts/ships/import-bc-permits.mjs "${@:2}"
+    ;;
+  import-wa-air)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-wa-air
+    prod_node scripts/ships/import-wa-air.mjs "${@:2}"
     ;;
   import-terminal-calls)
     need SHIPS_PROD_DATABASE_URL

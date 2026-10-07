@@ -24,8 +24,9 @@ const STATUTE = {
   SDWA: 'Drinking water system (Safe Drinking Water Act)',
   'BC EMA': 'Waste discharge authorizations (BC Environmental Management Act)',
   'MV AQ': 'Air quality permits (Metro Vancouver)',
+  'WA air': 'Air permits from the local clean air agency',
 }
-const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA', 'BC EMA', 'MV AQ']
+const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'WA air', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA', 'BC EMA', 'MV AQ']
 const SYSTEM_TITLE = {
   'ICIS-NPDES': 'NPDES water discharge permit / permit coverage (EPA ICIS-NPDES)', 'ICIS-Air': 'Air program record (EPA ICIS-Air); Areas lists the air programs that apply',
   GHGRP: 'Greenhouse Gas Reporting Program facility id (a reporting id, not a permit)', RMP: 'Risk Management Plan id (accident prevention; a reporting id, not a permit)',
@@ -64,11 +65,18 @@ const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial
 const BC_REGISTER = 'https://catalogue.data.gov.bc.ca/dataset/waste-discharge-authorizations-all-authorizations'
 SYSTEM_TITLE['MV-AQ'] = 'Metro Vancouver air quality permit (GVRD Air Quality Management Bylaw No. 1082)'
 DOC_SRC['metro-vancouver-aq-permits'] = 'Metro Vancouver'
+// WA local clean air agencies (lib/ships/waAirAgencies.js): orders of approval, air discharge permits, registrations.
+const AIR_AGENCY = { PSCAA: 'Puget Sound Clean Air Agency', ORCAA: 'Olympic Region Clean Air Agency', SWCAA: 'Southwest Clean Air Agency' }
+for (const [k, v] of Object.entries(AIR_AGENCY)) SYSTEM_TITLE[k] = `${v}: an air permit or registration, from the agency’s own documents`
+Object.assign(DOC_SRC, { 'pscaa-documents': 'Puget Sound Clean Air', 'orcaa-permits': 'Olympic Region Clean Air', 'swcaa-permits': 'Southwest Clean Air' })
+// ECHO lists a local agency's air actions as "Local"; the ICIS-Air id's prefix names which agency (WAPSC… = PSCAA, WANCA… = NWCAA).
+const LOCAL_AIR = { WAPSC: 'Puget Sound Clean Air Agency', WANCA: 'Northwest Clean Air Agency' }
+const agencyWords = (x) => (x.agency === 'Local' && LOCAL_AIR[String(x.permit_key || '').slice(0, 5)]) || AGENCY[x.agency] || x.agency
 const mb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`)
 
 /** One document: its title opens the file at the agency; the chip opens the listing EarthAtlas read it from. */
 function Doc({ d }) {
-  const isPage = !/\.pdf|DownloadDocument|ViewDocument|wp-content\/uploads/i.test(d.url)
+  const isPage = !/\.pdf|DownloadDocument|ViewDocument|wp-content\/uploads|DocumentCenter\/View/i.test(d.url)
   return (
     <div className={styles.legendNoteText}>
       <a className={styles.pcPlainLink} href={d.url} target="_blank" rel="noopener noreferrer"
@@ -92,10 +100,15 @@ function Permit({ p, frsUrl }) {
       onClick={(e) => { if (!e.target.closest('a')) open() }}
       onKeyDown={(e) => { if (e.key === 'Enter' && !e.target.closest('a')) open() }}>
       <div className={styles.incidentHead}>
-        <span className={styles.incidentTitle}>{p.permit_key}</span>
+        <span className={styles.incidentTitle}>{p.waAir?.label || p.permit_key}</span>
         <span className={styles.period} title={p.program_status ? statusTitle(p) : undefined}>{p.program_status ? statusShort(p) : ''}</span>
       </div>
       <div className={styles.incidentMeta}>
+        {p.waAir ? <>
+          {[p.waAir.holder, p.universe, p.waAir.issued && `issued ${day(p.waAir.issued)}`, p.waAir.registration && `registration ${p.waAir.registration}`,
+            p.waAir.source_class && `class ${p.waAir.source_class}`].filter(Boolean).join(' · ')}{' '}
+          {ext(p.waAir.page_url || p.waAir.main_url, AIR_AGENCY[p.epa_system] || p.epa_system, `${SYSTEM_TITLE[p.epa_system]}. Opens the agency’s ${p.waAir.page_url ? 'page for it' : 'document'}`)}
+          {' '}{ext(rec(p.source_record_id), 'stored', 'The agency’s document as EarthAtlas read it (text and file hash)')}</> : <>
         {[p.name, p.mv ? p.mv.authorizes : p.universe, p.bcEma ? p.areas && `waste type: ${p.areas.toLowerCase()}` : p.areas && areaText(p.areas),
           (p.bcEma?.issued || p.mv?.issued) && `issued ${day(p.bcEma?.issued || p.mv.issued)}`, p.mv?.amended && `amended ${day(p.mv.amended)}`,
           p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
@@ -108,7 +121,7 @@ function Permit({ p, frsUrl }) {
           : p.frs_ids.length ? <>
           {ext(rec(p.source_record_id), 'EPA ECHO', `${SYSTEM_TITLE[p.epa_system] || p.epa_system}. Listed in EPA ECHO's Detailed Facility Report for FRS ${p.frs_ids.join(', ')} — click for the stored report`)}
           {' '}{ext(frsUrl, 'ECHO page', 'Open the facility in EPA ECHO')}</>
-          : ext(rec(p.source_record_id), 'WA Ecology PARIS', 'A Washington State permit listed on the facility’s PARIS page (EPA does not track it) — click for the listing')}
+          : ext(rec(p.source_record_id), 'WA Ecology PARIS', 'A Washington State permit listed on the facility’s PARIS page (EPA does not track it) — click for the listing')}</>}
       </div>
       {p.coversTerminal && (
         <div className={styles.coverNote}>
@@ -122,6 +135,8 @@ function Permit({ p, frsUrl }) {
           {p.paris.current.effective ? `, effective ${day(p.paris.current.effective)}` : ''}{p.paris.current.expires ? `, expires ${day(p.paris.current.expires)}` : ''}</div>
       )}
       {p.mv?.address && <div className={styles.incidentMeta}>{p.mv.address}</div>}
+      {p.waAir && <div className={styles.incidentMeta}>{[p.waAir.address, p.waAir.what].filter(Boolean).join(' · ')}</div>}
+      {p.waAir?.status_note && <div className={styles.incidentMeta}>{p.waAir.status_note}</div>}
       {p.mv?.application && <div className={styles.incidentMeta}>Application {p.mv.application.gva} ({String(p.mv.application.status || '').toLowerCase()}): {p.mv.application.purpose}{' '}
         {ext(p.mv.application_url, 'application page', 'Metro Vancouver’s page for this application')}</div>}
       {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${((t) => t.length > 90 ? `${t.slice(0, 90)}…` : t)(oncePhrase(p.bcEma.facility_type))}` : ''}</div>}
@@ -131,7 +146,9 @@ function Permit({ p, frsUrl }) {
 }
 
 function Enforcement({ frs }) {
-  const rows = frs.flatMap((f) => [...f.enforcement.formal, ...f.enforcement.notices].map((x) => ({ ...x, frs: f })))
+  // A formal action's ECHO case (same program id, same date) gives the agency's own case / penalty number and a case report link.
+  const caseOf = (f, x) => (x.kind === 'formal' ? (f.cases || []).find((c) => c.permit_key === x.permit_key && c.date === x.date) : null)
+  const rows = frs.flatMap((f) => [...f.enforcement.formal, ...f.enforcement.notices].map((x) => ({ ...x, frs: f, case: caseOf(f, x) })))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)))
   const win = frs.find((f) => f.primary)?.enforcement.windows
   const span = [...(win?.formal || []), ...(win?.notices || [])]
@@ -141,9 +158,10 @@ function Enforcement({ frs }) {
     {!rows.length && <div className={styles.legendNoteText}>No enforcement action or notice in ECHO's window.</div>}
     {rows.map((x, i) => (
       <div key={`${x.frs.id}:${x.kind}:${x.date}:${i}`} className={styles.legendNoteText}>
-        <strong>{day(x.date)}</strong> · {x.type} ({x.statute}, {AGENCY[x.agency] || x.agency})
+        <strong>{day(x.date)}</strong> · {x.type} ({x.statute}, {agencyWords(x)})
         {x.kind === 'formal' && x.penalty && x.penalty !== '$0' ? <> · penalty <strong>{x.penalty}</strong></> : ''}
         {x.permit_key ? <span className={styles.pcMuted}> · {x.permit_key}</span> : ''}{' '}
+        {x.case && <>{ext(x.case.url, `case ${String(x.case.name || x.case.id).replace(/\s+CP$/, '')}`, `EPA ECHO case report ${x.case.id}${x.case.name ? ` (the agency’s number: ${x.case.name})` : ''}: status, penalty and settlement`)}{' '}</>}
         {ext(rec(x.frs.record_id), 'EPA ECHO', `${x.kind === 'formal' ? 'Formal enforcement action' : 'Informal action (notice)'} in EPA ECHO's Detailed Facility Report for FRS ${x.frs.id} — click for the stored report`)}
       </div>
     ))}
@@ -215,7 +233,21 @@ function SepaRow({ r }) {
   )
 }
 
-function Facility({ f, onLocate }) {
+/** WA local clean air agencies: what was searched for this dock and found nothing (or a note), with the searched sources. */
+function AirSearches({ rows }) {
+  const notes = rows.filter((r) => r.none)
+  if (!notes.length) return null
+  return notes.map((r) => (
+    <div key={r.agency} className={styles.capNote}>
+      {r.none}{' '}
+      <span className={styles.pcMuted}>Searched:</span>{' '}
+      {r.searched.map((x) => <span key={x.url}>{ext(x.url, x.short || x.title, `${x.title}, searched ${day(x.date)}`)}{' '}</span>)}
+      {ext(rec(r.recordId), 'stored', 'What EarthAtlas searched, when, and what it found, as stored')}
+    </div>
+  ))
+}
+
+function Facility({ f, onLocate, airSearches = [] }) {
   const prim = f.frs.find((x) => x.primary)
   const isBc = f.country === 'CA'
   // Permits whose own text names this dock come first in each group.
@@ -248,10 +280,12 @@ function Facility({ f, onLocate }) {
       {isBc && !f.permits.some((p) => p.epa_system === 'BC-EMA') && <div className={styles.capNote}>{f.bc?.emaNone || 'No BC waste discharge authorization was matched to this facility.'}</div>}
       {isBc && !f.permits.some((p) => p.epa_system === 'MV-AQ') && (f.bc?.mvNone || f.bc?.mvOutside) && <div className={styles.capNote}>{f.bc.mvNone || f.bc.mvOutside}</div>}
       {groups.map(([s, ps]) => (
-        <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA' || s === 'BC EMA' || s === 'MV AQ'}>
+        <Fold key={s} title={`${s === 'WA air' ? `Air permits from the ${[...new Set(ps.map((p) => AIR_AGENCY[p.epa_system]))].join(' and ')}` : STATUTE[s] || s} (${fmtN(ps.length)})`}
+          open={s === 'CWA' || s === 'CAA' || s === 'WA air' || s === 'BC EMA' || s === 'MV AQ'}>
           {ps.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}
         </Fold>
       ))}
+      {!isBc && <AirSearches rows={airSearches} />}
       {other.length > 0 && <Fold title={`Other (${fmtN(other.length)})`}>{other.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}</Fold>}
 
       {isBc ? <NrcedList rows={f.bc?.nrced || []} /> : <Enforcement frs={f.frs} />}
@@ -325,7 +359,7 @@ export default function TerminalPermits({ permits, onLocate }) {
   const d = permits.data
   return <>
     <LandRecords land={d.land} />
-    {d.facilities.map((f) => <Facility key={f.key} f={f} onLocate={onLocate} />)}
+    {d.facilities.map((f, i) => <Facility key={f.key} f={f} onLocate={onLocate} airSearches={i === 0 ? d.airSearches || [] : []} />)}
     <div className={styles.attribution}>
       {(d.sources || []).map((x, i) => (
         <span key={x.id}>{i > 0 && ' · '}

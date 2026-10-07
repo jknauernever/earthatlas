@@ -667,7 +667,11 @@ export default function ShipsApp() {
       // z5 inside their box), so nothing can be counted: show no numbers rather than a misleading 0 (Josh 2026-10-02).
       const z = map.getZoom(), c = map.getCenter(), bb = trackSource.bbox
       const inSalish = c.lng >= bb[0] && c.lng <= bb[2] && c.lat >= bb[1] && c.lat <= bb[3]
-      if (z < SALISH_Z && !(inSalish && z >= KIND_HANDOVER_Z)) { lastKey = ''; setInView({ scrub: null, cls: null, selected: null }); return }
+      // The Salish exception needs NOAA's detail tiles for EVERY picked month: GFW months (after NOAA's latest) have none, and
+      // their zoomed-out tiles carry no MMSIs, so counting there said "0" over drawn cruise-ship lines (Josh 2026-10-07).
+      const salishTiles = trackMonths.length > 0 && trackMonths.every((m) => salishMonths.includes(m))
+      if (z < SALISH_Z && !(inSalish && salishTiles && z >= KIND_HANDOVER_Z)) { lastKey = ''; setInView({ scrub: null, cls: null, selected: null, uncountable: true }); return }
+      setInView((v) => (v?.uncountable ? { ...v, uncountable: false } : v))
       const sFeats = scrubMmsis ? drawnBy(GHOST_S) : null
       const scrub = new Set()
       for (const p of sFeats || []) if (p.mmsi != null && groupOk(p)) scrub.add(scrubV(p.mmsi))
@@ -694,7 +698,7 @@ export default function ShipsApp() {
     map.on('moveend', soon)
     map.on('sourcedata', onData)
     return () => { clearTimeout(t); ctl?.abort(); map.off('moveend', soon); map.off('sourcedata', onData) }
-  }, [mapReady, styleVersion, tracksOn, scrubMmsis, scrubOnly, trackMonths, trackKinds, trackClasses])
+  }, [mapReady, styleVersion, tracksOn, scrubMmsis, scrubOnly, trackMonths, trackKinds, trackClasses, salishMonths])
   const addedMonthsRef = useRef(new Set())
   const nearPopupRef = useRef(null)
   useEffect(() => {
@@ -1901,7 +1905,7 @@ export default function ShipsApp() {
                         })()}
                         {trackClasses.length > 0 && (
                         <div className={styles.legendNoteText}>
-                          <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : '…'}{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
+                          <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : inView?.uncountable ? 'Zoom in to count the ships in view' : '…'}{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
                         </div>)}
                         <div className={styles.chipRow} style={{ marginTop: 8 }}>

@@ -10,6 +10,7 @@ import styles from './ShipsApp.module.css'
 import Chevron from './Chevron.jsx'
 import { statusShort, statusTitle, nrcedResult, oncePhrase } from './permitStatus.js'
 import { Loading } from '../components/panel'
+import LandRecords from './LandRecords.jsx'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const plural = (n, w, ws = `${w}s`) => `${fmtN(n)} ${n === 1 ? w : ws}`
@@ -311,7 +312,7 @@ export function useTerminalPermits(terminalKey) {
     setSt({ key: terminalKey, state: 'loading', data: null })
     fetch(`/api/ships?op=terminalPermits&key=${encodeURIComponent(terminalKey)}`, { signal: ctl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => setSt({ key: terminalKey, state: d.facilities?.length ? 'ok' : 'none', data: d }))
+      .then((d) => setSt({ key: terminalKey, state: d.facilities?.length || d.land?.length ? 'ok' : 'none', data: d }))
       .catch((e) => { if (e.name !== 'AbortError') setSt({ key: terminalKey, state: 'error', data: null }) })
     return () => ctl.abort()
   }, [terminalKey])
@@ -323,6 +324,7 @@ export default function TerminalPermits({ permits, onLocate }) {
   if (permits.state === 'error') return <div className={styles.errorNote}>Permits didn’t load.</div>
   const d = permits.data
   return <>
+    <LandRecords land={d.land} />
     {d.facilities.map((f) => <Facility key={f.key} f={f} onLocate={onLocate} />)}
     <div className={styles.attribution}>
       {(d.sources || []).map((x, i) => (

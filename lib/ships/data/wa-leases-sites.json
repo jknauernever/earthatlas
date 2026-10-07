@@ -1,0 +1,223 @@
+{
+  "about": "Hand-checked links from our Washington terminals (salish-terminals.json) to Washington DNR state-owned aquatic land use authorizations (lib/ships/dnrLeases.js) and, for the Whatcom County pilot, county shoreline permits at the dock (lib/ships/countyShoreline.js). DNR rule: a lease is accepted only when DNR's own lessee name carries the listed words (the terminal's operator or its permit holder of record) AND one of its DNR points lies within max_km (default 1 km) of a berth; a port management agreement (PMA) only when a berth lies inside DNR's PMA area polygon, or within max_metres of it where the terminal is that port's own terminal or names the area's site. Nothing is accepted by distance alone. Checked 2026-10-07 against the DNR AQ_ENC_Public_Prod map service read that day. Sources and catalogue: docs/DNR_LEASES.md.",
+  "version": "2026-10-07",
+  "checked": "2026-10-07",
+  "terminals": {
+    "wa-bp-cherry-point": {
+      "dnr": {
+        "uses": [
+          { "lease": "20-A09122", "lessee_words": ["BP", "WEST", "COAST"], "why": "DNR's lessee is BP West Coast Products LLC (BP's Cherry Point refinery company); its lease points (Parcels A, B, C) lie 0.2-0.4 km from the BP wharf." }
+        ]
+      },
+      "county": {
+        "county": "Whatcom",
+        "shoreline": [],
+        "none": "No shoreline permit for the BP wharf was found in the Washington SEPA Register's Whatcom County records for BP's applicant names (2000-2026). Whatcom County's own permit portal was not read: it refused automated access."
+      }
+    },
+    "wa-p66-ferndale": {
+      "dnr": { "uses": [ { "lease": "20-B11714", "lessee_words": ["PHILLIPS", "66"], "why": "DNR's lessee is Phillips 66 Company (the Ferndale refinery's owner); its lease point lies 0.2 km from the refinery wharf." } ] }
+    },
+    "wa-marathon-anacortes": {
+      "dnr": { "uses": [ { "lease": "20-A12165", "lessee_words": ["TESORO", "REFINING"], "why": "DNR's lessee is Tesoro Refining and Marketing Co, the refinery's company name before Marathon Petroleum acquired Andeavor (formerly Tesoro) in 2018; DNR still lists it under that name. The lease point lies 0.03 km from the wharf." } ] }
+    },
+    "wa-hfs-puget-sound": {
+      "dnr": { "uses": [ { "lease": "20-A12561", "lessee_words": ["HF", "SINCLAIR"], "why": "DNR's lessee is HF Sinclair Puget Sound Refining LLC (the refinery's company); its lease point lies 0.05 km from the wharf." } ] }
+    },
+    "wa-marathon-port-angeles": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this dock names Tesoro, Marathon or Andeavor. The nearest are a harbor area lease to McKinley Paper and Packaging (0.14 km) and Port of Port Angeles harbor areas (0.4 km)." }
+    },
+    "wa-us-oil-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this dock, and it is 1.5 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-seaport-sound-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this dock, and it is 2 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-nustar-tacoma": {
+      "dnr": { "uses": [ { "lease": "22-002572", "lessee_words": ["SHORE", "TERMINALS"], "why": "DNR's lessee is Shore Terminals LLC, the NuStar company that holds this terminal; the harbor area point lies 0.09 km from the dock. A renewal application under 22-A02572 is also listed." } ] }
+    },
+    "wa-p66-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this dock names Phillips 66 or ConocoPhillips. The nearest are City of Tacoma and Foss Waterway harbor areas." }
+    },
+    "wa-puget-lng-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this pier names Puget Sound Energy or Puget LNG; the only one within 1 km is a Port of Tacoma right of way (0.75 km)." }
+    },
+    "wa-km-harbor-island": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this dock names Kinder Morgan. The nearest are the Port of Seattle's harbor area (Terminal 18) and U.S. Coast Guard and Rainier Petroleum harbor areas." }
+    },
+    "wa-shell-seattle": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this dock names Shell or Equilon. The nearest are Rainier Petroleum and Alaska Railroad harbor areas (0.1 km)." }
+    },
+    "wa-maxum-pier15": {
+      "dnr": { "uses": [
+        { "lease": "22-081453", "lessee_words": ["RAINIER", "PETROLEUM"], "why": "DNR's lessee is Rainier Petroleum LLC; the Seattle Fire Department's marine refueling permit list names Rainier Petroleum as the permit holder at 1711 13th Ave SW - Terminal 15, the Pier 15 fuel dock Washington Ecology lists as the Maxum Petroleum Pier 15 facility. The harbor area point lies 0.1 km from the berth." },
+        { "lease": "22-A02527", "lessee_words": ["RAINIER", "PETROLEUM"], "why": "DNR's lessee is Rainier Petroleum LLC (see 22-081453); this harbor area point lies 0.02 km from the berth. A further application under 22-B02527 is also listed." }
+      ] }
+    },
+    "wa-seaport-seattle": {
+      "dnr": { "uses": [ { "lease": "22-A90037", "lessee_words": ["SEAPORT", "MIDSTREAM"], "why": "DNR's lessee is SeaPort Midstream Partners, the terminal's company; the harbor area point lies 0.03 km from the dock." } ] }
+    },
+    "wa-point-wells": {
+      "dnr": { "uses": [ { "lease": "20-013465", "lessee_words": ["PARAMOUNT", "WASHINGTON"], "why": "DNR's lessee is Paramount of Washington (the terminal's company); the lease point lies 0.07 km from the dock." } ] }
+    },
+    "wa-nbk-manchester": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this Navy fuel pier names the U.S. Navy; the only ones near it are aquaculture leases (0.9-1 km)." }
+    },
+    "wa-naswi": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this Navy fuel pier names the U.S. Navy; the nearest are private moorage leases and a City of Oak Harbor lease (0.75-1 km)." }
+    },
+    "wa-maxum-fairhaven": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080025", "area_objectid": 737, "max_metres": 0, "port_words": ["PORT", "BELLINGHAM"], "why": "The berth lies inside the area DNR maps as managed by the Port of Bellingham under a port management agreement." } }
+    },
+    "wa-covich-williams": {
+      "dnr": { "uses": [ { "lease": "20-012551", "lessee_words": ["COVICH", "WILLIAMS"], "why": "DNR's lessee is Covich Williams Company Inc (the fuel dock's company); the lease point lies 0.04 km from the dock. An application under 20-A12551 is also listed." } ] }
+    },
+    "wa-anacortes-petcoke": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080024", "area_objectid": 670, "max_metres": 0, "port_words": ["PORT", "ANACORTES"], "why": "The berth lies inside the area DNR maps as managed by the Port of Anacortes under a port management agreement." } }
+    },
+    "wa-t86-grain": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 666, "max_metres": 0, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies inside the area DNR maps as managed by the Port of Seattle under a port management agreement (site 'Pier 86')." } }
+    },
+    "wa-temco-tacoma": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080007", "area_objectid": 699, "max_metres": 0, "port_words": ["PORT", "TACOMA"], "why": "The berth lies inside the area DNR maps as managed by the Port of Tacoma under a port management agreement." } }
+    },
+    "wa-schnitzer-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this dock, and it is 3.6 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-lafarge-seattle": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this dock on the Duwamish Waterway." }
+    },
+    "wa-ash-grove-seattle": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this dock names Ash Grove; the nearest are Duwamish Properties and Riverside Mill leases (0.5-0.6 km) and an HM Northwest Cement harbor area (0.74 km)." }
+    },
+    "wa-intalco-wharf": {
+      "dnr": { "uses": [ { "lease": "20-A08488", "lessee_words": ["PETROGAS"], "why": "DNR's lessee is Petrogas Pacific LLC, the company that holds this wharf's permits of record (now ALA Energy); the lease point lies 0.07 km from the wharf." } ] },
+      "county": {
+        "county": "Whatcom",
+        "shoreline": [
+          {
+            "file": "SHR2020-00002",
+            "type": "Shoreline Substantial Development Permit",
+            "project": "Petrogas Marine Loading Arm",
+            "submitted": "2020-02-04",
+            "notice_date": "2020-03-27",
+            "sepa": ["202001715", "202003309"],
+            "notice_doc": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=87817",
+            "says": "Required Permits: Shoreline Substantial Development Permit",
+            "why": "Whatcom County's notice of application (filed in the SEPA Register) names file SHR2020-00002 for replacing a marine loading arm on the existing pier at 4050 Mountain View Rd, parcel 390129260284 (the Petrogas Ferndale wharf)."
+          },
+          {
+            "file": "SHR2020-00006",
+            "type": "Shoreline Substantial Development Permit",
+            "project": "Petrogas Pacific, LLC Ferndale Wharf Dredging",
+            "submitted": "2020-03-02",
+            "notice_date": "2020-03-12",
+            "sepa": ["202001433", "202005227"],
+            "notice_doc": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=86906",
+            "says": "Required Permits: Shoreline Substantial Development Permit",
+            "why": "Whatcom County's notice of application (filed in the SEPA Register) names file SHR2020-00006 for dredging up to 12,000 cubic yards at the Ferndale wharf, parcel 390129260284."
+          }
+        ]
+      }
+    },
+    "wa-pos-t91-smith-cove": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 642, "max_metres": 0, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies inside the area DNR maps as managed by the Port of Seattle under a port management agreement (site 'Terminal 91')." } }
+    },
+    "wa-pos-pier66-bell-street": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 662, "max_metres": 0, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies inside the area DNR maps as managed by the Port of Seattle under a port management agreement (site 'Piers 64, 65, 66')." } }
+    },
+    "wa-nwsa-t5": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 681, "max_metres": 0, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies inside the area DNR maps as managed by the Port of Seattle under a port management agreement (site 'Terminal 5, Parcel D')." } }
+    },
+    "wa-nwsa-t18": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 665, "max_metres": 25, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies 19 m outside the edge of the area DNR maps as the Port of Seattle's management area 'Terminal 18, South'." } }
+    },
+    "wa-nwsa-t30": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 646, "max_metres": 25, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies 16 m outside the edge of the area DNR maps as the Port of Seattle's management area 'Terminal 30'." } }
+    },
+    "wa-nwsa-t46": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080031", "area_objectid": 740, "max_metres": 0, "port_words": ["PORT", "SEATTLE"], "why": "The berth lies inside the area DNR maps as managed by the Port of Seattle under a port management agreement (site 'Terminal 46')." } }
+    },
+    "wa-nwsa-husky": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080007", "area_objectid": 741, "max_metres": 70, "port_words": ["PORT", "TACOMA"], "why": "This Port of Tacoma terminal's berth lies 66 m outside the edge of the area DNR maps as managed by the Port of Tacoma under a port management agreement." } }
+    },
+    "wa-nwsa-pct": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this terminal's berths, and they are 3.6 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-nwsa-wut": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this terminal's berths, and they are 2.4 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-nwsa-west-sitcum": {
+      "dnr": { "uses": [], "none": "No DNR lease names this terminal's operators, and its berth is 0.44 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-tote-tacoma": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this terminal's berth, and it is 0.8 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-pot-t7": {
+      "dnr": { "uses": [], "none": "No DNR lease names this terminal, and its berth is 0.54 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-pot-blair": {
+      "dnr": { "uses": [], "none": "No DNR use authorization of any kind lies within 1 km of this terminal's berth, and it is 2.9 km from the nearest Port of Tacoma management area." }
+    },
+    "wa-poe-seaport": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080027", "area_objectid": 749, "max_metres": 0, "port_words": ["PORT", "EVERETT"], "why": "A berth lies inside the area DNR maps as managed by the Port of Everett under a port management agreement." } }
+    },
+    "wa-popa-marine-terminal": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080013", "area_objectid": 678, "max_metres": 0, "port_words": ["PORT", "PORT", "ANGELES"], "why": "A berth lies inside the area DNR maps as managed by the Port of Port Angeles under a port management agreement." } }
+    },
+    "wa-pob-shipping-terminal": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080025", "area_objectid": 734, "max_metres": 0, "port_words": ["PORT", "BELLINGHAM"], "why": "The berth lies inside the area DNR maps as managed by the Port of Bellingham under a port management agreement." } }
+    },
+    "wa-poo-marine-terminal": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080006", "area_objectid": 695, "max_metres": 65, "port_words": ["PORT", "OLYMPIA"], "why": "This Port of Olympia terminal's berth lies 59 m outside the edge of the area DNR maps as managed by the Port of Olympia under a port management agreement." } }
+    },
+    "wa-pov-t2": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 0, "port_words": ["PORT", "VANCOUVER"], "why": "The berth lies inside the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-pov-t2-berth5": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 0, "port_words": ["PORT", "VANCOUVER"], "why": "The berth lies inside the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-pov-t3": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 0, "port_words": ["PORT", "VANCOUVER"], "why": "The berth lies inside the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-pov-t4": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 0, "port_words": ["PORT", "VANCOUVER"], "why": "A berth lies inside the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-pov-dry-bulk": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 0, "port_words": ["PORT", "VANCOUVER"], "why": "The berth lies inside the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-united-grain-vancouver": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080008", "area_objectid": 660, "max_metres": 40, "port_words": ["PORT", "VANCOUVER"], "why": "The berth of this Port of Vancouver terminal lies 33 m outside the edge of the area DNR maps as managed by the Port of Vancouver under a port management agreement." } }
+    },
+    "wa-kalama-export": {
+      "dnr": { "uses": [ { "lease": "22-A02586", "lessee_words": ["KALAMA", "EXPORT"], "why": "DNR's lessee is Kalama Export Company LLC (the terminal's company); the harbor area point lies 0.03 km from the dock." } ] }
+    },
+    "wa-temco-kalama": {
+      "dnr": { "uses": [], "pma": { "lease": "20-080002", "area_objectid": 753, "max_metres": 0, "port_words": ["PORT", "KALAMA"], "why": "The berth lies inside the area DNR maps as managed by the Port of Kalama under a port management agreement." } }
+    },
+    "wa-emerald-kalama": {
+      "dnr": { "uses": [], "none": "No DNR lease names LANXESS or Emerald Kalama Chemical; the berth is 75 m from a Port of Kalama management area, not inside it, and the terminal is not checked as the port's own." }
+    },
+    "wa-pol-berths-1-3": {
+      "dnr": { "uses": [], "none": "No DNR lease names the Port of Longview's berths 1-3 other than its management agreement, and the berths are 0.2 km from the mapped management area, not inside it." }
+    },
+    "wa-pol-berths-5-7": {
+      "dnr": { "uses": [], "none": "No DNR lease names the Port of Longview's berths 5-7, and they are 0.36 km from the nearest mapped Port of Longview management area." }
+    },
+    "wa-egt-longview": {
+      "dnr": { "uses": [], "none": "No DNR use authorization within 1 km of this terminal names EGT; the berth is 0.16 km from a Port of Longview management area, not inside it." }
+    },
+    "wa-weyerhaeuser-longview": {
+      "dnr": { "uses": [ { "lease": "20-095644", "lessee_words": ["WEYERHAEUSER"], "max_km": 0.3, "why": "DNR's lessee is Weyerhaeuser NR Company (the log dock's company); the lease point lies 0.24 km from a berth. A second Weyerhaeuser lease (20-011670) lies 0.61 km away and is not linked." } ] }
+    },
+    "wa-pogh-t2": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080015", "area_objectid": 643, "max_metres": 0, "port_words": ["PORT", "GRAYS", "HARBOR"], "why": "The berth lies inside the area DNR maps as managed by the Port of Grays Harbor under a port management agreement." } }
+    },
+    "wa-pogh-t4": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080015", "area_objectid": 643, "max_metres": 0, "port_words": ["PORT", "GRAYS", "HARBOR"], "why": "The berth lies inside the area DNR maps as managed by the Port of Grays Harbor under a port management agreement." } }
+    },
+    "wa-pogh-t1": {
+      "dnr": { "uses": [], "pma": { "lease": "22-080015", "area_objectid": 643, "max_metres": 55, "port_words": ["PORT", "GRAYS", "HARBOR"], "why": "This Port of Grays Harbor terminal's berth lies 49 m outside the edge of the area DNR maps as managed by the Port of Grays Harbor under a port management agreement." } }
+    }
+  }
+}

@@ -205,3 +205,83 @@ County) and Tesoro Port Angeles (FRS 110032897015; no water or air permit in EPA
 Angeles lead). Migration 026 widens facility kinds. PSCAA and ORCAA publish no per-facility permit / enforcement records online
 (PSCAA: rules, Title V, permits open for comment; ORCAA: Title V AOPs + a registered-sources PDF) — public records requests.
 Fixed: `--only` imports no longer withdraw the facilities they weren't given.
+
+## WA DNR aquatic land leases (2026-10-07)
+
+Statewide public source: DNR's AQ_ENC_Public_Prod map service (lease number, lessee, type, status, start date, acres; **no end
+date**). Full catalogue, the matches to our 59 WA terminals and the two private lease documents Lovel sent: **docs/DNR_LEASES.md**.
+Built on dev: migration 030 (`terminal_land_records`), `lib/ships/dnrLeases.js`, `npm run ships:import-wa-leases`; shown on the
+terminal card's Permits tab ("State aquatic land under the dock").
+
+## EFSEC — Energy Facility Site Evaluation Council (checked 2026-10-07)
+
+What EFSEC publishes (efsec.wa.gov): a facility list (19 entries, filterable by status: application review, awaiting
+construction, operational, under construction, withdrawn, suspended, decommissioning), one page per facility with its Site
+Certification Agreement (SCA), compliance and permit documents (e.g. Grays Harbor Energy Center's Title V permit), and a document
+search (5,273 documents; filters facility, county, energy type, date, document type in 20 categories, status). The keyword
+parameter did not filter when fetched; EFSEC's older documents (e.g. 2011 meeting minutes) are PDFs under
+`/sites/default/files/2025-05/`.
+
+Jurisdiction (RCW 80.50.020 / .060, read 2026-10-07): an "energy facility" includes facilities able to receive **more than an
+average of 50,000 barrels a day of crude or refined petroleum or LPG transported over marine waters**, petroleum pipelines over
+6 inches and 15 miles, and gas pipelines over 14 inches and 15 miles. The chapter applies to new construction and to a
+reconstruction or enlargement whose **net increase** meets those thresholds; normal maintenance is exempt.
+
+**None of our 59 WA terminals is an EFSEC facility.** None appears on EFSEC's facility list. The list's facilities are solar,
+wind, battery, nuclear, transmission and gas-fired plants (Chehalis, Grays Harbor Energy Center at Satsop, Columbia Generating
+Station, …); the two nearest to our terminals are the Grays Harbor Energy Center (Elma; not at the Port of Grays Harbor docks)
+and Goldeneye Battery Storage (east of Sedro-Woolley, Skagit County; application review since 2024-06-27). The refinery docks
+were built before chapter 80.50 (Tesoro's 1955, ARCO's 1971).
+
+EFSEC history touching our sites (not shown on the site; for Josh):
+- **BP Cherry Point Cogeneration Project** (next to the BP refinery): EFSEC issued a Site Certification Agreement and, with EPA, a
+  PSD permit for a 720 MW gas-fired cogeneration plant; EPA: "This project replaces the previously permitted 720 MW project which
+  was never constructed" (a 520–570 MW replacement application was received 2006-07-06). On 2011-08-24 EFSEC adopted Resolution
+  331 transferring the SCA and permits from Cherry Point Cogeneration, LLC to **BP West Coast Products, LLC** (special meeting
+  minutes, `efsec.wa.gov/sites/default/files/2025-05/20110824_SpclMtg.pdf`). The project is not on EFSEC's current list; whether
+  the SCA was later terminated, and whether anything was built, was not found in public pages (would need EFSEC's document search
+  by facility or a records request).
+- **Vancouver Energy (Tesoro Savage)**, a proposed 360,000 bbl/day crude-by-rail terminal at the Port of Vancouver: EFSEC
+  recommended denial in 2017; Governor Inslee denied it on 2018-01-29 and the Port cancelled the lease effective 2018-03-31
+  (Earthjustice, Port press coverage). It would have used Port of Vancouver docks near our wa-pov-* terminals; it is not one of
+  them.
+
+## Counties (shoreline permits and SEPA; checked 2026-10-07)
+
+**Who issues shoreline permits at our docks.** Shoreline Substantial Development, Conditional Use and Variance permits are issued
+by the **local government with jurisdiction: the city inside city limits, the county outside them** (Shoreline Management Act;
+decisions are filed with Ecology, which approves conditional uses and variances). By the Census places already stored on our
+terminals (migration 028), **48 of the 59 WA terminals are inside a city** (Seattle 14, Tacoma 14, Vancouver 6, Longview 3,
+Bellingham 2, Port Angeles 2, Hoquiam 2, Aberdeen, Anacortes, Everett, Olympia, Oak Harbor), so their shoreline permits come
+from the city, not the county. **11 are in unincorporated county**: Whatcom (BP Cherry Point, Phillips 66 Ferndale, Petrogas/ALA
+wharf), Skagit (Marathon and HF Sinclair at March Point), Snohomish (Point Wells), Kitsap (Navy Manchester — federal), Cowlitz
+(Kalama Export, TEMCO Kalama, LANXESS Kalama, Weyerhaeuser Longview log dock). Jefferson County holds none of our terminals.
+
+**SEPA lead agency.** For a project needing a county permit, the county is SEPA lead (WAC 197-11-922/926); for air permits the
+clean air agency is (NWCAA for Whatcom/Skagit/Island); Ecology for its own permits. The SEPA Register shows this per record, with
+the county's own file numbers (Whatcom `SEP…`, `SHR…` shoreline, `LDP…`, `VAR…`, `MPP/CUP`; Skagit `PL##-####`, `BP##-####`,
+`PLAN2-YYYY-####`) — so the Register is the one statewide, public, searchable index of county shoreline files, from 2000 on.
+
+| County | Our terminals (unincorporated) | Online permit records | Shoreline decisions online |
+|---|---|---|---|
+| Whatcom | BP, Phillips 66, Petrogas/ALA | Civic Access portal (Tyler); the county website refused automated access (HTTP 403), not read | Notices of application and SEPA packets in the SEPA Register (e.g. SHR2020-00002, SHR2020-00006); hearing examiner decisions not checked |
+| Skagit | Marathon, HF Sinclair | EnerGov self-service (Tyler) "Apply and Check Permit Status" (account needed); Property Search and Recorded Documents search open | Hearing Examiner decisions online for 2026 only; 2005–2025 by email request |
+| Snohomish | Point Wells | "PDS Online Records" search tool (not all records digitized) and PDS permit portal; Point Wells has its own project page | via Online Records (not tested) |
+| Kitsap | Navy Manchester (federal) | online-only applications ("Prepare, Apply, Manage"); public search not checked | not checked |
+| Cowlitz | Kalama ×3, Weyerhaeuser | Building & Planning page; no public search found | not found |
+| King, Pierce, Clark, Clallam, Thurston, Grays Harbor, Island | none (all ours are inside cities) | King: MyBuildingPermit; Pierce: PALS+ and a public ArcGIS "Permits_Pierce_County" FeatureServer; Clark: Property Information Center + CC LMS (since 2019-03-02); Clallam: new online permit system; Grays Harbor: SmartGov (account for documents); Island: online portal since 2025-04-21; Thurston: not found | (city permits apply instead: Seattle SDCI, Tacoma, Vancouver, …) |
+
+**Pilot (Whatcom, 2 terminals, dev).** Source: the county's notices of application as filed in the SEPA Register, joined by the
+lead-agency file numbers. Petrogas/ALA Ferndale wharf (wa-intalco-wharf): **SHR2020-00002** "Petrogas Marine Loading Arm"
+(Shoreline Substantial Development Permit; applied 2020-02-04, notice 2020-03-27, SEPA ODNS 2020-06-24) and **SHR2020-00006**
+"Ferndale Wharf Dredging" (SSDP; applied 2020-03-02, notice 2020-03-12, SEPA ODNS 2020-10-09). BP Cherry Point: **no shoreline
+permit for the wharf found** in the Register's Whatcom records for BP (2000–2026). The permit **decision** (approved/conditions/
+date) is not in those filings: it needs the county portal, the hearing examiner, or Ecology's filing. Shown on the card under
+"Shoreline permits for work at the dock" with the notice, SEPA records and "permit decision not published online".
+
+**What the rest would take.** (1) The 4 other unincorporated counties: the same SEPA-Register join (search by our applicants'
+names, cached already for most refineries; ~1–3 requests per terminal) gives file numbers and notices; decisions need each
+county's portal (Skagit and Grays Harbor need accounts; Whatcom blocks scripts) or records requests. (2) The 48 city terminals:
+the same join for city leads (Seattle SDCI "Land Use / Master Use Permit – Shoreline" has a public permit search, Tacoma and
+Vancouver have portals) — a separate city catalogue. (3) Ecology receives every shoreline permit decision (permit data sheets);
+no public searchable list of them was found; if Ecology holds one, it would cover all jurisdictions at once (a question for Josh to put to Ecology, not asked).

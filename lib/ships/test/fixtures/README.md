@@ -193,3 +193,11 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 
 `metroVancouver.test.js` / `metroVancouver-db.test.js` also use a few **SYNTHETIC** variants (a wrong permit number, a wrong quote, an empty application template, entries missing fields), each marked in the test.
 
+
+## WA DNR aquatic leases + Whatcom shoreline pilot (docs/DNR_LEASES.md)
+
+| File | What it is |
+|---|---|
+| `wa-leases-live-2026-10-07.json` | **Real, recorded live** 2026-10-07 by `scripts/ships/import-wa-leases.mjs`: 26 DNR AQ_ENC_Public_Prod features (layers 1, 2, 3, 25) for the leases the tests name, verbatim except the staff-name fields EDIT_NM / PERSON_RESPONSIBLE (dropped, as the importer drops them); the Whatcom County notice of application for SHR2020-00002 (pdftotext text, bytes, sha256) and the two SEPA Register record pages that name it. |
+
+`waLeases.test.js` / `waLeases-db.test.js` add a few **SYNTHETIC** cases (wrong lessee words, a lease on the wrong terminal, stand-in terminal rows), each marked.

@@ -98,7 +98,8 @@ async function packFor(t, region) {
     else { const u = (await gfwIndexNow()).months?.[t]; if (u?.pack) src = new BlobRange(u.pack, u.pack_bytes) }
   } else {
     const local = localPathFor(t, 'pack')
-    src = existsSync(local) ? new LocalFileSource(local) : manifest.packs?.[t] ? new BlobRange(manifest.packs[t]) : null
+    const u = existsSync(local) ? null : (await salishNow()).months?.[t]
+    src = existsSync(local) ? new LocalFileSource(local) : u?.pack ? new BlobRange(u.pack, u.pack_bytes) : null
   }
   if (!src) return null
   // The shard table lives at the start of the pack, but reading it first makes the shard read the
@@ -205,7 +206,7 @@ async function mapLimit(items, n, fn) {
 export async function allTracksForMmsi(mmsi) {
   await usUrls(manifest.months?.[0] || '2000-01') // loads the US index
   const usM = Object.keys(usIndex?.months || {})
-  const salishM = new Set(manifest.months || [])
+  const salishM = new Set(Object.keys((await salishNow()).months || {}))
   const [w, s, e, n] = manifest.bbox
   const inside = (f) => f.geometry.coordinates.every(([x, y]) => x >= w && x <= e && y >= s && y <= n)
   const months = [...new Set([...usM, ...salishM])].sort()
@@ -229,6 +230,24 @@ export async function allTracksForMmsi(mmsi) {
   features.push(...gfwPer.flat())
   for (const f of features) f.geometry.coordinates = simplify(f.geometry.coordinates)
   return { features, months: new Set([...months, ...gfwM]).size, failed }
+}
+
+// Detailed Salish months (NOAA per-minute AIS, scripts/ships/bake-ais/): the Blob index (trackSource.salishIndex) that the
+// ships-noaa-month workflow adds each month NOAA publishes to (docs/SHIPS_ACTIVITY_FUSION.md Part 1, Josh 2026-10-07). Until
+// that index exists, the months / tiles / packs written into trackSource.json by the hand-run bake.
+let salishIndex = null, salishIndexAt = 0
+export async function salishNow() {
+  if (!salishIndex || Date.now() - salishIndexAt > 5 * 60 * 1000) {
+    let idx = null
+    if (manifest.salishIndex) {
+      try { const r = await fetch(`${manifest.salishIndex}?t=${Math.floor(Date.now() / 300000)}`); if (r.ok) idx = await r.json() }
+      catch (e) { console.error('[ship-tracks] salish index', e?.message) }
+    }
+    salishIndex = idx?.months ? idx : { version: manifest.version, fallback: true,
+      months: Object.fromEntries((manifest.months || []).map((m) => [m, { tiles: manifest.tiles?.[m] || null, pack: manifest.packs?.[m] || null }])) }
+    salishIndexAt = Date.now()
+  }
+  return salishIndex
 }
 
 // US-wide months: the bake's Blob index says where each month's files are.
@@ -260,9 +279,11 @@ export async function gfwIndexNow() {
   }
   return gfwIndex
 }
+// A local bake's month files are used only together with its index (2026-10-07: a stale local August without an index kept
+// localhost on old lines while the months came from the live index).
 function gfwLocal(t, ext) {
   const f = resolve(gfwLocalDir(), t, `tracks.${ext}`)
-  return process.env.VERCEL_ENV !== 'production' && existsSync(f) ? f : null
+  return process.env.VERCEL_ENV !== 'production' && existsSync(resolve(gfwLocalDir(), 'index.json')) && existsSync(f) ? f : null
 }
 
 // Local bakes change under us while developing: never let a browser keep them.
@@ -303,7 +324,8 @@ async function pmtilesFor(t, region) {
   // Local bakes can live on an external drive (symlinked): unplugged → Blob above; plugged back in → local again.
   if (p && !p.local && existsSync(localPath)) { cache.delete(t); p = null }
   if (!p) {
-    const blobUrl = manifest.tiles?.[t] || null
+    const u = (await salishNow()).months?.[t]
+    const blobUrl = u?.tiles || null
     if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
     else if (blobUrl) p = new PMTiles(new BlobRange(blobUrl))
     else return null
@@ -416,6 +438,15 @@ export default async function handler(req, res) {
     if (!/\bgzip\b/.test(req.headers['accept-encoding'] || '')) return res.end(body)
     res.setHeader('Content-Encoding', 'gzip')
     return res.end(zlib.gzipSync(body))
+  }
+  if (searchParams.get('op') === 'salishindex') {   // the detailed Salish months the page offers (see salishNow)
+    let idx
+    try { idx = await salishNow() } catch (e) { console.error('[ship-tracks] salish index', e?.message); idx = { months: {} } }
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600')
+    return res.end(JSON.stringify({ version: idx.version, updated: idx.updated || null, fallback: !!idx.fallback,
+      months: Object.fromEntries(Object.entries(idx.months || {}).map(([m, e]) => [m, { built: e.built || null }])) }))
   }
   if (searchParams.get('op') === 'gfwindex') {
     let idx

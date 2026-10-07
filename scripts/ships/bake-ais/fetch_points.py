@@ -15,6 +15,8 @@ Run:  python3 fetch_points.py 2026-06                 # one month
       python3 fetch_points.py 2025-07 2026-06         # inclusive month range
       python3 fetch_points.py 2026-06 --jobs 3
       SHIPS_REGION=salish-v6 python3 fetch_points.py 2026-06   # the bigger box
+      python3 fetch_points.py 2026-06-15                  # one day (the ships-noaa-month workflow's test)
+Exits non-zero when a day failed (a missing day, not yet published, is reported, not an error).
 Deps: pip install duckdb
 """
 import os, sys, time, datetime as dt
@@ -88,15 +90,23 @@ def main():
     args = argv
     if not args:
         sys.exit(__doc__)
-    a, b = args[0], args[1] if len(args) > 1 else args[0]
     os.makedirs(OUT, exist_ok=True)
-    days = [d for y, m in months(a, b) for d in days_in(y, m)]
+    if len(args[0]) == 10:   # YYYY-MM-DD: one day
+        days = [dt.date.fromisoformat(args[0])]
+    else:
+        a, b = args[0], args[1] if len(args) > 1 else args[0]
+        days = [d for y, m in months(a, b) for d in days_in(y, m)]
     t0 = time.time()
+    bad = []
     with ThreadPoolExecutor(jobs) as ex:
         futs = [ex.submit(fetch_day, d) for d in days]
         for i, f in enumerate(as_completed(futs), 1):
             d, status, n = f.result()
             print(f"[{i}/{len(days)}] {d} {status}{'' if n is None else f' {n:,} rows'}  ({time.time()-t0:.0f}s)", flush=True)
+            if status == "failed":
+                bad.append(str(d))
+    if bad:
+        sys.exit(f"failed days: {' '.join(sorted(bad))}")
 
 
 if __name__ == "__main__":

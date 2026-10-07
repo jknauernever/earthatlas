@@ -51,6 +51,7 @@
     "2026-06": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v6/tracks-2026-06.pack"
   },
   "uploadedAt": "2026-09-28T21:59:24.655Z",
+  "salishIndex": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v6/index.json",
   "us": {
     "index": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/us-v2/index.json",
     "rules": "us-v2",

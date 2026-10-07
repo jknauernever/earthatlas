@@ -43,7 +43,7 @@
 //
 // Rules: src/ships/CLAUDE.md.
 
-import { shipsHttp, shipsPool, DEFAULT_SCHEMA } from '../lib/ships/db.js'
+import { shipsHttp, shipsPool, withTx, DEFAULT_SCHEMA } from '../lib/ships/db.js'
 import { portClimateTrace } from '../lib/ships/climateTrace.js'
 import { classIndex, mmsisOfClasses, classCountsFor } from '../lib/ships/typeSearch.js'
 import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
@@ -63,6 +63,12 @@ import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.j
 import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
 import { importBatch } from '../lib/ships/gfwAis.js'
+import { normalizeStops, storeActivityEstimates } from '../lib/ships/activityEstimates.js'
+import { storeTerminalCalls, BAKE_VERSION as CALLS_VERSION, TERMINAL_CALLS_SOURCE } from '../lib/ships/terminalCalls.js'
+import { storeAnchorageStays, STAY_BAKE_VERSION, ANCHORAGE_STAYS_SOURCE } from '../lib/ships/anchorageStays.js'
+import { startRun, finishRun } from '../lib/ships/store.js'
+import { importMcBatch } from '../lib/ships/mcMonths.js'
+import { searchPlaces } from '../lib/ships/placeSearch.js'
 import { timingSafeEqual } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 
@@ -91,7 +97,7 @@ const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_
 
 // Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
 // only with the CRON_SECRET bearer the GitHub bakes hold; browsers and everyone else get 401 and never reach the DB.
-const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels'])
+const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels', 'importActivity', 'importAisMonth', 'importMcIdentity'])
 function bakeAuthorized(req) {
   const secret = process.env.CRON_SECRET
   const auth = String(req.headers['authorization'] || '')
@@ -119,6 +125,9 @@ export default async function handler(req, res) {
       return send(res, 200, { query: text, kinds, results: r.results, type: r.type, total: r.total, capped: r.capped || false })
     }
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
+    //   /api/ships?op=places&q=<text> → { places: [{ kind: terminal|anchorage|facility|port, id, name, matched, lat, lon, sub, area, terminalKey? }] }
+    //   our own places for the "Fly to a place" box (lib/ships/placeSearch.js; Josh 2026-10-07)
+    if (op === 'places') return send(res, 200, { places: await searchPlaces(q, S, p.get('q') || '') }, 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400')
     //   /api/ships?op=typeLookup  (CRON_SECRET bearer only)  → MMSI → EarthAtlas type over time (lib/ships/typeLookup.js), the same
     //                                               lookup the NOAA track bake uses; the GFW track bake re-types its lines with it
     //   POST /api/ships?op=importGfwVessels { offset }  (CRON_SECRET bearer only) → one resumable batch of the GFW ship-records
@@ -133,6 +142,68 @@ export default async function handler(req, res) {
       }
       const pool = shipsPool()
       try { return send(res, 200, await importBatch(pool, S, { offset: body.offset }), 'no-store') } finally { await pool.end() }
+    }
+    //   POST /api/ships?op=importActivity { kind, month, through, rule, inputs, rows }  (CRON_SECRET bearer only) → one month of
+    //        GFW-estimated terminal visits or anchorage stays (activity.py stops.csv rows), replacing that month (lib/ships/activityEstimates.js)
+    if (op === 'importActivity') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { return send(res, 400, { error: 'bad JSON' }) }
+      }
+      let rows
+      try { rows = normalizeStops(body.kind, Array.isArray(body.rows) ? body.rows : []) } catch (e) { return send(res, 400, { error: String(e.message) }) }
+      const pool = shipsPool()
+      try {
+        const r = await withTx(pool, (c) => storeActivityEstimates(c, S, { kind: body.kind, month: body.month, through: body.through || null, rule: body.rule, inputs: body.inputs || null, rows }))
+        return send(res, 200, r, 'no-store')
+      } catch (e) { return send(res, 400, { error: String(e.message) }) } finally { await pool.end() }
+    }
+    //   POST /api/ships?op=importAisMonth { kind: terminal|anchorage, month, version, bake, rows }  (CRON_SECRET bearer only) → one
+    //        month of terminal calls / anchorage stays counted from NOAA AIS by the ships-noaa-month workflow (terminal-calls.mjs /
+    //        anchorage-stays.mjs --post), replacing that month and adding it to the version's months (Part 1, 2026-10-07)
+    //   POST /api/ships?op=importMcIdentity { offset }  (CRON_SECRET bearer only) → one resumable batch of the NOAA ship-identity import
+    //        over every detailed Salish month on Blob (lib/ships/mcMonths.js): { total, next, done, months, ingested, skipped, actions }
+    if (op === 'importMcIdentity') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { body = {} }
+      }
+      const pool = shipsPool()
+      try { return send(res, 200, await importMcBatch(pool, S, { offset: body.offset }), 'no-store') } finally { await pool.end() }
+    }
+    if (op === 'importAisMonth') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { return send(res, 400, { error: 'bad JSON' }) }
+      }
+      const { kind, month, version, bake, rows } = body
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '')) return send(res, 400, { error: 'month must be YYYY-MM' })
+      if (!Array.isArray(rows) || !bake || typeof bake !== 'object') return send(res, 400, { error: 'rows and bake required' })
+      const want = kind === 'terminal' ? CALLS_VERSION : kind === 'anchorage' ? STAY_BAKE_VERSION : null
+      if (!want) return send(res, 400, { error: 'kind must be terminal or anchorage' })
+      if (version !== want) return send(res, 400, { error: `version ${version} is not the current ${want}` })
+      const src = kind === 'terminal' ? TERMINAL_CALLS_SOURCE : ANCHORAGE_STAYS_SOURCE
+      const pool = shipsPool()
+      try {
+        const r = await withTx(pool, async (c) => {
+          const runId = await startRun(c, S, src.id, { bake_version: version, month, via: 'importAisMonth' })
+          const out = kind === 'terminal'
+            ? await storeTerminalCalls(c, S, { calls: rows, bake, runId, months: [month] })
+            : await storeAnchorageStays(c, S, { stays: rows, bake, runId, months: [month] })
+          await finishRun(c, S, runId, { status: 'succeeded', stats: { rows: rows.length, month }, datasetVersion: version })
+          return out
+        })
+        return send(res, 200, { kind, month, ...r }, 'no-store')
+      } catch (e) { return send(res, 400, { error: String(e.message) }) } finally { await pool.end() }
     }
     if (op === 'typeLookup') {   // gzipped: the whole table is MBs and Vercel caps a function response at 4.5 MB
       const body = gzipSync(JSON.stringify(await typeLookup(q, S)))
@@ -358,8 +429,8 @@ export default async function handler(req, res) {
     }
     if (op === 'anchoragesLayer') return send(res, 200, await anchoragesLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
     if (op === 'anchorage') {
-      const id = p.get('id') || ''
-      if (!/^\d{1,12}$/.test(id)) return send(res, 400, { error: 'id must be an anchorage id' })
+      const id = p.get('key') || p.get('id') || ''   // key = "source_id|source_key" (stable), id = row id
+      if (!/^\d{1,12}$/.test(id) && !/^[a-z0-9-]{2,60}\|[A-Za-z0-9()._ -]{1,80}$/.test(id)) return send(res, 400, { error: 'id must be an anchorage id or key' })
       const win = parseCardWindow(p.get('from'), p.get('to'))
       if (win.error) return send(res, 400, { error: win.error })
       const r = await readAnchorageCard(q, S, id, { win })

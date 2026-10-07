@@ -24,6 +24,7 @@
 #   zsh scripts/ships/prod.sh import-anchorage-aliases back up, then "also known as" names for anchorages (GFW names already stored + the USCG VTS manual p. 3-6 record; needs migration 020)
 #   zsh scripts/ships/prod.sh import-mc-v6       back up, then MarineCadastre AIS identities from the salish-v6 bake (build/v6)
 #   zsh scripts/ships/prod.sh upload-salish      upload the baked Salish track tiles to Vercel Blob
+#   zsh scripts/ships/prod.sh salish-index-seed  once (Part 1, Josh 2026-10-07): upload the hand-run months' coastline masks for ships-noaa-month, then write the Salish index + identity files (needs the upload-token allowlist deployed)
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
 #
@@ -126,6 +127,20 @@ case "${1:-}" in
     need BLOB_READ_WRITE_TOKEN
     node --env-file=.env.local scripts/ships/bake-ais/upload.mjs
     ;;
+  salish-index-seed)
+    need BLOB_READ_WRITE_TOKEN; need CRON_SECRET
+    land=scripts/ships/bake-ais/cache/land
+    for f in salish-v6-osm-inland-500m.parquet salish-v6-osm-land-0m.parquet; do
+      [ -f "$land/$f" ] || { echo "prod.sh: $land/$f not found (is the WD drive plugged in?)" >&2; exit 2 }
+      out=$(npx vercel blob put "$land/$f" --access public --pathname "ships/bake-inputs/salish-v6/$f" \
+        --content-type application/octet-stream --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" 2>&1) || true
+      [[ "$out" == *Success!* ]] || { echo "prod.sh: upload of $f failed:" >&2; echo "$out" | tail -5 >&2; exit 1 }
+      url=https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/bake-inputs/salish-v6/$f
+      remote=$(curl -sI "$url?v=$(date +%s)" | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}')
+      [ "$remote" = "$(stat -f %z "$land/$f")" ] && echo "uploaded $f (verified)" || { echo "prod.sh: $f is $remote bytes on Blob" >&2; exit 1 }
+    done
+    node --env-file=.env.local scripts/ships/bake-ais/publish.mjs --seed scripts/ships/bake-ais/build/v6/track_tiles scripts/ships/bake-ais/build/v6
+    ;;
   upload-mpa)
     # Marine protected areas tiles baked by scripts/ships/bake-mpa/bake.mjs (NOAA MPA Inventory),
     # to the path src/ships/trackSource.json `mpa.tiles` points at. Josh approved 2026-09-27.
@@ -200,6 +215,6 @@ case "${1:-}" in
     node --env-file=.env.local scripts/ships/bake-us/build/publish-index.mjs --index "$dir"
     ;;
   *)
-    sed -n '2,24p' "$0"; exit 2
+    sed -n '2,29p' "$0"; exit 2
     ;;
 esac

@@ -65,7 +65,7 @@
   top: 16px; right: 60px;
   width: 320px;
   max-width: calc(100vw - 80px);
-  z-index: 11;
+  z-index: 12; /* above the cards (.portWrap, 11): its dropdown must cover an open card (2026-10-07) */
   font-family: inherit;
 }
 

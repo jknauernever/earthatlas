@@ -43,6 +43,12 @@ def noaa_boxes(ym):
     """NOAA boxes that NOAA has published for this month (preference rule)."""
     ts = json.load(open(os.path.join(ROOT, 'src', 'ships', 'trackSource.json')))
     have = {'salish': set(ts.get('months') or []), 'us': set()}
+    # Salish months NOAA has published: the Blob index the ships-noaa-month workflow adds to (2026-10-07); until it exists,
+    # the months written into trackSource.json.
+    try:
+        have['salish'] |= set(json.load(urllib.request.urlopen(f"{ts['salishIndex']}?t={int(time.time() // 300)}", timeout=60)).get('months', {}))
+    except Exception as e:
+        print(f'  note: Salish index not readable ({e}); using trackSource.json months', flush=True)
     try:
         have['us'] = set(json.load(urllib.request.urlopen(ts['us']['index'], timeout=60)).get('months', {}))
     except Exception as e:   # no index reachable: treat US months as not covered, and say so

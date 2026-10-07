@@ -25,7 +25,8 @@ REGION = "salish-v6"
 POINTS = os.path.join(HERE, "cache", "points", REGION)
 BOX = dict(w=-126.2, s=47.0, e=-122.05, n=49.6)  # region.py salish-v6 (read-only copy; region.py is not imported to keep its env default untouched)
 OUT = os.path.join(HERE, "cache", "terminal-calls")
-COVER_FROM, COVER_TO = "2025-07", "2026-06"
+# Months reported in meta.json: every month from the first to the last day baked (2026-10-07: was fixed to 2025-07 … 2026-06,
+# so a month added by ships-noaa-month could never count as complete).
 
 
 def connect():
@@ -120,7 +121,7 @@ def export(con, bj, sha):
                             FROM read_parquet({src}) ORDER BY terminal, mmsi, t) TO '{csv}' (HEADER, DELIMITER ',')""")
     n = con.execute(f"SELECT count(*) FROM read_parquet({src})").fetchone()[0]
     months = []
-    for ym in month_range(COVER_FROM, COVER_TO):
+    for ym in month_range(min(days)[:7], max(days)[:7]):
         got = sum(1 for d in days if d.startswith(ym))
         months.append(dict(month=ym, days=got, of=days_in_month(ym), complete=got == days_in_month(ym)))
     inside = {b["terminal"] for b in bj["berths"] if b["in_box"]}

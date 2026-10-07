@@ -26,15 +26,28 @@ const cmd = args[0]
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA
 const dry = args.includes('--dry-run')
+const post = opt('post'), postMonthArg = opt('month')
+if (post && !/^\d{4}-(0[1-9]|1[0-2])$/.test(postMonthArg || '')) throw new Error('--post needs --month YYYY-MM')
 
-const pool = shipsPool()
+const pool = post ? null : shipsPool()
 const q = async (text, params) => (await pool.query(text, params)).rows
 try {
-  const host = new URL(process.env.SHIPS_DATABASE_URL).host
-  if (cmd === 'berths') await berths()
+  const host = post ? new URL(post).host : new URL(process.env.SHIPS_DATABASE_URL).host
+  if (cmd === 'import' && post) { console.log(`terminal calls ${postMonthArg} → ${post}${dry ? ' (dry run)' : ''}`); await importCalls() }
+  else if (cmd === 'berths') await berths()
   else if (cmd === 'import') { console.log(`terminal calls → schema "${schema}" on ${host}${dry ? ' (dry run)' : ''}`); await importCalls() }
   else { console.error('usage: terminal-calls.mjs berths | import [--schema s] [--dry-run]'); process.exitCode = 2 }
-} finally { await pool.end() }
+} finally { await pool?.end() }
+
+// --post URL --month YYYY-MM (ships-noaa-month workflow, 2026-10-07): send one month to op=importAisMonth (CRON_SECRET bearer)
+// instead of writing a database; no database connection is opened.
+async function postMonth(body) {
+  const r = await fetch(`${post}?op=importAisMonth`, { method: 'POST', body: JSON.stringify(body),
+    headers: { authorization: `Bearer ${process.env.CRON_SECRET}`, 'content-type': 'application/json', 'user-agent': 'earthatlas-bake/1.0' } })
+  const t = await r.text()
+  if (!r.ok) throw new Error(`importAisMonth: HTTP ${r.status} ${t.slice(0, 300)}`)
+  console.log(`posted: ${t.slice(0, 300)}`)
+}
 
 async function berths() {
   const rows = await q(`SELECT t.key AS terminal, t.kind, b.berth_key AS berth, b.lat, b.lon, b.basis, b.source_id, b.source_record_ids,
@@ -85,6 +98,7 @@ async function importCalls() {
 
   const bake = { rule: CALL_RULE, input: meta.input, days: meta.days, months: meta.months, notCovered: meta.not_covered, hits: n, baked_at: meta.baked_at,
     berths: bj.berths.map(({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box }) => ({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box })) }
+  if (post) return postMonth({ kind: 'terminal', month: postMonthArg, version: BAKE_VERSION, bake, rows: calls })
   await withTx(pool, async (c) => {
     await upsertSource(c, schema, TERMINAL_CALLS_SOURCE)
     const runId = await startRun(c, schema, TERMINAL_CALLS_SOURCE.id, { bake_version: BAKE_VERSION, days: meta.days.length })

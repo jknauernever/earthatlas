@@ -36,8 +36,9 @@ import { loadTraceIndex, TRACE_URL } from '../systems/traceData.js'
 import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
 import TerminalCard from './TerminalCard.jsx'
+import AnchorageCard from './AnchorageCard.jsx'
 import { addTerminalImages, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
-import { anchoragePopupHTML, ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
+import { ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
 import trackSource from './trackSource.json'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
@@ -398,6 +399,7 @@ function readUrlState() {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
     dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'),
+    an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'),
     gh: sp.get('gh'), // DEV-ONLY prototype layer (GFW hourly lines), see GH_COLOR
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
@@ -487,6 +489,10 @@ export default function ShipsApp() {
   const [terminalFolded, setTerminalFolded] = useState(initial.tf === '1')
   const [terminalTab, setTerminalTab] = useState(['emissions', 'permits', 'about'].includes(initial.tb) ? initial.tb : 'ships')
   const [terminalMonth, setTerminalMonth] = useState(null)
+  // Anchorage card (Josh 2026-10-07, replaces the map popup): an = the anchorage's stable key "source_id|source_key".
+  const [anchorageKey, setAnchorageKey] = useState(/^[a-z0-9-]{2,60}\|.{1,80}$/.test(initial.an || '') ? initial.an : null)
+  const [anchorageFolded, setAnchorageFolded] = useState(initial.af === '1')
+  const [anchorageTab, setAnchorageTab] = useState(initial.ab === 'about' ? 'about' : 'ships')
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
@@ -506,7 +512,7 @@ export default function ShipsApp() {
   // Phones: the ship / port / terminal card and the ship search span the screen's width, so the icon dock would sit on
   // top of them (Josh 2026-09-30, shared link). While one is open the dock folds to its small button; it comes back
   // when they close, unless the user changed the view meanwhile.
-  const cardUp = !!(vesselId || portId || terminalKey || pickerOpen)
+  const cardUp = !!(vesselId || portId || terminalKey || anchorageKey || pickerOpen)
   const dockAutoFolded = useRef(false)
   useEffect(() => {
     if (!isMobile) return
@@ -568,7 +574,14 @@ export default function ShipsApp() {
     fetch(trackSource.us.index).then((r) => (r.ok ? r.json() : null))
       .then((idx) => setUsMonths(Object.keys(idx?.months || {}))).catch(() => setUsMonths([]))
   }, [])
-  const salishMonths = trackSource.months || []
+  // Detailed Salish months: the Blob index NOAA months are added to as they're published (api op=salishindex; Part 1,
+  // 2026-10-07), starting from the months written into trackSource.json so the first draw doesn't wait for it.
+  const [salishMonths, setSalishMonths] = useState(trackSource.months || [])
+  useEffect(() => {
+    fetch('/api/ship-tracks?op=salishindex').then((r) => (r.ok ? r.json() : null))
+      .then((idx) => { const ms = Object.keys(idx?.months || {}).sort(); if (ms.length) setSalishMonths((cur) => (cur.join() === ms.join() ? cur : ms)) })
+      .catch(() => {})
+  }, [])
   // GFW months (hourly lines where NOAA has no data): the dev API serves a local bake, else the Blob index.
   const [gfwMonths, setGfwMonths] = useState([])
   const gfwBuiltRef = useRef({}) // month → build time (tile URL cache key)
@@ -828,7 +841,7 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, pickedTrack, stopFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus])
 
   // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
   // every month; api/ship-tracks op=all), or every selected month.
@@ -847,7 +860,7 @@ export default function ShipsApp() {
     }
     const [w, s, e, n] = trackSource.bbox
     const insideSalish = (f) => f.geometry.coordinates.every(([x, y]) => x >= w && x <= e && y >= s && y <= n)
-    const salishM = new Set(trackSource.months || [])
+    const salishM = new Set(salishMonths)
     Promise.all(trackMonths.flatMap((ym) => mmsis.flatMap((m) => [
       ...(salishM.has(ym) ? [get(`/api/ship-tracks?t=${ym}&mmsi=${m}&v=${trackSource.version}`)] : []),
       // US-wide pack: in Salish months only the tracks outside the box (the detailed pack covers inside).
@@ -857,7 +870,7 @@ export default function ShipsApp() {
     ])))
       .then(done)
     return () => ctl.abort()
-  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, gfwMonths, allTrackMonths.length])
+  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, gfwMonths, salishMonths, allTrackMonths.length])
   const fitToOwnRef = useRef(false) // set when a ship is picked from search; a track click doesn't move the map
   useEffect(() => {
     const map = mapRef.current
@@ -1384,7 +1397,7 @@ export default function ShipsApp() {
       const f = hits.find((h) => h.properties.i != null)
       if (!f) return
       setTerminalKey(null)
-      setPortId(String(f.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null)
+      setPortId(String(f.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null); setAnchorageKey(null)
       setVesselId(null); setPickerOpen(false)
     }
     const onMove = (e) => { if (portHit(map, e.point).length) map.getCanvas().style.cursor = 'pointer' }
@@ -1409,7 +1422,7 @@ export default function ShipsApp() {
       terminalPopupRef.current = popup
       const wire = () => popup.getElement()?.querySelector('[data-open-terminal]')?.addEventListener('click', () => {
         popup.remove(); setPortId(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
-        setTerminalKey(p.k); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null)
+        setTerminalKey(p.k); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null); setAnchorageKey(null)
       })
       wire()
       let d = null, error = false
@@ -1485,23 +1498,10 @@ export default function ShipsApp() {
       const size = (f) => { const b = f.geometry.coordinates.flat(2); let a = Infinity, c = -Infinity, d = Infinity, g = -Infinity
         for (let k = 0; k < b.length; k += 2) { a = Math.min(a, b[k]); c = Math.max(c, b[k]); d = Math.min(d, b[k + 1]); g = Math.max(g, b[k + 1]) } return (c - a) * (g - d) }
       const f = [...hits].sort((x, y) => (x.properties.x ? 1 : 0) - (y.properties.x ? 1 : 0) || size(x) - size(y))[0]
-      const p = f.properties, months = trackMonths
+      // Opens the anchorage card (Josh 2026-10-07: the dark side card terminals and ports have, not a white popup).
       anchoragePopupRef.current?.remove()
-      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat)
-        .setHTML(anchoragePopupHTML(p, { months }, styles)).addTo(map))
-      anchoragePopupRef.current = popup
-      let data = null, error = false
-      try {
-        const r = await fetch(`/api/ships?op=anchorage&id=${p.i}&from=${months[0]}&to=${months[months.length - 1]}`)
-        data = r.ok ? await r.json() : null; error = !data
-      } catch { error = true }
-      if (anchoragePopupRef.current !== popup) return
-      popup.setHTML(anchoragePopupHTML(p, { months, data, error }, styles))
-      popup.getElement()?.querySelectorAll('[data-vessel]').forEach((b) => b.addEventListener('click', () => {
-        popup.remove(); setPortId(null); setTerminalKey(null); setBackToPort(null)
-        setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
-        fitToOwnRef.current = true; setVesselId(b.dataset.vessel)
-      }))
+      setPortId(null); setTerminalKey(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+      setAnchorageKey(f.properties.k); setAnchorageFolded(false); setAnchorageTab('ships')
     }
     const onMove = (e) => {
       if (!map.getLayer(ANCHORAGE_FILL) || map.getCanvas().style.cursor === 'pointer') return
@@ -1564,6 +1564,27 @@ export default function ShipsApp() {
   useEffect(() => { setStopFocus(null); stopMarkerRef.current?.remove() }, [vesselId])
 
   const handlePlace = useCallback((r) => { flyToSearchResult(mapRef.current, r) }, [])
+  // Our own places in the "Fly to a place" box, above Mapbox's (api op=places; Josh 2026-10-07): ports, terminals, anchorages and
+  // facilities by name or another name. Picking one flies there (the canonical camera helper) and opens its card.
+  const PLACE_KIND = { terminal: ['Terminal', 'poi', 14.5], anchorage: ['Anchorage', 'region', 13], facility: ['Facility', 'pin', 14], port: ['Port', 'city', 12.5] }
+  const localPlaces = useCallback(async (text, { signal }) => {
+    const r = await fetch(`/api/ships?op=places&q=${encodeURIComponent(text)}`, { signal })
+    if (!r.ok) return []
+    const { places } = await r.json()
+    return (places || []).map((p) => ({ local: true, ...p, id: `${p.kind}:${p.id}`, placeId: p.id, typeLabel: PLACE_KIND[p.kind]?.[0] || p.kind,
+      iconCat: PLACE_KIND[p.kind]?.[1] || 'pin', meta: [p.matched && `also called “${p.matched}”`, p.area].filter(Boolean).join(' · ') }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const pickPlace = useCallback((p) => {
+    flyToSearchResult(mapRef.current, { lat: p.lat, lng: p.lon, zoom: PLACE_KIND[p.kind]?.[2] ?? 12 })
+    setPortsOn(true); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+    setPortId(null); setTerminalKey(null); setAnchorageKey(null)
+    if (p.kind === 'terminal') { setTerminalKey(p.placeId); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null) }
+    else if (p.kind === 'facility' && p.terminalKey) { setTerminalKey(p.terminalKey); setTerminalFolded(false); setTerminalTab('permits'); setTerminalMonth(null) }
+    else if (p.kind === 'anchorage') { setAnchorageKey(p.placeId); setAnchorageFolded(false); setAnchorageTab('ships') }
+    else if (p.kind === 'port') { setPortId(String(p.placeId)); setPortMonth(null); setPortFolded(false) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ─── Shareable URL ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1576,6 +1597,7 @@ export default function ShipsApp() {
     if (!portsOn) sp.set('pt', '0')
     if (ghProto) sp.set('gh', ghProto)
     if (terminalKey) { sp.set('tl', terminalKey); if (terminalFolded) sp.set('tf', '1'); if (terminalTab !== 'ships') sp.set('tb', terminalTab) }
+    if (anchorageKey) { sp.set('an', anchorageKey); if (anchorageFolded) sp.set('af', '1'); if (anchorageTab !== 'ships') sp.set('ab', anchorageTab) }
     if (portId) { sp.set('pc', portId); if (portMonth) sp.set('pm', portMonth); if (portFolded) sp.set('pf', '1'); if (portTab !== 'traffic') sp.set('pk', portTab) }
     if (trackSel[0] !== defaultSel[0] || trackSel[1] !== defaultSel[1]) {
       const [a, b] = trackSel
@@ -1595,7 +1617,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -1642,6 +1664,8 @@ export default function ShipsApp() {
             try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined }
           }}
           onSelect={handlePlace}
+          localSuggest={localPlaces}
+          onLocalSelect={pickPlace}
         />
       </MapSearch>
 
@@ -1663,7 +1687,7 @@ export default function ShipsApp() {
           )}
           {vesselId && backToPort && (
             <button type="button" className={styles.trackNote} style={{ textAlign: 'left', cursor: 'pointer' }}
-              onClick={() => { if (backToPort.terminal) setTerminalKey(backToPort.id); else setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the {backToPort.terminal ? 'terminal' : 'port'} card: {backToPort.name}</button>
+              onClick={() => { if (backToPort.anchorage) setAnchorageKey(backToPort.id); else if (backToPort.terminal) setTerminalKey(backToPort.id); else setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the {backToPort.anchorage ? 'anchorage' : backToPort.terminal ? 'terminal' : 'port'} card: {backToPort.name}</button>
           )}
           {vesselId && (
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
@@ -1728,6 +1752,26 @@ export default function ShipsApp() {
             onSelectVessel={(id) => {
               const name = document.querySelector('[aria-label="Terminal card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'terminal'
               setBackToPort({ id: terminalKey, name, terminal: true }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
+              fitToOwnRef.current = true; setVesselId(id)
+            }} />
+        </div>
+      )}
+
+      {anchorageKey && !portId && !vesselId && !terminalKey && trackMonths.length > 0 && (
+        <div className={styles.portWrap}>
+          <AnchorageCard anchorageKey={anchorageKey} months={trackMonths} folded={anchorageFolded} onFold={setAnchorageFolded} tab={anchorageTab} onTab={setAnchorageTab}
+            onLocate={() => {
+              const map = mapRef.current
+              const fs = map?.querySourceFeatures(ANCHORAGE_SRC, { filter: ['==', ['get', 'k'], anchorageKey] }) || []
+              if (!fs.length) return
+              const b = new mapboxgl.LngLatBounds()
+              for (const f of fs) for (const c of f.geometry.coordinates.flat(2).reduce((acc, v, k, arr) => (k % 2 ? acc : [...acc, [v, arr[k + 1]]]), [])) b.extend(c)
+              map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 15, duration: 1200 })
+            }}
+            onClose={() => { setAnchorageKey(null); setAnchorageFolded(false); setAnchorageTab('ships') }}
+            onSelectVessel={(id) => {
+              const name = document.querySelector('[aria-label="Anchorage card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'anchorage'
+              setBackToPort({ id: anchorageKey, name, anchorage: true }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
               fitToOwnRef.current = true; setVesselId(id)
             }} />
         </div>

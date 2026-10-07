@@ -1,0 +1,164 @@
+# NOAA months load themselves (docs/SHIPS_ACTIVITY_FUSION.md Part 1, Josh 2026-10-07). MarineCadastre posts its daily AIS files
+# months late and in batches (Apr–Jun 2026 all appeared 2026-09-18). Weekly, this checks for the first detailed Salish month that
+# isn't in the Salish index yet and whose last day NOAA has published, then for each such month, entirely in Actions:
+#   1. stream the month's daily national files, keep the salish-v6 box   (scripts/ships/bake-ais/fetch_points.py; ~10 GB read, not kept)
+#   2. build tracks + per-ship packs + identities with the same coastline masks as the hand-run months (build_tracks.py)
+#   3. terminal calls + anchorage stays, rules tc4 / as1 (terminal_calls.py, anchorage_stays.py → *.mjs import --post → op=importAisMonth)
+#   4. publish tiles / pack / identities and add the month to the Salish index (scripts/ships/bake-ais/publish.mjs)
+#   5. NOAA ship identities over every month (op=importMcIdentity, resumable batches)
+# When a month lands, terminal and anchorage cards switch from GFW estimates to NOAA's counts, and the GFW lines step aside in the box.
+# Test (no production writes): Run workflow with test_day=YYYY-MM-DD → steps 1–3 for one day, dry run, results kept as an artifact.
+# Writes go through CRON_SECRET-locked endpoints and one-file upload tokens; CI never holds a database or Blob credential.
+name: ships-noaa-month
+on:
+  push:
+    branches: [ships-noaa-test]   # a push to this branch ALWAYS runs the one-day test (2026-06-15), never a real month
+  schedule:
+    - cron: '41 7 * * 1'   # Mondays 07:41 UTC (GitHub may start it hours late; NOAA's batches are months apart)
+  workflow_dispatch:
+    inputs:
+      months: { description: 'Optional: these months (YYYY-MM list) instead of the check', default: '' }
+      test_day: { description: 'Optional: test one day (YYYY-MM-DD), no production writes', default: '' }
+
+concurrency:
+  group: ships-noaa-month
+  cancel-in-progress: false
+
+env:
+  SHIPS_REGION: salish-v6
+  SALISH_INDEX: https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v6/index.json
+  BAKE_INPUTS: https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/bake-inputs/salish-v6
+  API: https://earthatlas.org/api/ships
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.plan.outputs.months }}
+    steps:
+      - id: plan
+        env:
+          ONLY: ${{ inputs.months || '' }}
+          TEST_DAY: ${{ inputs.test_day || (github.event_name == 'push' && '2026-06-15' || '') }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import calendar, datetime as dt, json, os, sys, urllib.request
+          if os.environ['TEST_DAY']:
+              print('months=' + json.dumps([os.environ['TEST_DAY']])); sys.exit()
+          if os.environ['ONLY'].strip():
+              print('months=' + json.dumps(os.environ['ONLY'].split())); sys.exit()
+          def exists(day):
+              url = f"https://noaaocm.blob.core.windows.net/ais/csv2/csv{day.year}/ais-{day.isoformat()}.csv.zst"
+              try:
+                  return urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=60).status == 200
+              except Exception:
+                  return False
+          try:
+              have = set(json.load(urllib.request.urlopen(os.environ['SALISH_INDEX'] + '?t=0', timeout=60)).get('months', {}))
+          except Exception as e:
+              sys.exit(f'Salish index unreadable ({e}); not guessing which months are missing')
+          last = max(have)
+          y, m = map(int, last.split('-'))
+          todo = []
+          while True:   # each following month whose LAST day NOAA has posted
+              y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+              day = dt.date(y, m, calendar.monthrange(y, m)[1])
+              if day >= dt.date.today() or not exists(day):
+                  break
+              todo.append(f'{y:04d}-{m:02d}')
+          print(f'have through {last}; new complete months: {todo or "none"}', file=sys.stderr)
+          print('months=' + json.dumps(todo))
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+  month:
+    needs: plan
+    if: needs.plan.outputs.months != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 1          # oldest first; one month's imports finish before the next (identities aggregate every month)
+      matrix:
+        ym: ${{ fromJson(needs.plan.outputs.months) }}
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      YM: ${{ matrix.ym }}
+      TEST: ${{ github.event_name == 'push' || inputs.test_day != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet duckdb numpy shapely pyshp
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+      - name: Inputs (the hand-run months' coastline masks; production berths and anchorages)
+        run: |
+          cd scripts/ships/bake-ais
+          mkdir -p cache/land cache/terminal-calls cache/anchorage-stays
+          # Masks only for building tracks (not in a test).
+          [ "$TEST" = true ] || for f in salish-v6-osm-inland-500m.parquet salish-v6-osm-land-0m.parquet; do curl -fsSL -o "cache/land/$f" "$BAKE_INPUTS/$f"; done
+          cp inputs/berths.json cache/terminal-calls/berths.json
+          cp inputs/anchorages.json cache/anchorage-stays/anchorages.json
+      - name: Fetch ${{ matrix.ym }} (NOAA daily points, salish-v6 box)
+        run: cd scripts/ships/bake-ais && python3 fetch_points.py "$YM" --jobs 4
+      - name: Tracks, packs, identities
+        if: env.TEST != 'true'
+        run: cd scripts/ships/bake-ais && python3 build_tracks.py "$YM"
+      - name: Terminal calls
+        run: |
+          cd scripts/ships/bake-ais && python3 terminal_calls.py && python3 terminal_calls.py --export
+          cd "$GITHUB_WORKSPACE"
+          if [ "$TEST" = true ]; then node scripts/ships/terminal-calls.mjs import --post "$API" --month "${YM:0:7}" --dry-run
+          else node scripts/ships/terminal-calls.mjs import --post "$API" --month "$YM"; fi
+      - name: Anchorage stays
+        run: |
+          cd scripts/ships/bake-ais && python3 anchorage_stays.py && python3 anchorage_stays.py --export
+          cd "$GITHUB_WORKSPACE"
+          if [ "$TEST" = true ]; then node scripts/ships/anchorage-stays.mjs import --post "$API" --month "${YM:0:7}" --dry-run
+          else node scripts/ships/anchorage-stays.mjs import --post "$API" --month "$YM"; fi
+      - name: Keep the test's results
+        if: env.TEST == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: noaa-test-${{ matrix.ym }}
+          path: |
+            scripts/ships/bake-ais/cache/points/salish-v6/*.parquet
+            scripts/ships/bake-ais/cache/terminal-calls/hits.csv
+            scripts/ships/bake-ais/cache/terminal-calls/meta.json
+            scripts/ships/bake-ais/cache/anchorage-stays/hits.csv
+            scripts/ships/bake-ais/cache/anchorage-stays/meta.json
+          retention-days: 7
+      - name: Publish ${{ matrix.ym }} (tiles, pack, identities → Blob; month → Salish index)
+        if: env.TEST != 'true'
+        run: node scripts/ships/bake-ais/publish.mjs "$YM" scripts/ships/bake-ais/build/v6/track_tiles scripts/ships/bake-ais/build/v6
+      - name: NOAA ship identities (every month, resumable batches)
+        if: env.TEST != 'true'
+        run: |
+          offset=0; tries=0
+          while :; do
+            r=$(curl -sS -m 290 -X POST -H "Authorization: Bearer $CRON_SECRET" -H 'Content-Type: application/json' \
+                -d "{\"offset\":$offset}" "$API?op=importMcIdentity") || r=''
+            echo "$r" | head -c 600; echo
+            next=$(echo "$r" | python3 -c "import json,sys
+          try: j=json.load(sys.stdin); print('done' if j.get('done') else j.get('next',''))
+          except Exception: print('')")
+            if [ "$next" = "done" ]; then echo "identities complete"; break; fi
+            if [ -z "$next" ]; then tries=$((tries+1)); [ $tries -ge 5 ] && { echo "identity import failed 5 times"; exit 1; }; sleep 30; continue; fi
+            tries=0; offset=$next
+          done

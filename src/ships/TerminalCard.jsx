@@ -14,6 +14,7 @@ import { Loading } from '../components/panel'
 import { MonthBars, About, PORT_HUE } from './PortCard.jsx'
 import PortEmissions, { usePortEmissions, useTerminalStays, TerminalStayEmissions, shortTonnes } from './PortEmissions.jsx'
 import TerminalPermits, { useTerminalPermits } from './TerminalPermits.jsx'
+import EstimatedVisits, { EstSource, estKpi, DayBars } from './EstimatedVisits.jsx'
 import { GLYPH, kindFamily, kindWords, NOT_OPERATING, STATUS_WORDS, TERMINAL_MUTED_RING } from './terminalIcons.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -193,6 +194,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   const cov = data?.coverage && { missing: [], of: 0, ...data.coverage } // tolerate an older response shape
   const bakeRec = cov?.bake?.recordId
   const noAis = cov && (cov.notCovered || !cov.months.length)
+  const est = data?.estimated?.estimatedMonths?.length ? data.estimated : null // months estimated from GFW hourly positions
 
   return (
     <div className={`${pick.card} ${folded ? pick.cardFolded : ''}`} role="dialog" aria-label="Terminal card">
@@ -240,14 +242,15 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
 
         <div className={styles.pcKpis}>
           <div className={styles.pcKpi} title={`Calls by ships whose kind fits this terminal: the ship reported under ${data.rule.sogKn} kn within ${data.rule.radiusM} m of a berth (more for a long berth) for ${data.rule.minMinutes}+ minutes. EarthAtlas counted them from MarineCadastre AIS positions`}>
-            <span>Visits</span><strong>{noAis ? '—' : fmtN(s.visits)}</strong></div>
-          <div className={styles.pcKpi} title="Different ships among those calls"><span>Ships</span><strong>{noAis ? '—' : fmtN(s.ships)}</strong></div>
+            <span>Visits</span><strong>{noAis ? (estKpi(est, 'visits') ?? '—') : fmtN(s.visits)}</strong>{!noAis && est && <small className={styles.pcMuted} title="More visits estimated from hourly positions for the picked months NOAA hasn’t published"> +{estKpi(est, 'visits')}</small>}</div>
+          <div className={styles.pcKpi} title="Different ships among those calls"><span>Ships</span><strong>{noAis ? (estKpi(est, 'ships') ?? '—') : fmtN(s.ships)}</strong></div>
           <div className={styles.pcKpi} title={refinery ? 'Climate TRACE’s estimate for the refinery plant itself (tonnes CO₂e)' : 'Ships’ voyage emissions Climate TRACE attributes to this terminal’s port (tonnes CO₂e)'}>
             <span>{refinery ? 'Refinery CO₂e' : 'Ship CO₂e'}</span><strong>{co2.state === 'loading' ? '…' : co2.state === 'ok' && co2.reported ? shortTonnes(co2.total) : '—'}</strong></div>
         </div>
         <div className={styles.pcWindow}>{monthName(winMonths[0])} – {monthName(winMonths[winMonths.length - 1])} · the months picked on the map ·{' '}
           <a className={styles.sourceLink} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
             title="Visits are counted from MarineCadastre AIS positions (NOAA / BOEM / USCG, CC0) — click for the bake record">MarineCadastre AIS</a>
+          {est && <> · <EstSource e={est} label="≈ Global Fishing Watch" /></>}
           {co2.state === 'ok' && <> · <a className={styles.sourceLink} href="https://climatetrace.org" target="_blank" rel="noopener noreferrer">Climate TRACE</a></>}
         </div>
 
@@ -261,12 +264,17 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
 
           {tab === 'ships' && (
             <div className={styles.section}>
-              <MonthBars months={s.months} month={month} onMonth={onMonth} listed={false} say={(n) => plural(n, 'call')} none="no AIS for this month yet"
-                label="Calls per month by ships that fit this terminal" />
+              {!(noAis && data.estimated) && (s.days
+                ? <DayBars days={s.days} hue={PORT_HUE} say={(n) => plural(n, 'call')} none="no AIS for this day yet" label="Calls per day by ships that fit this terminal" />
+                : <MonthBars months={s.months} month={month} onMonth={onMonth} listed={false} say={(n) => plural(n, 'call')} none="no AIS for this month yet"
+                  label="Calls per month by ships that fit this terminal" />)}
               {cov.notCovered && <div className={styles.capNote}>This terminal lies outside the area our AIS positions cover (MarineCadastre’s US receivers, up to 49.6° N), so its visits aren’t counted: not zero, just not seen.</div>}
               {!cov.notCovered && cov.missing.length > 0 && (
-                <div className={styles.capNote}>No AIS for {cov.missing.length === cov.of ? 'these months' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months`} yet: we have {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}. {cov.missing.length < cov.of && 'Those months are left out, not counted as zero.'}</div>
+                est
+                  ? <div className={styles.legendNoteText}>NOAA’s per-minute AIS covers {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}; {cov.missing.length === cov.of ? 'these months are' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months are`} estimated below.</div>
+                  : <div className={styles.capNote}>No AIS for {cov.missing.length === cov.of ? 'these months' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months`} yet: we have {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}. {cov.missing.length < cov.of && 'Those months are left out, not counted as zero.'}</div>
               )}
+              <EstimatedVisits e={data.estimated} month={month} onMonth={onMonth} onSelectVessel={onSelectVessel} />
               {!noAis && <div className={styles.portSummary}>
                 <strong>{plural(s.visits, 'call')}</strong> by {plural(s.ships, 'ship')} whose kind fits
                 {s.visits > 0 && <> ({[`${fmtN(s.hours)} h at the berth`, s.oneOf && `${fmtN(s.oneOf)} also near another terminal`, s.tugs && `${fmtN(s.tugs)} by tugs`].filter(Boolean).join(', ')})</>}

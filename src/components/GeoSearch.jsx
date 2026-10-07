@@ -27,6 +27,9 @@
  *   language            Mapbox `language` param (e.g. 'en', 'es').
  *   className           Extra class applied to the wrapper.
  *   inputName           HTML `name` for the input (default 'ea-geo-q').
+ *   localSuggest(q, { signal })  Optional (/ships, 2026-10-07): the site's own places, listed ABOVE Mapbox's. Resolves to
+ *                       [{ local: true, id, name, typeLabel, meta, iconCat ('pin'|'poi'|'region'|...), ...anything }].
+ *   onLocalSelect(item) Called instead of onSelect when one of those is picked (no Mapbox retrieve).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -75,6 +78,8 @@ export default function GeoSearch({
   language,
   className,
   inputName = 'ea-geo-q',
+  localSuggest,
+  onLocalSelect,
 }) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
@@ -93,6 +98,8 @@ export default function GeoSearch({
   // the dropdown after a place was already picked).
   const proximityRef = useRef(proximity)
   proximityRef.current = proximity
+  const localSuggestRef = useRef(localSuggest)
+  localSuggestRef.current = localSuggest
   const inputRef = useRef(null)
   const containerRef = useRef(null)
 
@@ -117,16 +124,19 @@ export default function GeoSearch({
       const ac = new AbortController()
       abortRef.current = ac
       try {
-        const results = await eaSuggest(q, {
-          sessionToken: sessionTokenRef.current,
-          proximity: resolveProximity(proximityRef.current),
-          endpoint,
-          accessToken,
-          language,
-          signal: ac.signal,
-        })
+        const [mb, local] = await Promise.all([
+          eaSuggest(q, {
+            sessionToken: sessionTokenRef.current,
+            proximity: resolveProximity(proximityRef.current),
+            endpoint,
+            accessToken,
+            language,
+            signal: ac.signal,
+          }).catch((e) => { if (e.name === 'AbortError') throw e; console.error('[GeoSearch] suggest failed', e); return [] }),
+          localSuggestRef.current ? localSuggestRef.current(q, { signal: ac.signal }).catch(() => []) : [],
+        ])
         if (ac.signal.aborted) return
-        setSuggestions(rankPlacesFirst(results))
+        setSuggestions([...(local || []), ...rankPlacesFirst(mb)])
         setOpen(true)
         setActiveIdx(-1)
       } catch (err) {
@@ -149,6 +159,17 @@ export default function GeoSearch({
   }, [])
 
   const handleSelect = async (suggestion) => {
+    if (suggestion?.local) {   // one of the site's own places (localSuggest)
+      onLocalSelect?.(suggestion)
+      abortRef.current?.abort()
+      skipSuggestRef.current = true
+      setQuery(suggestion.name || '')
+      setOpen(false)
+      setSuggestions([])
+      setLoading(false)
+      inputRef.current?.blur()
+      return
+    }
     try {
       const result = await eaRetrieve(suggestion, {
         sessionToken: sessionTokenRef.current,
@@ -231,12 +252,12 @@ export default function GeoSearch({
       {open && suggestions.length > 0 && (
         <ul className={styles.searchResults} role="listbox">
           {suggestions.map((s, i) => {
-            const cat = searchCategoryOf(s)
-            const typeLabel = searchTypeLabel(s)
-            const meta = searchResultMeta(s)
+            const cat = s.local ? (s.iconCat || 'pin') : searchCategoryOf(s)
+            const typeLabel = s.local ? s.typeLabel : searchTypeLabel(s)
+            const meta = s.local ? s.meta : searchResultMeta(s)
             return (
               <li
-                key={s.mapbox_id}
+                key={s.local ? `ea:${s.id}` : s.mapbox_id}
                 role="option"
                 aria-selected={i === activeIdx}
                 className={i === activeIdx ? styles.searchResultActive : styles.searchResult}

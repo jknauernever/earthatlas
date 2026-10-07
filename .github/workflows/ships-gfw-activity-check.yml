@@ -1,0 +1,48 @@
+# Estimated terminal visits / anchorage stays from GFW hourly positions for ONE month (docs/SHIPS_ACTIVITY_FUSION.md Part 2):
+# fetch the Salish area's hourly rows (≈13 GFW requests a month), run scripts/ships/bake-gfw/activity.py with the agreed rule, keep
+# stops.csv as an artifact. Two uses:
+#   - accuracy checks: scripts/ships/activity-compare.mjs compares the artifact with NOAA's counted calls (Jun 2026 check, 2026-10-06);
+#   - backfill (post=true): store the month in production through op=importActivity (post_activity.py), replacing that month. The daily
+#     GFW run (ships-gfw-month.yml `activity` job) keeps recent months current after that.
+name: ships-gfw-activity-check
+on:
+  workflow_dispatch:
+    inputs:
+      month: { description: 'YYYY-MM', required: true }
+      areas: { description: 'areas.py area names, comma list', default: 'salish' }
+      post: { description: 'Store the month in production (replaces it)', type: boolean, default: false }
+
+concurrency:
+  group: ships-gfw-fetch       # GFW runs one report per user at a time: queue behind the daily fetch, never beside it
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GFW_API_TOKEN: ${{ secrets.GFW_API_TOKEN }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      GFW_RAW: ${{ github.workspace }}/raw
+      MONTH: ${{ inputs.month }}
+      AREAS: ${{ inputs.areas }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Fetch ${{ inputs.month }} (${{ inputs.areas }})
+        run: |
+          cd scripts/ships/bake-gfw
+          from="$MONTH-01"; to=$(python3 -c "import datetime as d; x=d.date.fromisoformat('$from'); print(min((x.replace(day=28)+d.timedelta(days=4)).replace(day=1), d.date.today()-d.timedelta(days=3)))")
+          python3 fetch.py --stage pacnw --areas "$AREAS" --from "$from" --to "$to" --span 7 --raw "$GFW_RAW" --budget 300
+          echo "THROUGH=$(python3 -c "import datetime as d; print(d.date.fromisoformat('$to')-d.timedelta(days=1))")" >> "$GITHUB_ENV"
+      - name: Estimate calls and stays (agreed rule)
+        run: cd scripts/ships/bake-gfw && python3 activity.py --month "$MONTH" --areas "$AREAS" --raw "$GFW_RAW" --out "$GITHUB_WORKSPACE/activity"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: activity-${{ inputs.month }}
+          path: activity
+          retention-days: 14
+      - name: Store ${{ inputs.month }} in production
+        if: inputs.post
+        run: python3 scripts/ships/bake-gfw/post_activity.py --month "$MONTH" --dir "$GITHUB_WORKSPACE/activity" --through "$THROUGH"

@@ -30,16 +30,29 @@ const cmd = args[0]
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA
 const dry = args.includes('--dry-run')
+const post = opt('post'), postMonthArg = opt('month')
+if (post && !/^\d{4}-(0[1-9]|1[0-2])$/.test(postMonthArg || '')) throw new Error('--post needs --month YYYY-MM')
 
-const pool = shipsPool()
+const pool = post ? null : shipsPool()
 const q = async (text, params) => (await pool.query(text, params)).rows
 try {
-  const host = new URL(process.env.SHIPS_DATABASE_URL).host
-  if (cmd === 'polygons') await polygons()
+  const host = post ? new URL(post).host : new URL(process.env.SHIPS_DATABASE_URL).host
+  if (cmd === 'import' && post) { console.log(`anchorage stays ${postMonthArg} → ${post}${dry ? ' (dry run)' : ''}`); await importStays() }
+  else if (cmd === 'polygons') await polygons()
   else if (cmd === 'import') { console.log(`anchorage stays → schema "${schema}" on ${host}${dry ? ' (dry run)' : ''}`); await importStays() }
   else if (cmd === 'aliases') { console.log(`anchorage aliases → schema "${schema}" on ${host}${dry ? ' (dry run)' : ''}`); await aliases() }
   else { console.error('usage: anchorage-stays.mjs polygons | import [--schema s] [--dry-run] | aliases [--schema s] [--dry-run]'); process.exitCode = 2 }
-} finally { await pool.end() }
+} finally { await pool?.end() }
+
+// --post URL --month YYYY-MM (ships-noaa-month workflow, 2026-10-07): send one month to op=importAisMonth (CRON_SECRET bearer)
+// instead of writing a database; no database connection is opened.
+async function postMonth(body) {
+  const r = await fetch(`${post}?op=importAisMonth`, { method: 'POST', body: JSON.stringify(body),
+    headers: { authorization: `Bearer ${process.env.CRON_SECRET}`, 'content-type': 'application/json', 'user-agent': 'earthatlas-bake/1.0' } })
+  const t = await r.text()
+  if (!r.ok) throw new Error(`importAisMonth: HTTP ${r.status} ${t.slice(0, 300)}`)
+  console.log(`posted: ${t.slice(0, 300)}`)
+}
 
 async function activeAnchorages() {
   return q(`SELECT id, source_id, source_key, name, kind, legal_status, no_anchoring, geometry, built_from, min_lat, max_lat, min_lon, max_lon
@@ -77,6 +90,10 @@ async function importStays() {
   const anchN = new Set(stays.map((s) => s.anchorage)).size
   console.log(`${n.toLocaleString()} stopped positions → ${stays.length.toLocaleString()} stays at ${anchN} anchorages`)
   if (dry) { for (const s of stays.slice(0, 5)) console.log(JSON.stringify(s)); return }
+  // Posting: the server resolves each anchorage by its stable key in its own database (storeAnchorageStays) and refuses unknown ones.
+  if (post) return postMonth({ kind: 'anchorage', month: postMonthArg, version: STAY_BAKE_VERSION, rows: stays,
+    bake: { rule: STAY_RULE, input: meta.input, days: meta.days, months: meta.months, hits: n, baked_at: meta.baked_at, polygons_sha: meta.polygons_sha,
+      anchorages: aj.anchorages.filter((a) => a.coverage === 'covered' || stays.some((s) => s.anchorage === a.key)) } })
   // The bake's anchorage ids must be this database's (dev and prod ids differ): re-key by source_id + source_key.
   const live = new Map((await activeAnchorages()).map((a) => [`${a.source_id}|${a.source_key}`, a]))
   // …and must be the same polygons the bake used (same bounding box): a changed or missing anchorage stops the import.

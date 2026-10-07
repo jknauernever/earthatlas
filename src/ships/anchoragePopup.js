@@ -16,22 +16,25 @@ export const ANCHORAGE_COLOR = '#e0f2fe'
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 const n = (x) => Number(x).toLocaleString('en-US')
 const rec = (id, text, title) => (id ? `<a href="/ships/source/${id}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(text)}</a>` : esc(text))
-const SRC_SHORT = { 'noaa-mc-anchorages': 'USCG/NOAA', 'dfo-pacific-commercial-anchorages': 'DFO', 'uscg-vts-ps-nondesignated': '82 FR 10313' }
-const ALIAS_SHORT = { 'uscg-vts-ps-users-manual': 'USCG VTS manual', 'gfw-anchorage-overrides': 'GFW', 'gfw-port-visits': 'GFW', 'nga-wpi': 'WPI' }
+export const SRC_SHORT = { 'noaa-mc-anchorages': 'USCG/NOAA', 'dfo-pacific-commercial-anchorages': 'DFO', 'uscg-vts-ps-nondesignated': '82 FR 10313' }
+export const ALIAS_SHORT = { 'uscg-vts-ps-users-manual': 'USCG VTS manual', 'gfw-anchorage-overrides': 'GFW', 'gfw-port-visits': 'GFW', 'nga-wpi': 'WPI' }
 
-function statusWords(a) {
+export function statusWords(a) {
   if (a.no_anchoring) return 'No-anchoring area'
   if (a.legal_status === 'designated') return `Anchorage · designated${a.citation ? ` (${a.citation.replace(/^33 CFR /, '33 CFR ')})` : ''}`
   if (a.legal_status === 'active_listed') return 'Anchorage · DFO active list'
   return 'Anchorage · non-designated'
 }
-function areaSource(a) {
-  const what = a.source_id === 'noaa-mc-anchorages' ? 'MarineCadastre “Anchorages” polygon (NOAA Office for Coastal Management and U.S. Coast Guard, from 33 CFR; public domain)'
+/** What the area's boundary comes from, in words (the card and the popup share it). */
+export function areaWhat(a) {
+  return a.source_id === 'noaa-mc-anchorages' ? 'MarineCadastre “Anchorages” polygon (NOAA Office for Coastal Management and U.S. Coast Guard, from 33 CFR; public domain)'
     : a.source_id === 'dfo-pacific-commercial-anchorages' ? `Fisheries and Oceans Canada “Active Commercial Shipping Anchorages in Pacific Canada” point (OGL-Canada 2.0); the circle of its ${a.radius_m} m swing radius is drawn by EarthAtlas`
       : `the Coast Guard’s WITHDRAWN 2017 proposed rule (82 FR 10313, withdrawn 2018-04-27): the Vessel Traffic Service uses this anchorage, but it was never designated in law. ${a.boundary_note || ''}`
-  return rec(a.source_record_id, SRC_SHORT[a.source_id] || a.source_id, `Area from ${what} — click for the record as received`)
 }
-function aliasTitle(x) {
+function areaSource(a) {
+  return rec(a.source_record_id, SRC_SHORT[a.source_id] || a.source_id, `Area from ${areaWhat(a)} — click for the record as received`)
+}
+export function aliasTitle(x) {
   if (x.sourceId === 'uscg-vts-ps-users-manual') return `The name and code the Coast Guard’s Puget Sound Vessel Traffic Service uses for this anchorage: VTS Puget Sound User’s Manual (2024), p. ${x.page || '3-6'}, “Puget Sound Anchorages – Quick Reference Sheet” — click for the record (with the manual’s link)`
   if (x.sourceId === 'gfw-anchorage-overrides' && x.method?.startsWith('gfw_override_group')) {
     return `Global Fishing Watch’s reviewed anchorage-name list (pipe-anchorages, Apache-2.0) files a point inside this area under “${x.alias}”, so GFW port visits here are reported as ${x.alias}. The point’s own label in that list is a code. Click for the row`
@@ -73,6 +76,34 @@ function staysHTML(s, months, st) {
   return h
 }
 
+/**
+ * Stays ESTIMATED from Global Fishing Watch hourly positions for picked months NOAA's AIS doesn't count here
+ * (lib/ships/activityEstimates.js readAnchorageEstimates; Josh 2026-10-06). Marked ≈, own source link, kept apart from counted stays.
+ */
+function estimatesHTML(e, st) {
+  if (!e) return ''
+  const r = e.records?.[e.records.length - 1]
+  const src = (text = 'Global Fishing Watch') => `<a href="${r ? `/ships/source/${r.recordId}` : 'https://globalfishingwatch.org'}" target="_blank" rel="noopener noreferrer" title="Estimated by EarthAtlas from one AIS position per ship per hour (Powered by Global Fishing Watch, CC BY-NC 4.0): a ship whose positions stay within about two grid cells (~1 km each) from one hour to the next, inside this area, for two hours or more. Checked against NOAA per-minute AIS for June 2026: 62% of NOAA’s stays found, 64% of estimated stays confirmed — click for the month’s record">${esc(text)}</a>`
+  let h = `<div class="${st.popupHead}" style="margin:9px 0 2px">Estimated from hourly positions · ${esc(period(e.months))}</div>`
+  if (e.tooSmall) return h + `<div class="${st.popupMeta}">Too small to estimate from hourly positions: they sit on a grid about 1 km across, and this area falls between its points. Not counted, not zero.</div>`
+  if (!e.estimatedMonths.length) return h + `<div class="${st.popupMeta}">Not estimated yet for these months (left out, not counted as zero).</div>`
+  h += `<div class="${st.popupRow}"><span class="${st.popupK}">Stays</span><span class="${st.popupV}">≈ ${n(e.stays)} by ${n(e.ships)} ship${e.ships === 1 ? '' : 's'} ${src('GFW')}</span></div>` +
+    `<div class="${st.popupRow}"><span class="${st.popupK}">Ship-hours here</span><span class="${st.popupV}">≈ ${n(e.hours)} h ${src('GFW')}</span></div>`
+  if (e.kinds.length) h += `<div class="${st.popupMeta}" title="EarthAtlas’s kind of ship from its records, else Global Fishing Watch’s type">Ships by kind: ${e.kinds.slice(0, 5).map((k) => `${esc(k.label)} ${n(k.ships)}`).join(' · ')}${e.kinds.length > 5 ? ' · …' : ''}</div>`
+  if (e.missing.length) h += `<div class="${st.popupMeta}">Not estimated yet: ${esc(e.missing.map(fmtMonth).join(', '))} (left out).</div>`
+  h += `<div class="${st.popupMeta}">${esc(period(e.estimatedMonths))}${e.through ? `, data through ${esc(e.through)}` : ''}: estimated, not counted. When NOAA publishes these months, its counted stays replace them. ${src('Powered by Global Fishing Watch')}</div>`
+  if (e.top?.length) {
+    h += e.top.map((t) => {
+      const name = t.name || (t.mmsi ? `MMSI ${t.mmsi}` : 'Unnamed ship')
+      const meta = [t.kind, `≈ ${n(t.days)} day${t.days === 1 ? '' : 's'}`, `${n(t.hours)} h`].filter(Boolean).join(' · ')
+      return t.vesselId
+        ? `<button type="button" class="${st.popupShip}" data-vessel="${esc(t.vesselId)}" title="Name as the ship broadcast it (AIS, via Global Fishing Watch) — click for its card"><span class="${st.popupShipKind}">${esc(name)}</span><span class="${st.popupShipMeta}">${esc(meta)}</span></button>`
+        : `<div class="${st.popupShip}" style="cursor:default" title="Name as the ship broadcast it; not identified in our ship records"><span class="${st.popupShipKind}">${esc(name)}</span><span class="${st.popupShipMeta}">${esc(meta)}</span></div>`
+    }).join('')
+  }
+  return h
+}
+
 /** props = the clicked feature's properties ({ i, n, l, x, a }); data = op=anchorage response (or null while loading). */
 export function anchoragePopupHTML(props, { months, data, error }, st) {
   const a = data?.anchorage
@@ -81,7 +112,7 @@ export function anchoragePopupHTML(props, { months, data, error }, st) {
   else if (a) {
     const aka = (data.aliases || []).length ? `<div class="${st.popupMeta}">Also known as: ${data.aliases.map((x) => `${esc(x.alias)} · ${rec(x.recordId, ALIAS_SHORT[x.sourceId] || x.sourceId, aliasTitle(x))}`).join('; ')}</div>` : ''
     const alt = a.alternate_name ? `<div class="${st.popupMeta}">DFO alternate name: ${esc(a.alternate_name)} · ${areaSource(a)}</div>` : ''
-    body = `<div class="${st.popupMeta}">${a.location ? `${esc(a.location)} · ` : ''}${areaSource(a)}</div>` + aka + alt + staysHTML(data.stays, months, st)
+    body = `<div class="${st.popupMeta}">${a.location ? `${esc(a.location)} · ` : ''}${areaSource(a)}</div>` + aka + alt + staysHTML(data.stays, months, st) + estimatesHTML(data.estimated, st)
   }
   const head = a ? statusWords(a) : props.x ? 'No-anchoring area' : 'Anchorage'
   return `<div class="${st.popup}"><div class="${st.popupHead}">${esc(head)}</div><div class="${st.popupTitle}">${esc(a?.name || props.n)}</div>${body}</div>`

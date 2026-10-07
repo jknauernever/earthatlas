@@ -100,6 +100,31 @@ jobs:
           path: work
           retention-days: 7
 
+  # Estimated terminal visits + anchorage stays from this month's hourly positions (docs/SHIPS_ACTIVITY_FUSION.md Part 2, Josh
+  # 2026-10-06): activity.py on the Salish area's raw rows → POST op=importActivity, which replaces the month in the ships DB.
+  # Its own job beside routing, so a problem here never holds up the track lines.
+  activity:
+    if: inputs.route_run == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      THROUGH: ${{ inputs.through }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-${{ inputs.month }}
+          path: raw
+          run-id: ${{ inputs.source_run }}
+          github-token: ${{ github.token }}
+      - name: Estimate ${{ inputs.month }}
+        run: cd scripts/ships/bake-gfw && python3 activity.py --month "$MONTH" --areas salish --raw "$GITHUB_WORKSPACE/raw" --out "$GITHUB_WORKSPACE/activity"
+      - name: Store ${{ inputs.month }} (replaces the month)
+        run: python3 scripts/ships/bake-gfw/post_activity.py --month "$MONTH" --dir "$GITHUB_WORKSPACE/activity" --through "$THROUGH"
+
   publish:
     needs: route
     # After a route in this run, or (route_run) straight from an earlier run's routed lines: tile changes need no re-route.

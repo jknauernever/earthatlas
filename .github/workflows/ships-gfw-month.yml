@@ -121,7 +121,7 @@ jobs:
           run-id: ${{ inputs.source_run }}
           github-token: ${{ github.token }}
       - name: Estimate ${{ inputs.month }}
-        run: cd scripts/ships/bake-gfw && python3 activity.py --month "$MONTH" --areas salish,bcsouth --raw "$GITHUB_WORKSPACE/raw" --out "$GITHUB_WORKSPACE/activity"
+        run: cd scripts/ships/bake-gfw && python3 activity.py --month "$MONTH" --areas salish,bcsouth,uswest --raw "$GITHUB_WORKSPACE/raw" --out "$GITHUB_WORKSPACE/activity"
       - name: Store ${{ inputs.month }} (replaces the month)
         run: python3 scripts/ships/bake-gfw/post_activity.py --month "$MONTH" --dir "$GITHUB_WORKSPACE/activity" --through "$THROUGH"
 

@@ -133,6 +133,8 @@
 .mCellZero .mCalls { font-weight: 400; color: #c4c8ce; }
 .mCellNa { color: #d1d5db; text-align: center !important; }
 .mTot { color: #0f172a !important; }
+.mEst .mCalls { font-weight: 600; font-style: italic; color: #475569; }
+.matrix thead th.mEstH { color: #475569; font-style: italic; }
 .matrix tr > td:last-child { background: #fafbfc; border-left: 1px solid #eef0f2; }
 .mMore td { text-align: left !important; font-size: 11.5px; color: #6b7280; font-style: italic; position: sticky; left: 0; }
 .mAll th, .mAll td { border-top: 2px solid #e5e7eb; background: #f1f5f9; }

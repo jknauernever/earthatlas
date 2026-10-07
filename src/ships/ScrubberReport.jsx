@@ -36,6 +36,7 @@ const SRC = {
   mep: { name: 'MEP Alliance scrubber lists', href: 'https://www.mepalliance.org/list-of-scrubber-fitted-ships' },
   usace: { name: 'USACE Navigation Facilities (Docks)', href: 'https://geospatial-usace.opendata.arcgis.com/datasets/23d91bd988ac4fc9943128965bddfa37_0' },
   census: { name: 'U.S. Census Bureau (TIGER)', href: 'https://geocoding.geo.census.gov/geocoder/' },
+  gfw: { name: 'Powered by Global Fishing Watch', href: 'https://globalfishingwatch.org' },
 }
 
 const fmt = (n) => (n == null ? '–' : Number(n).toLocaleString('en-US'))
@@ -102,6 +103,11 @@ export default function ScrubberReport() {
   useEffect(() => {
     setDays(null)
     if (!st.m) return
+    if (data?.estimated?.months?.includes(st.m)) {   // an estimated month: its days come with the report
+      setDays(Object.entries(data.estimated.days || {}).filter(([d]) => d.startsWith(st.m))
+        .flatMap(([d, byT]) => Object.entries(byT).map(([k, n]) => ({ terminal_key: k, day: d, scrubber_calls: n }))))
+      return
+    }
     if (edition) { if (data?.days) setDays(data.days[st.m] || []); return }
     fetch(`/api/ships?op=scrubberReportDays&month=${st.m}`).then((r) => r.json()).then((j) => setDays(j.days || [])).catch(() => setDays([]))
   }, [st.m, edition, data])
@@ -157,17 +163,19 @@ export default function ScrubberReport() {
           <Coverage data={data} view={view} />
 
           <section className={c.tiles} aria-label="Headline numbers">
-            <Tile value={fmt(view.tot.scrubber_calls)} label="Scrubber-ship calls" sub={`at ${fmt(view.terminalsWithScrubber)} of ${fmt(view.counted.length)} terminals counted`} src={<Src k="noaa">NOAA AIS</Src>} />
+            <Tile value={fmt(view.tot.scrubber_calls + (view.tot.est_calls || 0))} label="Scrubber-ship calls"
+              sub={`at ${fmt(view.terminalsWithScrubber)} terminals${view.tot.est_calls ? `; ≈${fmt(view.tot.est_calls)} of them estimated` : ''}`}
+              src={<><Src k="noaa">NOAA AIS</Src>{view.tot.est_calls ? <> · <Src k="gfw">Global Fishing Watch</Src></> : null}</>} />
             <Tile value={fmt(view.shipIds.size)} label="Scrubber-fitted ships" sub="different ships that made those calls" src={<><Src k="gisis">IMO</Src> · <Src k="mep">MEP Alliance</Src></>} />
-            <Tile value={pct(view.tot.scrubber_calls, view.tot.large)} label="Share of large-ship calls" sub={`${fmt(view.tot.scrubber_calls)} of ${fmt(view.tot.large)} calls by passenger, cargo and tanker ships`} src={<Src k="noaa">AIS ship type</Src>} />
-            <Tile value={fmt(view.byOwn.ports?.scrubber_calls || 0)} label="At ports"
-              sub={`${fmt(view.byOwn.terminals?.scrubber_calls || 0)} at other terminals, ${fmt(view.byOwn.refineries?.scrubber_calls || 0)} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
+            <Tile value={pct(view.tot.scrubber_calls, view.tot.large)} label="Share of large-ship calls" sub={`${fmt(view.tot.scrubber_calls)} of ${fmt(view.tot.large)} calls by passenger, cargo and tanker ships (NOAA-counted months)`} src={<Src k="noaa">AIS ship type</Src>} />
+            <Tile value={fmt((view.byOwn.ports?.scrubber_calls || 0) + (view.byOwn.ports?.est_calls || 0))} label="At ports"
+              sub={`${fmt((view.byOwn.terminals?.scrubber_calls || 0) + (view.byOwn.terminals?.est_calls || 0))} at other terminals, ${fmt((view.byOwn.refineries?.scrubber_calls || 0) + (view.byOwn.refineries?.est_calls || 0))} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
           </section>
 
           <section className={c.card}>
             <div className={c.cardHead}>
               <h2 className={c.h2}>Each port, terminal and refinery, month by month</h2>
-              <button className={c.csv} onClick={() => downloadCsv(view, data.coverage.months, st)}>Download CSV</button>
+              <button className={c.csv} onClick={() => downloadCsv(view, data.period.months.filter((m) => data.coverage.months.includes(m) || view.estMonths.has(m)), st)}>Download CSV</button>
             </div>
             <div className={c.note}>Each cell: <b>scrubber-ship calls</b> and, under it, how many different scrubber-fitted ships made them. Totals count each ship once.</div>
             <Matrix view={view} months={data.period.months} covered={new Set(data.coverage.months)} />
@@ -190,7 +198,7 @@ export default function ScrubberReport() {
               return (
                 <div key={k} className={c.ownCard}>
                   <div className={c.ownHead}><span className={c.swatch} style={{ background: col }} />{l}</div>
-                  <div className={c.ownValue}>{fmt(o.scrubber_calls)}<span> scrubber-ship calls</span></div>
+                  <div className={c.ownValue}>{fmt(o.scrubber_calls + (o.est_calls || 0))}<span> scrubber-ship calls</span></div>
                   <div className={c.ownSub}>{fmt(o.ships.size)} ships · {fmt(o.terminals.size)} terminals · {pct(o.scrubber_calls, o.large)} of large-ship calls</div>
                 </div>
               )
@@ -236,10 +244,25 @@ function build(data, geo) {
     pm[ty] = (pm[ty] || 0) + r.scrubber_calls
     pm.total += r.scrubber_calls
   }
+  // Months after NOAA's latest: GFW-estimated stops (≈), never mixed into the counted calls or the large-ship share.
+  const est = data.estimated
+  const estMonths = new Set(est?.months || [])
+  for (const r of est?.cells || []) {
+    if (!keys.has(r.terminal_key)) continue
+    const p = perT.get(r.terminal_key)
+    p.est_calls = (p.est_calls || 0) + r.scrubber_calls
+    tot.est_calls = (tot.est_calls || 0) + r.scrubber_calls
+    p.months[r.month] = (p.months[r.month] || 0) + r.scrubber_calls
+    p.monthShips[r.month] = r.scrubber_ships
+    const pm = perMonth[r.month] ||= { total: 0 }
+    const ty = typeOf(byKey.get(r.terminal_key))
+    pm[ty] = (pm[ty] || 0) + r.scrubber_calls
+    pm.total += r.scrubber_calls
+  }
   const shipIds = new Set()
   const shipsBy = {}   // group key ('all' | type) → month → Set of ships, so a column's ships are counted once
   const addShip = (g, m, id) => ((shipsBy[g] ||= {})[m] ||= new Set()).add(id)
-  for (const s of data.ships) {
+  for (const s of [...data.ships, ...(est?.ships || [])]) {
     if (!keys.has(s.terminal_key)) continue
     shipIds.add(s.vessel_id)
     const ty = typeOf(byKey.get(s.terminal_key))
@@ -255,6 +278,7 @@ function build(data, geo) {
     const o = byOwn[typeOf(t)] ||= { ...zero(), ships: new Set(), terminals: new Set() }
     const p = perT.get(t.key)
     for (const f of ['calls', 'large', 'scrubber_calls']) o[f] += p[f]
+    o.est_calls = (o.est_calls || 0) + (p.est_calls || 0)
     for (const id of p.ships.keys()) o.ships.add(id)
     o.terminals.add(t.key)
   }
@@ -269,8 +293,8 @@ function build(data, geo) {
     const pl = co.get(pk) || co.set(pk, []).get(pk)
     pl.push(t)
   }
-  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, counted: terms.filter((t) => t.counted),
-    notCounted: terms.filter((t) => !t.counted), terminalsWithScrubber: terms.filter((t) => perT.get(t.key).scrubber_calls > 0).length }
+  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, estMonths, est, counted: terms.filter((t) => t.counted),
+    notCounted: terms.filter((t) => !t.counted), terminalsWithScrubber: terms.filter((t) => perT.get(t.key).scrubber_calls + (perT.get(t.key).est_calls || 0) > 0).length }
 }
 
 function sumOf(view, list) {
@@ -278,6 +302,7 @@ function sumOf(view, list) {
   for (const t of list) {
     const p = view.perT.get(t.key)
     for (const f of ['calls', 'large', 'scrubber_calls']) out[f] += p[f]
+    out.est_calls = (out.est_calls || 0) + (p.est_calls || 0)
     for (const id of p.ships.keys()) out.ships.add(id)
     for (const [m, v] of Object.entries(p.months)) out.months[m] = (out.months[m] || 0) + v
     if (t.counted) out.counted++
@@ -287,11 +312,11 @@ function sumOf(view, list) {
 
 // ── The facility × month table (Lovel's request) ────────────────────────────
 
-function Cell({ calls, ships, dim }) {
+function Cell({ calls, ships, dim, est }) {
   if (dim) return <td className={c.mCellNa} title="Not counted yet">·</td>
   return (
-    <td className={calls ? c.mCell : c.mCellZero}>
-      <div className={c.mCalls}>{calls ? fmt(calls) : '0'}</div>
+    <td className={`${calls ? c.mCell : c.mCellZero}${est ? ` ${c.mEst}` : ''}`} title={est ? 'Estimated from hourly positions (≈)' : undefined}>
+      <div className={c.mCalls}>{est && calls ? '≈' : ''}{calls ? fmt(calls) : '0'}</div>
       {calls > 0 && <div className={c.mShips}>{fmt(ships)} ship{ships === 1 ? '' : 's'}</div>}
     </td>
   )
@@ -299,7 +324,11 @@ function Cell({ calls, ships, dim }) {
 
 function Matrix({ view, months, covered }) {
   const [hideZero, setHideZero] = useState(true)
-  const cov = months.filter((m) => covered.has(m))
+  const est = view.estMonths
+  const shown = (m) => covered.has(m) || est.has(m)
+  // A terminal's month is blank ("·") when neither NOAA counted it nor an estimate exists for it there.
+  const cellFor = (t, m, calls, ships) => <Cell key={m} dim={!shown(m) || (!est.has(m) && t && !t.counted)} est={est.has(m)} calls={calls} ships={ships} />
+  const total = (p) => p.scrubber_calls + (p.est_calls || 0)
   return (
     <>
       <label className={c.mToggle}><input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide facilities with no scrubber-ship calls</label>
@@ -307,25 +336,26 @@ function Matrix({ view, months, covered }) {
         <table className={c.matrix}>
           <thead><tr>
             <th className={c.mFirst}>Facility</th>
-            {months.map((m) => <th key={m} className={covered.has(m) ? '' : c.mNa}>{monthShort(m)}<span>{m.slice(2, 4)}</span></th>)}
+            {months.map((m) => <th key={m} className={shown(m) ? (est.has(m) ? c.mEstH : '') : c.mNa}>{est.has(m) ? '≈' : ''}{monthShort(m)}<span>{m.slice(2, 4)}</span></th>)}
             <th className={c.mTot}>Total</th>
           </tr></thead>
           <tbody>
             {TYPES.map(([ty, label, col, desc]) => {
               const list = view.terms.filter((t) => typeOf(t) === ty)
               if (!list.length) return null
-              const shown = list.filter((t) => t.counted && (!hideZero || view.perT.get(t.key).scrubber_calls > 0))
-                .sort((a, b) => view.perT.get(b.key).scrubber_calls - view.perT.get(a.key).scrubber_calls || a.name.localeCompare(b.name))
+              const has = (t) => t.counted || (view.perT.get(t.key).est_calls || 0) > 0
+              const rows = list.filter((t) => has(t) && (!hideZero || total(view.perT.get(t.key)) > 0))
+                .sort((a, b) => total(view.perT.get(b.key)) - total(view.perT.get(a.key)) || a.name.localeCompare(b.name))
               const notCounted = list.filter((t) => !t.counted).length
-              const hidden = list.filter((t) => t.counted).length - shown.length
+              const hidden = list.filter(has).length - rows.length
               const sum = sumOf(view, list)
               return [
                 <tr key={`h-${ty}`} className={c.mGroup}>
                   <th className={c.mFirst} scope="rowgroup"><span className={c.swatch} style={{ background: col }} />{label}<div className={c.mDesc}>{desc}</div></th>
-                  {months.map((m) => <Cell key={m} dim={!covered.has(m)} calls={sum.months[m] || 0} ships={view.shipsBy[ty]?.[m]?.size || 0} />)}
-                  <Cell calls={sum.scrubber_calls} ships={view.shipsBy[ty]?.['*']?.size || 0} />
+                  {months.map((m) => cellFor(null, m, sum.months[m] || 0, view.shipsBy[ty]?.[m]?.size || 0))}
+                  <Cell calls={sum.scrubber_calls + (sum.est_calls || 0)} ships={view.shipsBy[ty]?.['*']?.size || 0} />
                 </tr>,
-                ...shown.map((t) => {
+                ...rows.map((t) => {
                   const p = view.perT.get(t.key)
                   return (
                     <tr key={t.key}>
@@ -333,27 +363,31 @@ function Matrix({ view, months, covered }) {
                         <a href={`/ships?tl=${encodeURIComponent(t.key)}`} className={c.mName}>{t.name}</a>
                         <div className={c.mDesc}>{[placeLabel(t.place_name) || (t.county_name ? `${t.county_name}, unincorporated` : null), kindWords(t.kind)].filter(Boolean).join(' · ')}</div>
                       </th>
-                      {months.map((m) => <Cell key={m} dim={!covered.has(m)} calls={p.months[m] || 0} ships={p.monthShips[m] || 0} />)}
-                      <Cell calls={p.scrubber_calls} ships={p.ships.size} />
+                      {months.map((m) => cellFor(t, m, p.months[m] || 0, p.monthShips[m] || 0))}
+                      <Cell calls={total(p)} ships={p.ships.size} />
                     </tr>
                   )
                 }),
                 (hidden > 0 || notCounted > 0) && (
                   <tr key={`n-${ty}`} className={c.mMore}><td colSpan={months.length + 2}>
-                    {[hidden > 0 && `${hidden} more ${label.toLowerCase()} with no scrubber-ship calls`, notCounted > 0 && `${notCounted} not counted yet`].filter(Boolean).join(' · ')}
+                    {[hidden > 0 && `${hidden} more ${label.toLowerCase()} with no scrubber-ship calls`, notCounted > 0 && `${notCounted} not yet in NOAA's count`].filter(Boolean).join(' · ')}
                   </td></tr>
                 ),
               ]
             })}
             <tr className={c.mAll}>
               <th className={c.mFirst} scope="row">All facilities</th>
-              {months.map((m) => <Cell key={m} dim={!covered.has(m)} calls={view.perMonth[m]?.total || 0} ships={view.shipsBy.all?.[m]?.size || 0} />)}
-              <Cell calls={view.tot.scrubber_calls} ships={view.shipIds.size} />
+              {months.map((m) => cellFor(null, m, view.perMonth[m]?.total || 0, view.shipsBy.all?.[m]?.size || 0))}
+              <Cell calls={view.tot.scrubber_calls + (view.tot.est_calls || 0)} ships={view.shipIds.size} />
             </tr>
           </tbody>
         </table>
       </div>
-      {cov.length < months.length && <div className={c.hint}>“·” = month not counted yet.</div>}
+      <div className={c.hint}>
+        {[months.some((m) => !shown(m)) && '“·” = not counted yet.',
+          est.size > 0 && `≈ = estimated from hourly ship positions (Powered by Global Fishing Watch) for months NOAA has not published yet; replaced by NOAA's counts when they arrive.${view.est?.shared?.calls ? ` ${fmt(view.est.shared.calls)} more estimated stops by scrubber ships could be at either of two neighbouring terminals and are left out of the rows.` : ''}`]
+          .filter(Boolean).join(' ')}
+      </div>
     </>
   )
 }
@@ -361,16 +395,18 @@ function Matrix({ view, months, covered }) {
 function downloadCsv(view, months, st) {
   const q = (v) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
   const head = ['facility', 'type', 'kind', 'owner', 'owner_source', 'county', 'city_or_town', 'state', 'counted',
-    ...months.flatMap((m) => [`${m}_scrubber_calls`, `${m}_scrubber_ships`]), 'total_scrubber_calls', 'total_scrubber_ships', 'total_large_ship_calls']
+    ...months.flatMap((m) => (view.estMonths.has(m) ? [`${m}_scrubber_calls_estimated`, `${m}_scrubber_ships_estimated`] : [`${m}_scrubber_calls`, `${m}_scrubber_ships`])),
+    'total_scrubber_calls', 'total_scrubber_ships', 'total_large_ship_calls_noaa_months']
   const rows = view.terms.map((t) => {
     const p = view.perT.get(t.key)
     return [t.name, typeOf(t), kindWords(t.kind), t.ownership || '', t.ownership_basis?.says || '', t.county_name || '', placeLabel(t.place_name) || '',
       t.state_code || '', t.counted ? 'yes' : 'not yet',
-      ...months.flatMap((m) => (t.counted ? [p.months[m] || 0, p.monthShips[m] || 0] : ['', ''])),
-      t.counted ? p.scrubber_calls : '', t.counted ? p.ships.size : '', t.counted ? p.large : '']
+      ...months.flatMap((m) => (t.counted || view.estMonths.has(m) ? [p.months[m] || 0, p.monthShips[m] || 0] : ['', ''])),
+      p.scrubber_calls + (p.est_calls || 0), p.ships.size, t.counted ? p.large : '']
   })
   const notes = [`# EarthAtlas scrubber-ship calls report, ${months[0]} to ${months.at(-1)} (months counted). earthatlas.org/ships/reports/scrubbers`,
-    '# Calls: NOAA MarineCadastre AIS (CC0), counted by EarthAtlas. Scrubber-fitted: IMO GISIS Reg. 4.2 notifications or MEP Alliance lists.']
+    '# Calls: NOAA MarineCadastre AIS (CC0), counted by EarthAtlas. Scrubber-fitted: IMO GISIS Reg. 4.2 notifications or MEP Alliance lists.',
+    '# Columns marked _estimated: months NOAA has not published yet, estimated from hourly positions (Powered by Global Fishing Watch, CC BY-NC 4.0); stops that could be at either of two neighbouring terminals are left out.']
   const csv = [...notes, head.join(','), ...rows.map((r) => r.map(q).join(','))].join('\n')
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
@@ -397,14 +433,18 @@ function Legend() {
 }
 
 function Coverage({ data, view }) {
-  const missing = data.coverage.missing
-  if (!missing.length && !view.notCounted.length) return null
+  const est = [...view.estMonths].sort()
+  const missing = data.coverage.missing.filter((m) => !view.estMonths.has(m))
+  const span = (ms) => (ms.length === 1 ? monthName(ms[0], 'long') : `${monthName(ms[0])} – ${monthName(ms.at(-1))}`)
+  if (!missing.length && !est.length && !view.notCounted.length) return null
   return (
     <div className={c.coverage}>
-      {missing.length > 0 && <div><b>Not counted yet: {missing.length === 1 ? monthName(missing[0], 'long') : `${monthName(missing[0])} – ${monthName(missing.at(-1))}`}.</b> NOAA's
-        detailed positions for {missing.length === 1 ? 'that month are' : 'those months are'} being added; they show as empty months below until then.</div>}
-      {view.notCounted.length > 0 && <div><b>{view.notCounted.length} terminal{view.notCounted.length === 1 ? '' : 's'} not counted yet</b> (newly added: cruise, container,
-        ro-ro, Columbia River and Grays Harbor berths). They are listed with "not counted yet", never as zero.</div>}
+      {est.length > 0 && <div><b>≈ {span(est)}: estimated.</b> NOAA publishes its minute-by-minute positions about three months late, so these
+        months are estimated from hourly ship positions (<Src k="gfw" />{data.estimated?.through ? `, through ${data.estimated.through}` : ''}) and
+        replaced by NOAA's counts when they arrive. Hourly positions can't separate terminals less than about 1 km from each other; those stops are left out of the rows.</div>}
+      {missing.length > 0 && <div><b>No data yet: {span(missing)}.</b> These months show as empty, never as zero.</div>}
+      {view.notCounted.length > 0 && <div><b>{view.notCounted.length} terminal{view.notCounted.length === 1 ? ' is' : 's are'} not in NOAA's count yet</b> (added
+        recently: cruise, container, ro-ro, Columbia River and Grays Harbor berths). Their NOAA months show “·”, never zero.</div>}
     </div>
   )
 }
@@ -426,7 +466,8 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
           const x = CH.l + i * bw, w = Math.max(4, bw - 6)
           const pm = view.perMonth[m] || {}
           let acc = 0
-          const isCov = covered.has(m)
+          const isEst = view.estMonths.has(m)
+          const isCov = covered.has(m) || isEst
           return (
             <g key={m} className={c.barG} onMouseEnter={() => setHover(m)} onMouseLeave={() => setHover(null)} onClick={() => isCov && onPick(m)} style={{ cursor: isCov ? 'pointer' : 'default' }}>
               <rect x={x} y={CH.t} width={bw} height={ih} fill="transparent" />
@@ -436,7 +477,7 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
                 if (!v) return null
                 const y1 = y(acc + v), h = y(acc) - y1
                 acc += v
-                return <rect key={k} x={x + 3} y={y1 + 1} width={w} height={Math.max(0, h - 2)} rx={acc === pm.total ? 4 : 1} fill={col} opacity={active && active !== m ? 0.35 : 1} />
+                return <rect key={k} x={x + 3} y={y1 + 1} width={w} height={Math.max(0, h - 2)} rx={acc === pm.total ? 4 : 1} fill={col} opacity={(active && active !== m ? 0.35 : 1) * (isEst ? 0.5 : 1)} />
               })}
               <text x={x + bw / 2} y={CH.h - CH.b + 16} className={c.axis} textAnchor="middle">{monthShort(m)}</text>
               {(i === 0 || m.endsWith('-01')) && <text x={x + bw / 2} y={CH.h - CH.b + 29} className={c.axisYear} textAnchor="middle">{m.slice(0, 4)}</text>}
@@ -444,7 +485,7 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
           )
         })}
         {(() => {
-          const miss = months.map((m, i) => [m, i]).filter(([m]) => !covered.has(m))
+          const miss = months.map((m, i) => [m, i]).filter(([m]) => !covered.has(m) && !view.estMonths.has(m))
           if (!miss.length) return null
           const x0 = CH.l + miss[0][1] * bw, x1 = CH.l + (miss.at(-1)[1] + 1) * bw
           return <text x={(x0 + x1) / 2} y={CH.t + ih - 34} className={c.missingLabel} textAnchor="middle">Not counted yet</text>
@@ -452,9 +493,9 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
       </svg>
       {hover && (
         <div className={c.tip} style={{ left: `${((CH.l + (months.indexOf(hover) + 0.5) * bw) / CH.w) * 100}%` }}>
-          <div className={c.tipHead}>{monthName(hover, 'long')}</div>
-          {covered.has(hover) ? <>
-            <div className={c.tipTotal}>{fmt(view.perMonth[hover]?.total || 0)} scrubber-ship calls</div>
+          <div className={c.tipHead}>{monthName(hover, 'long')}{view.estMonths.has(hover) ? ' (estimated)' : ''}</div>
+          {covered.has(hover) || view.estMonths.has(hover) ? <>
+            <div className={c.tipTotal}>{view.estMonths.has(hover) ? '≈' : ''}{fmt(view.perMonth[hover]?.total || 0)} scrubber-ship calls</div>
             {TYPES.map(([k, l, col]) => (view.perMonth[hover]?.[k] ? <div key={k} className={c.tipRow}><i style={{ background: col }} />{l}<b>{fmt(view.perMonth[hover][k])}</b></div> : null))}
           </> : <div className={c.tipRow}>Not counted yet</div>}
         </div>

@@ -66,7 +66,8 @@ def area_deg2(rings):
     return s
 
 
-def load_rows(raw, area_names, ym):
+def load_rows(raw, area_names, ym, clip=None):
+    """clip = {area: (w, s, e, n)}: rows of that area outside the box are skipped (uswest: only near our Columbia River berths)."""
     a = calendar.timegm(time.strptime(ym + '-01', '%Y-%m-%d'))
     y, m = map(int, ym.split('-'))
     b = calendar.timegm((y + (m == 12), m % 12 + 1, 1, 0, 0, 0))
@@ -82,6 +83,9 @@ def load_rows(raw, area_names, ym):
                         t = calendar.timegm(time.strptime(r['date'], '%Y-%m-%d %H:%M'))
                         vid = r.get('vesselId')
                         if not vid or not a <= t < b:
+                            continue
+                        cb = clip.get(area) if clip else None
+                        if cb and not (cb[0] <= r['lon'] <= cb[2] and cb[1] <= r['lat'] <= cb[3]):
                             continue
                         rows[vid].setdefault(t, (r['lat'], r['lon']))
                         ident.setdefault(vid, dict(mmsi=r.get('mmsi') or '', name=r.get('shipName') or '', gfw_type=r.get('vesselType') or ''))
@@ -135,7 +139,14 @@ def main():
     # Squamish and Woodfibre lie north of the salish area and read ≈0).
     names = a.areas.split(',')
     RULE['area_boxes'] = [list(t[1:]) for t in areas.stage('pacnw') if t[0] in names]
-    pts, ident = load_rows(a.raw, names, a.month)
+    # Areas with no anchorages of ours (uswest, 2026-10-07: the lower Columbia River for the scrubber report) are read only around our
+    # berths in them: the box of those berths, padded by 0.05°. An area with no berths is not read at all.
+    clip = {}
+    for nm, w0, s0, e0, n0 in [t for t in areas.stage('pacnw') if t[0] in names and t[0] not in ('salish', 'bcsouth')]:
+        inb = [b for b in berths if w0 <= b['lon'] <= e0 and s0 <= b['lat'] < n0]
+        clip[nm] = (min(b['lon'] for b in inb) - 0.05, min(b['lat'] for b in inb) - 0.05, max(b['lon'] for b in inb) + 0.05, max(b['lat'] for b in inb) + 0.05) if inb else (0, 0, 0, 0)
+        RULE['area_boxes'] = [bx for bx in RULE['area_boxes'] if bx != [w0, s0, e0, n0]] + [list(clip[nm])]
+    pts, ident = load_rows(a.raw, names, a.month, clip)
     hits = defaultdict(list)   # (kind, target, vid) -> [(t, km, nearest terminal)]
     pad = RULE['match_km'] / 111.0
     for vid, p in pts.items():

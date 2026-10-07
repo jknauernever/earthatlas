@@ -140,6 +140,17 @@
 .mAll th, .mAll td { border-top: 2px solid #e5e7eb; background: #f1f5f9; }
 .mAll .mFirst { background: #f1f5f9; font-weight: 700; }
 
+.h3 { font-size: 13px; margin: 6px 0 8px; color: #374151; }
+.worldGrid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; }
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bars li { display: grid; grid-template-columns: 130px 1fr 110px; align-items: center; gap: 8px; font-size: 12.5px; }
+.barLabel { color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barTrack { height: 10px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.barFill { display: block; height: 100%; background: #2a78d6; border-radius: 4px; }
+.barNum { text-align: right; font-variant-numeric: tabular-nums; color: #0f172a; }
+.barNum small { color: #6b7280; }
+@media (max-width: 760px) { .worldGrid { grid-template-columns: 1fr; } }
+
 .method { margin-top: 30px; padding-top: 18px; border-top: 1px solid #e5e7eb; }
 .defs { display: grid; grid-template-columns: 180px 1fr; gap: 10px 20px; margin: 14px 0 0; font-size: 13.5px; line-height: 1.6; }
 .defs dt { font-weight: 600; color: #111827; }

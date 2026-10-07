@@ -37,6 +37,7 @@ const SRC = {
   usace: { name: 'USACE Navigation Facilities (Docks)', href: 'https://geospatial-usace.opendata.arcgis.com/datasets/23d91bd988ac4fc9943128965bddfa37_0' },
   census: { name: 'U.S. Census Bureau (TIGER)', href: 'https://geocoding.geo.census.gov/geocoder/' },
   gfw: { name: 'Powered by Global Fishing Watch', href: 'https://globalfishingwatch.org' },
+  gfwPorts: { name: 'Powered by Global Fishing Watch (port visits)', href: 'https://globalfishingwatch.org/our-apis/documentation/docs/v3/events' },
 }
 
 const fmt = (n) => (n == null ? '–' : Number(n).toLocaleString('en-US'))
@@ -73,6 +74,7 @@ export default function ScrubberReport() {
   const [err, setErr] = useState(null)
   const [days, setDays] = useState(null)
   const [hover, setHover] = useState(null)
+  const [world, setWorld] = useState(null)
   const set = (patch) => setSt((s) => ({ ...s, ...patch }))
 
   useEffect(() => { document.title = 'Scrubber-fitted ships at terminals · EarthAtlas Ships' }, [])
@@ -111,6 +113,12 @@ export default function ScrubberReport() {
     if (edition) { if (data?.days) setDays(data.days[st.m] || []); return }
     fetch(`/api/ships?op=scrubberReportDays&month=${st.m}`).then((r) => r.json()).then((j) => setDays(j.days || [])).catch(() => setDays([]))
   }, [st.m, edition, data])
+
+  useEffect(() => {
+    setWorld(null)
+    if (edition) { if (data?.world) setWorld(data.world[st.geo] || null); return }
+    fetch(`/api/ships?op=scrubberWorldPorts&from=${st.from}&to=${st.to}&geo=${st.geo}`).then((r) => r.json()).then((j) => setWorld(j.error ? null : j)).catch(() => {})
+  }, [edition, data, st.from, st.to, st.geo])
 
   const view = useMemo(() => (data ? build(data, st.geo) : null), [data, st.geo])
 
@@ -212,6 +220,8 @@ export default function ScrubberReport() {
             </div>
             <PlaceTable view={view} open={st.open} setOpen={(open) => set({ open })} months={data.coverage.months} />
           </section>
+
+          <WorldPorts world={world} geo={st.geo} />
 
           <Method data={data} />
         </>}
@@ -413,6 +423,59 @@ function downloadCsv(view, months, st) {
   a.download = `earthatlas-scrubber-calls-${st.geo.toLowerCase()}-${months[0]}-to-${months.at(-1)}.csv`
   a.click()
   URL.revokeObjectURL(a.href)
+}
+
+// ── Where else these ships call (GFW port visits, worldwide) ─────────────────
+
+function WorldPorts({ world, geo }) {
+  const [all, setAll] = useState(false)
+  if (!world) return null
+  const cov = world.coverage || {}
+  const who = geo === 'WA' ? 'the scrubber-fitted ships that called in Washington' : geo === 'BC' ? 'the scrubber-fitted ships that called in British Columbia' : 'the scrubber-fitted ships in this report'
+  const maxC = Math.max(1, ...world.countries.map((x) => x.visits))
+  const ports = all ? world.ports : world.ports.slice(0, 25)
+  return (
+    <section className={c.card} id="world">
+      <div className={c.cardHead}>
+        <h2 className={c.h2}>Where else these ships call</h2>
+        <div className={c.note}>Port visits worldwide by {who}, in this period. <Src k="gfwPorts" /></div>
+      </div>
+      {cov.fetched < cov.ships && <div className={c.hint}>Port visits are loaded for {fmt(cov.fetched)} of these {fmt(cov.ships)} ships so far; the rest are being added.</div>}
+      {world.countries.length === 0 ? <div className={c.none}>No port visits loaded yet for these ships.</div> : (
+        <div className={c.worldGrid}>
+          <div>
+            <h3 className={c.h3}>By country</h3>
+            <ul className={c.bars}>
+              {world.countries.slice(0, 15).map((x) => (
+                <li key={x.iso3 || 'x'}>
+                  <span className={c.barLabel}>{x.country || x.iso3 || 'Unknown'}</span>
+                  <span className={c.barTrack}><span className={c.barFill} style={{ width: `${(x.visits / maxC) * 100}%` }} /></span>
+                  <span className={c.barNum}>{fmt(x.visits)}<small> · {fmt(x.ships)} ship{x.ships === 1 ? '' : 's'}</small></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className={c.h3}>Most visited ports</h3>
+            <table className={c.ships}>
+              <thead><tr><th>Port</th><th>Country</th><th className={c.num}>Visits</th><th className={c.num}>Ships</th></tr></thead>
+              <tbody>{ports.map((x) => (
+                <tr key={x.key}>
+                  <td>{x.port_name || x.gfw_name || x.port_label}</td>
+                  <td>{x.country || x.iso3 || ''}</td>
+                  <td className={c.num}>{fmt(x.visits)}</td>
+                  <td className={c.num}>{fmt(x.ships)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+            {world.ports.length > 25 && <button className={c.preset} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${world.ports.length}`}</button>}
+          </div>
+        </div>
+      )}
+      <div className={c.shipsNote}>A port visit is Global Fishing Watch’s apparent port visit from AIS (entering within 3 km of an anchorage, stopping, leaving). Port names from
+        the <a className={c.src} href="https://msi.nga.mil/Publications/WPI" target="_blank" rel="noopener noreferrer">World Port Index</a> where it lists the port, otherwise GFW’s own name.</div>
+    </section>
+  )
 }
 
 // ── Pieces ──────────────────────────────────────────────────────────────────

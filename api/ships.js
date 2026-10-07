@@ -48,6 +48,7 @@ import { portClimateTrace } from '../lib/ships/climateTrace.js'
 import { classIndex, mmsisOfClasses, classCountsFor } from '../lib/ships/typeSearch.js'
 import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
 import { scrubberReport, scrubberReportDays, readScrubberEdition, listScrubberEditions } from '../lib/ships/scrubberReport.js'
+import { scrubberPortsBatch, scrubberWorldPorts } from '../lib/ships/scrubberPorts.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
@@ -98,7 +99,7 @@ const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_
 
 // Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
 // only with the CRON_SECRET bearer the GitHub bakes hold; browsers and everyone else get 401 and never reach the DB.
-const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels', 'importActivity', 'importAisMonth', 'importMcIdentity'])
+const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels', 'importActivity', 'importAisMonth', 'importMcIdentity', 'scrubberPortVisits'])
 function bakeAuthorized(req) {
   const secret = process.env.CRON_SECRET
   const auth = String(req.headers['authorization'] || '')
@@ -229,6 +230,29 @@ export default async function handler(req, res) {
       return ed ? send(res, 200, ed, 'public, max-age=3600, s-maxage=31536000, immutable') : send(res, 404, { error: 'no such edition' })
     }
     if (op === 'scrubberEditions') return send(res, 200, { editions: await listScrubberEditions(q, S) }, 'public, max-age=0, s-maxage=300')
+    //   POST /api/ships?op=scrubberPortVisits { offset }  (CRON_SECRET bearer only) → one time-boxed batch of GFW port-visit fetches for
+    //        the scrubber-fitted ships (lib/ships/scrubberPorts.js): { total, next, done, ships, calls }
+    //   /api/ships?op=scrubberWorldPorts&from=YYYY-MM&to=YYYY-MM → their port visits worldwide, by port and by country
+    if (op === 'scrubberPortVisits') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { body = {} }
+      }
+      const gfw = gfwFor()
+      if (!gfw) return send(res, 503, { error: 'GFW not configured' })
+      const pool = shipsPool()
+      try { return send(res, 200, await scrubberPortsBatch(pool, S, gfw, { offset: body.offset, budgetMs: 200_000 }), 'no-store') } finally { await pool.end() }
+    }
+    if (op === 'scrubberWorldPorts') {
+      const from = p.get('from') || '', to = p.get('to') || ''
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(from) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(to) || from > to) return send(res, 400, { error: 'from / to must be YYYY-MM' })
+      const geo = p.get('geo')
+      const states = geo === 'WA' ? ['WA'] : geo === 'BC' ? ['BC'] : null
+      return send(res, 200, await scrubberWorldPorts(q, S, { from, to, states }), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
     if (op === 'scrubberReport' || op === 'scrubberReportDays') {
       try {
         const out = op === 'scrubberReport'

@@ -16,13 +16,13 @@ const S = {
   mep: { name: 'MEP Alliance', href: 'https://www.mepalliance.org/list-of-scrubber-fitted-ships' },
 }
 
-export const COUNTS_AS_OF = '2026-10-02'
+export const COUNTS_AS_OF = '2026-10-07'
 
 // { label, value, sources: [S.x | plain string] }
 export const COUNTS = [
   { label: 'Ships', value: '41,153', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
   { label: 'Ports on the map', value: '9,159', detail: 'World Port Index 2,951 · Climate TRACE 6,006 · GFW 168 · DFO harbours 34', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
-  { label: 'Terminals', value: '59', detail: '81 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
+  { label: 'Terminals', value: '92', detail: '127 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
   { label: 'Terminal visits', value: '37,554', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
   { label: 'Port visits', value: '96,465', sources: [S.gfw] },
   { label: 'Ship-port emission estimates', value: '17,907', sources: [S.ct] },
@@ -39,6 +39,9 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  // Terminals 92 / berths 127 / 59 WA terminals with county, city and owner: read-only production query 2026-10-07 after
+  // prod.sh import-terminals + terminal-places. New months / recounts are filled by the ships-noaa-month workflow.
+  { date: '2026-10-07', area: 'Reports · Terminals', text: 'New: a report on scrubber-fitted ships calling at terminals, at earthatlas.org/ships/reports/scrubbers. For each port, terminal and refinery it shows, month by month, how many calls ships fitted with exhaust-gas scrubbers made and how many different scrubber ships made them, grouped as ports (docks a public port district owns), other terminals and refineries, with totals, a chart that opens day by day, a breakdown by county and city or town, the list of ships at each facility, and a CSV download. Pick Washington, British Columbia or both, and any period. A call is a ship stopped at a berth, counted from NOAA’s minute-by-minute AIS; a ship counts as scrubber-fitted when it is in the IMO’s scrubber notifications or on the MEP Alliance lists. 33 terminals were added for it, so the map now has 92: Seattle’s Smith Cove and Bell Street cruise terminals, the Seattle and Tacoma container terminals, TOTE, Tacoma’s Terminal 7 and Blair Waterway wharf, the Everett, Port Angeles, Bellingham and Olympia port terminals, and for the first time the Columbia River (Vancouver, Kalama, Longview) and Grays Harbor. Every Washington terminal now carries its county, its city or town (US Census Bureau) and who owns the dock (US Army Corps of Engineers dock records). Calls at the new terminals, and January to June 2025, are added as they are counted; until then the report says “not counted yet”, never zero. Dated editions of the report can be frozen so cited numbers never change. “How this is sourced” now also says what kind of data each part is and how current it is, and why tugs are counted only from NOAA’s per-minute positions.' },
   // 1,321 = ships in production with a USCG PSIX "Freight Ship · General" record (read-only count 2026-10-07).
   { date: '2026-10-07', area: 'Ship kinds · Terminals', text: 'Ships the U.S. Coast Guard lists as “Freight Ship · General” are now classed as general cargo / multi-purpose ships instead of plain “Cargo” (1,321 ships). Grain and other bulk terminals count general cargo ships, so visits by these ships now count there instead of being listed as “could be”, for example POWER GLOBE at Seattle’s Terminal 86.' },
   // Numbers from prod.sh import-bc-permits 2026-10-07 (production): 33 facilities, 65 EMA authorizations, 115 NRCED records shown

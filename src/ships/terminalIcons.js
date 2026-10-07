@@ -16,6 +16,8 @@ const G = {
   bulk: '<path d="M3 19l6-9 3 4 3-5 6 10z"/>',
   chemical: '<path d="M9 3h6"/><path d="M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/>',
   forest: '<path d="M12 3l6 8h-3l4 6H5l4-6H6z"/><path d="M12 17v4"/>',
+  cruise: '<path d="M3 16l2 4h14l2-4z"/><path d="M6 16v-4h12v4"/><path d="M9 12V8h6v4"/><path d="M12 8V5"/>',
+  cargo: '<rect x="3" y="12" width="8" height="7"/><rect x="13" y="12" width="8" height="7"/><rect x="8" y="5" width="8" height="7"/>',
 }
 
 /** Families shown in the legend, in order: [id, glyph, label]. */
@@ -29,6 +31,8 @@ export const TERMINAL_FAMILIES = [
   ['grain', G.grain, 'Grain terminal'],
   ['bulk', G.bulk, 'Cement, aggregate or other bulk'],
   ['forest', G.forest, 'Forest products'],
+  ['cruise', G.cruise, 'Cruise terminal'],
+  ['cargo', G.cargo, 'Container, ro-ro or general cargo'],
 ]
 export const GLYPH = Object.fromEntries(TERMINAL_FAMILIES.map(([id, svg]) => [id, svg]))
 
@@ -50,6 +54,10 @@ export const TERMINAL_KIND = {
   scrap_metal_terminal: ['bulk', 'Scrap metal terminal'],
   other_bulk_terminal: ['bulk', 'Bulk terminal'],
   forest_products_terminal: ['forest', 'Forest products terminal'],
+  cruise_terminal: ['cruise', 'Cruise terminal'],
+  container_terminal: ['cargo', 'Container terminal'],
+  roro_terminal: ['cargo', 'Ro-ro / vehicle terminal'],
+  general_cargo_terminal: ['cargo', 'General cargo terminal'],
 }
 export const kindWords = (k) => TERMINAL_KIND[k]?.[1] || String(k || '').replace(/_/g, ' ')
 export const kindFamily = (k) => TERMINAL_KIND[k]?.[0] || 'bulk'

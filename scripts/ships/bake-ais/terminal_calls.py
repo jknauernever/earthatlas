@@ -25,6 +25,9 @@ REGION = "salish-v6"
 POINTS = os.path.join(HERE, "cache", "points", REGION)
 BOX = dict(w=-126.2, s=47.0, e=-122.05, n=49.6)  # region.py salish-v6 (read-only copy; region.py is not imported to keep its env default untouched)
 OUT = os.path.join(HERE, "cache", "terminal-calls")
+# Other points caches whose berths are counted too (2026-10-07: wa-columbia-v1, Grays Harbor + lower Columbia River). A berth
+# belongs to the region berths.json names for it; each region's day file is read alongside salish-v6's.
+EXTRA = {"wa-columbia-v1": os.path.join(HERE, "cache", "points", "wa-columbia-v1")}
 # Months reported in meta.json: every month from the first to the last day baked (2026-10-07: was fixed to 2025-07 … 2026-06,
 # so a month added by ships-noaa-month could never count as complete).
 
@@ -86,9 +89,10 @@ SELECT terminal, berth, mmsi, t, round(m, 1) AS m,
 """
 
 
-def bake_day(con, day_file, out_file, rule):
+def bake_day(con, day_files, out_file, rule):
     tmp = out_file + ".tmp"
-    sql = HITS_SQL.replace("$file", "'" + day_file.replace("'", "''") + "'").replace("$sog", str(float(rule["sogKn"])))
+    src = "[" + ",".join("'" + f.replace("'", "''") + "'" for f in day_files) + "]"
+    sql = HITS_SQL.replace("$file", src).replace("$sog", str(float(rule["sogKn"])))
     con.execute(f"COPY ({sql}) TO '{tmp}' (FORMAT parquet)")
     os.replace(tmp, out_file)
     return con.execute("SELECT count(*) FROM read_parquet(?)", [out_file]).fetchone()[0]
@@ -124,12 +128,20 @@ def export(con, bj, sha):
     for ym in month_range(min(days)[:7], max(days)[:7]):
         got = sum(1 for d in days if d.startswith(ym))
         months.append(dict(month=ym, days=got, of=days_in_month(ym), complete=got == days_in_month(ym)))
-    inside = {b["terminal"] for b in bj["berths"] if b["in_box"]}
+    # A region counts only when its day file was read for EVERY baked day (recorded per day in <hits>/regions.json); otherwise its
+    # terminals are "not covered", never 0.
+    try:
+        with open(os.path.join(hd, "regions.json")) as f:
+            read = json.load(f)
+    except FileNotFoundError:
+        read = {}
+    full = {"salish-v6"} | {r for r in EXTRA if all(r in read.get(d, []) for d in days)}
+    inside = {b["terminal"] for b in bj["berths"] if b["in_box"] and (b.get("region") or "salish-v6") in full}
     not_covered = sorted({b["terminal"] for b in bj["berths"]} - inside)
     meta = dict(bake_version=bj["bake_version"], berths_sha=sha, baked_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 input=dict(source="marinecadastre-ais", region=REGION, box=BOX, cache="scripts/ships/bake-ais/cache/points/salish-v6",
                            timestamps="base_date_time, UTC as MarineCadastre publishes it (stored without a zone marker in the cache)"),
-                days=days, months=months, not_covered=not_covered, hits=n)
+                regions=sorted(full), days=days, months=months, not_covered=not_covered, hits=n)
     with open(os.path.join(OUT, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)
     print(f"export: {n:,} stopped positions from {len(days)} days → {csv}; complete months: {sum(m['complete'] for m in months)}; not covered: {', '.join(not_covered) or 'none'}")
@@ -149,6 +161,13 @@ def main():
         files = sorted(glob.glob(os.path.join(POINTS, "*.parquet")))
     hd = hits_dir(bj, sha)
     os.makedirs(hd, exist_ok=True)
+    regs_path = os.path.join(hd, "regions.json")
+    try:
+        with open(regs_path) as fh:
+            regs = json.load(fh)
+    except FileNotFoundError:
+        regs = {}
+    want = {b.get("region") for b in bj["berths"] if b["in_box"]} & set(EXTRA)
     total = 0
     for i, f in enumerate(files, 1):
         day = os.path.basename(f)[:10]
@@ -158,9 +177,15 @@ def main():
         if not os.path.exists(f):
             print(f"{day}: no points file, skipped", flush=True)
             continue
-        n = bake_day(con, f, out, rule)
+        extra = [r for r in sorted(want) if os.path.exists(os.path.join(EXTRA[r], f"{day}.parquet"))]
+        for r in sorted(want - set(extra)):
+            print(f"{day}: no {r} points file: its terminals are not covered for this bake", flush=True)
+        n = bake_day(con, [f] + [os.path.join(EXTRA[r], f"{day}.parquet") for r in extra], out, rule)
+        regs[day] = ["salish-v6"] + extra
+        with open(regs_path, "w") as fh:
+            json.dump(regs, fh)
         total += n
-        print(f"[{i}/{len(files)}] {day}: {n:,} stopped positions near a berth", flush=True)
+        print(f"[{i}/{len(files)}] {day}: {n:,} stopped positions near a berth ({', '.join(regs[day])})", flush=True)
     print(f"done: {total:,} new stopped positions → {hd}")
 
 

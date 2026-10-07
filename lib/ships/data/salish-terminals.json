@@ -626,7 +626,12 @@
    "notes": [
     "Berth = centre of the untagged OSM pier and dolphin ways ≤0.08 km from the site polygon (ODbL slice).",
     "Not in Global Energy Monitor’s Global Gas Infrastructure Tracker (checked in the 2024-12-20 map file): GGIT does not track terminals used solely for storage or bunkering."
-   ]
+   ],
+   "ownership": {
+    "class": "private",
+    "source_url": "https://www.portoftacoma.com/puget-sound-energy-lng-facility",
+    "says": "Puget Sound Energy / Puget LNG LLC facility (Port of Tacoma page)"
+   }
   },
   {
    "id": "wa-km-harbor-island",
@@ -958,7 +963,12 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [],
+   "ownership": {
+    "class": "government",
+    "source_url": "https://www.navy.mil/Press-Office/Press-Releases/display-pressreleases/Article/2251554/manchester-fuel-depot-fuelies-celebrate-75-years/",
+    "says": "U.S. Navy fuel depot"
+   }
   },
   {
    "id": "wa-naswi",
@@ -1006,7 +1016,12 @@
    },
    "notes": [
     "Which unit runs the fuel pier, and whether it is in use, was not confirmed."
-   ]
+   ],
+   "ownership": {
+    "class": "government",
+    "source_url": "https://cnrnw.cnic.navy.mil/installations/nas-whidbey-island/",
+    "says": "U.S. Navy air station"
+   }
   },
   {
    "id": "wa-maxum-fairhaven",
@@ -1049,7 +1064,12 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [],
+   "ownership": {
+    "class": "private",
+    "source_url": "https://ecology.wa.gov/getattachment/9f5b39ba-216e-401a-a51d-ca22230e979f/COFR-Compliance-Report-8-19-2025.pdf",
+    "says": "Maxum Petroleum (Pilot Thomas Logistics) terminal, per WA Ecology"
+   }
   },
   {
    "id": "wa-covich-williams",
@@ -3308,6 +3328,1254 @@
     "Berth = the IMO GISIS point of ISPS facility CACHM-0002 (degrees + decimal minutes, about 20 m); no BC Ports and Terminals or OpenStreetMap row was used.",
     "No source found lists the products handled; kind “product terminal” rests on the Shell rack price for Chemainus."
    ]
+  },
+  {
+   "id": "wa-pos-t91-smith-cove",
+   "name": "Smith Cove Cruise Terminal (Terminal 91, Seattle)",
+   "kind": "cruise_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UNB",
+     "name": "PORT OF SEATTLE TERMINAL 91, PIER 91.",
+     "lat": 47.626389,
+     "lon": -122.38277,
+     "basis": "usace_dock",
+     "ref": "0UNB"
+    },
+    {
+     "key": "usace-0UMW",
+     "name": "PORT OF SEATTLE TERMINAL 91, PIER 90.",
+     "lat": 47.626389,
+     "lon": -122.38,
+     "basis": "usace_dock",
+     "ref": "0UMW"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UNB",
+     "0UMW"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Pier 91 is the cruise berth pair; Pier 90 also moors the Port's floating equipment and North Pacific fishing fleet.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Cruise Terminals of America (manages the terminal for the Port of Seattle)",
+   "operator_source_url": "https://www.portseattle.org/places/smith-cove-cruise-terminal-pier-91",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pos-pier66-bell-street",
+   "name": "Bell Street Cruise Terminal (Pier 66, Seattle)",
+   "kind": "cruise_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UMT",
+     "name": "PORT OF SEATTLE, BELL STREET CRUISE TERMINAL, PIER 66",
+     "lat": 47.611111,
+     "lon": -122.35,
+     "basis": "usace_dock",
+     "ref": "0UMT"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UMT"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Cruise Terminals of America (manages the terminal for the Port of Seattle)",
+   "operator_source_url": "https://www.portseattle.org/places/smith-cove-cruise-terminal-pier-91",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-t5",
+   "name": "Terminal 5 (Seattle)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UEJ",
+     "name": "TERMINAL 5 SEATTLE, SSA MARINE",
+     "lat": 47.576944,
+     "lon": -122.36138,
+     "basis": "usace_dock",
+     "ref": "0UEJ"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UEJ"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "SSA Terminals (SSA Marine with Terminal Investment Ltd.)",
+   "operator_source_url": "https://www.ajot.com/premium/ajot-northwest-seaport-alliance-terminal-5-is-the-key",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-t18",
+   "name": "Terminal 18 (Seattle, Harbor Island)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UN9",
+     "name": "S S A TERMINALS, TERMINAL 18, BERTHS 2-6",
+     "lat": 47.583557,
+     "lon": -122.346129,
+     "basis": "usace_dock",
+     "ref": "0UN9"
+    },
+    {
+     "key": "usace-0UNA",
+     "name": "SSA TERMINALS, TERMINAL 18, BERTH 7",
+     "lat": 47.576111,
+     "lon": -122.34583,
+     "basis": "usace_dock",
+     "ref": "0UNA"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UN9",
+     "0UNA"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "SSA Marine",
+   "operator_source_url": "https://www.nwseaportalliance.com/cargo-operations/terminals/terminal-18/terminal-18-update",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-t30",
+   "name": "Terminal 30 (Seattle, incl. former Terminal 25)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UNU",
+     "name": "TRANS PACIFIC CONTAINER SERVICE CORP., TERMINAL 30 WHARF",
+     "lat": 47.582943,
+     "lon": -122.34293,
+     "basis": "usace_dock",
+     "ref": "0UNU"
+    },
+    {
+     "key": "usace-0UNT",
+     "name": "SSA TERMINALS, TERMINAL 25 WHARF",
+     "lat": 47.575556,
+     "lon": -122.34305,
+     "basis": "usace_dock",
+     "ref": "0UNT"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UNU",
+     "0UNT"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "SSA Marine",
+   "operator_source_url": "https://www.nwseaportalliance.com/cargo-operations/terminals/terminal-30/terminal-30-update",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-t46",
+   "name": "Terminal 46 (Seattle)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UPD",
+     "name": "TOTAL TERMINALS, TERMINAL 46 WHARF",
+     "lat": 47.596667,
+     "lon": -122.34111,
+     "basis": "usace_dock",
+     "ref": "0UPD"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UPD"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE still describes container service; container operations here ended, so the kind is general cargo and status is not confirmed.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "The Northwest Seaport Alliance (international container operations ended)",
+   "operator_source_url": "https://nwseaportalliance.com/newsroom/northwest-seaport-alliance-statement-north-harbors-terminal-46",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-husky",
+   "name": "Husky Terminal (Tacoma, Terminals 3–4)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UFH",
+     "name": "PORT OF TACOMA, HUSKY TERMINAL, TERMINAL 4 WHARF",
+     "lat": 47.271111,
+     "lon": -122.41833,
+     "basis": "usace_dock",
+     "ref": "0UFH"
+    },
+    {
+     "key": "usace-0T7T",
+     "name": "Marine Terminals Corp., Terminal 4, Evergreen Terminal Wharf.",
+     "lat": 47.2725,
+     "lon": -122.40583,
+     "basis": "usace_dock",
+     "ref": "0T7T"
+    },
+    {
+     "key": "usace-0T7U",
+     "name": "Marine Terminals Corp., Terminal 3, Tacoma Wharf.",
+     "lat": 47.276389,
+     "lon": -122.41277,
+     "basis": "usace_dock",
+     "ref": "0T7U"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UFH",
+     "0T7T",
+     "0T7U"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Terminal 3 wharf (USACE 0T7U) added 2026-10-07: a container ship stopped ~140 m from it and ~520 m from the Terminal 4 point on the 2025-07-15 check day.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Husky Terminal & Stevedoring, Inc.",
+   "operator_source_url": "https://www.nwseaportalliance.com/cargo-operations/terminals/husky-terminal-husky/husky-terminal-husky-update",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-pct",
+   "name": "Pierce County Terminal (Tacoma)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UFL",
+     "name": "PORT OF TACOMA, PIERCE COUNTY TERMINAL, BERTHS A AND B",
+     "lat": 47.253889,
+     "lon": -122.37833,
+     "basis": "usace_dock",
+     "ref": "0UFL"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UFL"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE purpose text (lumber, heavy-lift) predates the container terminal.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Everport Terminal Services",
+   "operator_source_url": "https://www.nwseaportalliance.com/cargo-operations/terminals/pierce-county-terminal-pct/pierce-county-terminal-pct-update",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-wut",
+   "name": "Washington United Terminals (Tacoma)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0Z63",
+     "name": "WASHINGTON UNITED TERMINALS, TACOMA WHARF (WUT)",
+     "lat": 47.2625,
+     "lon": -122.38972,
+     "basis": "usace_dock",
+     "ref": "0Z63"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0Z63"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Washington United Terminals",
+   "operator_source_url": "https://www.nwseaportalliance.com/cargo-operations/terminals/washington-united-terminals-wut/washington-united-terminals-wut-update",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-nwsa-west-sitcum",
+   "name": "West Sitcum Terminal (Tacoma)",
+   "kind": "container_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0YZL",
+     "name": "WEST SITCUM TERMINAL, TACOMA",
+     "lat": 47.2675,
+     "lon": -122.41611,
+     "basis": "usace_dock",
+     "ref": "0YZL"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0YZL"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "SSA Marine (for Matson)",
+   "operator_source_url": "https://nwseaportalliance.com/newsroom/nwsa-signs-lease-ssa-marine-manage-matsons-tacoma-terminal",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-tote-tacoma",
+   "name": "TOTE Maritime Alaska terminal (Tacoma)",
+   "kind": "roro_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0YVY",
+     "name": "TOTEM OCEAN TRAILER EXPRESS, TACOMA TERMINAL WHARF",
+     "lat": 47.274444,
+     "lon": -122.405,
+     "basis": "usace_dock",
+     "ref": "0YVY"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0YVY"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "TOTE Maritime Alaska",
+   "operator_source_url": "https://www.marinelink.com/news/maritime/tote-terminal",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pot-t7",
+   "name": "Terminal 7 (Tacoma)",
+   "kind": "roro_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UGZ",
+     "name": "PORT OF TACOMA, TERMINAL 7A AND 7 B.",
+     "lat": 47.267778,
+     "lon": -122.41388,
+     "basis": "usace_dock",
+     "ref": "0UGZ"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UGZ"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE: conventional, containerized and roll-on/roll-off general cargo.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "The Northwest Seaport Alliance",
+   "operator_source_url": "https://nwseaportalliance.com/cargo-operations/terminals/terminal-7",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pot-blair",
+   "name": "Blair Waterway terminal wharf (Tacoma)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UFJ",
+     "name": "PORT OF TACOMA, BLAIR WATERWAY TERMINAL WHARF.",
+     "lat": 47.259722,
+     "lon": -122.38444,
+     "basis": "usace_dock",
+     "ref": "0UFJ"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UFJ"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE lists log shipments; on the 2025-07-15 check day a vehicle carrier and a container ship were berthed here (OpenStreetMap names the piers \"Blair\" and \"East Blair\").",
+    "Added 2026-10-07 for the scrubber-ship calls report. Status not yet hand-checked; operator checked 2026-10-07."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Tacoma / Northwest Seaport Alliance (breakbulk at East Blair One)",
+   "operator_source_url": "https://portoftacoma.com/news/breakbulk-operations-east-blair-one",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-poe-seaport",
+   "name": "Port of Everett seaport (South, Pacific and Hewitt Avenue terminals)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0TE6",
+     "name": "Port of Everett, South Terminal, Berth No. 1.",
+     "lat": 47.975278,
+     "lon": -122.22722,
+     "basis": "usace_dock",
+     "ref": "0TE6"
+    },
+    {
+     "key": "usace-0YTL",
+     "name": "PORT OF EVERETT, PACIFIC TERMINAL WHARF",
+     "lat": 47.977454,
+     "lon": -122.223759,
+     "basis": "usace_dock",
+     "ref": "0YTL"
+    },
+    {
+     "key": "usace-0U6V",
+     "name": "PORT OF EVERETT, HEWITT AVENUE TERMINAL, PIER 1",
+     "lat": 47.978333,
+     "lon": -122.22277,
+     "basis": "usace_dock",
+     "ref": "0U6V"
+    },
+    {
+     "key": "usace-0U6Y",
+     "name": "PORT OF EVERETT HEWITT AVENUE TERMINAL, PIER NO. 3",
+     "lat": 47.981389,
+     "lon": -122.22111,
+     "basis": "usace_dock",
+     "ref": "0U6Y"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0TE6",
+     "0YTL",
+     "0U6V",
+     "0U6Y"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Everett",
+   "operator_source_url": "https://portofeverett.com/seaport/seaport_facilities.php",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-popa-marine-terminal",
+   "name": "Port Angeles marine terminals 1 and 3",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UY3",
+     "name": "PORT OF PORT ANGELES, TERMINAL NO. 1.",
+     "lat": 48.124167,
+     "lon": -123.44,
+     "basis": "usace_dock",
+     "ref": "0UY3"
+    },
+    {
+     "key": "usace-0UXL",
+     "name": "PORT OF PORT ANGELES, TERMINAL NO. 3.",
+     "lat": 48.125322,
+     "lon": -123.443664,
+     "basis": "usace_dock",
+     "ref": "0UXL"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UY3",
+     "0UXL"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Terminal 1 is also a lay berth for ships waiting between voyages.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Port Angeles",
+   "operator_source_url": "https://portofpa.com/208/Terminal-Facilities",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pob-shipping-terminal",
+   "name": "Bellingham Shipping Terminal",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UBP",
+     "name": "P O B WHATCOM INTERNAT SHIP TERM. WHARF(GEN CARGO)",
+     "lat": 48.745278,
+     "lon": -122.49416,
+     "basis": "usace_dock",
+     "ref": "0UBP"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UBP"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Bellingham",
+   "operator_source_url": "https://portofbellingham.com/296/Bellingham-Shipping-Terminal",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-poo-marine-terminal",
+   "name": "Port of Olympia marine terminal",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UUH",
+     "name": "PORT OF OLYMPIA, TERMINAL WHARF",
+     "lat": 47.054722,
+     "lon": -122.905,
+     "basis": "usace_dock",
+     "ref": "0UUH"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UUH"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Olympia",
+   "operator_source_url": "https://seaport.portolympia.com/?p=502",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pov-t2",
+   "name": "Port of Vancouver USA Terminal 2 (berths 1–4)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UUN",
+     "name": "PORT OF VANCOUVER TERM NO 2 BERTHS 1-4",
+     "lat": 45.632778,
+     "lon": -122.69777,
+     "basis": "usace_dock",
+     "ref": "0UUN"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UUN"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Vancouver USA",
+   "operator_source_url": "https://portvanusa.com/assets/POV_Marine-Guide_2024_FNL.pdf",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pov-t2-berth5",
+   "name": "Port of Vancouver USA Terminal 2 berth 5 (liquid bulk)",
+   "kind": "product_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UV4",
+     "name": "PORT OF VANCOUVER, TERMINAL 2 BERTH 5, OIL DOCK",
+     "lat": 45.634722,
+     "lon": -122.70166,
+     "basis": "usace_dock",
+     "ref": "0UV4"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UV4"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "NuStar Energy (bulk chemicals and fuel terminal)",
+   "operator_source_url": "https://apps.ecology.wa.gov/cleanupsearch/document/759",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pov-t3",
+   "name": "Port of Vancouver USA Terminal 3 (berths 8–9)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UUP",
+     "name": "PORT OF VANCOUVER TERMINAL NO 3, BERTHS 8-9",
+     "lat": 45.638333,
+     "lon": -122.70833,
+     "basis": "usace_dock",
+     "ref": "0UUP"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UUP"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Vancouver USA",
+   "operator_source_url": "https://portvanusa.com/assets/POV_Marine-Guide_2024_FNL.pdf",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pov-t4",
+   "name": "Port of Vancouver USA Terminal 4 (autos, berths 10–14)",
+   "kind": "roro_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0ZBD",
+     "name": "PORT OF VANCOUVER, TERM 4, BERTH 10",
+     "lat": 45.640556,
+     "lon": -122.71555,
+     "basis": "usace_dock",
+     "ref": "0ZBD"
+    },
+    {
+     "key": "usace-0ZBC",
+     "name": "PORT OF VANCOUVER TERM 4, BERTHS 13-14",
+     "lat": 45.643889,
+     "lon": -122.725,
+     "basis": "usace_dock",
+     "ref": "0ZBC"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0ZBD",
+     "0ZBC"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Vancouver USA (Subaru of America auto processing)",
+   "operator_source_url": "https://portvanusa.com/marine/roro",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pov-dry-bulk",
+   "name": "Port of Vancouver USA dry bulk loading wharf",
+   "kind": "dry_bulk_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UUQ",
+     "name": "PORT OF VANCOUVER, DRY BULK MATERIALS LOADING WHF",
+     "lat": 45.637222,
+     "lon": -122.70583,
+     "basis": "usace_dock",
+     "ref": "0UUQ"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UUQ"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Vancouver USA",
+   "operator_source_url": "https://portvanusa.com/assets/POV_Marine-Guide_2024_FNL.pdf",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-united-grain-vancouver",
+   "name": "Vancouver grain elevator wharf (USACE: \"United Harvest\")",
+   "kind": "grain_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UV5",
+     "name": "UNITED HARVEST VANCOUVER GRAIN ELEVATOR WHARF",
+     "lat": 45.630278,
+     "lon": -122.69277,
+     "basis": "usace_dock",
+     "ref": "0UV5"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UV5"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "United Grain Corporation",
+   "operator_source_url": "https://columbian.com/news/2019/aug/04/united-grain-celebrates-50-years",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-kalama-export",
+   "name": "Kalama Export grain elevator wharves",
+   "kind": "grain_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UXM",
+     "name": "KALAMA EXPORT CO., GRAIN ELEVATOR WHARVES",
+     "lat": 46.026499,
+     "lon": -122.868692,
+     "basis": "usace_dock",
+     "ref": "0UXM"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UXM"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Kalama Export Company",
+   "operator_source_url": "https://www.drybulkmagazine.com/ports-terminals/04112024/port-of-kalama-receives-us263-million-federal-grant-for-rail-expansion-project/",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-temco-kalama",
+   "name": "TEMCO Kalama grain elevator",
+   "kind": "grain_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0ZB9",
+     "name": "TEMCO (CHS CARGILL), KALAMA GRAIN ELEVATOR",
+     "lat": 45.984409,
+     "lon": -122.835497,
+     "basis": "usace_dock",
+     "ref": "0ZB9"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0ZB9"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "TEMCO (CHS and Cargill joint venture)",
+   "operator_source_url": "https://www.drybulkmagazine.com/ports-terminals/04112024/port-of-kalama-receives-us263-million-federal-grant-for-rail-expansion-project/",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-emerald-kalama",
+   "name": "Kalama chemical wharf (USACE: \"Emerald Kalama Chemical\")",
+   "kind": "chemical_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UX3",
+     "name": "EMERALD KALAMA CHEMICAL LLC WHARF",
+     "lat": 46.021314,
+     "lon": -122.861149,
+     "basis": "usace_dock",
+     "ref": "0UX3"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UX3"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "LANXESS (acquired Emerald Kalama Chemical, 2021)",
+   "operator_source_url": "https://adhesivesmag.com/articles/98758-lanxess-completes-emerald-kalama-chemical-acquisition",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pol-berths-1-3",
+   "name": "Port of Longview berths 1–3",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0T72",
+     "name": "Port of Longview, Berth No. 1.",
+     "lat": 46.107222,
+     "lon": -122.95611,
+     "basis": "usace_dock",
+     "ref": "0T72"
+    },
+    {
+     "key": "usace-0T7H",
+     "name": "Port of Longview, Berths Nos. 2 and 3.",
+     "lat": 46.105833,
+     "lon": -122.95361,
+     "basis": "usace_dock",
+     "ref": "0T7H"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0T72",
+     "0T7H"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Longview",
+   "operator_source_url": "https://portoflongview.com/DocumentCenter/View/4165/Marine-Brochure",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pol-berths-5-7",
+   "name": "Port of Longview berths 5–7",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0T7K",
+     "name": "Port of Longview, Petroleum Coke Wharf, Berth No. 5.",
+     "lat": 46.103333,
+     "lon": -122.94777,
+     "basis": "usace_dock",
+     "ref": "0T7K"
+    },
+    {
+     "key": "usace-0UUR",
+     "name": "PORT OF LONGVIEW BERTH # 6 & 7",
+     "lat": 46.102222,
+     "lon": -122.94472,
+     "basis": "usace_dock",
+     "ref": "0UUR"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0T7K",
+     "0UUR"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Berth 5 is the former petroleum-coke wharf; USACE also lists logs.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Longview",
+   "operator_source_url": "https://portoflongview.com/DocumentCenter/View/4165/Marine-Brochure",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-egt-longview",
+   "name": "EGT grain terminal (Port of Longview berth 9)",
+   "kind": "grain_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-11TB",
+     "name": "PORT OF LONGVIEW BERTH 9 EGT",
+     "lat": 46.1089,
+     "lon": -122.9577,
+     "basis": "usace_dock",
+     "ref": "11TB"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "11TB"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "EGT Development, LLC (Port of Longview tenant)",
+   "operator_source_url": "https://portoflongview.com/DocumentCenter/View/4165/Marine-Brochure",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-weyerhaeuser-longview",
+   "name": "Weyerhaeuser Longview export docks",
+   "kind": "forest_products_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0T71",
+     "name": "WEYERHAEUSER CO., LONGVIEW PLANT, WOOD-PULP EXPORT DOCK",
+     "lat": 46.111111,
+     "lon": -122.96055,
+     "basis": "usace_dock",
+     "ref": "0T71"
+    },
+    {
+     "key": "usace-0T5X",
+     "name": "WEYERHAEUSER CO., LONGVIEW PLANT, WOOD-PULP EXPORT DOCK",
+     "lat": 46.125556,
+     "lon": -122.9825,
+     "basis": "usace_dock",
+     "ref": "0T5X"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0T71",
+     "0T5X"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Weyerhaeuser (log export dock)",
+   "operator_source_url": "https://www.weyerhaeuser.com/blog/longview-dock-berth-rebuild/",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pogh-t2",
+   "name": "Port of Grays Harbor Terminal 2",
+   "kind": "dry_bulk_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UWW",
+     "name": "PORT OF GRAYS HARBOR, TERMINAL NO. 2 WHARF",
+     "lat": 46.964722,
+     "lon": -123.85222,
+     "basis": "usace_dock",
+     "ref": "0UWW"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UWW"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "USACE lists logs and lumber; Terminal 2 also loads soybean meal.",
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Grays Harbor (bulk loading with Ag Processing Inc.)",
+   "operator_source_url": "https://www.portofgraysharbor.com/terminal-info",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pogh-t4",
+   "name": "Port of Grays Harbor Terminal 4",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0YZ4",
+     "name": "PORT OF GRAYS HARBOR, TERMINAL NO. 4 WHARF",
+     "lat": 46.960833,
+     "lon": -123.83861,
+     "basis": "usace_dock",
+     "ref": "0YZ4"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0YZ4"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Grays Harbor (ro-ro and breakbulk; Pasha autos)",
+   "operator_source_url": "https://www.portofgraysharbor.com/terminal-info",
+   "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "wa-pogh-t1",
+   "name": "Port of Grays Harbor Terminal 1",
+   "kind": "other_bulk_terminal",
+   "country": "US",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "usace-0UWV",
+     "name": "PORT OF GRAYS HARBOR, TERMINAL NO. 1 WHARF",
+     "lat": 46.966389,
+     "lon": -123.85527,
+     "basis": "usace_dock",
+     "ref": "0UWV"
+    }
+   ],
+   "sources": {
+    "usace-docks": [
+     "0UWV"
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (cruise, container, ro-ro and Columbia River / Grays Harbor terminals). Status not yet hand-checked; operator checked 2026-10-07 against the page linked."
+   ],
+   "added": "2026-10-07",
+   "operator": "Port of Grays Harbor (liquid bulk for Renewable Energy Group and BWC Terminals)",
+   "operator_source_url": "https://www.portofgraysharbor.com/terminal-info",
+   "operator_checked": "2026-10-07"
   }
  ]
 }

@@ -12,6 +12,11 @@ each other.
              MarineCadastre AIS has strong coverage up to ~49.5 N (Vancouver,
              Burrard Inlet, Nanaimo, Roberts Bank), and a west edge at -126.2
              puts the detailed/US-wide seam in open ocean, off Cape Flattery.
+  wa-columbia-v1  W -124.3 S 45.55 E -122.55 N 47.0  (2026-10-07, scrubber-ship calls
+             report) Grays Harbor and the lower Columbia River up to Vancouver WA.
+             Terminal calls only: no land mask, tracks or tiles are built for it.
+             fetch_points.py --also wa-columbia-v1 fills it from the same daily read
+             as salish-v6. Its north edge is salish-v6's south edge.
 """
 import os
 
@@ -41,6 +46,14 @@ REGIONS = {
         land_prefix="salish-v6-osm",
         build=os.path.join(HERE, "build", "v6"),
         tiles=os.path.join(HERE, "build", "v6", "track_tiles"),
+    ),
+    "wa-columbia-v1": dict(
+        bbox=dict(w=-124.3, s=45.55, e=-122.55, n=47.0),
+        land_source=None, land=None, land_note="none: terminal calls only",
+        points=os.path.join(HERE, "cache", "points", "wa-columbia-v1"),
+        land_cache=None, land_prefix=None,
+        build=os.path.join(HERE, "build", "wa-columbia-v1"),
+        tiles=None,
     ),
 }
 

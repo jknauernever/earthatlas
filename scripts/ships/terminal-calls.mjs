@@ -18,7 +18,7 @@ import { createInterface } from 'node:readline'
 import path from 'node:path'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource, startRun, finishRun } from '../../lib/ships/store.js'
-import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, officialBerthLength, berthRadiusM, inAisBox, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
+import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, officialBerthLength, berthRadiusM, inAisBox, aisRegionOf, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
 
 const DIR = 'scripts/ships/bake-ais/cache/terminal-calls'
 const args = process.argv.slice(2)
@@ -67,7 +67,7 @@ async function berths() {
     const doc = r.official ? officialBerthLength(r.official) : null
     const len = doc || (own ? { m: own, from: `BC Ports and Terminals berth description (${r.official_berth})` } : berthLength({ desc: r.desc, usaceBerthingLargestFt: ft }))
     return { terminal: r.terminal, kind: r.kind, berth: r.berth, lat: r.lat, lon: r.lon, basis: r.basis,
-      length_m: len?.m ?? null, length_from: len?.from ?? null, radius_m: berthRadiusM(len?.m), in_box: inAisBox(r.lat, r.lon) }
+      length_m: len?.m ?? null, length_from: len?.from ?? null, radius_m: berthRadiusM(len?.m), in_box: inAisBox(r.lat, r.lon), region: aisRegionOf(r.lat, r.lon) }
   })
   await mkdir(DIR, { recursive: true })
   await writeFile(path.join(DIR, 'berths.json'), JSON.stringify({ bake_version: BAKE_VERSION, rule: CALL_RULE, berths: out }, null, 1))

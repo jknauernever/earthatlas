@@ -8,6 +8,8 @@
 #   5. NOAA ship identities over every month (op=importMcIdentity, resumable batches)
 # When a month lands, terminal and anchorage cards switch from GFW estimates to NOAA's counts, and the GFW lines step aside in the box.
 # Test (no production writes): Run workflow with test_day=YYYY-MM-DD → steps 1–3 for one day, dry run, results kept as an artifact.
+# Terminal calls also cover the wa-columbia-v1 box (Grays Harbor + lower Columbia River, 2026-10-07): step 1 fills its cache from the
+# same daily read. calls_only=true redoes steps 1 and 3 for months already in the index (new terminals or berths) and skips 2, 4, 5.
 # Writes go through CRON_SECRET-locked endpoints and one-file upload tokens; CI never holds a database or Blob credential.
 name: ships-noaa-month
 on:
@@ -19,6 +21,7 @@ on:
     inputs:
       months: { description: 'Optional: these months (YYYY-MM list) instead of the check', default: '' }
       test_day: { description: 'Optional: test one day (YYYY-MM-DD), no production writes', default: '' }
+      calls_only: { description: 'Only recount terminal calls + anchorage stays for these months (no tracks, publish or identities)', type: boolean, default: false }
 
 concurrency:
   group: ships-noaa-month
@@ -85,6 +88,7 @@ jobs:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       YM: ${{ matrix.ym }}
       TEST: ${{ github.event_name == 'push' || inputs.test_day != '' }}
+      CALLS_ONLY: ${{ inputs.calls_only == true }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,13 +116,13 @@ jobs:
           cd scripts/ships/bake-ais
           mkdir -p cache/land cache/terminal-calls cache/anchorage-stays
           # Masks only for building tracks (not in a test).
-          [ "$TEST" = true ] || for f in salish-v6-osm-inland-500m.parquet salish-v6-osm-land-0m.parquet; do curl -fsSL -o "cache/land/$f" "$BAKE_INPUTS/$f"; done
+          [ "$TEST" = true ] || [ "$CALLS_ONLY" = true ] || for f in salish-v6-osm-inland-500m.parquet salish-v6-osm-land-0m.parquet; do curl -fsSL -o "cache/land/$f" "$BAKE_INPUTS/$f"; done
           cp inputs/berths.json cache/terminal-calls/berths.json
           cp inputs/anchorages.json cache/anchorage-stays/anchorages.json
       - name: Fetch ${{ matrix.ym }} (NOAA daily points, salish-v6 box)
-        run: cd scripts/ships/bake-ais && python3 fetch_points.py "$YM" --jobs 4
+        run: cd scripts/ships/bake-ais && python3 fetch_points.py "$YM" --jobs 4 --also wa-columbia-v1
       - name: Tracks, packs, identities
-        if: env.TEST != 'true'
+        if: env.TEST != 'true' && env.CALLS_ONLY != 'true'
         run: cd scripts/ships/bake-ais && python3 build_tracks.py "$YM"
       - name: Terminal calls
         run: |
@@ -139,16 +143,17 @@ jobs:
           name: noaa-test-${{ matrix.ym }}
           path: |
             scripts/ships/bake-ais/cache/points/salish-v6/*.parquet
+            scripts/ships/bake-ais/cache/points/wa-columbia-v1/*.parquet
             scripts/ships/bake-ais/cache/terminal-calls/hits.csv
             scripts/ships/bake-ais/cache/terminal-calls/meta.json
             scripts/ships/bake-ais/cache/anchorage-stays/hits.csv
             scripts/ships/bake-ais/cache/anchorage-stays/meta.json
           retention-days: 7
       - name: Publish ${{ matrix.ym }} (tiles, pack, identities → Blob; month → Salish index)
-        if: env.TEST != 'true'
+        if: env.TEST != 'true' && env.CALLS_ONLY != 'true'
         run: node scripts/ships/bake-ais/publish.mjs "$YM" scripts/ships/bake-ais/build/v6/track_tiles scripts/ships/bake-ais/build/v6
       - name: NOAA ship identities (every month, resumable batches)
-        if: env.TEST != 'true'
+        if: env.TEST != 'true' && env.CALLS_ONLY != 'true'
         run: |
           offset=0; tries=0
           while :; do

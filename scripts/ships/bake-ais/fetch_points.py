@@ -16,6 +16,8 @@ Run:  python3 fetch_points.py 2026-06                 # one month
       python3 fetch_points.py 2026-06 --jobs 3
       SHIPS_REGION=salish-v6 python3 fetch_points.py 2026-06   # the bigger box
       python3 fetch_points.py 2026-06-15                  # one day (the ships-noaa-month workflow's test)
+      SHIPS_REGION=salish-v6 python3 fetch_points.py 2026-06 --also wa-columbia-v1
+                                                          # also fill other regions' caches from the SAME daily read
 Exits non-zero when a day failed (a missing day, not yet published, is reported, not an error).
 Deps: pip install duckdb
 """
@@ -53,25 +55,45 @@ def days_in(y, m):
         d += dt.timedelta(days=1)
 
 
+# Extra regions filled from the same daily read (--also). Each keeps its own cache dir (region.py).
+ALSO = []
+
+
+def box_sql(b):
+    return f"(longitude BETWEEN {b['w']} AND {b['e']} AND latitude BETWEEN {b['s']} AND {b['n']})"
+
+
 def fetch_day(d):
-    out = os.path.join(OUT, f"{d.isoformat()}.parquet")
-    if os.path.exists(out):
+    targets = [(BBOX, OUT)] + [(region.REGIONS[r]["bbox"], region.REGIONS[r]["points"]) for r in ALSO]
+    outs = [(b, os.path.join(o, f"{d.isoformat()}.parquet")) for b, o in targets]
+    todo = [(b, out) for b, out in outs if not os.path.exists(out)]
+    if not todo:
         return d, "cached", None
     url = URL.format(y=d.year, d=d.isoformat())
     cols = "{" + ", ".join(f"'{k}': '{v}'" for k, v in COLUMNS.items()) + "}"
-    tmp = out + ".tmp"
     for attempt in range(5):
         try:
             con = duckdb.connect()
             con.execute("INSTALL httpfs; LOAD httpfs; SET memory_limit='2GB';")
-            n = con.execute(f"""
-                COPY (
-                  SELECT * FROM read_csv('{url}', compression='zstd', header=true, columns={cols})
-                  WHERE longitude BETWEEN {BBOX['w']} AND {BBOX['e']} AND latitude BETWEEN {BBOX['s']} AND {BBOX['n']}
-                  ORDER BY mmsi, base_date_time
-                ) TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)""").fetchone()
+            if len(todo) == 1:
+                b, out = todo[0]
+                n = con.execute(f"""
+                    COPY (
+                      SELECT * FROM read_csv('{url}', compression='zstd', header=true, columns={cols})
+                      WHERE {box_sql(b)}
+                      ORDER BY mmsi, base_date_time
+                    ) TO '{out}.tmp' (FORMAT parquet, COMPRESSION zstd)""").fetchone()
+                os.replace(out + ".tmp", out)
+            else:   # one read of the national file, cut into every box still missing
+                con.execute(f"""CREATE TEMP TABLE day AS SELECT * FROM read_csv('{url}', compression='zstd', header=true, columns={cols})
+                                WHERE {' OR '.join(box_sql(b) for b, _ in todo)}""")
+                n = None
+                for b, out in todo:
+                    r = con.execute(f"""COPY (SELECT * FROM day WHERE {box_sql(b)} ORDER BY mmsi, base_date_time)
+                                        TO '{out}.tmp' (FORMAT parquet, COMPRESSION zstd)""").fetchone()
+                    os.replace(out + ".tmp", out)
+                    n = n if n is not None else r
             con.close()
-            os.replace(tmp, out)
             return d, "ok", n[0] if n else None
         except Exception as e:  # network / partial read → back off and retry
             if "404" in str(e) or "HTTP 404" in str(e):
@@ -87,6 +109,12 @@ def main():
     jobs = 3
     if "--jobs" in argv:
         i = argv.index("--jobs"); jobs = int(argv[i + 1]); del argv[i:i + 2]
+    while "--also" in argv:
+        i = argv.index("--also"); r = argv[i + 1]; del argv[i:i + 2]
+        if r not in region.REGIONS or r == region.NAME:
+            sys.exit(f"--also {r}: unknown region or the main one")
+        ALSO.append(r)
+        os.makedirs(region.REGIONS[r]["points"], exist_ok=True)
     args = argv
     if not args:
         sys.exit(__doc__)

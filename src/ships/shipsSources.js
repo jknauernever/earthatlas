@@ -24,6 +24,10 @@ export const SHIPS_SOURCES = [
       { name: 'US-wide tracks (EarthAtlas bake of MarineCadastre’s monthly track files)', href: 'https://hub.marinecadastre.gov/pages/vesseltraffic',
         publisher: 'derived by EarthAtlas', licence: 'CC0 1.0 (source data)', licenceHref: CC0,
         method: 'NOAA’s monthly lines, split wherever two points are impossibly far apart, parked boats’ GPS jitter dropped, simplified to about 18 m; kind of ship from the broadcast AIS type code. Over-land rules are not yet applied US-wide.' },
+      { name: 'Global Fishing Watch hourly AIS positions', href: 'https://globalfishingwatch.org/our-apis/',
+        publisher: 'Global Fishing Watch, Inc.', licence: 'CC BY-NC 4.0 (non-commercial)', licenceHref: CC_BY_NC,
+        method: 'One position per ship per hour, about 4 days behind. Drawn as lines for British Columbia, Alaska and the US West Coast, and for the Salish Sea in months NOAA has not published yet (then replaced by NOAA’s lines). Where two hourly positions are joined along the water instead of a straight line, the line is dashed (an EarthAtlas estimate).',
+        citation: 'Powered by Global Fishing Watch.' },
     ],
   },
   {
@@ -140,6 +144,26 @@ export const SHIPS_SOURCES = [
     ],
   },
   {
+    heading: 'Terminals, calls and scrubbers',
+    sources: [
+      { name: 'USACE Navigation Facilities (Docks)', href: 'https://geospatial-usace.opendata.arcgis.com/datasets/23d91bd988ac4fc9943128965bddfa37_0',
+        publisher: 'U.S. Army Corps of Engineers (WCSC)', licence: 'Public, no use restrictions', licenceHref: 'https://geospatial-usace.opendata.arcgis.com/datasets/23d91bd988ac4fc9943128965bddfa37_0',
+        method: 'US berth positions, berth lengths and the dock owner (owner text is often decades old; a port district owner makes a terminal a port-authority terminal).' },
+      { name: 'Terminal calls (EarthAtlas count from NOAA AIS)', href: 'https://hub.marinecadastre.gov/pages/vesseltraffic',
+        publisher: 'derived by EarthAtlas', licence: 'CC0 1.0 (source data)', licenceHref: CC0,
+        method: 'A call is a ship stopped (under 0.5 knots) within a berth’s radius for at least 15 minutes; a gap of more than 6 hours starts a new call. Counted from NOAA’s minute-by-minute positions for the Salish Sea, Grays Harbor and the lower Columbia River.' },
+      { name: 'IMO GISIS: MARPOL Annex VI Regulation 4.2 notifications', href: 'https://gisis.imo.org/Public/MARPOL6/Notifications.aspx?Reg=4.2',
+        publisher: 'International Maritime Organization (as notified by flag administrations)', licence: 'IMO',
+        method: 'Scrubbers (exhaust gas cleaning systems) that flag states have approved and notified to the IMO, matched to our ships by registry IMO number. Re-imported monthly.' },
+      { name: 'MEP Alliance scrubber-fitted ship lists', href: 'https://www.mepalliance.org/list-of-scrubber-fitted-ships',
+        publisher: 'Marine Environmental Protection Alliance', licence: 'MEP Alliance',
+        method: 'Ships MEP Alliance lists as scrubber-fitted, matched by IMO number, or by name and size where no IMO is given (marked “inferred”).' },
+      { name: 'US Census Bureau Geocoder (TIGER boundaries)', href: 'https://geocoding.geo.census.gov/geocoder/',
+        publisher: 'U.S. Census Bureau', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
+        method: 'The county and city or town each US terminal lies in, for the scrubber report’s place breakdown.' },
+    ],
+  },
+  {
     heading: 'Protected areas',
     sources: [
       { name: 'NOAA Marine Protected Areas Inventory (2024)', href: 'https://marineprotectedareas.noaa.gov/dataanalysis/mpainventory/',
@@ -150,6 +174,12 @@ export const SHIPS_SOURCES = [
 ]
 
 export const SHIPS_SOURCES_NOTES = [
+  { heading: 'What kind of data each part is, and how current',
+    body: 'NOAA AIS (MarineCadastre): a position every minute or so from US shore receivers; NOAA publishes each month about three months later, in batches. It draws the detailed Salish Sea tracks and counts every terminal call and anchorage stay. ' +
+      'Global Fishing Watch: one position per ship per hour, about 4 days behind. It fills the months NOAA has not published yet; terminal visits from it are estimates, shown as such until NOAA’s month arrives. ' +
+      'Radar (dark vessel) detections: about 5–6 days behind. Scrubber lists: IMO notifications re-imported monthly; MEP Alliance lists as each list is published. Terminal permits and SEPA reviews: as the agencies list them when last read.' },
+  { heading: 'Tugs',
+    body: 'Tugs are counted at terminals only from NOAA’s minute-by-minute positions. Tugs moor at their company bases a few hundred metres from the terminals they work, and hourly positions on a ~1 km grid cannot tell a tug at the berth from a tug at its base, so no tug counts are estimated for months NOAA has not published yet.' },
   { heading: 'How to read it',
     body: 'A value a ship broadcast over AIS, a value a registry recorded, a community-edited value and an inference are always kept apart and labelled as such. ' +
       'An MMSI on its own never ties two records together: MMSIs get reused. Where two sources disagree, both claims are kept.' },

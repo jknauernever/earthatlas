@@ -18,6 +18,8 @@
 #   zsh scripts/ships/prod.sh import-eu-mrv      back up, then EU MRV verified ship emissions for ships we hold (from the saved XLSX files; needs migration 019)
 #   zsh scripts/ships/prod.sh import-mep         back up, then the MEP Alliance scrubber lists (from the saved pages in scripts/ships/mep/raw; needs migration 021)
 #   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
+#   zsh scripts/ships/prod.sh terminal-places    back up, then county + city / town of every US terminal (Census geocoder, ~65 requests; needs migration 028)
+#   zsh scripts/ships/prod.sh scrubber-edition   freeze the scrubber report as a dated edition (args pass through: --id 2026-10 --from 2025-01 --to 2026-06; needs migration 029)
 #   zsh scripts/ships/prod.sh import-facilities  back up, then facilities + EPA permits/enforcement + WA SEPA reviews + permit documents (lib/ships/data/salish-facilities.json; reuses the cached responses in scripts/ships/facilities/cache; needs migrations 022-024)
 #   zsh scripts/ships/prod.sh import-bc-permits  back up, then BC facilities + EMA authorizations + NRCED records + EAO projects (the bc- entries of salish-facilities.json; reuses the cached responses; needs migration 027)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
@@ -98,6 +100,15 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-terminals
     prod_node scripts/ships/import-terminals.mjs "${@:2}"
+    ;;
+  terminal-places)
+    need SHIPS_PROD_DATABASE_URL
+    backup terminal-places
+    prod_node scripts/ships/terminal-places.mjs "${@:2}"
+    ;;
+  scrubber-edition)
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/scrubber-edition.mjs "${@:2}"
     ;;
   import-facilities)
     need SHIPS_PROD_DATABASE_URL

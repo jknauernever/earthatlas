@@ -19,7 +19,8 @@
    "length_m": 213,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 157,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-alliance-grain",
@@ -31,7 +32,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-cargill",
@@ -43,7 +45,8 @@
    "length_m": 228,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 164,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-cargill",
@@ -55,7 +58,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-cascadia",
@@ -67,7 +71,8 @@
    "length_m": 274,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 187,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-chemtrade-nv",
@@ -79,7 +84,8 @@
    "length_m": 243,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 172,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-crofton",
@@ -91,7 +97,8 @@
    "length_m": 170,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-crofton",
@@ -103,7 +110,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-duke-point",
@@ -115,7 +123,8 @@
    "length_m": 170,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-fibreco",
@@ -127,7 +136,8 @@
    "length_m": 137,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-fortis-tilbury-lng",
@@ -139,7 +149,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-fraser-grain",
@@ -151,7 +162,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-g3",
@@ -163,7 +175,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-harmac",
@@ -175,7 +188,8 @@
    "length_m": 122,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-ioco",
@@ -187,7 +201,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-lafarge-richmond",
@@ -199,7 +214,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-lantic",
@@ -211,7 +227,8 @@
    "length_m": 130,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-lehigh-delta",
@@ -223,7 +240,8 @@
    "length_m": 182,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-neptune",
@@ -235,7 +253,8 @@
    "length_m": 230,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 165,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-neptune",
@@ -247,7 +266,8 @@
    "length_m": 230,
    "length_from": "BC Ports and Terminals berth description (#1)",
    "radius_m": 165,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-neptune",
@@ -259,7 +279,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-parkland-burnaby",
@@ -271,7 +292,8 @@
    "length_m": 216,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 158,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-pct-port-moody",
@@ -283,7 +305,8 @@
    "length_m": 293,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 197,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-pct-port-moody",
@@ -295,7 +318,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-port-mellon",
@@ -307,7 +331,8 @@
    "length_m": 189,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-richardson",
@@ -319,7 +344,8 @@
    "length_m": 183,
    "length_from": "Pacific Pilotage Authority berth operating parameters (as of 2025-11-12): Richardson International, dock length; the document writes “183 + 37” and does not say what the 37 m is, so it is not added",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-richardson",
@@ -331,7 +357,8 @@
    "length_m": 183,
    "length_from": "Pacific Pilotage Authority berth operating parameters (as of 2025-11-12): Richardson International, dock length; the document writes “183 + 37” and does not say what the 37 m is, so it is not added",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-sechelt-aggregates",
@@ -343,7 +370,8 @@
    "length_m": 400,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 250,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-shell-bare-point",
@@ -355,7 +383,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-shellburn",
@@ -367,7 +396,8 @@
    "length_m": 122,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-squamish-terminals",
@@ -379,7 +409,8 @@
    "length_m": 152,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": false
+   "in_box": false,
+   "region": null
   },
   {
    "terminal": "bc-suncor-burrard",
@@ -391,7 +422,8 @@
    "length_m": 43,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-texada-quarry",
@@ -403,7 +435,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": false
+   "in_box": false,
+   "region": null
   },
   {
    "terminal": "bc-univar-nv",
@@ -415,7 +448,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-vaffc-marine",
@@ -427,7 +461,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-vaffc-marine",
@@ -439,7 +474,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-vancouver-wharves",
@@ -451,7 +487,8 @@
    "length_m": 231,
    "length_from": "Pacific Pilotage Authority berth operating parameters (as of 2025-11-12): Berth 1, dock length",
    "radius_m": 166,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-vancouver-wharves",
@@ -463,7 +500,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-vancouver-wharves",
@@ -475,7 +513,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-viterra-pacific",
@@ -487,7 +526,8 @@
    "length_m": 270,
    "length_from": "Pacific Pilotage Authority berth operating parameters (as of 2025-11-12): Pacific Elevator 4, linear distance between the north and south dolphins",
    "radius_m": 185,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westridge",
@@ -499,7 +539,8 @@
    "length_m": 305,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 203,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westridge",
@@ -511,7 +552,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westridge",
@@ -523,7 +565,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westridge",
@@ -535,7 +578,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westshore",
@@ -547,7 +591,8 @@
    "length_m": 350,
    "length_from": "BC Ports and Terminals berth description",
    "radius_m": 225,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westshore",
@@ -559,7 +604,8 @@
    "length_m": 263,
    "length_from": "BC Ports and Terminals berth description (#2)",
    "radius_m": 182,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-westshore",
@@ -571,7 +617,8 @@
    "length_m": 350,
    "length_from": "BC Ports and Terminals berth description (#1)",
    "radius_m": 225,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "bc-woodfibre-lng",
@@ -583,7 +630,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": false
+   "in_box": false,
+   "region": null
   },
   {
    "terminal": "bc-woodfibre-lng",
@@ -595,7 +643,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": false
+   "in_box": false,
+   "region": null
   },
   {
    "terminal": "wa-anacortes-petcoke",
@@ -607,7 +656,8 @@
    "length_m": 98,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-anacortes-petcoke",
@@ -619,7 +669,8 @@
    "length_m": 345,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 223,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-ash-grove-seattle",
@@ -631,7 +682,8 @@
    "length_m": 183,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-bp-cherry-point",
@@ -643,7 +695,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-bp-cherry-point",
@@ -655,7 +708,8 @@
    "length_m": 305,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 203,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-covich-williams",
@@ -667,7 +721,34 @@
    "length_m": 48,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-egt-longview",
+   "kind": "grain_terminal",
+   "berth": "usace-11TB",
+   "lat": 46.1089,
+   "lon": -122.9577,
+   "basis": "usace_dock",
+   "length_m": 152,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-emerald-kalama",
+   "kind": "chemical_terminal",
+   "berth": "usace-0UX3",
+   "lat": 46.021314,
+   "lon": -122.861149,
+   "basis": "usace_dock",
+   "length_m": 207,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 154,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-hfs-puget-sound",
@@ -679,7 +760,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-hfs-puget-sound",
@@ -691,7 +773,8 @@
    "length_m": 335,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 218,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-intalco-wharf",
@@ -703,7 +786,21 @@
    "length_m": 290,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 195,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-kalama-export",
+   "kind": "grain_terminal",
+   "berth": "usace-0UXM",
+   "lat": 46.026499,
+   "lon": -122.868692,
+   "basis": "usace_dock",
+   "length_m": 244,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 172,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-km-harbor-island",
@@ -715,7 +812,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-lafarge-seattle",
@@ -727,7 +825,8 @@
    "length_m": 197,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-lafarge-seattle",
@@ -739,7 +838,8 @@
    "length_m": 335,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 218,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-marathon-anacortes",
@@ -751,7 +851,8 @@
    "length_m": 297,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 199,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-marathon-port-angeles",
@@ -763,7 +864,8 @@
    "length_m": 76,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-maxum-fairhaven",
@@ -775,7 +877,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-maxum-pier15",
@@ -787,7 +890,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-naswi",
@@ -799,7 +903,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-nbk-manchester",
@@ -811,7 +916,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-nustar-tacoma",
@@ -823,7 +929,164 @@
    "length_m": 183,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-husky",
+   "kind": "container_terminal",
+   "berth": "usace-0T7T",
+   "lat": 47.2725,
+   "lon": -122.40583,
+   "basis": "usace_dock",
+   "length_m": 579,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-husky",
+   "kind": "container_terminal",
+   "berth": "usace-0T7U",
+   "lat": 47.276389,
+   "lon": -122.41277,
+   "basis": "usace_dock",
+   "length_m": 290,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 195,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-husky",
+   "kind": "container_terminal",
+   "berth": "usace-0UFH",
+   "lat": 47.271111,
+   "lon": -122.41833,
+   "basis": "usace_dock",
+   "length_m": 274,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 187,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-pct",
+   "kind": "container_terminal",
+   "berth": "usace-0UFL",
+   "lat": 47.253889,
+   "lon": -122.37833,
+   "basis": "usace_dock",
+   "length_m": 427,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 264,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t18",
+   "kind": "container_terminal",
+   "berth": "usace-0UN9",
+   "lat": 47.583557,
+   "lon": -122.346129,
+   "basis": "usace_dock",
+   "length_m": 1524,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t18",
+   "kind": "container_terminal",
+   "berth": "usace-0UNA",
+   "lat": 47.576111,
+   "lon": -122.34583,
+   "basis": "usace_dock",
+   "length_m": 371,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 236,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t30",
+   "kind": "container_terminal",
+   "berth": "usace-0UNT",
+   "lat": 47.575556,
+   "lon": -122.34305,
+   "basis": "usace_dock",
+   "length_m": 482,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 291,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t30",
+   "kind": "container_terminal",
+   "berth": "usace-0UNU",
+   "lat": 47.582943,
+   "lon": -122.34293,
+   "basis": "usace_dock",
+   "length_m": 552,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t46",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UPD",
+   "lat": 47.596667,
+   "lon": -122.34111,
+   "basis": "usace_dock",
+   "length_m": 571,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-t5",
+   "kind": "container_terminal",
+   "berth": "usace-0UEJ",
+   "lat": 47.576944,
+   "lon": -122.36138,
+   "basis": "usace_dock",
+   "length_m": 884,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-west-sitcum",
+   "kind": "container_terminal",
+   "berth": "usace-0YZL",
+   "lat": 47.2675,
+   "lon": -122.41611,
+   "basis": "usace_dock",
+   "length_m": 671,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-nwsa-wut",
+   "kind": "container_terminal",
+   "berth": "usace-0Z63",
+   "lat": 47.2625,
+   "lon": -122.38972,
+   "basis": "usace_dock",
+   "length_m": 610,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-p66-ferndale",
@@ -835,7 +1098,8 @@
    "length_m": 269,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 185,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-p66-tacoma",
@@ -847,7 +1111,112 @@
    "length_m": 201,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 151,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pob-shipping-terminal",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UBP",
+   "lat": 48.745278,
+   "lon": -122.49416,
+   "basis": "usace_dock",
+   "length_m": 418,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 259,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-poe-seaport",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0TE6",
+   "lat": 47.975278,
+   "lon": -122.22722,
+   "basis": "usace_dock",
+   "length_m": 274,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 187,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-poe-seaport",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0U6V",
+   "lat": 47.978333,
+   "lon": -122.22277,
+   "basis": "usace_dock",
+   "length_m": 183,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-poe-seaport",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0U6Y",
+   "lat": 47.981389,
+   "lon": -122.22111,
+   "basis": "usace_dock",
+   "length_m": 238,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 169,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-poe-seaport",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0YTL",
+   "lat": 47.977454,
+   "lon": -122.223759,
+   "basis": "usace_dock",
+   "length_m": 183,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pogh-t1",
+   "kind": "other_bulk_terminal",
+   "berth": "usace-0UWV",
+   "lat": 46.966389,
+   "lon": -123.85527,
+   "basis": "usace_dock",
+   "length_m": 137,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pogh-t2",
+   "kind": "dry_bulk_terminal",
+   "berth": "usace-0UWW",
+   "lat": 46.964722,
+   "lon": -123.85222,
+   "basis": "usace_dock",
+   "length_m": 274,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 187,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pogh-t4",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0YZ4",
+   "lat": 46.960833,
+   "lon": -123.83861,
+   "basis": "usace_dock",
+   "length_m": 427,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 264,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-point-wells",
@@ -859,7 +1228,242 @@
    "length_m": 322,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 211,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pol-berths-1-3",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0T72",
+   "lat": 46.107222,
+   "lon": -122.95611,
+   "basis": "usace_dock",
+   "length_m": 707,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pol-berths-1-3",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0T7H",
+   "lat": 46.105833,
+   "lon": -122.95361,
+   "basis": "usace_dock",
+   "length_m": 707,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pol-berths-5-7",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0T7K",
+   "lat": 46.103333,
+   "lon": -122.94777,
+   "basis": "usace_dock",
+   "length_m": 220,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 160,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pol-berths-5-7",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UUR",
+   "lat": 46.102222,
+   "lon": -122.94472,
+   "basis": "usace_dock",
+   "length_m": 457,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 279,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-poo-marine-terminal",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UUH",
+   "lat": 47.054722,
+   "lon": -122.905,
+   "basis": "usace_dock",
+   "length_m": 579,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-popa-marine-terminal",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UXL",
+   "lat": 48.125322,
+   "lon": -123.443664,
+   "basis": "usace_dock",
+   "length_m": 146,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-popa-marine-terminal",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UY3",
+   "lat": 48.124167,
+   "lon": -123.44,
+   "basis": "usace_dock",
+   "length_m": 396,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 248,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pos-pier66-bell-street",
+   "kind": "cruise_terminal",
+   "berth": "usace-0UMT",
+   "lat": 47.611111,
+   "lon": -122.35,
+   "basis": "usace_dock",
+   "length_m": 472,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 286,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pos-t91-smith-cove",
+   "kind": "cruise_terminal",
+   "berth": "usace-0UMW",
+   "lat": 47.626389,
+   "lon": -122.38,
+   "basis": "usace_dock",
+   "length_m": 677,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pos-t91-smith-cove",
+   "kind": "cruise_terminal",
+   "berth": "usace-0UNB",
+   "lat": 47.626389,
+   "lon": -122.38277,
+   "basis": "usace_dock",
+   "length_m": 760,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pot-blair",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UFJ",
+   "lat": 47.259722,
+   "lon": -122.38444,
+   "basis": "usace_dock",
+   "length_m": 366,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 233,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pot-t7",
+   "kind": "roro_terminal",
+   "berth": "usace-0UGZ",
+   "lat": 47.267778,
+   "lon": -122.41388,
+   "basis": "usace_dock",
+   "length_m": 366,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 233,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-pov-dry-bulk",
+   "kind": "dry_bulk_terminal",
+   "berth": "usace-0UUQ",
+   "lat": 45.637222,
+   "lon": -122.70583,
+   "basis": "usace_dock",
+   "length_m": 293,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 197,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pov-t2",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UUN",
+   "lat": 45.632778,
+   "lon": -122.69777,
+   "basis": "usace_dock",
+   "length_m": 620,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 300,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pov-t2-berth5",
+   "kind": "product_terminal",
+   "berth": "usace-0UV4",
+   "lat": 45.634722,
+   "lon": -122.70166,
+   "basis": "usace_dock",
+   "length_m": 137,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 150,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pov-t3",
+   "kind": "general_cargo_terminal",
+   "berth": "usace-0UUP",
+   "lat": 45.638333,
+   "lon": -122.70833,
+   "basis": "usace_dock",
+   "length_m": 411,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 256,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pov-t4",
+   "kind": "roro_terminal",
+   "berth": "usace-0ZBC",
+   "lat": 45.643889,
+   "lon": -122.725,
+   "basis": "usace_dock",
+   "length_m": 415,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 258,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-pov-t4",
+   "kind": "roro_terminal",
+   "berth": "usace-0ZBD",
+   "lat": 45.640556,
+   "lon": -122.71555,
+   "basis": "usace_dock",
+   "length_m": 349,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 225,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-puget-lng-tacoma",
@@ -871,7 +1475,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-schnitzer-tacoma",
@@ -883,7 +1488,8 @@
    "length_m": 122,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-seaport-seattle",
@@ -895,7 +1501,8 @@
    "length_m": 140,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-seaport-sound-tacoma",
@@ -907,7 +1514,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-seaport-sound-tacoma",
@@ -919,7 +1527,8 @@
    "length_m": 235,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 168,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-shell-seattle",
@@ -931,7 +1540,8 @@
    "length_m": null,
    "length_from": null,
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-t86-grain",
@@ -943,7 +1553,21 @@
    "length_m": 427,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 264,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-temco-kalama",
+   "kind": "grain_terminal",
+   "berth": "usace-0ZB9",
+   "lat": 45.984409,
+   "lon": -122.835497,
+   "basis": "usace_dock",
+   "length_m": 256,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 178,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-temco-tacoma",
@@ -955,7 +1579,34 @@
    "length_m": 277,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 189,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-tote-tacoma",
+   "kind": "roro_terminal",
+   "berth": "usace-0YVY",
+   "lat": 47.274444,
+   "lon": -122.405,
+   "basis": "usace_dock",
+   "length_m": 241,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 171,
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-united-grain-vancouver",
+   "kind": "grain_terminal",
+   "berth": "usace-0UV5",
+   "lat": 45.630278,
+   "lon": -122.69277,
+   "basis": "usace_dock",
+   "length_m": 294,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 197,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   },
   {
    "terminal": "wa-us-oil-tacoma",
@@ -967,7 +1618,8 @@
    "length_m": 197,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
   },
   {
    "terminal": "wa-us-oil-tacoma",
@@ -979,7 +1631,34 @@
    "length_m": 137,
    "length_from": "USACE BERTHING_LARGEST (ft)",
    "radius_m": 150,
-   "in_box": true
+   "in_box": true,
+   "region": "salish-v6"
+  },
+  {
+   "terminal": "wa-weyerhaeuser-longview",
+   "kind": "forest_products_terminal",
+   "berth": "usace-0T5X",
+   "lat": 46.125556,
+   "lon": -122.9825,
+   "basis": "usace_dock",
+   "length_m": 361,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 231,
+   "in_box": true,
+   "region": "wa-columbia-v1"
+  },
+  {
+   "terminal": "wa-weyerhaeuser-longview",
+   "kind": "forest_products_terminal",
+   "berth": "usace-0T71",
+   "lat": 46.111111,
+   "lon": -122.96055,
+   "basis": "usace_dock",
+   "length_m": 402,
+   "length_from": "USACE BERTHING_LARGEST (ft)",
+   "radius_m": 251,
+   "in_box": true,
+   "region": "wa-columbia-v1"
   }
  ]
 }

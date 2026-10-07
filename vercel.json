@@ -67,6 +67,10 @@
       "destination": "/ships.html"
     },
     {
+      "source": "/ships/reports/:path*",
+      "destination": "/ships.html"
+    },
+    {
       "source": "/inmotion",
       "destination": "/inmotion.html"
     },

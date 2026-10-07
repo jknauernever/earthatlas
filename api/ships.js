@@ -47,6 +47,7 @@ import { shipsHttp, shipsPool, withTx, DEFAULT_SCHEMA } from '../lib/ships/db.js
 import { portClimateTrace } from '../lib/ships/climateTrace.js'
 import { classIndex, mmsisOfClasses, classCountsFor } from '../lib/ships/typeSearch.js'
 import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
+import { scrubberReport, scrubberReportDays, readScrubberEdition, listScrubberEditions } from '../lib/ships/scrubberReport.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
@@ -219,6 +220,23 @@ export default async function handler(req, res) {
     //   /api/ships?op=scrubberMmsis               → { vessels, mmsis, by: { gisis, mep, both, mep_inferred } }  (Scrubber-fitted
     //                                               tracks filter: IMO GISIS Reg. 4.2 scrubber notifications OR MEP Alliance lists, accepted links only)
     if (op === 'scrubberMmsis') return send(res, 200, await scrubberMmsis(q, S), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    //   /api/ships?op=scrubberReport&from=YYYY-MM&to=YYYY-MM   → the scrubber-ship calls report (lib/ships/scrubberReport.js)
+    //   /api/ships?op=scrubberReportDays&month=YYYY-MM[&terminal=key] → that month day by day (drill-down)
+    //   /api/ships?op=scrubberEdition&id=2026-10 → a frozen edition { id, title, params, created_at, payload } (never changes)
+    //   /api/ships?op=scrubberEditions            → [{ id, title, params, created_at }]
+    if (op === 'scrubberEdition') {
+      const ed = await readScrubberEdition(q, S, String(p.get('id') || ''))
+      return ed ? send(res, 200, ed, 'public, max-age=3600, s-maxage=31536000, immutable') : send(res, 404, { error: 'no such edition' })
+    }
+    if (op === 'scrubberEditions') return send(res, 200, { editions: await listScrubberEditions(q, S) }, 'public, max-age=0, s-maxage=300')
+    if (op === 'scrubberReport' || op === 'scrubberReportDays') {
+      try {
+        const out = op === 'scrubberReport'
+          ? await scrubberReport(q, S, { from: p.get('from') || '', to: p.get('to') || '' })
+          : { days: await scrubberReportDays(q, S, { month: p.get('month') || '', terminal: p.get('terminal') || null }) }
+        return send(res, 200, out, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+      } catch (e) { return send(res, 400, { error: String(e.message) }) }
+    }
     //   POST /api/ships?op=classCounts  { mmsis: [≤20000 on-screen MMSIs], classes: [picked], scrub: bool }
     //        → { cls: { class: ships }, selected: ships | null }   ("Narrow to" chips' in-view counts). Only counts go out:
     //        the MMSI → class table stays on the server (Josh 2026-10-02).

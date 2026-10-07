@@ -34,3 +34,10 @@ export function nrcedResult(o) {
   const m = /^out of compliance\s*-\s*(advisory|warning|order|ticket|penalty)/i.exec(t)
   return m ? `Out of compliance: ${m[1].toLowerCase()}` : t
 }
+
+/** BC register text sometimes repeats itself ("Chlor-Alkali Plant Chlor-Alkali Plant"): show the phrase once. */
+export function oncePhrase(s) {
+  const t = String(s ?? '').trim()
+  const m = /^(.+?)\s+\1$/.exec(t)
+  return m ? m[1] : t
+}

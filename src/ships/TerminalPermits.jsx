@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import Chevron from './Chevron.jsx'
-import { statusShort, statusTitle, nrcedResult } from './permitStatus.js'
+import { statusShort, statusTitle, nrcedResult, oncePhrase } from './permitStatus.js'
 import { Loading } from '../components/panel'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -113,7 +113,7 @@ function Permit({ p, frsUrl }) {
         <div className={styles.incidentMeta}>WA Ecology: version {p.paris.current.version}{p.paris.current.issued ? `, issued ${day(p.paris.current.issued)}` : ''}
           {p.paris.current.effective ? `, effective ${day(p.paris.current.effective)}` : ''}{p.paris.current.expires ? `, expires ${day(p.paris.current.expires)}` : ''}</div>
       )}
-      {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${p.bcEma.facility_type.length > 90 ? `${p.bcEma.facility_type.slice(0, 90)}…` : p.bcEma.facility_type}` : ''}</div>}
+      {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${((t) => t.length > 90 ? `${t.slice(0, 90)}…` : t)(oncePhrase(p.bcEma.facility_type))}` : ''}</div>}
       <div className={styles.permitOpen}>{p.documents?.length ? `${fmtN(p.documents.length)} document${p.documents.length === 1 ? '' : 's'} · ` : ''}Open permit ↗</div>
     </div>
   )
@@ -150,7 +150,7 @@ function NrcedList({ rows }) {
         {x.outcome && <> · <span title={`NRCED lists the result as “${x.outcome}”`}>{nrcedResult(x.outcome)}</span></>}
         {x.why.authorization ? <span className={styles.pcMuted}> · authorization {x.why.authorization}</span> : ''}
         {x.agency ? <span className={styles.pcMuted}> · {x.agency}</span> : ''}{' '}
-        {x.documents.map((d) => <span key={d.url}>{ext(d.url, 'record', `${d.title}: the agency’s file`)}{' '}</span>)}
+        {x.documents.map((d, i) => <span key={d.url}>{ext(d.url, x.documents.length > 1 ? `file ${i + 1}` : 'file', `${d.title}: the agency’s file`)}{' '}</span>)}
         {ext(rec(x.record_id), 'BC NRCED', `Record ${x.id} in BC’s Natural Resource Compliance and Enforcement Database — click for the record as EarthAtlas read it. Shown because it is issued to the company and ${x.why.authorization ? `names authorization ${x.why.authorization}` : `its location names “${x.why.place_word}”`}`)}
       </div>
     ))}

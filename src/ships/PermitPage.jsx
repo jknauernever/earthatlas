@@ -12,7 +12,7 @@ import { publicLicense } from './publicLicense.js'
 import { Loading } from '../components/panel'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import styles from './PermitPage.module.css'
-import { STATUS_WORDS, statusKey, statusSource, nrcedResult } from './permitStatus.js'
+import { STATUS_WORDS, statusKey, statusSource, nrcedResult, oncePhrase } from './permitStatus.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null)
@@ -270,7 +270,7 @@ export default function PermitPage() {
               <Fact label="Held for">{data.facilities.map((f) => <div key={f.key}>{f.name}{f.adminArea ? <span className={styles.muted}>, {f.adminArea}</span> : ''}</div>)}</Fact>
               <Fact label="Dock">{data.facilities.flatMap((f) => f.terminals).map((t) => <div key={t.key}><a href={`/ships?tl=${t.key}&tb=permits`}>{t.name}</a></div>)}</Fact>
               <Fact label="Type">{[p.universe, p.areas && (p.bcEma ? `waste type: ${p.areas.toLowerCase()}` : p.areas.split(/,\s*/).map((a) => AREA[a] || a).join(', '))].filter(Boolean).join(' · ')}</Fact>
-              {p.bcEma && <Fact label="Site">{p.bcEma.address}{p.bcEma.facility_type && <div className={styles.muted}>{p.bcEma.facility_type}</div>}</Fact>}
+              {p.bcEma && <Fact label="Site">{p.bcEma.address}{p.bcEma.facility_type && <div className={styles.muted}>{oncePhrase(p.bcEma.facility_type)}</div>}</Fact>}
               {p.bcEma && <Fact label="Issued">{day(p.bcEma.issued)}</Fact>}
               <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
               {data.air && <Fact label="Air permit">{data.air.aop} · dated {data.air.permitDate}<div className={styles.muted}>{data.air.status}</div></Fact>}

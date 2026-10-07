@@ -56,7 +56,7 @@ function Fold({ title, children, open: start = false }) {
 
 const ext = (href, label, title) => <a className={`${styles.sourceLink} ${styles.srcLink}`} href={href} target="_blank" rel="noopener noreferrer" title={title}>{label}</a>
 
-const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology', 'nwcaa-aop': 'NW Clean Air Agency' }
+const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology', 'nwcaa-aop': 'NW Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air' }
 const mb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`)
 
 /** One document: its title opens the file at the agency; the chip opens the listing EarthAtlas read it from. */

@@ -23,7 +23,7 @@ import {
 } from '../../lib/ships/facilities.js'
 import {
   ensureDocumentSources, importPermitDocuments, parisDocsUrl, parseParisDocs, parisPostbackFields, parseEcologyPage, parseNwcaaRow,
-  ECOLOGY_INDUSTRIAL_BASE, NWCAA_AOP_URL, parisFacilityUrl, parseParisFacility, gridPostbackFields, importParisFacilities,
+  ECOLOGY_INDUSTRIAL_BASE, NWCAA_AOP_URL, PSCAA_TITLE_V_URL, parsePscaaRow, parisFacilityUrl, parseParisFacility, gridPostbackFields, importParisFacilities,
 } from '../../lib/ships/permitDocuments.js'
 
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships; facility permits pilot)'
@@ -221,6 +221,17 @@ if (data.facilities.some((f) => f.documents?.nwcaa)) {
     console.log(`  ${f.id} NWCAA row: ${r ? `${r.files.length} files` : 'NOT FOUND'}`)
   }
   docsRaw.nwcaa = { url: pg.url, retrieved_at: pg.retrieved_at, rows }
+}
+if (data.facilities.some((f) => f.documents?.pscaa)) {
+  const pg = await cached('pscaa-title-v-page', PSCAA_TITLE_V_URL, 'html')
+  const rows = new Map()
+  for (const f of data.facilities) {
+    if (!f.documents?.pscaa) continue
+    const r = parsePscaaRow(pg.html, f.documents.pscaa.permit_number)
+    if (r) rows.set(r.permit_number, r)
+    console.log(`  ${f.id} PSCAA Title V ${f.documents.pscaa.permit_number}: ${r ? `${r.files.length} files (${r.source_name})` : 'NOT FOUND'}`)
+  }
+  docsRaw.pscaa = { url: pg.url, retrieved_at: pg.retrieved_at, rows }
 }
 console.log(`requests made this run: ${requests}`)
 if (dry) { console.log('dry run: nothing written'); process.exit(0) }

@@ -3,7 +3,7 @@
   "what": "Curated list of facilities (plants / sites) that Salish Sea terminals serve, with the EPA FRS records, Climate TRACE sources and WA Ecology SEPA Register searches that describe them. Two-refinery pilot approved by Josh 2026-10-06 (docs/PERMITS_SOURCES.md).",
   "rules": "Facts only. FRS ids were found with ECHO facility-name searches on 2026-10-06; each related id says why it is the same site (FRS name / street address exactly as ECHO lists them). Ids left out on purpose are listed with the reason. SEPA Register records are linked by rule (lib/ships/facilities.js sepaMatch): the applicant names one of applicant_words, the county matches, and the proposal or location names one of place_words; other search hits are kept as candidates and not shown.",
   "licences": "EPA ECHO: US Government work. WA Ecology SEPA Register: public record (credit + link). Climate TRACE: CC BY 4.0.",
-  "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06.",
+  "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06. documents.pscaa: the facility's row on Puget Sound Clean Air Agency's approved Title V list (agency permit number) and EPA's ICIS-Air id for the same permit.",
   "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed."
  },
  "version": "2026-10-06",
@@ -451,7 +451,8 @@
    },
    "notes": [
     "Found 2026-10-06 by scripts/ships/propose-facility.mjs: FRS 110032897015 \"TESORO PORT ANGELES\", 1720 West Ediz Hook Rd, 70 m from the USACE dock point.",
-    "EPA lists no water or air permit for it: an emissions-inventory id (\"BP Marine Americas Port Angeles Wharf\"), Toxics Release Inventory (last reported 2019) and a very-small-quantity hazardous waste id. No PARIS facility found (PARIS search \"Tesoro Port Angeles\"). Not on ORCAA's registered-sources list of 2025-04-24 under Tesoro, BP or its address."
+    "EPA lists no water or air permit for it: an emissions-inventory id (\"BP Marine Americas Port Angeles Wharf\"), Toxics Release Inventory (last reported 2019) and a very-small-quantity hazardous waste id. No PARIS facility found (PARIS search \"Tesoro Port Angeles\"). Not on ORCAA's registered-sources list of 2025-04-24 under Tesoro, BP or its address.",
+    "Possible owner: the 2016 SEPA records for the Port Angeles Dock Piping Replacement Project name Tesoro Logistics GP, LLC as applicant; not confirmed as the dock owner."
    ]
   },
   {
@@ -497,7 +498,19 @@
     },
     "rcra": "WAD009250366"
    },
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-p66-ferndale",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0002984"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=478698",
+     "doc_title": "Fact sheet, NPDES permit WA0002984 (2024)",
+     "where": "p. 29",
+     "says": "The refinery pumps ballast water from the dock facilities to a tank in the wastewater treatment plant"
+    }
+   ],
    "sepa": {
     "county": "WHATCOM",
     "searches": [
@@ -572,7 +585,19 @@
     },
     "rcra": "WAD009276197"
    },
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-hfs-puget-sound",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0002941"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=646491",
+     "doc_title": "Fact sheet, NPDES permit WA0002941 (2026 public notice)",
+     "where": "PDF p. 10",
+     "says": "Outfall (001) is supported on the wharf roadway and shipping pier"
+    }
+   ],
    "sepa": {
     "county": "SKAGIT",
     "searches": [
@@ -651,9 +676,25 @@
    ],
    "documents": {
     "ecology_page": "us-oil-refining",
-    "rcra": "WAD009252719"
+    "rcra": "WAD009252719",
+    "pscaa": {
+     "permit_number": "12593",
+     "icis_air": "WAPSC0005305300022"
+    }
    },
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-us-oil-tacoma",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0001783"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=634549",
+     "doc_title": "NPDES permit WA0001783 (2026)",
+     "where": "condition S1.L, p. 20",
+     "says": "or from the dockside firewater system during monthly testing of hydrants"
+    }
+   ],
    "sepa": {
     "county": "PIERCE",
     "searches": [
@@ -732,7 +773,8 @@
     ]
    },
    "notes": [
-    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address.",
+    "Ecology fact sheet WA0003204 (2023) p. 9: Targa was sold to SeaPort on 2018-11-01 and is owned and operated by TransMontaigne Limited Partners Management Services."
    ]
   },
   {
@@ -784,7 +826,8 @@
     ]
    },
    "notes": [
-    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address.",
+    "Ecology fact sheet WA0039501 (effective 2026-09-01) p. 9: \"Marine loading / unloading dock operation has been discontinued.\" Our AIS shows 1 fitting call Jul 2025 – Jun 2026."
    ]
   },
   {
@@ -813,7 +856,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-p66-tacoma",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0000728"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=506164",
+     "doc_title": "Fact sheet, NPDES permit WA0000728",
+     "where": "PDF p. 7",
+     "says": "The Phillips 66 Terminal and its marine dock are situated on the east side of the Thea Foss Waterway"
+    }
+   ],
    "sepa": {
     "county": "PIERCE",
     "searches": [
@@ -921,7 +976,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-shell-seattle",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0001791"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=178405",
+     "doc_title": "Fact sheet, NPDES permit WA0001791 (2016)",
+     "where": "p. 7",
+     "says": "The dock is also known as Pier 15, which extends 590 feet into Elliott Bay."
+    }
+   ],
    "sepa": {
     "county": "KING",
     "searches": [
@@ -945,7 +1012,8 @@
     ]
    },
    "notes": [
-    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address.",
+    "Shared dock: Ecology fact sheet WA0001791 (2016) p. 7 — Shell operates the eastern portion of Pier 15 and Rainier Petroleum the western portion."
    ]
   },
   {
@@ -992,7 +1060,8 @@
     ]
    },
    "notes": [
-    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address.",
+    "Shared dock: Ecology fact sheet WA0001791 (Shell, 2016) p. 7 — Rainier Petroleum (PARIS name for this facility) operates the western portion of Pier 15, Shell the eastern portion."
    ]
   },
   {
@@ -1075,7 +1144,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-point-wells",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0003239"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=13988",
+     "doc_title": "Fact sheet, NPDES permit WA0003239",
+     "where": "p. 9",
+     "says": "The outfall lies parallel to the small service dock at the asphalt plant"
+    }
+   ],
    "sepa": {
     "county": "SNOHOMISH",
     "searches": [
@@ -1344,7 +1425,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-anacortes-petcoke",
+     "permit": {
+      "system": "WA-PARIS",
+      "key": "ST0045500"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=12683",
+     "doc_title": "Fact sheet, State Waste Discharge permit ST0045500",
+     "where": "p. 2",
+     "says": "Pier 2, a 14-acre paved shipping pier owned and operated by the Port of Anacortes"
+    }
+   ],
    "sepa": {
     "county": "SKAGIT",
     "searches": [
@@ -1392,7 +1485,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-t86-grain",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WAR002719"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=519272",
+     "doc_title": "Industrial stormwater coverage letter WAR002719 (2024-12-02)",
+     "where": "site address, p. 1",
+     "says": "955 Alaskan Way W Pier 86"
+    }
+   ],
    "sepa": {
     "county": "KING",
     "searches": [
@@ -1506,7 +1611,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-schnitzer-tacoma",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0040347"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=274116",
+     "doc_title": "Fact sheet, NPDES permit WA0040347 (2019)",
+     "where": "PDF p. 8",
+     "says": "Schnitzer Steel has owned the property since 1996. Since then a new dock was constructed."
+    }
+   ],
    "sepa": {
     "county": "PIERCE",
     "searches": [
@@ -1557,7 +1674,19 @@
    ],
    "ct_refinery": [],
    "documents": {},
-   "coverage": [],
+   "coverage": [
+    {
+     "terminal": "wa-lafarge-seattle",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0002232"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=13728",
+     "doc_title": "NPDES permit WA0002232",
+     "where": "p. 25",
+     "says": "the sumps for outfall 1, 4, and 8, and dock area trench drain"
+    }
+   ],
    "sepa": {
     "county": "KING",
     "searches": [
@@ -1607,8 +1736,25 @@
     "2142"
    ],
    "ct_refinery": [],
-   "documents": {},
-   "coverage": [],
+   "documents": {
+    "pscaa": {
+     "permit_number": "11339",
+     "icis_air": "WAPSC0005303300099"
+    }
+   },
+   "coverage": [
+    {
+     "terminal": "wa-ash-grove-seattle",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WA0032221"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=185896",
+     "doc_title": "Fact sheet, NPDES permit WA0032221 (2016)",
+     "where": "p. 8",
+     "says": "must not allow material to enter surface waters during dock loading/unloading"
+    }
+   ],
    "sepa": {
     "county": "KING",
     "searches": [

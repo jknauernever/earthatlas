@@ -474,8 +474,8 @@
    "operator": "NuStar Energy (Shore Terminals LLC), a Sunoco LP subsidiary",
    "operator_source_url": "https://ecology.commentinput.com/comment/extra?id=pR6sg",
    "operator_checked": "2026-09-27",
-   "status": "operating",
-   "status_source_url": "https://ecology.commentinput.com/comment/extra?id=pR6sg",
+   "status": "idle",
+   "status_source_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=642016",
    "commodities": [
     "cutter stock",
     "gasoline",
@@ -520,7 +520,9 @@
     "refinery_facility_ids": [],
     "ship_port_ids": []
    },
-   "notes": []
+   "notes": [],
+   "status_date": "2026-09-01",
+   "status_note": "Ecology’s fact sheet for NPDES permit WA0039501 (effective 2026-09-01, p. 9): “Marine loading / unloading dock operation has been discontinued.” The tank farm and truck racks still operate."
   },
   {
    "id": "wa-p66-tacoma",

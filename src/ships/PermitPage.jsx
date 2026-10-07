@@ -26,7 +26,7 @@ const KIND = {
   ICIS: 'EPA enforcement-system facility id', 'WA-PARIS': 'Washington State permit (WA Ecology)',
 }
 const AREA = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
-const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency' }
+const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency' }
 const AGENCY = { Local: 'Local agency', State: 'State', EPA: 'EPA', Federal: 'EPA' }
 const GAS = [['co2', 'CO₂'], ['no2', 'NO₂'], ['so2', 'SO₂'], ['voc', 'VOC'], ['co', 'CO'], ['pm10', 'PM10']]
 
@@ -219,9 +219,10 @@ export default function PermitPage() {
 
   const buttons = useMemo(() => {
     const docs = data?.documents || []
-    const top = docs.find((d) => /^permit[,\s]/i.test(d.description || '')) || docs.find((d) => d.source === 'nwcaa-aop' && d.type === 'AOP')
-    const sheet = docs.find((d) => /^fact sheet/i.test(d.description || '')) || docs.find((d) => d.source === 'nwcaa-aop' && d.type === 'SOB')
-    return [top && ['Read the permit', top], sheet && [sheet.source === 'nwcaa-aop' ? 'Statement of Basis' : 'Fact sheet', sheet]].filter(Boolean)
+    const air = (d, re) => (d.source === 'nwcaa-aop' || d.source === 'pscaa-title-v') && re.test(d.type || '')
+    const top = docs.find((d) => /^permit[,\s]/i.test(d.description || '')) || docs.find((d) => air(d, /^(AOP|Air Operating Permit)$/i))
+    const sheet = docs.find((d) => /^fact sheet/i.test(d.description || '')) || docs.find((d) => air(d, /^(SOB|Statement of Basis)$/i))
+    return [top && ['Read the permit', top], sheet && [/^(nwcaa-aop|pscaa-title-v)$/.test(sheet.source) ? 'Statement of Basis' : 'Fact sheet', sheet]].filter(Boolean)
   }, [data])
   const sw = p && STATUS_WORDS[statusKey(p.status)]
   const pastExpiry = p?.expires && new Date(p.expires) < new Date()

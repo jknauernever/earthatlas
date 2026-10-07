@@ -25,10 +25,11 @@ const KIND = {
   CEDRI: 'Emissions reporting id', EIS: 'Emissions inventory id', SDWIS: 'Public water system', TSCA: 'Chemical substances (TSCA) id',
   ICIS: 'EPA enforcement-system facility id', 'WA-PARIS': 'Washington State permit (WA Ecology)',
   'BC-EMA': 'BC waste discharge authorization (Environmental Management Act)',
+  'MV-AQ': 'Metro Vancouver air quality permit',
 }
 const BC_DOC_SEARCH = 'https://j200.gov.bc.ca/pub/ams/Default.aspx?PossePresentation=DocumentSearch'   // BC's authorization document search
 const AREA = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
-const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency', 'bc-nrced': 'BC NRCED' }
+const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency', 'bc-nrced': 'BC NRCED', 'metro-vancouver-aq-permits': 'Metro Vancouver' }
 const AGENCY = { Local: 'Local agency', State: 'State', EPA: 'EPA', Federal: 'EPA' }
 const GAS = [['co2', 'CO₂'], ['no2', 'NO₂'], ['so2', 'SO₂'], ['voc', 'VOC'], ['co', 'CO'], ['pm10', 'PM10']]
 
@@ -230,6 +231,7 @@ export default function PermitPage() {
     const docs = data?.documents || []
     const air = (d, re) => (d.source === 'nwcaa-aop' || d.source === 'pscaa-title-v') && re.test(d.type || '')
     const top = docs.find((d) => /^permit[,\s]/i.test(d.description || '')) || docs.find((d) => air(d, /^(AOP|Air Operating Permit)$/i))
+      || docs.find((d) => d.source === 'metro-vancouver-aq-permits' && d.type === 'Air quality permit')
     const sheet = docs.find((d) => /^fact sheet/i.test(d.description || '')) || docs.find((d) => air(d, /^(SOB|Statement of Basis)$/i))
     return [top && ['Read the permit', top], sheet && [/^(nwcaa-aop|pscaa-title-v)$/.test(sheet.source) ? 'Statement of Basis' : 'Fact sheet', sheet]].filter(Boolean)
   }, [data])
@@ -272,10 +274,15 @@ export default function PermitPage() {
               <Fact label="Type">{[p.universe, p.areas && (p.bcEma ? `waste type: ${p.areas.toLowerCase()}` : p.areas.split(/,\s*/).map((a) => AREA[a] || a).join(', '))].filter(Boolean).join(' · ')}</Fact>
               {p.bcEma && <Fact label="Site">{p.bcEma.address}{p.bcEma.facility_type && <div className={styles.muted}>{oncePhrase(p.bcEma.facility_type)}</div>}</Fact>}
               {p.bcEma && <Fact label="Issued">{day(p.bcEma.issued)}</Fact>}
-              <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
+              {p.mv && <Fact label="Site">{p.mv.address}{p.mv.authorizes && <div className={styles.muted}>{p.mv.authorizes}</div>}</Fact>}
+              {p.mv && (p.mv.issued || p.mv.amended) && <Fact label="Issued">{[p.mv.issued && day(p.mv.issued), p.mv.amended && `amended ${day(p.mv.amended)}`].filter(Boolean).join(', ')}</Fact>}
+              {p.mv?.application && <Fact label="Application">{p.mv.application.gva}: {p.mv.application.purpose}
+                <div className={styles.muted}><a href={p.mv.application_url} target="_blank" rel="noopener noreferrer">{p.mv.application.status}</a></div></Fact>}
+              <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && !p.mv && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
               {data.air && <Fact label="Air permit">{data.air.aop} · dated {data.air.permitDate}<div className={styles.muted}>{data.air.status}</div></Fact>}
               <Fact label="Records">
-                {p.bcEma ? <><a href={p.registerUrl} target="_blank" rel="noopener noreferrer">BC authorizations register</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored row</a></>
+                {p.mv ? <><a href={p.mv.doc_url || p.mv.application_url} target="_blank" rel="noopener noreferrer">Metro Vancouver</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
+                  : p.bcEma ? <><a href={p.registerUrl} target="_blank" rel="noopener noreferrer">BC authorizations register</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored row</a></>
                   : p.echoUrl ? <><a href={p.echoUrl} target="_blank" rel="noopener noreferrer">EPA ECHO</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
                   : <><a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">WA Ecology PARIS</a> <span className={styles.muted}>(state permit; not in EPA’s records)</span></>}
               </Fact>

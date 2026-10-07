@@ -15,11 +15,15 @@ export const STATUS_WORDS = {
   operating: { short: 'Operating', long: 'the air program lists the source as operating' },
   draft: { short: 'Draft', long: 'a draft, not yet issued' },
   cancelled: { short: 'Cancelled', long: 'cancelled; no longer in force' },   // BC EMA register (and the next two)
+  issued: { short: 'Issued', long: 'issued by Metro Vancouver; its term is in the permit' },   // Metro Vancouver (and the next three)
+  'amendment applied for': { short: 'Amendment applied for', long: 'the holder applied to amend it; Metro Vancouver is reviewing the application' },
+  'renewal applied for': { short: 'Renewal applied for', long: 'the holder applied for a new permit; Metro Vancouver is reviewing the application' },
+  'report filed 2023': { short: 'Report filed 2023', long: 'a 2023 report filed with Metro Vancouver lists this permit; the permit document is not online' },
   withdrawn: { short: 'Withdrawn', long: 'withdrawn; not in force' },
   abandoned: { short: 'Abandoned', long: 'listed as abandoned; not in force' },
 }
 export const statusKey = (s) => String(s || '').split(/[;(]/)[0].trim().toLowerCase()
-const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register' }
+const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register', 'MV-AQ': 'Metro Vancouver' }
 export const statusSource = (p) => SOURCE_OF[p.system] || 'EPA ECHO'
 
 /** "In force" etc. for a card row (p = a permits row: epa_system + program_status). */

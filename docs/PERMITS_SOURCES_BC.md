@@ -121,3 +121,32 @@ terminal; EAO projects hand-checked.
   Shellburn, Sechelt). Their permits may sit with Metro Vancouver (air permits) or the
   port authority, neither readable by script.
 
+## Metro Vancouver air quality permits (DEV, 2026-10-07)
+
+Code `lib/ships/metroVancouver.js`, fetcher `scripts/ships/mv-fetch.mjs`, import = the last step of `scripts/ships/import-bc-permits.mjs`
+(so `prod.sh import-bc-permits` runs it, from the cache, with 0 requests). Data: `bc.mv` on each BC entry. No migration.
+
+- **Where the documents are.** Issued permits are PDFs at `…/air-quality-regulatory-program/AirQualityPermits/<file>`; the library listing is
+  access-controlled (401) and is never enumerated. Applications under review have public pages
+  `…/permit-applications/permit/GVA####` (company, the purpose text with the current permit number and address, status) and an
+  Environmental Protection Notice PDF under `…/PermitApplicationDocuments/`; the list is `…/permit-applications`. A page for a permit
+  not under review is an empty template.
+- **Discovery**: public web search (`site:metrovancouver.org AirQualityPermits "<company>"`), one or two per terminal, ~27 searches.
+- **Documents move.** Several indexed permit URLs (0010 Chemtrade, 0086 PKM, 0154 Lafarge, 0617 Richardson, the 1281 Chemtrade notice)
+  answer with a 302 to Metro Vancouver's page-not-found: the files were replaced. The fetcher does not follow redirects and never caches
+  such a page. The notices link the current permit file (PDF link annotations, read with `pdftohtml -xml`).
+- **Text.** The permits are scans with OCR text; `pdftotext -layout` reads it. OCR writes digits as letters in the permit number
+  ("GVAOO81", "GVA11G7"); `gvaNumbers` reads them back. Each permit's number must be in its own text (or a filed report's file name)
+  and each dock quote must be found in the stored text, or the import reports it and stores nothing.
+- **Modelled as** permits with `epa_system` 'MV-AQ', statute 'MV AQ', the holder, address, issued/amended/expiry as the document states,
+  and a status: Issued (the permit PDF), Amendment / Renewal applied for (an application under review), Report filed 2023 (only a
+  filed stack test report names it). Documents: the PDF, the application page and its notice. A permit's own words about ship
+  loading become a "covers this dock" quote (permit_terminal_coverage).
+- **Result**: GVA0261 Shell Burnaby (also confirms Shell's EMA row 11258 at 201 Kensington Avenue as Shellburn's), GVA0294 Imperial
+  Oil IOCO, GVA0205 Pacific Coast Terminals, GVA0081 Neptune, GVA1167 Fraser Grain (issued 2026-07-30), GVA0200 Suncor (amendment
+  under review), GVA0617 Richardson (expired 2025-11-30; renewal GVA1284 under review), GVA0154 Lafarge Richmond (named in a 2023 stack
+  test report). Dock quotes for Shell, PCT, Neptune, Fraser Grain. None found: Westridge, Westshore, Parkland, G3, Cargill, Pacific
+  Terminal, Alliance, Cascadia, Fibreco, FortisBC Tilbury, VAFFC, Lehigh Delta, Lantic, Univar; Chemtrade (GVA0010) and Vancouver
+  Wharves (GVA0086) only in search results, their documents moved. Outside Metro Vancouver: Squamish, Woodfibre, Sechelt, Port Mellon,
+  Texada, Harmac, Duke Point, Crofton, Bare Point.
+

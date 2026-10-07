@@ -22,8 +22,9 @@ const STATUTE = {
   EP313: 'Toxic releases reporting (TRI)', TSCA: 'Chemical substances (TSCA)', CERCLA: 'Contaminated-site records (Superfund)',
   SDWA: 'Drinking water system (Safe Drinking Water Act)',
   'BC EMA': 'Waste discharge authorizations (BC Environmental Management Act)',
+  'MV AQ': 'Air quality permits (Metro Vancouver)',
 }
-const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA', 'BC EMA']
+const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA', 'BC EMA', 'MV AQ']
 const SYSTEM_TITLE = {
   'ICIS-NPDES': 'NPDES water discharge permit / permit coverage (EPA ICIS-NPDES)', 'ICIS-Air': 'Air program record (EPA ICIS-Air); Areas lists the air programs that apply',
   GHGRP: 'Greenhouse Gas Reporting Program facility id (a reporting id, not a permit)', RMP: 'Risk Management Plan id (accident prevention; a reporting id, not a permit)',
@@ -60,6 +61,8 @@ const ext = (href, label, title) => <a className={`${styles.sourceLink} ${styles
 
 const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology', 'nwcaa-aop': 'NW Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air', 'bc-nrced': 'BC NRCED' }
 const BC_REGISTER = 'https://catalogue.data.gov.bc.ca/dataset/waste-discharge-authorizations-all-authorizations'
+SYSTEM_TITLE['MV-AQ'] = 'Metro Vancouver air quality permit (GVRD Air Quality Management Bylaw No. 1082)'
+DOC_SRC['metro-vancouver-aq-permits'] = 'Metro Vancouver'
 const mb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`)
 
 /** One document: its title opens the file at the agency; the chip opens the listing EarthAtlas read it from. */
@@ -92,9 +95,13 @@ function Permit({ p, frsUrl }) {
         <span className={styles.period} title={p.program_status ? statusTitle(p) : undefined}>{p.program_status ? statusShort(p) : ''}</span>
       </div>
       <div className={styles.incidentMeta}>
-        {[p.name, p.universe, p.bcEma ? p.areas && `waste type: ${p.areas.toLowerCase()}` : p.areas && areaText(p.areas),
-          p.bcEma?.issued && `issued ${day(p.bcEma.issued)}`, p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
-        {p.bcEma ? <>
+        {[p.name, p.mv ? p.mv.authorizes : p.universe, p.bcEma ? p.areas && `waste type: ${p.areas.toLowerCase()}` : p.areas && areaText(p.areas),
+          (p.bcEma?.issued || p.mv?.issued) && `issued ${day(p.bcEma?.issued || p.mv.issued)}`, p.mv?.amended && `amended ${day(p.mv.amended)}`,
+          p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
+        {p.mv ? <>
+          {ext(p.mv.doc_url || p.mv.application_url, 'Metro Vancouver', `${SYSTEM_TITLE['MV-AQ']}. Opens ${p.mv.doc_url ? 'the document' : 'the application page'} at Metro Vancouver`)}
+          {' '}{ext(rec(p.source_record_id), 'stored', 'The document as EarthAtlas read it (text and file hash)')}</>
+          : p.bcEma ? <>
           {ext(rec(p.source_record_id), 'BC EMA register', `${SYSTEM_TITLE['BC-EMA']}. Click for the register row as EarthAtlas read it`)}
           {' '}{ext(BC_REGISTER, 'BC Data Catalogue', 'The register on the BC Data Catalogue')}</>
           : p.frs_ids.length ? <>
@@ -113,6 +120,9 @@ function Permit({ p, frsUrl }) {
         <div className={styles.incidentMeta}>WA Ecology: version {p.paris.current.version}{p.paris.current.issued ? `, issued ${day(p.paris.current.issued)}` : ''}
           {p.paris.current.effective ? `, effective ${day(p.paris.current.effective)}` : ''}{p.paris.current.expires ? `, expires ${day(p.paris.current.expires)}` : ''}</div>
       )}
+      {p.mv?.address && <div className={styles.incidentMeta}>{p.mv.address}</div>}
+      {p.mv?.application && <div className={styles.incidentMeta}>Application {p.mv.application.gva} ({String(p.mv.application.status || '').toLowerCase()}): {p.mv.application.purpose}{' '}
+        {ext(p.mv.application_url, 'application page', 'Metro Vancouver’s page for this application')}</div>}
       {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${((t) => t.length > 90 ? `${t.slice(0, 90)}…` : t)(oncePhrase(p.bcEma.facility_type))}` : ''}</div>}
       <div className={styles.permitOpen}>{p.documents?.length ? `${fmtN(p.documents.length)} document${p.documents.length === 1 ? '' : 's'} · ` : ''}Open permit ↗</div>
     </div>
@@ -234,9 +244,10 @@ function Facility({ f, onLocate }) {
       </div>
 
       <div className={styles.sectionHead}>Permits and program records held by {f.name} ({fmtN(f.permits.length)})</div>
-      {isBc && !f.permits.length && <div className={styles.capNote}>{f.bc?.emaNone || 'No BC waste discharge authorization was matched to this facility.'}</div>}
+      {isBc && !f.permits.some((p) => p.epa_system === 'BC-EMA') && <div className={styles.capNote}>{f.bc?.emaNone || 'No BC waste discharge authorization was matched to this facility.'}</div>}
+      {isBc && !f.permits.some((p) => p.epa_system === 'MV-AQ') && (f.bc?.mvNone || f.bc?.mvOutside) && <div className={styles.capNote}>{f.bc.mvNone || f.bc.mvOutside}</div>}
       {groups.map(([s, ps]) => (
-        <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA' || s === 'BC EMA'}>
+        <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA' || s === 'BC EMA' || s === 'MV AQ'}>
           {ps.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}
         </Fold>
       ))}
@@ -262,7 +273,9 @@ function Facility({ f, onLocate }) {
           Environmental Management Act (permits, approvals and registrations under its regulations). EarthAtlas checked by hand which register
           entries are this site, by their listed location near the dock and the company’s name:
           {f.permits.filter((p) => p.bcEma?.why).map((p) => <div key={p.permit_key} className={styles.pcMuted}>· {p.permit_key}: {p.bcEma.why}</div>)}
-          Air permits inside Metro Vancouver are issued by Metro Vancouver, and work on port land is permitted by the port authority; neither is included yet.
+          {f.permits.some((p) => p.mv) && <>Metro Vancouver air quality permits, found through Metro Vancouver’s published permits and permit applications and checked by hand
+            (holder and address):{f.permits.filter((p) => p.mv?.why).map((p) => <div key={p.permit_key} className={styles.pcMuted}>· {p.permit_key}: {p.mv.why}</div>)}</>}
+          Work on port land is permitted by the port authority; those permits are not included yet.
         </div>
         <div className={styles.legendNoteText}>
           <strong>Inspections and enforcement.</strong> From BC’s Natural Resource Compliance and Enforcement Database (NRCED). A record is shown when it

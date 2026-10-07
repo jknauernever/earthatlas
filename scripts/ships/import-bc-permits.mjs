@@ -9,7 +9,8 @@
  * and reused, so a re-run makes none; --refresh re-fetches):
  *   - the BC EMA authorizations register all_ams_authorizations.xlsx (1.7 MB), once for all facilities;
  *   - per facility: each NRCED search in bc.nrced.searches (50 records a page; stops after --max-pages pages, default 2, and says so);
- *   - per facility: each EAO EPIC project search in bc.eao.searches.
+ *   - per facility: each EAO EPIC project search in bc.eao.searches;
+ *   - Metro Vancouver air quality permit documents named in bc.mv (scripts/ships/mv-fetch.mjs: known URLs only, ≥ 2 s apart).
  * All 33 BC facilities ≈ 1 + 35 NRCED + 41 EAO ≈ 77 requests on an empty cache (the 2026-10-07 rollout made 64 new ones plus 3 page reads to confirm addresses; the pilot's were cached).
  * --dry-run also prints the register rows near each facility's berths (or with its company words) to hand-check bc.ema.
  */
@@ -24,6 +25,8 @@ import {
   EMA_XLSX_URL, emaFieldsAll, emaCandidates, nrcedSearchUrl, nrcedRecords, nrcedMatch, nrcedRow, eaoSearchUrl, eaoProjects, eaoRow,
   ensureBcSources, importBcFacilities,
 } from '../../lib/ships/bcPermits.js'
+import { importMvPermits } from '../../lib/ships/metroVancouver.js'
+import { mvDoc, counter as mvCounter } from './mv-fetch.mjs'
 
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships)'
 const CACHE = 'scripts/ships/facilities/cache'
@@ -147,7 +150,19 @@ for (const f of bcData.facilities) {
   }
   raw.eao.set(f.id, eao)
 }
-console.log(`\nrequests made this run: ${requests}`)
+// Metro Vancouver air quality permits (bc.mv): every document the entries name, from the cache (fetched once when missing).
+const mvDocs = new Map()
+for (const f of bcData.facilities) {
+  const mv = f.bc.mv
+  if (mv?.jurisdiction !== 'in') { console.log(`  ${f.id} Metro Vancouver: ${mv?.jurisdiction === 'outside' ? 'outside its region' : 'no bc.mv block'}`); continue }
+  for (const p of mv.permits || []) {
+    for (const u of [p.doc_url, p.application_url, p.notice_url].filter(Boolean)) {
+      try { mvDocs.set(u, await mvDoc(u, { refresh })) } catch (e) { console.log(`  ! ${f.id} ${p.gva}: ${e.message}`) }
+    }
+  }
+  console.log(`  ${f.id} Metro Vancouver: ${(mv.permits || []).map((p) => `${p.gva} (${p.status})`).join(', ') || 'none found'}`)
+}
+console.log(`\nrequests made this run: ${requests} (BC APIs) + ${mvCounter.requests} (Metro Vancouver)`)
 if (dry) { console.log('dry run: nothing written'); process.exit(0) }
 
 const pool = shipsPool()
@@ -160,6 +175,9 @@ try {
     await withTx(pool, (c) => finishRun(c, schema, runId, { status: 'succeeded', stats: { ...r, problems: r.problems.length }, datasetVersion: data.version }))
     console.log(JSON.stringify({ ...r, problems: r.problems.length }))
     for (const p of r.problems) console.log(`  ! ${p}`)
+    const mv = await withTx(pool, (c) => importMvPermits(c, schema, bcData, mvDocs, { runId }))
+    console.log(`Metro Vancouver: ${JSON.stringify({ ...mv, problems: mv.problems.length })}`)
+    for (const p of mv.problems) console.log(`  ! ${p}`)
   } catch (e) {
     await withTx(pool, (c) => finishRun(c, schema, runId, { status: 'failed', stats: {}, error: String(e.message).slice(0, 500) })).catch(() => {})
     throw e

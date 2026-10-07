@@ -2044,6 +2044,2823 @@
     "The terminal is the facility: Westshore's coal terminal on the Roberts Bank causeway, Delta.",
     "Not checked: Metro Vancouver air permits (library returns 401), Vancouver Fraser Port Authority project permits (site blocks scripts), federal Impact Assessment registry."
    ]
+  },
+  {
+   "id": "bc-shellburn-site",
+   "name": "Shell Canada Shellburn terminal (Burnaby)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Burnaby)",
+   "terminals": [
+    {
+     "key": "bc-shellburn",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.289292,
+    "lon": -122.964037,
+    "from": "the dock's berth point, bcpt-258 (BC Ports and Terminals SOURCE_DATA_ID 258)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.289292,
+       "lon": -122.964037,
+       "ref": "bcpt-258 (BC Ports and Terminals SOURCE_DATA_ID 258)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Shell Canada"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "3138",
+       "why": "Shell Canada Products, \"BURNABY-UNDERHILL\", about 3.8 km away: another site"
+      },
+      {
+       "id": "3678",
+       "why": "Trans Mountain (Westridge Marine Terminal): the neighbouring terminal"
+      },
+      {
+       "id": "6833",
+       "why": "Lafarge ready-mix plant, Barnet Highway: another company"
+      },
+      {
+       "id": "11258",
+       "why": "Shell Canada Products, 201 Kensington Avenue, Burnaby, about 800 m from the dock: the address is not confirmed as the terminal's and the row has no facility description"
+      },
+      {
+       "id": "14058",
+       "why": "Trans Mountain (Westridge Marine Terminal): the neighbouring terminal"
+      },
+      {
+       "id": "109085",
+       "why": "Trans Mountain (Westridge Marine Terminal): the neighbouring terminal"
+      }
+     ],
+     "none": "No BC waste discharge authorization was matched to this terminal. The one Shell Canada Products row near the dock (11258, Hazardous Waste Regulation, Cancelled, 201 Kensington Avenue, about 800 m away) has no facility description and its address is not confirmed as the terminal's, so it is left out."
+    },
+    "nrced": {
+     "searches": [
+      "Shellburn"
+     ],
+     "company_words": [
+      "Shell Canada"
+     ],
+     "place_words": [
+      "Shellburn",
+      "Kensington"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Shellburn"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Shellburn\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-parkland-burnaby-site",
+   "name": "Parkland Burnaby Refinery",
+   "kind": "refinery",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Burnaby)",
+   "terminals": [
+    {
+     "key": "bc-parkland-burnaby",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.289432,
+    "lon": -123.00702799999999,
+    "from": "BC EMA authorization 4970 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.291981,
+       "lon": -123.004176,
+       "ref": "bcpt-260 (BC Ports and Terminals SOURCE_DATA_ID 260)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Parkland",
+      "Chevron Canada"
+     ],
+     "accepted": [
+      {
+       "id": "4970",
+       "why": "Permit (effluent), Active, PARKLAND REFINING (B.C.) LTD., \"355 North Willingdon Ave and , 5201 Penzance Drive Burnaby BC\", facility \"Petroleum Bulk Handling Facility and Refinery\"; listed point about 350 m from the berth"
+      },
+      {
+       "id": "7112",
+       "why": "Permit (refuse), Cancelled, PARKLAND REFINING (B.C.) LTD., \"BURNABY, 5201 PENZANCE DRIVE\", facility \"Special Waste Land Treatment Facility and Petroleum Refinery\"; listed point about 670 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "18",
+       "why": "Chemtrade chlor-alkali plant across the inlet (North Vancouver): another company"
+      },
+      {
+       "id": "395",
+       "why": "ERCO Worldwide, North Vancouver: another company"
+      },
+      {
+       "id": "1698",
+       "why": "Chemtrade, North Vancouver: another company"
+      },
+      {
+       "id": "5748",
+       "why": "Terrapure, North Vancouver: another company"
+      },
+      {
+       "id": "8511",
+       "why": "GFL Environmental, North Vancouver: another company"
+      },
+      {
+       "id": "11529",
+       "why": "Newalta, North Vancouver: another company"
+      },
+      {
+       "id": "13711",
+       "why": "Chevron Canada, Grandview Highway, Vancouver: another site"
+      },
+      {
+       "id": "14056",
+       "why": "CXY Chemicals, 100 Amherst Avenue, North Vancouver: another company"
+      },
+      {
+       "id": "107100",
+       "why": "Heidelberg Materials ready-mix plant, North Vancouver: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"Parkland Refining\"",
+      "\"Burnaby Refinery\""
+     ],
+     "company_words": [
+      "Parkland"
+     ],
+     "place_words": [
+      "Willingdon",
+      "Penzance",
+      "Burnaby Refinery"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Parkland"
+     ],
+     "accepted": [
+      {
+       "id": "5f9867aea7b5160023b7f4c9",
+       "why": "EAO project \"Parkland Burnaby Refinery\", proponent Parkland Refining: \"construction of 8 storage tanks at the Parkland Burnaby Refinery\""
+      }
+     ],
+     "candidates": []
+    }
+   },
+   "notes": [
+    "The register's other Parkland Refining and Chevron Canada rows (cardlock fuel stations across BC, the Cobble Hill and Port Hardy terminals) are other sites and are not listed here."
+   ]
+  },
+  {
+   "id": "bc-suncor-burrard-site",
+   "name": "Suncor Burrard Products Terminal",
+   "kind": "product_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Port Moody)",
+   "terminals": [
+    {
+     "key": "bc-suncor-burrard",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.287600000000005,
+    "lon": -122.8966,
+    "from": "BC EMA authorization 14093 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.290171,
+       "lon": -122.898231,
+       "ref": "bcpt-262 (BC Ports and Terminals SOURCE_DATA_ID 262)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Suncor",
+      "Petro-Canada",
+      "Petro Canada"
+     ],
+     "accepted": [
+      {
+       "id": "22",
+       "why": "Permit (effluent), Active, SUNCOR ENERGY PRODUCTS INC. SUNCOR ENERGY PRODUCTS PARTNERSHIP, \"1155 Glenayre Drive, Port Moody\", facility \"Petroleum Refinery\"; listed point about 880 m from the berth"
+      },
+      {
+       "id": "1453",
+       "why": "Permit (refuse), Active, SUNCOR ENERGY PRODUCTS INC. SUNCOR ENERGY PRODUCTS PARTNERSHIP, \"1155 Glenayre Drive, Port Moody\", facility \"Petroleum Refinery Petroleum Refinery\"; listed point about 1.0 km from the berth"
+      },
+      {
+       "id": "8420",
+       "why": "Hazardous Waste Regulation (hazardous waste), Active, PETRO CANADA PRODUCTS, \"PORT MOODY, PETRO-CANADA REFINERY\", facility \"Hazardous Waste Storage facility\"; listed point about 1.3 km from the berth"
+      },
+      {
+       "id": "14093",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, SUNCOR ENERGY INC. SUNCOR ENERGIE INC., \"PORT MOODY-MIDDLE PLANT, 9950 BARNET HIGHWAY\", facility \"Petroleum Storage Facility\"; listed point about 310 m from the berth"
+      },
+      {
+       "id": "14094",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, PETRO-CANADA PRODUCTS, \"1155 Glenayre Drive, Port Moody BC V3H 3E1\", facility \"Petroleum Storage Facility\"; listed point about 770 m from the berth"
+      },
+      {
+       "id": "110534",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, SUNCOR ENERGY INC. SUNCOR ENERGY PRODUCTS PARTNERSHIP, \"1155 Glenayre Drive, Port Moody, BC V3H 3E1\", facility \"Suncor Burrard Products Terminal\"; the facility description names the Suncor Burrard Products Terminal (the listed point is about 3.6 km off; the address is the terminal's)"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "1133",
+       "why": "Chemtrade alum plant, Barnet Highway, Burnaby: another company"
+      },
+      {
+       "id": "1771",
+       "why": "City of Port Moody landfill: another party"
+      },
+      {
+       "id": "7178",
+       "why": "BC Hydro Burrard Thermal: another company"
+      },
+      {
+       "id": "10923",
+       "why": "Petro-Canada, Boundary Lake (northeast BC): another site"
+      },
+      {
+       "id": "14746",
+       "why": "City of Port Moody: another party"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Suncor"
+     ],
+     "company_words": [
+      "Suncor",
+      "Petro-Canada",
+      "Petro Canada"
+     ],
+     "place_words": [
+      "Glenayre",
+      "Burrard"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Suncor"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Suncor\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-ioco-site",
+   "name": "Imperial Oil IOCO terminal (Port Moody)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Port Moody)",
+   "terminals": [
+    {
+     "key": "bc-ioco",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.300992,
+    "lon": -122.88211799999999,
+    "from": "BC EMA authorization 108830 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.301467,
+       "lon": -122.872362,
+       "ref": "bcpt-271 (BC Ports and Terminals SOURCE_DATA_ID 271)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Imperial Oil"
+     ],
+     "accepted": [
+      {
+       "id": "445",
+       "why": "Permit (effluent), Active, IMPERIAL OIL LIMITED, \"PORT MOODY, 2225 IOCO ROAD\", facility \"Petroleum Storage and Distribution Terminal Discharge to Burrard Inlet includes …\"; listed point about 830 m from the berth"
+      },
+      {
+       "id": "6894",
+       "why": "Permit (refuse), Cancelled, IMPERIAL OIL LIMITED, \"2225 Ioco Road, Port Moody BC, V3H 3C8\", facility \"Oil Refinery\"; listed point about 1.3 km from the berth"
+      },
+      {
+       "id": "8589",
+       "why": "Hazardous Waste Regulation (hazardous waste), Cancelled, IMPERIAL OIL LIMITED, \"2225 Ioco Road, Port Moody BC, V3H 3C8\", facility \"storage of petroleum products\"; listed point about 1.2 km from the berth"
+      },
+      {
+       "id": "11287",
+       "why": "Hazardous Waste Regulation, Cancelled, IMPERIAL OIL LIMITED, \"PORT MOODY, 2225 IOCO ROAD\"; listed point about 840 m from the berth"
+      },
+      {
+       "id": "13065",
+       "why": "Hazardous Waste Regulation, Cancelled, IMPERIAL OIL, A PARTNERSHIP OF IMPERIAL LIMITED AND, \"PORT MOODY, 2225 IOCO ROAD, R.R.#1\"; listed point about 840 m from the berth"
+      },
+      {
+       "id": "13460",
+       "why": "Hazardous Waste Regulation, Cancelled, IMPERIAL OIL LIMITED, \"PORT MOODY\"; listed address only \"PORT MOODY\", at the same point as the 2225 Ioco Road rows; listed point about 840 m from the berth"
+      },
+      {
+       "id": "108830",
+       "why": "Permit (refuse), Active, IMPERIAL OIL LIMITED - COMPAGNIE PETROLIERE IMPERIALE LTEE, \"2225 Ioco Road, Port Moody BC V3H 3C8\", facility \"Refinery The overall site is a former refinery and soil and groundwater concentr…\"; listed point about 710 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "22",
+       "why": "Suncor, 1155 Glenayre Drive: another company"
+      },
+      {
+       "id": "1771",
+       "why": "City of Port Moody landfill: another party"
+      },
+      {
+       "id": "7178",
+       "why": "BC Hydro Burrard Thermal: another company"
+      },
+      {
+       "id": "14746",
+       "why": "City of Port Moody: another party"
+      },
+      {
+       "id": "17552",
+       "why": "0985381 B.C. Ltd., Anmore: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"Imperial Oil\""
+     ],
+     "company_words": [
+      "Imperial Oil"
+     ],
+     "place_words": [
+      "Ioco"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Ioco"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Ioco\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-pct-port-moody-site",
+   "name": "Pacific Coast Terminals (Port Moody)",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Port Moody)",
+   "terminals": [
+    {
+     "key": "bc-pct-port-moody",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.284861,
+    "lon": -122.861865,
+    "from": "the dock's berth point, bcpt-257 (BC Ports and Terminals SOURCE_DATA_ID 257)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.284861,
+       "lon": -122.861865,
+       "ref": "bcpt-257 (BC Ports and Terminals SOURCE_DATA_ID 257)"
+      },
+      {
+       "lat": 49.287558,
+       "lon": -122.865387,
+       "ref": "osm-way1081401265 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Pacific Coast Terminals"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "1771",
+       "why": "City of Port Moody landfill: another party"
+      },
+      {
+       "id": "14363",
+       "why": "Titan Recyclers: another company"
+      },
+      {
+       "id": "14746",
+       "why": "City of Port Moody: another party"
+      },
+      {
+       "id": "110534",
+       "why": "Suncor Burrard Products Terminal storm water registration (its listed point falls near here; the address is Suncor's): another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Pacific Coast Terminals was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Pacific Coast Terminals\""
+     ],
+     "company_words": [
+      "Pacific Coast Terminals"
+     ],
+     "place_words": [
+      "Port Moody"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Pacific Coast Terminals"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Pacific Coast Terminals\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-chemtrade-nv-site",
+   "name": "Chemtrade North Vancouver chlor-alkali plant",
+   "kind": "chemical_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-chemtrade-nv",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.299676,
+    "lon": -123.015203,
+    "from": "BC EMA authorization 18 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.297397,
+       "lon": -123.014501,
+       "ref": "bcpt-264 (BC Ports and Terminals SOURCE_DATA_ID 264)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Chemtrade",
+      "Canexus"
+     ],
+     "accepted": [
+      {
+       "id": "18",
+       "why": "Permit (air, effluent), Active, CHEMTRADE ELECTROCHEM INC., \"100 Amherst Ave, North Vancouver, BC V7H 1S4\", facility \"Chlor-Alkali Plant Chlor-Alkali Plant\"; listed point about 260 m from the berth"
+      },
+      {
+       "id": "1698",
+       "why": "Permit (refuse), Active, CHEMTRADE ELECTROCHEM INC., \"100 Amherst Ave, North Vancouver BC V7H 1S4\", facility \"Chlor-Alkali Plant Chlor-Alkali Plant\"; listed point about 640 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "395",
+       "why": "ERCO Worldwide sodium chlorate plant, 100 Forester Street: the neighbouring plant"
+      },
+      {
+       "id": "1133",
+       "why": "Chemtrade alum plant, 8655 Barnet Highway, Burnaby, about 7.4 km away: another site"
+      },
+      {
+       "id": "4970",
+       "why": "Parkland refinery across the inlet: another company"
+      },
+      {
+       "id": "5508",
+       "why": "Univar, 1545 Bay Street: another company"
+      },
+      {
+       "id": "5748",
+       "why": "Terrapure: another company"
+      },
+      {
+       "id": "7810",
+       "why": "Great Northern Packing: another company"
+      },
+      {
+       "id": "8511",
+       "why": "GFL Environmental: another company"
+      },
+      {
+       "id": "11529",
+       "why": "Newalta: another company"
+      },
+      {
+       "id": "14056",
+       "why": "CXY Chemicals Canada, 100 Amherst Avenue (Cancelled): same address, but the holder is not Chemtrade by name"
+      },
+      {
+       "id": "18061",
+       "why": "International Bio Recovery: another company"
+      },
+      {
+       "id": "107100",
+       "why": "Heidelberg Materials ready-mix plant: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Chemtrade"
+     ],
+     "company_words": [
+      "Chemtrade"
+     ],
+     "place_words": [
+      "Amherst"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Chemtrade"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Chemtrade\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-neptune-site",
+   "name": "Neptune Terminals",
+   "kind": "coal_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-neptune",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.3035,
+    "lon": -123.0507,
+    "from": "BC EMA authorization 109531 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.303556,
+       "lon": -123.052882,
+       "ref": "bcpt-267 (BC Ports and Terminals SOURCE_DATA_ID 267)"
+      },
+      {
+       "lat": 49.304035,
+       "lon": -123.055515,
+       "ref": "osm-way1167455077 (OpenStreetMap)"
+      },
+      {
+       "lat": 49.303424,
+       "lon": -123.048288,
+       "ref": "osm-way1167455079 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Neptune"
+     ],
+     "accepted": [
+      {
+       "id": "6898",
+       "why": "Permit (effluent), Active, NEPTUNE BULK TERMINALS CANADA LTD., \"NORTH VANCOUVER, 1001 LOW LEVEL ROAD\", facility \"Bulk Loading and Storage Facility\"; listed point about 240 m from the berth"
+      },
+      {
+       "id": "109531",
+       "why": "Permit (effluent), Active, NEPTUNE BULK TERMINALS (CANADA) LTD., \"1001 Low Level Road, North Vancouver BC V7L 1A7\", facility \"Terminal Neptune has been operating from the north shore of Burrard Inlet since …\"; listed point about 160 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "5508",
+       "why": "Univar, 1545 Bay Street: another company"
+      },
+      {
+       "id": "7810",
+       "why": "Great Northern Packing: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Neptune"
+     ],
+     "company_words": [
+      "Neptune"
+     ],
+     "place_words": [
+      "Low Level",
+      "North Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Neptune"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Neptune\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-g3-site",
+   "name": "G3 Terminal Vancouver",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-g3",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.301137,
+    "lon": -123.045452,
+    "from": "the dock's berth point, osm-way1184889877 (OpenStreetMap)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.301137,
+       "lon": -123.045452,
+       "ref": "osm-way1184889877 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "G3 Terminal"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "5508",
+       "why": "Univar: another company"
+      },
+      {
+       "id": "6898",
+       "why": "Neptune Bulk Terminals: the neighbouring terminal"
+      },
+      {
+       "id": "7810",
+       "why": "Great Northern Packing: another company"
+      },
+      {
+       "id": "109531",
+       "why": "Neptune Bulk Terminals: the neighbouring terminal"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by G3 was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"G3 Terminal\""
+     ],
+     "company_words": [
+      "G3"
+     ],
+     "place_words": [
+      "Low Level",
+      "North Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "G3"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"G3\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-cargill-site",
+   "name": "Cargill grain terminal (North Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-cargill",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.305303,
+    "lon": -123.057026,
+    "from": "the dock's berth point, bcpt-269 (BC Ports and Terminals SOURCE_DATA_ID 269)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.305303,
+       "lon": -123.057026,
+       "ref": "bcpt-269 (BC Ports and Terminals SOURCE_DATA_ID 269)"
+      },
+      {
+       "lat": 49.305109,
+       "lon": -123.058748,
+       "ref": "osm-way525504891 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Cargill"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "6898",
+       "why": "Neptune Bulk Terminals: the neighbouring terminal"
+      },
+      {
+       "id": "109531",
+       "why": "Neptune Bulk Terminals: the neighbouring terminal"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Cargill was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "Cargill"
+     ],
+     "company_words": [
+      "Cargill"
+     ],
+     "place_words": [
+      "North Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Cargill"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Cargill\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-richardson-site",
+   "name": "Richardson International terminal (North Vancouver)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-richardson",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.3049,
+    "lon": -123.07089,
+    "from": "the dock's berth point, bcpt-268 (BC Ports and Terminals SOURCE_DATA_ID 268)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.3049,
+       "lon": -123.07089,
+       "ref": "bcpt-268 (BC Ports and Terminals SOURCE_DATA_ID 268)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Richardson International"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "6898",
+       "why": "Neptune Bulk Terminals: another company"
+      },
+      {
+       "id": "109531",
+       "why": "Neptune Bulk Terminals: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Richardson International was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Richardson International\""
+     ],
+     "company_words": [
+      "Richardson International"
+     ],
+     "place_words": [
+      "North Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Richardson"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Richardson\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-viterra-pacific-site",
+   "name": "Pacific Terminal (Pacific Elevators)",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-viterra-pacific",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.287961,
+    "lon": -123.067421,
+    "from": "the dock's berth point, bcpt-254 (BC Ports and Terminals SOURCE_DATA_ID 254)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.287961,
+       "lon": -123.067421,
+       "ref": "bcpt-254 (BC Ports and Terminals SOURCE_DATA_ID 254)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Viterra",
+      "Pacific Elevators",
+      "Bunge"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "1668",
+       "why": "Lantic sugar refinery: another company"
+      },
+      {
+       "id": "8426",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "105286",
+       "why": "Southcoast Petroleum: another company"
+      },
+      {
+       "id": "106270",
+       "why": "Strathcona Business Improvement Association: another party"
+      },
+      {
+       "id": "107468",
+       "why": "Amrize ready-mix plant, 2095 Commissioner Street: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by the terminal's operators (Viterra, Bunge, Pacific Elevators) was found in the register."
+    },
+    "nrced": {
+     "searches": [
+      "\"Pacific Elevators\""
+     ],
+     "company_words": [
+      "Viterra",
+      "Pacific Elevators",
+      "Bunge"
+     ],
+     "place_words": [
+      "Commissioner",
+      "Pacific Elevators",
+      "Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Viterra"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Viterra\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-alliance-grain-site",
+   "name": "Alliance Grain Terminal",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-alliance-grain",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.28728,
+    "lon": -123.078576,
+    "from": "the dock's berth point, bcpt-251 (BC Ports and Terminals SOURCE_DATA_ID 251)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.28728,
+       "lon": -123.078576,
+       "ref": "bcpt-251 (BC Ports and Terminals SOURCE_DATA_ID 251)"
+      },
+      {
+       "lat": 49.288203,
+       "lon": -123.079053,
+       "ref": "osm-way1173738445 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Alliance Grain"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "1668",
+       "why": "Lantic sugar refinery: the neighbouring plant"
+      },
+      {
+       "id": "8426",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "105286",
+       "why": "Southcoast Petroleum: another company"
+      },
+      {
+       "id": "106270",
+       "why": "Strathcona Business Improvement Association: another party"
+      },
+      {
+       "id": "107468",
+       "why": "Amrize ready-mix plant: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Alliance Grain Terminal was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Alliance Grain\""
+     ],
+     "company_words": [
+      "Alliance Grain"
+     ],
+     "place_words": [
+      "Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Alliance Grain"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Alliance Grain\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-cascadia-site",
+   "name": "Cascadia Terminal",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-cascadia",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.291674,
+    "lon": -123.03407,
+    "from": "the dock's berth point, bcpt-259 (BC Ports and Terminals SOURCE_DATA_ID 259)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.291674,
+       "lon": -123.03407,
+       "ref": "bcpt-259 (BC Ports and Terminals SOURCE_DATA_ID 259)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Cascadia",
+      "Bunge"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "5508",
+       "why": "Univar, North Vancouver: another company"
+      },
+      {
+       "id": "7810",
+       "why": "Great Northern Packing: another company"
+      },
+      {
+       "id": "107100",
+       "why": "Heidelberg Materials ready-mix plant: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by the terminal's operators (Cascadia Port Management, Bunge) was found in the register."
+    },
+    "nrced": {
+     "searches": [
+      "\"Cascadia Terminal\""
+     ],
+     "company_words": [
+      "Cascadia Port Management",
+      "Cascadia Terminal",
+      "Bunge"
+     ],
+     "place_words": [
+      "Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Cascadia"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Cascadia\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-vancouver-wharves-site",
+   "name": "Vancouver Wharves",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-vancouver-wharves",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.31216,
+    "lon": -123.12,
+    "from": "BC EMA authorization 1386 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.309433,
+       "lon": -123.117837,
+       "ref": "bcpt-272 (BC Ports and Terminals SOURCE_DATA_ID 272)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Vancouver Wharves",
+      "Pembina"
+     ],
+     "accepted": [
+      {
+       "id": "1386",
+       "why": "Permit (effluent), Active, PKM CANADA TERMINALS GP ULC PKM CANADA MARINE TERMINAL LIMITED PARTNERSHIP, \"NORTH VANCOUVER, 1995 WEST 1ST STREET\", facility \"Marine bulk loading facility Marine bulk loading facility\"; facility type \"Marine bulk loading facility\". The holder, PKM Canada Marine Terminal LP, is the entity Pembina names for Vancouver Wharves (pembina.com/operations/facilities/vancouver-wharves); listed point about 340 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "2440",
+       "why": "Lafarge, foot of Pemberton Avenue: another company"
+      },
+      {
+       "id": "14000",
+       "why": "KM Canada Terminals storm water registration at \"BC RAIL DIESEL SHOP\": the address doesn't confirm it is this terminal"
+      },
+      {
+       "id": "17175",
+       "why": "Vancouver Shipyards: another company"
+      },
+      {
+       "id": "17522",
+       "why": "Domtar and Seaspan, 10 Pemberton Avenue: another site"
+      },
+      {
+       "id": "107465",
+       "why": "Amrize ready-mix plant: another company"
+      },
+      {
+       "id": "109919",
+       "why": "Domtar and Seaspan, 10 Pemberton Avenue: another site"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"PKM Canada\""
+     ],
+     "company_words": [
+      "PKM Canada",
+      "KM Canada Terminals",
+      "Vancouver Wharves"
+     ],
+     "place_words": [
+      "1995 West 1st",
+      "Vancouver Wharves"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Vancouver Wharves"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Vancouver Wharves\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-fibreco-site",
+   "name": "Fibreco Export",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-fibreco",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.310903,
+    "lon": -123.105684,
+    "from": "the dock's berth point, bcpt-274 (BC Ports and Terminals SOURCE_DATA_ID 274)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.310903,
+       "lon": -123.105684,
+       "ref": "bcpt-274 (BC Ports and Terminals SOURCE_DATA_ID 274)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Fibreco"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "1386",
+       "why": "PKM Canada (Vancouver Wharves): the neighbouring terminal"
+      },
+      {
+       "id": "2440",
+       "why": "Lafarge: another company"
+      },
+      {
+       "id": "14000",
+       "why": "KM Canada Terminals: another company"
+      },
+      {
+       "id": "17175",
+       "why": "Vancouver Shipyards: another company"
+      },
+      {
+       "id": "17522",
+       "why": "Domtar and Seaspan: another site"
+      },
+      {
+       "id": "107253",
+       "why": "TreatMed: another company"
+      },
+      {
+       "id": "107465",
+       "why": "Amrize ready-mix plant: another company"
+      },
+      {
+       "id": "109919",
+       "why": "Domtar and Seaspan: another site"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Fibreco was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "Fibreco"
+     ],
+     "company_words": [
+      "Fibreco"
+     ],
+     "place_words": [
+      "North Vancouver"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Fibreco"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Fibreco\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-fortis-tilbury-lng-site",
+   "name": "FortisBC Tilbury LNG plant",
+   "kind": "lng_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Delta)",
+   "terminals": [
+    {
+     "key": "bc-fortis-tilbury-lng",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.1436,
+    "lon": -123.03620000000001,
+    "from": "BC EMA authorization 108074 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.143715,
+       "lon": -123.034475,
+       "ref": "osm-way91637399 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "FortisBC",
+      "Fortis BC",
+      "Terasen Gas",
+      "BC Gas"
+     ],
+     "accepted": [
+      {
+       "id": "108064",
+       "why": "Oil & Gas Waste Regulation (Facility Registration), Withdrawn, FORTISBC ENERGY INC., \"b-73-H/92-G-3\", facility \"Tilbury 1 LNG Plant b-73-H/92-G-3\"; listed point about 210 m from the berth"
+      },
+      {
+       "id": "108066",
+       "why": "Oil & Gas Waste Regulation (Facility Registration), Withdrawn, FORTISBC ENERGY INC., \"b-73-H/92-G-3\", facility \"Tilbury 1 LNG plant b-73-H/92-G-3\"; listed point about 210 m from the berth"
+      },
+      {
+       "id": "108073",
+       "why": "Oil & Gas Waste Regulation (Facility Registration), Withdrawn, FORTISBC ENERGY INC., \"b-73-H/92-G-3\", facility \"Tilbury 1 LNG plant b-73-H/92-G-3\"; listed point about 210 m from the berth"
+      },
+      {
+       "id": "108074",
+       "why": "Oil & Gas Waste Regulation (Facility Registration) (air), Active, FORTISBC ENERGY INC., \"b-73-H/92-G-3\", facility \"Tilbury 1 LNG Gas Plant b-73-H/92-G-3\"; listed point about 130 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "4513",
+       "why": "Lehigh Northwest Cement: the neighbouring plant"
+      },
+      {
+       "id": "100072",
+       "why": "KBL Environmental: another company"
+      },
+      {
+       "id": "107809",
+       "why": "FortisBC, 7150 80th Street, Delta (pipeline excavation dewatering), about 4.6 km away: another site"
+      },
+      {
+       "id": "108763",
+       "why": "FortisBC, 7150 80th Street, Delta (pipeline excavation), about 4.6 km away: another site"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Tilbury"
+     ],
+     "company_words": [
+      "FortisBC",
+      "Fortis BC"
+     ],
+     "place_words": [
+      "Tilbury"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Tilbury"
+     ],
+     "accepted": [
+      {
+       "id": "5df7f1bfb7434b002164961c",
+       "why": "EAO project \"Tilbury Phase 2 LNG Expansion\", proponent FortisBC: \"proposes to expand its existing LNG facility on Tilbury Island\""
+      }
+     ],
+     "candidates": [
+      {
+       "id": "58851208aaecd9001b829b58",
+       "why": "\"Tilbury Marine Jetty\" on Tilbury Island, proponent Tilbury Jetty LP: another proponent's marine facility"
+      }
+     ]
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-vaffc-marine-site",
+   "name": "Vancouver Airport Fuel Facilities Corporation marine terminal",
+   "kind": "product_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Richmond)",
+   "terminals": [
+    {
+     "key": "bc-vaffc-marine",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.140772,
+    "lon": -123.05455,
+    "from": "the dock's berth point, osm-way1445803762 (OpenStreetMap)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.140772,
+       "lon": -123.05455,
+       "ref": "osm-way1445803762 (OpenStreetMap)"
+      },
+      {
+       "lat": 49.139127,
+       "lon": -123.056291,
+       "ref": "osm-way1445803793 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Vancouver Airport Fuel"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "2273",
+       "why": "Ocean Construction Supplies: another company"
+      },
+      {
+       "id": "4922",
+       "why": "Montrose Industries (Ecowaste landfill): another company"
+      },
+      {
+       "id": "12026",
+       "why": "Corix Utilities: another company"
+      },
+      {
+       "id": "16142",
+       "why": "Ecowaste Industries: another company"
+      },
+      {
+       "id": "100072",
+       "why": "KBL Environmental: another company"
+      },
+      {
+       "id": "108074",
+       "why": "FortisBC Tilbury LNG: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by the Vancouver Airport Fuel Facilities Corporation was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Vancouver Airport Fuel\""
+     ],
+     "company_words": [
+      "Vancouver Airport Fuel"
+     ],
+     "place_words": [
+      "Fraser River",
+      "Marine Terminal"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Vancouver Airport Fuel"
+     ],
+     "accepted": [
+      {
+       "id": "5885117caaecd9001b820cd6",
+       "why": "EAO project \"Vancouver Airport Fuel Delivery\", proponent Vancouver Airport Fuel Facilities Corporation: \"a marine terminal on the south arm of the Fraser River, an adjacent fuel storage facility, and a 15 kilometre pipeline\""
+      }
+     ],
+     "candidates": []
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-fraser-grain-site",
+   "name": "Fraser Grain Terminal",
+   "kind": "grain_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Surrey)",
+   "terminals": [
+    {
+     "key": "bc-fraser-grain",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.181368,
+    "lon": -122.917914,
+    "from": "the dock's berth point, osm-way1309448439 (OpenStreetMap)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.181368,
+       "lon": -122.917914,
+       "ref": "osm-way1309448439 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Fraser Grain"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "161",
+       "why": "Bekaert Canada, 11041 Elevator Road (Cancelled): another company"
+      },
+      {
+       "id": "7785",
+       "why": "Shearer Fish: another company"
+      },
+      {
+       "id": "12417",
+       "why": "Econotech Services: another company"
+      },
+      {
+       "id": "106503",
+       "why": "Chevron cardlock, Annacis Island: another company"
+      },
+      {
+       "id": "109071",
+       "why": "Parkland cardlock, Annacis Island: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Fraser Grain Terminal was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Fraser Grain\""
+     ],
+     "company_words": [
+      "Fraser Grain"
+     ],
+     "place_words": [
+      "Surrey"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Fraser Grain"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Fraser Grain\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-lehigh-delta-site",
+   "name": "Delta cement plant (Lehigh Northwest Cement)",
+   "kind": "cement_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Delta)",
+   "terminals": [
+    {
+     "key": "bc-lehigh-delta",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.144085,
+    "lon": -123.024323,
+    "from": "BC EMA authorization 4513 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.145972,
+       "lon": -123.029018,
+       "ref": "bcpt-231 (BC Ports and Terminals SOURCE_DATA_ID 231)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Lehigh",
+      "Heidelberg"
+     ],
+     "accepted": [
+      {
+       "id": "4513",
+       "why": "Permit (effluent), Active, LEHIGH NORTHWEST CEMENT LIMITED, \"7219 River Road, Delta\", facility \"Cement plant\"; BC Ports and Terminals names this dock \"Lehigh Northwest Cement\"; listed point about 400 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "41",
+       "why": "Lantic Real Property, 7900 River Road: another company"
+      },
+      {
+       "id": "8175",
+       "why": "GFL Environmental: another company"
+      },
+      {
+       "id": "13227",
+       "why": "Philip Enterprises: another company"
+      },
+      {
+       "id": "103869",
+       "why": "Lantic Real Property: another company"
+      },
+      {
+       "id": "108064",
+       "why": "FortisBC Tilbury LNG: the neighbouring plant"
+      },
+      {
+       "id": "108066",
+       "why": "FortisBC Tilbury LNG: the neighbouring plant"
+      },
+      {
+       "id": "108073",
+       "why": "FortisBC Tilbury LNG: the neighbouring plant"
+      },
+      {
+       "id": "108074",
+       "why": "FortisBC Tilbury LNG: the neighbouring plant"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Lehigh"
+     ],
+     "company_words": [
+      "Lehigh",
+      "Heidelberg"
+     ],
+     "place_words": [
+      "River Road",
+      "River Rd"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Lehigh"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Lehigh\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-lafarge-richmond-site",
+   "name": "Richmond cement plant (Lafarge Canada)",
+   "kind": "cement_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Richmond)",
+   "terminals": [
+    {
+     "key": "bc-lafarge-richmond",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.15812,
+    "lon": -123.005387,
+    "from": "BC EMA authorization 42 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.157925,
+       "lon": -123.005281,
+       "ref": "osm-site (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Lafarge",
+      "Amrize"
+     ],
+     "accepted": [
+      {
+       "id": "42",
+       "why": "Permit (effluent), Active, LAFARGE CANADA INC., \"RICHMOND, 7611 NO. 9 ROAD\", facility \"Cement Manufacturing Plant\"; listed point about 20 m from the berth"
+      },
+      {
+       "id": "4409",
+       "why": "Permit (refuse), Active, LAFARGE CANADA INC., \"RICHMOND-NO. 9 ROAD\", facility \"Cement and Concrete Manufacturing Plant\"; listed point about 350 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "41",
+       "why": "Lantic Real Property: another company"
+      },
+      {
+       "id": "2439",
+       "why": "Amrize concrete products and ready-mix plant, foot of Nelson Road: a separate plant of the same company, not the cement plant"
+      },
+      {
+       "id": "2976",
+       "why": "Con-Force Structures: another company"
+      },
+      {
+       "id": "3867",
+       "why": "Con-Force Structures: another company"
+      },
+      {
+       "id": "6835",
+       "why": "Lafarge precast concrete plant, 7440 Nelson Road (Cancelled): a separate plant"
+      },
+      {
+       "id": "14084",
+       "why": "Petro-Canada storage, address 2555 Gilmour Avenue, Burnaby: another company and site"
+      },
+      {
+       "id": "103869",
+       "why": "Lantic Real Property: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"No. 9 Road\""
+     ],
+     "company_words": [
+      "Lafarge",
+      "Amrize"
+     ],
+     "place_words": [
+      "No. 9 Road",
+      "No 9 Road"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Lafarge"
+     ],
+     "accepted": [
+      {
+       "id": "58851016aaecd9001b80ae58",
+       "why": "EAO project \"Lafarge Cement Plant Modernization\", proponent Lafarge Canada Incorporated, location Richmond"
+      }
+     ],
+     "candidates": []
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-squamish-terminals-site",
+   "name": "Squamish Terminals",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "admin_area": "Squamish-Lillooet (Squamish)",
+   "terminals": [
+    {
+     "key": "bc-squamish-terminals",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.684894,
+    "lon": -123.174055,
+    "from": "the dock's berth point, bcpt-293 (BC Ports and Terminals SOURCE_DATA_ID 293)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.684894,
+       "lon": -123.174055,
+       "ref": "bcpt-293 (BC Ports and Terminals SOURCE_DATA_ID 293)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Squamish Terminals"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "138",
+       "why": "Squamish Cornerstone Developments: another company"
+      },
+      {
+       "id": "8165",
+       "why": "Hydor-Tech: another company"
+      },
+      {
+       "id": "8166",
+       "why": "Hydor-Tech: another company"
+      },
+      {
+       "id": "8788",
+       "why": "Nexen (Cancelled): another company"
+      },
+      {
+       "id": "11832",
+       "why": "Squamish Mills: another company"
+      },
+      {
+       "id": "17841",
+       "why": "Squamish Waterfront Development Corporation: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by Squamish Terminals was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Squamish Terminals\""
+     ],
+     "company_words": [
+      "Squamish Terminals"
+     ],
+     "place_words": [
+      "Squamish"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Squamish Terminals"
+     ],
+     "accepted": [
+      {
+       "id": "5d49b98d4cb2c7001b13c3b3",
+       "why": "EAO project \"Squamish Terminals Berth 2 Dredge\", proponent Squamish Terminals Ltd.: \"renewal dredge of ... Berth 2 at Squamish Terminals\""
+      }
+     ],
+     "candidates": []
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-woodfibre-lng-site",
+   "name": "Woodfibre LNG",
+   "kind": "lng_terminal",
+   "country": "CA",
+   "admin_area": "Squamish-Lillooet (Howe Sound)",
+   "terminals": [
+    {
+     "key": "bc-woodfibre-lng",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.665532999999996,
+    "lon": -123.253521,
+    "from": "BC EMA authorization 111578 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.664263,
+       "lon": -123.255635,
+       "ref": "osm-way116783075 (OpenStreetMap)"
+      },
+      {
+       "lat": 49.662059,
+       "lon": -123.258465,
+       "ref": "osm-way606189634 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Woodfibre"
+     ],
+     "accepted": [
+      {
+       "id": "1239",
+       "why": "Permit (effluent), Active, WOODFIBRE LNG GENERAL PARTNER INC., \"The community of Britannia Beach is approx. 5.5 km SE of the Project area; Darrell Bay is approx. 6.2 km to the E; and Port Mellon is approx. 22 km SE\", facility \"Landfill leachate treatment plant Landfill leachate treatment plant\"; listed point about 410 m from the berth"
+      },
+      {
+       "id": "2334",
+       "why": "Permit (effluent), Active, WOODFIBRE LNG GENERAL PARTNER INC., \"Woodfibre, BC\", facility \"Industrial site Old Kraft Pulp Mill to be used to ship LNG\"; listed point about 460 m from the berth"
+      },
+      {
+       "id": "7322",
+       "why": "Permit (refuse), Active, WOODFIBRE LNG GENERAL PARTNER INC., \"The community of Britania Beach is approximately 5.5 km southeast of the Project Area; Darrel Bay is approximately 6.2 km to the east; and Port Mellon\", facility \"Former Kraft Pulp Mill - now Liquified Natural Gas Former Kraft Pulp Mill\"; listed point about 640 m from the berth"
+      },
+      {
+       "id": "111578",
+       "why": "Permit (effluent), Active, WOODFIBRE LNG GENERAL PARTNER INC., \"WOOD Squamish A-001-K/092-G-11 001, 7 km SW of Squamish, B.C at former Woodfibre Pulp Mill site on Howe Sound\", facility \"LNG Facility Construction WOOD Squamish A-001-K/092-G-11 001\"; listed point about 210 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "107452",
+       "why": "Western Forest Products, former pulp mill (Cancelled): an earlier owner of the site, another company"
+      },
+      {
+       "id": "110163",
+       "why": "FortisBC Eagle Mountain pipeline tunnel: another company's project"
+      },
+      {
+       "id": "111824",
+       "why": "FortisBC Eagle Mountain pipeline tunnel: another company's project"
+      },
+      {
+       "id": "111973",
+       "why": "FortisBC Eagle Mountain pipeline tunnel: another company's project"
+      },
+      {
+       "id": "112003",
+       "why": "Ledcor / LNG Constructors storm water registration (Withdrawn): the construction contractor, another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Woodfibre"
+     ],
+     "company_words": [
+      "Woodfibre LNG"
+     ],
+     "place_words": [
+      "Woodfibre",
+      "Howe Sound"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Woodfibre"
+     ],
+     "accepted": [
+      {
+       "id": "588511e1aaecd9001b8272e7",
+       "why": "EAO project \"Woodfibre LNG\", proponent Woodfibre LNG General Partner Inc.: the LNG export facility itself"
+      }
+     ],
+     "candidates": [
+      {
+       "id": "588511ddaaecd9001b826f0d",
+       "why": "\"Eagle Mountain - Woodfibre Gas Pipeline\", proponent FortisBC: the pipeline that supplies the facility, another proponent's project"
+      }
+     ]
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-harmac-site",
+   "name": "Harmac Pacific pulp mill (Nanaimo Forest Products)",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "admin_area": "Nanaimo (Duke Point)",
+   "terminals": [
+    {
+     "key": "bc-harmac",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.137968,
+    "lon": -123.85631599999999,
+    "from": "BC EMA authorization 108801 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.140276,
+       "lon": -123.856295,
+       "ref": "bcpt-224 (BC Ports and Terminals SOURCE_DATA_ID 224)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Harmac",
+      "Nanaimo Forest Products"
+     ],
+     "accepted": [
+      {
+       "id": "1214",
+       "why": "Permit (effluent), Active, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC, V9X 1J2\", facility \"Pulp Mill Pulp MIll - produces northern bleached softwood kraft pulp\"; listed point about 290 m from the berth"
+      },
+      {
+       "id": "2205",
+       "why": "Permit (refuse), Active, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC V9X 1J2\", facility \"PULP & NEWSPRINT INDUSTRY\"; the listed point is about 2.7 km off, the address is the mill's"
+      },
+      {
+       "id": "2708",
+       "why": "Permit (air), Active, NANAIMO FOREST PRODUCTS LTD., \"HARMAC\", facility \"PULP & NEWSPRINT INDUSTRY\"; listed point about 260 m from the berth"
+      },
+      {
+       "id": "103950",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC V9X 1J2\", facility \"petroleum storage and distribution facility\"; listed point about 560 m from the berth"
+      },
+      {
+       "id": "107957",
+       "why": "Approval (effluent), Expired, NANAIMO FOREST PRODUCTS LTD. HARMAC PACIFIC, \"1000 Wave Place Nanaimo BC V9X 1J2\", facility \"Pulp mill Pulp mill - produces northern bleached softwood kraft pulp\"; listed point about 290 m from the berth"
+      },
+      {
+       "id": "108801",
+       "why": "Organic Matter Recycling Regulation, Cancelled, SYLVIS ENVIRONMENTAL SERVICES INC. AND NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Pl. Nanaimo BC V9X 1J2\", facility \"Harmac landfill\"; held jointly with Sylvis Environmental; listed point about 260 m from the berth"
+      },
+      {
+       "id": "110360",
+       "why": "Organic Matter Recycling Regulation, Expired, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo, BC, V9X 1J2\", facility \"landfill not located on ALR. Biosolids to be blended into a soil mixture for pla…\"; listed point about 1.0 km from the berth"
+      },
+      {
+       "id": "110574",
+       "why": "Organic Matter Recycling Regulation, Expired, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC V9X 1J2\", facility \"landfill not located on ALR. Biosolids to be blended into a soil mixture for pla…\"; listed point about 1.0 km from the berth"
+      },
+      {
+       "id": "111016",
+       "why": "Organic Matter Recycling Regulation, Expired, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC, V9X 1J2\", facility \"Land Application of municipal Class A or B biosolids as a mixture of growing med…\"; listed point about 1.0 km from the berth"
+      },
+      {
+       "id": "112659",
+       "why": "Organic Matter Recycling Regulation, Expired, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC V9X 1J2\", facility \"Land Application of municipal Class A biosolids\"; listed point about 1.0 km from the berth"
+      },
+      {
+       "id": "113178",
+       "why": "Organic Matter Recycling Regulation, Active, NANAIMO FOREST PRODUCTS LTD., \"1000 Wave Place, Nanaimo BC V9X 1J2\", facility \"Land Application of municipal Class A biosolids\"; listed point about 1.0 km from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "96",
+       "why": "Nanaimo Forest Products sodium chlorate facility, address only \"NANAIMO-DUKE POINT\" (Cancelled): not confirmed as the mill site"
+      },
+      {
+       "id": "2110",
+       "why": "Chemtrade: another company"
+      },
+      {
+       "id": "5989",
+       "why": "Regional District of Nanaimo: another party"
+      },
+      {
+       "id": "8471",
+       "why": "Pope & Talbot, \"HARMAC PULP MILL\" (Cancelled): an earlier owner, another company"
+      },
+      {
+       "id": "14425",
+       "why": "Western Forest Products: another company"
+      },
+      {
+       "id": "15149",
+       "why": "Heartwood: another company"
+      },
+      {
+       "id": "15365",
+       "why": "Environmental 360 Solutions: another company"
+      },
+      {
+       "id": "16725",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "17357",
+       "why": "International Composting: another company"
+      },
+      {
+       "id": "17586",
+       "why": "Vancouver Island Energy: another company"
+      },
+      {
+       "id": "106654",
+       "why": "International Composting: another company"
+      },
+      {
+       "id": "107448",
+       "why": "Duke Point Pellet: another company"
+      },
+      {
+       "id": "108531",
+       "why": "Nanaimo Organic Waste: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Harmac"
+     ],
+     "company_words": [
+      "Nanaimo Forest Products",
+      "Harmac"
+     ],
+     "place_words": [
+      "Harmac",
+      "Wave Place",
+      "Wave Pl"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Harmac"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Harmac\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-lantic-site",
+   "name": "Lantic Vancouver sugar refinery",
+   "kind": "other_bulk_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-lantic",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.284800000000004,
+    "lon": -123.081,
+    "from": "BC EMA authorization 1668 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.287817,
+       "lon": -123.080618,
+       "ref": "bcpt-252 (BC Ports and Terminals SOURCE_DATA_ID 252)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Lantic",
+      "Rogers Sugar",
+      "BC Sugar"
+     ],
+     "accepted": [
+      {
+       "id": "1668",
+       "why": "Permit (effluent), Active, LANTIC INC., \"VANCOUVER, FOOT OF ROGERS STREET\", facility \"CANE AND BEET SUGAR INDUSTRY\"; listed point about 340 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "41",
+       "why": "Lantic Real Property, 7900 River Road, Delta: another site"
+      },
+      {
+       "id": "8426",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "103869",
+       "why": "Lantic Real Property, Delta: another site"
+      },
+      {
+       "id": "105286",
+       "why": "Southcoast Petroleum: another company"
+      },
+      {
+       "id": "106270",
+       "why": "Strathcona Business Improvement Association: another party"
+      },
+      {
+       "id": "107468",
+       "why": "Amrize ready-mix plant: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Lantic"
+     ],
+     "company_words": [
+      "Lantic"
+     ],
+     "place_words": [
+      "Rogers"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Lantic"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Lantic\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-crofton-site",
+   "name": "Crofton pulp and paper mill",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "admin_area": "Cowichan Valley (Crofton)",
+   "terminals": [
+    {
+     "key": "bc-crofton",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 48.8769,
+    "lon": -123.6494,
+    "from": "BC EMA authorization 506 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 48.874187,
+       "lon": -123.642088,
+       "ref": "bcpt-205 (BC Ports and Terminals SOURCE_DATA_ID 205)"
+      },
+      {
+       "lat": 48.870445,
+       "lon": -123.640519,
+       "ref": "osm-way224532602 (OpenStreetMap)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Crofton",
+      "Catalyst Paper",
+      "Paper Excellence",
+      "Domtar"
+     ],
+     "accepted": [
+      {
+       "id": "114",
+       "why": "Permit (effluent), Active, DOMTAR INC. AND 13536637 CANADA INC. CATALYST PAPER GENERAL PARTNERSHIP, \"8541 Hay Road, Crofton BC V0R 1R0\", facility \"pulp & paper mill pulp & paper mill\"; listed point about 1.4 km from the berth"
+      },
+      {
+       "id": "506",
+       "why": "Permit (refuse), Active, DOMTAR INC. AND 13536637 CANADA INC. CATALYST PAPER GENERAL PARTNERSHIP, \"Crofton\", facility \"Pulp and Paper Mill\"; listed point about 610 m from the berth"
+      },
+      {
+       "id": "1902",
+       "why": "Permit (air), Active, DOMTAR INC. AND 13536637 CANADA INC. CATALYST PAPER GENERAL PARTNERSHIP, \"8541 Hay Road, Crofton BC V0R 1R0\", facility \"Pulp and Paper Mills Kraft and mechanical pulp mills with paper machines.\"; listed point about 970 m from the berth"
+      },
+      {
+       "id": "6712",
+       "why": "Permit (effluent), Abandoned, DOMTAR INC. CATALYST PAPER, \"8541 Hay Road, Crofton BC V0R 1R0\", facility \"Industrial landfill -pulp mill Closed landfill\"; listed point about 820 m from the berth"
+      },
+      {
+       "id": "14012",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Cancelled, CATALYST PAPER CORPORATION, \"Catalyst Paper, Crofton Division, 8541 Hay Road, PO Box 70, Crofton BC V0R 1R0\", facility \"Pulp mill with petroleum storage\"; listed point about 960 m from the berth"
+      },
+      {
+       "id": "108744",
+       "why": "Approval, Expired, CATALYST PAPER CORPORATION AND CATALYST PULP OPERATIONS LIMITED CATALYST PAPER, GENERAL PARTNERSHIP, \"8541 Hay RD , Crofton, BC V0R 1R0\", facility \"pulp & paper mill pulp & paper mill effluent treatment works under PE-114 being …\"; listed point about 1.4 km from the berth"
+      },
+      {
+       "id": "110398",
+       "why": "Approval, Expired, CATALYST PAPER CORPORATION AND CATALYST PULP OPERATIONS LIMITED CATALYST PAPER, GENERAL PARTNERSHIP, \"8541 Hay Road, Crofton BC V0R 1R0\", facility \"Industrial pulp and paper operation Catalyst operates a large industrial pulp an…\"; listed point about 680 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "82",
+       "why": "District of North Cowichan sewage plant: another party"
+      },
+      {
+       "id": "7399",
+       "why": "Domtar / Catalyst Paper, listed only as \"Crofton\" with a point about 2.9 km away: not confirmed as the mill site"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Crofton"
+     ],
+     "company_words": [
+      "Domtar",
+      "Catalyst Paper",
+      "Paper Excellence"
+     ],
+     "place_words": [
+      "Crofton",
+      "Hay Road",
+      "Hay Rd"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Crofton"
+     ],
+     "accepted": [],
+     "candidates": [
+      {
+       "id": "588510b2aaecd9001b81448e",
+       "why": "\"NorskeCanada's Crofton De-Inking Plant\" (waived out of the EA process, 2003): the proponent name is not one of the mill's holder names in our list"
+      }
+     ],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Crofton\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-port-mellon-site",
+   "name": "Howe Sound Pulp and Paper mill (Port Mellon)",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "admin_area": "Sunshine Coast (Port Mellon)",
+   "terminals": [
+    {
+     "key": "bc-port-mellon",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.522019,
+    "lon": -123.485277,
+    "from": "BC EMA authorization 3095 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.520737,
+       "lon": -123.483824,
+       "ref": "bcpt-284 (BC Ports and Terminals SOURCE_DATA_ID 284)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Howe Sound Pulp",
+      "Port Mellon"
+     ],
+     "accepted": [
+      {
+       "id": "1149",
+       "why": "Permit (effluent), Active, HOWE SOUND PULP & PAPER CORPORATION, \"3838 Port Mellon Highway, Port Mellon BC V0N 2S0\", facility \"Pulp and paper mill Pulp and paper mill\"; listed point about 230 m from the berth"
+      },
+      {
+       "id": "3095",
+       "why": "Permit (air), Active, HOWE SOUND PULP & PAPER CORPORATION, \"3838 Port Mellon Highway, Port Mellon BC V0N 2S0\", facility \"a pulp and paper mill a pulp and paper mill\"; listed point about 180 m from the berth"
+      },
+      {
+       "id": "4679",
+       "why": "Permit (refuse), Abandoned, HOWE SOUND PULP AND PAPER LIMITED, \"PORT MELLON\", facility \"pulp mill landfill - abandoned\"; listed under Howe Sound Pulp and Paper Limited; listed point about 690 m from the berth"
+      },
+      {
+       "id": "13845",
+       "why": "Permit (refuse), Active, HOWE SOUND PULP & PAPER CORPORATION, \"3838 Port Mellon Highway, Port Mellon BC V0N 2S0\", facility \"Pulp and Paper Mill\"; listed point about 180 m from the berth"
+      },
+      {
+       "id": "14057",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, HOWE SOUND PULP & PAPER CORPORATION, \"3838 Port Mellon Highway, Port Mellon BC V0N 2S0\", facility \"Fuel Storage and distribution facility.\"; the listed point is about 4.6 km off, the address is the mill's"
+      }
+     ],
+     "left_out": []
+    },
+    "nrced": {
+     "searches": [
+      "\"Port Mellon\""
+     ],
+     "company_words": [
+      "Howe Sound Pulp"
+     ],
+     "place_words": [
+      "Port Mellon"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Port Mellon"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Port Mellon\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-texada-quarry-site",
+   "name": "Texada Quarrying limestone quarry",
+   "kind": "dry_bulk_terminal",
+   "country": "CA",
+   "admin_area": "qathet (Texada Island)",
+   "terminals": [
+    {
+     "key": "bc-texada-quarry",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.701389,
+    "lon": -124.545556,
+    "from": "BC EMA authorization 108269 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.700477,
+       "lon": -124.551513,
+       "ref": "bcpt-292 (BC Ports and Terminals SOURCE_DATA_ID 292)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Texada Quarrying"
+     ],
+     "accepted": [
+      {
+       "id": "108269",
+       "why": "Permit (effluent (mining)), Active, TEXADA QUARRYING LTD., \"4300 Airport Road Van Anda BC V0N 3K0\", facility \"Limestone Mine Limestone Mine\"; listed point about 440 m from the berth"
+      }
+     ],
+     "left_out": []
+    },
+    "nrced": {
+     "searches": [
+      "\"Texada Quarrying\""
+     ],
+     "company_words": [
+      "Texada Quarrying"
+     ],
+     "place_words": [
+      "Van Anda",
+      "Texada"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Texada"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Texada\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-sechelt-aggregates-site",
+   "name": "Sechelt Mine aggregates terminal",
+   "kind": "dry_bulk_terminal",
+   "country": "CA",
+   "admin_area": "Sunshine Coast (Sechelt)",
+   "terminals": [
+    {
+     "key": "bc-sechelt-aggregates",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.467692,
+    "lon": -123.748717,
+    "from": "the dock's berth point, bcpt-280 (BC Ports and Terminals SOURCE_DATA_ID 280)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.467692,
+       "lon": -123.748717,
+       "ref": "bcpt-280 (BC Ports and Terminals SOURCE_DATA_ID 280)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Construction Aggregates",
+      "Sechelt"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "4088",
+       "why": "District of Sechelt: another party"
+      },
+      {
+       "id": "14099",
+       "why": "Petro-Canada, 5482 Wharf Street, Sechelt: another company"
+      },
+      {
+       "id": "15188",
+       "why": "Lehigh Hanson Materials, aggregate mine, 5784 Sechelt Inlet Road, about 1.4 km away: the holder is not the operator name we list"
+      },
+      {
+       "id": "106667",
+       "why": "District of Sechelt: another party"
+      }
+     ],
+     "none": "No BC waste discharge authorization was matched to this terminal. The Sechelt aggregate mine's permit (15188) is held by Lehigh Hanson Materials Limited, not under the operator name we list (Heidelberg Materials), so it is left out."
+    },
+    "nrced": {
+     "searches": [
+      "\"Sechelt Mine\""
+     ],
+     "company_words": [
+      "Heidelberg Materials",
+      "Construction Aggregates"
+     ],
+     "place_words": [
+      "Sechelt"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Sechelt"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this terminal's operator as proponent: \"Sechelt\" finds Sechelt Carbonate (Pan Pacific Aggregates) and Narrows Inlet Hydro, projects of other proponents (checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-duke-point-site",
+   "name": "Duke Point Deep Sea Terminal",
+   "kind": "forest_products_terminal",
+   "country": "CA",
+   "admin_area": "Nanaimo (Duke Point)",
+   "terminals": [
+    {
+     "key": "bc-duke-point",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.148877,
+    "lon": -123.877749,
+    "from": "the dock's berth point, bcpt-226 (BC Ports and Terminals SOURCE_DATA_ID 226)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.148877,
+       "lon": -123.877749,
+       "ref": "bcpt-226 (BC Ports and Terminals SOURCE_DATA_ID 226)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "DP World",
+      "Nanaimo Port Authority",
+      "Duke Point"
+     ],
+     "accepted": [],
+     "left_out": [
+      {
+       "id": "2110",
+       "why": "Chemtrade: another company"
+      },
+      {
+       "id": "5727",
+       "why": "Western Forest Products: another company"
+      },
+      {
+       "id": "5989",
+       "why": "Regional District of Nanaimo: another party"
+      },
+      {
+       "id": "14422",
+       "why": "Duke Point Reman: another company"
+      },
+      {
+       "id": "15789",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "16725",
+       "why": "West Coast Reduction: another company"
+      },
+      {
+       "id": "100365",
+       "why": "Duke Point Auto Recyclers: another company"
+      },
+      {
+       "id": "107497",
+       "why": "ABC Recycling: another company"
+      },
+      {
+       "id": "111000",
+       "why": "GRT Soil Processing: another company"
+      },
+      {
+       "id": "112970",
+       "why": "ABC Recycling: another company"
+      }
+     ],
+     "none": "No BC waste discharge authorization held by DP World or the Nanaimo Port Authority was found in the register (none near the dock, none by name)."
+    },
+    "nrced": {
+     "searches": [
+      "\"Duke Point\""
+     ],
+     "company_words": [
+      "DP World",
+      "Nanaimo Port Authority"
+     ],
+     "place_words": [
+      "Duke Point"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Duke Point"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this terminal's operator as proponent: \"Duke Point\" finds Vancouver Island Generation (Vancouver Island Energy Corporation), another proponent's power plant (checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-univar-nv-site",
+   "name": "Univar Solutions North Vancouver terminal",
+   "kind": "chemical_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (North Vancouver)",
+   "terminals": [
+    {
+     "key": "bc-univar-nv",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.300711,
+    "lon": -123.031061,
+    "from": "BC EMA authorization 5508 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.290833,
+       "lon": -123.023,
+       "ref": "gisis-CAVAC-0001 (gisis_facility CAVAC-0001)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Univar"
+     ],
+     "accepted": [
+      {
+       "id": "5508",
+       "why": "Permit (effluent), Cancelled, UNIVAR CANADA LTD., \"NORTH VANCOUVER, 1545 BAY STREET\", facility \"Storage Facilities Bulk Liquid Storage Facilities Bulk Liquid\"; the port authority's project record places Univar's North Vancouver site at 1545 Bay Street (iaac-aeic.gc.ca/050/evaluations/proj/84527); listed point about 1.2 km from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "18",
+       "why": "Chemtrade: another company"
+      },
+      {
+       "id": "1698",
+       "why": "Chemtrade: another company"
+      },
+      {
+       "id": "4970",
+       "why": "Parkland refinery: another company"
+      },
+      {
+       "id": "7810",
+       "why": "Great Northern Packing: another company"
+      },
+      {
+       "id": "14056",
+       "why": "CXY Chemicals: another company"
+      },
+      {
+       "id": "18061",
+       "why": "International Bio Recovery: another company"
+      },
+      {
+       "id": "107100",
+       "why": "Heidelberg Materials ready-mix plant: another company"
+      },
+      {
+       "id": "111112",
+       "why": "Univar Solutions, Abbotsford: another site"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Univar"
+     ],
+     "company_words": [
+      "Univar"
+     ],
+     "place_words": [
+      "Bay Street",
+      "Bay St"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Univar"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Univar\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
+  },
+  {
+   "id": "bc-shell-bare-point-site",
+   "name": "Shell Bare Point terminal (Chemainus)",
+   "kind": "product_terminal",
+   "country": "CA",
+   "admin_area": "Cowichan Valley (Chemainus)",
+   "terminals": [
+    {
+     "key": "bc-shell-bare-point",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 48.9236,
+    "lon": -123.70400000000001,
+    "from": "BC EMA authorization 7633 (as listed; the register gives west longitude without the minus sign)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 48.921167,
+       "lon": -123.702167,
+       "ref": "gisis-CACHM-0002 (gisis_facility CACHM-0002)"
+      }
+     ],
+     "radius_m": 1500,
+     "company_words": [
+      "Shell Canada"
+     ],
+     "accepted": [
+      {
+       "id": "7633",
+       "why": "Permit (air), Active, SHELL CANADA LIMITED SHELL CANADA LIMITEE FOR AND ON BEHALF OF SHELL CANADA PRODUCTS, \"Bare Point Terminal, 9900 Bare Point Rd., Chemainus BC V0R 1K5\", facility \"Bulk Terminal Bulk Petroleum Storage Tanks and Loading Terminal\"; listed point about 300 m from the berth"
+      },
+      {
+       "id": "14009",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Cancelled, SHELL CANADA PRODUCTS LIMITED, \"9900 Bare Point Road, Chemainus BC V0R 1K5\"; listed point about 300 m from the berth"
+      },
+      {
+       "id": "108934",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation, Active, SHELL CANADA LIMITED SHELL CANADA LIMITEE, FOR AN ON BEHALF OF SHELL CANADA PRODUCTS, \"9900 Bare Point Road, Chemainus BC V0R 1K5\", facility \"Bulk Petroleum Product Storage Facility\"; listed point about 300 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "142",
+       "why": "District of North Cowichan: another party"
+      },
+      {
+       "id": "7149",
+       "why": "Western Forest Products: another company"
+      },
+      {
+       "id": "7210",
+       "why": "Western Forest Products, Chemainus sawmill: another company"
+      },
+      {
+       "id": "7267",
+       "why": "Island Timberlands: another company"
+      },
+      {
+       "id": "7634",
+       "why": "Shell Canada Products, Air (Cancelled), listed only as \"CHEMAINUS\" with no facility description: not confirmed as this terminal"
+      },
+      {
+       "id": "17501",
+       "why": "Coast (V.I.) Environmental composting at 9900 Bare Point Road: another company"
+      },
+      {
+       "id": "100186",
+       "why": "Coast (V.I.) Environmental composting: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"Bare Point\""
+     ],
+     "company_words": [
+      "Shell Canada"
+     ],
+     "place_words": [
+      "Bare Point"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Bare Point"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with this facility's operator as proponent was found (searched \"Bare Point\"; checked 2026-10-07)."
+    }
+   },
+   "notes": []
   }
  ]
 }

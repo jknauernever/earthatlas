@@ -14,7 +14,9 @@ export const STATUS_WORDS = {
   active: { short: 'In force', long: 'active (in force)' },
   operating: { short: 'Operating', long: 'the air program lists the source as operating' },
   draft: { short: 'Draft', long: 'a draft, not yet issued' },
-  cancelled: { short: 'Cancelled', long: 'cancelled; no longer in force' },   // BC EMA register
+  cancelled: { short: 'Cancelled', long: 'cancelled; no longer in force' },   // BC EMA register (and the next two)
+  withdrawn: { short: 'Withdrawn', long: 'withdrawn; not in force' },
+  abandoned: { short: 'Abandoned', long: 'listed as abandoned; not in force' },
 }
 export const statusKey = (s) => String(s || '').split(/[;(]/)[0].trim().toLowerCase()
 const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register' }

@@ -103,3 +103,21 @@ Expired 2020-02-15); NRCED inspections 2025-04-01 and 2024-04-04 (3678, warnings
 and 16534 (municipal wastewater regulation registration, Active, 2000); NRCED inspections 2018-02-06 (6819, warning), 2019-02-12
 (6819 and 16534, advisories), 2023-05-25 (dangerous goods inspection, advisory); no EAO project with Westshore as proponent.
 
+## Rollout to all 33 BC terminals (DEV only, 2026-10-07)
+
+Josh approved the dev rollout. Each of the 31 other terminals was hand-checked from `--dry-run` (register rows within 1.5 km of the
+berth points, or with the company's name anywhere in BC), with the same evidence standard: same company plus the address or
+coordinates at the dock; neighbours and same-name-only rows left out, each with its reason. A terminal with no matching
+authorization carries an explicit `bc.ema.none` note, shown on the card. One NRCED search (Parkland: two) and one EAO search per
+terminal; EAO projects hand-checked.
+
+- Register: one authorization can fill several rows (one per waste type, e.g. Chemtrade 18: Air and Effluent); they are read as
+  one permit and stored together (`{ authorization, rows }`).
+- Two address facts came from public pages read once: Pembina's Vancouver Wharves page names PKM Canada Marine Terminal LP
+  (the register holder of 1386); the port authority's project record for Univar places it at 1545 Bay Street (register 5508).
+- NRCED "Vancouver Airport Fuel" = 111 records, project-wide EAO inspections located only "Richmond": none tied to the marine
+  terminal, so all are kept as candidates (and only the first 100 were read).
+- 14 terminals have no matching EMA authorization (the 7 grain terminals, Fibreco, Squamish Terminals, Duke Point, PCT, VAFFC,
+  Shellburn, Sechelt). Their permits may sit with Metro Vancouver (air permits) or the
+  port authority, neither readable by script.
+

@@ -8,9 +8,9 @@
  * Requests (one at a time, 1.5 s apart, retried 4 times; every response cached in scripts/ships/facilities/cache/, gitignored,
  * and reused, so a re-run makes none; --refresh re-fetches):
  *   - the BC EMA authorizations register all_ams_authorizations.xlsx (1.7 MB), once for all facilities;
- *   - per facility: each NRCED search in bc.nrced.searches (50 records a page; stops above 4 pages and says so);
+ *   - per facility: each NRCED search in bc.nrced.searches (50 records a page; stops after --max-pages pages, default 2, and says so);
  *   - per facility: each EAO EPIC project search in bc.eao.searches.
- * Two facilities = 1 + 2 + 4 = 7 requests on an empty cache.
+ * All 33 BC facilities ≈ 1 + 35 NRCED + 41 EAO ≈ 77 requests on an empty cache (the 2026-10-07 rollout made 64 new ones plus 3 page reads to confirm addresses; the pilot's were cached).
  * --dry-run also prints the register rows near each facility's berths (or with its company words) to hand-check bc.ema.
  */
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises'
@@ -21,13 +21,13 @@ import { startRun, finishRun } from '../../lib/ships/store.js'
 import { loadFacilityData, validateFacilityData, FACILITIES_LIST_SOURCE } from '../../lib/ships/facilities.js'
 import { sharedStrings, sheetRows, rowsToObjects } from '../../lib/ships/xlsx.js'
 import {
-  EMA_XLSX_URL, emaFields, emaCandidates, nrcedSearchUrl, nrcedRecords, nrcedMatch, nrcedRow, eaoSearchUrl, eaoProjects, eaoRow,
+  EMA_XLSX_URL, emaFieldsAll, emaCandidates, nrcedSearchUrl, nrcedRecords, nrcedMatch, nrcedRow, eaoSearchUrl, eaoProjects, eaoRow,
   ensureBcSources, importBcFacilities,
 } from '../../lib/ships/bcPermits.js'
 
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships)'
 const CACHE = 'scripts/ships/facilities/cache'
-const MAX_PAGES = 4
+const MAX_PAGES = Number(process.argv.includes('--max-pages') ? process.argv[process.argv.indexOf('--max-pages') + 1] : 2)
 const args = process.argv.slice(2)
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA
@@ -94,14 +94,19 @@ if (!bcData.facilities.length) { console.error('no BC facility selected'); proce
 const reg = await emaRegister()
 console.log(`BC EMA register: ${reg.objects.length} rows (${reg.url}, read ${reg.retrieved_at.slice(0, 10)})`)
 const raw = { ema: { url: reg.url, retrieved_at: reg.retrieved_at, rows: new Map() }, nrced: new Map(), eao: new Map() }
-for (const o of reg.objects) raw.ema.rows.set(String(o['Authorization Number']).trim(), o)
+// One authorization can fill several rows (one per waste type): keep them all.
+for (const o of reg.objects) {
+  const id = String(o['Authorization Number']).trim()
+  if (!raw.ema.rows.has(id)) raw.ema.rows.set(id, [])
+  raw.ema.rows.get(id).push(o)
+}
 
 for (const f of bcData.facilities) {
   console.log(`\n${f.id} (${f.name})`)
   const accepted = new Set(f.bc.ema.accepted.map((a) => String(a.id))), left = new Set((f.bc.ema.left_out || []).map((a) => String(a.id)))
   for (const a of f.bc.ema.accepted) {
     const r = raw.ema.rows.get(String(a.id))
-    console.log(`  EMA ${a.id}: ${r ? (({ type, company, state, address }) => `${type} | ${company} | ${state} | ${address}`)(emaFields(r)) : 'NOT IN THE REGISTER'}`)
+    console.log(`  EMA ${a.id}: ${r ? (({ type, company, state, waste, address }) => `${type} | ${company} | ${state} | ${waste} | ${address}`)(emaFieldsAll(r)) : 'NOT IN THE REGISTER'}`)
   }
   if (dry) {
     for (const e of emaCandidates(reg.objects, f.bc.ema.berths, f.bc.ema.company_words, f.bc.ema.radius_m)) {
@@ -115,7 +120,7 @@ for (const f of bcData.facilities) {
     const recs = []
     let total = 0, url = null, retrieved = null
     for (let page = 0; ; page++) {
-      if (page >= MAX_PAGES) { console.log(`  ! NRCED "${kw}": ${total} records, more than ${MAX_PAGES} pages — stopped; narrow the search`); break }
+      if (page >= MAX_PAGES) { console.log(`  ! NRCED "${kw}": ${total} records, more than ${MAX_PAGES} pages read — stopped; narrow the search`); break }
       const got = await cachedJson(`bc-nrced-${kw}-p${page}`, nrcedSearchUrl(kw, page))
       const r = nrcedRecords(got.body)
       if (r.error) throw new Error(`NRCED "${kw}" p${page}: ${r.error}`)

@@ -234,6 +234,7 @@ function Facility({ f, onLocate }) {
       </div>
 
       <div className={styles.sectionHead}>Permits and program records held by {f.name} ({fmtN(f.permits.length)})</div>
+      {isBc && !f.permits.length && <div className={styles.capNote}>{f.bc?.emaNone || 'No BC waste discharge authorization was matched to this facility.'}</div>}
       {groups.map(([s, ps]) => (
         <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA' || s === 'BC EMA'}>
           {ps.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}

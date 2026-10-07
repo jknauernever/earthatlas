@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * BC permits pilot (lib/ships/bcPermits.js; data: the 'bc-…' entries of lib/ships/data/salish-facilities.json) → ships evidence
- * + claims. DEV database only (SHIPS_DATABASE_URL from .env.local); the terminals must exist (ships:import-terminals). Idempotent.
+ * + claims. SHIPS_DATABASE_URL from .env.local (dev); production via `zsh scripts/ships/prod.sh import-bc-permits`. The terminals must exist (ships:import-terminals). Idempotent.
  *
  *   npm run ships:import-bc-permits -- [--schema <name>] [--only <facility id>] [--dry-run] [--refresh]
  *

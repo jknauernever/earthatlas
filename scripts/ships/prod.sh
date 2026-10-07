@@ -19,6 +19,7 @@
 #   zsh scripts/ships/prod.sh import-mep         back up, then the MEP Alliance scrubber lists (from the saved pages in scripts/ships/mep/raw; needs migration 021)
 #   zsh scripts/ships/prod.sh import-terminals   back up, then the hand-checked Salish terminals (lib/ships/data/salish-terminals.json)
 #   zsh scripts/ships/prod.sh import-facilities  back up, then facilities + EPA permits/enforcement + WA SEPA reviews + permit documents (lib/ships/data/salish-facilities.json; reuses the cached responses in scripts/ships/facilities/cache; needs migrations 022-024)
+#   zsh scripts/ships/prod.sh import-bc-permits  back up, then BC facilities + EMA authorizations + NRCED records + EAO projects (the bc- entries of salish-facilities.json; reuses the cached responses; needs migration 027)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-anchorage-stays back up, then anchorage stays counted from our AIS (cache/anchorage-stays/hits.csv; needs migration 020)
 #   zsh scripts/ships/prod.sh import-anchorage-aliases back up, then "also known as" names for anchorages (GFW names already stored + the USCG VTS manual p. 3-6 record; needs migration 020)
@@ -102,6 +103,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-facilities
     prod_node scripts/ships/import-facilities.mjs "${@:2}"
+    ;;
+  import-bc-permits)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-bc-permits
+    prod_node scripts/ships/import-bc-permits.mjs "${@:2}"
     ;;
   import-terminal-calls)
     need SHIPS_PROD_DATABASE_URL

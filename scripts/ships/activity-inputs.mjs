@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Writes scripts/ships/bake-gfw/activity_inputs.json for activity.py (docs/SHIPS_ACTIVITY_FUSION.md Part 2): every active berth of
- * a listed terminal and every active anchorage polygon in the Salish GFW area, read-only from a ships database. Re-run (and commit)
+ * a listed terminal and every active anchorage polygon in the Salish + southern BC GFW areas, read-only from a ships database. Re-run (and commit)
  * when terminals, berths or anchorages change.
  *
  *   node scripts/ships/activity-inputs.mjs [--prod]     # --prod reads production (SHIPS_PROD_DATABASE_URL), read-only
@@ -14,7 +14,7 @@ import { neon } from '@neondatabase/serverless'
 const envVar = process.argv.includes('--prod') ? 'SHIPS_PROD_DATABASE_URL' : 'SHIPS_DATABASE_URL'
 const line = readFileSync('.env.local', 'utf8').split('\n').find((l) => l.startsWith(envVar + '='))
 const sql = neon(line.split('=').slice(1).join('=').replace(/^["']|["']$/g, ''))
-const W = -126.3, S = 46.9, E = -122.0, N = 49.6, CLUSTER_KM = 1.5   // areas.py 'salish'
+const W = -134.0, S = 46.9, E = -122.0, N = 52.0, CLUSTER_KM = 1.5   // areas.py 'salish' + 'bcsouth' (2026-10-07: Texada, Squamish, Woodfibre)
 
 const berths = await sql`SELECT t.key AS terminal, t.kind, b.berth_key AS berth, b.lat, b.lon FROM ships.terminal_berths b
   JOIN ships.terminals t ON t.id = b.terminal_id WHERE b.status = 'active' AND t.list_status = 'listed' ORDER BY 1, 3`

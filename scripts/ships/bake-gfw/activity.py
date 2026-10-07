@@ -131,7 +131,11 @@ def main():
         xs = [p[0] for o, _ in rings for p in o]; ys = [p[1] for o, _ in rings for p in o]
         anch.append(dict(id=x['key'], rings=rings, bb=(min(xs), min(ys), max(xs), max(ys)), area=area_deg2(rings)))
     anch.sort(key=lambda z: z['area'])   # smallest containing polygon wins
-    pts, ident = load_rows(a.raw, a.areas.split(','), a.month)
+    # The boxes estimated (areas.py), kept in the rule: a card outside them says "not estimated here", never ≈0 (2026-10-07: Texada,
+    # Squamish and Woodfibre lie north of the salish area and read ≈0).
+    names = a.areas.split(',')
+    RULE['area_boxes'] = [list(t[1:]) for t in areas.stage('pacnw') if t[0] in names]
+    pts, ident = load_rows(a.raw, names, a.month)
     hits = defaultdict(list)   # (kind, target, vid) -> [(t, km, nearest terminal)]
     pad = RULE['match_km'] / 111.0
     for vid, p in pts.items():

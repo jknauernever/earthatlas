@@ -72,6 +72,12 @@ export const estKpi = (e, key) => {
 
 export default function EstimatedVisits({ e, month, onMonth, onSelectVessel }) {
   if (!e) return null
+  if (e.outsideArea) return (
+    <div className={styles.section}>
+      <div className={styles.legendNoteText}><strong>Estimated from hourly positions</strong> · not here yet: this terminal lies outside the area the
+        hourly-position estimates cover. Not counted, not zero.</div>
+    </div>
+  )
   const span = `${monthName(e.months[0])} – ${monthName(e.months[e.months.length - 1])}`
   const r = e.rule || {}
   return (

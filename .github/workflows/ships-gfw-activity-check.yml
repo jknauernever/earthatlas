@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       month: { description: 'YYYY-MM', required: true }
-      areas: { description: 'areas.py area names, comma list', default: 'salish' }
+      areas: { description: 'areas.py area names, comma list', default: 'salish,bcsouth' }
       post: { description: 'Store the month in production (replaces it)', type: boolean, default: false }
 
 concurrency:

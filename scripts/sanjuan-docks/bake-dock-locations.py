@@ -373,9 +373,74 @@ for s_ in sites:
         site_join += 1
 print(f'{site_join} WDFW permit sites joined the mapped dock they sit on (within {SITE_JOIN_M} m, or alone on its parcel)')
 
+# ─── 6c. Ferry piers, and permits shared by several docks ────────────────────
+# The county files permits by parcel, not by structure, so a parcel with two docks
+# (Orcas Village: a small-boat dock and the ferry pier) gives both its whole history.
+# Split where the record says which dock: a ferry permit (WSDOT / Washington State
+# Ferries / "ferry") goes to the ferry pier — the dock on a WSF terminal point in OSM
+# (data/sanjuan-docks/osm-ferry.json) — and the rest to the other docks; a WDFW permit
+# (it records the dock's own location) goes to the nearest of the sharing docks. County
+# permits that don't say which dock stay on each. Permit-only sites near a ferry pier
+# whose permits are all ferry permits (terminal expansions, dolphins) join the pier.
+FERRY = 'data/sanjuan-docks/osm-ferry.json'
+FERRY_WORDS = re.compile(r'ferr(y|ies)|wsdot|washington state ferries|state of washington, dot|department of transportation', re.I)
+FERRY_PULL_M = 200
+sprops = {s_['properties']['site_id']: s_['properties'] for s_ in sites}
+def is_ferry_permit(p):
+    return bool(FERRY_WORDS.search(' '.join(str(p.get(k) or '') for k in
+        ('project_name', 'additional_description', 'project_description', 'permit_type', 'applicant', 'activity'))))
+ferry_pts = [Point(e['lon'], e['lat']) for e in (json.load(open(FERRY))['elements'] if os.path.exists(FERRY) else [])
+             if e['type'] == 'node' and 'Washington State Ferries' in (e['tags'].get('operator') or '')]
+for k, f in enumerate(fac):
+    f['ferry'] = any(min(g.distance(pt) for g in fac_geoms[k]) * M_PER_DEG_LNG <= 3 for pt in ferry_pts)
+ferry_facs = [k for k, f in enumerate(fac) if f['ferry']]
+claimed = {s for f in fac for s in ([f['site']] if f['site'] else []) + f['extra_sites']}
+ferry_pulled = 0
+for sid, sp in sprops.items():
+    if sid in claimed or not ferry_facs or not sp['permits'] or not all(is_ferry_permit(p) for p in sp['permits']):
+        continue
+    d, k = min((min(g.distance(site_pt[sid]) for g in fac_geoms[k]) * M_PER_DEG_LNG, k) for k in ferry_facs)
+    if d <= FERRY_PULL_M:
+        if fac[k]['site']:
+            fac[k]['extra_sites'].append(sid)
+        else:
+            fac[k]['site'], fac[k]['match'] = sid, 'near_wdfw_point'
+        claimed.add(sid)
+        ferry_pulled += 1
+# Which docks share each site, then which of a shared site's permits each dock gets.
+sharing = {}
+for k, f in enumerate(fac):
+    for sid in ([f['site']] if f['site'] else []) + f['extra_sites']:
+        sharing.setdefault(sid, []).append(k)
+permit_keys = {}  # fac index -> ['site#i', …] when it gets only part of a shared site
+split_sites = 0
+for sid, ks in sharing.items():
+    if len(ks) < 2:
+        continue
+    split_sites += 1
+    ferries = [k for k in ks if fac[k]['ferry']]
+    others = [k for k in ks if not fac[k]['ferry']]
+    for i, p in enumerate(sprops[sid]['permits']):
+        to = ks
+        if ferries and others:
+            to = ferries if is_ferry_permit(p) else others
+        if p.get('source', '').startswith('WDFW') and p.get('longitude') is not None:
+            wp = Point(p['longitude'], p['latitude'])
+            to = [min(to, key=lambda k: min(g.distance(wp) for g in fac_geoms[k]))]
+        for k in to:
+            permit_keys.setdefault(k, []).append(f'{sid}#{i}')
+    for k in ks:  # every sharing dock records its subset, even if it ends up empty
+        permit_keys.setdefault(k, [])
+# A dock with a subset of a shared site still gets every permit of its unshared sites.
+for k, keys in permit_keys.items():
+    for sid in ([fac[k]['site']] if fac[k]['site'] else []) + fac[k]['extra_sites']:
+        if len(sharing[sid]) < 2:
+            keys.extend(f'{sid}#{i}' for i in range(len(sprops[sid]['permits'])))
+print(f'ferry piers: {len(ferry_facs)}; {ferry_pulled} all-ferry permit sites joined their pier; {split_sites} shared permit sites split between their docks')
+
 # ─── 7. Output ──────────────────────────────────────────────────────────────
 out, counts = [], {'permit_parcel': 0, 'near_wdfw_point': 0, 'neighbour_parcel': 0, 'no_permit_found': 0, 'no_parcel': 0}
-for f in fac:
+for k_fac, f in enumerate(fac):
     members, shore, pin, site, match = f['members'], f['shore'], f['pin'], f['site'], f['match']
     counts[match] += 1
     ids = [docks[i]['id'] for i in members]
@@ -392,6 +457,9 @@ for f in fac:
         'permit_match': match,
         'permit_site_id': site,
         'permit_site_ids': ([site] if site else []) + f['extra_sites'],
+        # Only on docks sharing a permit site: which of its permits are this dock's.
+        'permit_keys': permit_keys.get(k_fac),
+        'ferry_pier': f['ferry'],
         'permit_site_distance_m': round(metres(shore, site_pt[site])) if site else None,
         'source': ' · '.join(sources),
         'friends_survey': f['survey'],
@@ -419,7 +487,7 @@ for s_ in sites:
     permit_only += 1
     counts['permit_only'] = counts.get('permit_only', 0) + 1
     out.append({'type': 'Feature', 'geometry': s_['geometry'], 'properties': {
-        'facility_id': f"permit-{sp['site_id']}", 'friends_join': None, 'aerial': None,
+        'facility_id': f"permit-{sp['site_id']}", 'friends_join': None, 'aerial': None, 'permit_keys': None, 'ferry_pier': False,
         'located_by': 'wdfw_permit' if sp['located_at'].startswith('dock') else 'parcel_point',
         'osm_ways': 0, 'parcel_number': None, 'parcel_distance_m': None,
         'permit_match': 'permit_only', 'permit_site_id': sp['site_id'], 'permit_site_ids': [sp['site_id']], 'permit_site_distance_m': 0,

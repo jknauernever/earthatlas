@@ -162,14 +162,25 @@ const DOCK_COLOR_EXPR = ['case', ['has', 'category'], CATEGORY_COLOR_EXPR,
 
 // Join the two files: a matched dock takes its permit site's category and count, and the
 // site is flagged `traced` so the fused view hides its own dot (every site has a dock).
-const CATEGORY_RANK = { wdfw_active: 0, wdfw: 1, county_recent: 2, county_only: 3 }
 const permitDate = (p) => p.issued || p.submitted || ''
 
-// A dock can carry several permit sites (a county permit on its parcel plus a WDFW
-// permit at the dock itself): one combined site, every permit by date.
-function combineSites(sites) {
-  if (sites.length === 1) return sites[0]
-  const permits = sites.flatMap((x) => x.properties.permits).sort((a, b) => permitDate(a).localeCompare(permitDate(b)))
+// Colour from a dock's own permits (same rule as the permit-map bake): latest WDFW
+// permit active / any WDFW / any county SmartGov (2010–) / county pre-2010 only.
+function categoryOf(permits) {
+  const wdfw = permits.filter((p) => /^WDFW/.test(p.source ?? ''))
+  if (wdfw.length) return wdfw[wdfw.length - 1].status === 'HPA Issued (Active)' ? 'wdfw_active' : 'wdfw'
+  return permits.some((p) => /SmartGov/.test(p.source ?? '')) ? 'county_recent' : 'county_only'
+}
+
+// A dock's permits: every permit of its sites (a county permit on its parcel plus a
+// WDFW permit at the dock itself…), or — on a parcel with several docks — only the
+// ones the bake assigned to it (`permit_keys`: 'site#index'). Null when none are left.
+function combineSites(sites, keys) {
+  const allow = keys ? new Set(keys) : null
+  const permits = sites.flatMap((x) => x.properties.permits.filter((_, i) => !allow || allow.has(`${x.properties.site_id}#${i}`)))
+    .sort((a, b) => permitDate(a).localeCompare(permitDate(b)))
+  if (!permits.length) return null
+  if (sites.length === 1 && !allow) return sites[0]
   const newest = [...permits].reverse().find((p) => p.project_name)
   return {
     ...sites[0],
@@ -177,9 +188,10 @@ function combineSites(sites) {
       ...sites[0].properties,
       permits,
       permit_count: permits.length,
-      category: sites.map((x) => x.properties.category).sort((a, b) => (CATEGORY_RANK[a] ?? 9) - (CATEGORY_RANK[b] ?? 9))[0],
+      category: categoryOf(permits),
       latest_name: newest?.project_name ?? sites[0].properties.latest_name,
-      combined_site_ids: sites.map((x) => x.properties.site_id),
+      combined_site_ids: sites.length > 1 ? sites.map((x) => x.properties.site_id) : undefined,
+      split: !!allow,
     },
   }
 }
@@ -193,7 +205,8 @@ function fuse(permitFc, osmFc, linked, siteOfDock) {
     const ids = f.properties.permit_site_ids?.length ? f.properties.permit_site_ids : [f.properties.permit_site_id]
     const own = ids.map((id) => sites.get(id)).filter(Boolean)
     if (!own.length) continue
-    const site = combineSites(own)
+    const site = combineSites(own, f.properties.permit_keys)
+    if (!site) continue
     f.properties.category = site.properties.category
     f.properties.permit_count = site.properties.permit_count
     siteOfDock.set(f.properties.facility_id, site)
@@ -331,12 +344,15 @@ function popupHtml(site, { title, note, tail = '', head = '' } = {}) {
 // A dock with permits: the permit history, then its other records folded away, then
 // where its position comes from and how the permits were matched to it.
 function fusedPopupHtml(site, props, shareCount) {
-  const shared = shareCount > 1 ? ` These permits are on a parcel with ${shareCount} mapped docks; each shows them all.` : ''
+  const shared = site.properties.split
+    ? ' This parcel has more than one dock, and the county files permits by parcel: ferry permits are shown on the ferry pier, WDFW permits on the dock they name, and county permits that don’t say which dock on each.'
+    : shareCount > 1 ? ` These permits are on a parcel with ${shareCount} mapped docks; each shows them all.` : ''
+  const ferry = props.ferry_pier ? ' This is the Washington State Ferries pier.' : ''
   return popupHtml(site, {
     title: props.name || site.properties.latest_name,
     head: parcelHtml(props),
-    note: `${locatedNote(props)} ${matchNote(props)}${shared}` +
-      (site.properties.combined_site_ids ? ' Also includes WDFW permits recorded at this dock itself (within 25 m).' : ''),
+    note: `${locatedNote(props)}${ferry} ${matchNote(props)}${shared}` +
+      (site.properties.combined_site_ids ? ' Also includes permit records filed separately for this dock (a WDFW permit at the dock itself, or nearby ferry-terminal permits).' : ''),
     tail: dockSectionsHtml(props),
   })
 }

@@ -1727,7 +1727,11 @@ function camsTape(cfg) {
     kind: cfg.kind, source: cfg.source, qscale: cfg.qscale, offset: 0, nodata0: false, stepH: 3, latencyH: 10,
     frameKind: 'analysis',
     expectedTimes: (day, now) => runsOf(day, now).flatMap((h) => TAPE_LEADS.map((l) => dayMs(day, h) + Number(l) * H)),
-    async fetchDay(day, wanted, now = Date.now()) {
+    // bakeTapeDay passes (day, wanted, have) — `now` must NOT be a third
+    // parameter, or the `have` Set lands in it, runsOf() matches no runs and
+    // every CAMS tape silently stalls (it did, 2026-09-20 → 10-06).
+    async fetchDay(day, wanted) {
+      const now = Date.now()
       const prevDay = new Date(dayMs(day, 0) - 8.64e7).toISOString().slice(0, 10)
       const jobs = []
       for (const d of [prevDay, day]) {

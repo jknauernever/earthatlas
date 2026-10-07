@@ -59,6 +59,8 @@ async function cached(name, url, kind) {
 }
 
 const data = await loadFacilityData()
+// Washington entries only; BC entries (country CA) are imported by scripts/ships/import-bc-permits.mjs.
+data.facilities = data.facilities.filter((f) => f.country !== 'CA')
 if (only) data.facilities = data.facilities.filter((f) => f.id === only)
 const errs = validateFacilityData(data)
 if (errs.length || !data.facilities.length) { console.error(`facility data invalid:\n  ${errs.join('\n  ') || 'no facility'}`); process.exit(1) }

@@ -1,0 +1,2533 @@
+{
+ "about": "REAL, recorded live 2026-10-07 by scripts/ships/import-bc-permits.mjs (see lib/ships/test/fixtures/README.md). Trimmed: register rows = header + 9 of 9,083; NRCED records without their populated \"flavours\" copies; EAO staff contact fields replaced by \"[withheld]\". Nothing else edited.",
+ "ema": {
+  "url": "https://www2.gov.bc.ca/assets/gov/environment/waste-management/waste-discharge-authorization/datamart/all_ams_authorizations.xlsx",
+  "retrieved_at": "2026-10-07T15:49:37.000Z",
+  "header": [
+   "Authorization Number",
+   "Authorization Type",
+   "Company",
+   "Issue Date",
+   "Expiry Date",
+   "Waste Type",
+   "State",
+   "Primary BCENICID",
+   "Secondary BCENICID",
+   "CPIX",
+   "WDR Regulation",
+   "WDR Schedule One or Two",
+   "Administrative Area",
+   "Regional District",
+   "Program Area",
+   "Nearest Municipality",
+   "Facility Type - Description",
+   "Facility Address",
+   "Latitude",
+   "Longitude",
+   "Legal Land Description",
+   "Mailing Address"
+  ],
+  "rows": [
+   [
+    "3678",
+    "Permit",
+    "TRANS MOUNTAIN PIPELINE ULC ",
+    "27320",
+    "",
+    "Effluent",
+    "Active",
+    "486110  Oil & Gas - Crude Oil Pipelines",
+    "  ",
+    "M",
+    "Schedule 2",
+    "Pipeline Transport Industry",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Burnaby",
+    "Jet Fuel Storage Facility  ",
+    "Westridge Marine Terminal, 7065 Bayview Drive, Burnaby, BC V5A 4T3",
+    "49.2883",
+    "122.95410000000001",
+    "Lot 186 PL: 38021 DL: 217 LD: 37 New Westminster Group 1",
+    "Suite 2700, 300 - 5th Ave SW, Calgary AB T2P 5J2"
+   ],
+   [
+    "6819",
+    "Permit",
+    "WESTSHORE TERMINALS LIMITED PARTNERSHIP ",
+    "30495",
+    "",
+    "Effluent",
+    "Active",
+    "483000  Transportation - Marine Terminal / Transport",
+    "410000  Storage - General",
+    "M",
+    "Schedule 2",
+    "Product Storage - Bulk Solids",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Delta",
+    "Coal and Potash Loading Terminal  ",
+    "1 Roberts Bank, Delta BC V4M 4G5",
+    "49.017300000000006",
+    "123.16370000000001",
+    "Crown Lease--240.449 acre portion of Lot 1, Parcel A, Group 2, New Westminster District, Plan 61571, Except Crown Federal Roll Number D-410-033-00-0, Drawing Ax-21037 (from existing permit). Lot A, Except Portions in Plan BCP22579, Bed of the Strait of Georgia Group 2 New Westminster District Plan LMP25402 (from DeltaMap)",
+    "1 ROBERTS BANK DELTA, BC V4M 4G5"
+   ],
+   [
+    "6833",
+    "Permit",
+    "LAFARGE CANADA INC. DBA KASK BROTHERS, DIVISION OF LAFARGE C ",
+    "30872",
+    "",
+    "Effluent",
+    "Cancelled",
+    "327300  Manufacturing - Cement & Concrete",
+    "  ",
+    "L",
+    "Schedule 2",
+    "Concrete and Concrete Products IndustryCode of Practice for the Concrete and Concrete Products Industry",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Burnaby",
+    "Ready Mix Concrete Plant  ",
+    "7500 Barnet Highway, Burnaby",
+    "49.289277999999996",
+    "122.943921",
+    "Lot 1 of Block 2, District Lot 215, Group 1, New Westminster District, Plan 3575, except explanatory plan 12386 and Reference Plan 7289",
+    "PO BOX 44015 BURNABY, BC V5B 4Y2"
+   ],
+   [
+    "6945",
+    "Permit",
+    "TRANS MOUNTAIN PIPELINE ULC ",
+    "30704",
+    "",
+    "Effluent",
+    "Active",
+    "486110  Oil & Gas - Crude Oil Pipelines",
+    "  ",
+    "M",
+    "Schedule 2",
+    "Pipeline Transport Industry",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Burnaby",
+    "Oil Handling Facility  Trans Mountain has an existing waste discharge permit (#6945) for effluent discharge (stormwater runoff) from the secondary containment areas from the southwest corner of the Burnaby Terminal site. Trans Mountain is applying for a minor amendment to support Phase 2 construction activities, including changes in stormwater management after diversion of the Eagle Creek and Silver Creek tributaries. Additional details are provided in the Technical Assessment Report (Attachment 2 of this application).",
+    "Burnaby Terminal 7815 Shellmont Street Burnaby BC V5A 4H5",
+    "49.269200000000005",
+    "122.91670000000001",
+    "Lot: C PL 17387 DL: 141/142 LD: 37 New Westminster Group 1 EXCL PL 65962",
+    "Suite 2700, 300 - 5th Ave SW, Calgary AB T2P 5J2"
+   ],
+   [
+    "14058",
+    "Petroleum Storage and Distribution Facilities Storm Water Regulation",
+    "TRANS MOUNTAIN PIPELINE CO. LTD. ",
+    "34578",
+    "",
+    "",
+    "Active",
+    "412110  Storage - Fuel",
+    "  ",
+    "L",
+    "Schedule 2",
+    "Petroleum Storage",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Burnaby",
+    "  Jet Fuel Handling / Crude Oil Storage",
+    "7065 BAYVIEW DRIVE BURNABY, BC V5A 4T3",
+    "49.288103",
+    "122.954779",
+    "BURNABY, WESTRIDGE TERMINAL",
+    "7815 Shellmont Street, Burnaby, BC V5A 4S9"
+   ],
+   [
+    "14865",
+    "Permit",
+    "GCT CANADA GP INC. GCT CANADA LIMITED PARTNERSHIP",
+    "35625",
+    "",
+    "Effluent",
+    "Active",
+    "483000  Transportation - Marine Terminal / Transport",
+    "562220  Sewage Treatment",
+    "L",
+    "Schedule 1",
+    "Municipal Sewage Management",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Delta",
+    "container terminal  washroom, lunchroom and reefer washing facilities at a container terminal ",
+    "Deltaport, Roberts Banks, Delta",
+    "49.0199",
+    "123.15940000000001",
+    "Lot A, Bed of the Strait of Georgia, Group 2, NWD, Plan LMP 25402.",
+    "1285 Franklin Street, Vancouver BC V6A 1J9"
+   ],
+   [
+    "16534",
+    "Municipal Wastewater Regulation",
+    "WESTSHORE TERMINALS LTD. ",
+    "36865",
+    "",
+    "Effluent",
+    "Active",
+    "531300  Administration - Private",
+    "562220  Sewage Treatment",
+    "L",
+    "Schedule 1",
+    "Municipal Sewage Management",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Delta",
+    "  Municipal Waste Facility",
+    "1 Roberts Bank , Delta BC  V4M 4G5",
+    "49.015800000000006",
+    "123.1563",
+    "Parcel A, Plan BCP 12878, District Lot 851, New Westminister, Crop of Delta",
+    "1 Roberts Bank , Delta BC  V4M5G5"
+   ],
+   [
+    "106986",
+    "Vehicle Dismantling and Recycling Industry Environmental Planning Regulation",
+    "Patrick  Weston - DBA WESTSHORE AUTO RECYCLING WESTSHORE AUTO RECYCLING",
+    "41524",
+    "",
+    "",
+    "Active",
+    "562920  Waste Treatment - Material Recovery Facilities",
+    "  ",
+    "L",
+    "Schedule 2",
+    "Vehicle Dismantling and Recycling Industry",
+    " ",
+    "Capital",
+    "Authorizations",
+    "Sooke",
+    "Automotive Recycler  Automotive Recycler",
+    "6230 Marilyn Road, Sooke BC  V9Z 0X6",
+    "48.394739999999999",
+    "123.7016",
+    "Lot 4, Sooke Land District, Plan VIP 65834, Section 45 & 46",
+    "6230 Marilyn Road, Sooke BC  V9Z 0X6"
+   ],
+   [
+    "109085",
+    "Approval",
+    "TRANS MOUNTAIN PIPELINE ULC ",
+    "43326",
+    "43876",
+    "Effluent",
+    "Expired",
+    "486110  Oil & Gas - Crude Oil Pipelines",
+    "  ",
+    "M",
+    "Schedule 1",
+    "Oil and Natural Gas Industry - Large",
+    " ",
+    "Metro Vancouver",
+    "Authorizations",
+    "Burnaby",
+    "Westridge marine Terminal  The Trans Mountain Pipeline Company was established in 1951 to construct and operate the Trans Mountain Pipeline between Strathcona County, AB and Burnaby BC. The pipeline and terminals began operation in 1953, creating a reliable energy supply for Canada and the United States. During that period, average daily throughput has been progressively increased from 150,000 barrels per day (BPD) to today’s 300,000 BPD._x000D_\r\n_x000D_\r\nThe Westridge Marine Terminal is the western coastal loading and shipping facility for the Trans Mountain Pipeline. It is an existing facility that was built in 1953 and first put into operation in 1957, and exports crude oil products to California and Asia, and distributes jet fuel imported from Washington State refineries to Vancouver International Airport.",
+    "Westridge Marine Terminal, 7065 Bayview Drive, Burnaby BC",
+    "49.2881",
+    "122.9547",
+    "Lot 186 PL: 38021 DL: 217 LD: 37 New Westminster Group 1",
+    "Suite 2700, 300 - 5th Ave SW, Calgary AB T2P 5J2"
+   ]
+  ]
+ },
+ "nrced": {
+  "Westridge": {
+   "url": "https://nrpti-api-f00029-prod.apps.silver.devops.gov.bc.ca/api/public/search?dataset=Order,Inspection,AdministrativePenalty,AdministrativeSanction,CourtConviction,Warning,Ticket&populate=true&keywords=Westridge&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:51:36.000Z",
+   "body": [
+    {
+     "searchResults": [
+      {
+       "_id": "5f653fbe7dc913001abe1055",
+       "issuedTo": {
+        "write": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi"
+        ],
+        "read": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi",
+         "public"
+        ],
+        "companyName": "Town of Princeton - Westridge Klargester",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Town of Princeton - Westridge Klargester",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 155665,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "5f653fbe7dc913001abe1053",
+        "5f653fbe7dc913001abe1054",
+        "5fa238f794461ea0861f0e99"
+       ],
+       "recordName": "Inspection - Permit - 155665",
+       "recordType": "Inspection",
+       "dateIssued": "2020-09-09T21:34:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "\"Westridge\" subdivision, Princeton, British Columbia",
+       "centroid": [
+        -120.5061,
+        49.4593
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Advisory",
+       "documents": [
+        {
+         "_id": "5f653fbe7dc913001abe1052",
+         "_schemaName": "Document",
+         "fileName": "2020-09-09  IR155665 Advisory.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/5f653fbe7dc913001abe1052/2020-09-09  IR155665 Advisory.pdf",
+         "key": "5f653fbe7dc913001abe1052/2020-09-09  IR155665 Advisory.pdf",
+         "addedBy": "Murray, Kyle ENV:EX",
+         "dateAdded": "2020-09-14T21:58:20.614Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi",
+          "public"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 11758; Source of inspected requirement(s): Permit",
+       "dateAdded": "2020-12-18T10:36:18.163Z",
+       "dateUpdated": "2026-03-17T11:10:25.287Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b936a19457e100110e0ead"
+        }
+       ],
+       "__v": 4684,
+       "id": "5f653fbe7dc913001abe1055",
+       "score": 1.85,
+       "collections": []
+      },
+      {
+       "_id": "67f6d8a89d970a0022705a0f",
+       "issuedTo": {
+        "write": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi"
+        ],
+        "read": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi",
+         "public"
+        ],
+        "companyName": "TRANS MOUNTAIN PIPELINE ULC",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "TRANS MOUNTAIN PIPELINE ULC",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 239355,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd",
+        "public"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "67f6d8a89d970a0022705a09",
+        "67f6d8a89d970a0022705a0b",
+        "67f6d8a89d970a0022705a0d"
+       ],
+       "recordName": "Inspection - Permit - 239355",
+       "recordType": "Inspection",
+       "dateIssued": "2025-04-01T04:34:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Westridge Marine Terminal, Burnaby, BC",
+       "centroid": [
+        -122.9541,
+        49.2883
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Warning Codes and Regs",
+       "documents": [
+        {
+         "_id": "69de16995789a70011fa9933",
+         "_schemaName": "Document",
+         "fileName": "2025-03-31_IR239355_Warning_FINAL_.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/69de16995789a70011fa9933/2025-03-31_IR239355_Warning_FINAL_.pdf",
+         "key": "69de16995789a70011fa9933/2025-03-31_IR239355_Warning_FINAL_.pdf",
+         "addedBy": "",
+         "dateAdded": "2026-04-12T10:00:16.072Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi",
+          "public"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 3678; Source of inspected requirement(s): Permit",
+       "dateAdded": "2025-04-09T20:29:28.023Z",
+       "dateUpdated": "2026-04-14T10:27:38.086Z",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69de169a5789a70011fa993f"
+        }
+       ],
+       "__v": 698,
+       "id": "67f6d8a89d970a0022705a0f",
+       "addedBy": "",
+       "score": 0.6,
+       "collections": []
+      },
+      {
+       "_id": "64888ed0dfaab60022fe2393",
+       "issuedTo": {
+        "write": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi"
+        ],
+        "read": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi",
+         "public"
+        ],
+        "companyName": "Jet Forestry Services Ltd.",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Jet Forestry Services Ltd.",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 205219,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "64888ed0dfaab60022fe238d",
+        "64888ed0dfaab60022fe238f",
+        "64888ed0dfaab60022fe2391"
+       ],
+       "recordName": "Inspection - Integrated Pest Management Act - 205219",
+       "recordType": "Inspection",
+       "dateIssued": "2023-06-05T18:59:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "6114 Westridge Road, Duncan, BC  V9L 5K7",
+       "centroid": [
+        -123.743445,
+        48.79232
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Compliant - Notice",
+       "documents": [
+        {
+         "_id": "69b97a399457e1001110aaf4",
+         "_schemaName": "Document",
+         "fileName": "2023-05-08_IR205219_lic28437_Notice.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/69b97a399457e1001110aaf4/2023-05-08_IR205219_lic28437_Notice.pdf",
+         "key": "69b97a399457e1001110aaf4/2023-05-08_IR205219_lic28437_Notice.pdf",
+         "addedBy": "",
+         "dateAdded": "2026-03-15T10:00:16.103Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi",
+          "public"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 28437; Source of inspected requirement(s): Integrated Pest Management Act",
+       "dateAdded": "2023-06-13T15:44:16.899Z",
+       "dateUpdated": "2026-03-17T15:58:49.715Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Integrated Pest Management Act",
+         "regulation": "",
+         "section": "17",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b97a399457e1001110ab00"
+        }
+       ],
+       "__v": 2837,
+       "id": "64888ed0dfaab60022fe2393",
+       "score": 0.5714285714285714,
+       "collections": []
+      },
+      {
+       "_id": "66196721f4605200229c4ec3",
+       "issuedTo": {
+        "write": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi"
+        ],
+        "read": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi",
+         "public"
+        ],
+        "companyName": "TRANS MOUNTAIN PIPELINE ULC",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "TRANS MOUNTAIN PIPELINE ULC",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 204207,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi"
+       ],
+       "_flavourRecords": [
+        "66196721f4605200229c4ebd",
+        "66196721f4605200229c4ebf",
+        "66196721f4605200229c4ec1"
+       ],
+       "recordName": "Inspection - Permit - 204207",
+       "recordType": "Inspection",
+       "dateIssued": "2024-04-04T20:31:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Westridge Marine Terminal, 7065 Bayview Drive, Burnaby, BC",
+       "centroid": [
+        -122.9541,
+        49.2883
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Warning Codes and Regs",
+       "documents": [
+        {
+         "_id": "69b999279457e1001110dd07",
+         "_schemaName": "Document",
+         "fileName": "2024-04-04_IR204207_Warning.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/69b999279457e1001110dd07/2024-04-04_IR204207_Warning.pdf",
+         "key": "69b999279457e1001110dd07/2024-04-04_IR204207_Warning.pdf",
+         "addedBy": "",
+         "dateAdded": "2026-03-15T10:00:16.103Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi",
+          "public"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 3678; Source of inspected requirement(s): Permit",
+       "dateAdded": "2024-04-12T16:53:53.380Z",
+       "dateUpdated": "2026-03-17T18:10:47.749Z",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b999279457e1001110dd13"
+        }
+       ],
+       "__v": 1931,
+       "id": "66196721f4605200229c4ec3",
+       "addedBy": "",
+       "score": 0.5625,
+       "collections": []
+      },
+      {
+       "_id": "5ecea35b589694001a0880b5",
+       "issuedTo": {
+        "write": [
+         "sysadmin"
+        ],
+        "read": [
+         "sysadmin",
+         "public"
+        ],
+        "companyName": "TRANS MOUNTAIN PIPELINE ULC",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "TRANS MOUNTAIN PIPELINE ULC",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 107372,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "5ecea35b589694001a0880b1",
+        "5ecea35b589694001a0880b2",
+        "5fa2390c94461ea0861f5834"
+       ],
+       "recordName": "Inspection - Approval - 107372",
+       "recordType": "Inspection",
+       "dateIssued": "2018-11-14T16:49:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Westridge Marine Terminal, 7065 Bayview Drive, Burnaby BC",
+       "centroid": [
+        -122.9547,
+        49.2881
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Compliant - Notice",
+       "documents": [
+        {
+         "_id": "5ecea35b589694001a0880af",
+         "_schemaName": "Document",
+         "fileName": "2018-09-11 109085 IR 107372 - Notice.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/5ecea35b589694001a0880af/2018-09-11 109085 IR 107372 - Notice.pdf",
+         "key": "5ecea35b589694001a0880af/2018-09-11 109085 IR 107372 - Notice.pdf",
+         "addedBy": "",
+         "dateAdded": "2020-05-27T16:28:14.210Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "public",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 109085; Source of inspected requirement(s): Approval",
+       "dateAdded": "2020-12-18T10:14:18.997Z",
+       "dateUpdated": "2026-03-17T10:26:30.141Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b92c569457e100110cd308"
+        }
+       ],
+       "__v": 4937,
+       "id": "5ecea35b589694001a0880b5",
+       "score": 0.5625,
+       "collections": []
+      }
+     ],
+     "meta": [
+      {
+       "searchResultsTotal": 5
+      }
+     ]
+    }
+   ]
+  },
+  "\"Westshore Terminals\"": {
+   "url": "https://nrpti-api-f00029-prod.apps.silver.devops.gov.bc.ca/api/public/search?dataset=Order,Inspection,AdministrativePenalty,AdministrativeSanction,CourtConviction,Warning,Ticket&populate=true&keywords=%22Westshore%20Terminals%22&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:51:33.000Z",
+   "body": [
+    {
+     "searchResults": [
+      {
+       "_id": "5ecea736589694001a088d66",
+       "issuedTo": {
+        "write": [
+         "sysadmin"
+        ],
+        "read": [
+         "sysadmin",
+         "public"
+        ],
+        "companyName": "Westshore Terminals Limited Partnership",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Westshore Terminals Limited Partnership",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 113361,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "5ecea736589694001a088d62",
+        "5ecea736589694001a088d63",
+        "5fa2390c94461ea0861f56c7"
+       ],
+       "recordName": "Inspection - Permit - 113361",
+       "recordType": "Inspection",
+       "dateIssued": "2019-02-12T22:01:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Westshore Terminals Limited Partnership, Roberts Bank, Delta, Coal Loading Terminal",
+       "centroid": [
+        -123.1563,
+        49.0158
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Advisory",
+       "documents": [
+        {
+         "_id": "5ecea736589694001a088d60",
+         "_schemaName": "Document",
+         "fileName": "20190212_IL_AD_113361.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/5ecea736589694001a088d60/20190212_IL_AD_113361.pdf",
+         "key": "5ecea736589694001a088d60/20190212_IL_AD_113361.pdf",
+         "addedBy": "",
+         "dateAdded": "2020-05-27T16:28:14.210Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "public",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 6819; Source of inspected requirement(s): Permit",
+       "dateAdded": "2020-12-18T10:16:51.598Z",
+       "dateUpdated": "2026-03-17T10:32:58.872Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b92dda9457e100110cfdce"
+        }
+       ],
+       "__v": 4812,
+       "id": "5ecea736589694001a088d66",
+       "score": 3.95,
+       "collections": []
+      },
+      {
+       "_id": "5ecea865589694001a08921d",
+       "issuedTo": {
+        "write": [
+         "sysadmin"
+        ],
+        "read": [
+         "sysadmin",
+         "public"
+        ],
+        "companyName": "Westshore Terminals Ltd.",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Westshore Terminals Ltd.",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 113400,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "5ecea865589694001a089219",
+        "5ecea865589694001a08921a",
+        "5fa2390c94461ea0861f563e"
+       ],
+       "recordName": "Inspection - Municipal Wastewater Regulation - 113400",
+       "recordType": "Inspection",
+       "dateIssued": "2019-02-12T22:03:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Westshore Terminals Ltd., Delta BC, Wastewater Treatment Facility",
+       "centroid": [
+        -123.1563,
+        49.0158
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Advisory",
+       "documents": [
+        {
+         "_id": "5ecea864589694001a089217",
+         "_schemaName": "Document",
+         "fileName": "20190212_IL_AD_113400.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/5ecea864589694001a089217/20190212_IL_AD_113400.pdf",
+         "key": "5ecea864589694001a089217/20190212_IL_AD_113400.pdf",
+         "addedBy": "",
+         "dateAdded": "2020-05-27T16:28:14.210Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "public",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Planned; Authorization Number: 16534; Source of inspected requirement(s): Municipal Wastewater Regulation",
+       "dateAdded": "2020-12-18T10:17:05.961Z",
+       "dateUpdated": "2026-03-17T10:33:08.403Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b92de49457e100110d0649"
+        }
+       ],
+       "__v": 4812,
+       "id": "5ecea865589694001a08921d",
+       "score": 3.7916666666666665,
+       "collections": []
+      },
+      {
+       "_id": "5ece988a589694001a0858b9",
+       "issuedTo": {
+        "write": [
+         "sysadmin"
+        ],
+        "read": [
+         "sysadmin",
+         "public"
+        ],
+        "companyName": "Westshore Terminals Limited Partnership",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Westshore Terminals Limited Partnership",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 76581,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "5ece988a589694001a0858b5",
+        "5ece988a589694001a0858b6",
+        "5fa2390d94461ea0861f5ccf"
+       ],
+       "recordName": "Inspection - Permit - 76581",
+       "recordType": "Inspection",
+       "dateIssued": "2018-02-06T22:11:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "Delta-Roberts Bank - Coal Loading Terminal",
+       "centroid": [
+        -123.1563,
+        49.0158
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Warning 120(6)",
+       "documents": [
+        {
+         "_id": "5ece988a589694001a0858b3",
+         "_schemaName": "Document",
+         "fileName": "20180206_IL_WA_76581.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/5ece988a589694001a0858b3/20180206_IL_WA_76581.pdf",
+         "key": "5ece988a589694001a0858b3/20180206_IL_WA_76581.pdf",
+         "addedBy": "",
+         "dateAdded": "2020-05-27T16:28:14.210Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "public",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Non-compliance report; Authorization Number: 6819; Source of inspected requirement(s): Permit",
+       "dateAdded": "2020-12-18T10:05:08.673Z",
+       "dateUpdated": "2026-03-17T10:10:08.445Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b928809457e100110c5546"
+        }
+       ],
+       "__v": 5177,
+       "id": "5ece988a589694001a0858b9",
+       "score": 3.0833333333333335,
+       "collections": []
+      },
+      {
+       "_id": "647a242446acc600226ca0fa",
+       "issuedTo": {
+        "write": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi"
+        ],
+        "read": [
+         "sysadmin",
+         "admin:nrced",
+         "admin:lng",
+         "admin:bcmi",
+         "public"
+        ],
+        "companyName": "Westshore Terminals",
+        "firstName": "",
+        "middleName": "",
+        "lastName": "",
+        "fullName": "Westshore Terminals",
+        "dateOfBirth": null,
+        "type": "Company"
+       },
+       "_schemaName": "Inspection",
+       "_epicProjectId": null,
+       "_sourceRefId": null,
+       "_sourceRefNrisId": 206339,
+       "_sourceRefAgriMisId": null,
+       "_sourceRefAgriCmdbId": null,
+       "_epicMilestoneId": null,
+       "_sourceRefOgcInspectionId": null,
+       "_sourceRefOgcDeficiencyId": null,
+       "_sourceRefStringId": null,
+       "mineGuid": null,
+       "read": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "public",
+        "admin:wlrs",
+        "admin:env-epd"
+       ],
+       "write": [
+        "sysadmin",
+        "admin:nrced",
+        "admin:lng",
+        "admin:bcmi",
+        "admin:env-epd"
+       ],
+       "_flavourRecords": [
+        "647a242446acc600226ca0f4",
+        "647a242446acc600226ca0f6",
+        "647a242446acc600226ca0f8"
+       ],
+       "recordName": "Inspection - Spill Reporting Regulation - 206339",
+       "recordType": "Inspection",
+       "dateIssued": "2023-05-25T20:57:00.000Z",
+       "issuingAgency": "AGENCY_ENV",
+       "author": "Ministry of Environment and Climate Change Strategy",
+       "projectName": "",
+       "location": "1 Roberts Bank Rd, Delta, BC",
+       "centroid": [
+        -123.161831,
+        49.020069
+       ],
+       "outcomeStatus": "",
+       "outcomeDescription": "Out of Compliance - Advisory",
+       "documents": [
+        {
+         "_id": "69b97a289457e1001110aad6",
+         "_schemaName": "Document",
+         "fileName": "2023-05-12_IR206339_DGIR231070_Advisory.pdf",
+         "url": "https://nrs.objectstore.gov.bc.ca/lteczn/69b97a289457e1001110aad6/2023-05-12_IR206339_DGIR231070_Advisory.pdf",
+         "key": "69b97a289457e1001110aad6/2023-05-12_IR206339_DGIR231070_Advisory.pdf",
+         "addedBy": "",
+         "dateAdded": "2026-03-15T10:00:16.103Z",
+         "updatedBy": null,
+         "dateUpdated": null,
+         "write": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi"
+         ],
+         "read": [
+          "sysadmin",
+          "admin:lng",
+          "admin:nrced",
+          "admin:bcmi",
+          "public"
+         ],
+         "__v": 0
+        }
+       ],
+       "description": "Trigger or reason for inspection: Dangerous Goods Inspection Report; Authorization Number: DGIR231070; Source of inspected requirement(s): Spill Reporting Regulation",
+       "dateAdded": "2023-06-02T17:17:24.618Z",
+       "dateUpdated": "2026-03-17T15:58:32.542Z",
+       "addedBy": "",
+       "updatedBy": null,
+       "sourceDateAdded": null,
+       "sourceDateUpdated": null,
+       "sourceSystemRef": "nris-epd",
+       "isNrcedPublished": true,
+       "isLngPublished": true,
+       "isBcmiPublished": true,
+       "legislation": [
+        {
+         "act": "Environmental Management Act",
+         "regulation": "",
+         "section": "109",
+         "subSection": "",
+         "paragraph": "",
+         "legislationDescription": "Inspection to verify compliance with regulatory requirement.",
+         "_id": "69b97a289457e1001110aae2"
+        }
+       ],
+       "__v": 2861,
+       "id": "647a242446acc600226ca0fa",
+       "score": 3,
+       "collections": []
+      }
+     ],
+     "meta": [
+      {
+       "searchResultsTotal": 4
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "eao": {
+  "Trans Mountain": {
+   "url": "https://projects.eao.gov.bc.ca/api/public/search?dataset=Project&keywords=Trans%20Mountain&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:52:01.000Z",
+   "body": [
+    {
+     "searchResults": [
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f20e",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2002,
+        "name": "Equivalent - NEB",
+        "listOrder": 150,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "[withheld]",
+       "CELeadEmail": "[withheld]",
+       "CELeadPhone": "[withheld]",
+       "centroid": [
+        -120.4115,
+        50.6592
+       ],
+       "description": "Trans Mountain Pipeline ULC has completed the Trans Mountain Expansion, an approximately 1,000 kilometer pipeline between Edmonton, AB and Burnaby, B.C. The expansion is anticipated to triple the capacity of the Trans Mountain pipeline system and will increase the capacity of the Westridge Marine Terminal in Burrard Inlet from 5 medium-sized tankers per month, to a maximum of 34.",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f214",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2002,
+        "name": "Certificate Issued",
+        "listOrder": 10,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": " Between Edmonton, AB and Burnaby, BC",
+       "name": "Trans Mountain Expansion (TMX)",
+       "projectLeadId": "65ea4996b983a90022836682",
+       "projectLead": "[withheld]",
+       "projectLeadEmail": "[withheld]",
+       "projectLeadPhone": "[withheld]",
+       "proponent": {
+        "_id": "5e6691919b692d00216ff1ab",
+        "_schemaName": "Organization",
+        "addedBy": "[withheld]",
+        "description": "",
+        "name": "Trans Mountain Pipeline ULC",
+        "updatedBy": "[withheld]",
+        "dateAdded": "2020-03-09T18:57:21.804Z",
+        "dateUpdated": "2020-03-09T18:57:21.804Z",
+        "country": "Canada",
+        "postal": "T2P 5J2",
+        "province": "Alberta",
+        "city": "Calgary",
+        "address1": "Suite 2700, 300-5th Avenue SW",
+        "address2": "",
+        "companyType": "Proponent/Certificate Holder",
+        "parentCompany": "",
+        "companyLegal": "Trans Mountain Pipeline ULC",
+        "company": "",
+        "read": [
+         "public",
+         "sysadmin",
+         "staff"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ],
+        "delete": [
+         "staff",
+         "sysadmin"
+        ],
+        "__v": 8
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "65145e782038f10022eeb909",
+       "responsibleEPD": "[withheld]",
+       "responsibleEPDEmail": "[withheld]",
+       "responsibleEPDPhone": "[withheld]",
+       "type": "Energy-Petroleum & Natural Gas",
+       "legislation": "2002 Environmental Assessment Act",
+       "legislationYear": 2002,
+       "nameSearchTerms": [
+        "Tr",
+        "Tra",
+        "Tran",
+        "Trans",
+        "Mo",
+        "Mou",
+        "Moun",
+        "Mount",
+        "Mounta",
+        "Mountai",
+        "Mountain",
+        "Ex",
+        "Exp",
+        "Expa",
+        "Expan",
+        "Expans",
+        "Expansi",
+        "Expansio",
+        "Expansion"
+       ],
+       "addedBy": "58850f2faaecd9001b8083b6",
+       "build": "new",
+       "CEAALink": "https://iaac-aeic.gc.ca/050/evaluations/proj/80061",
+       "code": "trans-mountain-expansion",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5d3f6c7eda7a384218296036",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "name": "Post Decision - Operation",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "legislation": 2002,
+        "listOrder": 10
+       },
+       "phaseHistory": [
+        "5d3f6c7eda7a38421829602d",
+        "5d3f6c7eda7a384218296031",
+        "5d3f6c7eda7a384218296035",
+        "5d3f6c7eda7a38421829603a",
+        "5d3f6c7eda7a384218296034",
+        "5d3f6c7eda7a384218296035",
+        "5d3f6c7eda7a384218296036"
+       ],
+       "dateAdded": "Sun Jan 22 2017 20:12:15 GMT+0000 (Coordinated Universal Time)",
+       "dateCommentsClosed": null,
+       "dateCommentsOpen": null,
+       "dateUpdated": "2019-01-09T21:30:48.232Z",
+       "decisionDate": "2017-01-10T08:00:00.000Z",
+       "duration": "90",
+       "eaoMember": "project-eao-staff",
+       "fedElecDist": "",
+       "intake": {
+        "investment": "5400000000",
+        "investmentNotes": ""
+       },
+       "isTermsAgreed": false,
+       "overallProgress": 0,
+       "primaryContact": null,
+       "proMember": "proponent-team",
+       "provElecDist": "",
+       "sector": "Transmission Pipelines",
+       "shortName": "trans-mountain expansion",
+       "status": "Post Decision - Operation",
+       "substitution": false,
+       "eaStatus": "Requires EAC",
+       "projectStatusDate": null,
+       "substantially": true,
+       "activeDate": null,
+       "activeStatus": null,
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": null,
+       "_id": "5885121eaaecd9001b82b274",
+       "read": [
+        "project-proponent",
+        "project-admin",
+        "system-eao",
+        "project-intake",
+        "project-team",
+        "project-system-admin",
+        "public"
+       ],
+       "pins": [],
+       "pinsHistory": null,
+       "pinsRead": [
+        "sysadmin",
+        "staff"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": false,
+       "projectCACPublished": false,
+       "score": 64301.33333333333
+      },
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f1ff",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2002,
+        "name": "None",
+        "listOrder": 0,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "[withheld]",
+       "CELeadEmail": "[withheld]",
+       "CELeadPhone": "[withheld]",
+       "centroid": [
+        -122.9319,
+        49.2688
+       ],
+       "description": "Trans Mountain Pipe Line Modification",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f214",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2002,
+        "name": "Certificate Issued",
+        "listOrder": 10,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": "Burnaby",
+       "projectLeadId": "65145e782038f10022eeb909",
+       "projectLead": "[withheld]",
+       "projectLeadEmail": "[withheld]",
+       "projectLeadPhone": "[withheld]",
+       "proponent": {
+        "_id": "58850f6aaaecd9001b8086b0",
+        "_schemaName": "Organization",
+        "description": "",
+        "name": "Trans Mountain Enterprises of British Columbia Limited",
+        "updatedBy": "[withheld]",
+        "addedBy": "[withheld]",
+        "dateUpdated": "2017-01-22T20:00:42.966Z",
+        "dateAdded": "2017-01-22T20:00:42.966Z",
+        "country": "Canada",
+        "postal": "V5A 4H5",
+        "province": "British Columbia",
+        "city": "Burnaby",
+        "address2": "",
+        "address1": "815 Shellmont St.",
+        "companyType": "Proponent/Certificate Holder",
+        "parentCompany": "",
+        "companyLegal": "",
+        "company": "Trans Mountain Enterprises of British Columbia Limited",
+        "__v": 1,
+        "read": [
+         "public",
+         "sysadmin",
+         "staff"
+        ]
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "65145e782038f10022eeb909",
+       "responsibleEPD": "[withheld]",
+       "responsibleEPDEmail": "[withheld]",
+       "responsibleEPDPhone": "[withheld]",
+       "type": "Energy-Petroleum & Natural Gas",
+       "legislation": "1996 Environmental Assessment Act",
+       "nameSearchTerms": [
+        "Tr",
+        "Tra",
+        "Tran",
+        "Trans",
+        "Mo",
+        "Mou",
+        "Moun",
+        "Mount",
+        "Mounta",
+        "Mountai",
+        "Mountain",
+        "Pi",
+        "Pip",
+        "Pipe"
+       ],
+       "addedBy": "58850f2faaecd9001b8083b6",
+       "build": "modification",
+       "CEAALink": "https://iaac-aeic.gc.ca/050/evaluations/proj/80061",
+       "code": "trans-mountain-pipe-line-modification",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5d3f6c7eda7a384218296036",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "name": "Post Decision - Operation",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "legislation": 2002,
+        "listOrder": 10
+       },
+       "phaseHistory": [
+        "5d3f6c7eda7a38421829602f",
+        "5d3f6c7eda7a384218296036"
+       ],
+       "dateAdded": "Sun Jan 22 2017 20:03:47 GMT+0000 (Coordinated Universal Time)",
+       "dateCommentsClosed": null,
+       "dateCommentsOpen": null,
+       "dateUpdated": "2019-05-02T19:09:17.023Z",
+       "decisionDate": "1997-04-23T07:00:00.000Z",
+       "duration": "90",
+       "eaoMember": "project-eao-staff",
+       "fedElecDist": "",
+       "intake": {
+        "investment": "2300000",
+        "investmentNotes": ""
+       },
+       "isTermsAgreed": false,
+       "primaryContact": null,
+       "proMember": "proponent-team",
+       "provElecDist": "",
+       "sector": "Transmission Pipelines",
+       "shortName": "trans-mountain pipe line modification",
+       "status": "Post Decision - Operation",
+       "substitution": false,
+       "eaStatus": "Requires EAC",
+       "projectStatusDate": null,
+       "activeDate": null,
+       "activeStatus": null,
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": null,
+       "name": "Trans Mountain Pipe Line Modification",
+       "legislationYear": 1996,
+       "overallProgress": 0,
+       "_id": "58851022aaecd9001b80b9e6",
+       "read": [
+        "project-proponent",
+        "project-admin",
+        "system-eao",
+        "project-intake",
+        "project-team",
+        "project-system-admin",
+        "public"
+       ],
+       "pins": [],
+       "pinsHistory": null,
+       "pinsRead": [
+        "sysadmin",
+        "staff"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": false,
+       "projectCACPublished": false,
+       "score": 31701.2
+      }
+     ],
+     "meta": [
+      {
+       "searchResultsTotal": 2
+      }
+     ]
+    }
+   ]
+  },
+  "Westridge": {
+   "url": "https://projects.eao.gov.bc.ca/api/public/search?dataset=Project&keywords=Westridge&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:52:03.000Z",
+   "body": [
+    {
+     "searchResults": [],
+     "meta": []
+    }
+   ]
+  },
+  "Westshore": {
+   "url": "https://projects.eao.gov.bc.ca/api/public/search?dataset=Project&keywords=Westshore&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:52:06.000Z",
+   "body": [
+    {
+     "searchResults": [],
+     "meta": []
+    }
+   ]
+  },
+  "Roberts Bank": {
+   "url": "https://projects.eao.gov.bc.ca/api/public/search?dataset=Project&keywords=Roberts%20Bank&pageSize=50&pageNum=0",
+   "retrieved_at": "2026-10-07T15:52:09.000Z",
+   "body": [
+    {
+     "searchResults": [
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f201",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2002,
+        "name": "Panel (CEAA 2012)",
+        "listOrder": 20,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "[withheld]",
+       "CELeadEmail": "[withheld]",
+       "CELeadPhone": "[withheld]",
+       "centroid": [
+        -123.1842,
+        49.0183
+       ],
+       "description": "This is a new container terminal proposed by Port Metro Vancouver at Roberts Bank in Delta, BC, approximately 35 kilometres south of Vancouver. The proposed Project is a new three-berth marine container terminal that would provide additional capacity of 2.4 million Twenty-foot Equivalent Units (TEUs) of containers per year to meet anticipated demand until 2030.",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f214",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2002,
+        "name": "Certificate Issued",
+        "listOrder": 10,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": "Roberts Bank, Delta",
+       "projectLeadId": "60359caf0952180022ca2e83",
+       "projectLead": "[withheld]",
+       "projectLeadEmail": "[withheld]",
+       "projectLeadPhone": "[withheld]",
+       "proponent": {
+        "_id": "58850f6baaecd9001b8086ca",
+        "_schemaName": "Organization",
+        "description": "",
+        "name": "Vancouver Fraser Port Authority",
+        "updatedBy": "[withheld]",
+        "addedBy": "[withheld]",
+        "dateUpdated": "2017-01-22T20:00:43.126Z",
+        "dateAdded": "2017-01-22T20:00:43.126Z",
+        "country": "Canada",
+        "postal": " V6C 3T4",
+        "province": "British Columbia",
+        "city": "Vancouver",
+        "address2": "100 The Pointe",
+        "address1": "999 Canada Place ",
+        "companyType": "Other Agency",
+        "parentCompany": "",
+        "companyLegal": "",
+        "company": "Vancouver Fraser Port Authority",
+        "__v": 1,
+        "read": [
+         "public",
+         "sysadmin",
+         "staff"
+        ]
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "5b7f2e5e4174df00245aff91",
+       "responsibleEPD": "[withheld]",
+       "responsibleEPDEmail": "[withheld]",
+       "responsibleEPDPhone": "[withheld]",
+       "type": "Transportation",
+       "legislation": "2002 Environmental Assessment Act",
+       "nameSearchTerms": [
+        "Ro",
+        "Rob",
+        "Robe",
+        "Rober",
+        "Robert",
+        "Roberts",
+        "Ba",
+        "Ban",
+        "Bank",
+        "Te",
+        "Ter",
+        "Term",
+        "Termi",
+        "Termin",
+        "Termina",
+        "Terminal"
+       ],
+       "addedBy": "58850f2faaecd9001b8083b6",
+       "build": "new",
+       "CEAALink": "https://iaac-aeic.gc.ca/050/evaluations/proj/80054",
+       "code": "roberts-bank-terminal-2",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5d3f6c7eda7a38421829602f",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "name": "Application Review",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "legislation": 2002,
+        "listOrder": 3
+       },
+       "phaseHistory": [
+        "5d3f6c7eda7a38421829602d",
+        "5d3f6c7eda7a38421829602f",
+        "5d3f6c7eda7a38421829602e",
+        "5d3f6c7eda7a38421829602f"
+       ],
+       "dateAdded": "Sun Jan 22 2017 20:11:16 GMT+0000 (Coordinated Universal Time)",
+       "dateCommentsClosed": null,
+       "dateCommentsOpen": null,
+       "dateUpdated": "2019-05-02T15:42:39.506Z",
+       "decisionDate": "2023-09-28T07:00:00.000Z",
+       "duration": "90",
+       "eaoMember": "project-eao-staff",
+       "fedElecDist": "",
+       "intake": {
+        "investment": "2000000000",
+        "investmentNotes": ""
+       },
+       "isTermsAgreed": false,
+       "primaryContact": null,
+       "proMember": "proponent-team",
+       "provElecDist": "DLS",
+       "sector": "Railways",
+       "shortName": "roberts-bank terminal 2",
+       "status": "Post Decision - Pre-Construction",
+       "substitution": false,
+       "eaStatus": "Requires EAC",
+       "projectStatusDate": null,
+       "activeDate": null,
+       "activeStatus": null,
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": null,
+       "name": "Roberts Bank Terminal 2",
+       "legislationYear": 2002,
+       "overallProgress": 0,
+       "_id": "588511e3aaecd9001b8274d4",
+       "read": [
+        "project-proponent",
+        "project-admin",
+        "system-eao",
+        "project-intake",
+        "project-team",
+        "project-system-admin",
+        "public"
+       ],
+       "pins": [],
+       "pinsHistory": null,
+       "pinsRead": [
+        "sysadmin",
+        "staff"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": false,
+       "projectCACPublished": false,
+       "score": 32152.583333333332
+      },
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f1ff",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2002,
+        "name": "None",
+        "listOrder": 0,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "[withheld]",
+       "CELeadEmail": "[withheld]",
+       "CELeadPhone": "[withheld]",
+       "centroid": [
+        -123.16087,
+        49.01948
+       ],
+       "description": "Expansion of existing terminal at Roberts Bank. The project resumed the review of application on February 13 2006.",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f214",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2002,
+        "name": "Certificate Issued",
+        "listOrder": 10,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": "Lower Mainland - Roberts Bank",
+       "projectLeadId": "5b7f2e5e4174df00245aff91",
+       "projectLead": "[withheld]",
+       "projectLeadEmail": "[withheld]",
+       "projectLeadPhone": "[withheld]",
+       "proponent": {
+        "_id": "58850f6baaecd9001b8086ca",
+        "_schemaName": "Organization",
+        "description": "",
+        "name": "Vancouver Fraser Port Authority",
+        "updatedBy": "[withheld]",
+        "addedBy": "[withheld]",
+        "dateUpdated": "2017-01-22T20:00:43.126Z",
+        "dateAdded": "2017-01-22T20:00:43.126Z",
+        "country": "Canada",
+        "postal": " V6C 3T4",
+        "province": "British Columbia",
+        "city": "Vancouver",
+        "address2": "100 The Pointe",
+        "address1": "999 Canada Place ",
+        "companyType": "Other Agency",
+        "parentCompany": "",
+        "companyLegal": "",
+        "company": "Vancouver Fraser Port Authority",
+        "__v": 1,
+        "read": [
+         "public",
+         "sysadmin",
+         "staff"
+        ]
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "5b7f2e5e4174df00245aff91",
+       "responsibleEPD": "[withheld]",
+       "responsibleEPDEmail": "[withheld]",
+       "responsibleEPDPhone": "[withheld]",
+       "type": "Transportation",
+       "legislation": "2002 Environmental Assessment Act",
+       "nameSearchTerms": [
+        "De",
+        "Del",
+        "Delt",
+        "Delta",
+        "Deltap",
+        "Deltapo",
+        "Deltapor",
+        "Deltaport",
+        "Th",
+        "Thi",
+        "Thir",
+        "Third",
+        "Be",
+        "Ber",
+        "Bert",
+        "Berth"
+       ],
+       "addedBy": "58850f2faaecd9001b8083b6",
+       "build": "modification",
+       "code": "deltaport-third-berth",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5d3f6c7eda7a384218296036",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "name": "Post Decision - Operation",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "legislation": 2002,
+        "listOrder": 10
+       },
+       "phaseHistory": [
+        "5d3f6c7eda7a38421829602d",
+        "5d3f6c7eda7a38421829602f",
+        "5d3f6c7eda7a384218296031",
+        "5d3f6c7eda7a384218296035",
+        "5d3f6c7eda7a384218296036"
+       ],
+       "dateAdded": "Sun Jan 22 2017 20:05:54 GMT+0000 (Coordinated Universal Time)",
+       "dateCommentsClosed": null,
+       "dateCommentsOpen": null,
+       "dateUpdated": "2019-02-22T18:09:23.651Z",
+       "decisionDate": "2006-09-28T07:00:00.000Z",
+       "duration": "90",
+       "eaoMember": "project-eao-staff",
+       "fedElecDist": "",
+       "intake": {
+        "investment": "272000000",
+        "investmentNotes": ""
+       },
+       "isTermsAgreed": false,
+       "primaryContact": null,
+       "proMember": "proponent-team",
+       "provElecDist": "",
+       "sector": "Marine Port Facilities",
+       "shortName": "deltaport-third berth ",
+       "status": "Post Decision - Operation",
+       "substitution": false,
+       "eaStatus": "Requires EAC",
+       "projectStatusDate": null,
+       "activeDate": null,
+       "activeStatus": null,
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": null,
+       "name": "Deltaport Third Berth",
+       "legislationYear": 2002,
+       "overallProgress": 0,
+       "_id": "588510a1aaecd9001b813339",
+       "read": [
+        "project-proponent",
+        "project-admin",
+        "system-eao",
+        "project-intake",
+        "project-team",
+        "project-system-admin",
+        "public"
+       ],
+       "pins": [],
+       "pinsHistory": null,
+       "pinsRead": [
+        "sysadmin",
+        "staff"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": false,
+       "projectCACPublished": false,
+       "score": 1.25
+      },
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f1ff",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2002,
+        "name": "None",
+        "listOrder": 0,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "[withheld]",
+       "CELeadEmail": "[withheld]",
+       "CELeadPhone": "[withheld]",
+       "centroid": [
+        -123.1667,
+        49.0333
+       ],
+       "description": "New container port with a completely separate terminal to the existing Deltaport Container Terminal located at  Roberts Bank.",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f218",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2002,
+        "name": "Withdrawn",
+        "listOrder": 50,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": "Lower Mainland - Roberts Bank",
+       "projectLeadId": "5b7f2e5e4174df00245aff91",
+       "projectLead": "[withheld]",
+       "projectLeadEmail": "[withheld]",
+       "projectLeadPhone": "[withheld]",
+       "proponent": {
+        "_id": "58850f6baaecd9001b8086ca",
+        "_schemaName": "Organization",
+        "description": "",
+        "name": "Vancouver Fraser Port Authority",
+        "updatedBy": "[withheld]",
+        "addedBy": "[withheld]",
+        "dateUpdated": "2017-01-22T20:00:43.126Z",
+        "dateAdded": "2017-01-22T20:00:43.126Z",
+        "country": "Canada",
+        "postal": " V6C 3T4",
+        "province": "British Columbia",
+        "city": "Vancouver",
+        "address2": "100 The Pointe",
+        "address1": "999 Canada Place ",
+        "companyType": "Other Agency",
+        "parentCompany": "",
+        "companyLegal": "",
+        "company": "Vancouver Fraser Port Authority",
+        "__v": 1,
+        "read": [
+         "public",
+         "sysadmin",
+         "staff"
+        ]
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "5b7f2e5e4174df00245aff91",
+       "responsibleEPD": "[withheld]",
+       "responsibleEPDEmail": "[withheld]",
+       "responsibleEPDPhone": "[withheld]",
+       "type": "Transportation",
+       "legislation": "2002 Environmental Assessment Act",
+       "nameSearchTerms": [
+        "Co",
+        "Con",
+        "Cont",
+        "Conta",
+        "Contai",
+        "Contain",
+        "Containe",
+        "Container",
+        "Te",
+        "Ter",
+        "Term",
+        "Termi",
+        "Termin",
+        "Termina",
+        "Terminal"
+       ],
+       "addedBy": "58850f2faaecd9001b8083b6",
+       "build": "new",
+       "code": "container-terminal-2",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5d3f6c7eda7a384218296033",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "name": "Withdrawal",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "legislation": 2002,
+        "listOrder": 7
+       },
+       "phaseHistory": [
+        "5d3f6c7eda7a38421829602d",
+        "5d3f6c7eda7a384218296033"
+       ],
+       "dateAdded": "Sun Jan 22 2017 20:05:56 GMT+0000 (Coordinated Universal Time)",
+       "dateCommentsClosed": null,
+       "dateCommentsOpen": null,
+       "dateUpdated": "2018-12-31T22:37:12.864Z",
+       "decisionDate": "2006-02-06T08:00:00.000Z",
+       "duration": "90",
+       "eaoMember": "project-eao-staff",
+       "fedElecDist": "",
+       "intake": {
+        "investment": "",
+        "investmentNotes": ""
+       },
+       "isTermsAgreed": false,
+       "primaryContact": null,
+       "proMember": "proponent-team",
+       "provElecDist": "",
+       "sector": "Marine Port Facilities",
+       "shortName": "container-terminal 2 ",
+       "status": "Complete",
+       "substitution": false,
+       "eaStatus": "Requires EAC",
+       "projectStatusDate": null,
+       "activeDate": null,
+       "activeStatus": null,
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": null,
+       "name": "Container Terminal 2",
+       "legislationYear": 2002,
+       "overallProgress": 0,
+       "_id": "588510a3aaecd9001b813526",
+       "read": [
+        "project-proponent",
+        "project-admin",
+        "system-eao",
+        "project-intake",
+        "project-team",
+        "project-system-admin",
+        "public"
+       ],
+       "pins": [],
+       "pinsHistory": null,
+       "pinsRead": [
+        "sysadmin",
+        "staff"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": false,
+       "projectCACPublished": false,
+       "score": 1.25
+      },
+      {
+       "CEAAInvolvement": {
+        "_id": "5e27937a749c83437054f210",
+        "_schemaName": "List",
+        "type": "ceaaInvolvements",
+        "legislation": 2018,
+        "name": "Coordination",
+        "listOrder": 170,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "CELead": "",
+       "CELeadEmail": "",
+       "CELeadPhone": "",
+       "centroid": [
+        -123.153192,
+        49.02365
+       ],
+       "description": "GCT Canada Limited Partnership proposes to expand the existing marine shipping facility at the GCT Deltaport Terminal with Berth Four, a marine terminal located approximately 12 kilometres southwest from Delta, B.C. The proposed project is anticipated to increase the international shipping capacity of the facility to up to two million twenty-foot shipping containers per year. It will include the expansion of the existing terminal container storage and handling area, the addition of a fourth berth on the southeast side of the Roberts Bank Causeway, and expansion of the existing intermodal rail yard. It would include a 44-hectare expansion of the terminal for container handling and storage, a 560 metres berth extension, a 12 hectare expansion of the existing intermodal rail yard, and a barge berth to accommodate future potential demand for short distance sea shipping capability.",
+       "eacDecision": {
+        "_id": "5e27937a749c83437054f21d",
+        "_schemaName": "List",
+        "type": "eaDecisions",
+        "legislation": 2018,
+        "name": "In Progress",
+        "listOrder": 100,
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ]
+       },
+       "location": "Roberts Bank, Delta, BC.",
+       "projectLeadId": "64b1cfea2ca7420022499a8e",
+       "projectLead": "",
+       "projectLeadEmail": "",
+       "projectLeadPhone": "",
+       "proponent": {
+        "_id": "5f7f9ee4ab3dd10022c7aafe",
+        "_schemaName": "Organization",
+        "addedBy": "[withheld]",
+        "description": "",
+        "name": "GCT Canada Limited Partnership",
+        "updatedBy": "[withheld]",
+        "dateAdded": "2020-10-08T23:21:08.818Z",
+        "dateUpdated": "2020-10-08T23:21:08.818Z",
+        "country": "Canada",
+        "postal": "V6A 1J9",
+        "province": "British Columbia",
+        "city": "Vancouver",
+        "address1": "1285 Franklin Street, , BC, Canada ",
+        "address2": "",
+        "companyType": "Proponent/Certificate Holder",
+        "parentCompany": null,
+        "companyLegal": "GCT Canada Limited Partnership ",
+        "company": "",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ],
+        "delete": [
+         "staff",
+         "sysadmin"
+        ],
+        "__v": 2
+       },
+       "region": "Lower Mainland",
+       "responsibleEPDId": "5b7f2e5e4174df00245aff91",
+       "responsibleEPD": "",
+       "responsibleEPDEmail": "",
+       "responsibleEPDPhone": "",
+       "type": "Transportation",
+       "legislation": "2018 Environmental Assessment Act",
+       "nameSearchTerms": [
+        "GC",
+        "GCT",
+        "De",
+        "Del",
+        "Delt",
+        "Delta",
+        "Deltap",
+        "Deltapo",
+        "Deltapor",
+        "Deltaport",
+        "Ex",
+        "Exp",
+        "Expa",
+        "Expan",
+        "Expans",
+        "Expansi",
+        "Expansio",
+        "Expansion"
+       ],
+       "addedBy": "",
+       "build": "new",
+       "CEAALink": "https://iaac-aeic.gc.ca/050/evaluations/proj/81010",
+       "code": "",
+       "commodity": "",
+       "currentPhaseName": {
+        "_id": "5df79dd77b5abbf7da6f51de",
+        "type": "projectPhase",
+        "_schemaName": "List",
+        "legislation": 2018,
+        "name": "Application Development and Review",
+        "read": [
+         "public",
+         "staff",
+         "sysadmin"
+        ],
+        "write": [
+         "staff",
+         "sysadmin"
+        ],
+        "listOrder": 4
+       },
+       "phaseHistory": [
+        "5df79dd77b5abbf7da6f51db",
+        "5df79dd77b5abbf7da6f51dd",
+        "5df79dd77b5abbf7da6f51de"
+       ],
+       "dateAdded": "",
+       "dateCommentsClosed": "",
+       "dateCommentsOpen": "",
+       "dateUpdated": null,
+       "decisionDate": null,
+       "duration": "",
+       "eaoMember": "",
+       "fedElecDist": "",
+       "intake": {
+        "investment": null,
+        "investmentNotes": null
+       },
+       "isTermsAgreed": false,
+       "primaryContact": "",
+       "proMember": "",
+       "provElecDist": "",
+       "sector": "Marine Port Projects",
+       "shortName": "",
+       "status": "Application Development & Review",
+       "substitution": false,
+       "eaStatusDate": "2020-09-28T07:00:00.000Z",
+       "eaStatus": "Proceed with Assessment",
+       "projectStatusDate": null,
+       "activeDate": null,
+       "activeStatus": "",
+       "review180Start": null,
+       "review45Start": null,
+       "reviewSuspensions": [],
+       "reviewExtensions": [],
+       "projLead": null,
+       "execProjectDirector": null,
+       "complianceLead": null,
+       "groups": [],
+       "name": "GCT Deltaport Expansion - Berth Four",
+       "legislationYear": 2018,
+       "_id": "5f7229183f4bc0002165e839",
+       "read": [
+        "sysadmin",
+        "staff",
+        "public"
+       ],
+       "pins": [
+        "5eab2322becd2c001a928fcc",
+        "58850f69aaecd9001b8085b2",
+        "58850f69aaecd9001b80860d",
+        "58850f69aaecd9001b8085fa",
+        "5dba15bc70df650021322fd8",
+        "58850f6aaaecd9001b808636",
+        "5f19994ff64cce0021463dca",
+        "58850f6aaaecd9001b808667",
+        "58850f68aaecd9001b808568",
+        "58850f69aaecd9001b8085f7",
+        "58850f6baaecd9001b8086be",
+        "58850f6baaecd9001b8086b7",
+        "58850f69aaecd9001b80859b",
+        "58850f68aaecd9001b80858a",
+        "5db9ba40cc52100021d0bf93",
+        "58850f69aaecd9001b8085fc",
+        "58850f6aaaecd9001b80866b",
+        "620aa5f100764f0022dc16fb",
+        "620aa4bc59beb500237bf0d3",
+        "58850f69aaecd9001b8085e7",
+        "58850f6baaecd9001b8086b6",
+        "58850f6aaaecd9001b80867f",
+        "5f722f533f4bc0002165e9f2",
+        "5dbb069a70df650021323b57",
+        "58850f6aaaecd9001b808681"
+       ],
+       "pinsHistory": [],
+       "pinsRead": [
+        "public"
+       ],
+       "cacEmail": "[withheld]",
+       "cacMembers": "[withheld]",
+       "projectCAC": true,
+       "projectCACPublished": true,
+       "score": 1.25
+      }
+     ],
+     "meta": [
+      {
+       "searchResultsTotal": 4
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

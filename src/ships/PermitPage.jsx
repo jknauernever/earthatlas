@@ -12,7 +12,7 @@ import { publicLicense } from './publicLicense.js'
 import { Loading } from '../components/panel'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import styles from './PermitPage.module.css'
-import { STATUS_WORDS, statusKey, statusSource } from './permitStatus.js'
+import { STATUS_WORDS, statusKey, statusSource, nrcedResult } from './permitStatus.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null)
@@ -24,15 +24,17 @@ const KIND = {
   GHGRP: 'Greenhouse gas reporting id', RMP: 'Risk Management Plan id', TRI: 'Toxics Release Inventory id', SEMS: 'Superfund site record',
   CEDRI: 'Emissions reporting id', EIS: 'Emissions inventory id', SDWIS: 'Public water system', TSCA: 'Chemical substances (TSCA) id',
   ICIS: 'EPA enforcement-system facility id', 'WA-PARIS': 'Washington State permit (WA Ecology)',
+  'BC-EMA': 'BC waste discharge authorization (Environmental Management Act)',
 }
+const BC_DOC_SEARCH = 'https://j200.gov.bc.ca/pub/ams/Default.aspx?PossePresentation=DocumentSearch'   // BC's authorization document search
 const AREA = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
-const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency' }
+const SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology refinery page', 'nwcaa-aop': 'Northwest Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air Agency', 'bc-nrced': 'BC NRCED' }
 const AGENCY = { Local: 'Local agency', State: 'State', EPA: 'EPA', Federal: 'EPA' }
 const GAS = [['co2', 'CO₂'], ['no2', 'NO₂'], ['so2', 'SO₂'], ['voc', 'VOC'], ['co', 'CO'], ['pm10', 'PM10']]
 
 // Document kinds (PARIS's own document types): the permit itself first, routine submittals last.
 const DOC_KINDS = [
-  ['permit', 'Permit & fact sheets', (d) => /^Permit Documents$/i.test(d.type) || d.source !== 'wa-ecology-paris'],
+  ['permit', 'Permit & fact sheets', (d) => /^Permit Documents$/i.test(d.type) || (d.source !== 'wa-ecology-paris' && d.source !== 'bc-nrced')],
   ['enforcement', 'Enforcement letters & orders', (d) => /^enforcement documents$/i.test(d.type || '') || /penalt/i.test(d.type || '')],
   ['ordered', 'Reports required by orders', (d) => /^enforcement submittals$/i.test(d.type || '')],
   ['appeal', 'Appeals', (d) => /appeal/i.test(d.type || '')],
@@ -100,7 +102,7 @@ function Documents({ docs, kind: asked, setKind }) {
   </>
 }
 
-const KIND_WORD = { formal: 'Formal action', notice: 'Notice', agency: 'Ecology record', inspection: 'Inspection' }
+const KIND_WORD = { formal: 'Formal action', notice: 'Notice', agency: 'Ecology record', inspection: 'Inspection', nrced: 'NRCED record' }
 const vText = (v) => [v.parameter, v.value != null ? `${v.value}` : null, v.max_limit != null ? `limit ${v.max_limit}` : v.min_limit != null ? `min ${v.min_limit}` : null,
   v.point ? `outfall ${v.point}` : null].filter(Boolean).join(' · ')
 
@@ -117,6 +119,8 @@ function Enforcement({ rows, window, onViolations }) {
               <div className={styles.what}>{x.kind === 'inspection' ? `Inspection: ${x.type}` : x.type}</div>
               {x.outcome && <div className={styles.outcome}>Ecology’s decision: <strong>{x.outcome}</strong>{' '}
                 <a href={rec(x.outcomeRecord)} target="_blank" rel="noopener noreferrer" className={styles.muted}>PARIS</a></div>}
+              {x.result && <div className={styles.outcome} title={`NRCED lists the result as “${x.result}”`}>Result: <strong>{nrcedResult(x.result)}</strong>
+                <span className={styles.muted}> ({x.result})</span></div>}
               {x.violations?.length > 0 && (
                 <div className={styles.vlist}>
                   <div className={styles.muted}>{x.violations.length === 1 ? 'Violation' : `${fmtN(x.violations.length)} violations`} recorded
@@ -126,9 +130,12 @@ function Enforcement({ rows, window, onViolations }) {
                 </div>
               )}
               <div className={styles.sub}>{KIND_WORD[x.kind] || x.kind} · {AGENCY[x.agency] || x.agency}{x.inspectionId ? ` · PARIS inspection ${x.inspectionId}` : ''}
+                {x.legislation?.length ? ` · ${x.legislation.join('; ')}` : ''}
                 {' · '}{x.source === 'paris'
                   ? <a href={rec(x.record_id ?? x.documents?.[0]?.record_id)} target="_blank" rel="noopener noreferrer">WA Ecology PARIS</a>
-                  : <a href={rec(x.record_id)} target="_blank" rel="noopener noreferrer">EPA ECHO</a>}</div>
+                  : x.source === 'nrced'
+                    ? <a href={rec(x.record_id)} target="_blank" rel="noopener noreferrer" title={`NRCED record ${x.nrcedId}, as EarthAtlas read it`}>BC NRCED</a>
+                    : <a href={rec(x.record_id)} target="_blank" rel="noopener noreferrer">EPA ECHO</a>}</div>
             </td>
             <td>
               {x.documents?.map((d) => (
@@ -147,6 +154,8 @@ function Enforcement({ rows, window, onViolations }) {
     {window && <p className={styles.small}>From EPA ECHO (about the last five years) and WA Ecology PARIS, matched by permit and date. “Ecology’s decision” is PARIS’s
       enforcement entry on the same day. Violations under a notice are the ones PARIS recorded for this permit since the previous action, grouped by EarthAtlas by date.
       For air permits, Northwest Clean Air Agency doesn’t publish its orders; the ECHO case report shows status, penalty and settlement.</p>}
+    {rows.some((x) => x.source === 'nrced') && <p className={styles.small}>From BC’s Natural Resource Compliance and Enforcement Database (NRCED):
+      the records issued to the holder that name this authorization.</p>}
   </>
 }
 
@@ -260,11 +269,14 @@ export default function PermitPage() {
               <Fact label="Issued by">{data.issuer}</Fact>
               <Fact label="Held for">{data.facilities.map((f) => <div key={f.key}>{f.name}{f.adminArea ? <span className={styles.muted}>, {f.adminArea}</span> : ''}</div>)}</Fact>
               <Fact label="Dock">{data.facilities.flatMap((f) => f.terminals).map((t) => <div key={t.key}><a href={`/ships?tl=${t.key}&tb=permits`}>{t.name}</a></div>)}</Fact>
-              <Fact label="Type">{[p.universe, p.areas && p.areas.split(/,\s*/).map((a) => AREA[a] || a).join(', ')].filter(Boolean).join(' · ')}</Fact>
-              <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
+              <Fact label="Type">{[p.universe, p.areas && (p.bcEma ? `waste type: ${p.areas.toLowerCase()}` : p.areas.split(/,\s*/).map((a) => AREA[a] || a).join(', '))].filter(Boolean).join(' · ')}</Fact>
+              {p.bcEma && <Fact label="Site">{p.bcEma.address}{p.bcEma.facility_type && <div className={styles.muted}>{p.bcEma.facility_type}</div>}</Fact>}
+              {p.bcEma && <Fact label="Issued">{day(p.bcEma.issued)}</Fact>}
+              <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
               {data.air && <Fact label="Air permit">{data.air.aop} · dated {data.air.permitDate}<div className={styles.muted}>{data.air.status}</div></Fact>}
               <Fact label="Records">
-                {p.echoUrl ? <><a href={p.echoUrl} target="_blank" rel="noopener noreferrer">EPA ECHO</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
+                {p.bcEma ? <><a href={p.registerUrl} target="_blank" rel="noopener noreferrer">BC authorizations register</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored row</a></>
+                  : p.echoUrl ? <><a href={p.echoUrl} target="_blank" rel="noopener noreferrer">EPA ECHO</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
                   : <><a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">WA Ecology PARIS</a> <span className={styles.muted}>(state permit; not in EPA’s records)</span></>}
               </Fact>
             </dl>
@@ -312,6 +324,8 @@ export default function PermitPage() {
             </div>
             {tab === 'documents' && (data.documents.length
               ? <Documents docs={data.documents} kind={kind} setKind={(k) => setParam('k', k, 'permit')} />
+              : p.bcEma ? <p className={styles.note}>No document is linked to this authorization yet. The register lists the authorization only;
+                BC’s <a href={BC_DOC_SEARCH} target="_blank" rel="noopener noreferrer">authorization document search</a> holds its documents.</p>
               : <p className={styles.note}>No document listing found for this permit yet. EPA ECHO lists the permit id only.</p>)}
             {tab === 'enforcement' && <Enforcement rows={data.enforcement} window={data.enforcementWindow} onViolations={() => setParam('tab', 'violations', 'documents')} />}
             {tab === 'violations' && <Violations rows={data.violations || []} />}

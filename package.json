@@ -38,6 +38,7 @@
     "ships:import-official-ports": "node --env-file=.env.local scripts/ships/import-official-ports.mjs",
     "ships:import-terminals": "node --env-file=.env.local scripts/ships/import-terminals.mjs",
     "ships:import-facilities": "node --env-file=.env.local scripts/ships/import-facilities.mjs",
+    "ships:import-bc-permits": "node --env-file=.env.local scripts/ships/import-bc-permits.mjs",
     "ships:import-gisis": "node --env-file=.env.local scripts/ships/import-gisis.mjs",
     "ships:import-eu-mrv": "node --env-file=.env.local scripts/ships/import-eu-mrv.mjs",
     "ships:import-mep": "node --env-file=.env.local scripts/ships/import-mep.mjs",

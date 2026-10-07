@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import Chevron from './Chevron.jsx'
-import { statusShort, statusTitle } from './permitStatus.js'
+import { statusShort, statusTitle, nrcedResult } from './permitStatus.js'
 import { Loading } from '../components/panel'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -21,14 +21,16 @@ const STATUTE = {
   CWA: 'Water discharges (Clean Water Act)', CAA: 'Air (Clean Air Act)', RCRA: 'Hazardous waste (RCRA)',
   EP313: 'Toxic releases reporting (TRI)', TSCA: 'Chemical substances (TSCA)', CERCLA: 'Contaminated-site records (Superfund)',
   SDWA: 'Drinking water system (Safe Drinking Water Act)',
+  'BC EMA': 'Waste discharge authorizations (BC Environmental Management Act)',
 }
-const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA']
+const STATUTE_ORDER = ['State', 'CWA', 'CAA', 'RCRA', 'EP313', 'CERCLA', 'TSCA', 'SDWA', 'BC EMA']
 const SYSTEM_TITLE = {
   'ICIS-NPDES': 'NPDES water discharge permit / permit coverage (EPA ICIS-NPDES)', 'ICIS-Air': 'Air program record (EPA ICIS-Air); Areas lists the air programs that apply',
   GHGRP: 'Greenhouse Gas Reporting Program facility id (a reporting id, not a permit)', RMP: 'Risk Management Plan id (accident prevention; a reporting id, not a permit)',
   CEDRI: 'Compliance and Emissions Data Reporting Interface id (reporting)', EIS: 'National Emissions Inventory id (reporting)',
   RCRAInfo: 'Hazardous waste handler id (EPA RCRAInfo)', TRI: 'Toxics Release Inventory reporting id', SEMS: 'Superfund site record (SEMS)',
-  'WA-PARIS': 'Washington State permit (WA Ecology PARIS); not an EPA record', SDWIS: 'Public water system id (SDWIS)', TSCA: 'TSCA submission id', ICIS: 'Facility id in EPA’s enforcement system ICIS (often under an older name)',
+  'WA-PARIS': 'Washington State permit (WA Ecology PARIS); not an EPA record',
+  'BC-EMA': 'BC Environmental Management Act authorization (a permit, approval or registration under a regulation), from the BC Ministry of Environment and Parks register', SDWIS: 'Public water system id (SDWIS)', TSCA: 'TSCA submission id', ICIS: 'Facility id in EPA’s enforcement system ICIS (often under an older name)',
 }
 const AREA_WORDS = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
 const areaText = (a) => String(a || '').split(/,\s*/).map((x) => AREA_WORDS[x] || x).join(', ')
@@ -56,7 +58,8 @@ function Fold({ title, children, open: start = false }) {
 
 const ext = (href, label, title) => <a className={`${styles.sourceLink} ${styles.srcLink}`} href={href} target="_blank" rel="noopener noreferrer" title={title}>{label}</a>
 
-const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology', 'nwcaa-aop': 'NW Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air' }
+const DOC_SRC = { 'wa-ecology-paris': 'WA Ecology PARIS', 'wa-ecology-industrial': 'WA Ecology', 'nwcaa-aop': 'NW Clean Air Agency', 'pscaa-title-v': 'Puget Sound Clean Air', 'bc-nrced': 'BC NRCED' }
+const BC_REGISTER = 'https://catalogue.data.gov.bc.ca/dataset/waste-discharge-authorizations-all-authorizations'
 const mb = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`)
 
 /** One document: its title opens the file at the agency; the chip opens the listing EarthAtlas read it from. */
@@ -89,8 +92,12 @@ function Permit({ p, frsUrl }) {
         <span className={styles.period} title={p.program_status ? statusTitle(p) : undefined}>{p.program_status ? statusShort(p) : ''}</span>
       </div>
       <div className={styles.incidentMeta}>
-        {[p.name, p.universe, p.areas && areaText(p.areas), p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
-        {p.frs_ids.length ? <>
+        {[p.name, p.universe, p.bcEma ? p.areas && `waste type: ${p.areas.toLowerCase()}` : p.areas && areaText(p.areas),
+          p.bcEma?.issued && `issued ${day(p.bcEma.issued)}`, p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
+        {p.bcEma ? <>
+          {ext(rec(p.source_record_id), 'BC EMA register', `${SYSTEM_TITLE['BC-EMA']}. Click for the register row as EarthAtlas read it`)}
+          {' '}{ext(BC_REGISTER, 'BC Data Catalogue', 'The register on the BC Data Catalogue')}</>
+          : p.frs_ids.length ? <>
           {ext(rec(p.source_record_id), 'EPA ECHO', `${SYSTEM_TITLE[p.epa_system] || p.epa_system}. Listed in EPA ECHO's Detailed Facility Report for FRS ${p.frs_ids.join(', ')} — click for the stored report`)}
           {' '}{ext(frsUrl, 'ECHO page', 'Open the facility in EPA ECHO')}</>
           : ext(rec(p.source_record_id), 'WA Ecology PARIS', 'A Washington State permit listed on the facility’s PARIS page (EPA does not track it) — click for the listing')}
@@ -106,6 +113,7 @@ function Permit({ p, frsUrl }) {
         <div className={styles.incidentMeta}>WA Ecology: version {p.paris.current.version}{p.paris.current.issued ? `, issued ${day(p.paris.current.issued)}` : ''}
           {p.paris.current.effective ? `, effective ${day(p.paris.current.effective)}` : ''}{p.paris.current.expires ? `, expires ${day(p.paris.current.expires)}` : ''}</div>
       )}
+      {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${p.bcEma.facility_type.length > 90 ? `${p.bcEma.facility_type.slice(0, 90)}…` : p.bcEma.facility_type}` : ''}</div>}
       <div className={styles.permitOpen}>{p.documents?.length ? `${fmtN(p.documents.length)} document${p.documents.length === 1 ? '' : 's'} · ` : ''}Open permit ↗</div>
     </div>
   )
@@ -126,6 +134,48 @@ function Enforcement({ frs }) {
         {x.kind === 'formal' && x.penalty && x.penalty !== '$0' ? <> · penalty <strong>{x.penalty}</strong></> : ''}
         {x.permit_key ? <span className={styles.pcMuted}> · {x.permit_key}</span> : ''}{' '}
         {ext(rec(x.frs.record_id), 'EPA ECHO', `${x.kind === 'formal' ? 'Formal enforcement action' : 'Informal action (notice)'} in EPA ECHO's Detailed Facility Report for FRS ${x.frs.id} — click for the stored report`)}
+      </div>
+    ))}
+  </>
+}
+
+/** BC: NRCED compliance and enforcement records (inspections, orders, penalties) issued to the facility's company. */
+function NrcedList({ rows }) {
+  return <>
+    <div className={styles.sectionHead}>Inspections and enforcement ({fmtN(rows.length)} in BC NRCED)</div>
+    {!rows.length && <div className={styles.legendNoteText}>No NRCED record was found for this facility.</div>}
+    {rows.map((x) => (
+      <div key={x.id} className={styles.legendNoteText}>
+        <strong>{day(x.date)}</strong> · {x.kind}{x.trigger ? ` (${x.trigger.toLowerCase()})` : ''}
+        {x.outcome && <> · <span title={`NRCED lists the result as “${x.outcome}”`}>{nrcedResult(x.outcome)}</span></>}
+        {x.why.authorization ? <span className={styles.pcMuted}> · authorization {x.why.authorization}</span> : ''}
+        {x.agency ? <span className={styles.pcMuted}> · {x.agency}</span> : ''}{' '}
+        {x.documents.map((d) => <span key={d.url}>{ext(d.url, 'record', `${d.title}: the agency’s file`)}{' '}</span>)}
+        {ext(rec(x.record_id), 'BC NRCED', `Record ${x.id} in BC’s Natural Resource Compliance and Enforcement Database — click for the record as EarthAtlas read it. Shown because it is issued to the company and ${x.why.authorization ? `names authorization ${x.why.authorization}` : `its location names “${x.why.place_word}”`}`)}
+      </div>
+    ))}
+  </>
+}
+
+/** BC: Environmental Assessment Office projects that name this facility. */
+function EaoList({ rows, none, searches }) {
+  return <>
+    <div className={styles.sectionHead}>Environmental assessments ({fmtN(rows.length)} in the BC Environmental Assessment Office’s records)</div>
+    {!rows.length && <div className={styles.capNote}>{none || 'No BC Environmental Assessment Office project was found for this facility.'} Federal reviews are not checked here.</div>}
+    {rows.map((r) => (
+      <div key={r.id} className={styles.incident}>
+        <div className={styles.incidentHead}>
+          <span className={styles.incidentTitle}>{r.name}</span>
+          <span className={styles.period} title={`EAO decision: ${r.decision}`}>{r.decision}</span>
+        </div>
+        <div className={styles.incidentMeta}>
+          {[r.decisionDate && `decided ${day(r.decisionDate)}`, r.proponent && `proponent ${r.proponent}`, r.act, r.phase && `now: ${r.phase}`,
+            r.federal && r.federal !== 'None' && `federal involvement: ${r.federal}`].filter(Boolean).join(' · ')}{' '}
+          {ext(r.url, 'EAO project page', 'Open the project on the BC Environmental Assessment Office’s EPIC site')}
+          {r.federalUrl && <>{' '}{ext(r.federalUrl, 'federal registry', 'The federal Impact Assessment registry page the EAO record links to')}</>}
+          {' '}{ext(rec(r.record_id), 'stored', `The project as EarthAtlas read it. Linked because: ${r.why}${searches ? `. Searches: ${searches.join(', ')}` : ''}`)}
+        </div>
+        {r.description && <div className={styles.legendNoteText}>{r.description}</div>}
       </div>
     ))}
   </>
@@ -156,6 +206,7 @@ function SepaRow({ r }) {
 
 function Facility({ f, onLocate }) {
   const prim = f.frs.find((x) => x.primary)
+  const isBc = f.country === 'CA'
   // Permits whose own text names this dock come first in each group.
   const byCover = (ps) => [...ps].sort((a, b) => (b.coversTerminal ? 1 : 0) - (a.coversTerminal ? 1 : 0))
   const groups = STATUTE_ORDER.map((s) => [s, byCover(f.permits.filter((p) => p.statute === s))]).filter(([, ps]) => ps.length)
@@ -167,38 +218,58 @@ function Facility({ f, onLocate }) {
         {f.relation === 'owned_by'
           ? <>This dock is owned and run by <strong>{f.name}</strong>{f.relationSource && <>{' '}{ext(f.relationSource, 'source', f.relationSays || 'The page that states it')}</>}.
             {' '}These are that company’s own permits.{' '}</>
+          : isBc
+            ? <>This dock is part of <strong>{f.name}</strong>. These are the site’s BC authorizations and compliance records.{' '}</>
           : f.kind === 'refinery'
             ? <>This dock serves <strong>{f.name}</strong>. These permits are held by the refinery, not issued to the dock;
               {' '}one marked <span className={styles.coverBadge}>covers this dock</span> names the dock in its own text.{' '}</>
             : <>This dock is part of <strong>{f.name}</strong>. These permits are the site’s;
               {' '}one marked <span className={styles.coverBadge}>covers this dock</span> names the dock in its own text.{' '}</>}
-        {ext(rec(f.entryRecordId), 'EarthAtlas list', 'EarthAtlas’s hand-checked facility entry: which EPA records are this site, and why — click for the record')}
+        {ext(rec(f.entryRecordId), 'EarthAtlas list', isBc
+          ? 'EarthAtlas’s hand-checked facility entry: which BC authorizations and records are this site, and why — click for the record'
+          : 'EarthAtlas’s hand-checked facility entry: which EPA records are this site, and why — click for the record')}
         {prim && <> · EPA facility {prim.id} {ext(prim.url, 'ECHO page', 'Open the facility in EPA ECHO')}</>}
         {onLocate && Number.isFinite(f.lat) && <>{' · '}<button type="button" className={styles.locateLink} onClick={() => onLocate([[f.lon, f.lat]])}
-          title={`Zoom the map to the dock and ${f.name} (EPA’s point for facility ${prim?.id ?? ''})`}>Show {f.kind === 'refinery' ? 'refinery' : 'site'} and dock on map</button></>}
+          title={isBc ? `Zoom the map to the dock and ${f.name} (the point its main BC authorization lists)` : `Zoom the map to the dock and ${f.name} (EPA’s point for facility ${prim?.id ?? ''})`}>Show {f.kind === 'refinery' ? 'refinery' : 'site'} and dock on map</button></>}
       </div>
 
       <div className={styles.sectionHead}>Permits and program records held by {f.name} ({fmtN(f.permits.length)})</div>
       {groups.map(([s, ps]) => (
-        <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA'}>
+        <Fold key={s} title={`${STATUTE[s] || s} (${fmtN(ps.length)})`} open={s === 'CWA' || s === 'CAA' || s === 'BC EMA'}>
           {ps.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}
         </Fold>
       ))}
       {other.length > 0 && <Fold title={`Other (${fmtN(other.length)})`}>{other.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}</Fold>}
 
-      <Enforcement frs={f.frs} />
+      {isBc ? <NrcedList rows={f.bc?.nrced || []} /> : <Enforcement frs={f.frs} />}
 
       {f.documents?.length > 0 && <>
         <div className={styles.sectionHead}>Other documents and pages about this facility</div>
         {f.documents.map((d) => <Doc key={d.id} d={d} />)}
       </>}
 
-      <div className={styles.sectionHead}>SEPA environmental reviews ({fmtN(f.sepa.length)} in the WA SEPA Register)</div>
-      {!f.sepa.length && <div className={styles.capNote}>No SEPA Register record found for this facility. The Register starts in 2000 and some actions are exempt from SEPA, so this is not proof that no review happened.</div>}
-      {recent.map((r) => <SepaRow key={r.sepa} r={r} />)}
-      {older.length > 0 && <Fold title={`Older reviews (${fmtN(older.length)}, back to ${day(older[older.length - 1].issued)})`}>{older.map((r) => <SepaRow key={r.sepa} r={r} />)}</Fold>}
+      {isBc ? <EaoList rows={f.bc?.eao || []} none={f.bc?.eaoNone} searches={f.bc?.eaoSearches} /> : <>
+        <div className={styles.sectionHead}>SEPA environmental reviews ({fmtN(f.sepa.length)} in the WA SEPA Register)</div>
+        {!f.sepa.length && <div className={styles.capNote}>No SEPA Register record found for this facility. The Register starts in 2000 and some actions are exempt from SEPA, so this is not proof that no review happened.</div>}
+        {recent.map((r) => <SepaRow key={r.sepa} r={r} />)}
+        {older.length > 0 && <Fold title={`Older reviews (${fmtN(older.length)}, back to ${day(older[older.length - 1].issued)})`}>{older.map((r) => <SepaRow key={r.sepa} r={r} />)}</Fold>}
+      </>}
 
-      <Fold title="About this data">
+      {isBc ? <Fold title="About this data">
+        <div className={styles.legendNoteText}>
+          <strong>BC authorizations.</strong> From the BC Ministry of Environment and Parks’ register of waste discharge authorizations under the
+          Environmental Management Act (permits, approvals and registrations under its regulations). EarthAtlas checked by hand which register
+          entries are this site, by their listed location near the dock and the company’s name:
+          {f.permits.filter((p) => p.bcEma?.why).map((p) => <div key={p.permit_key} className={styles.pcMuted}>· {p.permit_key}: {p.bcEma.why}</div>)}
+          Air permits inside Metro Vancouver are issued by Metro Vancouver, and work on port land is permitted by the port authority; neither is included yet.
+        </div>
+        <div className={styles.legendNoteText}>
+          <strong>Inspections and enforcement.</strong> From BC’s Natural Resource Compliance and Enforcement Database (NRCED). A record is shown when it
+          is issued to the company and names one of the authorizations above or the place.
+          {f.bc?.nrcedCandidates > 0 && ` ${plural(f.bc.nrcedCandidates, 'other record')} issued to the company don’t name the site and are not shown.`}
+          {' '}Federal records (for example the Canada Energy Regulator’s) are not included.
+        </div>
+      </Fold> : <Fold title="About this data">
         <div className={styles.legendNoteText}>
           <strong>EPA records.</strong> EPA’s Facility Registry gives one id per site and lists every program record under it. EarthAtlas
           also links {plural(f.frs.length - 1, 'other EPA facility id')} that are the same site (projects, old names), each with its reason:
@@ -213,7 +284,7 @@ function Facility({ f, onLocate }) {
           {' '}Which permit each review covered is listed in the review’s own documents (the SEPA checklist); that link is not made here yet.
           The Register holds records from 2000 on.
         </div>
-      </Fold>
+      </Fold>}
     </div>
   )
 }

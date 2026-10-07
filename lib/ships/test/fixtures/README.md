@@ -181,3 +181,11 @@ Used on Josh's instruction assuming IMO permission; written permission not yet o
 |---|---|
 | `facilities-live-2026-10-06.json` | **Real, recorded live** 2026-10-06 by `scripts/ships/import-facilities.mjs`: EPA ECHO `dfr_rest_services.get_dfr` JSON for BP Cherry Point (FRS 110070752633) and its AMP5 project record (110071668371); the WA Ecology SEPA Register search page "Applicant: bp Cherry Point" (page 1) and record pages 202303911 (bp Advance Mitigation Project 5), 201801445 (BP West Coast Products fill at a Jackson Road church site: a candidate) and 201204345 (Tesoro Station 68404, Skagit: a candidate). DFR demographic sections and MapOutput removed for size; all else verbatim. |
 | `permit-documents-live-2026-10-06.json` | **Real, recorded live** 2026-10-06, trimmed to verbatim slices: PARIS document list for WA0000761 (page 1 of 2, from the results grid on), WA Ecology Industrial Section `tesoro-refinery` page (from `<main>`), and the two NWCAA Air Operating Permits rows (BP Cherry Point, Tesoro (Marathon) Anacortes). |
+
+## BC permits pilot (docs/PERMITS_SOURCES_BC.md, lib/ships/bcPermits.js)
+
+| File | What it is |
+|---|---|
+| `bc-permits-live-2026-10-07.json` | **Real, recorded live** 2026-10-07 (cached by `scripts/ships/import-bc-permits.mjs`): `ema` = the header and 9 of the 9,083 rows of the BC Data Catalogue register `all_ams_authorizations.xlsx` as `lib/ships/xlsx.js` reads them (authorizations 3678, 14058, 109085, 6945, 6833 near / of Westridge; 6819, 16534, 14865, 106986 near / named like Westshore); `nrced` = the NRPTI public search responses for `Westridge` and `"Westshore Terminals"` (populate=true; each record's populated `flavours` copies removed for size); `eao` = the EPIC Project searches `Trans Mountain`, `Westridge`, `Westshore`, `Roberts Bank` (EAO staff contact fields replaced by `[withheld]`). Request URLs and retrieval times kept; nothing else edited. |
+
+`bcPermits.test.js` builds two **SYNTHETIC** variants (an entry without its why; a Westridge record moved to another site and authorization) and one made-up object for the contact-dropping test, each marked in the test.

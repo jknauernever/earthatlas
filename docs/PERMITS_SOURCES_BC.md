@@ -1,6 +1,6 @@
 # Permits for BC terminals — sources (study, 2026-10-07)
 
-Facts only; each source probed live on 2026-10-07 with one or two requests. Nothing built yet. Companion to
+Facts only; each source probed live on 2026-10-07 with one or two requests. A two-terminal DEV pilot is built (see the end). Companion to
 docs/PERMITS_SOURCES.md (Washington). Our list has 33 BC terminals (lib/ships/data/salish-terminals.json, country CA).
 
 ## Who regulates what (BC side)
@@ -72,3 +72,34 @@ docs/PERMITS_SOURCES.md (Washington). Our list has 33 BC terminals (lib/ships/da
 2. Facility noun for BC: there is no FRS equivalent; the anchor would be our own facility entry with the EMA authorization
    numbers (and NPRI id) as its source records.
 3. Metro Vancouver and the port authority: link-out only until a public index or export is found.
+
+## Pilot (DEV only, 2026-10-07): Westridge + Westshore
+
+Code `lib/ships/bcPermits.js`, script `scripts/ships/import-bc-permits.mjs` (`--dry-run` lists the register rows to hand-check),
+migration 027 (facility_links roles `bc_ema_authorization`, `nrced_record`, `eao_project`), data = the two `bc-…` entries in
+`lib/ships/data/salish-facilities.json`, tests `lib/ships/test/bcPermits*.test.js`. Same model as Washington: facility noun →
+terminal_facilities → permits (`epa_system` 'BC-EMA', statute 'BC EMA') → documents (NRCED files, links only) → inspections →
+EAO projects. Request facts learned while building:
+
+- **EMA register**: the workbook's register sheet is `sheet1.xml` ("All_Authorizations"; `Sheet1` is empty). Dates are Excel serial
+  days. **Longitude is listed without its minus sign** (Burnaby = 122.95); a few rows carry placeholder points (e.g. 60, 140).
+  Matching = rows within 1 km of the berth points or with the company's name anywhere in BC, then a hand check (kept in the data file
+  with why, plus the rows left out and why).
+- **NRCED API**: `keywords` is a full-text search where words are OR-ed ("Westshore Terminals" unquoted = 62 hits, mostly other
+  "terminals"); a quoted phrase narrows it (`"Westshore Terminals"` = 4). Numbers in descriptions are not matched (searching
+  "6819" finds an address "6819 100 Avenue"). `populate=true` returns each record's documents with their public URLs
+  (`nrs.objectstore.gov.bc.ca/...pdf`). The public search always uses the redacted subset. Ministry inspections (source
+  `nris-epd`) say `Authorization Number: <n>` in their description: that number is the EMA authorization they inspected, which
+  joins a record to its permit. No per-record public page exists in NRCED's app; EarthAtlas links the record's files and the
+  stored record. "Trans Mountain" = 709 records along the whole pipeline, so the facility is searched by place ("Westridge").
+- **EAO EPIC**: project pages are `projects.eao.gov.bc.ca/p/<_id>/project-details` (route read from EPIC's own main.js).
+  Records carry EAO staff names / emails / phones: dropped before storing (fixtures: `[withheld]`).
+- **NPRI**: not done (optional; would need the per-year facility tables from open.canada.ca).
+
+Result (dev): Westridge = EMA 3678 (permit, Active), 14058 (storm water regulation registration, Active), 109085 (approval,
+Expired 2020-02-15); NRCED inspections 2025-04-01 and 2024-04-04 (3678, warnings) and 2018-11-14 (109085, compliant); EAO
+"Trans Mountain Expansion (TMX)" (certificate 2017-01-10; its description names the Westridge Marine Terminal); the 1997
+"Trans Mountain Pipe Line Modification" kept as a candidate (doesn't say which site). Westshore = EMA 6819 (permit, Active, 1983)
+and 16534 (municipal wastewater regulation registration, Active, 2000); NRCED inspections 2018-02-06 (6819, warning), 2019-02-12
+(6819 and 16534, advisories), 2023-05-25 (dangerous goods inspection, advisory); no EAO project with Westshore as proponent.
+

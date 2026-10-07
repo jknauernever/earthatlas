@@ -2,9 +2,10 @@
  "about": {
   "what": "Curated list of facilities (plants / sites) that Salish Sea terminals serve, with the EPA FRS records, Climate TRACE sources and WA Ecology SEPA Register searches that describe them. Two-refinery pilot approved by Josh 2026-10-06 (docs/PERMITS_SOURCES.md).",
   "rules": "Facts only. FRS ids were found with ECHO facility-name searches on 2026-10-06; each related id says why it is the same site (FRS name / street address exactly as ECHO lists them). Ids left out on purpose are listed with the reason. SEPA Register records are linked by rule (lib/ships/facilities.js sepaMatch): the applicant names one of applicant_words, the county matches, and the proposal or location names one of place_words; other search hits are kept as candidates and not shown.",
-  "licences": "EPA ECHO: US Government work. WA Ecology SEPA Register: public record (credit + link). Climate TRACE: CC BY 4.0.",
+  "licences": "EPA ECHO: US Government work. WA Ecology SEPA Register: public record (credit + link). Climate TRACE: CC BY 4.0. BC EMA authorizations register: Open Government Licence – British Columbia (BC Data Catalogue). BC NRCED and BC EAO EPIC: public agency records (credit + link).",
   "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06. documents.pscaa: the facility's row on Puget Sound Clean Air Agency's approved Title V list (agency permit number) and EPA's ICIS-Air id for the same permit.",
-  "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed."
+  "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed.",
+  "bc": "BC entries (country CA; DEV pilot 2026-10-07, docs/PERMITS_SOURCES_BC.md, lib/ships/bcPermits.js): point = the facility's point as its main BC EMA authorization lists it (the register gives west longitude without the minus sign). bc.ema.accepted = BC Environmental Management Act authorizations of the site, each hand-checked in the register file all_ams_authorizations.xlsx (downloaded 2026-10-07) against the berth points in bc.ema.berths (BC Ports and Terminals) and the company name, with why; left_out = register rows near the berths or with the company's name that are not this site, with why. bc.nrced = the NRCED searches and the rule (lib/ships/bcPermits.js nrcedMatch): a record is shown when it is issued to the company and names an accepted authorization number or the place. bc.eao = BC Environmental Assessment Office (EPIC) project searches; accepted projects name this site, candidates are kept but not shown."
  },
  "version": "2026-10-06",
  "facilities": [
@@ -1846,6 +1847,202 @@
    },
    "notes": [
     "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "bc-westridge-marine-terminal",
+   "name": "Trans Mountain Westridge Marine Terminal",
+   "kind": "crude_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Burnaby)",
+   "terminals": [
+    {
+     "key": "bc-westridge",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.2883,
+    "lon": -122.9541,
+    "from": "BC EMA authorization 3678 (Latitude 49.2883, Longitude 122.9541 as listed; west)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.290971,
+       "lon": -122.949893,
+       "ref": "bcpt-261 (BC Ports and Terminals SOURCE_DATA_ID 261)"
+      }
+     ],
+     "radius_m": 1000,
+     "company_words": [
+      "Trans Mountain"
+     ],
+     "accepted": [
+      {
+       "id": "3678",
+       "why": "Permit (effluent), Active, TRANS MOUNTAIN PIPELINE ULC, \"Westridge Marine Terminal, 7065 Bayview Drive, Burnaby\"; listed point about 430 m from the berth"
+      },
+      {
+       "id": "14058",
+       "why": "Petroleum Storage and Distribution Facilities Storm Water Regulation registration, Active, TRANS MOUNTAIN PIPELINE CO. LTD., 7065 Bayview Drive, Burnaby; legal description \"BURNABY, WESTRIDGE TERMINAL\"; about 480 m from the berth"
+      },
+      {
+       "id": "109085",
+       "why": "Approval (effluent), Expired, TRANS MOUNTAIN PIPELINE ULC, \"Westridge Marine Terminal, 7065 Bayview Drive, Burnaby\"; facility description names the Westridge Marine Terminal; about 470 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "6945",
+       "why": "Trans Mountain's Burnaby Terminal (tank farm), 7815 Shellmont Street, about 3.4 km away: a separate site, not the dock"
+      },
+      {
+       "id": "14059",
+       "why": "Trans Mountain jet fuel storage, address 5951 Ferguson Road, Richmond (\"AIRPORT TERMINAL\"): another site"
+      },
+      {
+       "id": "13418",
+       "why": "Trans Mountain Sumas tank farm, Abbotsford: another site"
+      },
+      {
+       "id": "13056",
+       "why": "Trans Mountain, Kingsvale (Cancelled): another site"
+      },
+      {
+       "id": "18309",
+       "why": "Terasen Pipelines (Trans Mountain), Cariboo District (Cancelled): another site"
+      },
+      {
+       "id": "18310",
+       "why": "Terasen Pipelines (Trans Mountain), Cariboo District (Cancelled): another site"
+      },
+      {
+       "id": "6833",
+       "why": "Lafarge Canada ready-mix concrete plant, 7500 Barnet Highway, about 470 m away: another company"
+      },
+      {
+       "id": "107463",
+       "why": "Lafarge Canada ready-mix concrete batch plant, 7501 Barnet Highway, about 560 m away: another company"
+      },
+      {
+       "id": "11258",
+       "why": "Shell Canada Products, 201 Kensington Avenue, Burnaby (Hazardous Waste Regulation, Cancelled), about 1.5 km away: another company"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "Westridge"
+     ],
+     "company_words": [
+      "Trans Mountain"
+     ],
+     "place_words": [
+      "Westridge"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Trans Mountain",
+      "Westridge"
+     ],
+     "accepted": [
+      {
+       "id": "5885121eaaecd9001b82b274",
+       "why": "EAO project \"Trans Mountain Expansion (TMX)\", proponent Trans Mountain Pipeline ULC; its description says the expansion \"will increase the capacity of the Westridge Marine Terminal in Burrard Inlet\""
+      }
+     ],
+     "candidates": [
+      {
+       "id": "58851022aaecd9001b80b9e6",
+       "why": "\"Trans Mountain Pipe Line Modification\" (1996 Act, certificate 1997), location Burnaby; the record does not say which Trans Mountain site it covers"
+      }
+     ]
+    }
+   },
+   "notes": [
+    "The terminal is the facility: Trans Mountain's marine loading dock and its tanks at 7065 Bayview Drive, Burnaby.",
+    "NRCED search \"Trans Mountain\" returns 709 records along the whole pipeline; the facility is searched by its place name (\"Westridge\") instead, so a Westridge record that never names the place is not found.",
+    "Not checked: Canada Energy Regulator compliance records (the federal regulator for the pipeline and this terminal), Metro Vancouver air permits (library returns 401), Vancouver Fraser Port Authority permits (site blocks scripts)."
+   ]
+  },
+  {
+   "id": "bc-westshore-terminals",
+   "name": "Westshore Terminals (Roberts Bank)",
+   "kind": "coal_terminal",
+   "country": "CA",
+   "admin_area": "Metro Vancouver (Delta)",
+   "terminals": [
+    {
+     "key": "bc-westshore",
+     "relation": "serves"
+    }
+   ],
+   "point": {
+    "lat": 49.0173,
+    "lon": -123.1637,
+    "from": "BC EMA authorization 6819 (Latitude 49.0173, Longitude 123.1637 as listed; west)"
+   },
+   "bc": {
+    "ema": {
+     "berths": [
+      {
+       "lat": 49.014417,
+       "lon": -123.156068,
+       "ref": "bcpt-215 (BC Ports and Terminals SOURCE_DATA_ID 215)"
+      }
+     ],
+     "radius_m": 1000,
+     "company_words": [
+      "Westshore Terminals"
+     ],
+     "accepted": [
+      {
+       "id": "6819",
+       "why": "Permit (effluent), Active, WESTSHORE TERMINALS LIMITED PARTNERSHIP, \"1 Roberts Bank, Delta\", facility type \"Coal and Potash Loading Terminal\"; about 640 m from the berth"
+      },
+      {
+       "id": "16534",
+       "why": "Municipal Wastewater Regulation registration (the terminal's sewage treatment), Active, WESTSHORE TERMINALS LTD., \"1 Roberts Bank, Delta\"; about 150 m from the berth"
+      }
+     ],
+     "left_out": [
+      {
+       "id": "14865",
+       "why": "GCT Canada (Deltaport container terminal), Roberts Bank, about 660 m away: the neighbouring terminal, another company"
+      },
+      {
+       "id": "106986",
+       "why": "Westshore Auto Recycling, Sooke: a namesake, not the terminal"
+      }
+     ]
+    },
+    "nrced": {
+     "searches": [
+      "\"Westshore Terminals\""
+     ],
+     "company_words": [
+      "Westshore Terminals"
+     ],
+     "place_words": [
+      "Roberts Bank"
+     ]
+    },
+    "eao": {
+     "searches": [
+      "Westshore",
+      "Roberts Bank"
+     ],
+     "accepted": [],
+     "candidates": [],
+     "none": "No BC EAO project with Westshore as proponent: \"Westshore\" finds none; \"Roberts Bank\" finds Roberts Bank Terminal 2, Deltaport Third Berth and Container Terminal 2 (Vancouver Fraser Port Authority) and GCT Deltaport Expansion – Berth Four (GCT Canada), neighbouring projects of other proponents (checked 2026-10-07)."
+    }
+   },
+   "notes": [
+    "The terminal is the facility: Westshore's coal terminal on the Roberts Bank causeway, Delta.",
+    "Not checked: Metro Vancouver air permits (library returns 401), Vancouver Fraser Port Authority project permits (site blocks scripts), federal Impact Assessment registry."
    ]
   }
  ]

@@ -14,10 +14,21 @@ export const STATUS_WORDS = {
   active: { short: 'In force', long: 'active (in force)' },
   operating: { short: 'Operating', long: 'the air program lists the source as operating' },
   draft: { short: 'Draft', long: 'a draft, not yet issued' },
+  cancelled: { short: 'Cancelled', long: 'cancelled; no longer in force' },   // BC EMA register
 }
 export const statusKey = (s) => String(s || '').split(/[;(]/)[0].trim().toLowerCase()
-export const statusSource = (p) => (p.system === 'WA-PARIS' ? 'WA Ecology PARIS' : 'EPA ECHO')
+const SOURCE_OF = { 'WA-PARIS': 'WA Ecology PARIS', 'BC-EMA': 'The BC waste discharge authorizations register' }
+export const statusSource = (p) => SOURCE_OF[p.system] || 'EPA ECHO'
 
 /** "In force" etc. for a card row (p = a permits row: epa_system + program_status). */
 export const statusShort = (p) => STATUS_WORDS[statusKey(p.program_status)]?.short ?? p.program_status ?? ''
-export const statusTitle = (p) => `${p.epa_system === 'WA-PARIS' ? 'WA Ecology PARIS' : 'EPA ECHO'} lists it as “${p.program_status}”${STATUS_WORDS[statusKey(p.program_status)] ? `: ${STATUS_WORDS[statusKey(p.program_status)].long}` : ''}`
+export const statusTitle = (p) => `${SOURCE_OF[p.epa_system] || 'EPA ECHO'} lists it as “${p.program_status}”${STATUS_WORDS[statusKey(p.program_status)] ? `: ${STATUS_WORDS[statusKey(p.program_status)].long}` : ''}`
+
+/** BC NRCED inspection results ("Out of Compliance - Advisory", "Compliant - Notice") in plain words; NRCED's term on hover. */
+export function nrcedResult(o) {
+  const t = String(o || '').trim()
+  if (!t) return null
+  if (/^compliant\b/i.test(t)) return 'In compliance'
+  const m = /^out of compliance\s*-\s*(advisory|warning|order|ticket|penalty)/i.exec(t)
+  return m ? `Out of compliance: ${m[1].toLowerCase()}` : t
+}

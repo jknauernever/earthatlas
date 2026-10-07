@@ -55,8 +55,9 @@ const problems = []
 const own = new Set(Object.values(cfg.footprints).flat())
 const fitTypes = (t) => {
   const tanker = /crude|product|refinery|bunker|fuel|chemical|lng|lpg/.test(t.kind) || (t.ship_fit?.classes || []).some((c) => /tanker/.test(c))
-  const bulk = /grain|coal|bulk|cement|scrap|forest/.test(t.kind)
-  return [...(bulk ? [[70, 79]] : []), ...(tanker ? [[80, 89]] : [])]
+  const bulk = /grain|coal|bulk|cement|scrap|forest|container|roro|general_cargo/.test(t.kind)   // cargo ships (AIS 70-79)
+  const cruise = /cruise/.test(t.kind)                                                          // passenger ships (AIS 60-69)
+  return [...(bulk ? [[70, 79]] : []), ...(tanker ? [[80, 89]] : []), ...(cruise ? [[60, 69]] : [])]
 }
 const terminals = Object.entries(cfg.footprints).map(([key, list]) => {
   const t = byKey.get(key)

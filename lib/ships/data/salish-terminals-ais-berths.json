@@ -36,6 +36,13 @@
   ],
   "bc-lantic": [
    "way/915038328"
+  ],
+  "bc-gct-deltaport": [
+   "way/1308709923",
+   "relation/17958870"
+  ],
+  "bc-centerm": [
+   "way/220771243"
   ]
  },
  "berths": [
@@ -223,6 +230,571 @@
      "otherRatio": 2
     },
     "osm_base": "2026-09-29T03:17:16Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.018123,
+   "lon": -123.15267,
+   "evidence": {
+    "stops": 88,
+    "ships": 33,
+    "first": "2025-07-01T00:00:47Z",
+    "last": "2026-06-26T15:06:05Z",
+    "fit_share": 1,
+    "spread_p50_m": 11.6,
+    "median_length_m": 286,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 13
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 292
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.02085,
+   "lon": -123.14995,
+   "evidence": {
+    "stops": 57,
+    "ships": 37,
+    "first": "2025-07-05T12:10:42Z",
+    "last": "2026-06-21T17:25:10Z",
+    "fit_share": 1,
+    "spread_p50_m": 14.3,
+    "median_length_m": 330,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 22
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 649
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-3",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.02208,
+   "lon": -123.14874,
+   "evidence": {
+    "stops": 52,
+    "ships": 36,
+    "first": "2025-07-01T00:01:09Z",
+    "last": "2026-06-27T23:34:17Z",
+    "fit_share": 1,
+    "spread_p50_m": 14.2,
+    "median_length_m": 333,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 25
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 811
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-4",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.02307,
+   "lon": -123.147885,
+   "evidence": {
+    "stops": 42,
+    "ships": 20,
+    "first": "2025-08-06T21:19:00Z",
+    "last": "2026-06-30T23:59:07Z",
+    "fit_share": 1,
+    "spread_p50_m": 14.2,
+    "median_length_m": 335,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 20
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 936
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-5",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.01934,
+   "lon": -123.151425,
+   "evidence": {
+    "stops": 34,
+    "ships": 20,
+    "first": "2025-08-07T06:14:32Z",
+    "last": "2026-06-06T15:00:10Z",
+    "fit_share": 1,
+    "spread_p50_m": 13.2,
+    "median_length_m": 293,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 19
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 452
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-6",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.02009,
+   "lon": -123.1507,
+   "evidence": {
+    "stops": 21,
+    "ships": 18,
+    "first": "2025-07-23T12:02:20Z",
+    "last": "2026-06-30T08:14:11Z",
+    "fit_share": 1,
+    "spread_p50_m": 15.2,
+    "median_length_m": 293,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 20
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 549
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-gct-deltaport",
+   "key": "ais-7",
+   "label": "Estimated from AIS stops: where container ships stop along Deltaport’s wharf",
+   "basis": "ais_inferred",
+   "lat": 49.018675,
+   "lon": -123.15206,
+   "evidence": {
+    "stops": 18,
+    "ships": 11,
+    "first": "2025-08-13T06:21:53Z",
+    "last": "2026-06-01T08:40:52Z",
+    "fit_share": 1,
+    "spread_p50_m": 10.7,
+    "median_length_m": 286,
+    "footprint": {
+     "osm": [
+      "way/1308709923",
+      "relation/17958870"
+     ],
+     "distance_m": 18
+    },
+    "nearest_other": {
+     "id": "way/170286454",
+     "name": "Westshore Terminals Coal Port (OSM way/170286454)",
+     "m": 367
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.19,
+      "s": 49.005,
+      "e": -123.13,
+      "n": 49.035
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-robertsbank.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-centerm",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where container ships stop at Centerm",
+   "basis": "ais_inferred",
+   "lat": 49.29035,
+   "lon": -123.09944,
+   "evidence": {
+    "stops": 128,
+    "ships": 28,
+    "first": "2025-07-01T00:02:25Z",
+    "last": "2026-06-30T23:56:30Z",
+    "fit_share": 1,
+    "spread_p50_m": 12,
+    "median_length_m": 305,
+    "footprint": {
+     "osm": [
+      "way/220771243"
+     ],
+     "distance_m": 28
+    },
+    "nearest_other": {
+     "id": "way/875643011",
+     "name": "CRAB Park Pier (OSM way/875643011)",
+     "m": 511
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.115,
+      "s": 49.284,
+      "e": -123.085,
+      "n": 49.296
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-centerm.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "bc-centerm",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: where container ships stop at Centerm",
+   "basis": "ais_inferred",
+   "lat": 49.28981,
+   "lon": -123.09771,
+   "evidence": {
+    "stops": 19,
+    "ships": 5,
+    "first": "2025-10-23T04:27:59Z",
+    "last": "2026-06-17T15:21:44Z",
+    "fit_share": 1,
+    "spread_p50_m": 1.5,
+    "median_length_m": 352,
+    "footprint": {
+     "osm": [
+      "way/220771243"
+     ],
+     "distance_m": 22
+    },
+    "nearest_other": {
+     "id": "way/875643011",
+     "name": "CRAB Park Pier (OSM way/875643011)",
+     "m": 543
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -123.115,
+      "s": 49.284,
+      "e": -123.085,
+      "n": 49.296
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-centerm.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:30:51Z"
    }
   }
  ]

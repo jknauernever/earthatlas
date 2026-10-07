@@ -4576,6 +4576,462 @@
    "operator": "Port of Grays Harbor (liquid bulk for Renewable Energy Group and BWC Terminals)",
    "operator_source_url": "https://www.portofgraysharbor.com/terminal-info",
    "operator_checked": "2026-10-07"
+  },
+  {
+   "id": "bc-gct-deltaport",
+   "name": "GCT Deltaport (Roberts Bank)",
+   "kind": "container_terminal",
+   "country": "CA",
+   "operator": "GCT Canada",
+   "operator_source_url": "https://biv.com/article/2019/07/gct-marks-vancouver-container-shipping-milestone",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-216",
+     "name": "DeltaPort Container Terminal",
+     "lat": 49.022881,
+     "lon": -123.165723,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 216",
+     "berths_desc": "Container berths totalling 1100 m length, depth alongside 15.9 m at low tide; rail access and capacity"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 216,
+      "name": "DeltaPort Container Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-centerm",
+   "name": "Centerm (Vancouver)",
+   "kind": "container_terminal",
+   "country": "CA",
+   "operator": "DP World Vancouver",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-253",
+     "name": "Centerm",
+     "lat": 49.288183,
+     "lon": -123.092434,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 253",
+     "berths_desc": "#1: length 350 m, depth 10.5 m; #2: length 200 m, depth 15.4 m; #3 length 200 m, depth 11.5 m; #4: length 183 m, depth 8.6 m; #5: length 324 m, depth 15.0 m; #6: length 324 m, depth 15.6 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 253,
+      "name": "Centerm"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-gct-vanterm",
+   "name": "GCT Vanterm (Vancouver)",
+   "kind": "container_terminal",
+   "country": "CA",
+   "operator": "GCT Canada",
+   "operator_source_url": "https://biv.com/article/2019/07/gct-marks-vancouver-container-shipping-milestone",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-256",
+     "name": "Vanterm",
+     "lat": 49.28905,
+     "lon": -123.073612,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 256",
+     "berths_desc": "Berths #5/6 for Panamax vessels: length 619 m; #4 for Oil Vessel: length 183 m; #7 Utility berth: 91 m, average depth 15.2 - 15.5 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 256,
+      "name": "Vanterm"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-fraser-surrey-docks",
+   "name": "Fraser Surrey Docks",
+   "kind": "general_cargo_terminal",
+   "country": "CA",
+   "operator": "Fraser Surrey Docks LP",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-234",
+     "name": "Fraser Surrey Docks",
+     "lat": 49.175403,
+     "lon": -122.92109,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 234",
+     "berths_desc": "Berths #2/3/4: length 565 m, depth 11 m; #6: barge berth #7/8/9: length 705 m, depth 12.5 m; #10: length 200 m dolphin berth, depth 12 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 234,
+      "name": "Fraser Surrey Docks"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-wwl-annacis",
+   "name": "Annacis Island vehicle terminal (WWL)",
+   "kind": "roro_terminal",
+   "country": "CA",
+   "operator": "Wallenius Wilhelmsen (WWL Vehicle Services Canada)",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-236",
+     "name": "WWL Vehicle Services Canada",
+     "lat": 49.186067,
+     "lon": -122.921568,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 236",
+     "berths_desc": "legnth: 213 and 190 m berths, depth 10.7 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 236,
+      "name": "WWL Vehicle Services Canada"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-lynnterm",
+   "name": "Lynnterm (North Vancouver, East and West gates)",
+   "kind": "general_cargo_terminal",
+   "country": "CA",
+   "operator": "Western Stevedoring Company",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-263",
+     "name": "Lynnterm East Gate",
+     "lat": 49.297689,
+     "lon": -123.03646,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 263",
+     "berths_desc": "Berth 4: length 213 m, limiting draft 13.1 m; #5/6: length 213 m, limiting draft 15.2 m; #7: length 200 m, limiting draft 12.3"
+    },
+    {
+     "key": "bcpt-265",
+     "name": "Lynnterm West Gate",
+     "lat": 49.300564,
+     "lon": -123.04329,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 265",
+     "berths_desc": "Berth #1: length 180 m, limiting draft 11.2 m; #2: length 196 m, limiting draft 13.2 m; #3: length 196 m, limiting draft 13.0 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 263,
+      "name": "Lynnterm East Gate"
+     },
+     {
+      "source_data_id": 265,
+      "name": "Lynnterm West Gate"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07"
+  },
+  {
+   "id": "bc-canada-place",
+   "name": "Canada Place cruise terminal (Vancouver)",
+   "kind": "cruise_terminal",
+   "country": "CA",
+   "operator": "Vancouver Fraser Port Authority",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-255",
+     "name": "Canada Place (Cruise Ship Terminal)",
+     "lat": 49.289502,
+     "lon": -123.109482,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 255",
+     "berths_desc": "East: length 506 m; West: length 329 m; North: length 274 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 255,
+      "name": "Canada Place (Cruise Ship Terminal)"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07",
+   "ownership": {
+    "class": "port_authority",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+    "says": "Operated by the port authority itself (Vancouver Fraser Port Authority), per BC Ports and Terminals"
+   }
+  },
+  {
+   "id": "bc-ballantyne",
+   "name": "Ballantyne Pier (Vancouver)",
+   "kind": "cruise_terminal",
+   "country": "CA",
+   "operator": "Vancouver Fraser Port Authority",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-250",
+     "name": "Ballantyne Pier",
+     "lat": 49.28712,
+     "lon": -123.086488,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 250",
+     "berths_desc": "East #1: length 366 m; West #2 used as an overflow berth, depth alongside: 10 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 250,
+      "name": "Ballantyne Pier"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07",
+   "ownership": {
+    "class": "port_authority",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+    "says": "Operated by the port authority itself (Vancouver Fraser Port Authority), per BC Ports and Terminals"
+   }
+  },
+  {
+   "id": "bc-ogden-point",
+   "name": "Ogden Point cruise terminal (Victoria)",
+   "kind": "cruise_terminal",
+   "country": "CA",
+   "operator": "Greater Victoria Harbour Authority",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-185",
+     "name": "Ogden Point Terminal",
+     "lat": 48.415916,
+     "lon": -123.388342,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 185",
+     "berths_desc": "Pier A 2 berths: length 305 m and 244 m, depth 10.7 m; Pier B 2 berths length 244 m and 244 m, depth 11 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 185,
+      "name": "Ogden Point Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07",
+   "ownership": {
+    "class": "port_authority",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+    "says": "Operated by the Greater Victoria Harbour Authority, per BC Ports and Terminals"
+   }
+  },
+  {
+   "id": "bc-nanaimo-assembly-wharf",
+   "name": "Nanaimo Assembly Wharf",
+   "kind": "general_cargo_terminal",
+   "country": "CA",
+   "operator": "DP World (for the Nanaimo Port Authority)",
+   "operator_source_url": "https://www.portstrategy.com/dp-world-to-operate-nanaimo/193092.article",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-228",
+     "name": "Nanaimo Assemply Wharves",
+     "lat": 49.162882,
+     "lon": -123.924966,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 228",
+     "berths_desc": "Berth A: length 182.88 m, depth 9.2 m; Berth B: length 182.88 m, depth 12.0 m; Berth C: length 182.88 m, depth 11.7 m"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 228,
+      "name": "Nanaimo Assemply Wharves"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07",
+   "ownership": {
+    "class": "port_authority",
+    "source_url": "https://www.portstrategy.com/dp-world-to-operate-nanaimo/193092.article",
+    "says": "Nanaimo Port Authority facility operated by DP World under contract"
+   }
+  },
+  {
+   "id": "bc-nanaimo-cruise",
+   "name": "Nanaimo cruise terminal",
+   "kind": "cruise_terminal",
+   "country": "CA",
+   "operator": "Nanaimo Port Authority",
+   "operator_source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+   "operator_checked": "2026-10-07",
+   "status": "unknown",
+   "commodities": [],
+   "berths": [
+    {
+     "key": "bcpt-229",
+     "name": "Nanaimo Cruise Terminal",
+     "lat": 49.16398,
+     "lon": -123.924706,
+     "basis": "bc_ports_terminals",
+     "ref": "SOURCE_DATA_ID 229",
+     "berths_desc": "Concrete pontoon measuring approximately 300 feet in length by 50 feet"
+    }
+   ],
+   "sources": {
+    "bc-ports-terminals": [
+     {
+      "source_data_id": 229,
+      "name": "Nanaimo Cruise Terminal"
+     }
+    ]
+   },
+   "climate_trace": {
+    "refinery_facility_ids": [],
+    "ship_port_ids": []
+   },
+   "notes": [
+    "Added 2026-10-07 for the scrubber-ship calls report (BC container, ro-ro and cruise terminals). Status not yet hand-checked."
+   ],
+   "added": "2026-10-07",
+   "ownership": {
+    "class": "port_authority",
+    "source_url": "https://catalogue.data.gov.bc.ca/dataset/bc-ports-and-terminals",
+    "says": "Operated by the Nanaimo Port Authority, per BC Ports and Terminals"
+   }
   }
  ]
 }

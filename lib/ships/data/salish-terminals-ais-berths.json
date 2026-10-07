@@ -43,6 +43,12 @@
   ],
   "bc-centerm": [
    "way/220771243"
+  ],
+  "wa-nwsa-t5": [
+   "way/307509764"
+  ],
+  "wa-nwsa-t18": [
+   "way/1208387139"
   ]
  },
  "berths": [
@@ -795,6 +801,258 @@
      "otherRatio": 2
     },
     "osm_base": "2026-10-07T19:30:51Z"
+   }
+  },
+  {
+   "terminal": "wa-nwsa-t5",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where container ships stop along Terminal 5",
+   "basis": "ais_inferred",
+   "lat": 47.580515,
+   "lon": -122.36105,
+   "evidence": {
+    "stops": 24,
+    "ships": 16,
+    "first": "2025-07-12T00:40:25Z",
+    "last": "2026-06-17T10:57:49Z",
+    "fit_share": 1,
+    "spread_p50_m": 10,
+    "median_length_m": 336.5,
+    "footprint": {
+     "osm": [
+      "way/307509764"
+     ],
+     "distance_m": 30
+    },
+    "nearest_other": {
+     "id": "wa-nwsa-t18",
+     "name": "Terminal 18 (Seattle, Harbor Island) (Terminal 18)",
+     "m": 498
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.372,
+      "s": 47.565,
+      "e": -122.35,
+      "n": 47.592
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-t5.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:46:05Z"
+   }
+  },
+  {
+   "terminal": "wa-nwsa-t5",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: where container ships stop along Terminal 5",
+   "basis": "ais_inferred",
+   "lat": 47.575535,
+   "lon": -122.36099,
+   "evidence": {
+    "stops": 34,
+    "ships": 19,
+    "first": "2025-07-17T13:46:54Z",
+    "last": "2026-06-26T20:59:33Z",
+    "fit_share": 1,
+    "spread_p50_m": 6.8,
+    "median_length_m": 330,
+    "footprint": {
+     "osm": [
+      "way/307509764"
+     ],
+     "distance_m": 34
+    },
+    "nearest_other": {
+     "id": "wa-nwsa-t18",
+     "name": "Terminal 18 (Seattle, Harbor Island) (Terminal 18)",
+     "m": 485
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.372,
+      "s": 47.565,
+      "e": -122.35,
+      "n": 47.592
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-t5.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:46:05Z",
+    "kept_although": [
+     "already counted: 159 m from berth usace-0UEJ (radius 300 m)"
+    ],
+    "why_kept": "Kept 2026-10-07 for the hourly-position estimates: without a point at the south end of the wharf, stops there are nearest the Harbor Island oil docks, whose neighbours include Terminal 18, so they read as shared between T5 and T18 and are left out."
+   }
+  },
+  {
+   "terminal": "wa-nwsa-t18",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where container ships stop along Terminal 18",
+   "basis": "ais_inferred",
+   "lat": 47.58705,
+   "lon": -122.34583,
+   "evidence": {
+    "stops": 96,
+    "ships": 42,
+    "first": "2025-07-06T15:47:09Z",
+    "last": "2026-06-30T23:59:38Z",
+    "fit_share": 0.99,
+    "spread_p50_m": 7.7,
+    "median_length_m": 261,
+    "footprint": {
+     "osm": [
+      "way/1208387139"
+     ],
+     "distance_m": 14
+    },
+    "nearest_other": {
+     "id": "way/608444238",
+     "name": "Kinder Morgan Oil, T-18 (OSM way/608444238)",
+     "m": 241
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.353,
+      "s": 47.568,
+      "e": -122.336,
+      "n": 47.592
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-t18.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:49:06Z"
+   }
+  },
+  {
+   "terminal": "wa-nwsa-t18",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: where container ships stop along Terminal 18",
+   "basis": "ais_inferred",
+   "lat": 47.58001,
+   "lon": -122.345875,
+   "evidence": {
+    "stops": 64,
+    "ships": 28,
+    "first": "2025-07-01T12:09:22Z",
+    "last": "2026-06-30T23:57:54Z",
+    "fit_share": 0.813,
+    "spread_p50_m": 6.9,
+    "median_length_m": 200,
+    "footprint": {
+     "osm": [
+      "way/1208387139"
+     ],
+     "distance_m": 11
+    },
+    "nearest_other": {
+     "id": "way/307511370",
+     "name": "Terminal 30 (OSM way/307511370)",
+     "m": 220
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.353,
+      "s": 47.568,
+      "e": -122.336,
+      "n": 47.592
+     },
+     "days": {
+      "n": 365,
+      "first": "2025-07-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2,
+      "minLengthM": 100
+     },
+     "stops_file": "berth-stops-t18.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-10-07T19:49:06Z"
    }
   }
  ]

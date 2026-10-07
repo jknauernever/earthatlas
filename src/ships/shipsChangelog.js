@@ -22,7 +22,7 @@ export const COUNTS_AS_OF = '2026-10-07'
 export const COUNTS = [
   { label: 'Ships', value: '41,153', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
   { label: 'Ports on the map', value: '9,159', detail: 'World Port Index 2,951 · Climate TRACE 6,006 · GFW 168 · DFO harbours 34', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
-  { label: 'Terminals', value: '103', detail: '148 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
+  { label: 'Terminals', value: '103', detail: '152 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
   { label: 'Terminal visits', value: '37,554', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
   { label: 'Port visits', value: '96,465', sources: [S.gfw] },
   { label: 'Ship-port emission estimates', value: '17,907', sources: [S.ct] },
@@ -39,8 +39,8 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
-  // Terminals 103 / berths 148: production import 2026-10-07 (prod.sh import-terminals).
-  { date: '2026-10-07', area: 'Terminals · Reports', text: 'British Columbia’s container, vehicle and cruise terminals are now on the map and in the scrubber report: GCT Deltaport at Roberts Bank, Centerm and GCT Vanterm in Vancouver, Fraser Surrey Docks, the Annacis Island vehicle terminal, Lynnterm, Canada Place and Ballantyne Pier, Victoria’s Ogden Point, and Nanaimo’s Assembly Wharf and cruise terminal (103 terminals in all). Deltaport and Centerm berths are long, so their berth points are also estimated from where container ships actually stopped over a year of NOAA AIS (marked as estimated on the terminal card). Ships that broadcast only a general “cargo” type now count at container, ro-ro and general-cargo terminals, the way a general “tanker” already counts at oil docks.' },
+  // Terminals 103 / berths 152: production import 2026-10-07 (prod.sh import-terminals; +4 T5/T18 AIS-estimated berths).
+  { date: '2026-10-07', area: 'Terminals · Reports', text: 'British Columbia’s container, vehicle and cruise terminals are now on the map and in the scrubber report: GCT Deltaport at Roberts Bank, Centerm and GCT Vanterm in Vancouver, Fraser Surrey Docks, the Annacis Island vehicle terminal, Lynnterm, Canada Place and Ballantyne Pier, Victoria’s Ogden Point, and Nanaimo’s Assembly Wharf and cruise terminal (103 terminals in all). Deltaport, Centerm and Seattle’s Terminals 5 and 18 have long berths, so their berth points are also estimated from where container ships actually stopped over a year of NOAA AIS (marked as estimated on the terminal card). Ships that broadcast only a general “cargo” type now count at container, ro-ro and general-cargo terminals, the way a general “tanker” already counts at oil docks.' },
   { date: '2026-10-07', area: 'Ship tracks', text: 'Fixed the counts on the “Narrow to” filters (Cruise ship, Ferry and the rest) when zoomed out over months after NOAA’s latest: they showed 0 while the picked ships’ lines were drawn on the map, because zoomed-out hourly-position tiles don’t carry which ship each line belongs to. They now show no number and say “Zoom in to count the ships in view”; from zoom 9 the counts work for those months too.' },
   // Numbers from prod.sh import-bc-permits 2026-10-07 (production): Metro Vancouver 8 permits, 10 documents, 4 dock quotes;
   // 24 BC terminals inside Metro Vancouver, 9 outside; BC EMA 66 (Shell 11258 now accepted for Shellburn).

@@ -167,8 +167,11 @@ function Facility({ f, onLocate }) {
         {f.relation === 'owned_by'
           ? <>This dock is owned and run by <strong>{f.name}</strong>{f.relationSource && <>{' '}{ext(f.relationSource, 'source', f.relationSays || 'The page that states it')}</>}.
             {' '}These are that company’s own permits.{' '}</>
-          : <>This dock serves <strong>{f.name}</strong>. These permits are held by the {f.kind === 'refinery' ? 'refinery' : 'facility'}, not issued to the dock;
-            {' '}one marked <span className={styles.coverBadge}>covers this dock</span> names the dock in its own text.{' '}</>}
+          : f.kind === 'refinery'
+            ? <>This dock serves <strong>{f.name}</strong>. These permits are held by the refinery, not issued to the dock;
+              {' '}one marked <span className={styles.coverBadge}>covers this dock</span> names the dock in its own text.{' '}</>
+            : <>This dock is part of <strong>{f.name}</strong>. These permits are the site’s;
+              {' '}one marked <span className={styles.coverBadge}>covers this dock</span> names the dock in its own text.{' '}</>}
         {ext(rec(f.entryRecordId), 'EarthAtlas list', 'EarthAtlas’s hand-checked facility entry: which EPA records are this site, and why — click for the record')}
         {prim && <> · EPA facility {prim.id} {ext(prim.url, 'ECHO page', 'Open the facility in EPA ECHO')}</>}
         {onLocate && Number.isFinite(f.lat) && <>{' · '}<button type="button" className={styles.locateLink} onClick={() => onLocate([[f.lon, f.lat]])}

@@ -235,7 +235,7 @@ try {
   await withTx(pool, (c) => ensureFacilitySources(c, schema))
   const runId = await withTx(pool, (c) => startRun(c, schema, FACILITIES_LIST_SOURCE.id, { version: data.version, only: only ?? null }))
   try {
-    const r = await withTx(pool, (c) => importFacilities(c, schema, data, raw, { runId }))
+    const r = await withTx(pool, (c) => importFacilities(c, schema, data, raw, { runId, partial: Boolean(only) }))
     await withTx(pool, (c) => finishRun(c, schema, runId, { status: 'succeeded', stats: { ...r, problems: r.problems.length }, datasetVersion: data.version }))
     console.log(JSON.stringify({ ...r, problems: r.problems.length }))
     for (const p of r.problems) console.log(`  ! ${p}`)

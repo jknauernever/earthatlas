@@ -193,3 +193,15 @@ exemption for permit reissuance (RCW 43.21C.0383).
 
 Public agency records (EPA ECHO, WA Ecology SEPA Register / PARIS / Industrial Section pages, NWCAA) are treated as cleared
 for EarthAtlas use; their terms pages were deliberately not read. Credit and link each source. Recorded in ships.sources.
+
+## WA rollout — test terminals on dev (2026-10-06)
+
+`scripts/ships/propose-facility.mjs <terminal key> [--words a,b] [--radius 0.75]` proposes candidates (ECHO within the
+radius of each berth, ranked by name words) for hand review. Added on dev: Kinder Morgan Harbor Island (FRS 110032894027,
+PARIS 88394523; air = Puget Sound Clean Air Agency, ICIS-Air WAPSC0005303316002; stormwater WAR301429 whose 2024 coverage
+letter names the site "KMLT LLC Harbor Island Terminal N Dock"; no SEPA Register record with Kinder Morgan as applicant in King
+County) and Tesoro Port Angeles (FRS 110032897015; no water or air permit in EPA's records, no PARIS facility, not on ORCAA's
+2025-04-24 registered-sources list; SEPA: Tesoro Logistics' 2016 "Port Angeles Dock Piping Replacement Project", City of Port
+Angeles lead). Migration 026 widens facility kinds. PSCAA and ORCAA publish no per-facility permit / enforcement records online
+(PSCAA: rules, Title V, permits open for comment; ORCAA: Title V AOPs + a registered-sources PDF) — public records requests.
+Fixed: `--only` imports no longer withdraw the facilities they weren't given.

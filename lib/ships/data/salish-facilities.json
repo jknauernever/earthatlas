@@ -329,6 +329,1378 @@
    "permit_holder_names": [
     "Tesoro Logistics"
    ]
+  },
+  {
+   "id": "wa-km-harbor-island-terminal",
+   "name": "Kinder Morgan Harbor Island terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-km-harbor-island",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110032894027",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "88394523"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [
+    {
+     "terminal": "wa-km-harbor-island",
+     "permit": {
+      "system": "ICIS-NPDES",
+      "key": "WAR301429"
+     },
+     "doc_url": "https://apps.ecology.wa.gov/paris/DownloadDocument.aspx?id=519406",
+     "doc_title": "Industrial stormwater permit coverage letter WAR301429 (2024-12-02)",
+     "where": "site name, p. 1",
+     "says": "KMLT LLC Harbor Island Terminal N Dock"
+    }
+   ],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Kinder Morgan"
+     },
+     {
+      "field": "Applicant",
+      "text": "KMLT"
+     },
+     {
+      "field": "Location",
+      "text": "Harbor Island"
+     }
+    ],
+    "applicant_words": [
+     "Kinder Morgan",
+     "KMLT"
+    ],
+    "place_words": [
+     "Harbor Island",
+     "13th Ave",
+     "2720"
+    ]
+   },
+   "notes": [
+    "Found 2026-10-06 by scripts/ships/propose-facility.mjs: the only EPA facility within 0.75 mi of the Ecology dock point whose name is Kinder Morgan's (FRS 110032894027, 2720 13th Avenue SW).",
+    "PARIS FacilityId 88394523 \"Kinder Morgan Liquids Terminals LLC\", found by the PARIS search for its stormwater permit WAR301429 (\"KMLT LLC Harbor Island Terminal N Dock\").",
+    "Air: Puget Sound Clean Air Agency (ICIS-Air WAPSC0005303316002, a synthetic-minor source). PSCAA publishes no per-facility permit or enforcement records online."
+   ]
+  },
+  {
+   "id": "wa-tesoro-port-angeles-terminal",
+   "name": "Tesoro Port Angeles terminal",
+   "kind": "bunkering_terminal",
+   "country": "US",
+   "admin_area": "Clallam County",
+   "terminals": [
+    {
+     "key": "wa-marathon-port-angeles",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110032897015",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110020037360",
+     "why": "Port of Port Angeles Terminal 5 Log: a log yard on Marine Drive, not this terminal"
+    }
+   ],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "CLALLAM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Tesoro"
+     },
+     {
+      "field": "Applicant",
+      "text": "Marathon"
+     },
+     {
+      "field": "Location",
+      "text": "Ediz Hook"
+     }
+    ],
+    "applicant_words": [
+     "Tesoro",
+     "Marathon",
+     "Andeavor",
+     "MPLX",
+     "BP"
+    ],
+    "place_words": [
+     "Ediz Hook",
+     "1720",
+     "terminal",
+     "wharf"
+    ]
+   },
+   "notes": [
+    "Found 2026-10-06 by scripts/ships/propose-facility.mjs: FRS 110032897015 \"TESORO PORT ANGELES\", 1720 West Ediz Hook Rd, 70 m from the USACE dock point.",
+    "EPA lists no water or air permit for it: an emissions-inventory id (\"BP Marine Americas Port Angeles Wharf\"), Toxics Release Inventory (last reported 2019) and a very-small-quantity hazardous waste id. No PARIS facility found (PARIS search \"Tesoro Port Angeles\"). Not on ORCAA's registered-sources list of 2025-04-24 under Tesoro, BP or its address."
+   ]
+  },
+  {
+   "id": "wa-p66-ferndale-refinery",
+   "name": "Phillips 66 Ferndale Refinery",
+   "kind": "refinery",
+   "country": "US",
+   "admin_area": "Whatcom County",
+   "terminals": [
+    {
+     "key": "wa-p66-ferndale",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000490139",
+   "frs_related": [
+    {
+     "id": "110070747513",
+     "why": "FRS name \"PHILLIPS 66 CO FERNDALE\", 3901 UNICK RD (the refinery's address)"
+    },
+    {
+     "id": "110070290411",
+     "why": "FRS name \"WA317936970 - PHILLIPS 66 COMPANY\", 3901 UNICK RD"
+    },
+    {
+     "id": "110070290412",
+     "why": "FRS name \"WA317936973 - PHILLIPS 66 COMPANY\", 3901 UNICK RD"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "17"
+   ],
+   "ct_refinery": [
+    1753325
+   ],
+   "documents": {
+    "ecology_page": "phillips-66-refinery",
+    "nwcaa": {
+     "location": "Phillips 66 Ferndale Refinery",
+     "aop": "016R3M1",
+     "icis_air": "WANCA0005307300005"
+    },
+    "rcra": "WAD009250366"
+   },
+   "coverage": [],
+   "sepa": {
+    "county": "WHATCOM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Phillips 66"
+     },
+     {
+      "field": "Applicant",
+      "text": "ConocoPhillips"
+     }
+    ],
+    "applicant_words": [
+     "Phillips 66",
+     "ConocoPhillips"
+    ],
+    "place_words": [
+     "Unick",
+     "refinery",
+     "Cherry Point"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-hfs-puget-sound-refinery",
+   "name": "HF Sinclair Puget Sound Refinery",
+   "kind": "refinery",
+   "country": "US",
+   "admin_area": "Skagit County",
+   "terminals": [
+    {
+     "key": "wa-hfs-puget-sound",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110008214360",
+   "frs_related": [
+    {
+     "id": "110072000464",
+     "why": "FRS name \"HF SINCLAIR PUGET SOUND REFINERY\", 8505 SOUTH TEXAS ROAD (the refinery's address; current owner's name)"
+    },
+    {
+     "id": "110070723354",
+     "why": "FRS name \"SHELL OPUS PUGET SOUND REFINERY\", 8505 S TEXAS RD"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110015968791",
+     "why": "TEXACO PUGET SOUND REFINERY, 600 S TEXAS RD: a different street address; not shown as this refinery until checked"
+    },
+    {
+     "id": "110071102578",
+     "why": "SHELL OIL CO, MARCH POINT RD: no street number; could be another Shell site"
+    }
+   ],
+   "paris_facility_ids": [
+    "7"
+   ],
+   "ct_refinery": [
+    1753312
+   ],
+   "documents": {
+    "ecology_page": "hf-sinclair-puget-sound-refinery",
+    "nwcaa": {
+     "location": "HF Sinclair Puget Sound Refining",
+     "aop": "014R2M1",
+     "icis_air": "WANCA0005305700003"
+    },
+    "rcra": "WAD009276197"
+   },
+   "coverage": [],
+   "sepa": {
+    "county": "SKAGIT",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "HF Sinclair"
+     },
+     {
+      "field": "Applicant",
+      "text": "HollyFrontier"
+     },
+     {
+      "field": "Applicant",
+      "text": "Shell"
+     },
+     {
+      "field": "Applicant",
+      "text": "Equilon"
+     }
+    ],
+    "applicant_words": [
+     "HF Sinclair",
+     "HollyFrontier",
+     "Shell",
+     "Equilon"
+    ],
+    "place_words": [
+     "March Point",
+     "Texas Rd",
+     "Texas Road",
+     "refinery"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-us-oil-tacoma-refinery",
+   "name": "U.S. Oil & Refining Tacoma refinery",
+   "kind": "refinery",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-us-oil-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000490549",
+   "frs_related": [
+    {
+     "id": "110072153942",
+     "why": "FRS name \"U.S. OIL & REFINING CO.\", 3001 MARSHALL AVE E (the refinery's address)"
+    },
+    {
+     "id": "110070737527",
+     "why": "FRS name \"US OIL & REFINING CO\", 3001 MARSHALL AVE"
+    },
+    {
+     "id": "110071646624",
+     "why": "FRS name \"US OIL AND REFINING CO MARINE TERMINAL\", 1735 PORT OF TACOMA RD (the refinery's marine terminal)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110015575581",
+     "why": "CASCADE TIMBER 3 US OIL: a timber yard record, not the refinery"
+    }
+   ],
+   "paris_facility_ids": [
+    "40"
+   ],
+   "ct_refinery": [
+    1753359
+   ],
+   "documents": {
+    "ecology_page": "us-oil-refining",
+    "rcra": "WAD009252719"
+   },
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "U.S. Oil"
+     },
+     {
+      "field": "Applicant",
+      "text": "US Oil"
+     },
+     {
+      "field": "Applicant",
+      "text": "Par Pacific"
+     }
+    ],
+    "applicant_words": [
+     "U.S. Oil",
+     "US Oil",
+     "Par Pacific"
+    ],
+    "place_words": [
+     "Marshall",
+     "Port of Tacoma Rd",
+     "refinery"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-seaport-sound-tacoma-terminal",
+   "name": "SeaPort Sound Terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-seaport-sound-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110012505690",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "1612929"
+   ],
+   "ct_refinery": [],
+   "documents": {
+    "ecology_page": "seaport-sound-terminal",
+    "rcra": "WAD043451038"
+   },
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "SeaPort"
+     },
+     {
+      "field": "Applicant",
+      "text": "Targa"
+     }
+    ],
+    "applicant_words": [
+     "SeaPort",
+     "Targa",
+     "TransMontaigne"
+    ],
+    "place_words": [
+     "Marine View",
+     "terminal"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-nustar-tacoma-terminal",
+   "name": "NuStar Energy Tacoma terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-nustar-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005311153",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "1259"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "NuStar"
+     },
+     {
+      "field": "Applicant",
+      "text": "Shore Terminals"
+     }
+    ],
+    "applicant_words": [
+     "NuStar",
+     "Shore Terminals",
+     "Sunoco"
+    ],
+    "place_words": [
+     "D St",
+     "D Street",
+     "terminal",
+     "Foss Waterway",
+     "Foss",
+     "dock",
+     "trestle"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-p66-tacoma-terminal",
+   "name": "Phillips 66 Tacoma Terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-p66-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000897003",
+   "frs_related": [
+    {
+     "id": "110005329242",
+     "why": "FRS name \"CONOCOPHILLIPS TACOMA NORTH TERMINA\", 516 E D ST (next door; same company's north terminal)"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "75966799",
+    "55538865"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Phillips 66"
+     },
+     {
+      "field": "Applicant",
+      "text": "ConocoPhillips"
+     }
+    ],
+    "applicant_words": [
+     "Phillips 66",
+     "ConocoPhillips"
+    ],
+    "place_words": [
+     "D St",
+     "D Street",
+     "terminal",
+     "Foss Waterway",
+     "Foss",
+     "dock",
+     "trestle"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-puget-lng-tacoma-facility",
+   "name": "Tacoma LNG facility",
+   "kind": "lng_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-puget-lng-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071664846",
+   "frs_related": [
+    {
+     "id": "110070882042",
+     "why": "FRS name \"PUGET SOUND ENERGY\", 1001 ALEXANDER AVE E (the LNG facility's address)"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Puget Sound Energy"
+     },
+     {
+      "field": "Applicant",
+      "text": "Puget LNG"
+     },
+     {
+      "field": "Location",
+      "text": "Alexander Avenue"
+     }
+    ],
+    "applicant_words": [
+     "Puget Sound Energy",
+     "Puget LNG",
+     "PSE"
+    ],
+    "place_words": [
+     "Tacoma LNG",
+     "Alexander",
+     "Port of Tacoma",
+     "tideflats",
+     "Tideflats"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-shell-seattle-terminal",
+   "name": "Shell Seattle Distribution Terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-shell-seattle",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110069441492",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "2030"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Shell"
+     },
+     {
+      "field": "Applicant",
+      "text": "Equilon"
+     }
+    ],
+    "applicant_words": [
+     "Shell",
+     "Equilon"
+    ],
+    "place_words": [
+     "Harbor Island",
+     "13th Ave",
+     "terminal"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-maxum-pier15-facility",
+   "name": "Maxum Petroleum Pier 15 facility",
+   "kind": "bunkering_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-maxum-pier15",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005369653",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "74783572"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Maxum"
+     },
+     {
+      "field": "Applicant",
+      "text": "Pilot Thomas"
+     }
+    ],
+    "applicant_words": [
+     "Maxum",
+     "Pilot Thomas"
+    ],
+    "place_words": [
+     "Harbor Island",
+     "Pier 15",
+     "13th Ave"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-seaport-seattle-terminal",
+   "name": "SeaPort Seattle Terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-seaport-seattle",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000489720",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110005342824",
+     "why": "SEAPORT PETROLEUM, 2921 13TH AVE SW: a different Harbor Island address; not shown as this terminal until checked"
+    }
+   ],
+   "paris_facility_ids": [
+    "2024"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "SeaPort"
+     },
+     {
+      "field": "Applicant",
+      "text": "BP West Coast"
+     }
+    ],
+    "applicant_words": [
+     "SeaPort",
+     "BP",
+     "TransMontaigne"
+    ],
+    "place_words": [
+     "Harbor Island",
+     "Lander",
+     "Pier 11",
+     "terminal"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-point-wells-terminal",
+   "name": "Point Wells asphalt terminal",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "Snohomish County",
+   "terminals": [
+    {
+     "key": "wa-point-wells",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000500798",
+   "frs_related": [
+    {
+     "id": "110070750331",
+     "why": "FRS name \"PARAMOUNT OF WASHINGTON\", 20555 RICHMOND BEACH DR NW (same address)"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "2706",
+    "12561759"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "SNOHOMISH",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Alon"
+     },
+     {
+      "field": "Applicant",
+      "text": "Paramount"
+     },
+     {
+      "field": "Location",
+      "text": "Point Wells"
+     }
+    ],
+    "applicant_words": [
+     "Alon",
+     "Paramount",
+     "BSRE"
+    ],
+    "place_words": [
+     "Point Wells",
+     "Richmond Beach"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-nbk-manchester-fuel-depot",
+   "name": "Naval Base Kitsap Manchester fuel depot",
+   "kind": "military_fuel_pier",
+   "country": "US",
+   "admin_area": "Kitsap County",
+   "terminals": [
+    {
+     "key": "wa-nbk-manchester",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071919639",
+   "frs_related": [
+    {
+     "id": "110070735563",
+     "why": "FRS name \"FISC PUGET SOUND FUEL DEPT\", 7501 BEACH DR E (same address)"
+    },
+    {
+     "id": "110045678352",
+     "why": "FRS name \"FLEET AND INDUSTRIAL SUP CTR P S\" (the fuel depot's former Navy command), Manchester"
+    },
+    {
+     "id": "110072106220",
+     "why": "FRS name \"P-2002 MANCHESTER TANK FARM IMPROVEMENTS\", 7501 BEACH DRIVE EAST (a project at the depot)"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KITSAP",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Navy"
+     },
+     {
+      "field": "Applicant",
+      "text": "Naval"
+     },
+     {
+      "field": "Location",
+      "text": "Manchester"
+     }
+    ],
+    "applicant_words": [
+     "Navy",
+     "Naval",
+     "NAVFAC"
+    ],
+    "place_words": [
+     "Manchester",
+     "fuel",
+     "tank farm"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address.",
+    "Its water permits (WA0002780 and the WAR10F… stormwater coverages) are not in WA Ecology PARIS: EPA Region 10 issues NPDES permits for federal facilities in Washington."
+   ]
+  },
+  {
+   "id": "wa-naswi-seaplane-base",
+   "name": "Naval Air Station Whidbey Island (Seaplane Base)",
+   "kind": "military_fuel_pier",
+   "country": "US",
+   "admin_area": "Island County",
+   "terminals": [
+    {
+     "key": "wa-naswi",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071871742",
+   "frs_related": [
+    {
+     "id": "110070747501",
+     "why": "FRS name \"US NAVY AIR STATION WHIDBEY ISLAND SPB\" (seaplane base)"
+    },
+    {
+     "id": "110070252596",
+     "why": "FRS name \"US NAVY AIR STATION WHIDBEY ISLAND SPB\", CORAL SEA AVE"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "ISLAND",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Navy"
+     },
+     {
+      "field": "Applicant",
+      "text": "Naval"
+     }
+    ],
+    "applicant_words": [
+     "Navy",
+     "Naval",
+     "NAVFAC"
+    ],
+    "place_words": [
+     "Seaplane",
+     "Crescent Harbor",
+     "fuel"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-maxum-fairhaven-terminal",
+   "name": "Maxum Petroleum Fairhaven terminal",
+   "kind": "fuel_dock",
+   "country": "US",
+   "admin_area": "Whatcom County",
+   "terminals": [
+    {
+     "key": "wa-maxum-fairhaven",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110045696378",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "WHATCOM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Maxum"
+     },
+     {
+      "field": "Applicant",
+      "text": "Pilot Thomas"
+     }
+    ],
+    "applicant_words": [
+     "Maxum",
+     "Pilot Thomas"
+    ],
+    "place_words": [
+     "Harris",
+     "Fairhaven"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-covich-williams-fuel-dock",
+   "name": "Covich-Williams Co. (Ballard)",
+   "kind": "fuel_dock",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-covich-williams",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005311705",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110015737960",
+     "why": "COVICH WILLIAMS COMPANY INC, 4800 20TH AVE NW: a different Ballard address; not shown as the dock until checked"
+    }
+   ],
+   "paris_facility_ids": [],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Covich"
+     }
+    ],
+    "applicant_words": [
+     "Covich"
+    ],
+    "place_words": [
+     "Shilshole",
+     "Ballard"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-anacortes-pier2-curtis",
+   "name": "Port of Anacortes Pier 2 and Curtis Wharf",
+   "kind": "dry_bulk_terminal",
+   "country": "US",
+   "admin_area": "Skagit County",
+   "terminals": [
+    {
+     "key": "wa-anacortes-petcoke",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110015531904",
+   "frs_related": [
+    {
+     "id": "110071453836",
+     "why": "FRS name \"PORT OF ANACORTES CURTIS WHARF\", 1000 2ND ST"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110060242553",
+     "why": "PORT OF ANACORTES, 202 U AVE: the port's offices"
+    }
+   ],
+   "paris_facility_ids": [
+    "5833",
+    "6288"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "SKAGIT",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Port of Anacortes"
+     }
+    ],
+    "applicant_words": [
+     "Port of Anacortes"
+    ],
+    "place_words": [
+     "Pier 2",
+     "Curtis Wharf",
+     "petroleum coke",
+     "coke"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-t86-grain-terminal",
+   "name": "Terminal 86 grain terminal",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-t86-grain",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005333442",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110005380293",
+     "why": "SEATTLE PORT TERMINAL 88, 955 ALASKAN WAY W: same street address but named for Terminal 88; not shown until checked"
+    }
+   ],
+   "paris_facility_ids": [
+    "6616692"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Louis Dreyfus"
+     },
+     {
+      "field": "Location",
+      "text": "Terminal 86"
+     }
+    ],
+    "applicant_words": [
+     "Louis Dreyfus",
+     "Port of Seattle"
+    ],
+    "place_words": [
+     "Terminal 86",
+     "T-86",
+     "T86",
+     "grain"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-temco-tacoma-elevator",
+   "name": "TEMCO Tacoma grain elevator",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-temco-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071711032",
+   "frs_related": [
+    {
+     "id": "110005326904",
+     "why": "FRS name \"TEMCO\", 11 SCHUSTER PKWY (same address)"
+    },
+    {
+     "id": "110070747533",
+     "why": "FRS name \"TEMCO\", 11 SCHUSTER PKWY (same address)"
+    }
+   ],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "1658486"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "TEMCO"
+     },
+     {
+      "field": "Applicant",
+      "text": "Cargill"
+     }
+    ],
+    "applicant_words": [
+     "TEMCO",
+     "Cargill",
+     "CHS"
+    ],
+    "place_words": [
+     "Schuster",
+     "grain"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-schnitzer-tacoma-yard",
+   "name": "Tacoma scrap-metal yard (General Metals of Tacoma)",
+   "kind": "scrap_metal_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "terminals": [
+    {
+     "key": "wa-schnitzer-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005324853",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110071235464",
+     "why": "SCHNITZER STEEL (RHINE CONSTRUCTION) YARD, 1215 112TH ST E: an inland yard"
+    },
+    {
+     "id": "110071396288",
+     "why": "SCHNITZER STEEL RHINE CONSTRUCTION YARD, 1215 112TH ST E: an inland yard"
+    }
+   ],
+   "paris_facility_ids": [
+    "1227",
+    "17941"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Schnitzer"
+     },
+     {
+      "field": "Applicant",
+      "text": "General Metals"
+     },
+     {
+      "field": "Applicant",
+      "text": "Radius Recycling"
+     }
+    ],
+    "applicant_words": [
+     "Schnitzer",
+     "General Metals",
+     "Radius"
+    ],
+    "place_words": [
+     "Marine View",
+     "1902"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-lafarge-seattle-plant",
+   "name": "Seattle cement plant (Lafarge / Amrize)",
+   "kind": "cement_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-lafarge-seattle",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110001916393",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "2132"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Lafarge"
+     },
+     {
+      "field": "Applicant",
+      "text": "Holcim"
+     },
+     {
+      "field": "Applicant",
+      "text": "Amrize"
+     }
+    ],
+    "applicant_words": [
+     "Lafarge",
+     "Holcim",
+     "Amrize"
+    ],
+    "place_words": [
+     "Marginal Way",
+     "cement"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-ash-grove-seattle-plant",
+   "name": "Ash Grove Cement Seattle plant",
+   "kind": "cement_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "terminals": [
+    {
+     "key": "wa-ash-grove-seattle",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000897085",
+   "frs_related": [],
+   "frs_left_out": [],
+   "paris_facility_ids": [
+    "2142"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Ash Grove"
+     }
+    ],
+    "applicant_words": [
+     "Ash Grove"
+    ],
+    "place_words": [
+     "Marginal Way",
+     "cement"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-ferndale-lpg-terminal",
+   "name": "Ferndale LPG terminal (Petrogas / ALA Energy)",
+   "kind": "lpg_terminal",
+   "country": "US",
+   "admin_area": "Whatcom County",
+   "terminals": [
+    {
+     "key": "wa-intalco-wharf",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000555961",
+   "frs_related": [
+    {
+     "id": "110070751343",
+     "why": "FRS name \"CHEVRON FERNDALE STORAGE TERMINAL\", 4100 UNICK RD (same address)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110071161689",
+     "why": "FERNDALE TERMINAL, Ferndale: no street address; not shown until checked"
+    },
+    {
+     "id": "110040947820",
+     "why": "INTALCO ALUMINUM CORP FERNDALE: the former smelter, the wharf's former owner"
+    }
+   ],
+   "paris_facility_ids": [
+    "54251913"
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "coverage": [],
+   "sepa": {
+    "county": "WHATCOM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Petrogas"
+     },
+     {
+      "field": "Applicant",
+      "text": "ALA Energy"
+     },
+     {
+      "field": "Applicant",
+      "text": "AltaGas"
+     },
+     {
+      "field": "Location",
+      "text": "Unick"
+     }
+    ],
+    "applicant_words": [
+     "Petrogas",
+     "ALA",
+     "AltaGas",
+     "Chevron"
+    ],
+    "place_words": [
+     "Unick",
+     "Cherry Point",
+     "LPG",
+     "propane",
+     "terminal"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
   }
  ]
 }

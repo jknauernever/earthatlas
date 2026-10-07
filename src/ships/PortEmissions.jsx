@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { loadTraceIndex, loadTraceDetail, traceMixFacts, MEASURE_INFO, tonnesWord, TRACE_URL } from '../systems/traceData.js'
 import { MonthBars } from './PortCard.jsx'
+import { DayBars } from './EstimatedVisits.jsx'
 import { Loading } from '../components/panel'
 import styles from './ShipsApp.module.css'
 
@@ -123,8 +124,11 @@ export function TerminalStayEmissions({ em, months, month, onMonth, About, title
           ))}
         </div>
         {f.stays > 0 && <>
-          <MonthBars months={f.perMonth} month={month} onMonth={onMonth} hue={HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
-            label="Port-stay emissions per month (tonnes CO₂e, by the month each stay began)" />
+          {f.perDay
+            ? <DayBars days={f.perDay} hue={HUE} say={(n) => `${t(n)} CO₂e`} none="outside our copy of the port stays"
+              label="Port-stay emissions per day (tonnes CO₂e, by the day each stay began)" />
+            : <MonthBars months={f.perMonth} month={month} onMonth={onMonth} hue={HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
+              label="Port-stay emissions per month (tonnes CO₂e, by the month each stay began)" />}
           <div className={styles.pcGasList}>
             {GASES.filter((g) => f.gas[g] != null).map((g) => (
               <div key={g} className={styles.pcGasRow} title={MEASURE_INFO[g].hint}><span>{MEASURE_INFO[g].label}</span><span>{t(f.gas[g])}</span></div>
@@ -185,8 +189,9 @@ export default function PortEmissions({ em, months, month, onMonth, About, what 
           <a className={`${styles.sourceLink} ${styles.srcLink}`} href={TRACE_URL} target="_blank" rel="noopener noreferrer"
             title={`Climate TRACE Emissions Inventory ${em.release}, CC BY 4.0: modelled estimates`}>Climate TRACE</a>
         </div>
-        <MonthBars months={em.perMonth} month={month} onMonth={onMonth} hue={refinery ? REFINERY_HUE : HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
-          label={refinery ? 'Refinery emissions per month (tonnes CO₂e)' : 'Ship emissions per month (tonnes CO₂e)'} />
+        {/* Climate TRACE gives these per month only: for one or two months the bars say nothing, and days can't be shown (Josh 2026-10-07). */}
+        {months.length > 2 && <MonthBars months={em.perMonth} month={month} onMonth={onMonth} hue={refinery ? REFINERY_HUE : HUE} say={(n) => `${t(n)} CO₂e`} listed={false}
+          label={refinery ? 'Refinery emissions per month (tonnes CO₂e)' : 'Ship emissions per month (tonnes CO₂e)'} />}
         {Object.keys(em.gas).length > 0 && (
           <div className={styles.pcGasList}>
             {GASES.filter((g) => em.gas[g] != null).map((g) => (

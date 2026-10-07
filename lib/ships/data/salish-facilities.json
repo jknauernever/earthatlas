@@ -6,7 +6,10 @@
   "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06. documents.pscaa: the facility's row on Puget Sound Clean Air Agency's approved Title V list (agency permit number) and EPA's ICIS-Air id for the same permit.",
   "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed.",
   "bc": "BC entries (country CA; DEV pilot 2026-10-07, docs/PERMITS_SOURCES_BC.md, lib/ships/bcPermits.js): point = the facility's point as its main BC EMA authorization lists it (the register gives west longitude without the minus sign). bc.ema.accepted = BC Environmental Management Act authorizations of the site, each hand-checked in the register file all_ams_authorizations.xlsx (downloaded 2026-10-07) against the berth points in bc.ema.berths (BC Ports and Terminals) and the company name, with why; left_out = register rows near the berths or with the company's name that are not this site, with why. bc.nrced = the NRCED searches and the rule (lib/ships/bcPermits.js nrcedMatch): a record is shown when it is issued to the company and names an accepted authorization number or the place. bc.eao = BC Environmental Assessment Office (EPIC) project searches; accepted projects name this site, candidates are kept but not shown.",
-  "bc_mv": "bc.mv (2026-10-07): Metro Vancouver air quality permits. jurisdiction 'in' / 'outside' Metro Vancouver's region. Each permit was found by a public web search (site:metrovancouver.org, company names) or a public permit-application page, then read and checked by hand: holder and address against the terminal; covers = the permit's own words about ship loading, checked against the stored text at import. none = what was searched and found. The permit library listing is access-controlled and was not used."
+  "bc_mv": "bc.mv (2026-10-07): Metro Vancouver air quality permits. jurisdiction 'in' / 'outside' Metro Vancouver's region. Each permit was found by a public web search (site:metrovancouver.org, company names) or a public permit-application page, then read and checked by hand: holder and address against the terminal; covers = the permit's own words about ship loading, checked against the stored text at import. none = what was searched and found. The permit library listing is access-controlled and was not used.",
+  "air_agency": "air_agency (2026-10-07): the Washington air agency whose area the site is in (NWCAA, PSCAA, ORCAA, SWCAA), by county; recorded only, the agency's own permit documents are not read for ORCAA / SWCAA sites yet.",
+  "no_facility": "no_facility[] (2026-10-07): terminals checked for permits where no facility was found: what was searched (EPA ECHO within the radius of each berth, ECHO facility-name searches, the SEPA Register), the nearby records left out with why, and the plain-words note shown on the terminal's Permits tab.",
+  "port_terminals": "Port-run cargo / passenger terminals (2026-10-07): the facility is the terminal site. Its EPA records are the port's or the terminal operator's own permits at the terminal (same company + the terminal's address or a point at the dock); a neighbour or a record that shares only the company name is left out with the reason."
  },
  "version": "2026-10-06",
  "facilities": [
@@ -1848,6 +1851,133 @@
    },
    "notes": [
     "Proposed 2026-10-06 with scripts/ships/propose-facility.mjs and ECHO facility-name searches; FRS ids hand-checked by name and street address."
+   ]
+  },
+  {
+   "id": "wa-husky-terminal-tacoma",
+   "name": "Husky Terminal (Husky Terminal & Stevedoring, Port of Tacoma Terminals 3–4)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-husky",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110035431912",
+   "frs_related": [
+    {
+     "id": "110054615760",
+     "why": "FRS name \"HUSKY TERMINAL AREAS A5 & A6 PAVEMENT REPAIR PROJECT\", 1101 PORT OF TACOMA RD (Husky Terminal's address); its stormwater coverage WAR312421 is held by HUSKY TERMINAL & STEVEDORING INC"
+    },
+    {
+     "id": "110064652843",
+     "why": "FRS name \"PORT OF TACOMA PIER 4 RECONFIGURATION\", 1101 PORT OF TACOMA RD (Husky Terminal's address); Pier 4 is the Husky Terminal 4 wharf (USACE dock 0UFH \"PORT OF TACOMA, HUSKY TERMINAL, TERMINAL 4 WHARF\")"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110005394974",
+     "why": "EVERGREEN TACOMA PORT, 2207 SITCUM WAY: no permit listed, and not Husky Terminal's address"
+    },
+    {
+     "id": "110022931078",
+     "why": "PORT OF TACOMA PARCEL 27, 802 PORT OF TACOMA RD: another port parcel, not the terminal's address"
+    },
+    {
+     "id": "110012561566",
+     "why": "NIM YARD PORT OF TACOMA, 701 PORT OF TACOMA RD: a neighbouring rail yard"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Husky"
+     },
+     {
+      "field": "Proposal",
+      "text": "Pier 4"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Husky",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Husky",
+     "Pier 4",
+     "Terminal 4",
+     "1101 Port of Tacoma"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.75 mi of the three berths: 115 facilities, 11 by name); FRS ids hand-checked by company and street address."
+   ]
+  },
+  {
+   "id": "wa-pogh-terminal-2",
+   "name": "Port of Grays Harbor Terminal 2",
+   "kind": "dry_bulk_terminal",
+   "country": "US",
+   "admin_area": "Grays Harbor County",
+   "air_agency": "ORCAA",
+   "terminals": [
+    {
+     "key": "wa-pogh-t2",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110055010009",
+   "frs_related": [
+    {
+     "id": "110045528087",
+     "why": "FRS name \"AGP GRAIN TERMINAL EXPANSION\", address \"TERMINAL WAY TERMINAL 2\", Aberdeen: Ag Processing Inc.'s bulk loading at Terminal 2"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110071729563",
+     "why": "\"AGP\", address \"UNSPECIFIED\", point about 0.7 km east of the Terminal 2 berth: same company name only, no address tying it to Terminal 2"
+    },
+    {
+     "id": "110015485660",
+     "why": "GRAYS HARBOR PORT, 2305 PORT INDUSTRIAL RD: the port's address, no permit listed"
+    },
+    {
+     "id": "110039225460",
+     "why": "PORT OF GRAYS HARBOR TERMINAL 1, 3000 W FIRST ST: Terminal 1, a different terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "GRAYS HARBOR",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "AGP"
+     }
+    ],
+    "applicant_words": [
+     "Port of Grays Harbor",
+     "Grays Harbor Port",
+     "AGP",
+     "Ag Processing"
+    ],
+    "place_words": [
+     "Terminal 2"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.75 mi of the berth: 34 facilities, 15 by name); FRS ids hand-checked by company and street address."
    ]
   },
   {

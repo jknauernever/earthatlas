@@ -9,7 +9,10 @@
  * Requests (all small, one at a time, 1.5 s apart): one ECHO Detailed Facility Report per FRS id the data file names
  * (BP 6, Marathon 11); each SEPA Register search (50 per page, every page); one SEPA record page per search hit whose
  * county matches the facility; documents (layer 1, lib/ships/permitDocuments.js): one PARIS document list per NPDES permit
- * number (every page), the facility's Ecology Industrial Section page, and NWCAA's Air Operating Permits page (once).
+ * number (every page), the facility's Ecology Industrial Section page, and NWCAA's Air Operating Permits page (once);
+ * SEPA per permit (lib/ships/permitSepa.js, migration 031): one permit document per permit read for SEPA (newest final fact sheet,
+ * Ecology support document, or the Air Operating Permit; scripts/ships/doc-fetch.mjs) and one SEPA Register "All text" search per
+ * water / state / hazardous-waste permit number, plus the record page of each hit. The Register answers a search in ~20 s.
  * Every response is cached in scripts/ships/facilities/cache/ (gitignored) and reused on the
  * next run, so a re-run makes no requests; --refresh re-fetches. ECHO returns intermittent 503s: retried 4 times.
  */
@@ -25,6 +28,8 @@ import {
   ensureDocumentSources, importPermitDocuments, parisDocsUrl, parseParisDocs, parisPostbackFields, parseEcologyPage, parseNwcaaRow,
   ECOLOGY_INDUSTRIAL_BASE, NWCAA_AOP_URL, PSCAA_TITLE_V_URL, parsePscaaRow, parisFacilityUrl, parseParisFacility, gridPostbackFields, importParisFacilities,
 } from '../../lib/ships/permitDocuments.js'
+import { planPermitSepa, importPermitSepa } from '../../lib/ships/permitSepaDb.js'
+import { permitDoc, counter as docCounter } from './doc-fetch.mjs'
 
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships; facility permits pilot)'
 const CACHE = 'scripts/ships/facilities/cache'
@@ -235,7 +240,7 @@ if (data.facilities.some((f) => f.documents?.pscaa)) {
   }
   docsRaw.pscaa = { url: pg.url, retrieved_at: pg.retrieved_at, rows }
 }
-console.log(`requests made this run: ${requests}`)
+console.log(`requests made before the database phase: ${requests}`)
 if (dry) { console.log('dry run: nothing written'); process.exit(0) }
 
 const pool = shipsPool()
@@ -262,6 +267,33 @@ try {
     const cv = await withTx(pool, (c) => importCoverage(c, schema, data))
     console.log(`coverage: ${JSON.stringify({ ...cv, problems: cv.problems.length })}`)
     for (const p of cv.problems) console.log(`  ! ${p}`)
+    // SEPA per permit (lib/ships/permitSepa.js): read each permit's fact sheet / support document / Air Operating Permit for
+    // SEPA, and search the SEPA Register for each water / hazardous-waste permit number. Cached; a re-run makes 0 requests.
+    const plan = await planPermitSepa(async (t, p) => (await pool.query(t, p)).rows, schema, data)
+    const sraw = { docs: new Map(), permitSearch: new Map(), sepa: new Map() }
+    const before = requests
+    for (const x of plan) {
+      for (const d of x.docs) {
+        if (sraw.docs.has(d.doc.url)) continue
+        try { sraw.docs.set(d.doc.url, await permitDoc(d.doc.url, { refresh })) } catch (e) { console.warn(`  ! ${e.message}`) }
+      }
+      if (x.search && !sraw.permitSearch.has(x.search)) {
+        const hits = []
+        let page = 1, last = 1
+        do {
+          const r = parseSepaSearch((await cached(`sepa-search-All-${x.search}-p${page}`, sepaSearchUrl('All', x.search, page), 'html')).html)
+          last = r.lastPage
+          for (const row of r.rows) if (!hits.includes(row.sepa)) hits.push(row.sepa)
+        } while (++page <= last)
+        sraw.permitSearch.set(x.search, { url: sepaSearchUrl('All', x.search), hits })
+        for (const n of hits) if (!sraw.sepa.has(n)) sraw.sepa.set(n, await cached(`sepa-record-${n}`, sepaRecordUrl(n), 'html'))
+      }
+    }
+    console.log(`SEPA per permit: ${plan.length} permits, ${sraw.docs.size} documents, ${sraw.permitSearch.size} permit-number searches `
+      + `(${[...sraw.permitSearch.values()].filter((s) => s.hits.length).length} with hits); requests ${requests - before + docCounter.requests}`)
+    const ps = await withTx(pool, (c) => importPermitSepa(c, schema, data, sraw, { runId }))
+    console.log(`SEPA per permit: ${JSON.stringify({ ...ps, problems: ps.problems.length })}`)
+    for (const p of ps.problems) console.log(`  ! ${p}`)
   } catch (e) {
     await withTx(pool, (c) => finishRun(c, schema, runId, { status: 'failed', stats: {}, error: String(e.message).slice(0, 500) })).catch(() => {})
     throw e

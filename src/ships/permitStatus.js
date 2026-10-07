@@ -46,6 +46,39 @@ export function nrcedResult(o) {
   return m ? `Out of compliance: ${m[1].toLowerCase()}` : t
 }
 
+// SEPA Register document types in plain words (SEPA per permit, lib/ships/permitSepa.js). The Register's own code stays on hover.
+export const SEPA_TYPE_WORDS = {
+  DNS: 'Determination of Nonsignificance: no significant impacts, no EIS',
+  MDNS: 'Mitigated Determination of Nonsignificance: impacts mitigated to nonsignificant by conditions',
+  'DNS-M': 'Mitigated Determination of Nonsignificance', ODNS: 'Determination of Nonsignificance using the optional process',
+  'ODNS-M': 'Mitigated Determination of Nonsignificance using the optional process', 'ODNS/NOA': 'Notice of application with an expected DNS (optional process)',
+  'ODNS/NOA-M': 'Notice of application with an expected mitigated DNS (optional process)',
+  'DS/SCOPING': 'Determination of Significance: an Environmental Impact Statement is required (scoping)', EIS: 'Environmental Impact Statement',
+  CONSULT: 'Consultation request to other agencies before a determination', ADDEND: 'Addendum to an earlier document', ADDENDUM: 'Addendum to an earlier document',
+  REVISED: 'Revised', WITHDRAWN: 'Withdrawn', DRAFT: 'Draft', FINAL: 'Final', NEPA: 'Federal (NEPA) document', ADOPT: 'Adoption of an existing document',
+}
+export const sepaTypeTitle = (type) => String(type || '').split(/,\s*/).filter(Boolean).map((t) => SEPA_TYPE_WORDS[t.toUpperCase()] || t).join('; ')
+/** A short plain-words name for the determination ("No significant impact with conditions (MDNS)"). */
+export function sepaTypeShort(type) {
+  const parts = String(type || '').split(/,\s*/).map((t) => t.trim().toUpperCase()).filter(Boolean)
+  const mods = ['REVISED', 'WITHDRAWN', 'ADDENDUM', 'ADDEND', 'DRAFT', 'FINAL']
+  const main = parts.find((t) => !mods.includes(t)) || parts[0] || ''
+  const word = { DNS: 'No significant impact (DNS)', MDNS: 'No significant impact, with conditions (MDNS)', 'DNS-M': 'No significant impact, with conditions (MDNS)',
+    ODNS: 'No significant impact (DNS)', 'ODNS-M': 'No significant impact, with conditions (MDNS)', 'ODNS/NOA': 'Notice of application (DNS expected)',
+    'ODNS/NOA-M': 'Notice of application (MDNS expected)', 'DS/SCOPING': 'Significant impact: EIS required', EIS: 'Environmental Impact Statement',
+    CONSULT: 'Consultation', ADDEND: 'Addendum', ADDENDUM: 'Addendum', NEPA: 'Federal (NEPA) review' }[main] || main
+  const extra = parts.filter((t) => t !== main).map((t) => t.toLowerCase())
+  return extra.length ? `${word} · ${extra.join(', ')}` : word
+}
+/** One permit's SEPA answer in a few words (terminal card indicator, permit page facts). s = { status, reviews }. */
+export function sepaIndicator(s) {
+  if (!s) return null
+  if (s.status === 'linked') return { short: `SEPA: ${s.reviews} review${s.reviews === 1 ? '' : 's'}`, long: `${s.reviews} SEPA review${s.reviews === 1 ? '' : 's'} found that cover${s.reviews === 1 ? 's' : ''} this permit` }
+  if (s.status === 'exempt') return { short: 'SEPA: exempt', long: 'Exempt from SEPA review, as the permit’s fact sheet states' }
+  if (s.status === 'stated') return { short: 'SEPA: see fact sheet', long: 'The permit’s own document describes a SEPA review; no matching record was found in the SEPA Register' }
+  return { short: 'SEPA: none found', long: 'No SEPA review found for this permit' }
+}
+
 /** BC register text sometimes repeats itself ("Chlor-Alkali Plant Chlor-Alkali Plant"): show the phrase once. */
 export function oncePhrase(s) {
   const t = String(s ?? '').trim()

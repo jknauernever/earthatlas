@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import Chevron from './Chevron.jsx'
-import { statusShort, statusTitle, nrcedResult, oncePhrase } from './permitStatus.js'
+import { statusShort, statusTitle, nrcedResult, oncePhrase, sepaTypeTitle, sepaIndicator } from './permitStatus.js'
 import { Loading } from '../components/panel'
 import LandRecords from './LandRecords.jsx'
 
@@ -38,16 +38,7 @@ const SYSTEM_TITLE = {
 const AREA_WORDS = { CAAMACT: 'MACT', CAANESH: 'NESHAP', CAANSPS: 'NSPS', CAAPSD: 'PSD', CAASIP: 'SIP', CAATVP: 'Title V' }
 const areaText = (a) => String(a || '').split(/,\s*/).map((x) => AREA_WORDS[x] || x).join(', ')
 const AGENCY = { Local: 'local agency', State: 'state', EPA: 'EPA', Federal: 'EPA' }
-const SEPA_TYPE = {
-  DNS: 'Determination of Nonsignificance: no significant impacts, no EIS',
-  MDNS: 'Mitigated Determination of Nonsignificance: impacts mitigated to nonsignificant by conditions',
-  'DNS-M': 'Mitigated Determination of Nonsignificance', ODNS: 'Determination of Nonsignificance using the optional process',
-  'ODNS-M': 'Mitigated Determination of Nonsignificance using the optional process', 'ODNS/NOA': 'Notice of application with an expected DNS (optional process)',
-  'DS/SCOPING': 'Determination of Significance: an Environmental Impact Statement is required (scoping)', EIS: 'Environmental Impact Statement',
-  CONSULT: 'Consultation request to other agencies before a determination', ADDEND: 'Addendum to an earlier document', ADDENDUM: 'Addendum to an earlier document',
-  NEPA: 'Federal (NEPA) document',
-}
-const sepaTitle = (type) => String(type || '').split(/,\s*/).filter(Boolean).map((t) => SEPA_TYPE[t.toUpperCase()] || t).join('; ')
+const sepaTitle = sepaTypeTitle
 
 function Fold({ title, children, open: start = false }) {
   const [open, setOpen] = useState(start)
@@ -140,7 +131,10 @@ function Permit({ p, frsUrl }) {
       {p.mv?.application && <div className={styles.incidentMeta}>Application {p.mv.application.gva} ({String(p.mv.application.status || '').toLowerCase()}): {p.mv.application.purpose}{' '}
         {ext(p.mv.application_url, 'application page', 'Metro Vancouver’s page for this application')}</div>}
       {p.bcEma?.address && <div className={styles.incidentMeta}>{p.bcEma.address}{p.bcEma.facility_type ? ` · ${((t) => t.length > 90 ? `${t.slice(0, 90)}…` : t)(oncePhrase(p.bcEma.facility_type))}` : ''}</div>}
-      <div className={styles.permitOpen}>{p.documents?.length ? `${fmtN(p.documents.length)} document${p.documents.length === 1 ? '' : 's'} · ` : ''}Open permit ↗</div>
+      <div className={styles.permitOpen}>
+        {p.sepa && ((s) => <span className={`${styles.sepaTag} ${p.sepa.status === 'linked' ? styles.sepaTagLinked : ''}`}
+          title={`${s.long}. The permit page shows the evidence for each review, what the permit’s own documents say, and what was searched`}>{s.short}</span>)(sepaIndicator(p.sepa))}
+        {p.documents?.length ? `${fmtN(p.documents.length)} document${p.documents.length === 1 ? '' : 's'} · ` : ''}Open permit ↗</div>
     </div>
   )
 }
@@ -325,15 +319,35 @@ function Facility({ f, onLocate, airSearches = [] }) {
           {f.frs.filter((x) => !x.primary).map((x) => <div key={x.id} className={styles.pcMuted}>· {x.id}: {x.why} {ext(x.url, 'ECHO page', 'Open in EPA ECHO')}</div>)}
           Program records include reporting ids (greenhouse gas, toxics, risk plans) as well as permits. An expiry date in the past does not
           mean the site runs without a permit: usually a renewal is pending and the old permit stays in force (EPA).
+          {f.airAgency && !f.permits.some((p) => p.documents?.some((d) => d.source === 'nwcaa-aop' || d.source === 'pscaa-title-v')) && <>
+            {' '}Air permits here are issued by the {ext(f.airAgency.url, f.airAgency.name, `${f.airAgency.name} website`)}; their documents are not listed here yet.</>}
         </div>
         <div className={styles.legendNoteText}>
           <strong>SEPA reviews.</strong> Records come from searches of Washington Ecology’s SEPA Register by the refinery’s applicant names and
           place. One is shown only when the county matches, the applicant names the company, and the record names the site.
           {f.sepaCandidates > 0 && ` ${plural(f.sepaCandidates, 'other record')} found by the same searches don’t pass that test and are not shown.`}
-          {' '}Which permit each review covered is listed in the review’s own documents (the SEPA checklist); that link is not made here yet.
-          The Register holds records from 2000 on.
+          {' '}Each permit’s own page says which of these reviews cover that permit, and why (the review names the permit, the
+          permit’s fact sheet or air permit names the review or the approval it reviewed, or both name the same project), or what the
+          permit’s fact sheet says about SEPA (for example that a renewal is exempt). The Register holds records from 2000 on.
         </div>
       </Fold>}
+    </div>
+  )
+}
+
+/** A terminal checked for permits with no facility found: what was searched, and why nearby records were left out. */
+function NoneFound({ n }) {
+  return (
+    <div className={styles.section}>
+      <div className={styles.capNote}>{n.says}{' '}{ext(rec(n.record_id), 'EarthAtlas list', 'EarthAtlas’s hand-checked note for this terminal: what was searched and why each nearby record was left out — click for the record')}</div>
+      <div className={styles.sectionHead}>What was searched{n.checked ? ` (${day(n.checked)})` : ''}</div>
+      {n.searched.map((x, i) => <div key={i} className={styles.legendNoteText}>· {x.url ? ext(x.url, x.what, 'Open the search or page') : x.what}{x.found ? <span className={styles.pcMuted}> — {x.found}</span> : ''}</div>)}
+      {n.leftOut.length > 0 && <Fold title={`Nearby records left out (${fmtN(n.leftOut.length)})`}>
+        {n.leftOut.map((x) => <div key={x.id} className={styles.legendNoteText}>{x.name ? <strong>{x.name}</strong> : x.id}{' '}
+          {/^\d{12}$/.test(x.id) && ext(`https://echo.epa.gov/detailed-facility-report?fid=${x.id}`, 'ECHO page', 'Open the facility in EPA ECHO')}
+          <span className={styles.pcMuted}> · {x.why}</span></div>)}
+      </Fold>}
+      {n.airAgency && <div className={styles.legendNoteText}>Air permits here are issued by the {ext(n.airAgency.url, n.airAgency.name, `${n.airAgency.name} website`)}; they are not listed here yet.</div>}
     </div>
   )
 }
@@ -346,7 +360,7 @@ export function useTerminalPermits(terminalKey) {
     setSt({ key: terminalKey, state: 'loading', data: null })
     fetch(`/api/ships?op=terminalPermits&key=${encodeURIComponent(terminalKey)}`, { signal: ctl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => setSt({ key: terminalKey, state: d.facilities?.length || d.land?.length ? 'ok' : 'none', data: d }))
+      .then((d) => setSt({ key: terminalKey, state: d.facilities?.length || d.land?.length || d.none ? 'ok' : 'none', data: d }))
       .catch((e) => { if (e.name !== 'AbortError') setSt({ key: terminalKey, state: 'error', data: null }) })
     return () => ctl.abort()
   }, [terminalKey])
@@ -359,6 +373,7 @@ export default function TerminalPermits({ permits, onLocate }) {
   const d = permits.data
   return <>
     <LandRecords land={d.land} />
+    {d.none && <NoneFound n={d.none} />}
     {d.facilities.map((f, i) => <Facility key={f.key} f={f} onLocate={onLocate} airSearches={i === 0 ? d.airSearches || [] : []} />)}
     <div className={styles.attribution}>
       {(d.sources || []).map((x, i) => (

@@ -99,3 +99,9 @@
 .vlist { font-size: 13.5px; margin: 5px 0 2px; padding-left: 10px; border-left: 2px solid rgba(251, 191, 36, 0.5); color: rgba(255, 255, 255, 0.82); }
 .linkBtn { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: rgba(130, 205, 255, 0.98); cursor: pointer; }
 .rowInsp td { background: rgba(255, 255, 255, 0.015); }
+
+/* SEPA per permit (migration 031): evidence for each linked review, quotes from the permit's own documents, none-found. */
+.evidence { font-size: 14px; margin-bottom: 8px; }
+.evidence:last-child { margin-bottom: 0; }
+.quote { font-size: 13.5px; font-style: italic; color: rgba(255, 255, 255, 0.78); margin-top: 3px; padding-left: 9px; border-left: 2px solid rgba(103, 232, 249, 0.45); }
+.statement { margin: 10px 0 14px; padding: 10px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }

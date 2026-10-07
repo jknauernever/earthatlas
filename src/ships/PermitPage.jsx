@@ -12,7 +12,7 @@ import { publicLicense } from './publicLicense.js'
 import { Loading } from '../components/panel'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import styles from './PermitPage.module.css'
-import { STATUS_WORDS, statusKey, statusSource, nrcedResult, oncePhrase } from './permitStatus.js'
+import { STATUS_WORDS, statusKey, statusSource, nrcedResult, oncePhrase, sepaTypeShort, sepaTypeTitle, sepaIndicator } from './permitStatus.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null)
@@ -185,27 +185,80 @@ function Violations({ rows }) {
   </>
 }
 
-function Sepa({ rows, issuer }) {
+// Why a SEPA review is linked to this permit (lib/ships/permitSepa.js rules), in plain words.
+const SEPA_METHOD = {
+  names_permit: 'The review names this permit',
+  doc_cites_review: 'The permit’s fact sheet names the review',
+  approval_in_permit: 'The review is of an approval this air permit includes',
+  same_project: 'Same project',
+  register_related: 'Linked in the SEPA Register',
+}
+const STATEMENT_KIND = { exempt: 'Exempt from SEPA', relies: 'Relies on an earlier review', determination: 'Describes a SEPA determination', mention: 'Mentions SEPA' }
+// PDF viewers open #page=N on a file URL; agency download links (…?id=, DocumentId=) are left as they are.
+const pageUrl = (url, page) => (page && !/[?&]id=|DocumentId=/i.test(url) ? `${url}#page=${page}` : url)
+
+/** SEPA per permit: the reviews that cover this permit with their evidence, what the permit's documents say, or none found. */
+function Sepa({ s }) {
   return <>
-    <p className={styles.small}>Environmental reviews of this facility’s projects where {issuer} was SEPA lead. Which permit each covered is in its own documents; not linked yet.</p>
-    {!rows.length && <p className={styles.note}>No SEPA Register record with this agency as lead was matched to the facility.</p>}
-    {rows.length > 0 && (
+    <p className={styles.small}>Which Washington SEPA environmental reviews cover this permit. A review is listed only when a record says so: the review
+      names the permit, the permit’s fact sheet names the review, the review is of an approval this air permit includes, or both are named for the same
+      project. What the permit’s own fact sheet says about SEPA is quoted below.</p>
+    {s.reviews.length > 0 && (
       <table className={styles.grid}>
-        <thead><tr><th className={styles.cDate}>Issued</th><th>Proposal</th><th className={styles.cVer}>Decision</th></tr></thead>
+        <thead><tr><th className={styles.cDate}>Issued</th><th>Review</th><th>Why it is linked</th></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {s.reviews.map((r) => (
             <tr key={r.sepa}>
-              <td className={styles.cDate}>{day(r.issued)}</td>
+              <td className={styles.cDate}>{day(r.issued) || '—'}</td>
               <td>
-                <a className={styles.docLink} href={r.url} target="_blank" rel="noopener noreferrer">{r.proposalName || (r.description ? `${r.description.slice(0, 140)}${r.description.length > 140 ? '…' : ''}` : `SEPA ${r.sepa}`)}</a>
-                <div className={styles.sub}>SEPA {r.sepa}{r.fileNumber ? ` · file ${r.fileNumber}` : ''}{r.applicant ? ` · ${r.applicant}` : ''}</div>
-                {r.documents?.length > 0 && <div className={styles.sub}>{r.documents.map((d, i) => <span key={d.id}>{i > 0 && ' · '}<a href={d.url} target="_blank" rel="noopener noreferrer">{d.name}</a>{d.size ? ` (${d.size})` : ''}</span>)}</div>}
+                <a className={styles.docLink} href={r.url} target="_blank" rel="noopener noreferrer" title="Open the record in Washington Ecology’s SEPA Register">
+                  {r.proposalName || (r.description ? `${r.description.slice(0, 140)}${r.description.length > 140 ? '…' : ''}` : `SEPA ${r.sepa}`)}</a>
+                <div className={styles.what} title={`${sepaTypeTitle(r.type)} (SEPA Register type “${r.type}”)`}>{sepaTypeShort(r.type)}</div>
+                <div className={styles.sub}>Lead agency {r.lead}{r.fileNumber ? ` (file ${r.fileNumber})` : ''} · SEPA {r.sepa}
+                  {' · '}<a href={rec(r.record_id)} target="_blank" rel="noopener noreferrer" title="The record as EarthAtlas read it">SEPA Register</a></div>
+                {r.documents?.length > 0 && <div className={styles.sub}>{r.documents.slice(0, 4).map((d, i) => <span key={d.id}>{i > 0 && ' · '}<a href={d.url} target="_blank" rel="noopener noreferrer">{d.name}</a>{d.size ? ` (${d.size})` : ''}</span>)}
+                  {r.documents.length > 4 && ` · ${fmtN(r.documents.length - 4)} more in the Register`}</div>}
               </td>
-              <td className={styles.cVer}>{r.type}</td>
+              <td>
+                {r.evidence.map((e, i) => (
+                  <div key={i} className={styles.evidence}>
+                    <strong>{SEPA_METHOD[e.method] || e.method}.</strong> {e.says}.
+                    {e.quote && <div className={styles.quote}>“{e.quote}”</div>}
+                    <div className={styles.sub}>
+                      {e.doc_url
+                        ? <><a href={pageUrl(e.doc_url, e.page)} target="_blank" rel="noopener noreferrer">{e.doc_title || 'Permit document'}{e.page ? `, p. ${e.page}` : ''}</a>
+                          {e.doc_record_id && <>{' · '}<a href={rec(e.doc_record_id)} target="_blank" rel="noopener noreferrer" title="What EarthAtlas read in the document (passages and page numbers)">as read</a></>}</>
+                        : <a href={rec(r.record_id)} target="_blank" rel="noopener noreferrer">SEPA record {r.sepa}</a>}
+                    </div>
+                  </div>
+                ))}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+    )}
+    {s.statements.length > 0 && <>
+      <div className={styles.sideHead} style={{ marginTop: 18 }}>What the permit’s own documents say</div>
+      {s.statements.map((x) => (
+        <div key={x.key} className={styles.statement}>
+          <div className={styles.what}>{STATEMENT_KIND[x.kind] || x.kind}{x.heading ? <span className={styles.muted}> · “{x.heading}”</span> : ''}</div>
+          <div className={styles.quote}>“{x.quote}”</div>
+          <div className={styles.sub}><a href={pageUrl(x.doc_url, x.page)} target="_blank" rel="noopener noreferrer">{x.doc_title}, p. {x.page}</a>
+            {x.doc_record_id && <>{' · '}<a href={rec(x.doc_record_id)} target="_blank" rel="noopener noreferrer" title="What EarthAtlas read in the document">as read</a></>}</div>
+        </div>
+      ))}
+    </>}
+    {s.none && (
+      <div className={styles.statement}>
+        <div className={styles.what}>No SEPA review found for this permit</div>
+        <div className={styles.sub}>Searched the WA SEPA Register{s.none.county ? ` (${s.none.county[0]}${s.none.county.slice(1).toLowerCase()} County records)` : ''}:{' '}
+          {s.none.register?.map((x, i) => <span key={x.url}>{i > 0 && ', '}<a href={x.url} target="_blank" rel="noopener noreferrer">{x.what}</a></span>)}
+          {' '}({fmtN(s.none.records || 0)} records checked).
+          {' '}{s.none.documents?.length ? <>Read: {s.none.documents.map((d) => <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer">{d.title}</a>)}.</>
+            : s.none.no_document ? `${s.none.no_document[0].toUpperCase()}${s.none.no_document.slice(1)}.` : ''}</div>
+        <p className={styles.small}>The Register holds records from 2000 on, and some actions are exempt from SEPA, so this is not proof that no review happened.</p>
+      </div>
     )}
   </>
 }
@@ -226,7 +279,7 @@ export default function PermitPage() {
 
   const tabs = p ? [['documents', 'Documents', data.documents.length], ['enforcement', 'Actions & inspections', data.enforcement.length],
     ...(data.violations?.length ? [['violations', 'Violations', data.violations.length]] : []),
-    ...(data.sepaLead ? [['sepa', 'SEPA reviews', data.sepa.length]] : [])] : []
+    ...(data.sepaPermit ? [['sepa', 'SEPA review', data.sepaPermit.reviews.length]] : [])] : []
   const tab = tabs.some(([t]) => t === sp.get('tab')) ? sp.get('tab') : 'documents'
   const kind = sp.get('k') || 'permit'
   // Tab and document filter live in the URL, so a shared link opens the same view.
@@ -291,6 +344,11 @@ export default function PermitPage() {
               {p.mv?.application && <Fact label="Application">{p.mv.application.gva}: {p.mv.application.purpose}
                 <div className={styles.muted}><a href={p.mv.application_url} target="_blank" rel="noopener noreferrer">{p.mv.application.status}</a></div></Fact>}
               <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && !p.mv && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>
+              {data.sepaPermit && <Fact label="SEPA review">{((w) => <>
+                <button type="button" className={styles.linkBtn} onClick={() => setParam('tab', 'sepa', 'documents')}>{w.long}</button>
+                {data.sepaPermit.summary.status === 'exempt' && ((x) => x && <div className={styles.muted}>
+                  <a href={pageUrl(x.doc_url, x.page)} target="_blank" rel="noopener noreferrer">{x.doc_title}, p. {x.page}</a></div>)(data.sepaPermit.statements.find((y) => y.kind === 'exempt'))}
+              </>)(sepaIndicator(data.sepaPermit.summary))}</Fact>}
               {data.air && <Fact label="Air permit">{data.air.aop} · dated {data.air.permitDate}<div className={styles.muted}>{data.air.status}</div></Fact>}
               <Fact label="Records">
                 {p.waAir ? <><a href={p.waAir.page_url || p.waAir.main_url} target="_blank" rel="noopener noreferrer">{data.issuer}</a> · <a href={rec(p.recordId)} target="_blank" rel="noopener noreferrer">stored</a></>
@@ -349,7 +407,7 @@ export default function PermitPage() {
               : <p className={styles.note}>No document listing found for this permit yet. EPA ECHO lists the permit id only.</p>)}
             {tab === 'enforcement' && <Enforcement rows={data.enforcement} window={data.enforcementWindow} on={p.enforcementOn} onViolations={() => setParam('tab', 'violations', 'documents')} />}
             {tab === 'violations' && <Violations rows={data.violations || []} />}
-            {tab === 'sepa' && <Sepa rows={data.sepa} issuer={data.issuer} />}
+            {tab === 'sepa' && data.sepaPermit && <Sepa s={data.sepaPermit} />}
             {tab === 'documents' && data.listings.length > 0 && (
               <p className={styles.small}>Read from {data.listings.map((l, i) => <span key={l.id}>{i > 0 && ', '}<a href={l.url} target="_blank" rel="noopener noreferrer">{SRC[l.source] || l.source}</a></span>)}
                 {' '}on {day(data.listings[0].checked)}. Files open at the agency; EarthAtlas doesn’t keep copies.</p>

@@ -354,3 +354,74 @@ and the facility entries for those terminals.
   penalty number with a link to ECHO's case report.
 - Permits of terminals whose facility entry doesn't exist yet (ORCAA ports, SWCAA) are stored once the facility exists (re-run the
   import; the import reports them meanwhile).
+
+## 6. SEPA review per permit (dev, 2026-10-07)
+
+Lovel: "I'm interested to see the SEPA reviews that should be associated with each permit." Facility-level SEPA links (§2,
+`sepaMatch`) stay; migration 031 adds `permit_sepa`, code `lib/ships/permitSepa.js` (rules, pure) + `lib/ships/permitSepaDb.js`,
+run by `npm run ships:import-facilities` after the documents. Which permits get an answer: NPDES permits and coverages, state
+(PARIS) permits, ICIS-Air records, and RCRA ids that Ecology lists a permit document for (corrective action / dangerous waste
+permits). Reporting ids (GHGRP, TRI, RMP, ...) get none.
+
+**What was studied first.** (1) SEPA Register record pages: lead agency, the lead agency's file number, document type, dates,
+proposal name, description, a "Related" field (another SEPA number) and the attached documents' names. NWCAA records name the air
+approval they reviewed in the proposal or document names ("OAC 660b", "OAC 1261 - Tesoro Refining - Tank 113 Roof Mod - SEPA
+DNS.pdf"); Ecology hazardous-waste records name the permit number ("Draft Corrective Action Permit WAD069548154") or the agreed
+order ("Agreed Order No. DE 16299"); county records name the project ("bp Cherry Point Advance Mitigation Project 5").
+(2) PARIS fact sheets: each Ecology NPDES / state permit fact sheet has a section "State Environmental Policy Act (SEPA)
+compliance". For renewals it quotes the exemption: "State law exempts the issuance, reissuance or modification of any wastewater
+discharge permit from the SEPA process as long as … (RCW 43.21C.0383). The exemption applies only to existing discharges, not to
+new discharges." (BP WA0022900 2022 fact sheet p. 18; Marathon WA0000761 2024 fact sheet p. 23). Ecology's hazardous-waste
+support documents have a "State Environmental Policy Act" section describing the DNS for the agreed order's interim actions.
+(3) NWCAA Air Operating Permits list the approvals (OACs, Regulatory Orders) they incorporate, some with their SEPA MDNS
+conditions (BP AOP 015R2 terms 5.6.21–23, "OAC 1064b … SEPA MDNS (3/8/2022)").
+(4) The SEPA Register "All text" search finds a permit number written anywhere on a record (verified: WAD069548154 → 202002476).
+
+**Rules (explicit; a weaker match is kept as a candidate and not shown; never a guess):**
+- `names_permit` — the SEPA record (proposal, description, file number or document names) names the permit number.
+- `doc_cites_review` — a SEPA passage of the permit's own fact sheet / support document names an identifier the SEPA record
+  carries (SEPA number, the lead agency's file number, an agreed-order number), AND the record's lead agency is the agency that
+  issues the permit. (BP's 2022 NPDES fact sheet names Whatcom County's DNS SEP2021-00086 while answering a comment about another
+  project; the lead-agency condition keeps that out.)
+- `approval_in_permit` — air: a SEPA record led by the air agency that issues the permit names an approval (OAC n / RO n) and the
+  permit's Air Operating Permit lists that approval (page cited). The Statement of Basis is not used: it also lists approvals that
+  are not part of the permit ("OAC 765 is not included in the AOP").
+- `same_project` — the permit's name without the company / site words (≥ 3 words, at least one of the project's own, numbers
+  kept: "advance mitigation project 5" ≠ "… 4") appears as one phrase in the proposal name of a SEPA record already matched to the
+  facility (the description only when the record has no proposal name: later addenda's descriptions name the project they rely on).
+- `register_related` — one hop through the Register's own "Related" field, only from a record linked by an identifier above.
+- Statements: the SEPA section of the permit's fact sheet (newest final PARIS fact sheet: highest permit version, not a draft /
+  addendum / supplement / public-notice version; else every Ecology "support document") is quoted verbatim with its page and classed
+  exempt / relies on an earlier review / describes a determination.
+- `none_found` — no review and no exemption / determination statement: the answer lists every Register search (the facility's
+  applicant / place searches and the "All text" search for the permit number), the number of records checked, and the document read
+  (or that no fact sheet is listed, e.g. stormwater general-permit coverages). Absence is never shown as "no SEPA review happened".
+- Candidates (`same_lead_agency`): records matched to the facility and led by the permit's issuer with nothing tying them to the
+  permit. Stored, not shown.
+
+**Evidence stored.** Each permit document read is a `document_sepa_text` source record (under the document's own source): URL,
+SHA-256, bytes, page count, the SEPA passages verbatim with page numbers and, for an air permit, the approvals it lists with the
+first page. The file itself is not kept. Permit-number search hits are stored as `sepa_record` like the facility's.
+
+**Fetching.** `scripts/ships/doc-fetch.mjs` (one at a time, ≥ 1.5 s, EarthAtlas User-Agent, cached as text in the gitignored
+cache; the PDF is deleted after pdftotext). One document per permit (every support document for a hazardous-waste id: Phillips 66 Ferndale has two, the dangerous waste permit and the corrective action permit); one Register search per searched permit number.
+
+## 7. The 33 cargo / cruise / Columbia River terminals (dev pilot, 2026-10-07)
+
+Pattern as in "WA rollout": `propose-facility.mjs` (ECHO within 0.75 mi of each berth) → hand check (same company + the
+terminal's address or a point at the dock; a port authority's own permits count for port-run terminals; neighbours and
+same-name-only records left out with the reason) → entry in `salish-facilities.json` (migration 032 adds the kinds
+container / cruise / ro-ro / general cargo terminal) → import. Each facility records its air agency (`air_agency`); a terminal
+with nothing found gets a `no_facility` note (what was searched, what was left out, the air agency), shown on its Permits tab.
+
+Air agency by county: King, Pierce, Snohomish → PSCAA; Whatcom → NWCAA; Clallam, Thurston, Grays Harbor → ORCAA;
+Clark, Cowlitz → SWCAA. ORCAA / SWCAA documents are not fetched here.
+
+Pilot (2 terminals): Husky Terminal → facility `wa-husky-terminal-tacoma` (FRS 110035431912, industrial stormwater WAR004486,
++ 2 project FRS ids at 1101 Port of Tacoma Rd); Grays Harbor Terminal 2 → `wa-pogh-terminal-2` (FRS 110055010009, WAR303317,
++ AGP Grain Terminal Expansion). Measured requests: Husky 48 (ECHO 6, DFR 3, SEPA searches 2 + 29 record pages, PARIS 4,
+permit-number searches 4), Terminal 2 14 (+ 1 Register test search). **SEPA Register searches are OR-of-words**: a two-word
+Proposal search such as "Pier 4" returns unrelated records statewide (23 Pierce County candidates for Husky, each a record-page
+request). Use one distinctive word per search. A Register search takes ~20 s to answer.
+Projected for the other 31 terminals at the measured rate: ~430–950 requests, over the 400 budget, so the rollout stopped after
+the pilot (Josh decides).

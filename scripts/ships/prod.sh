@@ -21,6 +21,7 @@
 #   zsh scripts/ships/prod.sh terminal-places    back up, then county + city / town of every US terminal (Census geocoder, ~65 requests; needs migration 028)
 #   zsh scripts/ships/prod.sh scrubber-edition   freeze the scrubber report as a dated edition (args pass through: --id 2026-10 --from 2025-01 --to 2026-06; needs migration 029)
 #   zsh scripts/ships/prod.sh import-facilities  back up, then facilities + EPA permits/enforcement + WA SEPA reviews + permit documents (lib/ships/data/salish-facilities.json; reuses the cached responses in scripts/ships/facilities/cache; needs migrations 022-024)
+#   zsh scripts/ships/prod.sh import-cer         back up, then Canada Energy Regulator records for the Westridge Marine Terminal (cached CSVs + order pages in scripts/ships/facilities/cache/cer, 0 requests; needs migration 033 and import-bc-permits first)
 #   zsh scripts/ships/prod.sh import-bc-permits  back up, then BC facilities + EMA authorizations + NRCED records + EAO projects + Metro Vancouver air permits (the bc- entries of salish-facilities.json; reuses the cached responses and PDFs in scripts/ships/facilities/cache, 0 requests when cached; needs migration 027)
 #   zsh scripts/ships/prod.sh import-wa-air      back up, then WA local clean air agency permits (PSCAA, ORCAA, SWCAA pilot; lib/ships/data/wa-air-permits.json) for the US facilities; run after import-facilities; reuses the cached pages and PDFs in scripts/ships/facilities/cache (0 requests when cached); no migration
 #   zsh scripts/ships/prod.sh import-wa-leases   back up, then WA DNR aquatic land leases + port management areas + county shoreline permits at the docks (lib/ships/data/wa-leases-sites.json; reuses the cache, 0 requests when cached; needs migration 030)
@@ -116,6 +117,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-facilities
     prod_node scripts/ships/import-facilities.mjs "${@:2}"
+    ;;
+  import-cer)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-cer
+    prod_node scripts/ships/import-cer.mjs "${@:2}"
     ;;
   import-bc-permits)
     need SHIPS_PROD_DATABASE_URL

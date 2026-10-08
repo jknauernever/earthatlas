@@ -150,3 +150,54 @@ Code `lib/ships/metroVancouver.js`, fetcher `scripts/ships/mv-fetch.mjs`, import
   Wharves (GVA0086) only in search results, their documents moved. Outside Metro Vancouver: Squamish, Woodfibre, Sechelt, Port Mellon,
   Texada, Harmac, Duke Point, Crofton, Bare Point.
 
+
+## Canada Energy Regulator (CER): Westridge Marine Terminal — study 2026-10-07
+
+Facts only, from CER open data on open.canada.ca (organization cer-rec, 85 datasets, all **Open Government Licence – Canada**).
+Files downloaded once (19 requests) to scripts/ships/facilities/cache/cer/ (gitignored); some are cp1252, not UTF-8.
+
+| Dataset (updated) | File | Rows | Westridge | How it names the site |
+|---|---|---|---|---|
+| Compliance Activities (2026-07-04) | open/compliance/compliance-activities.csv | 6,516 | **37** CVAs 2016–2025 (28 field inspections, 4 information-exchange meetings, 3 implementation assessments, 2 emergency exercises) | `Facilities`: "WESTRIDGE MARINE TERMINAL" (27), "WESTRIDGE [Westridge Delivery Line]" (8), "WESTRIDGE" (2); lat/long, Activity Number (CVyyyy-nnn), Regulations, Regulatory Instruments |
+| Non-Compliances (2026-07-04) | open/compliance/non-compliances.csv | 71,860 | 736 rows = 342 findings in 36 CVAs; tools: 232 Notice of Non-compliance, 65 Information Request, 25 Corrected, 4 Assurance of Voluntary Compliance; 6 marked repeated | `Selected Facilities`; joins to CVAs by Activity Number |
+| Pipeline Incident Data (2026-09-02) | open/incident/pipeline-incidents-comprehensive-data.csv | 2,034 | **11** incidents 2015–2025 (8 fires, 2 serious injuries, 1 adverse environmental effects); no releases | `Facility Name` "WESTRIDGE MARINE TERMINAL" (10) + 1 by text |
+| Conditions (2026-10-05) | open/conditions/conditions.csv | 78,333 lines (24,076 records) | 179 condition rows naming Westridge: 173 TMX reconsideration (MH-052-2018), 6 "s. 58 application – Westridge Delivery Line" | text match only; Instrument Number, status, phase |
+| O&M Activities (2026-09-02) | open/operations/operation-and-maintenance-activity.csv | 9,680 | 5 | `Facility Name` "WESTRIDGE" |
+| Notice of Contamination (2026-09-02) | open/compliance/contamination.csv | 289 | 1 (REM2021-052, residual hydrocarbons, facility monitoring) | `Facility Name` |
+| Regulatory Instruments (2025-02-14) | open/application/regulatory-instruments.csv | 17,112 | 0 by name (instrument numbers only; join via CVA `Regulatory Instruments`) | — |
+| Damage Prevention contraventions, Complaint Resolution | … | 3,941 / 14 | 0 | — |
+
+- Inspection Officer Orders, warning letters and penalties are HTML pages, not open data (e.g. Order BL-001-2023, a Westridge
+  headwear order, 2023-11-22: cer-rec.gc.ca/en/safety-environment/industry-performance/reports-compliance-enforcement/…).
+- No per-record public page was found for CVAs or incidents in the open data; records cite REGDOCS numbers in some files.
+- Name search of the same four files for our other BC terminals: none for Woodfibre, Ioco or Westshore; a few rows each for
+  Tilbury, Parkland, Suncor and Burnaby Terminal (Trans Mountain's tank farm) and many for Kinder Morgan (Trans Mountain's former
+  owner) — not yet checked whether any are at our docks.
+
+### Built (DEV, 2026-10-07): CER records on the Westridge Permits tab
+
+Code `lib/ships/cer.js` (the matching rule is written at its top), import `scripts/ships/import-cer.mjs` (`npm run ships:import-cer`;
+production `prod.sh import-cer`, backs up first; reads the cached CSVs and order pages, 0 requests), migration 033 (facility_links
+role `cer_record`), tests `lib/ships/test/cer*.test.js`.
+
+- **Rule.** A record is Westridge's when its own facility field names WESTRIDGE (activities `Facilities`; incidents, O&M, contamination
+  `Facility Name`). An incident with no facility name counts when Trans Mountain reported it and its own point (8 decimals) is within
+  300 m of the berth. Activity coordinates are rounded to 0.01° (~1 km), so a nearby Trans Mountain activity that does not name
+  Westridge is a hidden candidate. A finding of a Westridge activity is Westridge's when `Selected Facilities` names it (or is empty
+  and the activity's only facility is Westridge); exact duplicate rows are counted once; rows with no compliance tool are observations.
+  A condition is shown when its text names Westridge and its bold title names Westridge, tankers, vessels, berths, docks, the marine
+  terminal or Burrard Inlet.
+- **Shown / hidden (dev):** activities 37 / 5 (153 findings with a compliance tool, 388 observations); incidents 12 / 0 (10 by facility name,
+  INC2015-059 and INC2020-072 by their point, 71 m and 34 m from the berth); O&M 2 / 2 (the two hidden name the Westridge Delivery Line
+  only as pipeline); contamination 1; conditions 12 / 167; inspection officer orders 2 (BL-001-2023 with its variance and notice of
+  measures satisfied; LH-001-2020).
+- **Joins.** CVA `Regulatory Instruments` and condition `Instrument Number` join the regulatory-instruments file, whose `Reg Docs
+  Number` opens the instrument in REGDOCS at `https://apps.cer-rec.gc.ca/REGDOCS/Item/Filing/<number>` (verified with C00061 = OC-065).
+  The non-compliances file names two inspection officer orders (CV2021-201), both at Burnaby / TMX, not Westridge.
+- **Orders.** The CER's order index page now returns 404; orders were found by public web search. BL-001-2023's inspection (CV2324-102)
+  is filed in the open data with no facility and a point in Abbotsford, so it is not shown as an activity; the order names it.
+- **Other BC docks.** No CER activity, incident, O&M or contamination record within 1.5 km of another BC dock is from another company;
+  the near ones are all Trans Mountain at Westridge (next to Shellburn). Kinder Morgan, Parkland, FortisBC, Imperial Oil and Chevron
+  rows are at their pipelines elsewhere, not at our docks.
+- **Requests:** 8 (5 CER pages, one of them the 404 index; 2 REGDOCS checks; 1 open.canada.ca catalogue search).
+

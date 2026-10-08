@@ -180,6 +180,87 @@ function NrcedList({ rows }) {
   </>
 }
 
+/** Canada Energy Regulator records (lib/ships/cer.js): orders, inspections and meetings with their findings, incidents,
+ *  contamination, O&M activities and the conditions about the marine terminal. Each row links CER's dataset and the stored record. */
+const lc = (s) => String(s || '').toLowerCase()
+const sentence = (s) => { const t = lc(s); return t ? t[0].toUpperCase() + t.slice(1) : '' }
+const TOOL_PLURAL = { 'Notice of non-compliance': 'notices of non-compliance', 'Information request': 'information requests',
+  'Assurance of voluntary compliance': 'assurances of voluntary compliance', 'Inspection officer order': 'inspection officer orders', 'Audit finding': 'audit findings' }
+const toolsText = (t) => Object.entries(t).map(([k, n]) => `${fmtN(n)} ${n === 1 ? lc(k) : TOOL_PLURAL[k] || lc(k)}`).join(', ')
+function CerSection({ c }) {
+  const ds = (k, label = 'CER open data') => ext(c.datasets[k].url, label, `${c.datasets[k].title}, on open.canada.ca (Open Government Licence – Canada)`)
+  const stored = (id, what) => ext(rec(id), 'stored', `${what} as EarthAtlas read it`)
+  const findingsN = c.inspections.reduce((s, x) => s + x.findings.length, 0)
+  return <>
+    <div className={styles.sectionHead}>Canada Energy Regulator</div>
+    {c.orders.map((o) => (
+      <div key={o.id} className={styles.incident}>
+        <div className={styles.incidentHead}>
+          <span className={styles.incidentTitle}>Inspection officer order {o.id}</span>
+          <span className={styles.period}>{day(o.date)}</span>
+        </div>
+        <div className={styles.incidentMeta}>{o.about}{o.cva ? ` · from inspection ${o.cva}` : ''}</div>
+        <div className={styles.legendNoteText}>“{o.says}” {ext(o.url, 'order', 'The order on the Canada Energy Regulator’s site')}{' '}
+          {o.related.map((x) => <span key={x.url}>{ext(x.url, lc(x.title.split(' (')[0]).replace(/^notice: /, ''), x.title)}{' '}</span>)}
+          {stored(o.record_id, 'The order page')}</div>
+      </div>
+    ))}
+    <Fold title={`Inspections and meetings (${fmtN(c.inspections.length)}; ${fmtN(findingsN)} findings)`}>
+      {c.inspections.map((x) => {
+        const head = <>
+          <strong>{day(x.start)}</strong> · {sentence(x.type)}{x.disciplines ? ` (${lc(x.disciplines).trim()})` : ''} · {x.findings.length ? toolsText(x.tools) : 'no findings recorded for Westridge'}
+          <span className={styles.pcMuted}> · {x.id} · {x.status}</span>{' '}
+          {ds('cva')}{' '}{stored(x.record_id, `Compliance activity ${x.id} with its findings`)}
+          {x.instruments.filter((i) => i.url).map((i) => <span key={i.number}>{' '}{ext(i.url, i.number, `Regulatory instrument ${i.number} in the CER’s REGDOCS`)}</span>)}
+        </>
+        return x.findings.length
+          ? <div key={x.id} className={styles.legendNoteText}>{head}
+            <Fold title={`The ${fmtN(x.findings.length)} finding${x.findings.length === 1 ? '' : 's'}`}>
+            {x.findings.map((g, i) => (
+              <div key={i} className={styles.pcMuted}>· {day(g.date)} · {g.tool}: {[g.category, g.sub].filter(Boolean).join(' – ')}
+                {g.repeated ? ' · repeated' : ''}{g.closed ? ` · closed ${day(g.closed)}` : g.due ? ` · due ${day(g.due)}` : ''}{g.source ? ` · ${g.source}` : ''}
+                {' '}{ds('nc', 'CER non-compliances')}</div>
+            ))}
+            </Fold></div>
+          : <div key={x.id} className={styles.legendNoteText}>{head}</div>
+      })}
+    </Fold>
+    <Fold title={`Incidents (${fmtN(c.incidents.length)})`}>
+      {c.incidents.map((x) => (
+        <div key={x.id} className={styles.legendNoteText}>
+          <strong>{day(x.date)}</strong> · {x.type}{x.what ? ` · what happened: ${lc(x.what)}` : ''}{x.why ? ` · why: ${lc(x.why)}` : ''}
+          <span className={styles.pcMuted}> · {x.id}{x.status ? ` · ${lc(x.status)}${x.closed ? ` ${day(x.closed)}` : ''}` : ''}</span>{' '}
+          {ds('incident')}{' '}{stored(x.record_id, `Incident ${x.id}`)}
+        </div>
+      ))}
+    </Fold>
+    {c.contamination.map((x) => (
+      <div key={x.id} className={styles.legendNoteText}>
+        <strong>Contamination notice {x.id}</strong>{x.submitted ? ` (${day(x.submitted)})` : ''}: {x.description}{x.contaminants ? ` · ${x.contaminants}` : ''}
+        {x.status ? <span className={styles.pcMuted}> · site status: {lc(x.status)}</span> : ''}{' '}{ds('contamination')}{' '}{stored(x.record_id, `Notice ${x.id}`)}
+      </div>
+    ))}
+    {c.om.length > 0 && <Fold title={`Operations and maintenance notices (${fmtN(c.om.length)})`}>
+      {c.om.map((x) => (
+        <div key={x.id} className={styles.legendNoteText}>
+          <strong>{day(x.start)}</strong>{x.end ? ` – ${day(x.end)}` : ''} · {x.circumstances.join('; ')}
+          <span className={styles.pcMuted}> · {x.id}</span>{' '}{ds('om')}{' '}{stored(x.record_id, `Activity ${x.id}`)}
+        </div>
+      ))}
+    </Fold>}
+    {c.conditions.length > 0 && <Fold title={`Conditions about the marine terminal (${fmtN(c.conditions.length)})`}>
+      {c.conditions.map((x) => (
+        <div key={x.id} className={styles.legendNoteText}>
+          <strong>{x.title || `Condition ${x.number}`}</strong>
+          <span className={styles.pcMuted}> · {x.instrument} condition {x.number} · {lc(x.status)}{x.phase ? ` · ${lc(x.phase)}` : ''}</span>
+          {x.quote && <div className={styles.pcMuted}>“{x.quote}”</div>}
+          {ds('condition')}{' '}{x.regdocs && <>{ext(x.regdocs, x.instrument, `Instrument ${x.instrument} in the CER’s REGDOCS`)}{' '}</>}{stored(x.record_id, `Condition ${x.id}`)}
+        </div>
+      ))}
+    </Fold>}
+  </>
+}
+
 /** BC: Environmental Assessment Office projects that name this facility. */
 function EaoList({ rows, none, searches }) {
   return <>
@@ -283,6 +364,7 @@ function Facility({ f, onLocate, airSearches = [] }) {
       {other.length > 0 && <Fold title={`Other (${fmtN(other.length)})`}>{other.map((p) => <Permit key={`${p.epa_system}:${p.permit_key}`} p={p} frsUrl={prim?.url} />)}</Fold>}
 
       {isBc ? <NrcedList rows={f.bc?.nrced || []} /> : <Enforcement frs={f.frs} />}
+      {isBc && f.cer && <CerSection c={f.cer} />}
 
       {f.documents?.length > 0 && <>
         <div className={styles.sectionHead}>Other documents and pages about this facility</div>

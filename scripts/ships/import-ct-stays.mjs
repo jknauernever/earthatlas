@@ -7,7 +7,8 @@
  *
  * Reads every active berth of every listed terminal from the database it writes to, matches every stay (ctStays.js rule),
  * prints the counts per terminal and the ambiguous positions, then stores the bake record and this version's rows in one
- * transaction (DEV DB unless Josh says otherwise). --terminals writes only those terminals' rows (a small proving import);
+ * transaction (DEV DB unless Josh says otherwise). --terminals writes only those terminals' rows (a small proving import; the site shows a
+ * partial bake only where no complete one exists, ctStays.js currentCtStaysBake);
  * the bake record still carries the full summary. Idempotent per CT_STAYS_VERSION.
  */
 import { readFile } from 'node:fs/promises'

@@ -1,0 +1,78 @@
+# Keeps /ships' Climate TRACE voyages current (Josh 2026-10-08): the ship cards' Emissions tab (per-ship trips and port
+# stays) and the terminal cards' port-stay emissions. No localhost, no deploy.
+#
+# Daily, a free metadata read of Climate TRACE's BigQuery table (release label + last-modified) is compared with the live
+# bake (ships/ct-voyages/latest.json). Nothing new → done. New (Climate TRACE releases about monthly, ~2 months behind
+# real time) → re-pull the Salish Sea from Jan 2024 on (scripts/ships/bake-ct-voyages/pull.sql; whole pulls, because each
+# release can revise past months), bake, then publish.mjs: gates against the live bake → stays matched to production's
+# berths → upload → stays stored (api/ships op=importCtStays) → pointer flipped. A failed or refused run leaves the
+# previous bake serving.
+#
+# Cost: each pull scans every year partition since 2024 (~35 GB in Oct 2026), capped below; BigQuery's free tier is
+# 1 TiB/month, billed to the earthatlas Google Cloud project.
+# Secrets: GCP_SA_KEY (service account ct-voyages-bake@earthatlas, BigQuery Job User only; created 2026-10-08), CRON_SECRET.
+# Run by hand: Actions → ct-voyages-bake → Run workflow (tick "force" to rebake even when nothing changed upstream).
+name: ct-voyages-bake
+on:
+  schedule:
+    - cron: '43 10 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebake and publish even if Climate TRACE has not changed'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ct-voyages-bake
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      FORCE: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
+      # 100 GB hard cap per pull (expected ~35 GB; grows ~13 GB a year).
+      MAX_BYTES: '100000000000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Anything new from Climate TRACE?
+        id: check
+        run: |
+          bq --project_id=earthatlas show --format=json trace-data-383422:climate_trace.shipping_voyages > /tmp/table.json
+          node scripts/ships/bake-ct-voyages/publish.mjs check /tmp/table.json
+
+      - name: Pull the Salish Sea from Jan 2024 on
+        if: steps.check.outputs.new == 'true'
+        run: |
+          mkdir -p /tmp/ct
+          bq --quiet --project_id=earthatlas query --use_legacy_sql=false --maximum_bytes_billed="$MAX_BYTES" --format=csv --max_rows=10000000 \
+            "$(grep -v '^--' scripts/ships/bake-ct-voyages/pull.sql)" > /tmp/ct/voyages.csv
+          echo "$(($(wc -l < /tmp/ct/voyages.csv) - 1)) rows, $(du -h /tmp/ct/voyages.csv | cut -f1)"
+
+      - name: Bake
+        if: steps.check.outputs.new == 'true'
+        run: |
+          release=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/table.json','utf8')).labels.release)")
+          node --max-old-space-size=6000 scripts/ships/bake-ct-voyages/bake.mjs --in /tmp/ct/voyages.csv --out /tmp/ct/build \
+            --version "v3-$(date -u +%Y%m%d%H%M)" --release "$release" --pulled "$(date -u +%F)"
+
+      - name: Publish (gates, upload, stays import, pointer)
+        if: steps.check.outputs.new == 'true'
+        run: node --max-old-space-size=6000 scripts/ships/bake-ct-voyages/publish.mjs publish /tmp/ct/build /tmp/table.json

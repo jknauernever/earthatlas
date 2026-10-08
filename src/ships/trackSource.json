@@ -77,6 +77,8 @@
     "mmsi": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/ct-voyages/ct-voyages-mmsi-v3.pack",
     "imo": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/ct-voyages/ct-voyages-imo-v3.pack",
     "release": "v5_11_0",
-    "note": "Climate TRACE voyages (Salish Sea, start dates 2024-2025, release v5_11_0 pulled 2026-09-29, polygon to 49.75 N; v3 adds deadweight / CO2-per-NM, stay positions and the northern Salish Sea), baked by scripts/ships/bake-ct-voyages; uploaded by prod.sh upload-ct-voyages"
+    "startDates": { "from": "2024-01-01", "to": "2025-12-31" },
+    "pointer": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/ct-voyages/latest.json",
+    "note": "The live bake is whatever pointer names (written by .github/workflows/ct-voyages-bake.yml, monthly with Climate TRACE's releases); the fields above are the hand-uploaded fallback. Climate TRACE voyages (Salish Sea, start dates 2024-2025, release v5_11_0 pulled 2026-09-29, polygon to 49.75 N; v3 adds deadweight / CO2-per-NM, stay positions and the northern Salish Sea), baked by scripts/ships/bake-ct-voyages; uploaded by prod.sh upload-ct-voyages"
   }
 }

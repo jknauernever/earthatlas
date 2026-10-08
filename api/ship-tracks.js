@@ -145,13 +145,33 @@ const isTileset = (t) => /^\d{4}-\d{2}$/.test(t)
 
 // ─── Climate TRACE voyages: one ship's trips and port stays (scripts/ships/bake-ct-voyages) ───
 // Same pack layout as the track packs; one NDJSON line per ship starting {"key":<mmsi|imo>,.
+// Which bake is live: ships/ct-voyages/latest.json on Blob (written by .github/workflows/ct-voyages-bake.yml, re-read every
+// 5 min), else the hand-uploaded bake trackSource.json names. A new bake goes live with no deploy.
+let ctPointer = null, ctPointerAt = 0
+export async function ctVoyagesNow() {
+  const fallback = { version: manifest.ctVoyages?.version || 'v1', mmsi: manifest.ctVoyages?.mmsi, imo: manifest.ctVoyages?.imo,
+    release: manifest.ctVoyages?.release || 'v5.10.0', startDates: manifest.ctVoyages?.startDates || null }
+  if (!manifest.ctVoyages?.pointer) return fallback
+  if (!ctPointer || Date.now() - ctPointerAt > 5 * 60 * 1000) {
+    ctPointerAt = Date.now()
+    try {
+      const r = await fetch(`${manifest.ctVoyages.pointer}?t=${Math.floor(Date.now() / 300000)}`)
+      const j = r.ok ? await r.json() : null
+      ctPointer = j?.version && j.mmsi && j.imo ? j : null // no pointer yet (404) = the trackSource.json bake
+    } catch (e) { console.error('[ship-tracks] ct pointer', e?.message) }
+  }
+  return ctPointer || fallback
+}
 const voyagePacks = new Map()
 async function voyagePack(kind) {
-  let p = voyagePacks.get(kind)
-  if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); voyagePacks.delete(kind); p = null }
+  const cur = await ctVoyagesNow()
+  const id = `${kind}:${cur.version}`
+  let p = voyagePacks.get(id)
+  if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); voyagePacks.delete(id); p = null }
   if (p) return p
-  const local = resolve(process.cwd(), `scripts/ships/bake-ct-voyages/build/ct-voyages-${kind}-${manifest.ctVoyages?.version || 'v1'}.pack`)
-  const src = existsSync(local) ? new LocalFileSource(local) : manifest.ctVoyages?.[kind] ? new BlobRange(manifest.ctVoyages[kind]) : null
+  for (const [k, old] of voyagePacks) if (k.startsWith(`${kind}:`)) { old.src.close?.(); voyagePacks.delete(k) } // an older bake
+  const local = resolve(process.cwd(), `scripts/ships/bake-ct-voyages/build/ct-voyages-${kind}-${cur.version}.pack`)
+  const src = existsSync(local) ? new LocalFileSource(local) : cur[kind] ? new BlobRange(cur[kind]) : null
   if (!src) return null
   const head = Buffer.from((await src.getBytes(0, 8)).data)
   if (head.toString('ascii', 0, 4) !== 'SHTP') throw new Error('not a voyage pack')
@@ -159,18 +179,19 @@ async function voyagePack(kind) {
   const off = Buffer.from((await src.getBytes(8, (n + 1) * 4)).data)
   const offsets = new Uint32Array(n + 1)
   for (let i = 0; i <= n; i++) offsets[i] = off.readUInt32LE(i * 4)
-  p = { src, n, dataStart: 8 + (n + 1) * 4, offsets, local: existsSync(local) }
-  voyagePacks.set(kind, p)
+  p = { src, n, dataStart: 8 + (n + 1) * 4, offsets, local: existsSync(local), version: cur.version, release: cur.release, window: cur.startDates }
+  voyagePacks.set(id, p)
   return p
 }
 export async function voyagesFor(kind, key) {
   const p = await voyagePack(kind)
   if (!p) return null
   const s = key % p.n, a = p.offsets[s], b = p.offsets[s + 1]
-  if (b <= a) return { found: false }
+  const meta = { local: p.local, dataset: p.version, release: p.release, window: p.window }
+  if (b <= a) return { found: false, ...meta }
   const raw = zlib.gunzipSync(Buffer.from((await p.src.getBytes(p.dataStart + a, b - a)).data)).toString('utf8')
   const line = raw.split('\n').find((l) => l.startsWith(`{"key":${key},`))
-  return line ? { found: true, local: p.local, ...JSON.parse(line) } : { found: false, local: p.local }
+  return line ? { found: true, ...meta, ...JSON.parse(line) } : { found: false, ...meta }
 }
 
 // ─── One ship, every month (Josh 2026-09-27: a picked ship shows all its years) ───
@@ -416,13 +437,14 @@ export default async function handler(req, res) {
     const kind = mmsi ? 'mmsi' : 'imo', key = mmsi || imo
     if (!(mmsi ? /^\d{9}$/.test(mmsi) : /^\d{7}$/.test(imo || ''))) { res.statusCode = 400; return res.end('mmsi (9 digits) or imo (7 digits)') }
     let r
-    try { r = await voyagesFor(kind, Number(key)) } catch (e) { console.error('[ship-tracks] voyages', e?.message); voyagePacks.delete(kind); res.statusCode = 502; return res.end('voyages read failed') }
+    try { r = await voyagesFor(kind, Number(key)) } catch (e) { console.error('[ship-tracks] voyages', e?.message); voyagePacks.clear(); res.statusCode = 502; return res.end('voyages read failed') }
     if (!r) { res.statusCode = 404; return res.end('voyages not built') }
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/json')
-    res.setHeader('Cache-Control', r.local ? LOCAL_CACHE : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
+    // One day at the edge (was 30): the automated bake replaces the data monthly under the same URL.
+    res.setHeader('Cache-Control', r.local ? LOCAL_CACHE : 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400')
     const { local, ...body } = r
-    return res.end(JSON.stringify({ kind, ...body, dataset: manifest.ctVoyages?.version || 'ct-voyages-v1', release: manifest.ctVoyages?.release || 'v5.10.0' }))
+    return res.end(JSON.stringify({ kind, ...body }))
   }
   if (searchParams.get('op') === 'all') {
     const m = searchParams.get('mmsi') || ''

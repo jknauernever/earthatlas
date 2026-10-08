@@ -1,6 +1,6 @@
 /**
  * Ship card → "Emissions" tab (Josh, 2026-09-27). Climate TRACE's modelled emissions for this ship's voyages and
- * port stays, from our Salish Sea pull of its `shipping_voyages` table (2024–2025 start dates; baked by
+ * port stays, from our Salish Sea pull of its `shipping_voyages` table (start dates from Jan 2024 on, refreshed monthly; baked by
  * scripts/ships/bake-ct-voyages, served by api/ship-tracks op=voyages). Climate TRACE files a ship under an MMSI
  * or an IMO; we ask for each identifier the ship has. MMSIs get reused, so an MMSI's voyages count only inside
  * the window this ship held it (as the ship's own tracks do). Every number is Climate TRACE's own.
@@ -13,7 +13,6 @@ import { MonthBars } from './PortCard.jsx'
 import { MEASURE_INFO, tonnesWord, TRACE_URL } from '../systems/traceData.js'
 import { Loading } from '../components/panel'
 import { trackerOf, shipFacts } from '../../lib/ships/ctVoyages.js'
-import trackSource from './trackSource.json'
 import ShipMrv, { mrvReports } from './ShipMrv.jsx'
 import styles from './ShipsApp.module.css'
 
@@ -26,6 +25,8 @@ const monthName = (ym) => new Date(`${ym}-01T00:00:00Z`).toLocaleString('en-US',
 const secs = (s) => Date.parse(`${String(s).replace(' ', 'T')}Z`) / 1000
 const SLACK = 31 * 86400 // an MMSI window is when we SAW it; allow a month either side
 const releaseWords = (r) => String(r || 'v5.10.0').replaceAll('_', '.')
+// The live bake's start dates (api/ship-tracks.js op=voyages `window`), e.g. "Jan 2024 – Jul 2026".
+const windowWords = (w) => (w?.from && w?.to ? `${monthName(w.from.slice(0, 7))} – ${monthName(w.to.slice(0, 7))}` : '2024–2025')
 const TRACKED_TITLE = {
   oceanmind: 'OceanMind is Climate TRACE’s shipping sector lead; it tracks the large ships that carry full identity information',
   gfw: 'Global Fishing Watch tracks the smaller ships for Climate TRACE, and those with little identity information or that don’t broadcast',
@@ -47,10 +48,10 @@ export default function ShipEmissions({ vessel }) {
   useEffect(() => {
     let dead = false
     setSt({ state: 'loading' })
-    // &v=: a new pack version is a new URL, so the edge cache never serves an older pack's answer.
-    const get = (q) => fetch(`/api/ship-tracks?op=voyages&${q}&v=${trackSource.ctVoyages?.version || 'v1'}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    // The live bake changes monthly behind the same URL (ct-voyages-bake.yml); the edge keeps an answer for a day.
+    const get = (q) => fetch(`/api/ship-tracks?op=voyages&${q}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
     Promise.all([...ids.imos.map((i) => get(`imo=${i}`)), ...[...ids.mmsis.keys()].map((m) => get(`mmsi=${m}`))])
-      .then((rs) => { if (!dead) setSt({ state: 'ok', assets: rs.filter((r) => r?.found) }) })
+      .then((rs) => { if (!dead) setSt({ state: 'ok', assets: rs.filter((r) => r?.found), window: windowWords(rs.find((r) => r?.window)?.window) }) })
     return () => { dead = true }
   }, [ids])
 
@@ -90,14 +91,14 @@ export default function ShipEmissions({ vessel }) {
           <div className={styles.typeHead}>No emissions data for this ship yet</div>
           <div className={styles.typeNote}>
             Neither source we use has figures for it: the EU’s verified emissions reports (EU MRV: large ships calling at EU/EEA
-            ports) and Climate TRACE’s modelled estimates (voyages to or from Salish Sea ports, 2024–2025).
+            ports) and Climate TRACE’s modelled estimates (voyages to or from Salish Sea ports, {st.window}).
             {!ids.imos.length && !ids.mmsis.size && ' It also has no IMO or MMSI to look up.'}
           </div>
         </div>
       )
     }
     return (<>{mrv()}
-      <div className={styles.legendNoteText} style={{ marginTop: 12 }}>No Climate TRACE estimate for this ship’s Salish Sea voyages (2024–2025).</div>
+      <div className={styles.legendNoteText} style={{ marginTop: 12 }}>No Climate TRACE estimate for this ship’s Salish Sea voyages ({st.window}).</div>
     </>)
   }
 
@@ -200,7 +201,7 @@ export default function ShipEmissions({ vessel }) {
 
       <div className={styles.legendNoteText} style={{ marginTop: 10 }}>
         Climate TRACE models each trip and port stay from the ship’s AIS track and its characteristics: estimates, not measurements.
-        Port stays count fuel burned while at a port (engines and boilers). Our copy covers trips and stays that began in 2024–2025 and
+        Port stays count fuel burned while at a port (engines and boilers). Our copy covers trips and stays that began {st.window} and
         touched the Salish Sea; the whole trip counts, even when it started far away. Filed by Climate TRACE as {names.join('; ')}.
         {' '}Climate TRACE’s ships are tracked by two partners: <a className={styles.sourceLink} href="https://www.oceanmind.global" target="_blank" rel="noopener noreferrer">OceanMind</a>,
         its shipping lead, for large ships with full identity information, and Global Fishing Watch for smaller ships, ships with little identity

@@ -34,7 +34,9 @@
  *   (ctVoyages.js trackerOf: om- = OceanMind, gfw- = Global Fishing Watch).
  *   Every value is Climate TRACE's own, rounded to 6 significant figures; nothing is recomputed.
  *
- *   node scripts/ships/bake-ct-voyages/bake.mjs [--limit N] [--in <csv>] [--out <dir>]   (N = rows, for a quick test)
+ *   node scripts/ships/bake-ct-voyages/bake.mjs [--limit N] [--in <csv>] [--out <dir>] [--version V --release R --pulled YYYY-MM-DD]
+ *   (N = rows, for a quick test). Since 2026-10-08 production bakes run monthly in GitHub Actions
+ *   (.github/workflows/ct-voyages-bake.yml: pull.sql from Jan 2024 on → this bake → publish.mjs); the hand-run steps above are history.
  */
 import { createReadStream, mkdirSync, writeFileSync, createWriteStream } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -43,9 +45,10 @@ import { once } from 'node:events'
 import { oneValuePerShip } from '../../../lib/ships/ctVoyages.js'
 
 const arg = (k) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : null)
-const VERSION = 'v3'
-const RELEASE = 'v5_11_0'
-const PULLED = '2026-09-29'
+// Defaults = the hand-run v3 bake; the automated bake (ct-voyages-bake.yml, publish.mjs) passes its own.
+const VERSION = arg('--version') || 'v3'
+const RELEASE = arg('--release') || 'v5_11_0'
+const PULLED = arg('--pulled') || '2026-09-29'
 const IN = arg('--in') || 'scripts/bake-shiptraffic/cache/climatetrace/voyages-2024-2025-v5_11_0-n4975.csv'
 const OUT = arg('--out') || 'scripts/ships/bake-ct-voyages/build'
 const SHARDS = 1024

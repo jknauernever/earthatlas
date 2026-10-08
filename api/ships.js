@@ -60,7 +60,8 @@ import { commonsPlan, fetchImo, ingestImo, vesselImages } from '../lib/ships/ing
 import { commonsClient } from '../scripts/ships/commonsClient.js'
 import { parseCardWindow, ensurePortCard, readPortCard, portsLayer, savePortShip, PORT_CARD_SOURCE_IDS } from '../lib/ships/portCard.js'
 import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js'
-import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays } from '../lib/ships/terminalCard.js'
+import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays, allBerths } from '../lib/ships/terminalCard.js'
+import { storeCtStays, pruneCtStays, CT_VOYAGES_SOURCE } from '../lib/ships/ctStays.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
 import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
@@ -72,7 +73,7 @@ import { startRun, finishRun } from '../lib/ships/store.js'
 import { importMcBatch } from '../lib/ships/mcMonths.js'
 import { searchPlaces } from '../lib/ships/placeSearch.js'
 import { timingSafeEqual } from 'node:crypto'
-import { gzipSync } from 'node:zlib'
+import { gzipSync, gunzipSync } from 'node:zlib'
 
 const S = DEFAULT_SCHEMA
 
@@ -99,7 +100,7 @@ const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_
 
 // Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
 // only with the CRON_SECRET bearer the GitHub bakes hold; browsers and everyone else get 401 and never reach the DB.
-const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels', 'importActivity', 'importAisMonth', 'importMcIdentity', 'scrubberPortVisits'])
+const BAKE_OPS = new Set(['typeLookup', 'importGfwVessels', 'importActivity', 'importAisMonth', 'importMcIdentity', 'scrubberPortVisits', 'ctStayBerths', 'importCtStays'])
 function bakeAuthorized(req) {
   const secret = process.env.CRON_SECRET
   const auth = String(req.headers['authorization'] || '')
@@ -178,6 +179,42 @@ export default async function handler(req, res) {
       }
       const pool = shipsPool()
       try { return send(res, 200, await importMcBatch(pool, S, { offset: body.offset }), 'no-store') } finally { await pool.end() }
+    }
+    //   /api/ships?op=ctStayBerths  (CRON_SECRET bearer only) → { berths } every active berth of every listed terminal, for the
+    //        Climate TRACE stays matcher the ct-voyages-bake workflow runs (lib/ships/ctStays.js planCtStays)
+    if (op === 'ctStayBerths') return send(res, 200, { berths: await allBerths(q, S) }, 'no-store')
+    //   POST /api/ships?op=importCtStays { version, url, bake, summary }  (CRON_SECRET bearer only) → stores one Climate TRACE stays
+    //        version: url = the workflow's matched stays (gzipped NDJSON on our Blob store); the bake record and rows commit together,
+    //        so the terminal cards switch to it at once (currentCtStaysBake); then rows of all but the newest two versions are deleted
+    if (op === 'importCtStays') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { return send(res, 400, { error: 'bad JSON' }) }
+      }
+      const { version, url, bake, summary } = body
+      if (!/^ct-stays-[a-z0-9-]{1,40}$/.test(version || '')) return send(res, 400, { error: 'bad version' })
+      const ours = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/ships\/ct-voyages\//.test(url || '')
+      const devFile = process.env.VERCEL_ENV !== 'production' && /^http:\/\/localhost:\d+\//.test(url || '') // localhost proving runs only
+      if (!ours && !devFile) return send(res, 400, { error: 'url must be our ct-voyages Blob folder' })
+      if (!bake || !summary) return send(res, 400, { error: 'bake and summary required' })
+      const r = await fetch(url, { cache: 'no-store' })
+      if (!r.ok) return send(res, 400, { error: `matched stays: HTTP ${r.status}` })
+      const matched = gunzipSync(Buffer.from(await r.arrayBuffer())).toString('utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
+      if (matched.length !== summary.matched) return send(res, 400, { error: `file has ${matched.length} stays, summary says ${summary.matched}` })
+      const pool = shipsPool()
+      try {
+        const out = await withTx(pool, async (c) => {
+          const runId = await startRun(c, S, CT_VOYAGES_SOURCE.id, { bake_version: version, via: 'ct-voyages-bake' })
+          const w = await storeCtStays(c, S, { matched, summary, bake, runId, version })
+          await finishRun(c, S, runId, { status: 'succeeded', stats: { stays: summary.stays, matched: summary.matched, written: w.rows }, datasetVersion: version })
+          return w
+        })
+        const pruned = await withTx(pool, (c) => pruneCtStays(c, S, 2))
+        return send(res, 200, { ...out, pruned }, 'no-store')
+      } catch (e) { return send(res, 400, { error: String(e.message).slice(0, 300) }) } finally { await pool.end() }
     }
     if (op === 'importAisMonth') {
       if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })

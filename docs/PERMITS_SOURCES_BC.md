@@ -151,6 +151,29 @@ Code `lib/ships/metroVancouver.js`, fetcher `scripts/ships/mv-fetch.mjs`, import
   Texada, Harmac, Duke Point, Crofton, Bare Point.
 
 
+### Revised 2026-10-08: Metro Vancouver's public list and site search
+
+- **Public index (missed in the first pass).** "Current Permits and Approvals"
+  (`…/air-quality-regulatory-program/current-permits-and-approvals`, linked from "Apply for a Permit") is a plain HTML table of
+  current permit PDFs: title, issue date, holder. It shows 50 rows (0003 … 0346) and has no pager. `scripts/ships/mv-index.mjs index`
+  reads it (cached, 0 requests on a re-run).
+- **Public site search.** The page's search box runs Metro Vancouver's site search, `https://metrovancouver.org/Search/Pages/results.aspx?k=<term>`;
+  results render by script, so `mv-index.mjs search <terms>` opens them in headless Chrome (puppeteer-core via PUPPETEER_DIR), ≥ 2 s apart,
+  caching each result list in `cache/mv-search/`. **The search is incomplete**: "Neptune" and "Neptune Bulk" find nothing although 0081
+  Neptune Bulk Terminals is on the index. A "none found" note therefore says "not found in Metro Vancouver's list of current permits or
+  its site search (searched …, date)", never that a terminal has no permit.
+- **Files are replaced in place.** The 0086 file is now the 2026 authorization letters (the 2020 permit is gone); 0010 (Chemtrade) is gone
+  and 1281 is its plant's permit; 0154's 2019 file is gone and a 2025 amendment is current. `import-bc-permits --refresh-mv` re-reads only
+  the Metro Vancouver documents the entries name (~30 requests): a changed file becomes a new evidence version, a document the entry no
+  longer names is marked unlisted (kept, not shown). Approvals are numbered GVU (e.g. GVU1296), permits GVA.
+- **Scans.** Several current permits are image-only; `scripts/ships/ocr-pdf.swift` (macOS Vision) reads them when pdftotext finds no text.
+- **Result 2026-10-08:** 20 permits on 21 terminals' facilities (see the facility entries' bc.mv): new for Westshore (GVA0153), G3 (GVA1080),
+  Cargill (GVA0618), Alliance Grain (GVA0619), Cascadia (GVA1216), Pacific Terminal (Bunge, GVA0616), Fibreco (GVA0248), Lantic (GVA0571),
+  Lehigh Delta (GVA0175), Chemtrade (GVA1281), Vancouver Wharves (GVA0086); updated Suncor (GVA0200, amended 2026-03-27; amendment
+  application still under review), Richardson (GVA0617 expired 2025-11-30; approval GVU1296 from 2025-12-01; application GVA1284 under
+  review), Lafarge Richmond (GVA0154, 2025 amendment). Still not found: Westridge, Parkland, FortisBC Tilbury, VAFFC, Univar.
+  Same-company permits at other sites are recorded as left out (0113, 0097, 0058, 0167, 0451, 0262, 0379).
+
 ## Canada Energy Regulator (CER): Westridge Marine Terminal — study 2026-10-07
 
 Facts only, from CER open data on open.canada.ca (organization cer-rec, 85 datasets, all **Open Government Licence – Canada**).

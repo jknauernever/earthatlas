@@ -3,7 +3,7 @@
  * BC permits pilot (lib/ships/bcPermits.js; data: the 'bc-…' entries of lib/ships/data/salish-facilities.json) → ships evidence
  * + claims. SHIPS_DATABASE_URL from .env.local (dev); production via `zsh scripts/ships/prod.sh import-bc-permits`. The terminals must exist (ships:import-terminals). Idempotent.
  *
- *   npm run ships:import-bc-permits -- [--schema <name>] [--only <facility id>] [--dry-run] [--refresh]
+ *   npm run ships:import-bc-permits -- [--schema <name>] [--only <facility id>] [--dry-run] [--refresh] [--refresh-mv]
  *
  * Requests (one at a time, 1.5 s apart, retried 4 times; every response cached in scripts/ships/facilities/cache/, gitignored,
  * and reused, so a re-run makes none; --refresh re-fetches):
@@ -35,6 +35,9 @@ const args = process.argv.slice(2)
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA
 const only = opt('only'), dry = args.includes('--dry-run'), refresh = args.includes('--refresh')
+// Metro Vancouver replaces permit files in place (same URL, new content): --refresh-mv re-reads only the Metro Vancouver documents the
+// entries name (about 30 requests); a changed file becomes a new evidence version, an unchanged one creates nothing.
+const refreshMv = args.includes('--refresh-mv')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let requests = 0
 
@@ -156,8 +159,8 @@ for (const f of bcData.facilities) {
   const mv = f.bc.mv
   if (mv?.jurisdiction !== 'in') { console.log(`  ${f.id} Metro Vancouver: ${mv?.jurisdiction === 'outside' ? 'outside its region' : 'no bc.mv block'}`); continue }
   for (const p of mv.permits || []) {
-    for (const u of [p.doc_url, p.application_url, p.notice_url].filter(Boolean)) {
-      try { mvDocs.set(u, await mvDoc(u, { refresh })) } catch (e) { console.log(`  ! ${f.id} ${p.gva}: ${e.message}`) }
+    for (const u of [p.doc_url, p.application_url, p.notice_url, ...(p.extra_docs || []).map((x) => x.url)].filter(Boolean)) {
+      try { mvDocs.set(u, await mvDoc(u, { refresh: refresh || refreshMv })) } catch (e) { console.log(`  ! ${f.id} ${p.gva}: ${e.message}`) }
     }
   }
   console.log(`  ${f.id} Metro Vancouver: ${(mv.permits || []).map((p) => `${p.gva} (${p.status})`).join(', ') || 'none found'}`)

@@ -102,6 +102,7 @@ function Permit({ p, frsUrl }) {
           {' '}{ext(rec(p.source_record_id), 'stored', 'The agency’s document as EarthAtlas read it (text and file hash)')}</> : <>
         {[p.name, p.mv ? p.mv.authorizes : p.universe, p.bcEma ? p.areas && `waste type: ${p.areas.toLowerCase()}` : p.areas && areaText(p.areas),
           (p.bcEma?.issued || p.mv?.issued) && `issued ${day(p.bcEma?.issued || p.mv.issued)}`, p.mv?.amended && `amended ${day(p.mv.amended)}`,
+          p.mv?.effective && `in effect from ${day(p.mv.effective)}`,
           p.expires && `expires ${day(p.expires)}`].filter(Boolean).join(' · ')}{' '}
         {p.mv ? <>
           {ext(p.mv.doc_url || p.mv.application_url, 'Metro Vancouver', `${SYSTEM_TITLE['MV-AQ']}. Opens ${p.mv.doc_url ? 'the document' : 'the application page'} at Metro Vancouver`)}
@@ -126,6 +127,7 @@ function Permit({ p, frsUrl }) {
           {p.paris.current.effective ? `, effective ${day(p.paris.current.effective)}` : ''}{p.paris.current.expires ? `, expires ${day(p.paris.current.expires)}` : ''}</div>
       )}
       {p.mv?.address && <div className={styles.incidentMeta}>{p.mv.address}</div>}
+      {p.mv?.note && <div className={styles.incidentMeta}>{p.mv.note}</div>}
       {p.waAir && <div className={styles.incidentMeta}>{[p.waAir.address, p.waAir.what].filter(Boolean).join(' · ')}</div>}
       {p.waAir?.status_note && <div className={styles.incidentMeta}>{p.waAir.status_note}</div>}
       {p.mv?.application && <div className={styles.incidentMeta}>Application {p.mv.application.gva} ({String(p.mv.application.status || '').toLowerCase()}): {p.mv.application.purpose}{' '}
@@ -384,7 +386,7 @@ function Facility({ f, onLocate, airSearches = [] }) {
           Environmental Management Act (permits, approvals and registrations under its regulations). EarthAtlas checked by hand which register
           entries are this site, by their listed location near the dock and the company’s name:
           {f.permits.filter((p) => p.bcEma?.why).map((p) => <div key={p.permit_key} className={styles.pcMuted}>· {p.permit_key}: {p.bcEma.why}</div>)}
-          {f.permits.some((p) => p.mv) && <>Metro Vancouver air quality permits, found through Metro Vancouver’s published permits and permit applications and checked by hand
+          {f.permits.some((p) => p.mv) && <>Metro Vancouver air quality permits, found through Metro Vancouver’s list of current permits, its site search and its permit applications, and checked by hand
             (holder and address):{f.permits.filter((p) => p.mv?.why).map((p) => <div key={p.permit_key} className={styles.pcMuted}>· {p.permit_key}: {p.mv.why}</div>)}</>}
           Work on port land is permitted by the port authority; those permits are not included yet.
         </div>

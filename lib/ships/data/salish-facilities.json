@@ -6,7 +6,7 @@
   "documents": "documents: ecology_page = the facility's WA Ecology Industrial Section page slug; rcra = the RCRAInfo id its hazardous-waste corrective action permit belongs to; nwcaa.location = the facility's row name on NWCAA's Air Operating Permits page, nwcaa.aop = the AOP number in NWCAA's file names, nwcaa.icis_air = EPA's ICIS-Air id for the same air permit (ECHO DFR). Checked 2026-10-06. documents.pscaa: the facility's row on Puget Sound Clean Air Agency's approved Title V list (agency permit number) and EPA's ICIS-Air id for the same permit.",
   "relations": "terminals[]: relation 'serves' = the terminal is that plant's dock; 'owned_by' = a cited source says the facility's company owns/operates the terminal (source_url + says). coverage[]: a permit document states the permit covers the terminal (doc, where, its words; checked by reading the document 2026-10-06). paris_facility_ids: WA Ecology PARIS FacilityId(s), found by PARIS permit lookup of the facility's own permit. permit_holder_names: a permit whose holder name (as ECHO or PARIS lists it) contains one of these words is also this facility's, wherever it is filed.",
   "bc": "BC entries (country CA; DEV pilot 2026-10-07, docs/PERMITS_SOURCES_BC.md, lib/ships/bcPermits.js): point = the facility's point as its main BC EMA authorization lists it (the register gives west longitude without the minus sign). bc.ema.accepted = BC Environmental Management Act authorizations of the site, each hand-checked in the register file all_ams_authorizations.xlsx (downloaded 2026-10-07) against the berth points in bc.ema.berths (BC Ports and Terminals) and the company name, with why; left_out = register rows near the berths or with the company's name that are not this site, with why. bc.nrced = the NRCED searches and the rule (lib/ships/bcPermits.js nrcedMatch): a record is shown when it is issued to the company and names an accepted authorization number or the place. bc.eao = BC Environmental Assessment Office (EPIC) project searches; accepted projects name this site, candidates are kept but not shown.",
-  "bc_mv": "bc.mv (2026-10-07): Metro Vancouver air quality permits. jurisdiction 'in' / 'outside' Metro Vancouver's region. Each permit was found by a public web search (site:metrovancouver.org, company names) or a public permit-application page, then read and checked by hand: holder and address against the terminal; covers = the permit's own words about ship loading, checked against the stored text at import. none = what was searched and found. The permit library listing is access-controlled and was not used.",
+  "bc_mv": "bc.mv (2026-10-07, revised 2026-10-08): Metro Vancouver air quality permits. Found through Metro Vancouver’s public list of current permits (…/current-permits-and-approvals) and its public site search (scripts/ships/mv-index.mjs), then read (OCR for scans) and checked by hand: holder and address against the terminal; covers = the permit's own words about ship loading, checked against the stored text at import. left_out = permits of the same company at other sites. none = not found in the list or the search (the search is incomplete). The permit library listing is access-controlled and is never used.",
   "air_agency": "air_agency (2026-10-07): the Washington air agency whose area the site is in (NWCAA, PSCAA, ORCAA, SWCAA), by county; recorded only, the agency's own permit documents are not read for ORCAA / SWCAA sites yet.",
   "no_facility": "no_facility[] (2026-10-07): terminals checked for permits where no facility was found: what was searched (EPA ECHO within the radius of each berth, ECHO facility-name searches, the SEPA Register), the nearby records left out with why, and the plain-words note shown on the terminal's Permits tab.",
   "port_terminals": "Port-run cargo / passenger terminals (2026-10-07): the facility is the terminal site. Its EPA records are the port's or the terminal operator's own permits at the terminal (same company + the terminal's address or a point at the dock); a neighbour or a record that shares only the company name is left out with the reason."
@@ -3540,7 +3540,7 @@
     "mv": {
      "jurisdiction": "in",
      "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Trans Mountain, Kinder Morgan and Westridge, 2026-10-07)."
+     "none": "Not found in Metro Vancouver’s list of current permits or its site search (searched “Trans Mountain”, “Trans Mountain Pipeline”, “Kinder Morgan”, “Westridge”, 2026-10-08). The site search is incomplete, so this does not show that no permit exists."
     }
    },
    "notes": [
@@ -3622,8 +3622,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Westshore Terminals, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0153",
+       "holder": "Westshore Terminals Limited Partnership",
+       "address": "1 Roberts Bank Road, Delta, BC V4M 4G5",
+       "status": "Issued",
+       "issued": "1992-11-30",
+       "amended": "2025-04-11",
+       "expires": "2041-04-30",
+       "authorizes": "a multi product bulk terminal",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0153%20-%20Westshore%20Terminals%20Limited%20Partnership%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20April%2011,%202025.pdf",
+       "doc_title": "Permit GVA0153, amended April 11, 2025",
+       "why": "Permit GVA0153 to Westshore Terminals Limited Partnership for the multi product bulk terminal at 1 Roberts Bank Road, Delta, with ship loading at Berths 1 and 2",
+       "covers": [
+        {
+         "terminal": "bc-westshore",
+         "where": "emission source 03",
+         "says": "Coal and coke products loading of marine vessels at Berth 1 and Berth 2"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": [
@@ -3731,6 +3751,12 @@
          "says": "Marine vessel loading discharging through a Vent(s)"
         }
        ]
+      }
+     ],
+     "left_out": [
+      {
+       "gva": "GVA0262",
+       "why": "Shell Canada Products Ltd., petroleum tank farm at Forest Grove Drive and Underhill Avenue, Burnaby (1993): another site"
       }
      ]
     }
@@ -3846,7 +3872,7 @@
     "mv": {
      "jurisdiction": "in",
      "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Parkland Refining and Chevron, 2026-10-07)."
+     "none": "Not found in Metro Vancouver’s list of current permits or its site search (searched “Parkland”, “Parkland Refining”, “Chevron”, “Burnaby Refinery”, 2026-10-08). The site search is incomplete, so this does not show that no permit exists."
     }
    },
    "notes": [
@@ -3961,11 +3987,14 @@
      "permits": [
       {
        "gva": "GVA0200",
-       "holder": "Petro-Canada Products (name change to Suncor Energy Inc. applied for)",
+       "holder": "Suncor Energy Products Partnership",
        "address": "1155 Glenayre Drive, Port Moody, BC V3H 1J8",
-       "status": "Amendment applied for",
+       "status": "Issued",
        "issued": "2006-05-12",
+       "amended": "2026-03-27",
        "authorizes": "a refined petroleum products handling facility",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0200%20-%20Suncor%20Energy%20Inc.%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20March%2027,%202026.pdf",
+       "doc_title": "Amendment of permit GVA0200 (temporary flare), March 27, 2026",
        "application_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/permit-applications/permit/GVA0200",
        "notice_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/PermitApplicationDocuments/2025-05-29%20-%20Environmental%20Protection%20Notice%20-%20Suncor%20-%200200.pdf",
        "notice_title": "Environmental Protection Notice, May 29, 2025",
@@ -3974,7 +4003,13 @@
         "status": "Application Under Review",
         "purpose": "amend permit GVA0200: name change from Petro-Canada Products to Suncor Energy Inc., a new permanent flare stack, and limits on VOC emissions from storage tanks and process units"
        },
-       "why": "Metro Vancouver’s application page and notice: an amendment to permit GVA0200 (issued May 12, 2006) for the refined petroleum products handling facility at 1155 Glenayre Drive, Port Moody, the terminal’s address"
+       "why": "Permit GVA0200 for the refined petroleum products handling facility at 1155 Glenayre Drive, Port Moody (Metro Vancouver’s application page); amended March 27, 2026 to keep a temporary flare while the site is cleaned and decommissioned"
+      }
+     ],
+     "left_out": [
+      {
+       "gva": "GVA0379",
+       "why": "Suncor Energy Inc., a petroleum storage and distribution facility: the published amendment letter gives only Suncor’s mailing address (1155 Glenayre Drive), not the facility’s, and the permit itself is not published"
       }
      ]
     }
@@ -4316,8 +4351,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "Metro Vancouver’s permit for this plant (GVA0010) and its renewal application (GVA1281) appear in search results, but their documents are no longer at their published addresses (checked 2026-10-07), so they are not shown."
+     "permits": [
+      {
+       "gva": "GVA1281",
+       "holder": "Chemtrade Electrochem Inc.",
+       "address": "100 Amherst Avenue, North Vancouver, BC",
+       "status": "Issued",
+       "issued": "2026-04-30",
+       "effective": "2026-05-01",
+       "expires": "2036-05-01",
+       "authorizes": "a chlor-alkali manufacturing plant",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/1281%20-%20Chemtrade%20Electrochem%20Inc.%20-%20Air%20Quality%20Permit%20%E2%80%93%20Issued%20April%2030%202026.pdf",
+       "doc_title": "Permit GVA1281, issued April 30, 2026",
+       "note": "Metro Vancouver’s earlier permit for this plant, GVA0010, is no longer published.",
+       "why": "Permit GVA1281 to Chemtrade Electrochem Inc. for the chlor-alkali plant at 100 Amherst Avenue, North Vancouver (the plant’s address in the BC register)"
+      }
+     ],
+     "left_out": [
+      {
+       "gva": "GVA0113",
+       "why": "Chemtrade Chemicals Canada Ltd., aluminum sulphate plant at 8655 Barnet Highway, Burnaby: another site"
+      }
+     ]
     }
    },
    "notes": []
@@ -4503,8 +4558,27 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for G3 Terminal, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA1080",
+       "holder": "G3 Terminal Vancouver Limited Partnership",
+       "address": "95 Brooksbank Street, North Vancouver, BC V7J 2B9",
+       "status": "Issued",
+       "issued": "2019-05-31",
+       "expires": "2036-05-31",
+       "authorizes": "a grain terminal",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/1080%20-%20G3%20Terminal%20Vancouver%20Limited%20Partnership%20-%20Air%20Quality%20Permit%20Issued%20-%202019-05-31.pdf",
+       "doc_title": "Permit GVA1080, issued May 31, 2019",
+       "why": "Permit GVA1080 to G3 Terminal Vancouver Limited Partnership, the terminal’s operator, for its grain terminal in North Vancouver, with ship loading",
+       "covers": [
+        {
+         "terminal": "bc-g3",
+         "where": "emission source 32",
+         "says": "Grain transfer (storage to ship loading) enclosed belt conveyor"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -4578,8 +4652,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Cargill, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0618",
+       "holder": "Cargill Ltd.",
+       "address": "801 Low Level Road, North Vancouver, BC V7L 1A7",
+       "status": "Issued",
+       "issued": "1997-12-19",
+       "amended": "2022-04-20",
+       "expires": "2027-04-30",
+       "authorizes": "a grain elevator",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0618%20Cargill%20Ltd%20Permit%20Amendment%20-%20Issued%20April%2020%202022.pdf",
+       "doc_title": "Permit GVA0618, amended April 20, 2022",
+       "why": "Permit GVA0618 to Cargill Ltd. for the grain elevator at 801 Low Level Road, North Vancouver (the address in Cargill’s BC inspection record for this terminal), with ship loading at Berths 1 and 2",
+       "covers": [
+        {
+         "terminal": "bc-cargill",
+         "where": "emission source 25",
+         "says": "Loading of marine vessels at Berths No. 1 and 2 discharging through a Marine Vessel Hold(s)"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -4650,10 +4744,32 @@
      "jurisdiction": "in",
      "permits": [
       {
+       "gva": "GVU1296",
+       "kind": "Air quality approval",
+       "doc_type": "Air quality approval",
+       "holder": "Richardson International Limited",
+       "address": "375 Low Level Road, North Vancouver, BC V7L 1A7",
+       "status": "Issued",
+       "issued": "2025-11-27",
+       "effective": "2025-12-01",
+       "expires": "2027-03-01",
+       "authorizes": "a grain terminal",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/1296%20-%20Richardson%20International%20Limited%20-%20Air%20Quality%20Approval%20-%20Issued%20November%2027,%202025.pdf",
+       "doc_title": "Approval GVU1296, issued November 27, 2025",
+       "why": "Approval GVU1296 to Richardson International Limited for the grain terminal at 375 Low Level Road, North Vancouver, effective December 1, 2025",
+       "covers": [
+        {
+         "terminal": "bc-richardson",
+         "where": "emission source 21",
+         "says": "Loading of marine vessels at the West shiploader discharging through a Marine Vessel Hold(s)"
+        }
+       ]
+      },
+      {
        "gva": "GVA0617",
        "holder": "Richardson International Limited",
        "address": "375 Low Level Road, North Vancouver, BC V7L 1A7",
-       "status": "Renewal applied for",
+       "status": "Expired",
        "expires": "2025-11-30",
        "authorizes": "a grain terminal",
        "application_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/permit-applications/permit/GVA1284",
@@ -4664,7 +4780,8 @@
         "status": "Application Under Review",
         "purpose": "a new permit to continue operating the grain terminal, with a term to November 30, 2035 and less coarse particulate matter"
        },
-       "why": "Metro Vancouver’s application page GVA1284 and its notice: Richardson International’s grain terminal at 375 Low Level Road, North Vancouver operates under permit GVA0617, which expires November 30, 2025 (the permit document itself is no longer at its published address)"
+       "note": "Expired November 30, 2025; approval GVU1296 took effect December 1, 2025. The permit document is no longer published by Metro Vancouver.",
+       "why": "Metro Vancouver’s application page GVA1284 and its notice: the terminal at 375 Low Level Road operated under permit GVA0617, which expired November 30, 2025"
       }
      ]
     }
@@ -4753,8 +4870,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Viterra, Pacific Elevators, Bunge and the terminal’s address, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0616",
+       "holder": "Bunge Canada Inc.",
+       "address": "1803 Stewart Street, Vancouver, BC V5L 5G1",
+       "status": "Issued",
+       "issued": "1997-12-19",
+       "amended": "2026-02-09",
+       "expires": "2031-03-31",
+       "authorizes": "a grain terminal",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0616%20-%20Bunge%20Canada%20Inc.%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20February%209,%202026.pdf",
+       "doc_title": "Permit GVA0616, amended February 9, 2026",
+       "why": "Permit GVA0616 to Bunge Canada Inc., the terminal’s operator (formerly Viterra), for its grain terminal on Stewart Street, Vancouver, with a ship loader (Cascadia, the other Bunge terminal, holds its own permit at New Brighton Road)",
+       "covers": [
+        {
+         "terminal": "bc-viterra-pacific",
+         "where": "emission source 22",
+         "says": "the Cleveland Cascade Chute Ship Loader"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -4840,8 +4977,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Alliance Grain, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0619",
+       "holder": "Alliance Grain Terminal Ltd.",
+       "address": "1155 Stewart Street, Vancouver, BC V6A 4H4",
+       "status": "Issued",
+       "issued": "1997-12-19",
+       "amended": "2023-07-20",
+       "expires": "2028-07-31",
+       "authorizes": "a grain terminal",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0619%20-%20Alliance%20Grain%20Terminal%20Ltd.%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%202023-07-20.pdf",
+       "doc_title": "Permit GVA0619, amended July 20, 2023",
+       "why": "Permit GVA0619 to Alliance Grain Terminal Ltd., the terminal’s operator, for its grain terminal on Stewart Street, Vancouver, with ship loading",
+       "covers": [
+        {
+         "terminal": "bc-alliance-grain",
+         "where": "emission source 19",
+         "says": "#1 Ship Loading of grain products at the west shiploader discharging through a Marine Vessel Hold(s)"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -4917,8 +5074,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Cascadia and Bunge, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA1216",
+       "holder": "Cascadia Port Management Corporation",
+       "address": "3333 New Brighton Road, Vancouver, BC",
+       "status": "Issued",
+       "issued": "2022-05-13",
+       "effective": "2022-05-14",
+       "expires": "2027-05-14",
+       "authorizes": "a grain elevator",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/1216-Cascadia%20Port%20Management%20Corporation-Permit%20Amendment-Issued-2022-05-13.pdf",
+       "doc_title": "Permit GVA1216, issued May 13, 2022",
+       "why": "Permit GVA1216 to Cascadia Port Management Corporation, the terminal’s operator, for its grain elevator at 3333 New Brighton Road, Vancouver, with a shipping dock",
+       "covers": [
+        {
+         "terminal": "bc-cascadia",
+         "where": "emission source 50",
+         "says": "CFU554 Shipping Dock Shipping Gallery West Aspiration"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -5011,8 +5188,27 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "Metro Vancouver permit GVA0086 (PKM Canada Marine Terminal) appears in search results, but the document is no longer at its published address (checked 2026-10-07), so it is not shown."
+     "permits": [
+      {
+       "gva": "GVA0086",
+       "holder": "PKM Canada Marine Terminal Limited Partnership",
+       "address": "50 Phillip Avenue, North Vancouver, BC V7P 1A8 (the address the letters are sent to)",
+       "status": "Issued",
+       "amended": "2026-10-07",
+       "authorizes": "temporary authorizations under the permit (shipments of gold ore through the terminal)",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0086%20-%20PKM%20Canada%20Marine%20Terminal%20Limited%20Partnership%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20October%207,%202026.pdf",
+       "doc_title": "Authorizations under permit GVA0086 (file dated October 7, 2026)",
+       "note": "The file Metro Vancouver publishes for GVA0086 now holds its 2026 authorization letters; the earlier version of the permit (2020) is no longer published.",
+       "why": "Letters under permit GVA0086 to PKM Canada Marine Terminal Limited Partnership, the company Pembina names for Vancouver Wharves (pembina.com/operations/facilities/vancouver-wharves), authorizing shipments of gold ore through the terminal",
+       "covers": [
+        {
+         "terminal": "bc-vancouver-wharves",
+         "where": "letter of March 27, 2026",
+         "says": "temporary authorization to handle one shipload of gold ore"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -5105,8 +5301,28 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Fibreco, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0248",
+       "holder": "Fibreco Export Inc.",
+       "address": "1209 McKeen Avenue, North Vancouver, BC V7P 3H9",
+       "status": "Issued",
+       "issued": "1992-11-16",
+       "amended": "2025-11-18",
+       "expires": "2036-07-01",
+       "authorizes": "a grain and wood pellet storage and shipping facility",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0248%20-%20Fibreco%20Export%20Inc.%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20November%2018,%202025.pdf",
+       "doc_title": "Permit GVA0248, amended November 18, 2025",
+       "why": "Permit GVA0248 to Fibreco Export Inc., the terminal’s operator, for its storage and shipping facility at 1209 McKeen Avenue, North Vancouver, with a ship loader",
+       "covers": [
+        {
+         "terminal": "bc-fibreco",
+         "where": "emission source 03",
+         "says": "from a ship loader spout discharging through a Marine Vessel Hold(s)"
+        }
+       ]
+      }
+     ]
     }
    },
    "notes": []
@@ -5213,7 +5429,13 @@
     "mv": {
      "jurisdiction": "in",
      "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for FortisBC and Tilbury, 2026-10-07). FortisBC’s application GVA1290 is for its renewable natural gas facility at 5400 72 Street, Delta, another site."
+     "none": "Not found in Metro Vancouver’s list of current permits or its site search (searched “FortisBC”, “Tilbury”, 2026-10-08). The site search is incomplete, so this does not show that no permit exists.",
+     "left_out": [
+      {
+       "gva": "GVA0451",
+       "why": "FortisBC Energy (Vancouver Island) Inc., 1710 Eagle Mountain Drive, Coquitlam: another site"
+      }
+     ]
     }
    },
    "notes": []
@@ -5309,7 +5531,7 @@
     "mv": {
      "jurisdiction": "in",
      "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for the Vancouver Airport Fuel Facilities Corporation, 2026-10-07)."
+     "none": "Not found in Metro Vancouver’s list of current permits or its site search (searched “Airport Fuel”, “Vancouver Airport Fuel”, “Fuel Facilities”, “VAFFC”, 2026-10-08). The site search is incomplete, so this does not show that no permit exists."
     }
    },
    "notes": []
@@ -5510,8 +5732,33 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Lehigh, Heidelberg Materials and the plant’s addresses, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0175",
+       "holder": "Lehigh Hanson Materials Limited (named Lehigh Northwest Cement Limited until 2010)",
+       "address": "7777 Ross Road, Delta, BC",
+       "status": "Issued",
+       "issued": "1992-12-14",
+       "amended": "2010-01-01",
+       "authorizes": "the cement plant",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0175_Lehigh_Hanson_Materials_-_Permit_Amendment_Issued_2010-01-01.pdf",
+       "doc_title": "Amendment of permit GVA0175 (name change), effective January 1, 2010",
+       "why": "Permit GVA0175 at 7777 Ross Road, Delta, in the name of Lehigh Northwest Cement Limited until 2010 (the name BC Ports and Terminals gives this dock), with barge unloading and loading",
+       "covers": [
+        {
+         "terminal": "bc-lehigh-delta",
+         "where": "emission source 01",
+         "says": "Unloading of raw materials from a barge"
+        }
+       ]
+      }
+     ],
+     "left_out": [
+      {
+       "gva": "GVA0167",
+       "why": "Lehigh Hanson Materials Limited, hot mix asphalt plant at Pipeline Road, Coquitlam: another site"
+      }
+     ]
     }
    },
    "notes": []
@@ -5619,12 +5866,39 @@
       {
        "gva": "GVA0154",
        "holder": "Lafarge Canada Inc.",
-       "address": "Richmond (as the report’s file name states)",
-       "status": "Report filed 2023",
-       "authorizes": "the cement kiln and mills (as the report lists them)",
-       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/PermitteeTestReports/Stack%20Test%20-%202023%20(Quarterly)%20-%20Lafarge%20Canada%20Inc%20GVA0154%20Richmond%20due%20date%20July%2031%202023.pdf",
-       "doc_title": "Stack test report under permit 0154 (due July 31, 2023)",
-       "why": "A stack test report filed with Metro Vancouver under permit 0154 by Lafarge Canada Inc. (file name: \"Lafarge Canada Inc GVA0154 Richmond\"), for the cement kiln: Lafarge’s Richmond cement plant. The permit document itself is no longer at its published address"
+       "address": "7611 No. 9 Road, Richmond, BC V6W 1H4",
+       "status": "Issued",
+       "issued": "1992-12-10",
+       "amended": "2025-05-09",
+       "expires": "2028-03-31",
+       "authorizes": "a portland cement manufacturing plant",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0154%20-%20Lafarge%20Canada%20Inc.%20-%20Air%20Quality%20Permit%20Amendment%20-%20Issued%20May%209,%202025.pdf",
+       "doc_title": "Permit GVA0154, amended May 9, 2025",
+       "extra_docs": [
+        {
+         "url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/PermitteeTestReports/Stack%20Test%20-%202023%20(Quarterly)%20-%20Lafarge%20Canada%20Inc%20GVA0154%20Richmond%20due%20date%20July%2031%202023.pdf",
+         "title": "Stack test report under permit 0154 (due July 31, 2023)",
+         "type": "Stack test report"
+        }
+       ],
+       "why": "Permit GVA0154 to Lafarge Canada Inc. for the portland cement plant at 7611 No. 9 Road, Richmond (the plant’s address in the BC register), with barge loading and unloading",
+       "covers": [
+        {
+         "terminal": "bc-lafarge-richmond",
+         "where": "emission source 068",
+         "says": "Cement/clinker barge loading (84-AIF-02)"
+        }
+       ]
+      }
+     ],
+     "left_out": [
+      {
+       "gva": "GVA0097",
+       "why": "Lafarge Canada Inc. (dba Columbia Bitulithic), asphalt plant at 13340 Mitchell Road, Richmond: another site"
+      },
+      {
+       "gva": "GVA0058",
+       "why": "Lafarge Canada Inc. (dba Columbia Bitulithic), asphalt plant at 2300 Rogers Avenue, Coquitlam: another site"
       }
      ]
     }
@@ -6079,8 +6353,20 @@
     },
     "mv": {
      "jurisdiction": "in",
-     "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Lantic and Rogers Sugar, 2026-10-07)."
+     "permits": [
+      {
+       "gva": "GVA0571",
+       "holder": "Lantic Inc.",
+       "address": "123 Rogers Street, Vancouver, BC V6B 3V2",
+       "status": "Issued",
+       "issued": "1995-10-13",
+       "amended": "2016-04-28",
+       "authorizes": "a sugar refinery",
+       "doc_url": "https://metrovancouver.org/services/environmental-regulation-enforcement/air-quality-regulatory-program/AirQualityPermits/0571_Lantic_Inc._Permit_Amendment_Issued_2016-04-28.pdf",
+       "doc_title": "Permit GVA0571, amended April 28, 2016",
+       "why": "Permit GVA0571 to Lantic Inc. for the sugar refinery at 123 Rogers Street, Vancouver (the address in Lantic’s BC inspection records)"
+      }
+     ]
     }
    },
    "notes": []
@@ -6622,7 +6908,7 @@
     "mv": {
      "jurisdiction": "in",
      "permits": [],
-     "none": "No Metro Vancouver air quality permit was found for this facility (searched Metro Vancouver's published permits for Univar, 2026-10-07)."
+     "none": "Not found in Metro Vancouver’s list of current permits or its site search (searched “Univar”, “Univar Solutions”, “Univar Canada”, 2026-10-08). The site search is incomplete, so this does not show that no permit exists."
     }
    },
    "notes": []

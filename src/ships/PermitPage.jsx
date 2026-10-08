@@ -340,7 +340,9 @@ export default function PermitPage() {
               {p.waAir?.status_note && <Fact label="Note">{p.waAir.status_note}</Fact>}
               {p.waAir?.why && <Fact label="Why it’s this site">{p.waAir.why}</Fact>}
               {p.mv && <Fact label="Site">{p.mv.address}{p.mv.authorizes && <div className={styles.muted}>{p.mv.authorizes}</div>}</Fact>}
-              {p.mv && (p.mv.issued || p.mv.amended) && <Fact label="Issued">{[p.mv.issued && day(p.mv.issued), p.mv.amended && `amended ${day(p.mv.amended)}`].filter(Boolean).join(', ')}</Fact>}
+              {p.mv && (p.mv.issued || p.mv.amended) && <Fact label="Issued">{[p.mv.issued && day(p.mv.issued), p.mv.amended && `amended ${day(p.mv.amended)}`,
+                p.mv.effective && `in effect from ${day(p.mv.effective)}`].filter(Boolean).join(', ')}</Fact>}
+              {p.mv?.note && <Fact label="Note">{p.mv.note}</Fact>}
               {p.mv?.application && <Fact label="Application">{p.mv.application.gva}: {p.mv.application.purpose}
                 <div className={styles.muted}><a href={p.mv.application_url} target="_blank" rel="noopener noreferrer">{p.mv.application.status}</a></div></Fact>}
               <Fact label="Expires">{p.expires && <>{day(p.expires)}{pastExpiry && !p.bcEma && !p.mv && <div className={styles.muted}>A past date alone doesn’t mean no permit: renewals keep the old one in force (EPA).</div>}</>}</Fact>

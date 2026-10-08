@@ -7,7 +7,8 @@
  * Only URLs already known (from a public web search or a public application page) are fetched. The permit library's listing is
  * access-controlled (401) and is never enumerated. Requests: one at a time, ≥ 2 s apart, EarthAtlas User-Agent, retried 3 times.
  * A PDF is kept as is (<name>.pdf) and its text extracted with pdftotext -layout into <name>.json { url, retrieved_at, bytes,
- * sha256, content_type, text }; an HTML page is kept as its HTML in the same JSON shape (text = the HTML).
+ * sha256, content_type, text }; a scan with no text layer is read by OCR (macOS Vision, scripts/ships/ocr-pdf.swift; `ocr` says so).
+ * An HTML page is kept as its HTML in the same JSON shape (text = the HTML).
  */
 import { mkdir, readFile, writeFile, appendFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
@@ -19,13 +20,27 @@ import { mvCacheName } from '../../lib/ships/metroVancouver.js'
 const UA = 'EarthAtlas-ships/1.0 (+https://earthatlas.org/ships)'
 export const CACHE = 'scripts/ships/facilities/cache'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const OCR_NAME = 'macOS Vision (scripts/ships/ocr-pdf.swift, shared with air-fetch.mjs)'
+/** OCR of an image-only PDF (macOS Vision through scripts/ships/ocr-pdf.swift). */
+const ocr = (file) => execFileSync('swift', ['scripts/ships/ocr-pdf.swift', file], { maxBuffer: 1 << 28 }).toString('utf8')
 let last = 0
 export const counter = { requests: 0 }
 
 /** The cached copy of one Metro Vancouver document, fetched once when missing (refresh = fetch again). */
 export async function mvDoc(url, { refresh = false } = {}) {
   const base = path.join(CACHE, mvCacheName(url))
-  if (!refresh) { try { return JSON.parse(await readFile(`${base}.json`, 'utf8')) } catch {} }
+  if (!refresh) {
+    let cached = null
+    try { cached = JSON.parse(await readFile(`${base}.json`, 'utf8')) } catch {}
+    if (cached) {
+      // A scan cached before OCR existed: read it now from the cached PDF (local, no request).
+      if (cached.bytes && /pdf/i.test(cached.content_type || '') && String(cached.text || '').trim().length < 50 && !cached.ocr) {
+        cached.text = ocr(`${base}.pdf`); cached.ocr = OCR_NAME
+        await writeFile(`${base}.json`, JSON.stringify(cached))
+      }
+      return cached
+    }
+  }
   for (let i = 1; ; i++) {
     const wait = 2000 - (Date.now() - last)
     if (wait > 0) await sleep(wait)
@@ -44,6 +59,7 @@ export async function mvDoc(url, { refresh = false } = {}) {
       if (/pdf/i.test(type) || buf.subarray(0, 4).toString() === '%PDF') {
         await writeFile(`${base}.pdf`, buf)
         out.text = execFileSync('pdftotext', ['-layout', `${base}.pdf`, '-'], { maxBuffer: 1 << 28 }).toString('utf8')
+        if (out.text.trim().length < 50) { out.text = ocr(`${base}.pdf`); out.ocr = OCR_NAME }   // an image-only scan
       } else if (/\.pdf($|[?#])/i.test(url)) { const e = new Error(`not a PDF (${type})`); e.final = true; throw e }
       else out.text = buf.toString('utf8')
       await writeFile(`${base}.json`, JSON.stringify(out))

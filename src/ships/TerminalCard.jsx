@@ -5,7 +5,7 @@
  * labelled apart). Every value links to where it came from. Data: api op=terminal (lib/ships/terminalCard.js).
  * Visits = our own AIS calls (lib/ships/terminalCalls.js, Josh 2026-09-28); GFW port visits are only a comparison (About).
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
@@ -15,6 +15,7 @@ import { MonthBars, About, PORT_HUE } from './PortCard.jsx'
 import PortEmissions, { usePortEmissions, useTerminalStays, TerminalStayEmissions, shortTonnes } from './PortEmissions.jsx'
 import TerminalPermits, { useTerminalPermits } from './TerminalPermits.jsx'
 import EstimatedVisits, { EstSource, estKpi, DayBars } from './EstimatedVisits.jsx'
+import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { GLYPH, kindFamily, kindWords, NOT_OPERATING, STATUS_WORDS, TERMINAL_MUTED_RING } from './terminalIcons.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
@@ -150,7 +151,7 @@ function CallShip({ s, onSelectVessel, rule }) {
   )
 }
 
-export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, onLocate, folded, onFold, tab: tabProp, onTab }) {
+export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, onLocate, folded, onFold, tab: tabProp, onTab, autoLocate = false }) {
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [slow, setSlow] = useState(false)
@@ -172,6 +173,15 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   const emRef = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=refinery`)
   const emStays = useTerminalStays(terminalKey, winMonths)
   const permits = useTerminalPermits(terminalKey)
+  // This terminal in the scrubber report (its default period), with a link that opens the report at this terminal's row.
+  const [scrub, setScrub] = useState(null)
+  useEffect(() => {
+    let dead = false
+    setScrub(null)
+    fetch(`/api/ships?op=scrubberTerminal&key=${encodeURIComponent(terminalKey)}&from=${SCRUBBER_REPORT.from}&to=${SCRUBBER_REPORT.to}`)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!dead) setScrub(d) }).catch(() => {})
+    return () => { dead = true }
+  }, [terminalKey])
   const src = useMemo(() => Object.fromEntries((data?.sources || []).map((x) => [x.id, x])), [data])
   const loading = !data || data.terminal?.key !== terminalKey
   const t = data?.terminal
@@ -191,6 +201,14 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   }
   const imo = (data?.links || []).filter((l) => l.role === 'imo_port_facility')
   const berthPts = useMemo(() => (data?.berths || []).map((b) => [b.lon, b.lat]), [data])
+  // Opened from a link with no map position of its own (the scrubber report, a shared ?tl= link): fit the map to the terminal once,
+  // exactly as "Show on map" does, so the terminal is in view instead of somewhere off-screen.
+  const located = useRef(null)
+  useEffect(() => {
+    if (!autoLocate || !onLocate || !berthPts.length || located.current === terminalKey) return
+    located.current = terminalKey
+    onLocate(berthPts)
+  }, [autoLocate, onLocate, berthPts, terminalKey])
   const cov = data?.coverage && { missing: [], of: 0, ...data.coverage } // tolerate an older response shape
   const bakeRec = cov?.bake?.recordId
   const noAis = cov && (cov.notCovered || !cov.months.length)
@@ -282,6 +300,13 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
                 <a className={`${styles.sourceLink} ${styles.srcLink}`} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
                   title="Counted by EarthAtlas from MarineCadastre AIS positions (CC0) with the rule under “About this data”; each ship below links the same bake record">MarineCadastre AIS</a>
               </div>}
+              {scrub?.counted && (
+                <div className={styles.reportLine}>
+                  <span>Scrubber-fitted ships: <strong>{plural(scrub.calls, 'call')}</strong>{scrub.calls > 0 && <> by {plural(scrub.ships, 'ship')}</>}, {monthName(scrub.from)} – {monthName(scrub.to)}</span>
+                  <a href={`${SCRUBBER_REPORT.path}?geo=${scrub.state === 'BC' ? 'BC' : 'WA'}&t=${encodeURIComponent(terminalKey)}`} target="_blank" rel="noopener noreferrer"
+                    className={styles.sourceLink}>View in the scrubber report →</a>
+                </div>
+              )}
               {data.ships.map((x) => <CallShip key={x.key} s={x} rule={data.rule} onSelectVessel={onSelectVessel} />)}
               {!noAis && !data.ships.length && <div className={styles.legendNoteText}>No call by a ship of a fitting kind in these months.</div>}
               <Folded count={data.summary.maybe.visits} title={`Could be (${plural(data.summary.maybe.visits, 'call')}): ${data.rule.maybe.join(', ')} ships whose exact kind isn’t stated`}>

@@ -594,3 +594,7 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .sepaTag { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 4px; margin-right: 6px; cursor: help;
   background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.72); }
 .sepaTagLinked { background: rgba(103, 232, 249, 0.14); color: #a5f3fc; }
+
+/* Terminal card: this terminal's numbers in the scrubber report, with a link that opens the report at its row. */
+.reportLine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin: 8px 0 6px; padding: 7px 10px;
+  border-radius: 8px; background: rgba(103, 232, 249, 0.07); border: 1px solid rgba(103, 232, 249, 0.22); font-size: 12.5px; }

@@ -40,6 +40,7 @@ import AnchorageCard from './AnchorageCard.jsx'
 import { addTerminalImages, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
 import { ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
 import trackSource from './trackSource.json'
+import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
@@ -1743,6 +1744,7 @@ export default function ShipsApp() {
       {terminalKey && !portId && !vesselId && trackMonths.length > 0 && (
         <div className={styles.portWrap}>
           <TerminalCard terminalKey={terminalKey} months={trackMonths} month={terminalMonth} onMonth={setTerminalMonth}
+            autoLocate={terminalKey === initial.tl && initial.lat == null}
             folded={terminalFolded} onFold={setTerminalFolded} tab={terminalTab} onTab={setTerminalTab}
             onLocate={(pts) => {
               // "Show on map" (Josh 2026-10-06): fit the terminal's berths (and, from the Permits tab, its refinery) clear of the card.
@@ -1925,6 +1927,7 @@ export default function ShipsApp() {
                               title={`MEP Alliance scrubber lists, reported by an advocacy group${scrubMmsis ? `: ${scrubMmsis.by.mep.toLocaleString()} ships (${scrubMmsis.by.both.toLocaleString()} also notified to IMO; ${scrubMmsis.by.mep_inferred.toLocaleString()} matched by name only, inferred)` : ''}`}>MEP Alliance</a>
                             {zoomedOutForKinds && ' (zoom in outside the Salish Sea)'}.{' '}
                             <button type="button" className={styles.inlineLink} onClick={() => setScrubOnly(false)}>Clear</button>
+                            {' · '}<a className={styles.sourceLink} href={SCRUBBER_REPORT.path}>See the scrubber report →</a>
                           </div>
                         )}
                       </div>
@@ -2038,7 +2041,8 @@ export default function ShipsApp() {
                     <a href={DARK.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a> CC BY-NC 4.0.
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
-                changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }} />
+                changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}
+                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }]} />
             </div>
           )}
         </MapSheet>

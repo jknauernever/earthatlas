@@ -656,13 +656,41 @@ function traceTilesPlugin() {
 
 // Dev middleware for /api/ships: runs the Node handler itself against the dev
 // ships database (SHIPS_DATABASE_URL from .env.local), so dev and prod share one implementation.
-function shipsApiPlugin(shipsDbUrl, gfwToken) {
+function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
   return {
     name: 'ships-api',
     configureServer(server) {
       if (shipsDbUrl && !process.env.SHIPS_DATABASE_URL) process.env.SHIPS_DATABASE_URL = shipsDbUrl
       // Server-side only (api/gfw-tiles.js); never bundled into the client.
       if (gfwToken && !process.env.GFW_API_TOKEN) process.env.GFW_API_TOKEN = gfwToken
+      // Dev only: the scrubber report's READ queries, run by this checkout's code against the production ships database
+      // (SHIPS_PROD_DATABASE_URL), so a localhost change can be checked on production's data before it is pushed
+      // (/ships/reports/scrubbers?data=prod). Only these GET ops; nothing writes.
+      const PROD_READ_OPS = new Set(['scrubberReport', 'scrubberReportDays', 'scrubberWorldPorts', 'scrubberEdition', 'scrubberEditions'])
+      server.middlewares.use('/__prodread/api/ships', async (req, res) => {
+        const sp = new URL(req.url, 'http://localhost').searchParams
+        const op = sp.get('op')
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        if (!shipsProdUrl || req.method !== 'GET' || !PROD_READ_OPS.has(op)) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'read-only report ops only' })) }
+        try {
+          const { neon } = await import('@neondatabase/serverless')
+          const sql = neon(shipsProdUrl)
+          const q = (t, a) => sql.query(t, a)
+          const R = await server.ssrLoadModule('/lib/ships/scrubberReport.js')
+          const P = await server.ssrLoadModule('/lib/ships/scrubberPorts.js')
+          const S = 'ships', geo = sp.get('geo')
+          const out = op === 'scrubberReport' ? await R.scrubberReport(q, S, { from: sp.get('from'), to: sp.get('to') })
+            : op === 'scrubberReportDays' ? { days: await R.scrubberReportDays(q, S, { month: sp.get('month'), terminal: sp.get('terminal') || null }) }
+            : op === 'scrubberWorldPorts' ? await P.scrubberWorldPorts(q, S, { from: sp.get('from'), to: sp.get('to'), states: geo === 'WA' ? ['WA'] : geo === 'BC' ? ['BC'] : null,
+              terminals: (sp.get('terminals') || '').split(',').filter(Boolean).slice(0, 200) || null })
+            : op === 'scrubberEdition' ? await R.readScrubberEdition(q, S, sp.get('id'))
+            : { editions: await R.listScrubberEditions(q, S) }
+          res.end(JSON.stringify(out))
+        } catch (err) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: String(err.message || err).slice(0, 300) }))
+        }
+      })
       server.middlewares.use('/api/ships', async (req, res) => {
         try {
           const { default: handler } = await server.ssrLoadModule('/api/ships.js')
@@ -953,7 +981,7 @@ export default defineConfig(({ mode }) => {
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),
     dockReviewPlugin(),
-    shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || ''),
+    shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || '', env.SHIPS_PROD_DATABASE_URL || ''),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is
@@ -990,13 +1018,6 @@ export default defineConfig(({ mode }) => {
         target: 'https://us.i.posthog.com',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/eapipe/, ''),
-      },
-      // Dev only: the production /api/ships, read-only, so a localhost page can be checked against production's numbers
-      // (the scrubber report's ?data=prod).
-      '/__prod/api/ships': {
-        target: 'https://earthatlas.org',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/__prod/, ''),
       },
     },
   },

@@ -10,7 +10,11 @@ import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import { kindWords } from './terminalIcons.js'
 import c from './ScrubberReport.module.css'
 
-const DEFAULT = { from: '2025-01', to: '2026-06', geo: 'WA' }
+import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
+// Lovel's own words for what the report covers (port-authority docks, private terminals, refinery docks), and what is counted: calls.
+const AREA_WORDS = { WA: 'Washington', BC: 'British Columbia', ALL: 'Washington and British Columbia' }
+const reportTitle = (geo) => `Scrubber-fitted ship calls at ${AREA_WORDS[geo] || AREA_WORDS.WA} ports, terminals and refineries`
+const DEFAULT = { from: SCRUBBER_REPORT.from, to: SCRUBBER_REPORT.to, geo: 'WA' }
 const OWN = [
   ['port_authority', 'Port authority', '#2a78d6'],
   ['private', 'Private', '#eb6834'],
@@ -35,6 +39,26 @@ export const portOf = (t) => {
   return name === 'Port of Vancouver' ? 'Port of Vancouver USA' : name   // the Washington port's own name (not Vancouver, BC)
 }
 export const typeOf = (t) => (t.kind === 'refinery_dock' ? 'refineries' : t.ownership === 'port_authority' ? 'ports' : 'terminals')
+// Scrubber type, from the IMO notifications (Josh 2026-10-08: ships with no stated type appear as "type not reported").
+const LOOP = [
+  ['open', 'Open loop', '#c2410c', 'washwater discharged to the sea'],
+  ['hybrid', 'Hybrid', '#2563eb', 'can run open or closed'],
+  ['closed', 'Closed loop', '#15803d', 'washwater kept on board for treatment'],
+  ['not_reported', 'Type not reported', '#6b7280', 'no scrubber type in the IMO notification, or listed by MEP Alliance only'],
+]
+const LOOP_LABEL = Object.fromEntries(LOOP.map(([k, l]) => [k, l]))
+const loopOfShip = (a) => a.info?.scrubber?.loop || 'not_reported'
+const KINDS_UI = [['cruise', 'Cruise and passenger'], ['container', 'Container'], ['tanker', 'Tankers'], ['bulk', 'Bulk and general cargo'], ['other', 'Other']]
+const kindOfShip = (a) => {
+  const k = a.info?.kind
+  if (!k) return 'other'
+  if (k.group === 'passenger') return 'cruise'
+  if (/container/i.test(k.label || '')) return 'container'
+  if (k.group === 'tanker') return 'tanker'
+  if (k.group === 'cargo') return 'bulk'
+  return 'other'
+}
+const operatorOf = (a) => a.info?.operator?.name || null
 const TYPE_SINGULAR = { ports: 'Port', terminals: 'Terminal', refineries: 'Refinery' }
 const TYPE_COLOR = Object.fromEntries(TYPES.map(([k, , col]) => [k, col]))
 const OWN_LABEL = Object.fromEntries(OWN.map(([k, l]) => [k, l]))
@@ -71,11 +95,14 @@ function readUrl() {
     geo: GEOS.some(([g]) => g === sp.get('geo')) ? sp.get('geo') : DEFAULT.geo,
     open: (sp.get('open') || '').split(',').filter(Boolean),
     m: ok(sp.get('m')) ? sp.get('m') : null,
+    op: sp.get('op') || null,
+    focus: sp.get('focus') || null,
+    t: sp.get('t') || null,   // a terminal to open in the place table (the terminal card's link)
   }
 }
 
 // localhost only: ?data=prod reads production's numbers through the dev proxy (vite.config.js) so a change can be checked on real data.
-const API = import.meta.env.DEV && new URLSearchParams(window.location.search).get('data') === 'prod' ? '/__prod/api/ships' : '/api/ships'
+const API = import.meta.env.DEV && new URLSearchParams(window.location.search).get('data') === 'prod' ? '/__prodread/api/ships' : '/api/ships'
 
 const Src = ({ k, children }) => <a className={c.src} href={SRC[k].href} target="_blank" rel="noopener noreferrer">{children || SRC[k].name}</a>
 
@@ -90,7 +117,10 @@ export default function ScrubberReport() {
   const [world, setWorld] = useState(null)
   const set = (patch) => setSt((s) => ({ ...s, ...patch }))
 
-  useEffect(() => { document.title = 'Scrubber-fitted ships at terminals · EarthAtlas Ships' }, [])
+  useEffect(() => {
+    const w = data ? focusWords(st.focus, data.terminals, AREA_WORDS[st.geo] || AREA_WORDS.WA) : null
+    document.title = `${w ? `Scrubber-fitted ship calls at ${w[0]}` : reportTitle(st.geo)} · EarthAtlas Ships`
+  }, [st.geo, st.focus, data])
   useEffect(() => {
     const sp = new URLSearchParams()
     if (st.from !== DEFAULT.from) sp.set('from', st.from)
@@ -98,6 +128,8 @@ export default function ScrubberReport() {
     if (st.geo !== DEFAULT.geo) sp.set('geo', st.geo)
     if (st.open.length) sp.set('open', st.open.join(','))
     if (st.m) sp.set('m', st.m)
+    if (st.op) sp.set('op', st.op)
+    if (st.focus) sp.set('focus', st.focus)
     if (API !== '/api/ships') sp.set('data', 'prod')
     const qs = sp.toString()
     window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
@@ -128,13 +160,27 @@ export default function ScrubberReport() {
     fetch(`${API}?op=scrubberReportDays&month=${st.m}`).then((r) => r.json()).then((j) => setDays(j.days || [])).catch(() => setDays([]))
   }, [st.m, edition, data])
 
+  const focusKeys = useMemo(() => (data && st.focus ? data.terminals.filter((t) => matchFocus(t, st.focus)).map((t) => t.key).join(',') : ''), [data, st.focus])
   useEffect(() => {
     setWorld(null)
-    if (edition) { if (data?.world) setWorld(data.world[st.geo] || null); return }
-    fetch(`${API}?op=scrubberWorldPorts&from=${st.from}&to=${st.to}&geo=${st.geo}`).then((r) => r.json()).then((j) => setWorld(j.error ? null : j)).catch(() => {})
-  }, [edition, data, st.from, st.to, st.geo])
+    if (edition) { if (data?.world && !st.focus) setWorld(data.world[st.geo] || null); return }   // an edition holds whole areas only
+    fetch(`${API}?op=scrubberWorldPorts&from=${st.from}&to=${st.to}&geo=${st.geo}${focusKeys ? `&terminals=${encodeURIComponent(focusKeys)}` : ''}`)
+      .then((r) => r.json()).then((j) => setWorld(j.error ? null : j)).catch(() => {})
+  }, [edition, data, st.from, st.to, st.geo, st.focus, focusKeys])
 
-  const view = useMemo(() => (data ? build(data, st.geo) : null), [data, st.geo])
+  const view = useMemo(() => (data ? build(data, st.geo, st.focus) : null), [data, st.geo, st.focus])
+  const focusOpts = useMemo(() => (data ? focusOptions(data, st.geo) : []), [data, st.geo])
+  const fw = view ? focusWords(st.focus, view.terms, AREA_WORDS[st.geo] || AREA_WORDS.WA) : null
+  // ?t=<terminal>: open its row in the place table (with its county and city) and bring it into view, once.
+  useEffect(() => {
+    if (!view || !st.t) return
+    const t = view.terms.find((x) => x.key === st.t)
+    if (!t) { set({ t: null }); return }
+    const [sk, ck, pk] = placePath(t)
+    const keys = [...(view.tree.size > 1 ? [`s:${sk}`] : []), `c:${sk}:${ck}`, ...(pk ? [`p:${sk}:${ck}:${pk}`] : []), `t:${t.key}`]
+    setSt((s0) => ({ ...s0, t: null, open: [...new Set([...s0.open, ...keys])] }))
+    setTimeout(() => document.getElementById(`row-${t.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+  }, [view, st.t])
 
   return (
     <div className={c.page}>
@@ -149,7 +195,7 @@ export default function ScrubberReport() {
       </header>
       <main className={c.main}>
         <div className={c.kicker}>Report</div>
-        <h1 className={c.title}>Scrubber-fitted ships at {st.geo === 'WA' ? 'Washington' : st.geo === 'BC' ? 'British Columbia' : 'Salish Sea and Washington'} terminals</h1>
+        <h1 className={c.title}>{fw ? `Scrubber-fitted ship calls at ${fw[0]}` : reportTitle(st.geo)}</h1>
         <p className={c.lede}>
           How often ships fitted with exhaust gas cleaning systems, better known as scrubbers, called at ports, terminals and refinery docks,
           month by month. A call is a ship stopped at a berth, counted minute by minute from <Src k="noaa">NOAA's AIS ship positions</Src>.
@@ -157,13 +203,22 @@ export default function ScrubberReport() {
           on the <Src k="mep">MEP Alliance lists</Src>. A call by a scrubber-fitted ship does not show that the scrubber was running at the berth.
         </p>
 
-        {data && <ReportFacts data={data} geo={st.geo} ed={ed} edition={edition} />}
+        {data && <ReportFacts data={data} geo={st.geo} ed={ed} edition={edition} areaLine={fw?.[1]}
+          query={(() => { const q = new URLSearchParams(); if (st.geo !== DEFAULT.geo) q.set('geo', st.geo); if (st.focus) q.set('focus', st.focus)
+            if (!edition && (st.from !== DEFAULT.from || st.to !== DEFAULT.to)) { q.set('from', st.from); q.set('to', st.to) }
+            const x = q.toString(); return x ? `?${x}` : '' })()} />}
         <div className={c.controls}>
           <div className={c.seg} role="tablist" aria-label="Area">
             {GEOS.map(([g, l]) => (
-              <button key={g} role="tab" aria-selected={st.geo === g} className={st.geo === g ? c.segOn : c.segBtn} onClick={() => set({ geo: g, open: [] })}>{l}</button>
+              <button key={g} role="tab" aria-selected={st.geo === g} className={st.geo === g ? c.segOn : c.segBtn} onClick={() => set({ geo: g, open: [], focus: null, op: null })}>{l}</button>
             ))}
           </div>
+          <label className={c.focus}>Focus Geography:
+            <select value={st.focus || ''} onChange={(e) => set({ focus: e.target.value || null, open: [], op: null, m: null })}>
+              <option value="">Whole area</option>
+              {focusOpts.map(([g, xs]) => <optgroup key={g} label={g}>{xs.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</optgroup>)}
+            </select>
+          </label>
           {!edition && <div className={c.period}>
             <label>From <select value={st.from} onChange={(e) => set({ from: e.target.value, m: null, to: e.target.value > st.to ? e.target.value : st.to })}>
               {MONTH_OPTIONS.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}</select></label>
@@ -191,6 +246,7 @@ export default function ScrubberReport() {
             <Tile value={pct(view.tot.scrubber_calls, view.tot.large)} label="Share of large-ship calls" sub={`${fmt(view.tot.scrubber_calls)} of ${fmt(view.tot.large)} calls by passenger, cargo and tanker ships${view.tot.est_calls ? ', not counting estimates' : ''}`} src={<Src k="noaa">AIS ship type</Src>} />
             <Tile value={fmt((view.byOwn.ports?.scrubber_calls || 0) + (view.byOwn.ports?.est_calls || 0))} label="At ports"
               sub={`${fmt((view.byOwn.terminals?.scrubber_calls || 0) + (view.byOwn.terminals?.est_calls || 0))} at other terminals, ${fmt((view.byOwn.refineries?.scrubber_calls || 0) + (view.byOwn.refineries?.est_calls || 0))} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
+            <LoopTile view={view} />
           </section>
 
           <section className={`${c.card} ${c.flow} ${c.wide}`}>
@@ -233,6 +289,11 @@ export default function ScrubberReport() {
             <PlaceTable view={view} open={st.open} setOpen={(open) => set({ open })} months={data.coverage.months} />
           </section>
 
+          {view.shipList.length > 0 && Object.keys(view.info).length > 0 && <>
+            <Operators view={view} onPick={(op) => { set({ op }); document.getElementById('ships')?.scrollIntoView({ behavior: 'smooth' }) }} />
+            <Ships view={view} months={data.period.months} op={st.op} setOp={(op) => set({ op })} />
+          </>}
+
           <WorldPorts world={world} geo={st.geo} />
 
           <Method data={data} world={world} />
@@ -245,13 +306,61 @@ export default function ScrubberReport() {
 
 // ── Data shaping (pure) ─────────────────────────────────────────────────────
 
-function build(data, geo) {
+/** A terminal's place in the place table: [state, county, city or town ('' when none)]. */
+const placePath = (t) => {
+  const sk = t.state_code || t.country
+  const ck = t.county_name || (sk === 'BC' ? 'British Columbia' : 'County not set')
+  const pk = placeLabel(t.place_name) || (t.county_name ? `Unincorporated ${t.county_name.replace(/ County$/, '')} County` : '')
+  return [sk, ck, pk]
+}
+
+// ── Focus: narrow the whole report to one port, county, city or town, type of facility, or one facility (Josh 2026-10-08) ──
+// focus = 'port:<name>' | 'county:<name>' | 'place:<state>|<county>|<place>' | 'type:<ports|terminals|refineries>' | 'term:<key>'
+const TYPE_PLURAL = { ports: 'ports', terminals: 'terminals', refineries: 'refineries' }
+function matchFocus(t, focus) {
+  if (!focus) return true
+  const [kind, ...rest] = focus.split(':'); const v = rest.join(':')
+  if (kind === 'port') return t.ownership === 'port_authority' && portOf(t) === v
+  if (kind === 'county') return t.county_name === v
+  if (kind === 'place') { const [sk, ck, pk] = placePath(t); return `${sk}|${ck}|${pk}` === v }
+  if (kind === 'type') return typeOf(t) === v
+  if (kind === 'term') return t.key === v
+  return true
+}
+/** Words for a focus: [title phrase, area line]. */
+function focusWords(focus, terms, areaName) {
+  if (!focus) return null
+  const [kind, ...rest] = focus.split(':'); const v = rest.join(':')
+  if (kind === 'port') return [`the ${v.replace(/^Port of /, 'Port of ')}`, `${v}, ${areaName}`]
+  if (kind === 'county') return [`${v} ports, terminals and refineries`, `${v}, ${areaName}`]
+  if (kind === 'place') { const pk = v.split('|')[2]; return [`${pk} ports, terminals and refineries`, `${pk}, ${areaName}`] }
+  if (kind === 'type') return [`${areaName} ${TYPE_PLURAL[v] || v}`, `${areaName}: ${TYPE_PLURAL[v] || v} only`]
+  if (kind === 'term') { const t = terms.find((x) => x.key === v); return t ? [t.name, `${t.name}, ${areaName}`] : null }
+  return null
+}
+/** The focus choices for this area: only what the report has data for. */
+function focusOptions(data, geo) {
+  const inGeo = (t) => geo === 'ALL' || (geo === 'WA' ? t.state_code === 'WA' : t.state_code === 'BC')
+  const estKeys = new Set((data.estimated?.cells || []).map((r) => r.terminal_key))
+  const ts = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key) || (t.estimatedOnly && (data.estimated?.allMonths || []).length > 0))
+  const uniq = (xs) => [...new Map(xs.map((x) => [x[0], x])).values()].sort((a, b) => a[1].localeCompare(b[1]))
+  return [
+    ['Ports', uniq(ts.filter((t) => t.ownership === 'port_authority').map((t) => [`port:${portOf(t)}`, portOf(t)]))],
+    ['Counties', uniq(ts.filter((t) => t.county_name).map((t) => [`county:${t.county_name}`, t.county_name]))],
+    ['Cities and towns', uniq(ts.map((t) => { const [sk, ck, pk] = placePath(t); return pk && !/^Unincorporated/.test(pk) ? [`place:${sk}|${ck}|${pk}`, pk] : null }).filter(Boolean))],
+    ['Type of facility', TYPES.map(([k, l]) => [`type:${k}`, l]).filter(([k]) => ts.some((t) => `type:${typeOf(t)}` === k))],
+    ['One facility', uniq(ts.map((t) => [`term:${t.key}`, t.name]))],
+  ].filter(([, xs]) => xs.length)
+}
+
+function build(data, geo, focus = null) {
   const inGeo = (t) => geo === 'ALL' || (geo === 'WA' ? t.state_code === 'WA' : t.state_code === 'BC')
   const est = data.estimated
   const estKeys = new Set((est?.cells || []).map((r) => r.terminal_key))
   // Only facilities we have numbers for: counted from NOAA's AIS, or estimated from hourly positions.
   // (a terminal beyond NOAA's reach has data whenever hourly estimates exist for the period, even when they hold no scrubber calls)
   const terms = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key) || (t.estimatedOnly && (est?.allMonths || []).length > 0))
+    .filter((t) => matchFocus(t, focus))
   const keys = new Set(terms.map((t) => t.key))
   const byKey = new Map(terms.map((t) => [t.key, t]))
   const own = (t) => t.ownership || 'unknown'
@@ -314,15 +423,26 @@ function build(data, geo) {
   // Place tree: state → county → city (or "unincorporated") → terminal
   const tree = new Map()
   for (const t of terms) {
-    const sk = t.state_code || t.country
-    const ck = t.county_name || (sk === 'BC' ? 'British Columbia' : 'County not set')
-    const pk = placeLabel(t.place_name) || (t.county_name ? `Unincorporated ${t.county_name.replace(/ County$/, '')} County` : '')
+    const [sk, ck, pk] = placePath(t)
     const s = tree.get(sk) || tree.set(sk, new Map()).get(sk)
     const co = s.get(ck) || s.set(ck, new Map()).get(ck)
     const pl = co.get(pk) || co.set(pk, []).get(pk)
     pl.push(t)
   }
-  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, estMonths, est, estCol,
+  // Each scrubber ship in this area: its calls (counted + estimated), where, by month, with what we hold about it.
+  const info = data.shipInfo || {}
+  const shipAgg = new Map()
+  for (const t of terms) {
+    for (const [id, e] of perT.get(t.key).ships) {
+      const a = shipAgg.get(id) || shipAgg.set(id, { id, name: info[id]?.name || e.name, info: info[id] || null, calls: 0, months: {}, where: [] }).get(id)
+      a.calls += e.calls
+      for (const [m, v] of Object.entries(e.months)) a.months[m] = (a.months[m] || 0) + v
+      a.where.push([t, e.calls])
+    }
+  }
+  for (const a of shipAgg.values()) a.where.sort((x, y) => y[1] - x[1])
+  const shipList = [...shipAgg.values()].sort((a, b) => b.calls - a.calls || String(a.name).localeCompare(String(b.name)))
+  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, estMonths, est, estCol, info, shipList,
     estAll: new Set(est?.allMonths || []), counted: terms.filter((t) => t.counted),
     terminalsWithScrubber: terms.filter((t) => perT.get(t.key).scrubber_calls + (perT.get(t.key).est_calls || 0) > 0).length }
 }
@@ -452,10 +572,10 @@ function Matrix({ view, months, covered }) {
 // ── What the report is (also the top of the printed / PDF copy) ─────────────
 
 const longDay = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-function ReportFacts({ data, geo, ed, edition }) {
+function ReportFacts({ data, geo, ed, edition, areaLine, query = '' }) {
   const { from, to } = data.period
-  const area = geo === 'WA' ? 'Washington State' : geo === 'BC' ? 'British Columbia' : 'Washington State and British Columbia'
-  const url = `earthatlas.org/ships/reports/scrubbers${edition ? `/${edition}` : ''}`
+  const area = areaLine || (geo === 'WA' ? 'Washington State' : geo === 'BC' ? 'British Columbia' : 'Washington State and British Columbia')
+  const url = `earthatlas.org/ships/reports/scrubbers${edition ? `/${edition}` : ''}${query}`
   return (
     <dl className={c.facts}>
       <div><dt>Period</dt><dd>{monthName(from, 'long')} – {monthName(to, 'long')}</dd></div>
@@ -464,6 +584,122 @@ function ReportFacts({ data, geo, ed, edition }) {
       {edition && <div><dt>Report</dt><dd>Edition {edition}</dd></div>}
       <div><dt>Online</dt><dd><a href={`https://${url}`} className={c.src}>{url}</a></dd></div>
     </dl>
+  )
+}
+
+// ── The scrubber ships: equipment, operators, the ships themselves ──────────
+
+function LoopBadge({ info }) {
+  const loop = info?.scrubber?.loop || 'not_reported'
+  const col = LOOP.find(([k]) => k === loop)?.[2] || '#6b7280'
+  const src = info?.scrubber?.sources?.gisis ? 'gisis' : info?.scrubber?.sources?.mep ? 'mep' : null
+  const maker = info?.scrubber?.maker
+  const badge = <span className={c.loop} style={{ '--loop': col }}>{LOOP_LABEL[loop]}</span>
+  return (
+    <span className={c.loopCell}>
+      {src ? <a className={c.loopLink} href={SRC[src].href} target="_blank" rel="noopener noreferrer" title={`Source: ${SRC[src].name}`}>{badge}</a> : badge}
+      {maker && <span className={c.sub}>{maker}</span>}
+    </span>
+  )
+}
+
+/** Share of scrubber-ship calls made by open-loop ships (the ships that discharge washwater to the sea). */
+function LoopTile({ view }) {
+  if (!view.shipList.length || !Object.keys(view.info).length) return null
+  const by = {}
+  let all = 0
+  for (const a of view.shipList) { by[loopOfShip(a)] = (by[loopOfShip(a)] || 0) + a.calls; all += a.calls }
+  const p = (k) => pct(by[k] || 0, all)
+  return (
+    <Tile value={p('open')} label="Calls by open-loop ships"
+      sub={`Hybrid ${p('hybrid')} · closed loop ${p('closed')} · type not reported ${p('not_reported')}`}
+      src={<Src k="gisis">IMO scrubber notifications</Src>} />
+  )
+}
+
+function Operators({ view, onPick }) {
+  const [all, setAll] = useState(false)
+  const g = new Map()
+  for (const a of view.shipList) {
+    const k = operatorOf(a) || ''
+    const e = g.get(k) || g.set(k, { name: k, ships: 0, calls: 0, open: 0, where: new Map() }).get(k)
+    e.ships++; e.calls += a.calls
+    if (loopOfShip(a) === 'open') e.open += a.calls
+    for (const [t, n] of a.where) e.where.set(t.name, (e.where.get(t.name) || 0) + n)
+  }
+  const named = [...g.values()].filter((e) => e.name).sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name))
+  const unnamed = g.get('')
+  const list = all ? named : named.slice(0, 12)
+  return (
+    <section className={c.card}>
+      <div className={c.cardHead}>
+        <h2 className={c.h2}>Operators</h2>
+        <div className={c.note}>The companies operating these ships, as the <Src k="mep" /> name them. <span className={c.noPrint}>Select one to list its ships.</span></div>
+      </div>
+      <table className={c.table}>
+        <thead><tr><th className={c.thPlace}>Operator</th><th>Ships</th><th>Scrubber-ship calls</th><th>By open-loop ships</th><th className={c.thPlace}>Most calls at</th></tr></thead>
+        <tbody>
+          {list.map((e) => (
+            <tr key={e.name} className={c.opRow} onClick={() => onPick(e.name)}>
+              <td className={c.place}><button className={c.toggle}>{e.name}</button></td>
+              <td className={c.num}>{fmt(e.ships)}</td>
+              <td className={c.num}><b>{fmt(e.calls)}</b></td>
+              <td className={c.num}>{pct(e.open, e.calls)}</td>
+              <td className={c.place}>{[...e.where].sort((a, b) => b[1] - a[1])[0]?.[0]}</td>
+            </tr>
+          ))}
+          {unnamed && <tr><td className={c.place}><span className={c.sub}>Operator not reported</span></td><td className={c.num}>{fmt(unnamed.ships)}</td><td className={c.num}>{fmt(unnamed.calls)}</td><td className={c.num}>{pct(unnamed.open, unnamed.calls)}</td><td /></tr>}
+        </tbody>
+      </table>
+      {named.length > 12 && <button className={`${c.preset} ${c.noPrint}`} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${named.length} operators`}</button>}
+    </section>
+  )
+}
+
+function Ships({ view, months, op, setOp }) {
+  const [kind, setKind] = useState(null)
+  const [loop, setLoop] = useState(null)
+  const list = view.shipList.filter((a) => (!kind || kindOfShip(a) === kind) && (!loop || loopOfShip(a) === loop) && (!op || operatorOf(a) === op))
+  const count = (f) => view.shipList.filter(f).length
+  const chips = (opts, cur, setCur, of) => opts.map(([k, l]) => {
+    const n = count((a) => of(a) === k)
+    return n ? <button key={k} className={cur === k ? c.presetOn : c.preset} onClick={() => setCur(cur === k ? null : k)}>{l} <span className={c.chipN}>{n}</span></button> : null
+  })
+  const filters = [kind && KINDS_UI.find(([k]) => k === kind)?.[1], loop && LOOP_LABEL[loop], op].filter(Boolean)
+  return (
+    <section className={`${c.card} ${c.flow}`} id="ships">
+      <div className={c.cardHead}>
+        <h2 className={c.h2}>Ships</h2>
+        <div className={c.note}>{fmt(list.length)} of {fmt(view.shipList.length)} scrubber-fitted ships{filters.length ? ` · ${filters.join(' · ')}` : ''}</div>
+      </div>
+      <div className={`${c.filters} ${c.noPrint}`}>
+        <div className={c.filterRow}><span className={c.filterLabel}>Ship type</span>{chips(KINDS_UI, kind, setKind, kindOfShip)}</div>
+        <div className={c.filterRow}><span className={c.filterLabel}>Scrubber</span>{chips(LOOP.map(([k, l]) => [k, l]), loop, setLoop, loopOfShip)}</div>
+        {op && <div className={c.filterRow}><span className={c.filterLabel}>Operator</span><button className={c.presetOn} onClick={() => setOp(null)}>{op} ✕</button></div>}
+      </div>
+      <div className={c.tableWrap}>
+        <table className={c.table}>
+          <thead><tr>
+            <th className={c.thPlace}>Ship</th><th className={c.thPlace}>Flag</th><th className={c.thPlace}>Operator</th><th className={c.thPlace}>Scrubber</th>
+            <th>Calls</th><th className={c.thPlace}>Where</th><th className={c.thSpark}>Calls by month</th>
+          </tr></thead>
+          <tbody>{list.map((a) => (
+            <tr key={a.id}>
+              <td className={c.place}><a href={`/ships?v=${a.id}`} className={c.shipLink}>{a.name || 'Unnamed'}</a>{a.info?.kind?.label && <div className={c.sub}>{a.info.kind.label}</div>}</td>
+              <td className={c.place}>{a.info?.flag?.name || '–'}</td>
+              <td className={c.place}>{a.info?.operator?.name || '–'}
+                {a.info?.owner?.name && a.info.owner.name.toUpperCase() !== String(a.info?.operator?.name || '').toUpperCase() && <div className={c.sub}>Owner: {a.info.owner.name}</div>}</td>
+              <td className={c.place}><LoopBadge info={a.info} /></td>
+              <td className={c.num}><b>{fmt(a.calls)}</b></td>
+              <td className={c.place}>{a.where.slice(0, 2).map(([t]) => t.name).join(', ')}{a.where.length > 2 ? <span className={c.sub}> +{a.where.length - 2} more</span> : null}</td>
+              <td><Spark months={months} values={a.months} /></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <div className={c.shipsNote}>Flag from the ships’ registry records (via <Src k="gfwPorts">Global Fishing Watch</Src>, US Coast Guard, Wikidata); operator from the <Src k="mep" />; owner as registered;
+        scrubber type and maker from the <Src k="gisis" />.</div>
+    </section>
   )
 }
 
@@ -633,12 +869,32 @@ function DayChart({ month, days, keys, onClose }) {
   )
 }
 
+/**
+ * A small month-by-month bar chart. Every month has a faint slot, so an empty month reads as empty and a bar's position is its month;
+ * a baseline with a tick at each January; the first and last month under it; hover a bar for the month and its count.
+ */
 function Spark({ months, values }) {
   const max = Math.max(1, ...months.map((m) => values[m] || 0))
+  const W = 6, H = 20
+  const tip = (m) => `${monthName(m, 'long')}: ${fmt(values[m] || 0)} call${(values[m] || 0) === 1 ? '' : 's'}`
   return (
-    <svg viewBox={`0 0 ${months.length * 6} 20`} className={c.spark} aria-hidden="true">
-      {months.map((m, i) => { const h = ((values[m] || 0) / max) * 18; return <rect key={m} x={i * 6} y={20 - h} width={4} height={h || 0.5} rx={1} /> })}
-    </svg>
+    <div className={c.sparkBox}>
+      <svg viewBox={`0 0 ${months.length * W} ${H + 3}`} className={c.spark} role="img"
+        aria-label={`Calls by month, ${monthName(months[0])} – ${monthName(months.at(-1))}: ${months.map((m) => values[m] || 0).join(', ')}`}>
+        {months.map((m, i) => {
+          const v = values[m] || 0, h = (v / max) * (H - 2)
+          return (
+            <g key={m}>
+              <rect x={i * W} y={0} width={W - 1.5} height={H} className={c.sparkSlot}><title>{tip(m)}</title></rect>
+              {v > 0 && <rect x={i * W} y={H - h} width={W - 1.5} height={h} rx={1} className={c.sparkBar}><title>{tip(m)}</title></rect>}
+              {m.endsWith('-01') && i > 0 && <line x1={i * W - 0.75} x2={i * W - 0.75} y1={H} y2={H + 3} className={c.sparkTick} />}
+            </g>
+          )
+        })}
+        <line x1={0} x2={months.length * W - 1.5} y1={H + 0.5} y2={H + 0.5} className={c.sparkBase} />
+      </svg>
+      <div className={c.sparkAxis}><span>{monthShort(months[0])} ’{months[0].slice(2, 4)}</span><span>{monthShort(months.at(-1))} ’{months.at(-1).slice(2, 4)}</span></div>
+    </div>
   )
 }
 
@@ -677,7 +933,7 @@ function PlaceTable({ view, open, setOpen, months }) {
     <div className={c.tableWrap}>
       <table className={c.table}>
         <thead><tr>
-          <th className={c.thPlace}>Place</th><th>Scrubber-ship calls</th><th>Scrubber ships</th><th>Large-ship calls</th><th>Share</th><th className={c.thSpark}>By month</th>
+          <th className={c.thPlace}>Place</th><th>Scrubber-ship calls</th><th>Scrubber ships</th><th>Large-ship calls</th><th>Share</th><th className={c.thSpark}>Calls by month</th>
         </tr></thead>
         <tbody>{rows}</tbody>
       </table>
@@ -708,7 +964,7 @@ function TerminalRow({ level, t, view, months, open, onToggle }) {
   const ships = [...p.ships.values()].sort((a, b) => b.calls - a.calls || String(a.name).localeCompare(String(b.name)))
   return (
     <>
-      <tr className={c.termRow}>
+      <tr className={c.termRow} id={`row-${t.key}`}>
         <td className={c.place} style={{ paddingLeft: 10 + level * 18 }}>
           <button className={c.toggle} onClick={onToggle} aria-expanded={open} disabled={false}><Chev open={open} />{t.name}</button>
           <span className={c.meta}>
@@ -729,19 +985,20 @@ function TerminalRow({ level, t, view, months, open, onToggle }) {
         <tr className={c.shipsRow}><td colSpan={6}>
           {ships.length === 0 ? <div className={c.none}>No scrubber-fitted ship called here in this period.</div> : (
             <table className={c.ships}>
-              <thead><tr><th>Ship</th><th>IMO</th><th>Calls</th><th>Scrubber listed by</th><th className={c.thSpark}>By month</th></tr></thead>
-              <tbody>{ships.map((s) => (
-                <tr key={s.vessel_id}>
-                  <td><a href={`/ships?v=${s.vessel_id}`} className={c.shipLink}>{s.name || 'Unnamed'}</a></td>
-                  <td className={c.mono}>{s.ais_imo || '–'}</td>
-                  <td className={c.num}>{fmt(s.calls)}</td>
-                  <td>
-                    {s.gisis && <Src k="gisis"><span className={c.badge}>IMO</span></Src>}
-                    {s.mep && <Src k="mep"><span className={c.badge}>MEP Alliance{s.mep_inferred && !s.gisis ? ' (inferred)' : ''}</span></Src>}
-                  </td>
-                  <td><Spark months={months} values={s.months} /></td>
-                </tr>
-              ))}</tbody>
+              <thead><tr><th>Ship</th><th>Flag</th><th>Operator</th><th>Scrubber</th><th>Calls</th><th className={c.thSpark}>Calls by month</th></tr></thead>
+              <tbody>{ships.map((s) => {
+                const inf = view.info[s.vessel_id]
+                return (
+                  <tr key={s.vessel_id}>
+                    <td><a href={`/ships?v=${s.vessel_id}`} className={c.shipLink}>{inf?.name || s.name || 'Unnamed'}</a>{inf?.kind?.label && <div className={c.sub}>{inf.kind.label}</div>}</td>
+                    <td>{inf?.flag?.name || '–'}</td>
+                    <td>{inf?.operator?.name || '–'}</td>
+                    <td><LoopBadge info={inf} /></td>
+                    <td className={c.num}>{fmt(s.calls)}</td>
+                    <td><Spark months={months} values={s.months} /></td>
+                  </tr>
+                )
+              })}</tbody>
             </table>
           )}
           <div className={c.shipsNote}>Calls from <Src k="noaa">NOAA AIS</Src>, matched to the ship by MMSI at the time of the call (and IMO when broadcast).</div>

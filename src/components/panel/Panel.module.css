@@ -108,6 +108,7 @@
   font: inherit; font-size: 11.5px; text-align: left; cursor: pointer;
 }
 .sourcesBtn:hover { color: #a5f3fc; text-decoration: underline; text-underline-offset: 2px; }
+.reportLink { border-top: 0; padding-top: 6px; text-decoration: none; }
 .builtBy {
   margin-top: 10px; padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);

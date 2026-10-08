@@ -18,8 +18,9 @@ import s from './Panel.module.css'
  *   notes     array     optional [{ heading, body }] for caveats / method notes after the sources
  *   title     string    'How this is sourced'
  *   changelog node      optional { href, label } — a quiet "What's new" link at the foot of the sources dialog (e.g. /ships/changelog)
+ *   reports   array     optional [{ href, label }] — the site's reports, linked under the sources button and in the dialog's foot
  */
-export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes, changelog }) {
+export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes, changelog, reports = [] }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef(null)
   return (
@@ -27,12 +28,15 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
       <button type="button" ref={btnRef} className={s.sourcesBtn} onClick={() => setOpen(true)} aria-haspopup="dialog">
         <InfoCircle /> {title}
       </button>
+      {reports.map((r) => (
+        <a key={r.href} href={r.href} className={`${s.sourcesBtn} ${s.reportLink}`}><ReportIcon /> Report: {r.label}</a>
+      ))}
       <div className={s.builtBy}>
         EarthAtlas is built by{' '}
         <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a>
       </div>
       {open && (
-        <SourcesModal title={title} intro={intro} sections={sections} notes={notes} changelog={changelog}
+        <SourcesModal title={title} intro={intro} sections={sections} notes={notes} changelog={changelog} reports={reports}
           onClose={() => { setOpen(false); btnRef.current?.focus() }} />
       )}
     </div>
@@ -43,7 +47,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
  * The sources rollup dialog. Rendered into document.body: map panels use backdrop-filter, which would
  * otherwise trap a position:fixed overlay inside the panel.
  */
-export function SourcesModal({ title = 'How this is sourced', intro, sections = [], notes = [], changelog, onClose }) {
+export function SourcesModal({ title = 'How this is sourced', intro, sections = [], notes = [], changelog, reports = [], onClose }) {
   const titleId = useId()
   const closeRef = useRef(null)
   useEffect(() => {
@@ -92,6 +96,7 @@ export function SourcesModal({ title = 'How this is sourced', intro, sections = 
           </section>
         ))}
         <div className={s.modalFoot}>
+          {reports.map((r) => <span key={r.href}><a href={r.href}>Report: {r.label}</a>{' · '}</span>)}
           {changelog?.href && <><a href={changelog.href}>{changelog.label || 'What’s new (changelog)'}</a>{' · '}</>}
           EarthAtlas is built by{' '}
           <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
@@ -99,6 +104,15 @@ export function SourcesModal({ title = 'How this is sourced', intro, sections = 
       </div>
     </div>,
     document.body,
+  )
+}
+
+function ReportIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" style={{ flex: 'none' }}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h4" />
+    </svg>
   )
 }
 

@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import { ShipLoader } from '../components/panel'
 import { kindWords } from './terminalIcons.js'
 import c from './ScrubberReport.module.css'
 
@@ -233,7 +234,7 @@ export default function ScrubberReport() {
         </div>
 
         {err && <div className={c.error}>Couldn't load the report: {err}</div>}
-        {!data && !err && <div className={c.loading}>Counting calls…</div>}
+        {!data && !err && <ShipLoader kind="report" />}
 
         {view && <>
           <Coverage data={data} view={view} />

@@ -7,6 +7,7 @@
  *   slow    a big or first-time request that can take a while
  *   search  looking something up as you type
  *   more    loading the next page of a list (short: it sits in a button)
+ *   report  building a report from many records (a few seconds)
  */
 export const LOADING_MESSAGES = {
   quick: [
@@ -33,6 +34,15 @@ export const LOADING_MESSAGES = {
   more: [
     'Loading more…',
     'Fetching more…',
+  ],
+  // a report that tallies a lot of records (the /ships scrubber report)
+  report: [
+    'Counting calls at every berth…',
+    'Matching each call to its ship…',
+    'Checking ships against the scrubber lists…',
+    'Tallying ports, terminals and refineries…',
+    'Adding up the months…',
+    'Lining up the numbers…',
   ],
 }
 

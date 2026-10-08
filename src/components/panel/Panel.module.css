@@ -188,3 +188,39 @@
 @media (prefers-reduced-motion: reduce) { .spinner { animation: eaPulse 1.4s ease-in-out infinite; } }
 .loadingLine { display: flex; align-items: flex-start; gap: 8px; }
 .loadingLine > .spinner { margin-top: 1px; }
+
+/* ─── ShipLoader: a little ship on rolling waves (page-sized loading state) ─── */
+.shipLoader { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 36px 0 28px;
+  --sl-sea-back: #93c5fd; --sl-sea-front: #3b82f6; --sl-hull: #1e293b; --sl-cabin: #ffffff; --sl-cabin-line: #cbd5e1;
+  --sl-funnel: #0f172a; --sl-stripe: #22d3ee; --sl-port: #38bdf8; --sl-smoke: #94a3b8; --sl-sky: #eff6ff; --sl-text: #475569; }
+.shipLoaderDark { --sl-sea-back: rgba(59, 130, 246, 0.55); --sl-sea-front: #2563eb; --sl-hull: #e2e8f0; --sl-cabin: #1e293b; --sl-cabin-line: #475569;
+  --sl-funnel: #e2e8f0; --sl-stripe: #22d3ee; --sl-port: #67e8f9; --sl-smoke: rgba(226, 232, 240, 0.6); --sl-sky: rgba(255, 255, 255, 0.04); --sl-text: rgba(255, 255, 255, 0.75); }
+.shipLoaderArt { width: 168px; height: auto; display: block; border-radius: 14px; background: var(--sl-sky); }
+.shipLoaderText { font-size: 13.5px; color: var(--sl-text); min-height: 1.4em; text-align: center; }
+.slHull { fill: var(--sl-hull); }
+.slWaterline { stroke: var(--sl-stripe); stroke-width: 1.4; opacity: 0.8; }
+.slCabin { fill: var(--sl-cabin); stroke: var(--sl-cabin-line); stroke-width: 1; }
+.slPort { fill: var(--sl-port); }
+.slFunnel { fill: var(--sl-funnel); }
+.slStripe { fill: var(--sl-stripe); }
+.slShip { transform-box: fill-box; transform-origin: 50% 80%; animation: slBob 2.6s ease-in-out infinite; }
+.slWave { animation: slRoll linear infinite; }
+.slWaveBack { fill: var(--sl-sea-back); animation-duration: 5.2s; }
+.slWaveFront { fill: var(--sl-sea-front); opacity: 0.92; animation-duration: 3.4s; }
+.slSmoke circle { fill: var(--sl-smoke); transform-box: fill-box; transform-origin: center; opacity: 0; animation: slPuff 2.7s ease-out infinite; }
+.slSmoke circle:nth-child(2) { animation-delay: 0.9s; }
+.slSmoke circle:nth-child(3) { animation-delay: 1.8s; }
+@keyframes slBob {
+  0%, 100% { transform: translateY(0) rotate(-2.2deg); }
+  50% { transform: translateY(2.6px) rotate(2.2deg); }
+}
+@keyframes slRoll { from { transform: translateX(0); } to { transform: translateX(-160px); } }
+@keyframes slPuff {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  15% { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(-30px, -22px) scale(2.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slShip, .slWave, .slSmoke circle { animation: none; }
+  .slSmoke circle:first-child { opacity: 0.6; transform: translate(-8px, -6px) scale(1.3); }
+}

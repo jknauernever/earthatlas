@@ -174,7 +174,7 @@ export default function ScrubberReport() {
               sub={`at ${fmt(view.terminalsWithScrubber)} terminals${view.tot.est_calls ? `; ≈${fmt(view.tot.est_calls)} of them estimated` : ''}`}
               src={<><Src k="noaa">NOAA AIS</Src>{view.tot.est_calls ? <> · <Src k="gfw">Global Fishing Watch</Src></> : null}</>} />
             <Tile value={fmt(view.shipIds.size)} label="Scrubber-fitted ships" sub="different ships that made those calls" src={<><Src k="gisis">IMO</Src> · <Src k="mep">MEP Alliance</Src></>} />
-            <Tile value={pct(view.tot.scrubber_calls, view.tot.large)} label="Share of large-ship calls" sub={`${fmt(view.tot.scrubber_calls)} of ${fmt(view.tot.large)} calls by passenger, cargo and tanker ships (NOAA-counted months)`} src={<Src k="noaa">AIS ship type</Src>} />
+            <Tile value={pct(view.tot.scrubber_calls, view.tot.large)} label="Share of large-ship calls" sub={`${fmt(view.tot.scrubber_calls)} of ${fmt(view.tot.large)} calls by passenger, cargo and tanker ships${view.tot.est_calls ? ', not counting estimates' : ''}`} src={<Src k="noaa">AIS ship type</Src>} />
             <Tile value={fmt((view.byOwn.ports?.scrubber_calls || 0) + (view.byOwn.ports?.est_calls || 0))} label="At ports"
               sub={`${fmt((view.byOwn.terminals?.scrubber_calls || 0) + (view.byOwn.terminals?.est_calls || 0))} at other terminals, ${fmt((view.byOwn.refineries?.scrubber_calls || 0) + (view.byOwn.refineries?.est_calls || 0))} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
           </section>
@@ -236,7 +236,8 @@ function build(data, geo) {
   const est = data.estimated
   const estKeys = new Set((est?.cells || []).map((r) => r.terminal_key))
   // Only facilities we have numbers for: counted from NOAA's AIS, or estimated from hourly positions.
-  const terms = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key))
+  // (a terminal beyond NOAA's reach has data whenever hourly estimates exist for the period, even when they hold no scrubber calls)
+  const terms = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key) || (t.estimatedOnly && (est?.allMonths || []).length > 0))
   const keys = new Set(terms.map((t) => t.key))
   const byKey = new Map(terms.map((t) => [t.key, t]))
   const own = (t) => t.ownership || 'unknown'

@@ -3,7 +3,6 @@
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #e5e7eb; background: #fff; }
 .brand { color: #111827; text-decoration: none; font-weight: 700; font-size: 15px; }
 .brand span { color: #0e7490; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; margin-left: 6px; }
-.edition { font-size: 12px; color: #6b7280; }
 .main { max-width: 1060px; margin: 0 auto; padding: 32px 20px 64px; }
 .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #0e7490; font-weight: 600; }
 .title { font-size: 30px; line-height: 1.2; margin: 6px 0 10px; color: #0f172a; letter-spacing: -0.01em; }
@@ -28,7 +27,14 @@
 .preset, .presetOn { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; color: #374151; cursor: pointer; }
 .presetOn { border-color: #0e7490; color: #0e7490; background: #ecfeff; font-weight: 600; }
 
-.editionBanner { padding: 12px 14px; margin-bottom: 14px; border-radius: 10px; background: #ecfeff; border: 1px solid #a5f3fc; font-size: 13.5px; line-height: 1.5; color: #164e63; }
+/* what the report is: period, area, date, link */
+.facts { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0 0 20px; padding: 12px 16px; border-left: 3px solid #0e7490; background: #fff; font-size: 13.5px; }
+.facts div { display: flex; flex-direction: column; }
+.facts dt { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; font-weight: 600; }
+.facts dd { margin: 2px 0 0; color: #0f172a; font-weight: 500; }
+.print { display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid #0e7490; color: #0e7490; background: #fff; cursor: pointer; }
+.print:hover { background: #ecfeff; }
+.print:disabled { opacity: 0.5; cursor: default; }
 .coverage { display: grid; gap: 6px; padding: 12px 14px; margin-bottom: 18px; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; font-size: 13px; line-height: 1.5; color: #78350f; }
 
 /* headline tiles */
@@ -110,8 +116,6 @@
 .none { font-size: 13px; color: #6b7280; }
 
 /* facility × month table */
-.csv { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 8px; border: 1px solid #0e7490; color: #0e7490; background: #fff; cursor: pointer; }
-.csv:hover { background: #ecfeff; }
 .mToggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #374151; margin: 8px 0 10px; }
 .mWrap { overflow-x: auto; border: 1px solid #eef0f2; border-radius: 10px; }
 .matrix { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; }
@@ -165,7 +169,36 @@
   .thSpark, .table td:last-child { display: none; }
   .controls { position: static; }
 }
+/* Printed / saved-as-PDF copy (Josh 2026-10-07): landscape so the month table fits; controls and hints left out (the facts block
+   at the top states the period and area); colours kept. */
 @media print {
-  .controls, .top .edition { position: static; }
-  .page { background: #fff; }
+  @page { size: letter landscape; margin: 0.45in; }
+  :global(html), :global(body) { background: #fff !important; }
+  .page { background: #fff; min-height: 0; }
+  .top { border: 0; padding: 0 0 6px; }
+  .print, .controls, .noPrint, .tip, .close { display: none !important; }
+  .main { max-width: none; padding: 0; }
+  .title { font-size: 22px; }
+  .lede { font-size: 12px; max-width: none; margin-bottom: 10px; }
+  .facts { border: 1px solid #e5e7eb; border-left: 3px solid #0e7490; padding: 8px 12px; margin-bottom: 12px; }
+  .coverage, .tiles, .card, .ownGrid, .facts { break-inside: avoid; }
+  .card.flow { break-inside: auto; }            /* the long tables run across pages; their rows stay whole */
+  .cardHead { break-after: avoid; }
+  .chev { display: none; }
+  .card { box-shadow: none; padding: 10px 12px; margin-bottom: 12px; }
+  .tiles { grid-template-columns: repeat(4, 1fr); }
+  .tileValue { font-size: 24px; }
+  .mWrap { overflow: visible; border: 0; }
+  .matrix { font-size: 8.5px; width: 100%; }
+  .matrix th, .matrix td { padding: 3px 3px; }
+  .matrix thead th, .mFirst { position: static; box-shadow: none; }
+  .mFirst { min-width: 0; max-width: 180px; }
+  .matrix tr { break-inside: avoid; }
+  .mShips { font-size: 7.5px; }
+  .tableWrap { overflow: visible; }
+  .table { font-size: 10px; }
+  .spark { width: 80px; }
+  .worldGrid { grid-template-columns: 1fr 1.2fr; }
+  .src { border-bottom: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

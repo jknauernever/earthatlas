@@ -126,7 +126,12 @@ export default function ScrubberReport() {
     <div className={c.page}>
       <header className={c.top}>
         <a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a>
-        <span className={c.edition}>{edition ? <>Edition {edition} · frozen · <a href="/ships/reports/scrubbers" className={c.src}>live report</a></> : 'Live report · updates as new data lands'}</span>
+        <button className={c.print} onClick={() => window.print()} disabled={!view}>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9V3h12v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M6 14h12v7H6z" />
+          </svg>
+          Print or save as PDF
+        </button>
       </header>
       <main className={c.main}>
         <div className={c.kicker}>Report</div>
@@ -138,13 +143,7 @@ export default function ScrubberReport() {
           on the <Src k="mep">MEP Alliance lists</Src>.
         </p>
 
-        {ed && (
-          <div className={c.editionBanner}>
-            <b>{ed.title || `Edition ${ed.id}`}</b>: numbers frozen on {new Date(ed.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} for
-            {' '}{monthName(ed.params.from, 'long')} – {monthName(ed.params.to, 'long')}. They will not change; the <a href="/ships/reports/scrubbers" className={c.src}>live report</a> adds
-            newer data as it lands.
-          </div>
-        )}
+        {data && <ReportFacts data={data} geo={st.geo} ed={ed} edition={edition} />}
         <div className={c.controls}>
           <div className={c.seg} role="tablist" aria-label="Area">
             {GEOS.map(([g, l]) => (
@@ -180,10 +179,9 @@ export default function ScrubberReport() {
               sub={`${fmt((view.byOwn.terminals?.scrubber_calls || 0) + (view.byOwn.terminals?.est_calls || 0))} at other terminals, ${fmt((view.byOwn.refineries?.scrubber_calls || 0) + (view.byOwn.refineries?.est_calls || 0))} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
           </section>
 
-          <section className={c.card}>
+          <section className={`${c.card} ${c.flow}`}>
             <div className={c.cardHead}>
               <h2 className={c.h2}>Each port, terminal and refinery, month by month</h2>
-              <button className={c.csv} onClick={() => downloadCsv(view, data.period.months.filter((m) => data.coverage.months.includes(m) || view.estMonths.has(m)), st)}>Download CSV</button>
             </div>
             <div className={c.note}>Each cell: <b>scrubber-ship calls</b> and, under it, how many different scrubber-fitted ships made them. Totals count each ship once.</div>
             <Matrix view={view} months={data.period.months} covered={new Set(data.coverage.months)} />
@@ -196,7 +194,7 @@ export default function ScrubberReport() {
             </div>
             <MonthChart view={view} months={data.period.months} covered={new Set(data.coverage.months)} active={st.m} hover={hover} setHover={setHover}
               onPick={(m) => set({ m: st.m === m ? null : m })} />
-            <div className={c.hint}>Select a month to see it day by day.</div>
+            <div className={`${c.hint} ${c.noPrint}`}>Select a month to see it day by day.</div>
             {st.m && <DayChart month={st.m} days={days} keys={view.keys} onClose={() => set({ m: null })} />}
           </section>
 
@@ -213,10 +211,10 @@ export default function ScrubberReport() {
             })}
           </section>
 
-          <section className={c.card}>
+          <section className={`${c.card} ${c.flow}`}>
             <div className={c.cardHead}>
               <h2 className={c.h2}>By place</h2>
-              <div className={c.note}>County and city from the <Src k="census">US Census Bureau</Src>; open a row for its terminals and ships.</div>
+              <div className={c.note}>County and city from the <Src k="census">US Census Bureau</Src><span className={c.noPrint}>; open a row for its terminals and ships</span>.</div>
             </div>
             <PlaceTable view={view} open={st.open} setOpen={(open) => set({ open })} months={data.coverage.months} />
           </section>
@@ -225,7 +223,7 @@ export default function ScrubberReport() {
 
           <Method data={data} />
         </>}
-        <BuiltByCredit variant="panel" className={c.builtBy} />
+        <BuiltByCredit variant="light" className={c.builtBy} />
       </main>
     </div>
   )
@@ -341,7 +339,7 @@ function Matrix({ view, months, covered }) {
   const total = (p) => p.scrubber_calls + (p.est_calls || 0)
   return (
     <>
-      <label className={c.mToggle}><input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide facilities with no scrubber-ship calls</label>
+      <label className={`${c.mToggle} ${c.noPrint}`}><input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide facilities with no scrubber-ship calls</label>
       <div className={c.mWrap}>
         <table className={c.matrix}>
           <thead><tr>
@@ -402,27 +400,23 @@ function Matrix({ view, months, covered }) {
   )
 }
 
-function downloadCsv(view, months, st) {
-  const q = (v) => (v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
-  const head = ['facility', 'type', 'kind', 'owner', 'owner_source', 'county', 'city_or_town', 'state', 'counted',
-    ...months.flatMap((m) => (view.estMonths.has(m) ? [`${m}_scrubber_calls_estimated`, `${m}_scrubber_ships_estimated`] : [`${m}_scrubber_calls`, `${m}_scrubber_ships`])),
-    'total_scrubber_calls', 'total_scrubber_ships', 'total_large_ship_calls_noaa_months']
-  const rows = view.terms.map((t) => {
-    const p = view.perT.get(t.key)
-    return [t.name, typeOf(t), kindWords(t.kind), t.ownership || '', t.ownership_basis?.says || '', t.county_name || '', placeLabel(t.place_name) || '',
-      t.state_code || '', t.counted ? 'yes' : 'not yet',
-      ...months.flatMap((m) => (t.counted || view.estMonths.has(m) ? [p.months[m] || 0, p.monthShips[m] || 0] : ['', ''])),
-      p.scrubber_calls + (p.est_calls || 0), p.ships.size, t.counted ? p.large : '']
-  })
-  const notes = [`# EarthAtlas scrubber-ship calls report, ${months[0]} to ${months.at(-1)} (months counted). earthatlas.org/ships/reports/scrubbers`,
-    '# Calls: NOAA MarineCadastre AIS (CC0), counted by EarthAtlas. Scrubber-fitted: IMO GISIS Reg. 4.2 notifications or MEP Alliance lists.',
-    '# Columns marked _estimated: months NOAA has not published yet, estimated from hourly positions (Powered by Global Fishing Watch, CC BY-NC 4.0); stops that could be at either of two neighbouring terminals are left out.']
-  const csv = [...notes, head.join(','), ...rows.map((r) => r.map(q).join(','))].join('\n')
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-  a.download = `earthatlas-scrubber-calls-${st.geo.toLowerCase()}-${months[0]}-to-${months.at(-1)}.csv`
-  a.click()
-  URL.revokeObjectURL(a.href)
+
+// ── What the report is (also the top of the printed / PDF copy) ─────────────
+
+const longDay = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+function ReportFacts({ data, geo, ed, edition }) {
+  const { from, to } = data.period
+  const area = geo === 'WA' ? 'Washington State' : geo === 'BC' ? 'British Columbia' : 'Washington State and British Columbia'
+  const url = `earthatlas.org/ships/reports/scrubbers${edition ? `/${edition}` : ''}`
+  return (
+    <dl className={c.facts}>
+      <div><dt>Period</dt><dd>{monthName(from, 'long')} – {monthName(to, 'long')}</dd></div>
+      <div><dt>Area</dt><dd>{area}</dd></div>
+      <div><dt>Data as of</dt><dd>{longDay(ed?.created_at || Date.now())}</dd></div>
+      {edition && <div><dt>Report</dt><dd>Edition {edition}</dd></div>}
+      <div><dt>Online</dt><dd><a href={`https://${url}`} className={c.src}>{url}</a></dd></div>
+    </dl>
+  )
 }
 
 // ── Where else these ships call (GFW port visits, worldwide) ─────────────────
@@ -440,7 +434,7 @@ function WorldPorts({ world, geo }) {
         <h2 className={c.h2}>Where else these ships call</h2>
         <div className={c.note}>Port visits worldwide by {who}, in this period. <Src k="gfwPorts" /></div>
       </div>
-      {cov.fetched < cov.ships && <div className={c.hint}>Port visits are loaded for {fmt(cov.fetched)} of these {fmt(cov.ships)} ships so far; the rest are being added.</div>}
+      {cov.fetched < cov.ships && <div className={c.hint}>Port visits are available for {fmt(cov.fetched)} of these {fmt(cov.ships)} ships.</div>}
       {world.countries.length === 0 ? <div className={c.none}>No port visits loaded yet for these ships.</div> : (
         <div className={c.worldGrid}>
           <div>
@@ -468,7 +462,7 @@ function WorldPorts({ world, geo }) {
                 </tr>
               ))}</tbody>
             </table>
-            {world.ports.length > 25 && <button className={c.preset} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${world.ports.length}`}</button>}
+            {world.ports.length > 25 && <button className={`${c.preset} ${c.noPrint}`} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${world.ports.length}`}</button>}
           </div>
         </div>
       )}
@@ -747,7 +741,7 @@ function Method({ data }) {
         <dd>County and city or town from the <Src k="census" /> at each terminal's position. "Unincorporated" means outside any city or town.</dd>
         <dt>Coverage</dt>
         <dd>Months counted: {data.coverage.months.length ? `${monthName(data.coverage.months[0])} – ${monthName(data.coverage.months.at(-1))}` : 'none in this period'}.
-          NOAA publishes detailed positions a few months after the fact; newer months are added as they appear.</dd>
+          NOAA publishes its detailed positions about three months after the fact.</dd>
       </dl>
     </section>
   )

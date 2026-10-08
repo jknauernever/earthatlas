@@ -117,13 +117,16 @@
 
 /* facility × month table */
 .mToggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #374151; margin: 8px 0 10px; }
-.mWrap { overflow-x: auto; border: 1px solid #eef0f2; border-radius: 10px; }
-.matrix { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; }
-.matrix th, .matrix td { padding: 6px 7px; border-bottom: 1px solid #f1f2f4; text-align: right; white-space: nowrap; }
+.mWrap { border: 1px solid #eef0f2; border-radius: 10px; }
+/* Every month fits the width: fixed layout, the facility column a set width, the months sharing the rest equally. Only phones scroll. */
+.matrix { border-collapse: separate; border-spacing: 0; font-size: 12px; width: 100%; table-layout: fixed; }
+.mColFirst { width: 200px; }
+.mColTot { width: 64px; }
+.matrix th, .matrix td { padding: 5px 3px; border-bottom: 1px solid #f1f2f4; text-align: right; white-space: nowrap; overflow: hidden; }
 .matrix thead th { position: sticky; top: 0; background: #fff; font-size: 11px; font-weight: 600; color: #6b7280; z-index: 1; }
 .matrix thead th span { display: block; font-weight: 400; color: #9ca3af; font-size: 10px; }
 .matrix thead th.mNa { color: #c4c8ce; }
-.mFirst { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left !important; white-space: normal !important; min-width: 230px; max-width: 280px; box-shadow: 1px 0 0 #eef0f2; }
+.mFirst { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left !important; white-space: normal !important; padding-left: 8px !important; box-shadow: 1px 0 0 #eef0f2; }
 .matrix thead .mFirst { z-index: 3; }
 .mName { color: #0f172a; font-weight: 600; text-decoration: none; }
 .mName:hover { color: #0369a1; }
@@ -131,9 +134,17 @@
 .mGroup th, .mGroup td { background: #f8fafc; }
 .mGroup .mFirst { background: #f8fafc; font-weight: 700; color: #0f172a; }
 .mGroup .swatch { display: inline-block; margin-right: 7px; vertical-align: 1px; }
-.mCell, .mCellZero, .mCellNa { min-width: 44px; font-variant-numeric: tabular-nums; }
+.mCell, .mCellZero, .mCellNa { font-variant-numeric: tabular-nums; }
 .mCalls { font-weight: 700; color: #0f172a; }
-.mShips { font-size: 10.5px; color: #6b7280; }
+.mShips { font-size: 10px; color: #6b7280; }
+.shipsKey { color: #6b7280; font-weight: 600; }
+/* The month table's card takes the window's width (up to 1500 px), wider than the reading column. */
+.wide { position: relative; left: 50%; transform: translateX(-50%); width: min(calc(100vw - 40px), 1500px); max-width: none; }
+@media (max-width: 900px) {
+  .wide { left: 0; transform: none; width: auto; }
+  .mWrap { overflow-x: auto; }
+  .matrix { table-layout: auto; min-width: 960px; }
+}
 .mCellZero .mCalls { font-weight: 400; color: #c4c8ce; }
 .mCellNa { color: #d1d5db; text-align: center !important; }
 .mTot { color: #0f172a !important; }
@@ -188,7 +199,10 @@
   .card { box-shadow: none; padding: 10px 12px; margin-bottom: 12px; }
   .tiles { grid-template-columns: repeat(4, 1fr); }
   .tileValue { font-size: 24px; }
+  .wide { left: 0; transform: none; width: auto; }
   .mWrap { overflow: visible; border: 0; }
+  .mColFirst { width: 150px; }
+  .mColTot { width: 46px; }
   .matrix { font-size: 8.5px; width: 100%; }
   .matrix th, .matrix td { padding: 3px 3px; }
   .matrix thead th, .mFirst { position: static; box-shadow: none; }

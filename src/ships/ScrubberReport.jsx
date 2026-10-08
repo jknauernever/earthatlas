@@ -179,11 +179,11 @@ export default function ScrubberReport() {
               sub={`${fmt((view.byOwn.terminals?.scrubber_calls || 0) + (view.byOwn.terminals?.est_calls || 0))} at other terminals, ${fmt((view.byOwn.refineries?.scrubber_calls || 0) + (view.byOwn.refineries?.est_calls || 0))} at refinery docks`} src={<Src k="usace">dock owner: USACE</Src>} />
           </section>
 
-          <section className={`${c.card} ${c.flow}`}>
+          <section className={`${c.card} ${c.flow} ${c.wide}`}>
             <div className={c.cardHead}>
               <h2 className={c.h2}>Each port, terminal and refinery, month by month</h2>
             </div>
-            <div className={c.note}>Each cell: <b>scrubber-ship calls</b> and, under it, how many different scrubber-fitted ships made them. Totals count each ship once.</div>
+            <div className={c.note}>Each cell: the number of <b>calls</b> by scrubber-fitted ships, and under it in grey the number of <span className={c.shipsKey}>different ships</span> that made them. Totals count each ship once.</div>
             <Matrix view={view} months={data.period.months} covered={new Set(data.coverage.months)} />
           </section>
 
@@ -221,7 +221,7 @@ export default function ScrubberReport() {
 
           <WorldPorts world={world} geo={st.geo} />
 
-          <Method data={data} />
+          <Method data={data} world={world} />
         </>}
         <BuiltByCredit variant="light" className={c.builtBy} />
       </main>
@@ -233,13 +233,17 @@ export default function ScrubberReport() {
 
 function build(data, geo) {
   const inGeo = (t) => geo === 'ALL' || (geo === 'WA' ? t.state_code === 'WA' : t.state_code === 'BC')
-  const terms = data.terminals.filter(inGeo)
+  const est = data.estimated
+  const estKeys = new Set((est?.cells || []).map((r) => r.terminal_key))
+  // Only facilities we have numbers for: counted from NOAA's AIS, or estimated from hourly positions.
+  const terms = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key))
   const keys = new Set(terms.map((t) => t.key))
   const byKey = new Map(terms.map((t) => [t.key, t]))
   const own = (t) => t.ownership || 'unknown'
   const zero = () => ({ calls: 0, large: 0, scrubber_calls: 0 })
   const tot = zero()
-  const perT = new Map(terms.map((t) => [t.key, { ...zero(), months: {}, monthShips: {}, ships: new Map() }]))
+  const perT = new Map(terms.map((t) => [t.key, { ...zero(), months: {}, monthShips: {}, ships: new Map(), estM: new Set() }]))
+  const estCol = { all: new Set() }   // columns (overall / per type) that include an estimated number
   const perMonth = {}
   for (const r of data.cells) {
     if (!keys.has(r.terminal_key)) continue
@@ -252,13 +256,13 @@ function build(data, geo) {
     pm[ty] = (pm[ty] || 0) + r.scrubber_calls
     pm.total += r.scrubber_calls
   }
-  // Months after NOAA's latest: GFW-estimated stops (≈), never mixed into the counted calls or the large-ship share.
-  const est = data.estimated
+  // Estimated stops (≈): months after NOAA's latest, and terminals NOAA's receivers don't reach. Never in the large-ship share.
   const estMonths = new Set(est?.months || [])
   for (const r of est?.cells || []) {
     if (!keys.has(r.terminal_key)) continue
     const p = perT.get(r.terminal_key)
     p.est_calls = (p.est_calls || 0) + r.scrubber_calls
+    p.estM.add(r.month)
     tot.est_calls = (tot.est_calls || 0) + r.scrubber_calls
     p.months[r.month] = (p.months[r.month] || 0) + r.scrubber_calls
     p.monthShips[r.month] = r.scrubber_ships
@@ -266,6 +270,7 @@ function build(data, geo) {
     const ty = typeOf(byKey.get(r.terminal_key))
     pm[ty] = (pm[ty] || 0) + r.scrubber_calls
     pm.total += r.scrubber_calls
+    estCol.all.add(r.month); (estCol[ty] ||= new Set()).add(r.month)
   }
   const shipIds = new Set()
   const shipsBy = {}   // group key ('all' | type) → month → Set of ships, so a column's ships are counted once
@@ -282,7 +287,6 @@ function build(data, geo) {
   }
   const byOwn = {}
   for (const t of terms) {
-    if (!t.counted) continue
     const o = byOwn[typeOf(t)] ||= { ...zero(), ships: new Set(), terminals: new Set() }
     const p = perT.get(t.key)
     for (const f of ['calls', 'large', 'scrubber_calls']) o[f] += p[f]
@@ -301,8 +305,9 @@ function build(data, geo) {
     const pl = co.get(pk) || co.set(pk, []).get(pk)
     pl.push(t)
   }
-  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, estMonths, est, counted: terms.filter((t) => t.counted),
-    notCounted: terms.filter((t) => !t.counted), terminalsWithScrubber: terms.filter((t) => perT.get(t.key).scrubber_calls + (perT.get(t.key).est_calls || 0) > 0).length }
+  return { terms, keys, byKey, perT, perMonth, tot, shipIds, shipsBy, byOwn, tree, estMonths, est, estCol,
+    estAll: new Set(est?.allMonths || []), counted: terms.filter((t) => t.counted),
+    terminalsWithScrubber: terms.filter((t) => perT.get(t.key).scrubber_calls + (perT.get(t.key).est_calls || 0) > 0).length }
 }
 
 function sumOf(view, list) {
@@ -321,11 +326,11 @@ function sumOf(view, list) {
 // ── The facility × month table (Lovel's request) ────────────────────────────
 
 function Cell({ calls, ships, dim, est }) {
-  if (dim) return <td className={c.mCellNa} title="Not counted yet">·</td>
+  if (dim) return <td className={c.mCellNa} title="No data for this month">·</td>
   return (
     <td className={`${calls ? c.mCell : c.mCellZero}${est ? ` ${c.mEst}` : ''}`} title={est ? 'Estimated from hourly positions (≈)' : undefined}>
       <div className={c.mCalls}>{est && calls ? '≈' : ''}{calls ? fmt(calls) : '0'}</div>
-      {calls > 0 && <div className={c.mShips}>{fmt(ships)} ship{ships === 1 ? '' : 's'}</div>}
+      {calls > 0 && <div className={c.mShips} title={`${fmt(ships)} different ship${ships === 1 ? '' : 's'}`}>{fmt(ships)}</div>}
     </td>
   )
 }
@@ -334,14 +339,20 @@ function Matrix({ view, months, covered }) {
   const [hideZero, setHideZero] = useState(true)
   const est = view.estMonths
   const shown = (m) => covered.has(m) || est.has(m)
-  // A terminal's month is blank ("·") when neither NOAA counted it nor an estimate exists for it there.
-  const cellFor = (t, m, calls, ships) => <Cell key={m} dim={!shown(m) || (!est.has(m) && t && !t.counted)} est={est.has(m)} calls={calls} ships={ships} />
+  // A month is blank ("·") only where there is no data at all: NOAA hasn't published it and no estimate exists. A terminal NOAA
+  // doesn't reach shows its estimates in every month.
+  const rowShown = (t, m) => (t.estimatedOnly ? view.estAll.has(m) : shown(m))
+  const cellFor = (t, m, calls, ships, ty) => {
+    const isEst = t ? (est.has(m) || view.perT.get(t.key).estM.has(m)) : (est.has(m) || view.estCol[ty || 'all']?.has(m))
+    return <Cell key={m} dim={t ? !rowShown(t, m) : !(shown(m) || view.estCol.all.has(m))} est={isEst} calls={calls} ships={ships} />
+  }
   const total = (p) => p.scrubber_calls + (p.est_calls || 0)
   return (
     <>
       <label className={`${c.mToggle} ${c.noPrint}`}><input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide facilities with no scrubber-ship calls</label>
       <div className={c.mWrap}>
         <table className={c.matrix}>
+          <colgroup><col className={c.mColFirst} />{months.map((m) => <col key={m} />)}<col className={c.mColTot} /></colgroup>
           <thead><tr>
             <th className={c.mFirst}>Facility</th>
             {months.map((m) => <th key={m} className={shown(m) ? (est.has(m) ? c.mEstH : '') : c.mNa}>{est.has(m) ? '≈' : ''}{monthShort(m)}<span>{m.slice(2, 4)}</span></th>)}
@@ -351,17 +362,15 @@ function Matrix({ view, months, covered }) {
             {TYPES.map(([ty, label, col, desc]) => {
               const list = view.terms.filter((t) => typeOf(t) === ty)
               if (!list.length) return null
-              const has = (t) => t.counted || (view.perT.get(t.key).est_calls || 0) > 0
-              const rows = list.filter((t) => has(t) && (!hideZero || total(view.perT.get(t.key)) > 0))
+              const rows = list.filter((t) => !hideZero || total(view.perT.get(t.key)) > 0)
                 .sort((a, b) => total(view.perT.get(b.key)) - total(view.perT.get(a.key)) || a.name.localeCompare(b.name))
-              const notCounted = list.filter((t) => !t.counted).length
-              const hidden = list.filter(has).length - rows.length
+              const hidden = list.length - rows.length
               const sum = sumOf(view, list)
               return [
                 <tr key={`h-${ty}`} className={c.mGroup}>
                   <th className={c.mFirst} scope="rowgroup"><span className={c.swatch} style={{ background: col }} />{label}<div className={c.mDesc}>{desc}</div></th>
-                  {months.map((m) => cellFor(null, m, sum.months[m] || 0, view.shipsBy[ty]?.[m]?.size || 0))}
-                  <Cell calls={sum.scrubber_calls + (sum.est_calls || 0)} ships={view.shipsBy[ty]?.['*']?.size || 0} />
+                  {months.map((m) => cellFor(null, m, sum.months[m] || 0, view.shipsBy[ty]?.[m]?.size || 0, ty))}
+                  <Cell calls={sum.scrubber_calls + (sum.est_calls || 0)} ships={view.shipsBy[ty]?.['*']?.size || 0} est={(sum.est_calls || 0) > 0} />
                 </tr>,
                 ...rows.map((t) => {
                   const p = view.perT.get(t.key)
@@ -372,13 +381,13 @@ function Matrix({ view, months, covered }) {
                         <div className={c.mDesc}>{[placeLabel(t.place_name) || (t.county_name ? `${t.county_name}, unincorporated` : null), kindWords(t.kind)].filter(Boolean).join(' · ')}</div>
                       </th>
                       {months.map((m) => cellFor(t, m, p.months[m] || 0, p.monthShips[m] || 0))}
-                      <Cell calls={total(p)} ships={p.ships.size} />
+                      <Cell calls={total(p)} ships={p.ships.size} est={(p.est_calls || 0) > 0} />
                     </tr>
                   )
                 }),
-                (hidden > 0 || notCounted > 0) && (
+                hidden > 0 && (
                   <tr key={`n-${ty}`} className={c.mMore}><td colSpan={months.length + 2}>
-                    {[hidden > 0 && `${hidden} more ${label.toLowerCase()} with no scrubber-ship calls`, notCounted > 0 && `${notCounted} not yet in NOAA's count`].filter(Boolean).join(' · ')}
+                    {hidden} more {label.toLowerCase()} with no scrubber-ship calls in this period
                   </td></tr>
                 ),
               ]
@@ -386,16 +395,17 @@ function Matrix({ view, months, covered }) {
             <tr className={c.mAll}>
               <th className={c.mFirst} scope="row">All facilities</th>
               {months.map((m) => cellFor(null, m, view.perMonth[m]?.total || 0, view.shipsBy.all?.[m]?.size || 0))}
-              <Cell calls={view.tot.scrubber_calls + (view.tot.est_calls || 0)} ships={view.shipIds.size} />
+              <Cell calls={view.tot.scrubber_calls + (view.tot.est_calls || 0)} ships={view.shipIds.size} est={(view.tot.est_calls || 0) > 0} />
             </tr>
           </tbody>
         </table>
       </div>
-      <div className={c.hint}>
-        {[months.some((m) => !shown(m)) && '“·” = not counted yet.',
-          est.size > 0 && `≈ = estimated from hourly ship positions (Powered by Global Fishing Watch) for months NOAA has not published yet; replaced by NOAA's counts when they arrive.${view.est?.shared?.calls ? ` ${fmt(view.est.shared.calls)} more estimated stops by scrubber ships could be at either of two neighbouring terminals and are left out of the rows.` : ''}`]
-          .filter(Boolean).join(' ')}
-      </div>
+      {(view.estCol.all.size > 0 || months.some((m) => !shown(m))) && (
+        <div className={c.hint}>
+          {[view.estCol.all.size > 0 && '≈ estimated from hourly ship positions (Global Fishing Watch).', months.some((m) => !shown(m)) && '· no data for that month.']
+            .filter(Boolean).join(' ')}
+        </div>
+      )}
     </>
   )
 }
@@ -434,7 +444,6 @@ function WorldPorts({ world, geo }) {
         <h2 className={c.h2}>Where else these ships call</h2>
         <div className={c.note}>Port visits worldwide by {who}, in this period. <Src k="gfwPorts" /></div>
       </div>
-      {cov.fetched < cov.ships && <div className={c.hint}>Port visits are available for {fmt(cov.fetched)} of these {fmt(cov.ships)} ships.</div>}
       {world.countries.length === 0 ? <div className={c.none}>No port visits loaded yet for these ships.</div> : (
         <div className={c.worldGrid}>
           <div>
@@ -490,18 +499,13 @@ function Legend() {
 }
 
 function Coverage({ data, view }) {
-  const est = [...view.estMonths].sort()
   const missing = data.coverage.missing.filter((m) => !view.estMonths.has(m))
   const span = (ms) => (ms.length === 1 ? monthName(ms[0], 'long') : `${monthName(ms[0])} – ${monthName(ms.at(-1))}`)
-  if (!missing.length && !est.length && !view.notCounted.length) return null
+  if (!missing.length && !view.estCol.all.size) return null
   return (
     <div className={c.coverage}>
-      {est.length > 0 && <div><b>≈ {span(est)}: estimated.</b> NOAA publishes its minute-by-minute positions about three months late, so these
-        months are estimated from hourly ship positions (<Src k="gfw" />{data.estimated?.through ? `, through ${data.estimated.through}` : ''}) and
-        replaced by NOAA's counts when they arrive. Hourly positions can't separate terminals less than about 1 km from each other; those stops are left out of the rows.</div>}
-      {missing.length > 0 && <div><b>No data yet: {span(missing)}.</b> These months show as empty, never as zero.</div>}
-      {view.notCounted.length > 0 && <div><b>{view.notCounted.length} terminal{view.notCounted.length === 1 ? ' is' : 's are'} not in NOAA's count yet</b> (added
-        recently: cruise, container, ro-ro, Columbia River and Grays Harbor berths). Their NOAA months show “·”, never zero.</div>}
+      {view.estCol.all.size > 0 && <div>Numbers marked ≈ are estimated from hourly ship positions (<Src k="gfw" />). See “How this is counted”.</div>}
+      {missing.length > 0 && <div>No data yet for {span(missing)}.</div>}
     </div>
   )
 }
@@ -545,7 +549,7 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
           const miss = months.map((m, i) => [m, i]).filter(([m]) => !covered.has(m) && !view.estMonths.has(m))
           if (!miss.length) return null
           const x0 = CH.l + miss[0][1] * bw, x1 = CH.l + (miss.at(-1)[1] + 1) * bw
-          return <text x={(x0 + x1) / 2} y={CH.t + ih - 34} className={c.missingLabel} textAnchor="middle">Not counted yet</text>
+          return <text x={(x0 + x1) / 2} y={CH.t + ih - 34} className={c.missingLabel} textAnchor="middle">No data yet</text>
         })()}
       </svg>
       {hover && (
@@ -554,7 +558,7 @@ function MonthChart({ view, months, covered, active, hover, setHover, onPick }) 
           {covered.has(hover) || view.estMonths.has(hover) ? <>
             <div className={c.tipTotal}>{view.estMonths.has(hover) ? '≈' : ''}{fmt(view.perMonth[hover]?.total || 0)} scrubber-ship calls</div>
             {TYPES.map(([k, l, col]) => (view.perMonth[hover]?.[k] ? <div key={k} className={c.tipRow}><i style={{ background: col }} />{l}<b>{fmt(view.perMonth[hover][k])}</b></div> : null))}
-          </> : <div className={c.tipRow}>Not counted yet</div>}
+          </> : <div className={c.tipRow}>No data yet</div>}
         </div>
       )}
     </div>
@@ -648,15 +652,15 @@ function Row({ level, label, sum, months, open, onToggle }) {
     <tr className={c[`lvl${level}`]}>
       <td className={c.place} style={{ paddingLeft: 10 + level * 18 }}>
         <button className={c.toggle} onClick={onToggle} aria-expanded={open}><Chev open={open} />{label}</button>
-        <span className={c.count}>{sum.n} terminal{sum.n === 1 ? '' : 's'}{sum.counted < sum.n ? `, ${sum.n - sum.counted} not counted yet` : ''}</span>
+        <span className={c.count}>{sum.n} terminal{sum.n === 1 ? '' : 's'}</span>
       </td>
-      {sum.counted ? <>
+      {sum.n ? <>
         <td className={c.num}><b>{fmt(sum.scrubber_calls)}</b></td>
         <td className={c.num}>{fmt(sum.ships.size)}</td>
         <td className={c.num}>{fmt(sum.large)}</td>
         <td className={c.num}>{pct(sum.scrubber_calls, sum.large)}</td>
         <td><Spark months={months} values={sum.months} /></td>
-      </> : <td colSpan={5} className={c.notCounted}>Not counted yet</td>}
+      </> : <td colSpan={5} />}
     </tr>
   )
 }
@@ -668,22 +672,22 @@ function TerminalRow({ level, t, view, months, open, onToggle }) {
     <>
       <tr className={c.termRow}>
         <td className={c.place} style={{ paddingLeft: 10 + level * 18 }}>
-          <button className={c.toggle} onClick={onToggle} aria-expanded={open} disabled={!t.counted}><Chev open={open} />{t.name}</button>
+          <button className={c.toggle} onClick={onToggle} aria-expanded={open} disabled={false}><Chev open={open} />{t.name}</button>
           <span className={c.meta}>
             <a href={`/ships?tl=${encodeURIComponent(t.key)}`} className={c.mapLink}>{kindWords(t.kind)}</a>
             {' · '}<span className={c.own} style={{ '--own': TYPE_COLOR[typeOf(t)] }} title={t.ownership_basis?.says ? `Owner per ${t.ownership_basis.source === 'usace-docks' ? `USACE dock record ${t.ownership_basis.ref}` : 'EarthAtlas terminal list'}: ${t.ownership_basis.says}` : 'Owner not established'}>
               {TYPE_SINGULAR[typeOf(t)]}{t.ownership && typeOf(t) !== 'ports' ? ` (${OWN_LABEL[t.ownership].toLowerCase()})` : ''}</span>
           </span>
         </td>
-        {t.counted ? <>
+        {true ? <>
           <td className={c.num}><b>{fmt(p.scrubber_calls)}</b></td>
           <td className={c.num}>{fmt(p.ships.size)}</td>
           <td className={c.num}>{fmt(p.large)}</td>
           <td className={c.num}>{pct(p.scrubber_calls, p.large)}</td>
           <td><Spark months={months} values={p.months} /></td>
-        </> : <td colSpan={5} className={c.notCounted}>Not counted yet: berths added {t.country === 'US' && t.lat < 47 ? '(Columbia River / Grays Harbor) ' : ''}after the latest count</td>}
+        </> : null}
       </tr>
-      {open && t.counted && (
+      {open && (
         <tr className={c.shipsRow}><td colSpan={6}>
           {ships.length === 0 ? <div className={c.none}>No scrubber-fitted ship called here in this period.</div> : (
             <table className={c.ships}>
@@ -715,7 +719,7 @@ const Chev = ({ open }) => (
   </svg>
 )
 
-function Method({ data }) {
+function Method({ data, world }) {
   const s = data.scrubberSet
   return (
     <section className={c.method} id="method">
@@ -739,9 +743,20 @@ function Method({ data }) {
           docks), <b>Refineries</b> (refinery docks) and <b>Terminals</b> (every other dock).</dd>
         <dt>Places</dt>
         <dd>County and city or town from the <Src k="census" /> at each terminal's position. "Unincorporated" means outside any city or town.</dd>
-        <dt>Coverage</dt>
-        <dd>Months counted: {data.coverage.months.length ? `${monthName(data.coverage.months[0])} – ${monthName(data.coverage.months.at(-1))}` : 'none in this period'}.
-          NOAA publishes its detailed positions about three months after the fact.</dd>
+        <dt>NOAA data</dt>
+        <dd>{data.coverage.months.length ? `${monthName(data.coverage.months[0], 'long')} – ${monthName(data.coverage.months.at(-1), 'long')}` : 'None in this period'}.
+          NOAA publishes its minute-by-minute positions about three months after the fact.</dd>
+        {data.estimated && <>
+          <dt>Estimates (≈)</dt>
+          <dd>From hourly ship positions (<Src k="gfw" />), for months NOAA has not published and for terminals beyond the reach of NOAA’s
+            receivers (Howe Sound and Texada Island). A stop counts at a terminal only when that terminal is the one nearby that fits the kind of
+            ship; a stop that fits two neighbouring terminals is not counted at either.</dd>
+        </>}
+        {world?.coverage?.ships > 0 && <>
+          <dt>Port visits</dt>
+          <dd>Global Fishing Watch’s apparent port visits, for the {fmt(world.coverage.fetched)} of these {fmt(world.coverage.ships)} ships it holds
+            a record for.</dd>
+        </>}
       </dl>
     </section>
   )

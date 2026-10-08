@@ -39,6 +39,7 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  { date: '2026-10-08', area: 'Reports', text: 'The scrubber report’s month-by-month table now fits the page: every month is shown across the full width of the window (and of the printed page) without scrolling sideways; under each number is how many different ships made those calls. The report now lists only the facilities it has numbers for, and the three terminals NOAA’s receivers don’t reach (Squamish Terminals, Woodfibre LNG and the Texada Island quarry dock) are counted from hourly ship positions, marked ≈, for every month. Explanations of how the numbers are made are gathered under “How this is counted” at the end.' },
   { date: '2026-10-07', area: 'Reports', text: 'The scrubber report now prints: “Print or save as PDF” at the top produces a landscape copy with the month-by-month table across the page width, the chart, the place breakdown, the worldwide port visits and the method notes, without the on-screen controls. The top of the report now states plainly what it covers: period, area, the date of the data and its web address. The CSV download was removed.' },
   // Numbers from the production imports 2026-10-07 (prod.sh import-facilities / import-wa-leases / import-wa-air): SEPA per permit 95
   // permits (13 linked to 24 reviews, 16 exempt, 1 stated, 65 none found); DNR 13 leases at 12 terminals, 25 port-managed; Whatcom

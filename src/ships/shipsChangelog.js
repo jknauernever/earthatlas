@@ -16,29 +16,60 @@ const S = {
   mep: { name: 'MEP Alliance', href: 'https://www.mepalliance.org/list-of-scrubber-fitted-ships' },
 }
 
-export const COUNTS_AS_OF = '2026-10-07'
+// The numbers come from lib/ships/changelogCounts.js. Production refreshes them daily into Blob (api/cron/ships-counts.js,
+// .github/workflows/ships-counts.yml); the page reads that file (COUNTS_URL) and falls back to COUNTS_FALLBACK, the last
+// numbers checked by hand (`zsh scripts/ships/prod.sh counts`, 2026-10-08).
+export const COUNTS_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/changelog-counts.json'
+export const COUNTS_FALLBACK = {
+  asOf: '2026-10-08', ships: 49339, scrubberShips: 594, terminals: 103, berths: 152, anchorages: 810, portVisits: 141344,
+  incidents: 9228, ports: 8961,
+  terminalVisits: { counted: 35522, estimated: 2797, terminalsWithVisits: 96, from: '2025-01', to: '2026-10' },
+  terminalEmissions: { stays: 14243, co2eTonnes: 677263, terminals: 71, from: '2024-01', to: '2026-07' },
+  anchorageStays: { counted: 25049, estimated: 6023, anchoragesWithStays: 114, from: '2025-01', to: '2026-10' },
+  shipTracks: { minute: 4104779, hourly: 126603, total: 4231382 },
+}
 
-// { label, value, sources: [S.x | plain string] }
-export const COUNTS = [
-  { label: 'Ships', value: '41,153', sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
-  { label: 'Ports on the map', value: '9,159', detail: 'World Port Index 2,951 · Climate TRACE 6,006 · GFW 168 · DFO harbours 34', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
-  { label: 'Terminals', value: '103', detail: '152 berths', sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem] },
-  { label: 'Terminal visits', value: '37,554', detail: 'at 52 terminals, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
-  { label: 'Port visits', value: '96,465', sources: [S.gfw] },
-  { label: 'Ship-port emission estimates', value: '17,907', sources: [S.ct] },
-  { label: 'Incidents', value: '9,233', sources: ['US Coast Guard', 'NOAA IncidentNews', 'WA Dept. of Ecology'] },
-  { label: 'Ships with scrubber notifications', value: '6,506', detail: '572 matched to EarthAtlas ships', sources: [S.gisis] },
-  { label: 'Ships on MEP Alliance scrubber lists', value: '3,845', detail: '3,536 by IMO number + 309 named in voyage reports; 365 matched to EarthAtlas ships', sources: [S.mep] },
-  { label: 'Official anchorages', value: '810', sources: [S.marinecadastre, 'eCFR', 'Fisheries and Oceans Canada'] },
-  { label: 'Hourly ship-track lines', value: '1,970,155', detail: 'British Columbia + Alaska Jan 2025 – Sep 2026, Salish Sea Jul – Sep 2026', sources: [S.gfw] },
-  { label: 'Anchorage stays', value: '15,448', detail: 'by 3,338 vessels at 108 Salish Sea anchorages, Jul 2025 – Jun 2026, counted by EarthAtlas from AIS', sources: [S.marinecadastre] },
-  { label: 'IMO port facilities', value: '465', detail: 'Canada and US', sources: [S.gisis] },
-]
+const fmt = (n) => Number(n).toLocaleString('en-US')
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const fmtYm = (ym) => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`
+const span = (x) => `${fmtYm(x.from)} – ${fmtYm(x.to)}`
+
+/** A counts object (COUNTS_FALLBACK's shape) → the cards. { label, value, detail?, sources: [S.x | plain string] } */
+export function buildCounts(n) {
+  const tv = n.terminalVisits, as = n.anchorageStays, te = n.terminalEmissions, st = n.shipTracks
+  return [
+    { label: 'Ships', value: fmt(n.ships), sources: [S.gfw, 'US Coast Guard', 'Transport Canada', 'FCC', S.marinecadastre, 'Wikidata', 'Wikimedia Commons'] },
+    { label: 'Ports', value: fmt(n.ports), detail: 'worldwide', sources: [S.wpi, S.ct, S.gfw, 'Fisheries and Oceans Canada'] },
+    { label: 'Terminals', value: fmt(n.terminals), detail: `${fmt(n.berths)} berths`, sources: [S.bcports, 'US Army Corps of Engineers', 'WA Dept. of Ecology', S.osm, S.gem, S.gisis] },
+    { label: 'Terminal visits', value: fmt(tv.counted + tv.estimated), detail: `by the kinds of ship each terminal serves, at ${fmt(tv.terminalsWithVisits)} terminals, ${span(tv)}: ${fmt(tv.counted)} counted from minute-by-minute AIS, ${fmt(tv.estimated)} estimated from hourly positions`, sources: [S.marinecadastre, S.gfw] },
+    { label: 'Port visits', value: fmt(n.portVisits), detail: 'at ports worldwide', sources: [S.gfw] },
+    { label: 'Ship emissions at terminals', value: `${fmt(te.co2eTonnes)} t`, detail: `CO₂e while stopped at the berths, from ${fmt(te.stays)} stops by the kinds of ship each terminal serves, at ${fmt(te.terminals)} terminals, ${span(te)}`, sources: [S.ct] },
+    { label: 'Incidents', value: fmt(n.incidents), sources: ['US Coast Guard', 'NOAA IncidentNews', 'WA Dept. of Ecology'] },
+    { label: 'Ships with scrubbers', value: fmt(n.scrubberShips), sources: [S.gisis, S.mep] },
+    { label: 'Official anchorages', value: fmt(n.anchorages), sources: [S.marinecadastre, 'eCFR', 'Fisheries and Oceans Canada'] },
+    { label: 'Ship tracks', value: fmt(st.total), detail: `one ship’s path in one month, 2015 to now: ${fmt(st.minute)} at minute-by-minute detail, ${fmt(st.hourly)} at hourly detail`, sources: [S.marinecadastre, S.gfw] },
+    { label: 'Anchorage stays', value: fmt(as.counted + as.estimated), detail: `at ${fmt(as.anchoragesWithStays)} anchorages, ${span(as)}: ${fmt(as.counted)} counted from minute-by-minute AIS, ${fmt(as.estimated)} estimated from hourly positions`, sources: [S.marinecadastre, S.gfw] },
+  ]
+}
+
+/** Is this a complete counts object (every field buildCounts reads)? Anything else keeps the fallback. */
+export function validCounts(n) {
+  const num = (v) => Number.isFinite(Number(v)) && Number(v) > 0
+  const ym = (v) => /^\d{4}-\d{2}$/.test(v || '')
+  return !!n && /^\d{4}-\d{2}-\d{2}$/.test(n.asOf || '') && ['ships', 'ports', 'terminals', 'berths', 'portVisits', 'incidents', 'scrubberShips', 'anchorages'].every((k) => num(n[k]))
+    && ['terminalVisits', 'anchorageStays', 'terminalEmissions'].every((k) => n[k] && ym(n[k].from) && ym(n[k].to))
+    && num(n.terminalVisits.counted) && num(n.anchorageStays.counted) && num(n.terminalEmissions.co2eTonnes) && num(n.shipTracks?.total)
+}
+
+export const COUNTS_AS_OF = COUNTS_FALLBACK.asOf
+export const COUNTS = buildCounts(COUNTS_FALLBACK)
 
 export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 2025 – Jun 2026; US-wide tracks cover 2015 onward; hourly lines (Global Fishing Watch) cover British Columbia and Alaska from Jan 2025 and the Salish Sea and US West Coast from Jul 2026, updated daily.'
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  // Numbers from prod.sh counts 2026-10-08 (production, read only), the same figures as the counts panel's built-in ones.
+  { date: '2026-10-08', area: 'Changelog', text: 'The numbers at the top of this page now update every day, after the day’s new ship data comes in, and each one answers a single question with everything we hold combined, counted the same way the map’s cards count it. Ships with scrubbers: 594 ships, from the IMO’s scrubber notifications and the MEP Alliance lists together (a ship on both counts once). Ship tracks: 4,231,382 ship tracks (one ship’s path in one month) from 2015 to now, 4,104,779 at minute-by-minute detail and 126,603 at hourly detail. Terminal visits: 38,319 at 96 terminals, Jan 2025 – Oct 2026, counting only the kinds of ship each terminal serves, as its card does. Anchorage stays: 31,072 at 114 anchorages. Ship emissions at terminals: 677,263 t CO₂e from ships stopped at the berths, Jan 2024 – Jul 2026 (Climate TRACE). Ports: 8,961 worldwide, with a port listed by several sources counted once. Ships: 49,339.' },
   { date: '2026-10-08', area: 'Emissions', text: 'Climate TRACE’s ship emissions estimates now update on their own each month, soon after Climate TRACE publishes new data: the Emissions tab on ship cards (each trip and port stay) and the port-stay emissions on terminal cards. This adds January – July 2026, which were missing before (they had shown as months outside our copy). Both now say which months they cover.' },
   // Numbers from prod.sh import-bc-permits 2026-10-08 (production): Metro Vancouver 20 permits at 18 BC terminals, 24 documents,
   // 15 dock quotes (was 8 permits at 8 terminals).

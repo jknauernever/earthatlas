@@ -33,6 +33,7 @@
 #   zsh scripts/ships/prod.sh salish-index-seed  once (Part 1, Josh 2026-10-07): upload the hand-run months' coastline masks for ships-noaa-month, then write the Salish index + identity files (needs the upload-token allowlist deployed)
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
+#   zsh scripts/ships/prod.sh counts             READ ONLY: the /ships changelog's data-card numbers (args pass through, e.g. --limit 2)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
 #   SHIPS_PROD_DATABASE_URL  prod ships DB, direct (unpooled) connection
@@ -248,6 +249,10 @@ case "${1:-}" in
     gh run download "$run" -p 'entry-*' -D "$dir" >/dev/null
     git show origin/ships-us-bake:scripts/ships/bake-us/publish.mjs > scripts/ships/bake-us/build/publish-index.mjs
     node --env-file=.env.local scripts/ships/bake-us/build/publish-index.mjs --index "$dir"
+    ;;
+  counts)
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/changelog-counts.mjs "${@:2}"
     ;;
   *)
     sed -n '2,29p' "$0"; exit 2

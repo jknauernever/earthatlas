@@ -1,0 +1,35 @@
+# Daily refresh of the /ships changelog's "Data on the site" numbers (Josh 2026-10-08). Runs when the daily GFW chain's last
+# step (ships-gfw-identities) or the weekly NOAA month finishes, or by hand. The work happens server-side
+# (api/cron/ships-counts.js, CRON_SECRET-locked: no database credentials in GitHub); it writes ships/changelog-counts.json
+# to Blob, which the changelog page reads. A failed run leaves the last good numbers in place.
+name: ships-counts
+
+on:
+  workflow_run:
+    workflows: [ships-gfw-identities, ships-noaa-month]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: ships-counts
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  counts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Refresh the counts (up to 3 tries)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          for i in 1 2 3; do
+            r=$(curl -sS -m 310 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://earthatlas.org/api/cron/ships-counts") || r=''
+            echo "$r" | head -c 1500; echo
+            if echo "$r" | python3 -c "import json,sys; sys.exit(0 if json.load(sys.stdin).get('ok') else 1)" 2>/dev/null; then exit 0; fi
+            sleep 60
+          done
+          echo "counts refresh failed 3 times"; exit 1

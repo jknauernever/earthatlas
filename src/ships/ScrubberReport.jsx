@@ -24,6 +24,16 @@ const TYPES = [
   ['terminals', 'Terminals', '#eb6834', 'Private and government docks other than refineries: fuel, grain, cement, chemical and other terminals'],
   ['refineries', 'Refineries', '#1baf7a', 'Refinery docks'],
 ]
+/** Which port a port-district dock belongs to, from its owner as recorded (USACE owner text, or the checked source). */
+const titleCase = (x) => x.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/\bOf\b/g, 'of')
+export const portOf = (t) => {
+  const says = String(t.ownership_basis?.says || '')
+  const auth = /(Vancouver Fraser Port Authority|Greater Victoria Harbour Authority|Nanaimo Port Authority)/i.exec(says)
+  if (auth) return auth[1]
+  const m = /port of ([a-z .'-]+?)(?:\s+berth\b|[.,;(]|$)/i.exec(says)
+  const name = m ? `Port of ${titleCase(m[1].trim())}` : (t.operator || 'Other port')
+  return name === 'Port of Vancouver' ? 'Port of Vancouver USA' : name   // the Washington port's own name (not Vancouver, BC)
+}
 export const typeOf = (t) => (t.kind === 'refinery_dock' ? 'refineries' : t.ownership === 'port_authority' ? 'ports' : 'terminals')
 const TYPE_SINGULAR = { ports: 'Port', terminals: 'Terminal', refineries: 'Refinery' }
 const TYPE_COLOR = Object.fromEntries(TYPES.map(([k, , col]) => [k, col]))
@@ -64,6 +74,9 @@ function readUrl() {
   }
 }
 
+// localhost only: ?data=prod reads production's numbers through the dev proxy (vite.config.js) so a change can be checked on real data.
+const API = import.meta.env.DEV && new URLSearchParams(window.location.search).get('data') === 'prod' ? '/__prod/api/ships' : '/api/ships'
+
 const Src = ({ k, children }) => <a className={c.src} href={SRC[k].href} target="_blank" rel="noopener noreferrer">{children || SRC[k].name}</a>
 
 export default function ScrubberReport() {
@@ -85,13 +98,14 @@ export default function ScrubberReport() {
     if (st.geo !== DEFAULT.geo) sp.set('geo', st.geo)
     if (st.open.length) sp.set('open', st.open.join(','))
     if (st.m) sp.set('m', st.m)
+    if (API !== '/api/ships') sp.set('data', 'prod')
     const qs = sp.toString()
     window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
   }, [st])
   useEffect(() => {
     setData(null); setErr(null)
     if (edition) {
-      fetch(`/api/ships?op=scrubberEdition&id=${encodeURIComponent(edition)}`)
+      fetch(`${API}?op=scrubberEdition&id=${encodeURIComponent(edition)}`)
         .then((r) => r.json()).then((j) => {
           if (j.error) return setErr(j.error)
           setEd({ id: j.id, title: j.title, params: j.params, created_at: j.created_at })
@@ -99,7 +113,7 @@ export default function ScrubberReport() {
         }).catch((e) => setErr(String(e)))
       return
     }
-    fetch(`/api/ships?op=scrubberReport&from=${st.from}&to=${st.to}`)
+    fetch(`${API}?op=scrubberReport&from=${st.from}&to=${st.to}`)
       .then((r) => r.json()).then((j) => (j.error ? setErr(j.error) : setData(j))).catch((e) => setErr(String(e)))
   }, [edition, st.from, st.to])
   useEffect(() => {
@@ -111,13 +125,13 @@ export default function ScrubberReport() {
       return
     }
     if (edition) { if (data?.days) setDays(data.days[st.m] || []); return }
-    fetch(`/api/ships?op=scrubberReportDays&month=${st.m}`).then((r) => r.json()).then((j) => setDays(j.days || [])).catch(() => setDays([]))
+    fetch(`${API}?op=scrubberReportDays&month=${st.m}`).then((r) => r.json()).then((j) => setDays(j.days || [])).catch(() => setDays([]))
   }, [st.m, edition, data])
 
   useEffect(() => {
     setWorld(null)
     if (edition) { if (data?.world) setWorld(data.world[st.geo] || null); return }
-    fetch(`/api/ships?op=scrubberWorldPorts&from=${st.from}&to=${st.to}&geo=${st.geo}`).then((r) => r.json()).then((j) => setWorld(j.error ? null : j)).catch(() => {})
+    fetch(`${API}?op=scrubberWorldPorts&from=${st.from}&to=${st.to}&geo=${st.geo}`).then((r) => r.json()).then((j) => setWorld(j.error ? null : j)).catch(() => {})
   }, [edition, data, st.from, st.to, st.geo])
 
   const view = useMemo(() => (data ? build(data, st.geo) : null), [data, st.geo])
@@ -137,10 +151,10 @@ export default function ScrubberReport() {
         <div className={c.kicker}>Report</div>
         <h1 className={c.title}>Scrubber-fitted ships at {st.geo === 'WA' ? 'Washington' : st.geo === 'BC' ? 'British Columbia' : 'Salish Sea and Washington'} terminals</h1>
         <p className={c.lede}>
-          How often ships fitted with exhaust-gas scrubbers called at ports, terminals and refinery docks, month by month.
-          A call is a ship stopped at a berth, counted minute by minute from <Src k="noaa">NOAA's AIS ship positions</Src>.
+          How often ships fitted with exhaust gas cleaning systems, better known as scrubbers, called at ports, terminals and refinery docks,
+          month by month. A call is a ship stopped at a berth, counted minute by minute from <Src k="noaa">NOAA's AIS ship positions</Src>.
           A ship counts as scrubber-fitted when it is in the <Src k="gisis">IMO's scrubber notifications</Src> or
-          on the <Src k="mep">MEP Alliance lists</Src>.
+          on the <Src k="mep">MEP Alliance lists</Src>. A call by a scrubber-fitted ship does not show that the scrubber was running at the berth.
         </p>
 
         {data && <ReportFacts data={data} geo={st.geo} ed={ed} edition={edition} />}
@@ -272,6 +286,7 @@ function build(data, geo) {
     pm[ty] = (pm[ty] || 0) + r.scrubber_calls
     pm.total += r.scrubber_calls
     estCol.all.add(r.month); (estCol[ty] ||= new Set()).add(r.month)
+    if (ty === 'ports') (estCol[`port:${portOf(byKey.get(r.terminal_key))}`] ||= new Set()).add(r.month)
   }
   const shipIds = new Set()
   const shipsBy = {}   // group key ('all' | type) → month → Set of ships, so a column's ships are counted once
@@ -280,7 +295,8 @@ function build(data, geo) {
     if (!keys.has(s.terminal_key)) continue
     shipIds.add(s.vessel_id)
     const ty = typeOf(byKey.get(s.terminal_key))
-    for (const g of ['all', ty]) { addShip(g, s.month, s.vessel_id); addShip(g, '*', s.vessel_id) }
+    const groups = ty === 'ports' ? ['all', ty, `port:${portOf(byKey.get(s.terminal_key))}`] : ['all', ty]
+    for (const g of groups) { addShip(g, s.month, s.vessel_id); addShip(g, '*', s.vessel_id) }
     const m = perT.get(s.terminal_key).ships
     const e = m.get(s.vessel_id) || { ...s, calls: 0, months: {} }
     e.calls += s.calls; e.months[s.month] = (e.months[s.month] || 0) + s.calls
@@ -348,6 +364,13 @@ function Matrix({ view, months, covered }) {
     return <Cell key={m} dim={t ? !rowShown(t, m) : !(shown(m) || view.estCol.all.has(m))} est={isEst} calls={calls} ships={ships} />
   }
   const total = (p) => p.scrubber_calls + (p.est_calls || 0)
+  // Ports grouped by port, busiest port first; docks keep their own order (busiest first) inside it.
+  const byPort = (ts) => {
+    const g = new Map()
+    for (const t of ts) { const k = portOf(t); (g.get(k) || g.set(k, []).get(k)).push(t) }
+    return [...g.entries()].sort((a, b) => sumOf(view, b[1]).scrubber_calls + (sumOf(view, b[1]).est_calls || 0)
+      - sumOf(view, a[1]).scrubber_calls - (sumOf(view, a[1]).est_calls || 0) || a[0].localeCompare(b[0]))
+  }
   return (
     <>
       <label className={`${c.mToggle} ${c.noPrint}`}><input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide facilities with no scrubber-ship calls</label>
@@ -373,19 +396,33 @@ function Matrix({ view, months, covered }) {
                   {months.map((m) => cellFor(null, m, sum.months[m] || 0, view.shipsBy[ty]?.[m]?.size || 0, ty))}
                   <Cell calls={sum.scrubber_calls + (sum.est_calls || 0)} ships={view.shipsBy[ty]?.['*']?.size || 0} est={(sum.est_calls || 0) > 0} />
                 </tr>,
-                ...rows.map((t) => {
-                  const p = view.perT.get(t.key)
-                  return (
-                    <tr key={t.key}>
-                      <th className={c.mFirst} scope="row">
-                        <a href={`/ships?tl=${encodeURIComponent(t.key)}`} className={c.mName}>{t.name}</a>
-                        <div className={c.mDesc}>{[placeLabel(t.place_name) || (t.county_name ? `${t.county_name}, unincorporated` : null), kindWords(t.kind)].filter(Boolean).join(' · ')}</div>
-                      </th>
-                      {months.map((m) => cellFor(t, m, p.months[m] || 0, p.monthShips[m] || 0))}
-                      <Cell calls={total(p)} ships={p.ships.size} est={(p.est_calls || 0) > 0} />
-                    </tr>
-                  )
-                }),
+                ...(ty === 'ports' ? byPort(rows) : rows.map((t) => [null, [t]])).flatMap(([port, ts]) => [
+                  // A port with two or more docks shown gets its own subtotal row (Lovel 2026-10-08: see the Port of Seattle as one group).
+                  port && ts.length > 1 && (() => {
+                    const ps = sumOf(view, ts), g = `port:${port}`
+                    return (
+                      <tr key={g} className={c.mPort}>
+                        <th className={c.mFirst} scope="rowgroup">{port}<div className={c.mDesc}>{ts.length} docks</div></th>
+                        {months.map((m) => cellFor(null, m, ps.months[m] || 0, view.shipsBy[g]?.[m]?.size || 0, g))}
+                        <Cell calls={ps.scrubber_calls + (ps.est_calls || 0)} ships={view.shipsBy[g]?.['*']?.size || 0} est={(ps.est_calls || 0) > 0} />
+                      </tr>
+                    )
+                  })(),
+                  ...ts.map((t) => {
+                    const p = view.perT.get(t.key)
+                    const inPort = port && ts.length > 1
+                    return (
+                      <tr key={t.key} className={inPort ? c.mInPort : ''}>
+                        <th className={c.mFirst} scope="row">
+                          <a href={`/ships?tl=${encodeURIComponent(t.key)}`} className={c.mName}>{t.name}</a>
+                          <div className={c.mDesc}>{[port && !inPort ? port : null, placeLabel(t.place_name) || (t.county_name ? `${t.county_name}, unincorporated` : null), kindWords(t.kind)].filter(Boolean).join(' · ')}</div>
+                        </th>
+                        {months.map((m) => cellFor(t, m, p.months[m] || 0, p.monthShips[m] || 0))}
+                        <Cell calls={total(p)} ships={p.ships.size} est={(p.est_calls || 0) > 0} />
+                      </tr>
+                    )
+                  }),
+                ]),
                 hidden > 0 && (
                   <tr key={`n-${ty}`} className={c.mMore}><td colSpan={months.length + 2}>
                     {hidden} more {label.toLowerCase()} with no scrubber-ship calls in this period
@@ -736,7 +773,7 @@ function Method({ data, world }) {
           "inferred"). A ship on neither list may still have a scrubber. A call by a scrubber-fitted ship does not show that the scrubber was
           running at the berth.</dd>
         <dt>Large-ship calls</dt>
-        <dd>Calls by ships whose AIS ship type is passenger, cargo or tanker. Tugs, fishing boats and pleasure craft are left out of the share.</dd>
+        <dd>Calls by ships whose AIS ship type is passenger, cargo or tanker. Tugs, fishing boats and pleasure craft are not included in the report.</dd>
         <dt>Terminals and ownership</dt>
         <dd>Berth positions from <Src k="usace" />, WA Ecology, BC Ports and Terminals and OpenStreetMap. A port-authority terminal is owned by a
           public port district (Port of Seattle, Port of Tacoma…) even when a private company operates it; private docks include refinery wharves.

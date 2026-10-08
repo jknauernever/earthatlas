@@ -39,6 +39,7 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  { date: '2026-10-08', area: 'Reports', text: 'Scrubber report: the opening now names scrubbers by their formal name (exhaust gas cleaning systems) and says plainly that a call by a scrubber-fitted ship does not show the scrubber was running at the berth. Ports in the month-by-month table are grouped by port, with each port’s own totals (for example the Port of Seattle’s cruise, container and grain docks together). The report now counts only passenger, cargo and tanker ships: tugs, fishing boats and pleasure craft are not included, which also removes a few calls by boats that only shared a scrubber ship’s name or radio number (Washington, January 2025 – June 2026: 1,174 calls by 274 ships).' },
   // Numbers from the production imports 2026-10-08 (prod.sh import-facilities / import-wa-air / import-cer): WA 54 facilities, 419
   // permits, 666 documents; 57 of 59 WA terminals with a facility, 2 none-found; SEPA per permit 170 (13 linked, 17 exempt, 1 stated,
   // 139 none); air agency permits 16; CER Westridge: 37 inspections/meetings, 12 incidents, 2 maintenance, 1 contamination, 12 conditions, 2 orders.

@@ -991,6 +991,13 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/eapipe/, ''),
       },
+      // Dev only: the production /api/ships, read-only, so a localhost page can be checked against production's numbers
+      // (the scrubber report's ?data=prod).
+      '/__prod/api/ships': {
+        target: 'https://earthatlas.org',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/__prod/, ''),
+      },
     },
   },
   }

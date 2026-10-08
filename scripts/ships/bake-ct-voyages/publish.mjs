@@ -16,7 +16,9 @@
  *      api/cron/ships-upload-token.js (CRON_SECRET; CI never holds the Blob token), each verified at full size.
  *   4. api/ships op=importCtStays stores the stays version (bake record + rows in one transaction: the terminal cards switch).
  *   5. Writes latest.json (the ship cards' packs switch within 5 minutes, api/ship-tracks.js ctVoyagesNow).
- * Env: CRON_SECRET; FORCE=1 (check says new); SHIPS_API / SHIPS_TOKEN_URL / SHIPS_BLOB_BASE (default production);
+ *   6. Deletes Blob folders of every version but the live one and the one it replaced (api/cron/ct-voyages-prune.js),
+ *      then checks the live packs still read.
+ * Env: CRON_SECRET; FORCE=1 (check says new); SHIPS_API / SHIPS_TOKEN_URL / SHIPS_PRUNE_URL / SHIPS_BLOB_BASE (default production);
  * DRY_RUN=1 (publish stops after step 2, writing the matched stays to the build dir).
  */
 import { readFileSync, writeFileSync, statSync, createReadStream, appendFileSync } from 'node:fs'
@@ -28,6 +30,7 @@ import { planCtStays, notCoveredTerminals, CT_PULL_BOX } from '../../../lib/ship
 const API = process.env.SHIPS_API || 'https://earthatlas.org/api/ships'
 const TOKEN_URL = process.env.SHIPS_TOKEN_URL || 'https://earthatlas.org/api/cron/ships-upload-token'
 const BLOB_BASE = process.env.SHIPS_BLOB_BASE || 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com'
+const PRUNE_URL = process.env.SHIPS_PRUNE_URL || 'https://earthatlas.org/api/cron/ct-voyages-prune'
 const POINTER = 'ships/ct-voyages/latest.json'
 // The hand-run v3 bake (2026-09-29) that serves until the first automated one: the gates' baseline.
 const V3 = { version: 'v3', rows: 964517, startDates: { from: '2024-01-01', to: '2025-12-31' }, ships: { mmsi: 10284, imo: 5533 }, matched: 60108 }
@@ -148,6 +151,23 @@ async function publish(dir, tableFile) {
   const check = await livePointer()
   if (check?.version !== version) throw new Error(`pointer reads ${check?.version}, expected ${version}`)
   console.log(`live: ${version} (start dates ${m.startDates.from} – ${m.startDates.to})`)
+
+  // 6. Storage: keep the live bake and the one it replaced; older version folders go (api/cron/ct-voyages-prune.js).
+  // Never fatal: the new bake is already live, a failed prune only leaves extra files. The keep list is named here,
+  // never inferred by the route from the pointer (a read right after the flip can return the old one).
+  try {
+    const r = await fetch(PRUNE_URL, { method: 'POST', headers: { ...auth(), 'content-type': 'application/json' },
+      body: JSON.stringify({ keep: [version, prev.version].filter(Boolean) }) })
+    const j = await r.json().catch(() => ({}))
+    console.log(r.ok ? `✓ pruned ${j.deleted} old files (${((j.bytesFreed || 0) / 1e6).toFixed(0)} MB), kept ${j.kept?.join(', ')}` : `  prune skipped: ${r.status} ${j.error || ''}`)
+  } catch (err) { console.warn(`  prune skipped: ${err.message}`) }
+  // A green run must mean working ship cards: the live packs must still be readable after the cleanup.
+  for (const k of ['mmsi', 'imo']) {
+    const r = await fetch(`${urls[k]}?t=${Date.now()}`, { headers: { Range: 'bytes=0-3' }, cache: 'no-store' })
+    const head = Buffer.from(await r.arrayBuffer()).toString('ascii')
+    if (r.status !== 206 || head !== 'SHTP') throw new Error(`the live ${k} pack is NOT readable after publish (HTTP ${r.status}) — ship cards are broken; investigate now`)
+  }
+  console.log(`✓ live packs readable after cleanup (${version})`)
 }
 
 const [cmd, a, b] = process.argv.slice(2)

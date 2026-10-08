@@ -5,7 +5,8 @@
 # bake (ships/ct-voyages/latest.json). Nothing new → done. New (Climate TRACE releases about monthly, ~2 months behind
 # real time) → re-pull the Salish Sea from Jan 2024 on (scripts/ships/bake-ct-voyages/pull.sql; whole pulls, because each
 # release can revise past months), bake, then publish.mjs: gates against the live bake → stays matched to production's
-# berths → upload → stays stored (api/ships op=importCtStays) → pointer flipped. A failed or refused run leaves the
+# berths → upload → stays stored (api/ships op=importCtStays) → pointer flipped → older Blob folders pruned (keeps the
+# live bake and the one before it, api/cron/ct-voyages-prune.js). A failed or refused run leaves the
 # previous bake serving.
 #
 # Cost: each pull scans every year partition since 2024 (~35 GB in Oct 2026), capped below; BigQuery's free tier is

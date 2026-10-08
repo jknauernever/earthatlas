@@ -15,6 +15,7 @@ const BY_ID = {
   'imf-portwatch': 'IMF PortWatch',
   'wa-ecology-spills': 'Washington State Dept. of Ecology',
   'emsa-thetis-mrv': 'EMSA',
+  'wa-dnr-aquatic-uses': 'Washington State Dept. of Natural Resources',
 }
 
 const STANDARD = [

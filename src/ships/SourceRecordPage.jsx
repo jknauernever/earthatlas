@@ -3,7 +3,7 @@
  * "not useful for anyone"). Who published it and under what licence, when we retrieved it, what it said about
  * each ship, where to see it at the source, and, for anyone who wants it, the data exactly as received.
  */
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import { useParams } from 'react-router-dom'
 import { Ev } from './VesselCard.jsx'
@@ -54,16 +54,19 @@ export default function SourceRecordPage() {
         {!rec && !error && <Loading kind="quick" />}
         {rec && <>
           <div className={styles.kicker}>Source record</div>
-          <h1 className={styles.title}>{s?.name || rec.source?.id}</h1>
+          <h1 className={styles.title}>{rec.summary?.title || s?.name || rec.source?.id}</h1>
           {s?.publisher && <div className={styles.sub}>Published by {s.publisher}</div>}
 
           <section className={styles.facts}>
-            {rec.links.map((l) => (
+            {rec.summary?.sourceLink && (
+              <a className={styles.primaryLink} href={rec.summary.sourceLink.href} target="_blank" rel="noopener noreferrer">{rec.summary.sourceLink.label} ↗</a>
+            )}
+            {!rec.summary && rec.links.map((l) => (
               <a key={l.href} className={styles.primaryLink} href={l.href} target="_blank" rel="noopener noreferrer">
                 {l.home ? `Visit ${l.label}` : `See it at the source: ${l.label}`} ↗
               </a>
             ))}
-            {rec.identifiers.length > 0 && (
+            {!rec.summary && rec.identifiers.length > 0 && (
               <div className={styles.ids}>
                 {!rec.links.some((l) => !l.home) && <span className={styles.idsHint}>To find it there, look up:</span>}
                 {rec.identifiers.map((x) => <span key={`${x.label}${x.value}`} className={styles.idChip}>{x.label} <b>{x.value}</b></span>)}
@@ -79,7 +82,19 @@ export default function SourceRecordPage() {
             </dl>
           </section>
 
-          {rec.vessels.length > 0 ? rec.vessels.map((v) => (
+          {rec.summary && (
+            <section className={styles.vessel}>
+              <h2>What DNR’s record says</h2>
+              <dl className={styles.meta}>
+                {rec.summary.rows.map((r) => <Fragment key={r.label}><dt>{r.label}</dt><dd>{r.value}</dd></Fragment>)}
+                {rec.summary.lat != null && rec.summary.lon != null && <><dt>Location</dt><dd>
+                  <a href={`/ships?lat=${rec.summary.lat.toFixed(4)}&lng=${rec.summary.lon.toFixed(4)}&z=14`}>Show on the map</a>
+                  {' '}({rec.summary.lat.toFixed(4)}, {rec.summary.lon.toFixed(4)}, DNR’s point for this {rec.summary.title.startsWith('Port') ? 'area' : 'lease'})</dd></>}
+              </dl>
+              <p className={styles.note}>{rec.summary.note}</p>
+            </section>
+          )}
+          {rec.summary ? null : rec.vessels.length > 0 ? rec.vessels.map((v) => (
             <section key={v.id} className={styles.vessel}>
               <h2><a href={`/ships?v=${v.id}`}>{v.name || 'Unnamed vessel'}</a> <span>what this record says</span></h2>
               <table className={styles.table}>

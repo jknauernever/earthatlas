@@ -425,3 +425,10 @@ Proposal search such as "Pier 4" returns unrelated records statewide (23 Pierce 
 request). Use one distinctive word per search. A Register search takes ~20 s to answer.
 Projected for the other 31 terminals at the measured rate: ~430–950 requests, over the 400 budget, so the rollout stopped after
 the pilot (Josh decides).
+
+Rollout (dev, 2026-10-07, approved by Josh): the other 31 terminals → 23 new facilities (Port of Vancouver's Terminals 2–4 and dry
+bulk wharf share one port facility; Port of Longview's berths 1–3 and 5–7 share one) and 2 `no_facility` notes (West Sitcum,
+Tacoma: no record names the terminal or its operator; Weyerhaeuser's Longview export docks: no Weyerhaeuser record within
+0.5 mi). Requests ≈ 725 (ECHO proposals 93, DFR reviews 63, imports ~530, Register tests 3, WA air 25, WA leases 13). Lesson:
+Register searches are relevance-ranked, not exact: "Terminal 5" and applicant "Port of Olympia" / "Port of Port Angeles"
+returned mostly unrelated records (kept as hidden candidates); distinctive names (Husky, TOTE, NuStar, EGT, East Blair) work.

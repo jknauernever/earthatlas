@@ -319,8 +319,7 @@ function Facility({ f, onLocate, airSearches = [] }) {
           {f.frs.filter((x) => !x.primary).map((x) => <div key={x.id} className={styles.pcMuted}>· {x.id}: {x.why} {ext(x.url, 'ECHO page', 'Open in EPA ECHO')}</div>)}
           Program records include reporting ids (greenhouse gas, toxics, risk plans) as well as permits. An expiry date in the past does not
           mean the site runs without a permit: usually a renewal is pending and the old permit stays in force (EPA).
-          {f.airAgency && !f.permits.some((p) => p.documents?.some((d) => d.source === 'nwcaa-aop' || d.source === 'pscaa-title-v')) && <>
-            {' '}Air permits here are issued by the {ext(f.airAgency.url, f.airAgency.name, `${f.airAgency.name} website`)}; their documents are not listed here yet.</>}
+          {f.airAgency && <>{' '}Air permits here are issued by the {ext(f.airAgency.url, f.airAgency.name, `${f.airAgency.name} website`)}.</>}
         </div>
         <div className={styles.legendNoteText}>
           <strong>SEPA reviews.</strong> Records come from searches of Washington Ecology’s SEPA Register by the refinery’s applicant names and
@@ -347,7 +346,7 @@ function NoneFound({ n }) {
           {/^\d{12}$/.test(x.id) && ext(`https://echo.epa.gov/detailed-facility-report?fid=${x.id}`, 'ECHO page', 'Open the facility in EPA ECHO')}
           <span className={styles.pcMuted}> · {x.why}</span></div>)}
       </Fold>}
-      {n.airAgency && <div className={styles.legendNoteText}>Air permits here are issued by the {ext(n.airAgency.url, n.airAgency.name, `${n.airAgency.name} website`)}; they are not listed here yet.</div>}
+      {n.airAgency && <div className={styles.legendNoteText}>Air permits here are issued by the {ext(n.airAgency.url, n.airAgency.name, `${n.airAgency.name} website`)}.</div>}
     </div>
   )
 }

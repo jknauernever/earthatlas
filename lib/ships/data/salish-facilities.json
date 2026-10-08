@@ -1899,10 +1899,6 @@
      {
       "field": "Proposal",
       "text": "Husky"
-     },
-     {
-      "field": "Proposal",
-      "text": "Pier 4"
      }
     ],
     "applicant_words": [
@@ -1978,6 +1974,1455 @@
    },
    "notes": [
     "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.75 mi of the berth: 34 facilities, 15 by name); FRS ids hand-checked by company and street address."
+   ]
+  },
+  {
+   "id": "wa-pos-terminal-91",
+   "name": "Port of Seattle Terminal 91 (Smith Cove)",
+   "kind": "cruise_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-pos-t91-smith-cove",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110009510975",
+   "frs_related": [
+    {
+     "id": "110071814816",
+     "why": "FRS name \"TERMINAL 91 BERTHS 6 AND 8 REDEVELOPMENT PROJECT\" (address unspecified; point 0.3 km from the Terminal 91 record): a Port of Seattle project at this terminal"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110071319310",
+     "why": "GLACIER FISH COMPANY / NORTH STAR FISHING, 2001 W GARFIELD ST: a fishing company tenant at the same address, not the terminal"
+    },
+    {
+     "id": "110067180393",
+     "why": "SOUTH MAGNOLIA CSO, 2001 W GARFIELD ST: a sewer overflow outfall, not the terminal"
+    },
+    {
+     "id": "110005333442",
+     "why": "LOUIS DREYFUSS CORP, 955 ALASKAN WAY W: the Terminal 86 grain terminal, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 91"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Terminal 91",
+     "T91",
+     "T-91",
+     "Smith Cove",
+     "Pier 91"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pos-pier-66",
+   "name": "Port of Seattle Pier 66 (Bell Street Cruise Terminal)",
+   "kind": "cruise_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-pos-pier66-bell-street",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110037088594",
+   "frs_related": [
+    {
+     "id": "110071541863",
+     "why": "FRS name \"P66 CRUISE SHORE POWER\" (address unspecified): the shore-power project at the Pier 66 cruise berth"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110071710559",
+     "why": "PORT OF SEATTLE, PIER 69: the port's headquarters pier, a neighbour"
+    },
+    {
+     "id": "110070879829",
+     "why": "SEATTLE AQUARIUM OCEAN PAVILION, 1483 ALASKAN WAY: a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Pier 66"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Pier 66",
+     "Bell Street",
+     "P66"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-terminal-5",
+   "name": "Terminal 5 (Seattle; Northwest Seaport Alliance, SSA Terminals)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-t5",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110030896779",
+   "frs_related": [
+    {
+     "id": "110070135482",
+     "why": "FRS name \"PORT OF SEATTLE TERMINAL 5 WHARF\", 2701 26TH AVE SW"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110063695229",
+     "why": "TERMINAL 5 FOSS TERMINAL OPERATIONS, 3443 W MARGINAL WAY SW: another company (Foss) at the terminal's address, not the port or the terminal operator"
+    },
+    {
+     "id": "110069712877",
+     "why": "AMERICAN PRESIDENT LINES LTD, 3443 W MARGINAL WAY SW: a former operator, no permit listed"
+    },
+    {
+     "id": "110069441492",
+     "why": "SHELL OIL PRODUCT SEATTLE TERMINAL, 2555 13TH AVE SW: the Shell terminal on Harbor Island, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 5"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Terminal 5",
+     "T5",
+     "T-5"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-terminal-18",
+   "name": "Terminal 18 (Seattle, Harbor Island; SSA Terminals)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-t18",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005381256",
+   "frs_related": [
+    {
+     "id": "110005325923",
+     "why": "FRS name \"STEVEDORING SERVICES TERMINAL 18\", 1050 SW SPOKANE ST (SSA's Terminal 18 address)"
+    },
+    {
+     "id": "110066989156",
+     "why": "FRS name \"TERMINAL 18\", 2400 11TH AVENUE SW"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110005372024",
+     "why": "SEATTLE PORT TERM 18F, 3236 16TH AVE SW: no permit listed"
+    },
+    {
+     "id": "110032894027",
+     "why": "KINDER MORGAN HARBOR ISLAND, 2720 13TH AVENUE SW: a neighbouring fuel terminal (its own facility)"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 18"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance",
+     "SSA"
+    ],
+    "place_words": [
+     "Terminal 18",
+     "T18",
+     "T-18"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-terminal-30",
+   "name": "Terminal 30 (Seattle, with former Terminal 25; SSA Terminals)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-t30",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005351644",
+   "frs_related": [
+    {
+     "id": "110005340470",
+     "why": "FRS name \"SEATTLE PORT TERMINAL 30\", 2431 E MARGINAL WAY"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110005344136",
+     "why": "SEATTLE PORT PIER 28, 2715 E MARGINAL WAY: a neighbouring pier, no permit listed"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 30"
+     },
+     {
+      "field": "Proposal",
+      "text": "Terminal 25"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance",
+     "SSA"
+    ],
+    "place_words": [
+     "Terminal 30",
+     "Terminal 25",
+     "T30",
+     "T-30",
+     "T-25"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-terminal-46",
+   "name": "Terminal 46 (Seattle)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "King County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-t46",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005349612",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110002449903",
+     "why": "US CG INTEGRATED SUPPORT COMMAND SEATTLE, 1519 ALASKAN WAY S: the Coast Guard base, a neighbour"
+    },
+    {
+     "id": "110005326986",
+     "why": "SEATTLE PORT TERM 48, 101 ALASKAN WAY S: Terminal 48, no permit listed"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "KING",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 46"
+     }
+    ],
+    "applicant_words": [
+     "Port of Seattle",
+     "Seattle Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Terminal 46",
+     "T46",
+     "T-46"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-pierce-county-terminal",
+   "name": "Pierce County Terminal (Tacoma; Everport Terminal Services)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-pct",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110018849246",
+   "frs_related": [
+    {
+     "id": "110071297348",
+     "why": "FRS name \"PORT OF TACOMA PARCEL 15/FORMER PORTAC\", 4015 SR 509 N FRONTAGE RD (the terminal's address)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110070225877",
+     "why": "PARCEL 77 AUTO IMPORT TERMINAL, 3400 TAYLOR WAY: a different terminal"
+    },
+    {
+     "id": "110044996500",
+     "why": "TACOMA PORT PORTAC, 4215 SR 509 E FRONTAGE RD: another address, no permit listed"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Everport"
+     },
+     {
+      "field": "Proposal",
+      "text": "Pierce County Terminal"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Northwest Seaport Alliance",
+     "Everport",
+     "Evergreen"
+    ],
+    "place_words": [
+     "Pierce County Terminal",
+     "Everport",
+     "Parcel 15"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nwsa-washington-united-terminals",
+   "name": "Washington United Terminals (Tacoma)",
+   "kind": "container_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-nwsa-wut",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110015562826",
+   "frs_related": [
+    {
+     "id": "110043690609",
+     "why": "FRS name \"PORT OF TACOMA POLE INSTALLATION\", 1815 PORT OF TACOMA RD (the terminal's address)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110006427839",
+     "why": "BUCKEYE PIPE LINE CO TACOMA STATION, 2425 PORT OF TACOMA RD: a neighbouring pipeline station"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Washington United"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Northwest Seaport Alliance",
+     "Washington United"
+    ],
+    "place_words": [
+     "Washington United",
+     "WUT"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-tote-tacoma-terminal",
+   "name": "TOTE Maritime Alaska terminal (Tacoma)",
+   "kind": "roro_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-tote-tacoma",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005325585",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110005338214",
+     "why": "ALASKA BARGE LINES INC, 600 ALEXANDER AVE: a neighbour, no permit listed"
+    },
+    {
+     "id": "110064547058",
+     "why": "TACOMA LIQUEFIED NATURAL GAS PROJECT, 901 AND 1001 ALEXANDER AVE: Puget Sound Energy's LNG plant (its own facility)"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "TOTE"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Northwest Seaport Alliance",
+     "TOTE",
+     "Totem"
+    ],
+    "place_words": [
+     "TOTE",
+     "Totem Ocean",
+     "500 Alexander"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pot-terminal-7",
+   "name": "Port of Tacoma Terminal 7 (East Sitcum)",
+   "kind": "roro_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-pot-t7",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110008220521",
+   "frs_related": [
+    {
+     "id": "110071819330",
+     "why": "FRS name \"PORT OF TACOMA T7 WAREHOUSE\", 902 SITCUM WAY"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110005394974",
+     "why": "EVERGREEN TACOMA PORT, 2207 SITCUM WAY: no permit listed"
+    },
+    {
+     "id": "110035431912",
+     "why": "HUSKY TERMINAL AND STEVEDORING INC: the Husky Terminal next door (its own facility)"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 7"
+     },
+     {
+      "field": "Proposal",
+      "text": "East Sitcum"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "Terminal 7",
+     "T7",
+     "East Sitcum"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pot-east-blair-one",
+   "name": "East Blair One terminal (Port of Tacoma)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Pierce County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-pot-blair",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071710853",
+   "frs_related": [
+    {
+     "id": "110040161669",
+     "why": "FRS name \"EAST BLAIR 1 TERMINAL\", 2940 ALEXANDER AVE (RCRA id held as PORT OF TACOMA EB1)"
+    },
+    {
+     "id": "110071445730",
+     "why": "FRS name \"PORT OF TACOMA EB01 PAVING AND RESTROOMS\", 2940 ALEXANDER AVE"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110040341065",
+     "why": "PORT OF TACOMA - WETLAND EB-1B PROPERTY, 3000 E ALEXANDER AVE: a wetland property, not the terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "PIERCE",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "East Blair"
+     }
+    ],
+    "applicant_words": [
+     "Port of Tacoma",
+     "Tacoma Port",
+     "Northwest Seaport Alliance"
+    ],
+    "place_words": [
+     "East Blair",
+     "EB1",
+     "EB-1"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-poe-seaport",
+   "name": "Port of Everett seaport (marine terminals)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Snohomish County",
+   "air_agency": "PSCAA",
+   "terminals": [
+    {
+     "key": "wa-poe-seaport",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005324327",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110071320528",
+     "why": "NORTON TERMINAL, 2600 FEDERAL AVE: the port's Norton terminal (former Kimberly-Clark mill), not among the South, Pacific and Hewitt Avenue terminals"
+    },
+    {
+     "id": "110044999080",
+     "why": "VIGOR MARINE EVERETT SHIPYARD, 2730 FEDERAL AVE: a shipyard, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "SNOHOMISH",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "South Terminal"
+     },
+     {
+      "field": "Proposal",
+      "text": "Pacific Terminal"
+     }
+    ],
+    "applicant_words": [
+     "Port of Everett",
+     "Everett Port"
+    ],
+    "place_words": [
+     "South Terminal",
+     "Pacific Terminal",
+     "Hewitt",
+     "Marine Terminal",
+     "seaport"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-popa-marine-terminals",
+   "name": "Port of Port Angeles marine terminals",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Clallam County",
+   "air_agency": "ORCAA",
+   "terminals": [
+    {
+     "key": "wa-popa-marine-terminal",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110067178360",
+   "frs_related": [
+    {
+     "id": "110054999285",
+     "why": "FRS name \"PT OF PORT ANGELES MARINE TERM LOG\", foot of Cedar St (the marine terminal)"
+    },
+    {
+     "id": "110005379198",
+     "why": "FRS name \"PORT ANGELES PORT MARINE TERMINALS CEDAR\", 167 N CEDAR ST"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110070080695",
+     "why": "MARINE SPILL RESPONSE CORP PORT ANGELES, 202 N CEDAR ST: a spill-response company at the same address, not the port"
+    },
+    {
+     "id": "110015674634",
+     "why": "TERMINAL 5 PORT OF PORT ANGELES: a different terminal"
+    },
+    {
+     "id": "110015930215",
+     "why": "WESTPORT SHIPYARD INC PORT ANGELES, 637 MARINE DR: a shipyard, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "CLALLAM",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Port of Port Angeles"
+     }
+    ],
+    "applicant_words": [
+     "Port of Port Angeles",
+     "Port Angeles Port"
+    ],
+    "place_words": [
+     "Terminal 1",
+     "Terminal 3",
+     "marine terminal",
+     "Cedar"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pob-bellingham-shipping-terminal",
+   "name": "Bellingham Shipping Terminal (Port of Bellingham)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Whatcom County",
+   "air_agency": "NWCAA",
+   "terminals": [
+    {
+     "key": "wa-pob-shipping-terminal",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110061288921",
+   "frs_related": [
+    {
+     "id": "110046491587",
+     "why": "FRS name \"BELLINGHAM SHIPPING TERMINAL\", 619 CORNWALL AVE"
+    },
+    {
+     "id": "110009513026",
+     "why": "FRS name \"PORT OF BELLINGHAM MAINT SHOP 619\", 619 CORNWALL AVE (the terminal's address)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110000490004",
+     "why": "GEORGIA PACIFIC WEST BELLINGHAM, 300 W LAUREL ST: the former mill site, a neighbour"
+    },
+    {
+     "id": "110000490013",
+     "why": "PSE ENCOGEN NW GENERATING FACILITY, 915 CORNWALL AVE: a power plant, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "WHATCOM",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Bellingham Shipping Terminal"
+     }
+    ],
+    "applicant_words": [
+     "Port of Bellingham",
+     "Bellingham Port"
+    ],
+    "place_words": [
+     "Shipping Terminal",
+     "Cornwall"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-poo-marine-terminal",
+   "name": "Port of Olympia marine terminal",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Thurston County",
+   "air_agency": "ORCAA",
+   "terminals": [
+    {
+     "key": "wa-poo-marine-terminal",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110015551847",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110000702393",
+     "why": "PORT OF OLYMPIA CASCADE POLE SITE, 1503 MARINE DR NE: a cleanup site, not the marine terminal"
+    },
+    {
+     "id": "110020036833",
+     "why": "HOLBROOK INC OLYMPIA PUBLIC YARD: a tenant's yard"
+    },
+    {
+     "id": "110060242349",
+     "why": "SWANTOWN MARINA AND BOATWORKS: the port's marina, not the marine terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "THURSTON",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Port of Olympia"
+     }
+    ],
+    "applicant_words": [
+     "Port of Olympia",
+     "Olympia Port"
+    ],
+    "place_words": [
+     "marine terminal",
+     "Marine Terminal",
+     "berth"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pogh-terminal-4",
+   "name": "Port of Grays Harbor Terminal 4",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Grays Harbor County",
+   "air_agency": "ORCAA",
+   "terminals": [
+    {
+     "key": "wa-pogh-t4",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071711970",
+   "frs_related": [
+    {
+     "id": "110054937440",
+     "why": "FRS name \"PORT INDUSTRIAL AREA 2012 PAVING\", E TERMINAL WAY (Terminal 4's road)"
+    },
+    {
+     "id": "110060265449",
+     "why": "FRS name \"MARINE CARGO YARD PAVING 2014\", address \"TERMINALS 2 & 4\""
+    },
+    {
+     "id": "110056116386",
+     "why": "FRS name \"PASHA AUTOMOTIVE SERVICES ABERDEEN\", 1620 E TERMINAL WAY: Pasha runs the vehicle cargo at Terminal 4"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110015535278",
+     "why": "PORT OF GRAYS HARBOR, 501 W TERMINAL WAY: the port's own expired pretreatment permit, not tied to Terminal 4"
+    },
+    {
+     "id": "110055001457",
+     "why": "PORT OF GRAYS HARBOR LOG STACK YARD, 2305 PORT INDUSTRIAL RD: a log yard, not the terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "GRAYS HARBOR",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 4"
+     }
+    ],
+    "applicant_words": [
+     "Port of Grays Harbor",
+     "Grays Harbor Port",
+     "Pasha",
+     "AGP",
+     "Ag Processing"
+    ],
+    "place_words": [
+     "Terminal 4",
+     "T4"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pogh-terminal-1",
+   "name": "Port of Grays Harbor Terminal 1 (liquid bulk: REG and BWC Terminals)",
+   "kind": "other_bulk_terminal",
+   "country": "US",
+   "admin_area": "Grays Harbor County",
+   "air_agency": "ORCAA",
+   "terminals": [
+    {
+     "key": "wa-pogh-t1",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110039225460",
+   "frs_related": [
+    {
+     "id": "110030452506",
+     "why": "FRS name \"REG GRAYS HARBOR, LLC\", 3122 WEST 1ST ST: Renewable Energy Group, which runs liquid bulk at Terminal 1"
+    },
+    {
+     "id": "110045002224",
+     "why": "FRS name \"WESTWAY RAW MATERIAL TANK FARM PROJ\", 3128 PORT INDUSTRIAL RD; its stormwater permit WAR306512 is held by BWC TERMINALS LLC, which runs liquid bulk at Terminal 1"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110001917524",
+     "why": "HARPO LLC, 2421 PORT INDUSTRIAL RD: a neighbour"
+    },
+    {
+     "id": "110009512820",
+     "why": "WESTPORT SHIPYARD - HOQUIAM, 2850 JOHN STEVENS WAY: a shipyard, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "GRAYS HARBOR",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Terminal 1"
+     },
+     {
+      "field": "Proposal",
+      "text": "Westway"
+     }
+    ],
+    "applicant_words": [
+     "Port of Grays Harbor",
+     "Grays Harbor Port",
+     "REG",
+     "Renewable Energy Group",
+     "Imperium",
+     "Westway",
+     "BWC"
+    ],
+    "place_words": [
+     "Terminal 1",
+     "T1",
+     "Westway",
+     "Imperium",
+     "REG Grays Harbor"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-pov-marine-terminals",
+   "name": "Port of Vancouver USA marine terminals (Terminals 2–4 and the dry bulk wharf)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Clark County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-pov-t2",
+     "relation": "serves"
+    },
+    {
+     "key": "wa-pov-t3",
+     "relation": "serves"
+    },
+    {
+     "key": "wa-pov-t4",
+     "relation": "serves"
+    },
+    {
+     "key": "wa-pov-dry-bulk",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005309451",
+   "frs_related": [
+    {
+     "id": "110050667408",
+     "why": "FRS name \"PORT OF VANCOUVER\", 3103 NW LOWER RIVER RD (the port's address)"
+    },
+    {
+     "id": "110071203628",
+     "why": "FRS name \"TERMINAL 2 PORT OF VANCOUVER\", 2245 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110071663705",
+     "why": "FRS name \"PORT OF VANCOUVER BERTH 3\", 2299 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110071663706",
+     "why": "FRS name \"PORT OF VANCOUVER BERTH 4\", 2399 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110069210320",
+     "why": "FRS name \"BUILDING 3125 TERMINAL 3\", 3125 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110071663707",
+     "why": "FRS name \"PORT OF VANCOUVER BERTH 8\", 2899 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110071663709",
+     "why": "FRS name \"PORT OF VANCOUVER BERTH 9\", 3199 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110071663710",
+     "why": "FRS name \"PORT OF VANCOUVER BERTH 10\", 3599 NW HARBORSIDE DR"
+    },
+    {
+     "id": "110044906607",
+     "why": "FRS name \"PORT OF VANCOUVER TERMINAL 4\", GATEWAY AVE AND WA-501"
+    },
+    {
+     "id": "110071254680",
+     "why": "FRS name \"TERMINAL 4 PORT OF VANCOUVER\", 3675 HARBORSIDE DRIVE"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110022934645",
+     "why": "KINDER MORGAN VANCOUVER, 2701 NW HARBORSIDE DR: another company's bulk terminal next to the wharf"
+    },
+    {
+     "id": "110070243932",
+     "why": "VANCOUVER PORT OF SWAN CADET NUSTAR, 2565 NW HARBORSIDE DR: the NuStar terminal at berth 5 (its own facility)"
+    },
+    {
+     "id": "110005392985",
+     "why": "MARINE TERMINALS CORP, 3029 NW LOWER RIVER RD: a stevedoring company"
+    },
+    {
+     "id": "110045013463",
+     "why": "PORT OF VANCOUVER USA TERMINAL 5 BULK POTASH HANDLING, 5701 NW LOWER RIVER RD: Terminal 5, not one of these terminals"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "CLARK",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Port of Vancouver"
+     }
+    ],
+    "applicant_words": [
+     "Port of Vancouver",
+     "Vancouver Port"
+    ],
+    "place_words": [
+     "Terminal 2",
+     "Terminal 3",
+     "Terminal 4",
+     "berth",
+     "Berth",
+     "Harborside"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-nustar-vancouver-terminal",
+   "name": "NuStar Vancouver terminal (Port of Vancouver Terminal 2, berth 5)",
+   "kind": "product_terminal",
+   "country": "US",
+   "admin_area": "Clark County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-pov-t2-berth5",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110070243932",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110048886060",
+     "why": "TESORO MARATHON VANCOUVER TERMINAL, 2211 ST. FRANCIS LANE: another company's terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "CLARK",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "NuStar"
+     }
+    ],
+    "applicant_words": [
+     "NuStar",
+     "Shore Terminals",
+     "Port of Vancouver"
+    ],
+    "place_words": [
+     "NuStar",
+     "2565",
+     "Harborside"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-united-grain-vancouver-elevator",
+   "name": "United Grain Corporation Vancouver grain terminal",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "Clark County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-united-grain-vancouver",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110001916231",
+   "frs_related": [
+    {
+     "id": "110055005088",
+     "why": "FRS name \"UNITED GRAIN TERMINAL & B2 ANNEX\", Harborside Dr & Elevator Way"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110001916240",
+     "why": "GREAT WESTERN MALTING, 1705 NW HARBORSIDE DR: a neighbouring maltings"
+    },
+    {
+     "id": "110001916259",
+     "why": "VANPORT INDUSTRIES, 1755 ELEVATOR WAY: a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "CLARK",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "United Grain"
+     }
+    ],
+    "applicant_words": [
+     "United Grain"
+    ],
+    "place_words": [
+     "United Grain",
+     "grain",
+     "Elevator Way"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-kalama-export-elevator",
+   "name": "Kalama Export grain elevator",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "Cowlitz County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-kalama-export",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110071179215",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110043882643",
+     "why": "BENNU GLASS LLC, 2310 N HENDRICKSON DR: a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "COWLITZ",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "Kalama Export"
+     }
+    ],
+    "applicant_words": [
+     "Kalama Export"
+    ],
+    "place_words": [
+     "Kalama Export",
+     "grain"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-temco-kalama-elevator",
+   "name": "TEMCO Kalama grain elevator",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "Cowlitz County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-temco-kalama",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110055001545",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110017782951",
+     "why": "KEMIRA LOGISTICS INC, 500 HENDRICKSON DR: a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "COWLITZ",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "TEMCO"
+     }
+    ],
+    "applicant_words": [
+     "TEMCO",
+     "CHS",
+     "Cargill",
+     "Harvest States"
+    ],
+    "place_words": [
+     "TEMCO",
+     "Toteff",
+     "grain"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-lanxess-kalama-plant",
+   "name": "LANXESS Kalama chemical plant (former Emerald Kalama Chemical)",
+   "kind": "chemical_terminal",
+   "country": "US",
+   "admin_area": "Cowlitz County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-emerald-kalama",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110000490816",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110009511607",
+     "why": "CALGON CORP, 1265 HENDRICKSON DR: a neighbouring plant"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "COWLITZ",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "LANXESS"
+     },
+     {
+      "field": "Proposal",
+      "text": "Emerald Kalama"
+     }
+    ],
+    "applicant_words": [
+     "LANXESS",
+     "Emerald",
+     "Kalama Chemical"
+    ],
+    "place_words": [
+     "Kalama",
+     "Emerald",
+     "LANXESS"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-port-of-longview",
+   "name": "Port of Longview marine terminals (berths 1–3 and 5–7)",
+   "kind": "general_cargo_terminal",
+   "country": "US",
+   "admin_area": "Cowlitz County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-pol-berths-1-3",
+     "relation": "serves"
+    },
+    {
+     "key": "wa-pol-berths-5-7",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110005323756",
+   "frs_related": [],
+   "frs_left_out": [
+    {
+     "id": "110045959389",
+     "why": "LONGVIEW BULK HANDLING FACILITY, 100 PAPER WAY: holder not named as the port"
+    },
+    {
+     "id": "110071650784",
+     "why": "DRAX LONGVIEW PELLET FACILITY, 125 E MILL RD: a tenant company's plant"
+    },
+    {
+     "id": "110000620454",
+     "why": "INTERNATIONAL PAPER LONGVIEW, 10 INTERNATIONAL WAY: a neighbour"
+    },
+    {
+     "id": "110005322837",
+     "why": "WILCOX AND FLEDEL LONGVIEW TERMINAL, 110 PANEL WAY: another company's terminal"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "COWLITZ",
+    "searches": [
+     {
+      "field": "Applicant",
+      "text": "Port of Longview"
+     }
+    ],
+    "applicant_words": [
+     "Port of Longview",
+     "Longview Port"
+    ],
+    "place_words": [
+     "Berth 1",
+     "Berth 2",
+     "Berth 3",
+     "Berth 5",
+     "Berth 6",
+     "Berth 7",
+     "berths",
+     "marine terminal"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
+   ]
+  },
+  {
+   "id": "wa-egt-longview-terminal",
+   "name": "EGT grain terminal (Port of Longview berth 9)",
+   "kind": "grain_terminal",
+   "country": "US",
+   "admin_area": "Cowlitz County",
+   "air_agency": "SWCAA",
+   "terminals": [
+    {
+     "key": "wa-egt-longview",
+     "relation": "serves"
+    }
+   ],
+   "frs_primary": "110040126299",
+   "frs_related": [
+    {
+     "id": "110071538466",
+     "why": "FRS name \"EGT LLC\", 150 E MILL RD (EGT's address in its air permit)"
+    }
+   ],
+   "frs_left_out": [
+    {
+     "id": "110071510341",
+     "why": "DRAX PELLET FACILITY, 175 E MILL RD: another company, a neighbour"
+    }
+   ],
+   "ct_refinery": [],
+   "documents": {},
+   "sepa": {
+    "county": "COWLITZ",
+    "searches": [
+     {
+      "field": "Proposal",
+      "text": "EGT"
+     }
+    ],
+    "applicant_words": [
+     "EGT"
+    ],
+    "place_words": [
+     "EGT",
+     "Berth 9",
+     "grain"
+    ]
+   },
+   "notes": [
+    "Proposed 2026-10-07 with scripts/ships/propose-facility.mjs (ECHO within 0.5 mi of each berth); FRS ids hand-checked by company and street address in the ECHO Detailed Facility Reports."
    ]
   },
   {
@@ -5282,6 +6727,66 @@
     }
    },
    "notes": []
+  }
+ ],
+ "no_facility": [
+  {
+   "terminal": "wa-nwsa-west-sitcum",
+   "air_agency": "PSCAA",
+   "checked": "2026-10-07",
+   "says": "No facility record for West Sitcum Terminal was found in EPA’s records: no EPA facility near the berth names the terminal, the Port of Tacoma or Northwest Seaport Alliance at its address, or its operator SSA Marine (for Matson).",
+   "searched": [
+    {
+     "what": "EPA ECHO: facilities within 0.5 mi of the berth",
+     "found": "38 facilities, none at the terminal"
+    }
+   ],
+   "left_out": [
+    {
+     "id": "110008220521",
+     "name": "OLYMPIC CONTAINER TERMINAL LLC",
+     "why": "710 Port of Tacoma Rd, Terminal 7 D: the East Sitcum terminal (Terminal 7)"
+    },
+    {
+     "id": "110005394974",
+     "name": "EVERGREEN TACOMA PORT",
+     "why": "2207 Sitcum Way: no permit listed, no record naming West Sitcum"
+    },
+    {
+     "id": "110012562164",
+     "name": "TACOMA PORT CONTAINER FREIGHT STATION",
+     "why": "2207 E 11th St: a freight station, not the terminal"
+    }
+   ]
+  },
+  {
+   "terminal": "wa-weyerhaeuser-longview",
+   "air_agency": "SWCAA",
+   "checked": "2026-10-07",
+   "says": "No EPA facility record for Weyerhaeuser’s Longview export docks was found: no EPA facility within half a mile of the docks carries Weyerhaeuser’s name.",
+   "searched": [
+    {
+     "what": "EPA ECHO: facilities within 0.5 mi of the berth",
+     "found": "12 facilities, none Weyerhaeuser’s"
+    }
+   ],
+   "left_out": [
+    {
+     "id": "110000490898",
+     "name": "NIPPON DYNAWAVE PACKAGING LONGVIEW WA",
+     "why": "3401 Industrial Way: another company’s mill"
+    },
+    {
+     "id": "110070832744",
+     "name": "NORTH PACIFIC PAPER CORP. (NORPAC)",
+     "why": "3401 Industrial Way: another company’s mill"
+    },
+    {
+     "id": "110005322837",
+     "name": "WILCOX AND FLEDEL LONGVIEW TERMINAL",
+     "why": "110 Panel Way: another company’s terminal"
+    }
+   ]
   }
  ]
 }

@@ -1,5 +1,5 @@
 import s from './Panel.module.css'
-import { useLoadingMessage } from './Spinner.jsx'
+import Spinner, { useLoadingMessage } from './Spinner.jsx'
 
 /**
  * A page-sized loader (Josh 2026-10-08: "a fun/cute spinner" for the scrubber report): a little ship bobbing on rolling waves,
@@ -37,7 +37,7 @@ export default function ShipLoader({ kind = 'report', every = 3200, children, to
             d="M0 75 q13 -6 26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 t26.67 0 V96 H0 z" />
         </g>
       </svg>
-      <span className={s.shipLoaderText}>{children ?? msg}</span>
+      <span className={s.shipLoaderText}><Spinner size={14} /><span>{children ?? msg}</span></span>
     </div>
   )
 }

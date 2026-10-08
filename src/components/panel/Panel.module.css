@@ -196,7 +196,7 @@
 .shipLoaderDark { --sl-sea-back: rgba(59, 130, 246, 0.55); --sl-sea-front: #2563eb; --sl-hull: #e2e8f0; --sl-cabin: #1e293b; --sl-cabin-line: #475569;
   --sl-funnel: #e2e8f0; --sl-stripe: #22d3ee; --sl-port: #67e8f9; --sl-smoke: rgba(226, 232, 240, 0.6); --sl-sky: rgba(255, 255, 255, 0.04); --sl-text: rgba(255, 255, 255, 0.75); }
 .shipLoaderArt { width: 168px; height: auto; display: block; border-radius: 14px; background: var(--sl-sky); }
-.shipLoaderText { font-size: 13.5px; color: var(--sl-text); min-height: 1.4em; text-align: center; }
+.shipLoaderText { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--sl-text); min-height: 1.4em; text-align: center; }
 .slHull { fill: var(--sl-hull); }
 .slWaterline { stroke: var(--sl-stripe); stroke-width: 1.4; opacity: 0.8; }
 .slCabin { fill: var(--sl-cabin); stroke: var(--sl-cabin-line); stroke-width: 1; }

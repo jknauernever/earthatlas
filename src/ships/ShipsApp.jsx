@@ -49,6 +49,7 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
 // A shared link's lat/lng/z still wins.
 const DEFAULT_BOUNDS = [[-125.0, 46.95], [-121.9, 50.25]]
+const DEFAULT_CENTER = [-123.461, 48.138], DEFAULT_ZOOM = 7
 
 const BASEMAPS = [
   { id: 'dark', label: 'Dark', style: 'mapbox://styles/mapbox/dark-v11' },
@@ -136,7 +137,8 @@ const usHi = (ym) => `shiptrk-us-${ym}-hi`
 const GHOST_S = 'ghostS-'
 const GHOST_C = 'ghostC-'
 const usTileUrl = (ym) =>
-  `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+  // tileStamp: bumped when months' tiles are replaced in place (cls1 = zoomed-out lines carry ship classes), so cached tiles miss.
+  `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${trackSource.us.tileStamp ? `.${trackSource.us.tileStamp}` : ''}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
 // ─── DEV-ONLY PROTOTYPE (Josh 2026-09-29): GFW hourly positions drawn as track lines, BC + Alaska ───
 // Localhost only: ?gh=raw|routed, and only in dev builds (import.meta.env.DEV), so production never loads it.
 // Tiles: api/ship-tracks?r=gfwproto (local bake, scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Same line style as
@@ -530,8 +532,9 @@ export default function ShipsApp() {
       container: containerRef.current,
       style: basemapStyleFor(basemap),
       ...(mapView ? { center: [mapView.lng, mapView.lat], zoom: mapView.zoom }
-        // Clear of the left panel (open on every load) on desktop.
-        : { bounds: DEFAULT_BOUNDS, fitBoundsOptions: { padding: isMobile ? 20 : { top: 60, bottom: 30, left: 340, right: 40 } } }),
+        // Desktop: a fixed z7 view (Josh 2026-10-08): terminals and ports show from z7, and fitting the box landed at z6.x,
+        // where the Salish track tiles show a seam at a tile edge (-123.75°). Mobile still fits the box.
+        : isMobile ? { bounds: DEFAULT_BOUNDS, fitBoundsOptions: { padding: 20 } } : { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }),
       projection: 'globe',
     })
     mapRef.current = map
@@ -736,8 +739,9 @@ export default function ShipsApp() {
       : byClass
       // Zoomed-out GFW lines carry no MMSI but our class (bake-gfw, cls): filter them by it; one without a known class is
       // hidden under a "Narrow to" pick rather than shown as its whole group (2026-10-02 QA: ferries under Cruise ship).
+      // US-wide months rebuilt with classes (bake-us/add_classes.py, cv: 1) filter the same way (Josh 2026-10-08).
       ? ['case', ['has', 'mmsi'], ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]],
-        ['==', ['get', 'src'], 'gfw'], ['in', ['coalesce', ['get', 'cls'], ''], ['literal', trackClasses]],
+        ['any', ['==', ['get', 'src'], 'gfw'], ['has', 'cv']], ['in', ['coalesce', ['get', 'cls'], ''], ['literal', trackClasses]],
         groupFilter || true]
       : groupFilter
     // From z5 the detailed Salish tiles draw inside the box; US-wide lines lying ENTIRELY inside it are dropped. Lines

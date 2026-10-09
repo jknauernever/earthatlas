@@ -336,8 +336,22 @@ async function pmtilesFor(t, region) {
   }
   if (region === 'us') {
     const key = `us:${t}`
-    if (!cache.has(key)) { const u = await usUrls(t); if (!u) return null; cache.set(key, new PMTiles(new BlobRange(u.tiles, u.pmtiles_bytes))) }
-    return cache.get(key)
+    // Dev only: a month rebuilt locally with ship classes (scripts/ships/bake-us/add_classes.py) wins over Blob.
+    const local = process.env.VERCEL_ENV !== 'production' && resolve(process.cwd(), `scripts/ships/bake-us/build/us-classes/${t}/tracks.pmtiles`)
+    if (local && existsSync(local)) {
+      let p = cache.get(key)
+      if (p?.local && !p.local.fresh()) { p.local.close(); p = null }
+      if (!p?.local) { const src = new LocalFileSource(local); p = new PMTiles(src); p.local = src; cache.set(key, p) }
+      return p
+    }
+    // Keyed by the file too: a month whose index entry moves to new tiles (e.g. add_classes.py) is picked up by warm
+    // instances within the index's 5-minute refresh instead of serving the old file until the instance dies.
+    const u = await usUrls(t); if (!u) return null
+    const p = cache.get(key)
+    if (p?.tilesUrl === u.tiles) return p
+    const n = new PMTiles(new BlobRange(u.tiles, u.pmtiles_bytes)); n.tilesUrl = u.tiles
+    cache.set(key, n)
+    return n
   }
   let p = cache.get(t)
   const localPath = localPathFor(t)

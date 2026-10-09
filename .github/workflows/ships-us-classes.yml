@@ -1,0 +1,119 @@
+# US-wide tracks: rebuild months' zoomed-out tiles (z3-8) with each line's EarthAtlas ship class, so the map's
+# "Narrow to" picks (Cruise ship, Ferry, Oil tanker...) work there too (Josh 2026-10-08; scripts/ships/bake-us/add_classes.py).
+# Reads each month's published pack + tiles (no NOAA download), uploads tracks-cls1.pmtiles beside them, then ONE index
+# write points those months at the new tiles. Uploads use one-file tokens (api/cron/ships-upload-token.js, CRON_SECRET).
+name: ships-us-classes
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'YYYY-MM list and/or YYYY-MM..YYYY-MM ranges (months in the us-v2 index)'
+        required: true
+        default: '2024-01..2026-06'
+
+concurrency:
+  group: ships-us-classes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.plan.outputs.months }}
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - id: plan
+        env:
+          MONTHS: ${{ inputs.months }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os, re, sys, urllib.request
+          out = []
+          for tok in os.environ["MONTHS"].split():
+              m = re.fullmatch(r"(20\d\d)-(0[1-9]|1[0-2])(?:\.\.(20\d\d)-(0[1-9]|1[0-2]))?", tok)
+              if not m: sys.exit(f"bad month: {tok}")
+              y, mo = int(m[1]), int(m[2]); y2, mo2 = (int(m[3]), int(m[4])) if m[3] else (y, mo)
+              while (y, mo) <= (y2, mo2):
+                  out.append(f"{y}-{mo:02d}"); y, mo = (y + 1, 1) if mo == 12 else (y, mo + 1)
+          idx = json.load(urllib.request.urlopen("https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/us-v2/index.json"))
+          out = sorted(m for m in set(out) if m in idx.get("months", {}))
+          print("months=" + json.dumps(out))
+          EOF
+          cat "$GITHUB_OUTPUT"
+      # One type lookup for every month of the run (the same MMSI → class answers everywhere).
+      - name: Type lookup
+        run: |
+          curl -sSf --compressed -m 300 -H "Authorization: Bearer $CRON_SECRET" -A 'earthatlas-bake/1.0 (+https://earthatlas.org)' \
+            "https://earthatlas.org/api/ships?op=typeLookup" -o types.json
+          python3 -c "import json; print(len(json.load(open('types.json'))['mmsi']), 'MMSIs')"
+      - uses: actions/upload-artifact@v4
+        with: { name: types, path: types.json, retention-days: 3 }
+
+  rebuild:
+    needs: plan
+    if: needs.plan.outputs.months != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+      M: ${{ matrix.month }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet shapely numpy
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with: { name: types, path: '${{ runner.temp }}' }
+      - name: Rebuild ${{ matrix.month }}
+        run: python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls"
+      - name: Upload ${{ matrix.month }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/entries"
+          node scripts/ships/bake-us/publish.mjs --classes "$M" "$RUNNER_TEMP/cls/$M" --entry-out "$RUNNER_TEMP/entries/$M.json"
+      - uses: actions/upload-artifact@v4
+        with: { name: 'entry-${{ matrix.month }}', path: '${{ runner.temp }}/entries/${{ matrix.month }}.json', retention-days: 7 }
+
+  index:
+    needs: rebuild
+    if: always() && needs.rebuild.result != 'skipped'
+    runs-on: ubuntu-latest
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with: { pattern: 'entry-*', path: entries, merge-multiple: true }
+      - name: Point the finished months at their class tiles (one index write)
+        run: node scripts/ships/bake-us/publish.mjs --index entries

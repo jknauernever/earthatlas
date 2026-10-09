@@ -6,6 +6,9 @@
 //   node scripts/ships/bake-us/publish.mjs 2025-06 BUILD_DIR --entry-out F  upload only; write the index
 //                                                                         entry to F (parallel jobs)
 //   node scripts/ships/bake-us/publish.mjs --index DIR                     add every entry file in DIR
+//   node scripts/ships/bake-us/publish.mjs --classes 2025-06 DIR --entry-out F
+//        a month rebuilt by add_classes.py: upload its tracks-cls1.pmtiles + manifest-cls1.json beside the month's
+//        published files and write that month's index entry with only tiles / pmtiles_bytes / classes changed
 //                                                                         to the index in one write
 //
 // Each file gets a one-file upload token from api/cron/ships-upload-token.js
@@ -78,7 +81,27 @@ async function writeIndex(entries) {
   console.log(`index: ${indexUrl} (${Object.keys(index.months).length} months; added ${entries.map((e) => e.month).join(' ')})`)
 }
 
-if (INDEX_MODE) {
+const CLASSES_MODE = args[0] === '--classes'
+
+if (CLASSES_MODE) {
+  const ym = args[1], BUILD = resolve(args[2] || '.')
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(ym || '')) { console.error('usage: publish.mjs --classes YYYY-MM DIR [--entry-out F]'); process.exit(2) }
+  const manifest = JSON.parse(readFileSync(resolve(BUILD, 'manifest.json'), 'utf8'))
+  if (manifest.month !== ym) throw new Error(`manifest is for ${manifest.month}, not ${ym}`)
+  const indexUrl = manifest.from_tiles.replace(/\/\d{4}-\d{2}\/[^/]+$/, '/index.json')
+  const cur = await (await fetch(`${indexUrl}?t=${Date.now()}`, { cache: 'no-store' })).json()
+  const old = cur.months?.[ym]
+  if (!old) throw new Error(`${ym} is not in ${indexUrl}`)
+  if (old.pack !== manifest.from_pack) throw new Error(`${ym} was re-baked since the class rebuild read it; rebuild again`)
+  const BASE = indexUrl.replace(/^https:\/\/[^/]+\//, '').replace(/\/index\.json$/, '')
+  const tiles = await upload(`${BASE}/${ym}/tracks-cls1.pmtiles`, resolve(BUILD, 'tracks.pmtiles'), 'application/vnd.pmtiles')
+  const man = await upload(`${BASE}/${ym}/manifest-cls1.json`, resolve(BUILD, 'manifest.json'), 'application/json')
+  const e = { tileset: cur.version || BASE.split('/').pop(), month: ym, indexUrl,
+    entry: { ...old, tiles, pmtiles_bytes: manifest.pmtiles_bytes, classes: { rules: manifest.rules, manifest: man,
+      lines_with_class: manifest.stats.with_class } } }
+  if (ENTRY_OUT) { writeFileSync(ENTRY_OUT, JSON.stringify(e)); console.log(`entry → ${ENTRY_OUT}`) }
+  else await writeIndex([e])
+} else if (INDEX_MODE) {
   const dir = resolve(args[1] || '.')
   const files = readdirSync(dir, { recursive: true }).filter((f) => String(f).endsWith('.json'))
   const entries = files.map((f) => JSON.parse(readFileSync(resolve(dir, String(f)), 'utf8')))

@@ -137,8 +137,10 @@ const usHi = (ym) => `shiptrk-us-${ym}-hi`
 const GHOST_S = 'ghostS-'
 const GHOST_C = 'ghostC-'
 const usTileUrl = (ym) =>
-  // tileStamp: bumped when months' tiles are replaced in place (cls1 = zoomed-out lines carry ship classes), so cached tiles miss.
-  `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${trackSource.us.tileStamp ? `.${trackSource.us.tileStamp}` : ''}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+  // A month whose index entry points at rebuilt tiles (classes: add_classes.py) gets its own address, so tiles cached
+  // under the old one (30 days at the CDN) are never served for it; set from the index (usStamp) before sources are added.
+  `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${usStamp[ym] ? `.${usStamp[ym]}` : ''}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const usStamp = {} // month → tile stamp, from the US index (e.g. 'cls1' when its zoomed-out lines carry ship classes)
 // ─── DEV-ONLY PROTOTYPE (Josh 2026-09-29): GFW hourly positions drawn as track lines, BC + Alaska ───
 // Localhost only: ?gh=raw|routed, and only in dev builds (import.meta.env.DEV), so production never loads it.
 // Tiles: api/ship-tracks?r=gfwproto (local bake, scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Same line style as
@@ -576,7 +578,10 @@ export default function ShipsApp() {
   const [usMonths, setUsMonths] = useState(null)
   useEffect(() => {
     fetch(trackSource.us.index).then((r) => (r.ok ? r.json() : null))
-      .then((idx) => setUsMonths(Object.keys(idx?.months || {}))).catch(() => setUsMonths([]))
+      .then((idx) => {
+        for (const [ym, e] of Object.entries(idx?.months || {})) if (e?.classes?.rules) usStamp[ym] = e.classes.rules.replace(/^.*-(cls\d+)$/, '$1')
+        setUsMonths(Object.keys(idx?.months || {}))
+      }).catch(() => setUsMonths([]))
   }, [])
   // Detailed Salish months: the Blob index NOAA months are added to as they're published (api op=salishindex; Part 1,
   // 2026-10-07), starting from the months written into trackSource.json so the first draw doesn't wait for it.

@@ -77,6 +77,11 @@ def pack_rows(path):
                     yield json.loads(line)
 
 
+def _simplify(coord_lists):
+    simp = shapely.simplify([shapely.LineString(c) for c in coord_lists], SIMPLIFY_DEG)
+    return [np.round(shapely.get_coordinates(g), 5).tolist() for g in simp]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--month', required=True)
@@ -96,13 +101,16 @@ def main():
     t0 = time.time()
     nd = os.path.join(wd, 'low.ndjson')
     stats = Counter()
-    with open(nd, 'w') as out:
+    import multiprocessing as mp
+    with open(nd, 'w') as out, mp.Pool(os.cpu_count()) as pool:
         batch = []
 
         def flush():
-            simp = shapely.simplify([shapely.LineString(r['c']) for r in batch], SIMPLIFY_DEG)
-            for r, g in zip(batch, simp):
-                gc = np.round(shapely.get_coordinates(g), 5).tolist()
+            # Simplifying is nearly all the time (lines from NOAA's daily files average ~780 points), so it runs on every
+            # core; same function and tolerance as build_us_tracks.py, so the output is unchanged.
+            chunks = [[r['c'] for r in batch[i:i + 1000]] for i in range(0, len(batch), 1000)]
+            simplified = [gc for part in pool.map(_simplify, chunks) for gc in part]
+            for r, gc in zip(batch, simplified):
                 if len(gc) < 2:
                     stats['too_short'] += 1
                     continue

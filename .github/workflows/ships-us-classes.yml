@@ -92,8 +92,13 @@ jobs:
       - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@v4
         with: { name: types, path: '${{ runner.temp }}' }
+      # Months with detailed Salish tracks: cut the US lines at the Salish box, so the two never draw over each other there.
       - name: Rebuild ${{ matrix.month }}
-        run: python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls"
+        run: |
+          SALISH_INDEX=$(python3 -c "import json; print(json.load(open('src/ships/trackSource.json'))['salishIndex'])")
+          CUT=$(curl -sf "$SALISH_INDEX" | python3 -c "import json,sys,os; print('--cut-salish' if os.environ['M'] in json.load(sys.stdin).get('months', {}) else '')" || true)
+          echo "salish cut: ${CUT:-no}"
+          python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls" $CUT
       - name: Upload ${{ matrix.month }}
         run: |
           mkdir -p "$RUNNER_TEMP/entries"

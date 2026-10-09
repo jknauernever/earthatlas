@@ -656,6 +656,9 @@ export default function ShipsApp() {
     return () => { dead = true }
   }, [trackClasses])
   const trackMonths = useMemo(() => allTrackMonths.slice(trackRange[0], trackRange[1] + 1), [allTrackMonths, trackRange])
+  // "Narrow to" classes: zoomed-out US lines carry the class in months rebuilt with classes (usStamp, add_classes.py), so
+  // the "whole group" caveat holds only when a picked month's US tiles predate that (Josh 2026-10-09: the note was stale).
+  const classesZoomedOut = trackClasses.length > 0 && zoomedOutForKinds && trackMonths.some((m) => (usMonths || []).includes(m) && !usStamp[m])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !tracksOn) { setInView(null); return }
@@ -1916,7 +1919,7 @@ export default function ShipsApp() {
                         })()}
                         {trackClasses.length > 0 && (
                         <div className={styles.legendNoteText}>
-                          <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : inView?.uncountable ? 'Zoom in to count the ships in view' : '…'}{zoomedOutForKinds && ' (whole group outside the Salish Sea until you zoom in)'}.{' '}
+                          <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : inView?.uncountable ? 'Zoom in to count the ships in view' : '…'}{classesZoomedOut && ' (whole group outside the Salish Sea until you zoom in, for months before 2024)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
                         </div>)}
                         <div className={styles.chipRow} style={{ marginTop: 8 }}>

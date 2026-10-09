@@ -7,7 +7,7 @@
 //                                                                         entry to F (parallel jobs)
 //   node scripts/ships/bake-us/publish.mjs --index DIR                     add every entry file in DIR
 //   node scripts/ships/bake-us/publish.mjs --classes 2025-06 DIR --entry-out F
-//        a month rebuilt by add_classes.py: upload its tracks-cls1.pmtiles + manifest-cls1.json beside the month's
+//        a month rebuilt by add_classes.py: upload its tracks-clsN.pmtiles + manifest-clsN.json (N from its rules) beside the month's
 //        published files and write that month's index entry with only tiles / pmtiles_bytes / classes changed
 //                                                                         to the index in one write
 //
@@ -94,8 +94,10 @@ if (CLASSES_MODE) {
   if (!old) throw new Error(`${ym} is not in ${indexUrl}`)
   if (old.pack !== manifest.from_pack) throw new Error(`${ym} was re-baked since the class rebuild read it; rebuild again`)
   const BASE = indexUrl.replace(/^https:\/\/[^/]+\//, '').replace(/\/index\.json$/, '')
-  const tiles = await upload(`${BASE}/${ym}/tracks-cls1.pmtiles`, resolve(BUILD, 'tracks.pmtiles'), 'application/vnd.pmtiles')
-  const man = await upload(`${BASE}/${ym}/manifest-cls1.json`, resolve(BUILD, 'manifest.json'), 'application/json')
+  const stamp = String(manifest.rules).match(/-(cls\d+)$/)?.[1]
+  if (!stamp) throw new Error(`manifest rules ${manifest.rules} carry no clsN stamp`)
+  const tiles = await upload(`${BASE}/${ym}/tracks-${stamp}.pmtiles`, resolve(BUILD, 'tracks.pmtiles'), 'application/vnd.pmtiles')
+  const man = await upload(`${BASE}/${ym}/manifest-${stamp}.json`, resolve(BUILD, 'manifest.json'), 'application/json')
   const e = { tileset: cur.version || BASE.split('/').pop(), month: ym, indexUrl,
     entry: { ...old, tiles, pmtiles_bytes: manifest.pmtiles_bytes, classes: { rules: manifest.rules, manifest: man,
       lines_with_class: manifest.stats.with_class } } }

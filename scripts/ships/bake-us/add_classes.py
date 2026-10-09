@@ -37,10 +37,15 @@ def _bake_constants(*names):
     return [vals[k] for k in names]
 
 
-SIMPLIFY_DEG, TIPPECANOE_LOW = _bake_constants('SIMPLIFY_DEG', 'TIPPECANOE_LOW')
+SIMPLIFY_DEG, TIPPECANOE_LOW, TIPPECANOE_HIGH = _bake_constants('SIMPLIFY_DEG', 'TIPPECANOE_LOW', 'TIPPECANOE_HIGH')
 
 INDEX = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/us-v2/index.json'
 CLASS_RULES = 'us-v2-cls1'
+# cls2 = cls1 + every line cut at the Salish detail box (--cut-salish, months that have detailed Salish tracks; Josh
+# 2026-10-09): inside the box only the Salish lines draw, so a US line crossing the box edge no longer doubles them
+# (the map's `within` filter can't cut a line). z9-10 are then rebuilt from the pack too, with build_us_tracks.py's props.
+CUT_RULES = 'us-v2-cls2'
+SALISH_BBOX = json.load(open(os.path.join(HERE, '..', '..', '..', 'src', 'ships', 'trackSource.json')))['bbox']
 UA = {'User-Agent': 'earthatlas-bake/1.0 (+https://earthatlas.org)'}
 # Same as TIPPECANOE_LOW, but features also coalesce per class (and keep the cv flag).
 TIPPECANOE_LOW_CLS = [a for a in TIPPECANOE_LOW] + ['-y', 'cls', '-y', 'cv']
@@ -77,9 +82,52 @@ def pack_rows(path):
                     yield json.loads(line)
 
 
-def _simplify(coord_lists):
+def _outside(coords, box):
+    """The parts of a polyline outside an axis-aligned box, split where it crosses the edge (Liang-Barsky per segment).
+    Not shapely.difference: overlay nodes a track at every self-crossing (5,000 lines → 2.8 M pieces, 2026-10-09)."""
+    x0, y0, x1, y1 = box
+    pieces, cur = [], []
+    for (ax, ay), (bx, by) in zip(coords, coords[1:]):
+        dx, dy, lo, hi = bx - ax, by - ay, 0.0, 1.0
+        for p, q in ((-dx, ax - x0), (dx, x1 - ax), (-dy, ay - y0), (dy, y1 - ay)):
+            if p == 0:
+                if q < 0:
+                    lo, hi = 1.0, 0.0  # parallel to this edge and outside it: the segment misses the box
+            else:
+                t = q / p
+                if p < 0:
+                    lo = max(lo, t)
+                else:
+                    hi = min(hi, t)
+        at = lambda t: [round(ax + t * dx, 5), round(ay + t * dy, 5)]
+        if lo >= hi:            # wholly outside
+            if not cur:
+                cur = [[ax, ay]]
+            cur.append([bx, by])
+            continue
+        if lo > 0:              # outside, then enters at lo
+            if not cur:
+                cur = [[ax, ay]]
+            cur.append(at(lo))
+        if len(cur) >= 2:
+            pieces.append(cur)
+        cur = []
+        if hi < 1:              # leaves at hi, outside to the end
+            cur = [at(hi), [bx, by]]
+    if len(cur) >= 2:
+        pieces.append(cur)
+    return pieces
+
+
+def _simplify(job):
+    """(coord lists, cut box or None) → per line, its simplified pieces (coordinate lists; [] when nothing is left)."""
+    coord_lists, box = job
     simp = shapely.simplify([shapely.LineString(c) for c in coord_lists], SIMPLIFY_DEG)
-    return [np.round(shapely.get_coordinates(g), 5).tolist() for g in simp]
+    out = []
+    for g in simp:
+        gc = np.round(shapely.get_coordinates(g), 5).tolist()
+        out.append(_outside(gc, box) if box is not None else [gc])
+    return out
 
 
 def main():
@@ -88,6 +136,7 @@ def main():
     ap.add_argument('--types', required=True, help='type lookup: URL (op=typeLookup) or saved JSON file')
     ap.add_argument('--index', default=INDEX)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--cut-salish', action='store_true', help='cut lines at the Salish detail box (months with Salish tracks)')
     a = ap.parse_args()
     ym = a.month
     wd = os.path.join(a.out, ym)
@@ -108,22 +157,28 @@ def main():
         def flush():
             # Simplifying is nearly all the time (lines from NOAA's daily files average ~780 points), so it runs on every
             # core; same function and tolerance as build_us_tracks.py, so the output is unchanged.
-            chunks = [[r['c'] for r in batch[i:i + 1000]] for i in range(0, len(batch), 1000)]
-            simplified = [gc for part in pool.map(_simplify, chunks) for gc in part]
-            for r, gc in zip(batch, simplified):
-                if len(gc) < 2:
-                    stats['too_short'] += 1
+            box = SALISH_BBOX if a.cut_salish else None
+            chunks = [([r['c'] for r in batch[i:i + 1000]], box) for i in range(0, len(batch), 1000)]
+            simplified = [pieces for part in pool.map(_simplify, chunks) for pieces in part]
+            for r, pieces in zip(batch, simplified):
+                pieces = [gc for gc in pieces if len(gc) >= 2]
+                if not pieces:
+                    stats['inside_salish_box' if a.cut_salish else 'too_short'] += 1
                     continue
                 probe = {'mmsi': r['mmsi'], 'kind': r['kind'], 't0': r['t0'], 't1': r['t1']}
                 types.apply(probe)           # only its class is taken; the NOAA kind stays as baked
-                props = {'kind': r['kind'], 'cv': 1}
+                # Cut months rebuild z9-10 from these features too, so they keep build_us_tracks.py's per-line props.
+                props = ({k: v for k, v in r.items() if k != 'c'} | {'month': ym} if a.cut_salish else {'kind': r['kind']}) | {'cv': 1}
                 if probe.get('cls'):
                     props['cls'] = probe['cls']
                     stats['with_class'] += 1
                 else:
                     stats['no_class'] += 1
-                out.write(json.dumps({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': gc},
-                                      'properties': props}, separators=(',', ':')) + '\n')
+                if len(pieces) > 1:
+                    stats['cut_at_salish_box'] += 1
+                for gc in pieces:
+                    out.write(json.dumps({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': gc},
+                                          'properties': props}, separators=(',', ':')) + '\n')
             batch.clear()
 
         for r in pack_rows(pack):
@@ -139,11 +194,14 @@ def main():
     t1 = time.time()
     low, high, pm = (os.path.join(wd, f) for f in ('low.pmtiles', 'high.pmtiles', 'tracks.pmtiles'))
     subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', *TIPPECANOE_LOW_CLS, '--read-parallel', nd], check=True)
-    subprocess.run(['tile-join', '-o', high, '-f', '--no-tile-size-limit', '--minimum-zoom=9', tiles], check=True)   # z9-10 as published
+    if a.cut_salish:   # z9-10 from the cut lines, build_us_tracks.py's high pass
+        subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', *TIPPECANOE_HIGH, '-x', 'cls', '-x', 'cv', '--read-parallel', nd], check=True)
+    else:              # z9-10 as published
+        subprocess.run(['tile-join', '-o', high, '-f', '--no-tile-size-limit', '--minimum-zoom=9', tiles], check=True)
     subprocess.run(['tile-join', '-o', pm, '-f', '--no-tile-size-limit', low, high], check=True)
     for f in (low, high, nd):
         os.remove(f)
-    manifest = {'month': ym, 'rules': CLASS_RULES, 'from_tiles': entry['tiles'], 'from_pack': entry['pack'],
+    manifest = {'month': ym, 'rules': CUT_RULES if a.cut_salish else CLASS_RULES, 'cut_box': SALISH_BBOX if a.cut_salish else None, 'from_tiles': entry['tiles'], 'from_pack': entry['pack'],
                 'tippecanoe_low': ' '.join(TIPPECANOE_LOW_CLS), 'stats': dict(stats), 'types': dict(types.stats),
                 'pmtiles_bytes': os.path.getsize(pm), 'secs': {'lines': round(t1 - t0), 'tiles': round(time.time() - t1)}}
     json.dump(manifest, open(os.path.join(wd, 'manifest.json'), 'w'), indent=1)

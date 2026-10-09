@@ -105,7 +105,15 @@ function rowsFor(assertions, attr) {
  * The same value in separate eras (a name dropped and later reused) stays separate.
  */
 const MERGE_GAP_MS = 60 * 864e5
-const dispKey = (attr, a) => String(fmtValue(attr, a.value_raw)).toLowerCase().replace(/\.0( m)?$/, '$1')
+// Names are one name when they match ignoring spaces and punctuation (the identity rule, lib/ships/normalize.js normName):
+// PALANCA RIO (ship-reported) and PALANCARIO (registry) are one row (Josh 2026-10-09).
+const nameKey = (raw) => String(raw ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+const dispKey = (attr, a) => attr === 'name' ? nameKey(a.value_raw)
+  : String(fmtValue(attr, a.value_raw)).toLowerCase().replace(/\.0( m)?$/, '$1')
+// Of spellings of one name, show the most readable: the one with the most word breaks (PALANCA RIO over PALANCARIO; Josh
+// 2026-10-09). Same rule on the server: lib/ships/queries.js READABLE_NAME_ORDER. Ties keep the given order.
+const breaks = (raw) => (String(raw ?? '').match(/[\s\-\/.]/g) || []).length
+const mostReadable = (list) => list.reduce((best, a) => (breaks(a.value_raw) > breaks(best.value_raw) ? a : best), list[0])
 function mergedRows(assertions, attr, keep = () => true) {
   const byVal = new Map()
   for (const a of rowsFor(assertions, attr)) {
@@ -138,7 +146,7 @@ function mergedRows(assertions, attr, keep = () => true) {
         period_kind: d.some((a) => a.period_kind === 'observed') ? 'observed' : 'validity', from: c.from, to: c.to,
         detail: d.every((a) => a.detail?.granularity === 'year') ? { granularity: 'year' } : {},
       }
-      c.value = c.members[0]
+      c.value = attr === 'name' ? mostReadable(c.members) : c.members[0]
       // one badge + link per source/evidence pair
       const seen = new Map()
       for (const a of c.members) { const k = `${a.evidence_class}|${a.source_id}`; if (!seen.has(k) || String(a.to || '9999') > String(seen.get(k).to || '9999')) seen.set(k, a) }
@@ -1043,6 +1051,8 @@ export function currentIdentity(vessel) {
   // Registry first (same rule as the search summaries in lib/ships/queries.js), then the latest from any source.
   const latest = (attr) => rowsFor(vessel.assertions, attr).sort((x, y) =>
     (y.evidence_class === 'registry') - (x.evidence_class === 'registry') || String(y.to || '9999').localeCompare(String(x.to || '9999')))[0]
-  return { name: latest('name'), flag: latest('flag'), mmsi: latest('mmsi'),
+  const name = latest('name')
+  const spellings = name ? rowsFor(vessel.assertions, 'name').filter((a) => nameKey(a.value_raw) === nameKey(name.value_raw)) : []
+  return { name: name && { ...name, value_raw: mostReadable([name, ...spellings]).value_raw }, flag: latest('flag'), mmsi: latest('mmsi'),
     imo: rowsFor(vessel.assertions, 'imo').find((a) => a.evidence_class === 'registry') || latest('imo') }
 }

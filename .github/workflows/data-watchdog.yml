@@ -1,0 +1,124 @@
+# Data watchdog (Josh 2026-10-10: "I want to make sure that you and I are notified when failures occur for data imports").
+# GitHub only emails about failed runs a person started; runs one workflow starts for another (the GFW chain) and silent
+# non-runs (ships-counts never fired) told nobody. Every hour this:
+#   1. opens (or adds to) one issue per data workflow whose recent runs failed, assigned to Josh (GitHub emails him),
+#      and closes it with a note when that workflow's latest run succeeds again;
+#   2. opens an issue when published data goes stale (GFW tracks, the /ships changelog numbers).
+# Issues carry the label "data-alert" so Claude sessions can list them too: gh issue list --label data-alert
+name: data-watchdog
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  actions: read
+  contents: read
+
+concurrency:
+  group: data-watchdog
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: .github/workflows }
+      - name: Check failed runs and stale data
+        run: |
+          gh label create data-alert --color B60205 --description "Automatic: a data import failed or went stale" 2>/dev/null || true
+          python3 - <<'EOF'
+          import datetime as dt, glob, json, os, subprocess, urllib.request
+
+          ASSIGNEE = 'jknauernever'
+          SKIP = {'data-watchdog.yml', 'gisis-monthly-reminder.yml'}
+          BAD = {'failure', 'timed_out', 'startup_failure'}
+          now = dt.datetime.now(dt.timezone.utc)
+
+          def gh(*args):
+              return subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout
+
+          def open_issue(title):
+              found = json.loads(gh('issue', 'list', '--label', 'data-alert', '--state', 'open', '--search', f'"{title}" in:title',
+                                    '--json', 'number,title,body'))
+              return next((i for i in found if i['title'] == title), None)
+
+          def alert(title, lines, key):
+              """One open issue per title; a new comment only for news not already in it (key = run URL or check date)."""
+              iss = open_issue(title)
+              text = '\n'.join(lines)
+              if iss is None:
+                  gh('issue', 'create', '--title', title, '--label', 'data-alert', '--assignee', ASSIGNEE, '--body', text)
+                  print('opened:', title)
+                  return
+              seen = iss['body'] + ''.join(c['body'] for c in json.loads(gh('issue', 'view', str(iss['number']), '--json', 'comments'))['comments'])
+              if key not in seen:
+                  gh('issue', 'comment', str(iss['number']), '--body', text)
+                  print('commented:', title)
+
+          def resolve(title, text):
+              iss = open_issue(title)
+              if iss:
+                  gh('issue', 'close', str(iss['number']), '--comment', text)
+                  print('closed:', title)
+
+          # 1. Failed runs, per data workflow
+          for path in sorted(glob.glob('.github/workflows/*.yml')):
+              wf = os.path.basename(path)
+              if wf in SKIP:
+                  continue
+              runs = json.loads(gh('run', 'list', '--workflow', wf, '--limit', '15', '--json',
+                                   'databaseId,conclusion,status,createdAt,displayTitle,url,event'))
+              done = [r for r in runs if r['status'] == 'completed']
+              if not done:
+                  continue
+              title = f'Data import failing: {wf}'
+              recent_bad = [r for r in done if r['conclusion'] in BAD
+                            and now - dt.datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) < dt.timedelta(hours=48)]
+              # Still failing = some run title (e.g. "ships-gfw-month 2026-10 (pacnw)": one workflow runs per month) whose
+              # newest completed run is a failure. Recovered when every failing title has succeeded since.
+              newest = {}
+              for r in done:                       # gh lists newest first
+                  newest.setdefault(r['displayTitle'], r)
+              failing = [r for r in recent_bad if newest[r['displayTitle']]['conclusion'] in BAD]
+              if not failing:
+                  if recent_bad:
+                      resolve(title, 'Recovered: ' + '; '.join(f'{t} succeeded {newest[t]["createdAt"]} {newest[t]["url"]}'
+                                                               for t in sorted({r['displayTitle'] for r in recent_bad})))
+                  else:
+                      resolve(title, 'Recovered: no failed runs in the last 48 hours.')
+                  continue
+              for r in failing:
+                  alert(title, [f'**{r["displayTitle"]}** {r["conclusion"]} at {r["createdAt"]} ({r["event"]})', r['url'], '',
+                                'Opened by .github/workflows/data-watchdog.yml. Closes itself when this workflow succeeds again.'], r['url'])
+
+          # 2. Stale published data
+          def get(url):
+              with urllib.request.urlopen(f'{url}?t={int(now.timestamp())}', timeout=60) as r:
+                  return json.load(r)
+          checks = [
+              ('GFW ship tracks', 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/gfw-v1/index.json',
+               lambda d: d.get('fetched_through'), 6, 'newest GFW positions published'),
+              ('/ships changelog numbers', 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/changelog-counts.json',
+               lambda d: d.get('asOf'), 2, 'counts last refreshed'),
+          ]
+          for name, url, pick, max_days, what in checks:
+              title = f'Data stale: {name}'
+              try:
+                  day = pick(get(url))
+                  age = (now.date() - dt.date.fromisoformat(day)).days
+              except Exception as e:
+                  alert(title, [f'Could not read {url}: {e}'], f'read-error-{now.date()}')
+                  continue
+              if age > max_days:
+                  alert(title, [f'{what}: **{day}** ({age} days ago; alert after {max_days}).', url], f'stale-{day}')
+              else:
+                  resolve(title, f'Fresh again: {what} {day}.')
+          EOF

@@ -167,3 +167,17 @@ jobs:
             if [ -z "$next" ]; then tries=$((tries+1)); [ $tries -ge 5 ] && { echo "identity import failed 5 times"; exit 1; }; sleep 30; continue; fi
             tries=0; offset=$next
           done
+
+  # Then refresh the /ships changelog numbers. Started from here because GitHub never fires workflow_run for runs another
+  # workflow started (ships-counts waited on that event and never ran on its own, 2026-10-10).
+  counts:
+    needs: month
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Start ships-counts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ships-counts.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"

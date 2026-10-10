@@ -1,13 +1,12 @@
-# Daily refresh of the /ships changelog's "Data on the site" numbers (Josh 2026-10-08). Runs when the daily GFW chain's last
-# step (ships-gfw-identities) or the weekly NOAA month finishes, or by hand. The work happens server-side
+# Daily refresh of the /ships changelog's "Data on the site" numbers (Josh 2026-10-08). Started at the end of the daily GFW
+# chain (ships-gfw-identities) and the weekly NOAA month, or by hand. The work happens server-side
 # (api/cron/ships-counts.js, CRON_SECRET-locked: no database credentials in GitHub); it writes ships/changelog-counts.json
 # to Blob, which the changelog page reads. A failed run leaves the last good numbers in place.
 name: ships-counts
 
 on:
-  workflow_run:
-    workflows: [ships-gfw-identities, ships-noaa-month]
-    types: [completed]
+  # Started by ships-gfw-identities.yml and ships-noaa-month.yml (their last job): GitHub never fires workflow_run for runs
+  # another workflow started, so the earlier workflow_run trigger never ran this (2026-10-10).
   workflow_dispatch:
 
 concurrency:

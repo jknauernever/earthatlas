@@ -21,7 +21,7 @@ Request (docs/SHIP_TRACK_SOURCES.md, "GFW hourly lines"):
 - --budget caps the number of report requests this run may make (GFW limit: 50,000/day).
 Output: RAW/<area>/<area>_<YYYY-MM-DD>_<n>d[_q<k>].json.gz   (raw body, gzip'd) + RAW/fetch-log.ndjson
 """
-import argparse, datetime as dt, gzip, http.client, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, shutil, datetime as dt, gzip, http.client, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 import areas
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -182,17 +182,26 @@ def main():
     os.makedirs(a.raw, exist_ok=True)
     log = open(os.path.join(a.raw, 'fetch-log.ndjson'), 'a')
     end = dt.date.fromisoformat(a.to)
+    empty_areas = []
     for name, *box in tiles:
         out = os.path.join(a.raw, name)
         os.makedirs(out, exist_ok=True)
         d = dt.date.fromisoformat(a.frm)
+        # Pieces the incremental run replaces are set aside, not deleted, until the re-fetch proves it got data: on
+        # 2026-10-09/10 GFW answered every area with 0 rows for a while, the old pieces were already gone, and the
+        # published October went from Oct 1-4 to nothing.
+        aside = os.path.join(out, '.replaced')
+        shutil.rmtree(aside, ignore_errors=True)
+        before = set(os.listdir(out))
         if a.drop_overlapping:
             cut = dt.date.fromisoformat(a.drop_overlapping)
-            for fn in os.listdir(out):
+            for fn in sorted(before):
                 m = PIECE.match(fn)
                 if m and dt.date.fromisoformat(m['day']) + dt.timedelta(days=int(m['span'])) > cut:
-                    os.remove(os.path.join(out, fn))
+                    os.makedirs(aside, exist_ok=True)
+                    os.replace(os.path.join(out, fn), os.path.join(aside, fn))
                     d = min(d, dt.date.fromisoformat(m['day']))   # a dropped piece that began before the cut: re-fetch from its start
+        rows_before = stats['rows']
         if a.refetch_after:
             for fn in os.listdir(out):
                 if (fn.endswith('.json.gz') or fn.endswith('.split')) and fn.split('_')[1] >= a.refetch_after:
@@ -201,7 +210,19 @@ def main():
             span = min(a.span, (end - d).days)
             fetch_piece(tok, name, tuple(box), d.isoformat(), span, out, stats, log, a.budget)
             d += dt.timedelta(days=span)
+        if stats['rows'] == rows_before and os.path.isdir(aside) and os.listdir(aside):
+            # GFW sent nothing where we had data before: keep what we had (drop the empty new pieces).
+            for fn in set(os.listdir(out)) - before - {'.replaced'}:
+                os.remove(os.path.join(out, fn))
+            for fn in os.listdir(aside):
+                os.replace(os.path.join(aside, fn), os.path.join(out, fn))
+            empty_areas.append(name)
+        shutil.rmtree(aside, ignore_errors=True)
+    stats['empty_areas_kept_previous'] = empty_areas
     print('done', json.dumps(stats))
+    if tiles and stats['rows'] == 0:
+        # Not one row for any area is a GFW problem, not quiet seas: fail so the run is marked failed (and alerted).
+        sys.exit(f'GFW returned no rows for any area ({a.frm}..{a.to}); kept the previous downloads')
 
 
 if __name__ == '__main__':

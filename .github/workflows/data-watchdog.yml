@@ -45,17 +45,21 @@ jobs:
           def gh(*args):
               return subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout
 
+          # Every open alert, read once: GitHub's issue search doesn't see an issue created a moment ago, so searching per
+          # alert opened a second issue for a workflow's second failure in the same run (2026-10-10, #10 + #11).
+          OPEN = {i['title']: i for i in json.loads(gh('issue', 'list', '--label', 'data-alert', '--state', 'open', '--limit', '200',
+                                                       '--json', 'number,title,body'))}
+
           def open_issue(title):
-              found = json.loads(gh('issue', 'list', '--label', 'data-alert', '--state', 'open', '--search', f'"{title}" in:title',
-                                    '--json', 'number,title,body'))
-              return next((i for i in found if i['title'] == title), None)
+              return OPEN.get(title)
 
           def alert(title, lines, key):
               """One open issue per title; a new comment only for news not already in it (key = run URL or check date)."""
               iss = open_issue(title)
               text = '\n'.join(lines)
               if iss is None:
-                  gh('issue', 'create', '--title', title, '--label', 'data-alert', '--assignee', ASSIGNEE, '--body', text)
+                  url = gh('issue', 'create', '--title', title, '--label', 'data-alert', '--assignee', ASSIGNEE, '--body', text).strip()
+                  OPEN[title] = {'number': int(url.rsplit('/', 1)[-1]), 'title': title, 'body': text}
                   print('opened:', title)
                   return
               seen = iss['body'] + ''.join(c['body'] for c in json.loads(gh('issue', 'view', str(iss['number']), '--json', 'comments'))['comments'])
@@ -67,6 +71,7 @@ jobs:
               iss = open_issue(title)
               if iss:
                   gh('issue', 'close', str(iss['number']), '--comment', text)
+                  OPEN.pop(title, None)
                   print('closed:', title)
 
           # 1. Failed runs, per data workflow

@@ -24,6 +24,7 @@ import ShareControl from '../components/ShareControl.jsx'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './HpaDocksApp.module.css'
+import { sjcAerialsSource } from '../lib/sjcAerials.js'
 
 installPopupSheet()
 
@@ -108,7 +109,6 @@ const DEFAULT_VIEW = { center: [-122.95, 48.6], zoom: 10 }
 // county and below z10. From z10 the county mosaic also replaces Mapbox's glary
 // white water (renders in ~0.6 s/tile, tested 2026-10-06); its own flat blue-grey
 // fill shows past the edge of its coverage.
-const SJC_AERIALS_2025 = 'https://gis.sanjuancountywa.gov/arcgis/rest/services/Basemaps/Aerials_2025/MapServer'
 // The county mosaic's own flat fill past its coverage (sampled from a z10 render).
 // Open water outside the county is painted this colour so the seam disappears and
 // Mapbox satellite's sun-glint white water never shows.
@@ -119,15 +119,7 @@ const sjcAerialsStyle = {
   sources: {
     'mapbox-satellite': { type: 'raster', url: 'mapbox://mapbox.satellite', tileSize: 256 },
     'mapbox-streets': { type: 'vector', url: 'mapbox://mapbox.mapbox-streets-v8' },
-    'sjc-aerials': {
-      type: 'raster',
-      tiles: [`${SJC_AERIALS_2025}/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpg&transparent=false&f=image`],
-      tileSize: 256,
-      bounds: [-123.25, 48.4, -122.7, 48.81],
-      minzoom: 10,
-      maxzoom: 21,
-      attribution: '<a href="' + SJC_AERIALS_2025 + '" target="_blank" rel="noopener">2025 aerials: San Juan County / EagleView</a>',
-    },
+    'sjc-aerials': sjcAerialsSource, // src/lib/sjcAerials.js (shared with /ships)
   },
   layers: [
     { id: 'mapbox-satellite', type: 'raster', source: 'mapbox-satellite' },

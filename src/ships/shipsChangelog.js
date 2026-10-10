@@ -68,6 +68,7 @@ export const COVERAGE_NOTE = 'Detailed ship tracks cover the Salish Sea for Jul 
 
 // Newest first. { date, area, text }
 export const ENTRIES = [
+  { date: '2026-10-10', area: 'Map', text: 'Zoomed in on the San Juan Islands, the satellite map now shows San Juan County’s own 2025 aerial photos (EagleView): clear water instead of the white sun-glare patches between the islands, with docks and piers sharp. Everywhere else, and when zoomed out, the map is unchanged.' },
   { date: '2026-10-10', area: 'Ship tracks', text: 'When a month’s ship tracks are updated, the map now always loads the new version, never a stored copy of the old one.' },
   { date: '2026-10-09', area: 'Ship tracks', text: 'Fixed: zoomed far out (the whole West Coast in view), the Salish Sea showed no ship tracks for January 2025 to June 2026. They show again at every zoom.' },
   { date: '2026-10-09', area: 'Ship cards', text: 'A ship’s name is now shown once when its sources spell it differently only by spaces or punctuation. For example, the ship broadcasting PALANCA RIO, which Global Fishing Watch’s registry data lists as PALANCARIO, now has one name row listing both sources, and the card, search results and lists show the spelling that reads properly (PALANCA RIO). Both original records are kept exactly as each source gave them. This applies to every ship.' },

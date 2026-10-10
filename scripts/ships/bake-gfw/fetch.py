@@ -54,9 +54,11 @@ def _call(req):
         return body, r.headers
 
 
-# One GFW version per month, never mixed (Josh 2026-10-02): months up to 2026-09 stay v4.0 (published, and their late
-# revisions keep v4); from 2026-10 every month is v5.0 from its first day. docs/GFW_V5.md has the comparison.
-V5_FROM_MONTH = '2026-10'
+# One GFW version per month, never mixed (Josh 2026-10-02): months up to 2026-10 stay v4.0 (published, and their late
+# revisions keep v4); from 2026-11 every month is v5.0 from its first day. docs/GFW_V5.md has the comparison.
+# Moved to 2026-11 (Josh 2026-10-10): v5.0 went empty on GFW's side from 2026-10-09 (catalogue: no end date, every query
+# returns null, even days it served on 10-08) ahead of GFW's 2026-10-21 switch; v4.0 is current and keeps updating until then.
+V5_FROM_MONTH = '2026-11'
 DATASET = 'public-global-presence:v4.0'   # set per run in main(); --dataset overrides
 
 
@@ -66,7 +68,7 @@ def dataset_for(month):
 
 def report(tok, box, day, span, stats):
     d1 = (dt.date.fromisoformat(day) + dt.timedelta(days=span)).isoformat()
-    # The version is per month (dataset_for): v4.0 through 2026-09, v5.0 from 2026-10. Never 'latest'.
+    # The version is per month (dataset_for): v4.0 through 2026-10, v5.0 from 2026-11. Never 'latest'.
     qs = urllib.parse.urlencode({'datasets[0]': DATASET, 'temporal-resolution': 'HOURLY',
                                  'spatial-resolution': 'HIGH', 'spatial-aggregation': 'false', 'group-by': 'VESSEL_ID',
                                  'format': 'JSON', 'date-range': f'{day},{d1}'})

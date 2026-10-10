@@ -1,5 +1,7 @@
 # GFW Data Pipeline v5 (switch on 2026-10-21): impact on EarthAtlas /ships
 
+**2026-10-10 change:** our switch moved from 2026-10 to **2026-11** (`fetch.py` `V5_FROM_MONTH`, Josh's decision): from 2026-10-09 GFW's `public-global-presence:v5.0` returned `null` for every query (catalogue: no end date), so October could not update; v4.0 (data through 2026-10-06) covers all of October. November must start on v5.0 (v4.0 gets no updates after 2026-10-21).
+
 GFW notice (2026-10-02): `latest` returns v5 from 2026-10-21; v4 stays available as `:v4.0` but gets no more updates; v3 deprecated.
 
 **Pinned to `:v4.0` (2026-10-02)** everywhere we call GFW, so nothing changes under us on 10-21:

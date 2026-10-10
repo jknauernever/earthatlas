@@ -44,7 +44,7 @@ CLASS_RULES = 'us-v2-cls1'
 # cls2 = cls1 + every line cut at the Salish detail box (--cut-salish, months that have detailed Salish tracks; Josh
 # 2026-10-09): inside the box only the Salish lines draw, so a US line crossing the box edge no longer doubles them
 # (the map's `within` filter can't cut a line). z9-10 are then rebuilt from the pack too, with build_us_tracks.py's props.
-CUT_RULES = 'us-v2-cls2'
+CUT_RULES = 'us-v2-cls5'    # cls5 (cls2 + z3-4 uncut); cls2 = the first cut, which left z3-4 empty in the box
 SALISH_BBOX = json.load(open(os.path.join(HERE, '..', '..', '..', 'src', 'ships', 'trackSource.json')))['bbox']
 UA = {'User-Agent': 'earthatlas-bake/1.0 (+https://earthatlas.org)'}
 # Same as TIPPECANOE_LOW, but features also coalesce per class (and keep the cv flag).
@@ -82,7 +82,7 @@ def pack_rows(path):
                     yield json.loads(line)
 
 
-def _outside(coords, box):
+def outside(coords, box):
     """The parts of a polyline outside an axis-aligned box, split where it crosses the edge (Liang-Barsky per segment).
     Not shapely.difference: overlay nodes a track at every self-crossing (5,000 lines → 2.8 M pieces, 2026-10-09)."""
     x0, y0, x1, y1 = box
@@ -120,14 +120,19 @@ def _outside(coords, box):
 
 
 def _simplify(job):
-    """(coord lists, cut box or None) → per line, its simplified pieces (coordinate lists; [] when nothing is left)."""
+    """(coord lists, cut box or None) → per line, (its simplified coords, the pieces left outside the box)."""
     coord_lists, box = job
     simp = shapely.simplify([shapely.LineString(c) for c in coord_lists], SIMPLIFY_DEG)
     out = []
     for g in simp:
         gc = np.round(shapely.get_coordinates(g), 5).tolist()
-        out.append(_outside(gc, box) if box is not None else [gc])
+        out.append((gc, outside(gc, box) if box is not None else [gc]))
     return out
+
+
+def zoom_range(flags, lo, hi):
+    """A tippecanoe flag list with its -Z/-z replaced."""
+    return [f'-Z{lo}' if f.startswith('-Z') else f'-z{hi}' if f.startswith('-z') else f for f in flags]
 
 
 def main():
@@ -148,10 +153,12 @@ def main():
     types = ShipTypes.load(a.types)
 
     t0 = time.time()
-    nd = os.path.join(wd, 'low.ndjson')
+    # Cut months write two inputs: uncut lines (z3-4: the Salish tiles start at z5, so a cut there left the Salish Sea
+    # empty when zoomed out; fixed 2026-10-09) and cut lines (z5-10).
+    nd, nd_full = (os.path.join(wd, f) for f in ('low.ndjson', 'full.ndjson'))
     stats = Counter()
     import multiprocessing as mp
-    with open(nd, 'w') as out, mp.Pool(os.cpu_count()) as pool:
+    with open(nd, 'w') as out, open(nd_full, 'w') as full, mp.Pool(os.cpu_count()) as pool:
         batch = []
 
         def flush():
@@ -160,11 +167,13 @@ def main():
             box = SALISH_BBOX if a.cut_salish else None
             chunks = [([r['c'] for r in batch[i:i + 1000]], box) for i in range(0, len(batch), 1000)]
             simplified = [pieces for part in pool.map(_simplify, chunks) for pieces in part]
-            for r, pieces in zip(batch, simplified):
+            for r, (whole, pieces) in zip(batch, simplified):
                 pieces = [gc for gc in pieces if len(gc) >= 2]
-                if not pieces:
-                    stats['inside_salish_box' if a.cut_salish else 'too_short'] += 1
+                if len(whole) < 2:
+                    stats['too_short'] += 1
                     continue
+                if not pieces:
+                    stats['inside_salish_box'] += 1
                 probe = {'mmsi': r['mmsi'], 'kind': r['kind'], 't0': r['t0'], 't1': r['t1']}
                 types.apply(probe)           # only its class is taken; the NOAA kind stays as baked
                 # Cut months rebuild z9-10 from these features too, so they keep build_us_tracks.py's per-line props.
@@ -176,9 +185,12 @@ def main():
                     stats['no_class'] += 1
                 if len(pieces) > 1:
                     stats['cut_at_salish_box'] += 1
+                feat = lambda gc, pr: json.dumps({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': gc},
+                                                  'properties': pr}, separators=(',', ':')) + '\n'
+                if a.cut_salish:
+                    full.write(feat(whole, props))
                 for gc in pieces:
-                    out.write(json.dumps({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': gc},
-                                          'properties': props}, separators=(',', ':')) + '\n')
+                    out.write(feat(gc, props))
             batch.clear()
 
         for r in pack_rows(pack):
@@ -193,15 +205,23 @@ def main():
 
     t1 = time.time()
     low, high, pm = (os.path.join(wd, f) for f in ('low.pmtiles', 'high.pmtiles', 'tracks.pmtiles'))
-    subprocess.run(['tippecanoe', '-o', low, '-l', 'tracks', '-f', '-q', *TIPPECANOE_LOW_CLS, '--read-parallel', nd], check=True)
-    if a.cut_salish:   # z9-10 from the cut lines, build_us_tracks.py's high pass
-        subprocess.run(['tippecanoe', '-o', high, '-l', 'tracks', '-f', '-q', *TIPPECANOE_HIGH, '-x', 'cls', '-x', 'cv', '--read-parallel', nd], check=True)
-    else:              # z9-10 as published
-        subprocess.run(['tile-join', '-o', high, '-f', '--no-tile-size-limit', '--minimum-zoom=9', tiles], check=True)
-    subprocess.run(['tile-join', '-o', pm, '-f', '--no-tile-size-limit', low, high], check=True)
-    for f in (low, high, nd):
+    parts = [low, high]
+    tip = lambda out, layer, flags, src: subprocess.run(['tippecanoe', '-o', out, '-l', layer, '-f', '-q', *flags, '--read-parallel', src], check=True)
+    if a.cut_salish:
+        # z3-4 uncut, z5-8 cut (both merged per kind + class), z9-10 cut per line (build_us_tracks.py's high pass)
+        low34 = os.path.join(wd, 'low34.pmtiles')
+        tip(low34, 'tracks', zoom_range(TIPPECANOE_LOW_CLS, 3, 4), nd_full)
+        tip(low, 'tracks', zoom_range(TIPPECANOE_LOW_CLS, 5, 8), nd)
+        tip(high, 'tracks', [*TIPPECANOE_HIGH, '-x', 'cls', '-x', 'cv'], nd)
+        parts.append(low34)
+    else:
+        tip(low, 'tracks', TIPPECANOE_LOW_CLS, nd)
+        subprocess.run(['tile-join', '-o', high, '-f', '--no-tile-size-limit', '--minimum-zoom=9', tiles], check=True)   # z9-10 as published
+    subprocess.run(['tile-join', '-o', pm, '-f', '--no-tile-size-limit', *parts], check=True)
+    for f in (*parts, nd, nd_full):
         os.remove(f)
-    manifest = {'month': ym, 'rules': CUT_RULES if a.cut_salish else CLASS_RULES, 'cut_box': SALISH_BBOX if a.cut_salish else None, 'from_tiles': entry['tiles'], 'from_pack': entry['pack'],
+    manifest = {'month': ym, 'rules': CUT_RULES if a.cut_salish else CLASS_RULES,
+                'cut_box': SALISH_BBOX if a.cut_salish else None, 'from_tiles': entry['tiles'], 'from_pack': entry['pack'],
                 'tippecanoe_low': ' '.join(TIPPECANOE_LOW_CLS), 'stats': dict(stats), 'types': dict(types.stats),
                 'pmtiles_bytes': os.path.getsize(pm), 'secs': {'lines': round(t1 - t0), 'tiles': round(time.time() - t1)}}
     json.dump(manifest, open(os.path.join(wd, 'manifest.json'), 'w'), indent=1)

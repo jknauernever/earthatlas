@@ -11,6 +11,11 @@ on:
         description: 'YYYY-MM list and/or YYYY-MM..YYYY-MM ranges (months in the us-v2 index)'
         required: true
         default: '2024-01..2026-06'
+      mode:
+        description: 'rebuild = classes (+ Salish cut) from the pack; splice-z34 = only refill z3-4 of cls2-cut months from their cls1 tiles'
+        type: choice
+        options: [rebuild, splice-z34]
+        default: rebuild
 
 concurrency:
   group: ships-us-classes
@@ -98,7 +103,11 @@ jobs:
           SALISH_INDEX=$(python3 -c "import json; print(json.load(open('src/ships/trackSource.json'))['salishIndex'])")
           CUT=$(curl -sf "$SALISH_INDEX" | python3 -c "import json,sys,os; print('--cut-salish' if os.environ['M'] in json.load(sys.stdin).get('months', {}) else '')" || true)
           echo "salish cut: ${CUT:-no}"
-          python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls" $CUT
+          if [ "${{ inputs.mode }}" = "splice-z34" ]; then
+            python3 scripts/ships/bake-us/splice_z34.py --month "$M" --out "$RUNNER_TEMP/cls"
+          else
+            python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls" $CUT
+          fi
       - name: Upload ${{ matrix.month }}
         run: |
           mkdir -p "$RUNNER_TEMP/entries"

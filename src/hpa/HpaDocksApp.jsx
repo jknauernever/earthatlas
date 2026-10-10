@@ -24,7 +24,7 @@ import ShareControl from '../components/ShareControl.jsx'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './HpaDocksApp.module.css'
-import { sjcAerialsSource } from '../lib/sjcAerials.js'
+import { sjcAerialsSource } from '../lib/localAerials.js'
 
 installPopupSheet()
 
@@ -119,7 +119,7 @@ const sjcAerialsStyle = {
   sources: {
     'mapbox-satellite': { type: 'raster', url: 'mapbox://mapbox.satellite', tileSize: 256 },
     'mapbox-streets': { type: 'vector', url: 'mapbox://mapbox.mapbox-streets-v8' },
-    'sjc-aerials': sjcAerialsSource, // src/lib/sjcAerials.js (shared with /ships)
+    'sjc-aerials': sjcAerialsSource, // src/lib/localAerials.js (shared with /ships)
   },
   layers: [
     { id: 'mapbox-satellite', type: 'raster', source: 'mapbox-satellite' },

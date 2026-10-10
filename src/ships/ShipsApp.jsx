@@ -44,7 +44,7 @@ import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
-import { addSjcAerials } from '../lib/sjcAerials.js'
+import { addLocalAerials } from '../lib/localAerials.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
@@ -546,9 +546,10 @@ export default function ShipsApp() {
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => {
       map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
-      // San Juan County's 2025 aerials replace Mapbox satellite inside the county from z10 (Josh 2026-10-10: no sun-glint
-      // splotches between the islands; docks and piers stay visible). Satellite basemap only; Mapbox everywhere else.
-      addSjcAerials(map)
+      // Local government aerials (San Juan County, Nanaimo, Vancouver) replace Mapbox satellite inside their
+      // areas when zoomed in (Josh 2026-10-10: no sun-glint splotches; docks and piers stay visible), each credited while
+      // in view. Satellite basemap only; Mapbox everywhere else.
+      addLocalAerials(map)
       setMapReady(true)
       setStyleVersion((n) => n + 1)
     })

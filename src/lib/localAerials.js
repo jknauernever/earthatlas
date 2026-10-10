@@ -7,7 +7,9 @@
 
 // San Juan County 2025 orthophotos (EagleView). The county's ArcGIS export endpoint renders each tile (~0.6 s, no cache).
 export const SJC_AERIALS_2025 = 'https://gis.sanjuancountywa.gov/arcgis/rest/services/Basemaps/Aerials_2025/MapServer'
-export const SJC_AERIALS_MINZOOM = 9 // all local aerials from z9 (Josh 2026-10-10; was 10, BC layers 11)
+export const SJC_AERIALS_MINZOOM = 9 // tiles exist from here (/sanjuan-docks shows them from z10)
+// /ships shows every local aerial from z11 up (Josh 2026-10-10).
+export const LOCAL_AERIALS_SHOW_FROM = 11
 
 // Served through /api/aerial-tiles, which turns the county's flat blue-grey fill (#3f6073, painted wherever its photos end;
 // the server ignores transparent=true) transparent, so only the photos show over the map below. Shared by both sites.
@@ -37,13 +39,13 @@ export const LOCAL_AERIALS = [
   // reports, and the like provided that the GVRD is acknowledged as the source" (item info, linked in the credit); added on
   // Josh's decision 2026-10-10. Below the City of Vancouver's newer 2022 photos.
   { id: 'metrovan-aerials', source: {
-    type: 'raster', tiles: [imageServer(METRO_VAN_2018)], tileSize: 256, bounds: [-123.4425, 48.9943, -122.3847, 49.5618], minzoom: 9, maxzoom: 21,
+    type: 'raster', tiles: [imageServer(METRO_VAN_2018)], tileSize: 256, bounds: [-123.4425, 48.9943, -122.3847, 49.5618], minzoom: 11, maxzoom: 21,
     attribution: '<a href="' + METRO_VAN_2018 + '/info/iteminfo" target="_blank" rel="noopener">2018 aerials: Metro Vancouver (GVRD)</a>' } },
   { id: 'nanaimo-aerials', source: {
-    type: 'raster', tiles: [imageServer(NANAIMO_2026)], tileSize: 256, bounds: [-124.0718, 49.0944, -123.7945, 49.2518], minzoom: 9, maxzoom: 21,
+    type: 'raster', tiles: [imageServer(NANAIMO_2026)], tileSize: 256, bounds: [-124.0718, 49.0944, -123.7945, 49.2518], minzoom: 11, maxzoom: 21,
     attribution: '<a href="https://nanaimo.ca/your-government/maps-data/open-data-catalogue/open-data-catalogue-licence" target="_blank" rel="noopener">2026 aerials: City of Nanaimo (Open Government Licence – Nanaimo)</a>' } },
   { id: 'vancouver-aerials', source: {
-    type: 'raster', tiles: [`${VAN_2022}/tile/{z}/{y}/{x}`], tileSize: 256, bounds: [-123.272, 49.1915, -123.0119, 49.3193], minzoom: 11, maxzoom: 21, // its tile cache starts at z11 (Metro Vancouver covers the city below)
+    type: 'raster', tiles: [`${VAN_2022}/tile/{z}/{y}/{x}`], tileSize: 256, bounds: [-123.272, 49.1915, -123.0119, 49.3193], minzoom: 11, maxzoom: 21, // its own tile cache starts at z11
     attribution: '<a href="https://opendata.vancouver.ca/explore/dataset/orthophoto-imagery-2022/" target="_blank" rel="noopener">2022 aerials: City of Vancouver (Open Government Licence – Vancouver)</a>' } },
 ]
 
@@ -66,8 +68,9 @@ function syncLocalAerials(map) {
   const z = map.getZoom()
   LOCAL_AERIALS.forEach(({ id, source }, i) => {
     if (!map.getLayer(id)) return
-    const covered = LOCAL_AERIALS.slice(i + 1).some((up) => z >= up.source.minzoom && inside(map, up.source.bounds))
-    const on = z >= source.minzoom && overlaps(map, source.bounds) && !covered
+    const from = (src) => Math.max(LOCAL_AERIALS_SHOW_FROM, src.minzoom)
+    const covered = LOCAL_AERIALS.slice(i + 1).some((up) => z >= from(up.source) && inside(map, up.source.bounds))
+    const on = z >= from(source) && overlaps(map, source.bounds) && !covered
     if ((map.getLayoutProperty(id, 'visibility') !== 'none') !== on) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
   })
 }
@@ -83,7 +86,7 @@ export function addLocalAerials(map) {
   const before = layers[photo + 1]?.id
   for (const { id, source } of LOCAL_AERIALS) {
     if (!map.getSource(id)) map.addSource(id, source)
-    if (!map.getLayer(id)) map.addLayer({ id, type: 'raster', source: id, minzoom: source.minzoom, layout: { visibility: 'none' } }, before)
+    if (!map.getLayer(id)) map.addLayer({ id, type: 'raster', source: id, minzoom: Math.max(LOCAL_AERIALS_SHOW_FROM, source.minzoom), layout: { visibility: 'none' } }, before)
   }
   if (!map.__localAerialsSync) { map.__localAerialsSync = () => syncLocalAerials(map); map.on('moveend', map.__localAerialsSync) }
   syncLocalAerials(map)

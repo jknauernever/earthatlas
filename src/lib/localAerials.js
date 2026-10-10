@@ -7,11 +7,14 @@
 
 // San Juan County 2025 orthophotos (EagleView). The county's ArcGIS export endpoint renders each tile (~0.6 s, no cache).
 export const SJC_AERIALS_2025 = 'https://gis.sanjuancountywa.gov/arcgis/rest/services/Basemaps/Aerials_2025/MapServer'
-export const SJC_AERIALS_MINZOOM = 10
+export const SJC_AERIALS_MINZOOM = 9 // all local aerials from z9 (Josh 2026-10-10; was 10, BC layers 11)
 
+// Served through /api/aerial-tiles, which turns the county's flat blue-grey fill (#3f6073, painted wherever its photos end;
+// the server ignores transparent=true) transparent, so only the photos show over the map below. Shared by both sites.
+const ORIGIN = typeof window !== 'undefined' ? window.location.origin : ''
 export const sjcAerialsSource = {
   type: 'raster',
-  tiles: [`${SJC_AERIALS_2025}/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpg&transparent=false&f=image`],
+  tiles: [`${ORIGIN}/api/aerial-tiles?src=sjc&z={z}&x={x}&y={y}`],
   tileSize: 256,
   bounds: [-123.25, 48.4, -122.7, 48.81],
   minzoom: SJC_AERIALS_MINZOOM,
@@ -23,17 +26,24 @@ export const sjcAerialsSource = {
 const imageServer = (url) => `${url}/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image`
 
 const VAN_2022 = 'https://tiles.arcgis.com/tiles/qrcTTRTwUoS8N47o/arcgis/rest/services/Orthophotos_2022/MapServer'
+const METRO_VAN_2018 = 'https://gis.metrovancouver.org/arcgis/rest/services/Imagery/ORTHO_2018/ImageServer'
 const NANAIMO_2026 = 'https://nanmap.nanaimo.ca/arcgis/rest/services/Orthos/Ortho_2026/ImageServer'
 
 // Drawn in this order (later on top). Islands Trust 2021 (Gulf Islands) was tried and dropped (Josh 2026-10-10): its photo
 // blocks stair-step across the water and carry their own sun glare.
 export const LOCAL_AERIALS = [
   { id: 'sjc-aerials', source: sjcAerialsSource },
+  // Metro Vancouver (GVRD) 2018, 7.5 cm, the whole region incl. the Fraser delta. Its licence allows use "in publications,
+  // reports, and the like provided that the GVRD is acknowledged as the source" (item info, linked in the credit); added on
+  // Josh's decision 2026-10-10. Below the City of Vancouver's newer 2022 photos.
+  { id: 'metrovan-aerials', source: {
+    type: 'raster', tiles: [imageServer(METRO_VAN_2018)], tileSize: 256, bounds: [-123.4425, 48.9943, -122.3847, 49.5618], minzoom: 9, maxzoom: 21,
+    attribution: '<a href="' + METRO_VAN_2018 + '/info/iteminfo" target="_blank" rel="noopener">2018 aerials: Metro Vancouver (GVRD)</a>' } },
   { id: 'nanaimo-aerials', source: {
-    type: 'raster', tiles: [imageServer(NANAIMO_2026)], tileSize: 256, bounds: [-124.0718, 49.0944, -123.7945, 49.2518], minzoom: 11, maxzoom: 21,
+    type: 'raster', tiles: [imageServer(NANAIMO_2026)], tileSize: 256, bounds: [-124.0718, 49.0944, -123.7945, 49.2518], minzoom: 9, maxzoom: 21,
     attribution: '<a href="https://nanaimo.ca/your-government/maps-data/open-data-catalogue/open-data-catalogue-licence" target="_blank" rel="noopener">2026 aerials: City of Nanaimo (Open Government Licence – Nanaimo)</a>' } },
   { id: 'vancouver-aerials', source: {
-    type: 'raster', tiles: [`${VAN_2022}/tile/{z}/{y}/{x}`], tileSize: 256, bounds: [-123.272, 49.1915, -123.0119, 49.3193], minzoom: 11, maxzoom: 21,
+    type: 'raster', tiles: [`${VAN_2022}/tile/{z}/{y}/{x}`], tileSize: 256, bounds: [-123.272, 49.1915, -123.0119, 49.3193], minzoom: 11, maxzoom: 21, // its tile cache starts at z11 (Metro Vancouver covers the city below)
     attribution: '<a href="https://opendata.vancouver.ca/explore/dataset/orthophoto-imagery-2022/" target="_blank" rel="noopener">2022 aerials: City of Vancouver (Open Government Licence – Vancouver)</a>' } },
 ]
 

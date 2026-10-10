@@ -290,6 +290,10 @@
     {
       "path": "/api/cron/gh-dispatch?wf=gmgsi",
       "schedule": "45 * * * *"
+    },
+    {
+      "path": "/api/cron/gh-dispatch?wf=watchdog",
+      "schedule": "23 * * * *"
     }
   ],
   "ignoreCommand": "bash scripts/vercel-ignore-build.sh"

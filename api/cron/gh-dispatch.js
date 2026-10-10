@@ -13,7 +13,7 @@
  * not stop the bakes); each has a concurrency group, so an occasional
  * double start runs one after the other.
  *
- * GET /api/cron/gh-dispatch?wf=mrms|gsmap|gmgsi — CRON_SECRET-guarded.
+ * GET /api/cron/gh-dispatch?wf=mrms|gsmap|gmgsi|watchdog — CRON_SECRET-guarded.
  * Needs GH_DISPATCH_TOKEN: a fine-grained PAT scoped to this repo only,
  * Actions: read & write, nothing else.
  */
@@ -24,6 +24,8 @@ const WORKFLOWS = {
   mrms: 'mrms-bake.yml',
   gsmap: 'gsmap-bake.yml',
   gmgsi: 'gmgsi-bake.yml',
+  // Hourly data-import watchdog (Josh 2026-10-10): GitHub's own hourly cron skipped runs, and late alerts defeat the point.
+  watchdog: 'data-watchdog.yml',
 }
 
 export default async function handler(req, res) {

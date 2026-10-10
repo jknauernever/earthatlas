@@ -273,9 +273,14 @@ export async function salishNow() {
 
 // US-wide months: the bake's Blob index says where each month's files are.
 let usIndex = null, usIndexAt = 0
-async function usUrls(t) {
-  if (!usIndex || Date.now() - usIndexAt > 5 * 60 * 1000) {
-    const r = await fetch(`${manifest.us.index}?t=${Math.floor(Date.now() / 300000)}`)
+// A month's tile address carries the stamp of its index entry (v=us-v2.clsN; ShipsApp usStamp). A server still holding
+// an older copy of the index (kept up to 5 min) would serve the old file under the NEW address, and the CDN would keep it
+// for 30 days (happened 2026-10-10 right after an index switch). So a stamp that doesn't match re-reads the index, and if
+// it still doesn't match, the tile goes out uncached.
+const usStampOf = (e) => String(e?.classes?.rules || '').match(/-(cls\d+)$/)?.[1] || null
+async function usUrls(t, { fresh = false } = {}) {
+  if (fresh || !usIndex || Date.now() - usIndexAt > 5 * 60 * 1000) {
+    const r = await fetch(`${manifest.us.index}?t=${fresh ? Date.now() : Math.floor(Date.now() / 300000)}`, fresh ? { cache: 'no-store' } : undefined)
     if (!r.ok) throw new Error(`us index ${r.status}`)
     usIndex = await r.json(); usIndexAt = Date.now()
   }
@@ -526,6 +531,13 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ type: 'FeatureCollection', features }))
   }
   if (![z, x, y].every(Number.isInteger)) { res.statusCode = 400; return res.end('bad tile coords') }
+  let stampMismatch = false
+  const wantStamp = region === 'us' ? (searchParams.get('v') || '').match(/\.(cls\d+)$/)?.[1] || null : null
+  if (wantStamp) {
+    try {
+      if (usStampOf(await usUrls(t)) !== wantStamp) stampMismatch = usStampOf(await usUrls(t, { fresh: true })) !== wantStamp
+    } catch { stampMismatch = true }
+  }
   let p
   try { p = await pmtilesFor(t, region) } catch (e) { console.error('[ship-tracks] index', e?.message); res.statusCode = 502; res.setHeader('Cache-Control', 'no-store'); return res.end('index read failed') }
   if (!p) { res.statusCode = 404; return res.end('tileset not built') }
@@ -543,12 +555,12 @@ export default async function handler(req, res) {
   res.setHeader('Vary', 'Accept-Encoding') // see api/vessel-tiles.js: keeps gzip/identity CDN variants apart
   if (!tile) {
     res.statusCode = 204
-    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+    res.setHeader('Cache-Control', stampMismatch ? 'no-store' : 'public, s-maxage=86400, stale-while-revalidate=604800')
     return res.end()
   }
   res.statusCode = 200
   res.setHeader('Content-Type', 'application/x-protobuf')
   res.setHeader('Content-Encoding', 'gzip')
-  res.setHeader('Cache-Control', p.local ? LOCAL_CACHE : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
+  res.setHeader('Cache-Control', p.local ? LOCAL_CACHE : stampMismatch ? 'no-store' : 'public, max-age=3600, s-maxage=2592000, stale-while-revalidate=604800')
   res.end(zlib.gzipSync(Buffer.from(tile.data)))
 }

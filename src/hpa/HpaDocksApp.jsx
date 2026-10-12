@@ -278,9 +278,9 @@ function osmSectionHtml(props) {
 
 // Friends of the San Juans survey record(s) of a dock, with their logo (Friends data
 // is always shown with it).
-function friendsSectionHtml(survey, open = false) {
+function friendsSectionHtml(survey) {
   if (!survey?.length) return ''
-  return `<details class="${styles.permit}"${open ? ' open' : ''}><summary>Friends of the San Juans shoreline survey` +
+  return `<details class="${styles.permit}"><summary>Friends of the San Juans shoreline survey` +
     `${survey.length > 1 ? ` (${survey.length} records)` : ''}</summary>` +
     `<img class="${styles.friendsBadge}" src="${FRIENDS_BADGE}" alt="Friends of the San Juans">` +
     survey.map(attrTable).join('') +
@@ -289,18 +289,18 @@ function friendsSectionHtml(survey, open = false) {
 }
 
 // Every record of a dock other than its permits: Friends survey, then OSM tracing.
-function dockSectionsHtml(props, { openFirst = false } = {}) {
+function dockSectionsHtml(props) {
   const osm = props.osm_ways
-    ? `<details class="${styles.permit}"${openFirst && !props.friends_survey?.length ? ' open' : ''}><summary>Dock as traced in OpenStreetMap</summary>${osmSectionHtml(props)}</details>`
+    ? `<details class="${styles.permit}"><summary>Dock as traced in OpenStreetMap</summary>${osmSectionHtml(props)}</details>`
     : ''
   const a = props.aerial
   const aerial = a
-    ? `<details class="${styles.permit}"${openFirst ? ' open' : ''}><summary>Found in the 2025 county aerials</summary>` +
+    ? `<details class="${styles.permit}"><summary>Found in the 2025 county aerials</summary>` +
       attrTable({ found_by: a.found_by, model_confidence: a.model_confidence, length_m: a.length_m, area_m2: a.area_m2, aerial_id: a.aerial_id }) +
       `<div class="${styles.popupCount}">Source: <a class="${styles.popupLink}" href="${SJC_AERIALS_PAGE}" target="_blank" rel="noopener noreferrer">` +
       `San Juan County 2025 aerials (EagleView) ↗</a> — dock found by the EarthAtlas dock-detection pilot, confirmed by a reviewer</div></details>`
     : ''
-  return aerial + friendsSectionHtml(props.friends_survey, openFirst) + osm
+  return aerial + friendsSectionHtml(props.friends_survey) + osm
 }
 
 // A dock with no permits found: its status, its records, and where its position comes from.
@@ -312,7 +312,7 @@ function dockPopupHtml(props) {
     `<div class="${styles.popupTitle}">${escapeHtml(title)}</div>` +
     parcelHtml(props) +
     `<div class="${styles.popupCount}">${escapeHtml(match?.label ?? '')}</div>` +
-    dockSectionsHtml(props, { openFirst: true }) +
+    dockSectionsHtml(props) +
     `<div class="${styles.matchNote}">${escapeHtml(locatedNote(props))}</div></div>`
 }
 
@@ -320,8 +320,8 @@ function dockPopupHtml(props) {
 // dock was matched, or that it isn't traced) closes the popup.
 function popupHtml(site, { title, note, tail = '', head = '' } = {}) {
   const { permits } = site.properties
-  const items = permits.map((p, i) =>
-    `<details class="${styles.permit}"${i === permits.length - 1 ? ' open' : ''}>` +
+  const items = permits.map((p) =>
+    `<details class="${styles.permit}">` +
     `<summary><span class="${styles.permitDate}">${escapeHtml(p.issued || p.submitted || 'undated')}</span>` +
     `<span class="${styles.agency}" title="${escapeHtml(agencyOf(p).name)}">${agencyOf(p).tag}</span>` +
     `${escapeHtml(p.project_name || p.permit_number || '')}</summary>${attrTable(p)}</details>`)

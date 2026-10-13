@@ -192,6 +192,14 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   const s = data?.summary
   const refinery = emRef.state === 'ok' && emRef.sources?.length
   const co2 = refinery ? emRef : emShips
+  // Headline CO₂e: the refinery plant, else Climate TRACE's voyage figure for the port, else its port stays at these berths
+  // (three different measures, so the tile names which one it shows).
+  const stayKpi = !refinery && !(emShips.state === 'ok' && emShips.reported) && emStays.months?.covered?.length > 0 && emStays.fits?.stays > 0
+  const kpi = refinery ? { label: 'Refinery CO₂e', title: 'Climate TRACE’s estimate for the refinery plant itself (tonnes CO₂e)' }
+    : stayKpi ? { label: 'Berth CO₂e', title: 'Climate TRACE’s port-stay estimate: fuel burned while ships of a kind this terminal serves were stopped at its berths (tonnes CO₂e). See the Emissions tab' }
+      : { label: 'Voyage CO₂e', title: 'Ships’ voyage emissions Climate TRACE attributes to this terminal’s port (tonnes CO₂e)' }
+  const kpiValue = stayKpi ? shortTonnes(emStays.fits.co2e)
+    : co2.state === 'loading' || (!refinery && emStays.state === 'loading') ? '…' : co2.state === 'ok' && co2.reported ? shortTonnes(co2.total) : '—'
   // The record a value was read from: a berth or link of that source + key.
   const recordOf = (source, key) => {
     if (!data || !source) return null
@@ -262,14 +270,14 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
           <div className={styles.pcKpi} title={`Calls by ships whose kind fits this terminal: the ship reported under ${data.rule.sogKn} kn within ${data.rule.radiusM} m of a berth (more for a long berth) for ${data.rule.minMinutes}+ minutes. EarthAtlas counted them from MarineCadastre AIS positions`}>
             <span>Visits</span><strong>{noAis ? (estKpi(est, 'visits') ?? '—') : fmtN(s.visits)}</strong>{!noAis && est && <small className={styles.pcMuted} title="More visits estimated from hourly positions for the picked months NOAA hasn’t published"> +{estKpi(est, 'visits')}</small>}</div>
           <div className={styles.pcKpi} title="Different ships among those calls"><span>Ships</span><strong>{noAis ? (estKpi(est, 'ships') ?? '—') : fmtN(s.ships)}</strong></div>
-          <div className={styles.pcKpi} title={refinery ? 'Climate TRACE’s estimate for the refinery plant itself (tonnes CO₂e)' : 'Ships’ voyage emissions Climate TRACE attributes to this terminal’s port (tonnes CO₂e)'}>
-            <span>{refinery ? 'Refinery CO₂e' : 'Ship CO₂e'}</span><strong>{co2.state === 'loading' ? '…' : co2.state === 'ok' && co2.reported ? shortTonnes(co2.total) : '—'}</strong></div>
+          <div className={styles.pcKpi} title={kpi.title}>
+            <span>{kpi.label}</span><strong>{kpiValue}</strong></div>
         </div>
         <div className={styles.pcWindow}>{monthName(winMonths[0])} – {monthName(winMonths[winMonths.length - 1])} · the months picked on the map ·{' '}
           <a className={styles.sourceLink} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
             title="Visits are counted from MarineCadastre AIS positions (NOAA / BOEM / USCG, CC0) — click for the bake record">MarineCadastre AIS</a>
           {est && <> · <EstSource e={est} label="≈ Global Fishing Watch" /></>}
-          {co2.state === 'ok' && <> · <a className={styles.sourceLink} href="https://climatetrace.org" target="_blank" rel="noopener noreferrer">Climate TRACE</a></>}
+          {(co2.state === 'ok' || stayKpi) && <> · <a className={styles.sourceLink} href="https://climatetrace.org" target="_blank" rel="noopener noreferrer">Climate TRACE</a></>}
         </div>
 
         {!folded && <>
@@ -294,7 +302,7 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
               )}
               <EstimatedVisits e={data.estimated} month={month} onMonth={onMonth} onSelectVessel={onSelectVessel} />
               {!noAis && <div className={styles.portSummary}>
-                <strong>{plural(s.visits, 'call')}</strong> by {plural(s.ships, 'ship')} whose kind fits
+                <span className={styles.pcMuted}>Counted from AIS:</span> <strong>{plural(s.visits, 'call')}</strong> by {plural(s.ships, 'ship')} whose kind fits
                 {s.visits > 0 && <> ({[`${fmtN(s.hours)} h at the berth`, s.oneOf && `${fmtN(s.oneOf)} also near another terminal`, s.tugs && `${fmtN(s.tugs)} by tugs`].filter(Boolean).join(', ')})</>}
                 {s.lastAt && <> · last {dayName(s.lastAt)}</>}{' '}
                 <a className={`${styles.sourceLink} ${styles.srcLink}`} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
@@ -344,7 +352,8 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
             {(emRef.state !== 'none') && <PortEmissions em={emRef} months={winMonths} month={month} onMonth={onMonth} About={About} what="refinery" title="Refinery plant (Climate TRACE)" />}
             <PortEmissions em={emShips} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships’ voyages (Climate TRACE port)"
               noneText="Climate TRACE has no ship-port estimate linked to this terminal." />
-            <TerminalStayEmissions em={emStays} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships at the berth (Climate TRACE port stays)" />
+            <TerminalStayEmissions em={emStays} months={winMonths} month={month} onMonth={onMonth} About={About} title="Ships at the berth (Climate TRACE port stays)"
+              aisTugCalls={s?.tugTow || 0} />
             {emRef.state === 'none' && <div className={styles.legendNoteText}>No refinery plant: Climate TRACE has no facility estimate for this terminal’s own operations.</div>}
           </>}
 

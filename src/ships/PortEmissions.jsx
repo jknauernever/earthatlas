@@ -87,7 +87,7 @@ const releaseWords = (r) => String(r || '').replaceAll('_', '.')
 const dayWords = (d) => new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
 /** The terminal card's "Ships at the berth (Climate TRACE port stays)" section, from useTerminalStays(). */
-export function TerminalStayEmissions({ em, months, month, onMonth, About, title = null }) {
+export function TerminalStayEmissions({ em, months, month, onMonth, About, title = null, aisTugCalls = 0 }) {
   if (em.state === 'loading') return <Loading kind="quick" />
   const head = title && <div className={styles.sectionHead}>{title}</div>
   if (em.state === 'error') return <div className={styles.section}>{head}<div className={styles.legendNoteText}>Couldn’t load Climate TRACE’s port stays right now.</div></div>
@@ -114,6 +114,7 @@ export function TerminalStayEmissions({ em, months, month, onMonth, About, title
         {' '}{em.months.missing.length === months.length ? 'these months are' : `${em.months.missing.length} of these months are`} outside it (not zero).</div>}
       {em.months.covered.length > 0 && <>
         <div className={styles.portSummary}>
+          <span className={styles.pcMuted}>Modelled by Climate TRACE:</span>{' '}
           {f.stays ? <>About <strong>{t(f.co2e)} CO₂e</strong> while {f.ships === 1 ? '1 ship' : `${f.ships.toLocaleString()} ships`} of a kind this terminal serves
             {' '}stayed at its berths ({f.stays.toLocaleString()} port stay{f.stays === 1 ? '' : 's'}, {f.hours.toLocaleString()} h), {range}</>
             : <>No port stay by a ship of a kind this terminal serves, {range}</>}{' '}{src}
@@ -123,6 +124,10 @@ export function TerminalStayEmissions({ em, months, month, onMonth, About, title
                 title={k === 'oceanmind' ? 'OceanMind, Climate TRACE’s shipping lead, tracks large ships with full identity information' : 'Global Fishing Watch tracks smaller ships and ships with little identity information for Climate TRACE'}>{TRACKER_LINKS[k][0]}</a></span>
           ))}
         </div>
+        {aisTugCalls > 0 && !f.types?.some((k) => k.label === 'tug') && <div className={styles.legendNoteText}>
+          Climate TRACE models mainly large ships: the {aisTugCalls.toLocaleString()} tug call{aisTugCalls === 1 ? '' : 's'} on the Ships tab (likely moving barges)
+          {' '}{aisTugCalls === 1 ? 'isn’t' : 'aren’t'} in its port stays here, so this is not the emissions of every call counted there.
+        </div>}
         {f.stays > 0 && <>
           {f.perDay
             ? <DayBars days={f.perDay} hue={HUE} say={(n) => `${t(n)} CO₂e`} none="outside our copy of the port stays"

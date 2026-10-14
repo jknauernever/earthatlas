@@ -48,7 +48,7 @@ export default function PermitsSourcePage() {
             {rec.url && <a className={styles.primaryLink} href={rec.url} target="_blank" rel="noopener noreferrer">See it at the source ↗</a>}
             {!rec.url && rec.home && <a className={styles.primaryLink} href={rec.home.href} target="_blank" rel="noopener noreferrer">Visit {rec.home.label} ↗</a>}
             {rec.copies?.map((c, i) => (
-              <a key={c} className={styles.primaryLink} href={`${permitsBase()}/notices/${c}`} target="_blank" rel="noopener noreferrer">EarthAtlas’s archived copy{rec.copies.length > 1 ? ` ${i + 1}` : ''} (PDF) ↗</a>
+              <a key={c} className={styles.primaryLink} href={`${permitsBase()}/notices/${c}`} target="_blank" rel="noopener noreferrer">Archived copy of the notice{rec.copies.length > 1 ? ` ${i + 1}` : ''} (PDF) ↗</a>
             ))}
             {rec.look_up && (
               <div className={styles.ids}>
@@ -59,7 +59,7 @@ export default function PermitsSourcePage() {
             <dl className={styles.meta}>
               <dt>License</dt>
               <dd>{rec.licence ? (rec.licence.href ? <a href={rec.licence.href} target="_blank" rel="noopener noreferrer">{rec.licence.text}</a> : rec.licence.text) : 'See the source'}</dd>
-              <dt>Read by EarthAtlas</dt>
+              <dt>Read on</dt>
               <dd>{day(rec.retrieved) || 'Not read yet'}</dd>
             </dl>
           </section>

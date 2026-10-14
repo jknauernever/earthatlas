@@ -43,6 +43,10 @@
       "destination": "/permits.html"
     },
     {
+      "source": "/permits/report/:id",
+      "destination": "/permits.html"
+    },
+    {
       "source": "/carbon",
       "destination": "/carbon.html"
     },

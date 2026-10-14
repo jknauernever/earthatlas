@@ -424,7 +424,7 @@ function joinDocks(records, docs) {
     hits.sort((a, b) => a.m - b.m)
     r.docks = hits.slice(0, 2).map(({ s, m, shared }) => {
       const key = `docks-${s.properties.site_id}`
-      docs[key] = { title: `EarthAtlas Docks: county and WDFW permits at this dock`, agency: 'earthatlas', kind: 'Page', url: `/sanjuan-docks?p=${s.properties.site_id}` }
+      docs[key] = { title: `San Juan County and WDFW permits at a nearby dock`, agency: 'county', kind: 'Page', url: `/sanjuan-docks?p=${s.properties.site_id}` }
       return {
         src: key, m, shared, site: s.properties.site_id,
         permits: s.properties.permits.map((x) => ({
@@ -612,6 +612,8 @@ function aquaticsRows(a, st) {
 async function ecologyAquatics(docs, raw, projects) {
   const pts = (await query(SERVICES.aquatics, { where: '1=1', geometry: BBOX.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', returnGeometry: 'false' }))
     .map((f) => f.attributes).filter((a) => !a.WRIA || /^\(02\)/.test(a.WRIA))
+    // Ecology's layer can list one project twice (two points, same Aquatics id): the first point is kept.
+    .filter((a, i, all) => all.findIndex((b) => String(b.AquaticsId) === String(a.AquaticsId)) === i)
   let status = new Map(), decisions = []
   try { status = parseAquaticsStatus(await (await fetch(`${AQ_STATUS}?CountyName=SAN%20JUAN&Paging.ItemsPerPage=500`, { headers: UA })).text()) } catch (e) { console.warn(`  Ecology status viewer: ${e.message}`) }
   try { decisions = parseAquaticsDecisions(await (await fetch(AQ_DECISIONS, { headers: UA })).text()) } catch (e) { console.warn(`  Ecology decisions: ${e.message}`) }

@@ -63,7 +63,7 @@
      "src": "ecy-29513"
     },
     {
-     "label": "Net armoring (EarthAtlas arithmetic)",
+     "label": "Net armoring (515 LF removed − 183 LF built)",
      "value": "about 332 LF less",
      "src": "ecy-29513"
     },
@@ -2068,10 +2068,6 @@
   "press": [
    "PRESS",
    "News or third-party summary"
-  ],
-  "earthatlas": [
-   "EA",
-   "EarthAtlas (joined from another EarthAtlas tool)"
   ]
  }
 }

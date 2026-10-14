@@ -26,6 +26,7 @@ import ShareControl from '../components/ShareControl.jsx'
 import SourcesFooter from '../components/panel/SourcesFooter.jsx'
 import { STATUS_WORDS, statusKey } from '../ships/permitStatus.js'
 import { fetchPermitsJson } from './permitsData.js'
+import { LAW, fmtDate, recordPage, docHref, permitKindOf, whyItems, calm, whatOf, activityYears } from './permitLogic.js'
 import { PERMITS_SOURCES, PERMITS_SOURCES_INTRO, PERMITS_SOURCES_NOTES } from './permitsSources.js'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './PermitsApp.module.css'
@@ -79,24 +80,10 @@ const WATERS = [
 // Matched by substring in this order, so "Conditionally Approved" is caught before "Approved".
 const SHELL_COLORS = { Conditionally: '#facc15', Prohibited: '#ef4444', Restricted: '#fb923c', Approved: '#4ade80' }
 
-// Which permits a record has, from the documents it cites: an Army Corps record (404 / §10, or a §408 request or a
-// jurisdictional determination), an Ecology 401 certification, an NPDES permit (402). `tag` is the dot's map label.
-function permitKindOf(r, docs) {
-  if (r.layer === 'npdes') return { layer: 'npdes', tag: r.ended ? '402 · ended' : '402' }
-  const keys = [...new Set((JSON.stringify(r).match(/"src":"[^"]+"/g) || []).map((m) => m.slice(7, -1)))]
-  const corps = keys.some((k) => docs[k]?.agency === 'corps') || !!r.corpsRef
-  const has401 = keys.some((k) => /401 certification/i.test(docs[k]?.title || '')) || !!r.cert401
-  const corpsTag = r.corpsKind === 's408' ? '408' : r.corpsKind === 'jds' ? 'JD' : '404'
-  if (has401) return { layer: 'cert401', tag: corps ? '401 + 404' : '401' }
-  if (r.stateOrder) return { layer: 'cert401', tag: 'State order' }
-  if (corps) return { layer: 'structures', tag: corpsTag }
-  return { layer: 'local', tag: '' }
-}
-
 function readUrlState() {
   const sp = new URLSearchParams(window.location.search)
   const num = (k) => { const v = sp.get(k); return v == null || v === '' ? NaN : Number(v) }
-  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off') }
+  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off'), t: sp.get('t') }
 }
 function writeUrlQuery(qs) {
   const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
@@ -105,12 +92,6 @@ function writeUrlQuery(qs) {
 }
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-const fmtDate = (d) => {
-  if (!d) return ''
-  const p = d.split('-')
-  if (p.length < 3) return d
-  return `${+p[2]} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+p[1] - 1]} ${p[0]}`
 }
 const todayIso = () => new Date().toISOString().slice(0, 10)
 const latestPast = (r) => (r.trail || []).map((t) => t.date).filter((d) => d <= todayIso()).sort().pop() || ''
@@ -127,12 +108,6 @@ function windowOpen(r) {
 // ─── Popup HTML, laid out like /sanjuan-docks: title, place line, count line, then one closed <details> per source
 // document (date, agency tag, title); inside, what that document states and its links. Grouping by document makes
 // "as listed in Ecology's order" visible: another agency's action sits under the document that reports it. ───
-// A doc's readable link: the agency's own page, else EarthAtlas's source-record page (never raw JSON).
-const recordPage = (key) => `/permits/source/${encodeURIComponent(key)}`
-const docHref = (docs, key) => {
-  const d = docs[key]
-  return d ? d.url || (d.record ? recordPage(key) : null) : null
-}
 const OPEN_LABEL = { PDF: 'Open the PDF', Page: 'Open the page', Record: 'Open the record' }
 function docLinks(docs, key) {
   const d = docs[key]
@@ -140,7 +115,7 @@ function docLinks(docs, key) {
   const a = (href, label, local) => `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${local ? '' : ' target="_blank" rel="noopener noreferrer"'}>${label}</a>`
   const parts = []
   if (d.url) parts.push(a(d.url, `${OPEN_LABEL[d.kind] || 'Open'} ↗`))
-  if (d.record) parts.push(a(recordPage(key), d.url ? 'as EarthAtlas read it' : 'Open the record as EarthAtlas read it ↗', true))
+  if (d.record) parts.push(a(recordPage(key), d.url ? 'data as received' : 'Open the record ↗', true))
   if (d.map) parts.push(a(d.map, 'on Ecology’s map ↗'))
   return `<div class="${styles.docLinks}">${parts.join(' · ')}</div>`
 }
@@ -159,49 +134,12 @@ function statusPill(st) {
 }
 
 
-// ─── "Why it needs a permit": EarthAtlas's plain summary of the law behind each record (Josh 2026-10-13: "how would a
-// user know what any of these have to do with the Clean Water Act?"). Each line links the law itself. Which laws apply
-// is read from the record's own documents and type; nothing is guessed beyond what the line says. ───
-const LAW = {
-  s10: ['Rivers and Harbors Act §10', 'https://www.law.cornell.edu/uscode/text/33/403'],
-  s404: ['Clean Water Act §404', 'https://www.law.cornell.edu/uscode/text/33/1344'],
-  s402: ['Clean Water Act §402', 'https://www.law.cornell.edu/uscode/text/33/1342'],
-  s401: ['Clean Water Act §401', 'https://www.law.cornell.edu/uscode/text/33/1341'],
-  s408: ['33 U.S.C. §408', 'https://www.law.cornell.edu/uscode/text/33/408'],
-  czma: ['Coastal Zone Management Act §307', 'https://www.law.cornell.edu/uscode/text/16/1456'],
-  mmpa: ['Marine Mammal Protection Act §101', 'https://www.law.cornell.edu/uscode/text/16/1371'],
-  nepa: ['National Environmental Policy Act §102', 'https://www.law.cornell.edu/uscode/text/42/4332'],
-  sma: ['Washington Shoreline Management Act', 'https://app.leg.wa.gov/rcw/default.aspx?cite=90.58'],
-  hpa: ['Washington Hydraulic Code', 'https://app.leg.wa.gov/rcw/default.aspx?cite=77.55'],
-  rcw9048: ['RCW 90.48', 'https://app.leg.wa.gov/rcw/default.aspx?cite=90.48'],
-}
-const law = (k) => `<a class="${styles.popupLink}" href="${LAW[k][1]}" target="_blank" rel="noopener noreferrer">${LAW[k][0]} ↗</a>`
-function whyLines(r, docs) {
-  const lines = []
-  const titles = Object.keys(docs).filter((k) => JSON.stringify(r).includes(`"${k}"`)).map((k) => docs[k].title).join(' | ')
-  const events = (r.trail || []).map((t) => t.event).join(' | ')
-  if (r.layer === 'npdes') {
-    const water = (r.facts || []).find((f) => f.label === 'Receiving water')?.value
-    const what = /stormwater/i.test(r.type) ? 'Stormwater that runs off this site' : /wastewater/i.test(r.type) ? 'Treated wastewater from this plant' : 'Water this operation releases'
-    lines.push(`${what} goes to ${water ? escapeHtml(water) : 'a water body'}. Discharging pollutants to water needs a permit under ${law('s402')} (NPDES); in Washington, Ecology issues it, under its own water pollution law as well.`)
-  }
-  const corps = r.corpsKind || (/Army Corps/.test(titles) || r.corpsRef ? 'curated' : null)
-  if (corps === 's408') lines.push(`Changing anything built by a federal Corps project${r.civilWorks ? ` (here: ${escapeHtml(r.civilWorks)})` : ''} needs Corps permission under ${law('s408')}. The Corps decided none was needed here.`)
-  else if (corps === 'jds' || /jurisdictional determination/i.test(titles)) lines.push(`A jurisdictional determination is the Corps’ ruling on whether a site holds “waters of the United States”; that decides whether ${law('s404')} applies to work there.`)
-  else if (corps) lines.push(`Building in or over navigable water (docks, piles, floats, buoys, cables) needs an Army Corps permit under ${law('s10')}; putting fill or dredged material in water needs one under ${law('s404')}.${r.corpsKind ? ' The Corps record does not say which applies here.' : ''}`)
-  if (corps === 'nepa_ea' || /environmental assessment/i.test(`${titles} ${events}`)) lines.push(`For a permit with possible significant effects, the Corps writes an environmental assessment under ${law('nepa')}.`)
-  if (r.stateOrder && !r.cert401) lines.push(`For waters the Corps doesn’t regulate (such as isolated wetlands), Ecology approves the work with an administrative order under Washington’s water pollution law (${law('rcw9048')}).`)
-  if (/401 certification/i.test(titles) || r.cert401) lines.push(`Before the Corps can issue its permit, Ecology must certify under ${law('s401')} that the work will meet Washington’s water quality standards.`)
-  if (/Coastal Zone/i.test(titles)) lines.push(`Ecology also decides whether a federal permit is consistent with Washington’s coastal program (${law('czma')}).`)
-  if (/marine mammal|incidental take/i.test(`${titles} ${events}`)) lines.push(`In-water noise from pile work can harm marine mammals; NOAA Fisheries authorizes that “incidental take” under ${law('mmpa')}.`)
-  if (/shoreline/i.test(`${events} ${titles}`) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'county'))) lines.push(`Work on Washington’s shorelines needs approval from San Juan County (inside Friday Harbor, from the Town of Friday Harbor) under the ${law('sma')}.`)
-  if (/WDFW|HPA/i.test(events) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'wdfw'))) lines.push(`Work in or near salt or fresh water needs a WDFW Hydraulic Project Approval under the ${law('hpa')}.`)
-  if (!lines.length) lines.push(`Not a permit itself: a related ${escapeHtml(String(r.type).toLowerCase())} step on the shore. Any in-water work it leads to needs the permits above (${law('s10')}, ${law('s404')}, ${law('s401')}).`)
-  return lines
-}
+// "Why it needs a permit" (permitLogic.js whyItems): each law named and linked.
+const lawLink = (k) => `<a class="${styles.popupLink}" href="${LAW[k].url}" target="_blank" rel="noopener noreferrer">${LAW[k].name} ↗</a>`
+const whyLines = (r, docs) => whyItems(r, docs).map((pieces) => pieces.map((x) => (typeof x === 'string' ? escapeHtml(x) : lawLink(x.law))).join(''))
 function whyHtml(r, docs) {
   // A closed turndown at the bottom of the popup, like the document sections (Josh 2026-10-14).
-  return `<details class="${styles.doc} ${styles.why}"><summary>Why it needs a permit <span class="${styles.whyNote}">EarthAtlas’s summary of the law</span></summary>` +
+  return `<details class="${styles.doc} ${styles.why}"><summary>Why it needs a permit</summary>` +
     `<ul>${whyLines(r, docs).map((l) => `<li>${l}</li>`).join('')}</ul></details>`
 }
 
@@ -217,10 +155,10 @@ function ecyHtml(list) {
 }
 // The same dock in EarthAtlas Docks: county and WDFW permits there, and how the match was made.
 function dockHtml(d, tags) {
-  return `<p class="${styles.docText}">Matched by EarthAtlas, not by the agencies: this dock lies ${d.m} m away and its permits name the same surname or company (${escapeHtml(d.shared.join(', '))}).</p>` +
+  return `<p class="${styles.docText}">Permits at a dock ${d.m} m from this point that name ${escapeHtml(d.shared.join(', '))}:</p>` +
     `<ol class="${styles.events}">${d.permits.slice(0, 15).map((x) => `<li><span class="${styles.when}">${x.date ? fmtDate(x.date) : ''}</span><span>` +
-      `${agencyChip(tags, x.agency)}${escapeHtml(x.what)}${x.number ? ` <span class="${styles.num}">${escapeHtml(x.number)}</span>` : ''}${x.status ? ` · ${escapeHtml(String(x.status).toLowerCase())}` : ''}</span></li>`).join('')}</ol>` +
-    (d.permits.length > 15 ? `<p class="${styles.docText}">${d.permits.length - 15} more on EarthAtlas Docks.</p>` : '')
+      `${agencyChip(tags, x.agency)}${escapeHtml(calm(x.what))}${x.number ? ` <span class="${styles.num}">${escapeHtml(x.number)}</span>` : ''}${x.status ? ` · ${escapeHtml(String(x.status).toLowerCase())}` : ''}</span></li>`).join('')}</ol>` +
+    (d.permits.length > 15 ? `<p class="${styles.docText}">${d.permits.length - 15} more on the San Juan docks map.</p>` : '')
 }
 
 // "Map location: from the Army Corps record (NWS-2003-00823 ↗)" (Josh 2026-10-14): where the dot comes from, with a
@@ -230,6 +168,14 @@ function mapLocationHtml(r, docs, href) {
   const text = escapeHtml(String(r.position.text).replace(/\.$/, ''))
   const link = href && d ? `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${d.url ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(d.look_up || d.title)} ↗</a>` : ''
   return `<div class="${styles.matchNote}"><b>Map location:</b> ${text}${link ? (/\. /.test(text) ? `. Source: ${link}` : ` (${link})`) : ''}</div>`
+}
+// "What it is" (permitLogic.js whatOf), its source named after it.
+function whatHtml(r, docs) {
+  const w = whatOf(r)
+  if (!w) return ''
+  const d = docs[w.srcKey], href = docHref(docs, w.srcKey), name = escapeHtml(w.srcLabel || d?.title || '')
+  const source = href ? `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${d?.url ? ' target="_blank" rel="noopener noreferrer"' : ''}>${name}</a>` : name
+  return `<div class="${styles.what}"><b>${escapeHtml(w.label)}</b> ${escapeHtml(calm(w.text))} <span class="${styles.whatSrc}">Source: ${source}</span></div>`
 }
 function recordHtml(r, docs, tags, byId, unmappedById) {
   const groups = new Map() // doc key → { rows, paras, events }
@@ -286,7 +232,8 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
   const place = [r.type, r.island].filter(Boolean).map(escapeHtml).join(' · ')
   return `<div class="${styles.popup}">` +
     `<div class="${styles.popupTitle}">${escapeHtml(r.name)}</div>` +
-    `<div class="${styles.place}">${statusPill(r.status)} ${place}</div>` +
+    `<div class="${styles.place}">${statusPill(r.status)} ${place} · <a class="${styles.popupLink}" href="/permits/report/${encodeURIComponent(r.id)}" target="_blank" rel="noopener noreferrer">Printable report ↗</a></div>` +
+    whatHtml(r, docs) +
     (r.violations ? `<div class="${styles.vioLine}" style="border-color:${VIO_COLORS[r.violations.level]}"><b>Violations since ${escapeHtml(r.violations.since)}:</b> ` +
       [[r.violations.pollution, 'over a pollution limit'], [r.violations.evasion, 'reports or samples never done'], [r.violations.minor, 'smaller (late, lab errors, capacity)']]
         .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') + ` <span class="${styles.whyNote}">(listed in the sections below)</span></div>` : '') +
@@ -353,12 +300,22 @@ export default function PermitsApp() {
       .catch((e) => setError(`Could not load permit data (${e.message}).`))
   }, [])
 
-  const records = useMemo(() => (data ? [...data.projects, ...data.npdes].map((r) => ({ ...r, ...permitKindOf(r, data.docs) })) : []), [data])
+  const records = useMemo(() => (data ? [...data.projects, ...data.npdes].map((r) => ({ ...r, ...permitKindOf(r, data.docs), years: activityYears(r) })) : []), [data])
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records])
   const unmappedById = useMemo(() => new Map((data?.unmapped || []).filter((u) => u.id).map((u) => [u.id, u])), [data])
-  const visible = useMemo(() => records.filter((r) => !off.has(r.layer)), [records, off])
-  const vioCounts = useMemo(() => ({ red: records.filter((r) => r.violations?.level === 'red').length, orange: records.filter((r) => r.violations?.level === 'orange').length }), [records])
-  const counts = useMemo(() => Object.fromEntries(LAYERS.map((l) => [l.id, records.filter((r) => r.layer === l.id).length])), [records])
+  // Time: a record shows when any of its activity years falls in the chosen span (activityYears in permitLogic.js).
+  const yearBounds = useMemo(() => {
+    const ys = records.flatMap((r) => r.years)
+    return ys.length ? [Math.min(...ys), Math.max(...ys)] : [2007, new Date().getFullYear()]
+  }, [records])
+  const [span, setSpan] = useState(() => { const m = /^(\d{4})-(\d{4})$/.exec(initial.t || ''); return m ? [+m[1], +m[2]] : null })
+  const [y0, y1] = span || yearBounds
+  const allTime = !span || (y0 <= yearBounds[0] && y1 >= yearBounds[1])
+  const inTime = (r) => allTime || r.years.some((y) => y >= y0 && y <= y1)
+  const timed = useMemo(() => records.filter(inTime), [records, y0, y1, allTime]) // eslint-disable-line react-hooks/exhaustive-deps
+  const visible = useMemo(() => timed.filter((r) => !off.has(r.layer)), [timed, off])
+  const vioCounts = useMemo(() => ({ red: timed.filter((r) => r.violations?.level === 'red').length, orange: timed.filter((r) => r.violations?.level === 'orange').length }), [timed])
+  const counts = useMemo(() => Object.fromEntries(LAYERS.map((l) => [l.id, timed.filter((r) => r.layer === l.id).length])), [timed])
 
   const geojson = useMemo(() => ({
     type: 'FeatureCollection',
@@ -487,10 +444,11 @@ export default function PermitsApp() {
     if (selected) sp.set('r', selected)
     const offKey = [...off].sort().join(',')
     if (offKey !== DEFAULT_OFF.join(',')) sp.set('off', offKey || 'none')
+    if (!allTime) sp.set('t', `${y0}-${y1}`)
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basemap, mapView, selected, off, mapReady])
+  }, [basemap, mapView, selected, off, mapReady, y0, y1, allTime])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -568,6 +526,9 @@ export default function PermitsApp() {
               Click a dot for its full record; every value links to its source.
             </div>
 
+            <div className={styles.section}>
+              <TimeSpan bounds={yearBounds} value={[y0, y1]} onChange={(v) => setSpan(v)} shown={timed.length} total={records.length} />
+            </div>
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Permits, by Clean Water Act section</div>
               {LAYERS.map((l) => (
@@ -648,4 +609,29 @@ function applyWaters(map, off) {
   const vis = (id) => (off.has(id) ? 'none' : 'visible')
   for (const l of ['wq-fill', 'wq-line']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', vis('wq'))
   for (const l of ['shell-fill', 'shell-line']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', vis('shell'))
+}
+
+// "Activity" span for the panel top (panel standard: the time control sits above the datasets). Two handles on one
+// track, plus quick spans; the count says how many records the span keeps.
+function TimeSpan({ bounds, value, onChange, shown, total }) {
+  const [lo, hi] = bounds, [a, b] = value
+  const now = new Date().getFullYear()
+  const quick = [['All', [lo, hi]], ['Since 2020', [2020, hi]], ['Last 3 years', [now - 2, hi]], ['This year', [now, hi]]]
+  const pct = (y) => ((y - lo) / Math.max(1, hi - lo)) * 100
+  const isAll = a <= lo && b >= hi
+  return (
+    <div className={styles.time}>
+      <div className={styles.sectionTitle}>Activity <span className={styles.timeLabel}>{isAll ? `All years (${lo}–${hi})` : a === b ? a : `${a}–${b}`} · {shown} of {total} records</span></div>
+      <div className={styles.timeTrack}>
+        <div className={styles.timeFill} style={{ left: `${pct(a)}%`, width: `${pct(b) - pct(a)}%` }} />
+        <input type="range" min={lo} max={hi} value={a} aria-label="From year" onChange={(e) => onChange([Math.min(+e.target.value, b), b])} />
+        <input type="range" min={lo} max={hi} value={b} aria-label="To year" onChange={(e) => onChange([a, Math.max(+e.target.value, a)])} />
+      </div>
+      <div className={styles.timeQuick}>
+        {quick.map(([label, v]) => (
+          <button key={label} type="button" className={a === v[0] && b === v[1] ? styles.timeChipOn : styles.timeChip} onClick={() => onChange(v)}>{label}</button>
+        ))}
+      </div>
+    </div>
+  )
 }

@@ -734,3 +734,12 @@
   line-height: 16px;
   color: rgba(226, 232, 240, 0.88);
 }
+
+/* (i) turndown paragraphs (shared DatasetRow info body) */
+.infoPara { margin: 0 0 6px; }
+
+/* Row status notes: one line, full text on hover (Josh, 2026-09-29). */
+.oneLine { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 4px; padding-bottom: 4px; margin-bottom: 8px; cursor: default; }
+/* Hover (or keyboard focus inside) unwraps the note in place — the browser's
+   native title tooltip proved unreliable here (Josh, 2026-09-29). */
+.oneLine:hover, .oneLine:focus-within { white-space: normal; overflow: visible; }

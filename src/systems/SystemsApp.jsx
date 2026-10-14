@@ -63,6 +63,7 @@ import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import useDockColumns from '../components/panel/useDockColumns.js'
+import DatasetRow from '../components/panel/DatasetRow.jsx'
 import styles from './SystemsApp.module.css'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
@@ -2970,7 +2971,6 @@ export default function SystemsApp() {
   }
 
   const activeDefs = LAYERS.filter((d) => layerOn[d.id] && !d.companionOf)
-  const anyVectorOn = activeDefs.some((d) => d.kind === 'vector')
   const summary = activeDefs.length
     ? `${activeDefs.map((d) => d.name).join(' + ')} on`
     : 'All layers off'
@@ -3291,57 +3291,12 @@ export default function SystemsApp() {
               // Smoke altitude handoff: while the ground view is active, the
               // panel legend/scale/words describe µg/m³, not column AOD.
               const lens = def.ground && smokeMode === 'ground' ? { ...def, ...def.ground } : def
-              return (
-                <div key={def.id} className={styles.layerBlock}>
-                  <div
-                    className={styles.layerRow}
-                    role="switch"
-                    aria-checked={on}
-                    tabIndex={0}
-                    onClick={() => toggleLayer(def.id)}
-                    onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleLayer(def.id) } }}
-                  >
-                    <span className={`${styles.rowIcon} ${on ? styles.dockOn : ''}`} style={on ? hueStyle(def.hue) : undefined} aria-hidden="true">
-                      <LayerIcon svg={def.iconSvg} size={16} />
-                    </span>
-                    <div className={styles.layerInfo}>
-                      <span className={styles.layerName}>{def.name}</span>
-                      <span className={styles.layerSub}>{def.sub}</span>
-                    </div>
-                  </div>
-
-                  {on && status === 'ok' && meta && (
-                    <div className={styles.liveNote}>
-                      <span className={styles.liveDot} aria-hidden="true" />
-                      Live —{' '}
-                      <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                        {def.sourceName}
-                      </a>
-                      {/* A layer fed by more than one agency links each of them:
-                          one label covering two sources would send the reader to
-                          the wrong one for half the data. Storms is the first. */}
-                      {def.sourceAlso?.map((src) => (
-                        <span key={src.url}>
-                          {' & '}
-                          <a className={styles.sourceLink} href={src.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                            {src.name}
-                          </a>
-                        </span>
-                      ))}
-                      {' · '}{def.stamp(meta)}, fetched {agoWord(meta.fetched_ms)}.
-                    </div>
-                  )}
-                  {on && status === 'loading' && (
-                    <div className={styles.loadingNote}>Loading live data…</div>
-                  )}
-                  {on && status === 'error' && (
-                    <div className={styles.errorNote}>
-                      Live data for this layer is unavailable right now, so it stays off —
-                      we don&apos;t show stale or made-up values. Try again shortly.
-                    </div>
-                  )}
-
-                  {on && status === 'ok' && lens.legend && (
+              // Shared panel standard (src/components/panel, Josh 2026-09-29):
+              // name toggles, ⌄ = the dataset's controls (closed, remembered per
+              // viewer), (i) = what it shows + its sources (never open on load).
+              const legendBody = (
+                <>
+                  {status === 'ok' && lens.legend && (
                     <div className={styles.field}>
                       {lens !== def && (
                         <div className={styles.legendNoteText}>{lens.zoomNote || `Showing ${lens.name || 'regional detail'} (${lens.sub}) — zoom out for the wider view.`}</div>
@@ -3364,7 +3319,7 @@ export default function SystemsApp() {
                       )}
                     </div>
                   )}
-                  {on && status === 'ok' && def.legendRows && (
+                  {status === 'ok' && def.legendRows && (
                     <div className={styles.legendRows}>
                       {def.legendRows.map((row) => (
                         <div key={row.label} className={styles.legendRow}>
@@ -3384,44 +3339,90 @@ export default function SystemsApp() {
                       ))}
                     </div>
                   )}
-                  {on && status === 'ok' && def.legendNote && (
-                    <div className={styles.field}>
-                      <div className={styles.legendNoteText}>{def.legendNote}</div>
+                </>
+              )
+              const hasLegend = status === 'ok' && !!(lens.legend || def.legendRows)
+              return (
+                <DatasetRow
+                  key={def.id}
+                  storageKey={`inmotion.${def.id}`}
+                  name={def.name}
+                  sub={def.sub}
+                  hue={def.hue}
+                  icon={<LayerIcon svg={def.iconSvg} size={16} />}
+                  on={!!on}
+                  onToggle={() => toggleLayer(def.id)}
+                  status={<>
+                  {status === 'ok' && meta && (
+                    // One line (Josh, 2026-09-29): who + how fresh up front, the
+                    // run/advisory detail after; the whole note on hover.
+                    <div
+                      className={`${styles.liveNote} ${styles.oneLine}`}
+                      title={`Live — ${[def.sourceName, ...(def.sourceAlso || []).map((x) => x.name)].join(' & ')} · ${def.stamp(meta)}, fetched ${agoWord(meta.fetched_ms)}.`}
+                    >
+                      <span className={styles.liveDot} aria-hidden="true" />
+                      <a className={styles.sourceLink} href={def.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                        {def.sourceName}
+                      </a>
+                      {/* A layer fed by more than one agency links each of them:
+                          one label covering two sources would send the reader to
+                          the wrong one for half the data. Storms is the first. */}
+                      {def.sourceAlso?.map((src) => (
+                        <span key={src.url}>
+                          {' & '}
+                          <a className={styles.sourceLink} href={src.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            {src.name}
+                          </a>
+                        </span>
+                      ))}
+                      {' · '}{agoWord(meta.fetched_ms)}{' · '}{def.stamp(meta)}
                     </div>
                   )}
-                </div>
+                  {status === 'loading' && (
+                    <div className={styles.loadingNote}>Loading live data…</div>
+                  )}
+                  {status === 'error' && (
+                    <div
+                      className={`${styles.errorNote} ${styles.oneLine}`}
+                      title="Live data for this layer is unavailable right now, so it stays off — we don't show stale or made-up values. Try again shortly."
+                    >
+                      Live data unavailable right now — layer stays off
+                    </div>
+                  )}
+                  </>}
+                  controls={def.kind === 'vector' ? (
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>Particle density</label>
+                      <div className={styles.chipRow}>
+                        {DENSITIES.map((d) => (
+                          <button key={d.id} className={density === d.id ? styles.chipActive : styles.chip} onClick={() => setDensity(d.id)}>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  legend={hasLegend ? legendBody : null}
+                  // Every how-to-read paragraph (legendNote, up to 1,200 chars on
+                  // Storms) lives here too — never open under the legend on load
+                  // (Josh, 2026-09-29). Colour keys stay in the legend.
+                  info={def.explain || def.legendNote ? (
+                    <>
+                      {def.explain && <p className={styles.infoPara}>{def.explain}</p>}
+                      {def.legendNote && <p className={styles.infoPara}>{def.legendNote}</p>}
+                      Data:{' '}
+                      <a href={def.sourceUrl} target="_blank" rel="noopener noreferrer">{def.sourceName}</a>
+                      {def.sourceAlso?.map((src) => (
+                        <span key={src.url}>{' & '}<a href={src.url} target="_blank" rel="noopener noreferrer">{src.name}</a></span>
+                      ))}
+                      .
+                    </>
+                  ) : null}
+                />
               )
             })}
               </div>
             ))}
-
-            {anyVectorOn && (
-              <div className={styles.field}>
-                <label className={styles.fieldLabel}>Particle density</label>
-                <div className={styles.chipRow}>
-                  {DENSITIES.map((d) => (
-                    <button key={d.id} className={density === d.id ? styles.chipActive : styles.chip} onClick={() => setDensity(d.id)}>
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* The explain layer — the reason /systems exists */}
-            <div className={styles.explainBox}>
-              <label className={styles.explainBoxLabel}>What am I seeing?</label>
-              {activeDefs.length ? (
-                activeDefs.map((def) => (
-                  <p key={def.id} className={styles.explain}>{def.explain}</p>
-                ))
-              ) : (
-                <p className={styles.explain}>
-                  All layers are off — flip one on to see Earth in motion. Click anywhere
-                  on the globe for the conditions there.
-                </p>
-              )}
-            </div>
 
             <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>
               ⓘ How this is sourced

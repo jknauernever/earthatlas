@@ -23,7 +23,8 @@ const PAD = 16
  *                  exactly the old behaviour). A number, or a function returning one (read at every fit, so a bar
  *                  that appears, grows or goes away later is honoured).
  */
-export function fitPopupToMap(popup, { topReserve = 64, bottomReserve = 0 } = {}) {
+export function fitPopupToMap(popup, opts = {}) {
+  const { topReserve = 64, bottomReserve = 0, pan = true } = opts
   const el = popup.getElement()
   const scroller = el?.querySelector('.mapboxgl-popup-content > div')
   const mapEl = el?.closest('.mapboxgl-map')
@@ -38,11 +39,16 @@ export function fitPopupToMap(popup, { topReserve = 64, bottomReserve = 0 } = {}
   bottom = Number.isFinite(bottom) && bottom > 0 ? bottom : 0
   const down = mapRect.height - bottom - pt.y - TIP - PAD
   const up = pt.y - topReserve - TIP - PAD
-  const ceiling = Math.floor((mapRect.height - bottom) * 0.75)
+  // 75% of the free map, but short maps (Explore's ~380 px above its month bar) may use all but 60 px of it,
+  // up to 340 px, so a normal card still fits whole.
+  const usable = mapRect.height - bottom
+  const ceiling = Math.floor(Math.max(usable * 0.75, Math.min(usable - 60, 340)))
+  // What the card wants: its full content, up to the ceiling (scrollHeight ignores any max-height set by a prior fit).
+  const need = Math.min(ceiling, scroller.scrollHeight)
   const cur = ([...el.classList].find((c) => c.startsWith('mapboxgl-popup-anchor-')) || '').replace('mapboxgl-popup-anchor-', '')
   const curVert = cur.startsWith('top') ? 'top' : cur.startsWith('bottom') ? 'bottom' : null
   // Stay put only if the current side already offers all the card could use.
-  const want = curVert && (curVert === 'top' ? down : up) >= ceiling ? curVert : (down >= up ? 'top' : 'bottom')
+  const want = curVert && (curVert === 'top' ? down : up) >= need ? curVert : (down >= up ? 'top' : 'bottom')
   if (want !== curVert) {
     // Keep Mapbox's horizontal choice (edge clicks shift the card sideways).
     const horiz = cur.includes('-left') ? '-left' : cur.includes('-right') ? '-right' : ''
@@ -50,6 +56,26 @@ export function fitPopupToMap(popup, { topReserve = 64, bottomReserve = 0 } = {}
     try { popup.setLngLat(popup.getLngLat()) } catch { return } // re-lays out with the new anchor
   }
   const room = want === 'top' ? down : up
+  // Neither side has room for the card (short maps, a click mid-map, a docked bar): slide the map so the clicked
+  // point moves toward the far edge and the card gets the room it needs, instead of squeezing it to a sliver.
+  // Once per fit cycle; the re-fit after the pan never pans again.
+  if (pan && room < need - 4 && !popup._eaFitPanning) {
+    const minY = topReserve + 12
+    const maxY = mapRect.height - bottom - 12
+    const target = want === 'top'
+      ? Math.max(minY, mapRect.height - bottom - TIP - PAD - need)
+      : Math.min(maxY, topReserve + TIP + PAD + need)
+    const dy = Math.round(pt.y - target)
+    if (Math.abs(dy) > 8) {
+      const map = popup._map
+      popup._eaFitPanning = true
+      map.once('moveend', () => {
+        popup._eaFitPanning = false
+        if (popup.isOpen()) fitPopupToMap(popup, { ...opts, pan: false })
+      })
+      map.panBy([0, dy], { duration: 300 })
+    }
+  }
   scroller.style.maxHeight = `${Math.max(160, Math.min(ceiling, Math.floor(room)))}px`
   scroller.style.overflowY = 'auto'
   scroller.style.overscrollBehavior = 'contain'

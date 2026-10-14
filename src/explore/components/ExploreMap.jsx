@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../../utils/webglSupport'
 import { keepPopupOnMap } from '../../lib/popupFit.js'
+import { addJourneyPathLayers, addJourneyStopLayers, setJourneyOnMap, fitJourney } from '../../happywhale/whaleJourney.jsx'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -86,6 +87,7 @@ function observationUrl(s) {
   const id = String(s.id)
   if (s.source === 'iNaturalist') return 'https://www.inaturalist.org/observations/' + id.replace('inat-', '')
   if (s.source === 'eBird') return 'https://ebird.org/checklist/' + id.split('-')[1]
+  if (s.source === 'HappyWhale') return 'https://happywhale.com/encounter/' + (s.hw?.encounterId ?? id.replace('hw-', ''))
   return 'https://www.gbif.org/occurrence/' + id
 }
 
@@ -120,13 +122,32 @@ function buildRosterHTML(members, { fallbackColor, fallbackEmoji }) {
     </div>`
 }
 
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+
+// HappyWhale photo-ID: which known whale this is, and the button that opens its journey on this map.
+function buildWhaleIdHTML(s, accentColor) {
+  const ind = s.hw?.individual
+  if (!ind) return ''
+  const name = ind.nickname || ind.primaryId || 'Identified whale'
+  const short = (ind.nickname || '').replace(/\s*\(.*\)\s*$/, '') || 'this whale'
+  return `
+        <div style="font-size:11.5px;color:#3d4f5f;margin-bottom:8px">
+          <strong style="color:#1a2332">${escapeHtml(name)}</strong>${ind.primaryId && ind.nickname ? ` · ${escapeHtml(ind.primaryId)}` : ''}
+          <span style="color:#8a8577"> — known whale, identified by photo</span>
+        </div>
+        <button type="button" data-hw-journey="${Number(ind.id)}" style="
+          display:block;width:100%;margin:0 0 8px;padding:6px 8px;border-radius:5px;cursor:pointer;
+          background:${accentColor};color:#fff;border:0;font:500 11.5px 'DM Sans',system-ui,sans-serif;
+        ">Show ${escapeHtml(short)}'s journey \u27F6</button>`
+}
+
 function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
   const photo = (s.photos && s.photos[0]) || s.speciesPhoto || null
   const iucn = s.iucn || s.meta?.iucn || null
   const iucnLabel = IUCN_LABEL[iucn] || null
   const iucnColor = IUCN_COLOR[iucn] || null
   const isMobile = window.innerWidth <= 600
-  const photoH = isMobile ? 120 : 200
+  const photoH = isMobile ? 120 : 130
   const emoji = s.emoji || fallbackEmoji
   const accentColor = s.color || fallbackColor
 
@@ -136,7 +157,7 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
       background:#ffffff;
       color:#1a2332;
       overflow:hidden;
-      ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:260px;border-radius:12px;'}
+      ${isMobile ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:300px;border-radius:12px;'}
       line-height:1.5;
     ">
       ${iucnLabel ? `<div style="
@@ -154,10 +175,6 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
         <img src="${photo}" alt="${s.common}" style="
           width:100%;height:100%;object-fit:cover;display:block;
         " onerror="this.parentElement.style.display='none'" />
-        <div style="
-          position:absolute;bottom:0;left:0;right:0;height:60px;
-          background:linear-gradient(transparent, #ffffff);
-        "></div>
       </div>` : ''}
       <div style="padding:${isMobile ? '12px 16px 16px' : '14px 16px 16px'};">
         <div style="
@@ -171,16 +188,17 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
           font-style:italic;
           color:#5a6b7a;
           font-size:12px;
-          margin-bottom:10px;
+          margin-bottom:8px;
         ">${s.scientific}</div>` : ''}
+        ${buildWhaleIdHTML(s, accentColor)}
         ${s.fact ? `<div style="
           font-size:12px;
           color:#3d4f5f;
           line-height:1.5;
-          margin-bottom:12px;
+          margin-bottom:8px;
           border-left:2px solid ${accentColor}44;
           padding-left:10px;
-          ${isMobile ? 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;' : ''}
+          display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
         ">${s.fact}</div>` : ''}
         <div style="
           font-size:11px;
@@ -188,18 +206,13 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
           display:flex;flex-direction:column;gap:3px;
         ">
           ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
-          ${s.date ? `<div>\u{1F4C5} ${formatDate(s.date)}${formatTime(s.time) ? ` at ${formatTime(s.time)}` : ''}</div>` : ''}
-          ${s.observer ? `<div>\u{1F464} ${s.observer}</div>` : ''}
-          <div style="
-            margin-top:6px;
-            font-size:10px;
-            color:#7a8a96;
-            text-transform:uppercase;
-            letter-spacing:0.05em;
-          ">via ${s.source || 'GBIF'}</div>
+          ${(s.date || s.observer) ? `<div>${[
+            s.date ? `\u{1F4C5} ${formatDate(s.date)}${formatTime(s.time) ? ` at ${formatTime(s.time)}` : ''}` : '',
+            s.observer ? `\u{1F464} ${s.observer}` : '',
+          ].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>` : ''}
         </div>
         <div style="
-          display:flex;gap:6px;margin-top:10px;
+          display:flex;gap:6px;margin-top:8px;
         ">
           ${(s.speciesKey || s.scientific) ? `<a href="/species/${
             !isNaN(Number(s.speciesKey)) ? s.speciesKey : encodeURIComponent(s.scientific)
@@ -218,11 +231,69 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
             font-size:11px;font-weight:500;line-height:1.2;
             text-decoration:none;
             border:1px solid #e0e4e8;
-          ">View observation \u2197</a>
+          ">View on ${s.source || 'GBIF'} \u2197</a>
         </div>
       </div>
     </div>
   `
+}
+
+// Species highlight on the sighting dots (selected species pops, the rest go gray), or the defaults when none.
+function applyHighlight(map, activeSpecies) {
+  if (!activeSpecies) {
+    // Reset to defaults
+    map.setPaintProperty('sighting-circles', 'circle-radius', radiusExpr())
+    map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
+    map.setPaintProperty('sighting-circles', 'circle-opacity', 1)
+    if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', 1)
+    map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
+    map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
+    map.setLayoutProperty('sighting-circles', 'circle-sort-key', ['+', ['get', 'ts'], ['*', ['get', 'count'], 1e12]])
+  } else {
+    // Accept any identity the two callers use: explore subsites pass the
+    // speciesKey (numeric GBIF key, or binomial fallback); the homepage
+    // sidebar passes a lowercased scientific name (binomial for species,
+    // trinomial for its subspecies rows). Features carry all three.
+    const key = String(activeSpecies)
+    const keyLower = key.toLowerCase()
+    const matchExpr = ['any',
+      ['==', ['get', 'speciesKey'], key],
+      ['==', ['get', 'binomial'], keyLower],
+      ['==', ['get', 'scientific'], keyLower],
+      // Stack contains the selected species (delimited member strings)
+      ['in', '|' + key + '|', ['get', 'speciesKeys']],
+      ['in', '|' + keyLower + '|', ['get', 'binomials']],
+    ]
+
+    // Selected species: full brightness, bigger, yellow ring, above
+    // everything. Others: dimmed context.
+    // Selection must POP: matched dots grow substantially and keep their
+    // species color + yellow ring; everything else drops to uniform gray
+    // context (color, not just opacity — dimmed reds still read as data).
+    map.setPaintProperty('sighting-circles', 'circle-radius', [
+      'case', matchExpr, radiusExpr(6), radiusExpr(-1.5),
+    ])
+    map.setPaintProperty('sighting-circles', 'circle-color', [
+      'case', matchExpr, ['get', 'color'], '#b6bdc4',
+    ])
+    map.setPaintProperty('sighting-circles', 'circle-opacity', [
+      'case', matchExpr, 1, 0.55,
+    ])
+    map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
+      'case', matchExpr, 3, 0.5,
+    ])
+    map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
+      'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.4)',
+    ])
+    // Selected dots always paint over dimmed neighbors (newest-first within each group)
+    map.setLayoutProperty('sighting-circles', 'circle-sort-key', [
+      '+', ['case', matchExpr, 1e15, 0], ['get', 'ts'], ['*', ['get', 'count'], 1e12],
+    ])
+    if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ['case', matchExpr, 1, 0.25])
+
+    // No camera movement on selection — the map stays where the user put it;
+    // highlighting alone tells the story.
+  }
 }
 
 /**
@@ -232,7 +303,7 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
  * record, colored by species, newest sorted on top (circle-sort-key), with
  * click-to-popup. Patterns mode swaps in GBIF adhoc hex-bin density tiles.
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, radiusKm = null, searchId = 0, initialView = null, config = {} }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, radiusKm = null, searchId = 0, initialView = null, config = {}, journey = null, journeyLegs = null, onShowJourney = null, mapApiRef = null }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -246,6 +317,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  // Bumps each time the sighting/journey layers are (re)created, so layer-dependent effects re-apply after load.
+  const [layersReady, setLayersReady] = useState(0)
   const [zoomLevel, setZoomLevel] = useState(
     initialView?.zoom != null ? initialView.zoom : (center ? defaultZoom : 2)
   )
@@ -253,6 +326,8 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   sightingsRef.current = sightings
   const activeSpeciesRef = useRef(activeSpecies)
   activeSpeciesRef.current = activeSpecies
+  const onShowJourneyRef = useRef(onShowJourney)
+  onShowJourneyRef.current = onShowJourney
   const onCenterChangeRef = useRef(onCenterChange)
   onCenterChangeRef.current = onCenterChange
   const onZoomChangeRef = useRef(onZoomChange)
@@ -317,6 +392,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     map.on('style.load', () => {
       map.__eaStyleReady = true
       addSightingLayers()
+      setLayersReady((n) => n + 1)
       try {
         map.setFog({
           color: '#f5f0e8',
@@ -335,6 +411,20 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       map.addSource('sighting-src', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
+      })
+
+      // HappyWhale photo-identified whales: an outer white ring, as on /happywhale.
+      map.addLayer({
+        id: 'sighting-id-ring',
+        type: 'circle',
+        source: 'sighting-src',
+        filter: ['==', ['get', 'identified'], true],
+        paint: {
+          'circle-radius': radiusExpr(3.5),
+          'circle-color': 'rgba(0,0,0,0)',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.75,
+        },
       })
 
       // Sighting dots — every record its own dot, colored by species.
@@ -376,6 +466,10 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         },
       })
 
+      // A HappyWhale journey (shared with /happywhale): path, then numbered stops, over the (ghosted) dots.
+      addJourneyPathLayers(map)
+      addJourneyStopLayers(map)
+
       // Click handler — popup on circle click
       map.on('click', 'sighting-circles', (e) => {
         if (!e.features || !e.features[0]) return
@@ -398,7 +492,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         const popup = new mapboxgl.Popup({
           offset: isMobile ? 0 : 12,
           closeButton: true,
-          maxWidth: isMobile ? '100%' : '280px',
+          maxWidth: isMobile ? '100%' : '320px',
           // Default focus-on-open makes the BROWSER scroll the page to the
           // popup, yanking the map to the top. keepPopupOnMap (shared,
           // src/lib/popupFit.js) keeps the card on the map instead.
@@ -418,9 +512,18 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
         // One shared placement/fit for every site: hang the card off the side
         // with more room and scroll inside (re-fits when the roster swaps to a
         // record card). Phones use index.css's bottom sheet.
-        keepPopupOnMap(popup, { bottomReserve: () => monthBarReserve(map) })
+        keepPopupOnMap(popup, { topReserve: 16, bottomReserve: () => monthBarReserve(map) }) // only the zoom buttons (top right) sit up top
 
         popupRef.current = popup
+
+        // "Show <whale>'s journey" (HappyWhale identified whales) — on this map, no page change.
+        popup.getElement()?.addEventListener('click', (ev) => {
+          const btn = ev.target.closest('[data-hw-journey]')
+          if (!btn) return
+          ev.stopPropagation()
+          popup.remove()
+          onShowJourneyRef.current?.(Number(btn.dataset.hwJourney))
+        })
 
         if (isStack) {
           // Roster row → that record's card; simple, no back-stack needed —
@@ -443,7 +546,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       })
     }
 
-    if (map.isStyleLoaded()) addSightingLayers() // style.load handler is the primary path
+    if (map.isStyleLoaded()) { addSightingLayers(); setLayersReady((n) => n + 1) } // style.load handler is the primary path
 
     // Track zoom for display
     map.on('zoom', () => {
@@ -649,6 +752,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
               members: idxs,
               color: s.color || fallbackColor,
               ts: s.date ? Date.parse(s.date) : 0, // newest-on-top sort key
+              identified: idxs.some((i) => !!sightings[i].hw?.individual), // HappyWhale known whale in this stack
               speciesKey: String(s.speciesKey || ''),
               scientific: sci(s),
               binomial: bin(s),
@@ -674,65 +778,73 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   }, [sightings])
 
   // ─── Active species highlighting ─────────────────────────────────────────
+  const activeSpeciesRef2 = useRef(activeSpecies)
+  activeSpeciesRef2.current = activeSpecies
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.getLayer('sighting-circles')) return
-
-    if (!activeSpecies) {
-      // Reset to defaults
-      map.setPaintProperty('sighting-circles', 'circle-radius', radiusExpr())
-      map.setPaintProperty('sighting-circles', 'circle-color', ['get', 'color'])
-      map.setPaintProperty('sighting-circles', 'circle-opacity', 1)
-      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', 1)
-      map.setPaintProperty('sighting-circles', 'circle-stroke-width', 1.5)
-      map.setPaintProperty('sighting-circles', 'circle-stroke-color', '#ffffff')
-      map.setLayoutProperty('sighting-circles', 'circle-sort-key', ['+', ['get', 'ts'], ['*', ['get', 'count'], 1e12]])
-    } else {
-      // Accept any identity the two callers use: explore subsites pass the
-      // speciesKey (numeric GBIF key, or binomial fallback); the homepage
-      // sidebar passes a lowercased scientific name (binomial for species,
-      // trinomial for its subspecies rows). Features carry all three.
-      const key = String(activeSpecies)
-      const keyLower = key.toLowerCase()
-      const matchExpr = ['any',
-        ['==', ['get', 'speciesKey'], key],
-        ['==', ['get', 'binomial'], keyLower],
-        ['==', ['get', 'scientific'], keyLower],
-        // Stack contains the selected species (delimited member strings)
-        ['in', '|' + key + '|', ['get', 'speciesKeys']],
-        ['in', '|' + keyLower + '|', ['get', 'binomials']],
-      ]
-
-      // Selected species: full brightness, bigger, yellow ring, above
-      // everything. Others: dimmed context.
-      // Selection must POP: matched dots grow substantially and keep their
-      // species color + yellow ring; everything else drops to uniform gray
-      // context (color, not just opacity — dimmed reds still read as data).
-      map.setPaintProperty('sighting-circles', 'circle-radius', [
-        'case', matchExpr, radiusExpr(6), radiusExpr(-1.5),
-      ])
-      map.setPaintProperty('sighting-circles', 'circle-color', [
-        'case', matchExpr, ['get', 'color'], '#b6bdc4',
-      ])
-      map.setPaintProperty('sighting-circles', 'circle-opacity', [
-        'case', matchExpr, 1, 0.55,
-      ])
-      map.setPaintProperty('sighting-circles', 'circle-stroke-width', [
-        'case', matchExpr, 3, 0.5,
-      ])
-      map.setPaintProperty('sighting-circles', 'circle-stroke-color', [
-        'case', matchExpr, '#ffeb3b', 'rgba(255, 255, 255, 0.4)',
-      ])
-      // Selected dots always paint over dimmed neighbors (newest-first within each group)
-      map.setLayoutProperty('sighting-circles', 'circle-sort-key', [
-        '+', ['case', matchExpr, 1e15, 0], ['get', 'ts'], ['*', ['get', 'count'], 1e12],
-      ])
-      if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ['case', matchExpr, 1, 0.25])
-
-      // No camera movement on selection — the map stays where the user put it;
-      // highlighting alone tells the story.
-    }
+    if (journeyRef.current) return // a journey ghosts every dot; highlighting returns when it closes
+    applyHighlight(map, activeSpecies)
   }, [activeSpecies])
+
+  // ─── HappyWhale journey ──────────────────────────────────────────────────
+  // Stops + water-routed path on this map; every other dot ghosts (as on /happywhale) and the camera frames the
+  // journey, then goes back to where it was when the journey closes.
+  const journeyRef = useRef(journey)
+  journeyRef.current = journey
+  const preJourneyCamRef = useRef(null)
+  const journeyPad = () => {
+    const map = mapRef.current
+    return { top: 50, left: 50, right: 70, bottom: (map ? monthBarReserve(map) : MONTH_BAR_RESERVE) + 30 }
+  }
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.getSource('hw-journey-stops')) return
+    setJourneyOnMap(map, journey, journeyLegs, { color: fallbackColor, arrowHalo: 'rgba(255,255,255,0.9)' })
+  }, [journey, journeyLegs, layersReady])
+  const journeyId = journey?.individual?.id ?? null
+  const fittedJourneyRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.getLayer('sighting-circles')) return
+    const ghost = journeyId != null
+    for (const id of ['sighting-circles', 'sighting-id-ring']) {
+      if (!map.getLayer(id)) continue
+      if (ghost) {
+        map.setPaintProperty(id, 'circle-opacity', id === 'sighting-id-ring' ? 0 : 0.12)
+        map.setPaintProperty(id, 'circle-stroke-opacity', 0.12)
+      } else {
+        map.setPaintProperty(id, 'circle-stroke-opacity', 1)
+        if (id === 'sighting-id-ring') map.setPaintProperty(id, 'circle-opacity', 1)
+      }
+    }
+    if (map.getLayer('sighting-counts')) map.setPaintProperty('sighting-counts', 'text-opacity', ghost ? 0 : 1)
+    if (ghost) {
+      if (!preJourneyCamRef.current) {
+        const c = map.getCenter()
+        preJourneyCamRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() }
+      }
+      // Frame each whale once (layer reloads re-run this effect but shouldn't move the camera again).
+      if (fittedJourneyRef.current !== journeyId) fitJourney(map, journeyRef.current, { padding: journeyPad() })
+      fittedJourneyRef.current = journeyId
+    } else {
+      fittedJourneyRef.current = null
+      applyHighlight(map, activeSpeciesRef2.current)
+      const cam = preJourneyCamRef.current
+      preJourneyCamRef.current = null
+      if (cam) map.flyTo({ center: cam.center, zoom: cam.zoom, duration: 1000, essential: true })
+    }
+  }, [journeyId, layersReady])
+  if (mapApiRef) {
+    mapApiRef.current = {
+      fitJourney: () => fitJourney(mapRef.current, journeyRef.current, { padding: journeyPad() }),
+      zoomTo: (lng, lat) => {
+        const map = mapRef.current
+        if (map) map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 9.5), duration: 900, essential: true })
+      },
+    }
+  }
+
 
 
   return (

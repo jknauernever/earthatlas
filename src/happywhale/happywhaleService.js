@@ -114,12 +114,16 @@ function normEncounter(raw) {
     individual: ind ? {
       id: ind.id,
       primaryId: ind.primaryId || null,
-      nickname: ind.nickname || null,
+      nickname: cleanNickname(ind.nickname),
       sex: ind.sex || null,
       avatar: normMedia(ind.avatar),
     } : null,
   }
 }
+
+// HappyWhale fills unnamed whales' nickname with placeholders like "<adoption pending>" / "<nickname pending>".
+// Treat any <…> value as no name yet, so cards fall back to the catalog ID (e.g. CRC-10025).
+const cleanNickname = (n) => (typeof n === 'string' && n.trim() && !/^<.*>$/.test(n.trim()) ? n.trim() : null)
 
 const toDateStr = (ms) => new Date(ms).toISOString().slice(0, 10)
 
@@ -169,7 +173,7 @@ export async function fetchIndividualTrack({ id, signal } = {}) {
   const data = await proxyJSON(`individual&id=${encodeURIComponent(id)}`, { signal })
   if (!data || !data.individual) throw new Error('unexpected individual payload')
   return {
-    individual: { ...data.individual, avatar: normMedia(data.individual.avatar) },
+    individual: { ...data.individual, nickname: cleanNickname(data.individual.nickname), avatar: normMedia(data.individual.avatar) },
     encounters: (data.encs || []).map(normEncounter).filter(Boolean).sort((a, b) => a.time - b.time),
   }
 }

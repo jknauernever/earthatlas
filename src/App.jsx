@@ -9,6 +9,8 @@ import { fetchEBirdObservations } from './services/eBird'
 import { resolveSpecies } from './services/taxonCrosswalk'
 import { getDateRangeStart, getTaxonMeta } from './utils/taxon'
 import { quantizeBounds } from './explore/wildQuery'
+import { fetchHappyWhaleObservations, hwSpeciesUnder, hwSpeciesName, hwScientificName, HW_GBIF_INSTITUTION } from './happywhale/hwMainSource'
+import { useWhaleJourney, WhaleCard } from './happywhale/whaleJourney.jsx'
 import { track } from './utils/analytics'
 
 import Header           from './components/Header'
@@ -38,6 +40,8 @@ const QP_SCHEMA = {
   z:       { type: 'number' },
   mlat:    { type: 'number' },
   mlng:    { type: 'number' },
+  // HappyWhale individual whose journey is open on the map (shared with /happywhale's ind=).
+  ind:     { type: 'number' },
 }
 
 export default function App() {
@@ -177,7 +181,10 @@ export default function App() {
     }
     setSelectedSpecies(enriched)
     selectedSpeciesRef.current = enriched
-    setActiveMapSpecies((enriched.scientificName || enriched.name || '').toLowerCase() || null)
+    // Highlight (and gray the rest) only for a single species/subspecies pick. A group pick (Cetaceans, a genus…) has
+    // nothing to single out: every dot already belongs to it, and no record's name equals the group's, so all would gray.
+    const GROUP_RANK = enriched.rank && !['species', 'subspecies', 'variety', 'form', 'hybrid'].includes(enriched.rank)
+    setActiveMapSpecies(GROUP_RANK ? null : ((enriched.scientificName || enriched.name || '').toLowerCase() || null))
     setQP({ species: enriched.id || null })
     if (search) handleSearchRef.current?.(urlMapBoundsRef.current)
   }, [setQP])
@@ -245,26 +252,40 @@ export default function App() {
   // (all-life seasonality is just an observer-effort curve — no referent,
   // no ribbon). Same facet class the subsites use: 24h edge / 1h browser.
   const [seasonPattern, setSeasonPattern] = useState(null)
+  // The grid cell around what's on screen (set by applyHomeView). The chart follows it, so panning to a new area
+  // re-asks GBIF; pans inside the same cell keep the same (edge-cached) request.
+  const [seasonCell, setSeasonCell] = useState(null)
+  const SEASON_SETTLE_MS = 1000
+  const hasSeasonRef = useRef(false) // first chart loads at once; only refreshes wait
+  hasSeasonRef.current = !!seasonPattern
   useEffect(() => {
     const taxonKeys = selectedSpecies?.gbifKey
       ? [selectedSpecies.gbifKey]
       : (activeTaxon !== 'all' ? ICONIC_TO_TAXON_KEYS[activeTaxon] : null)
     if (!taxonKeys || !taxonKeys.length) { setSeasonPattern(null); return }
-    const cell = heldRef.current?.cell
+    const cell = seasonCell
+      || heldRef.current?.cell
       || (lastRealBoundsRef.current ? quantizeBounds(lastRealBoundsRef.current) : null)
     if (!cell) { setSeasonPattern(null); return }
     let dead = false
-    fetchSeasonalFacet({ bounds: cell, taxonKeys })
-      .then((p) => { if (!dead) setSeasonPattern(p) })
-      .catch(() => { if (!dead) setSeasonPattern(null) })
-    return () => { dead = true }
-  }, [selectedSpecies, activeTaxon, totalResults])
+    // Wait for the map to settle: while someone drags around, each new area restarts this wait and the old chart
+    // stays up, so it updates once when they stop instead of flickering through every cell they pass.
+    const timer = setTimeout(() => {
+      fetchSeasonalFacet({ bounds: cell, taxonKeys })
+        .then((p) => { if (!dead) setSeasonPattern(p) })
+        .catch(() => { if (!dead) setSeasonPattern(null) })
+    }, hasSeasonRef.current ? SEASON_SETTLE_MS : 0)
+    return () => { dead = true; clearTimeout(timer) }
+  }, [selectedSpecies, activeTaxon, seasonCell, totalResults])
 
   const applyHomeView = useCallback((viewBB) => {
     const h = heldRef.current
     if (!h) return
     let rows = h.rows
     if (viewBB) {
+      const c = quantizeBounds(viewBB)
+      setSeasonCell((prev) => (prev && prev.minLat === c.minLat && prev.maxLat === c.maxLat
+        && prev.minLng === c.minLng && prev.maxLng === c.maxLng ? prev : c))
       rows = h.rows.filter((r) => {
         const la = rowLat(r); const ln = rowLng(r)
         return la != null && la >= viewBB.minLat && la <= viewBB.maxLat && ln >= viewBB.minLng && ln <= viewBB.maxLng
@@ -356,7 +377,11 @@ export default function App() {
           && (!iconicFilter || iconicFilter === 'Aves')
         const canFilterGBIF = !hasSpeciesFilter || !!selSp?.gbifKey
 
-        const [inatData, ebirdData, gbifData] = await Promise.all([
+        // HappyWhale (same live API as /happywhale) when the picked taxon covers species it tracks — Cetaceans,
+        // a whale, seals, penguins… Unknown speciesKeys are left out (see hwMainSource).
+        const canFilterHW = !!selSp?.id && hwSpeciesUnder(selSp.id).size > 0
+
+        const [inatData, ebirdData, gbifData, hwData] = await Promise.all([
           fetchObservations({
             ...locParams,
             d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
@@ -390,24 +415,37 @@ export default function App() {
                 iconicTaxa: iconicFilter,
               }).catch(() => ({ results: [], total_results: 0 }))
             : Promise.resolve({ results: [], total_results: 0 }),
+
+          canFilterHW
+            ? fetchHappyWhaleObservations({
+                taxonId: selSp.id,
+                bounds: searchBounds || null,
+                d1, d2: d1 ? d2 : undefined,
+              }).catch(() => null)
+            : Promise.resolve(null),
         ])
+
+        // With the live HappyWhale rows loaded, drop HappyWhale's own (older) copies on GBIF so nothing counts twice.
+        const hwLive = !!hwData
 
         const gbifFiltered = (gbifData.results || []).filter(
           r => r.datasetKey !== GBIF_INAT_DATASET && r.datasetKey !== GBIF_EBIRD_DATASET
             && r.basisOfRecord !== 'LIVING_SPECIMEN'
+            && !(hwLive && r.institutionCode === HW_GBIF_INSTITUTION)
         )
 
         allResults = [
           ...(inatData.results || []),
           ...(ebirdData.results || []),
           ...gbifFiltered,
+          ...(hwData?.results || []),
         ]
         // Use iNat total as primary count, add unique GBIF records (excluding
         // iNat/eBird datasets already counted) and eBird observations
         const inatTotal = inatData.total_results || 0
         const ebirdTotal = ebirdData.total_results || 0
         const gbifUniqueCount = gbifFiltered.length // already deduplicated against iNat/eBird datasets
-        totalCount = inatTotal + ebirdTotal + gbifUniqueCount
+        totalCount = inatTotal + ebirdTotal + gbifUniqueCount + (hwData?.total_results || 0)
 
       }
 
@@ -531,6 +569,7 @@ export default function App() {
       const { emoji } = getTaxonMeta(iconicTaxon)
       const isEBird = obs.source === 'eBird'
       const isGBIF = obs.source === 'GBIF'
+      const isHW = obs.source === 'HappyWhale'
       return {
         id: String(obs.id),
         speciesKey: taxon?.id || taxon?.name || null,
@@ -543,12 +582,34 @@ export default function App() {
         date: obs.observed_on || null,
         time: isEBird ? (obs._obsDt || null) : isGBIF ? null : (obs.time_observed_at || null),
         place: obs.place_guess || null,
-        observer: isEBird ? null : isGBIF ? (obs.recordedBy || null) : (obs.user?.login || null),
+        observer: isEBird || isHW ? null : isGBIF ? (obs.recordedBy || null) : (obs.user?.login || null),
         photos: obs.photos?.map(p => p.url?.replace('square', 'medium')).filter(Boolean) || [],
-        source: isEBird ? 'eBird' : isGBIF ? 'GBIF' : 'iNaturalist',
+        source: isEBird ? 'eBird' : isGBIF ? 'GBIF' : isHW ? 'HappyWhale' : 'iNaturalist',
+        hw: obs.hw || null, // HappyWhale encounter + identified individual (popup journey button)
       }
     }).filter(Boolean)
   }, [observations])
+
+  // ─── HappyWhale journey (shared with /happywhale, src/happywhale/whaleJourney.jsx) ───
+  // The whale's sightings worldwide on this map, its card in the sidebar. HappyWhale rows already loaded stand in when
+  // its record lists none yet.
+  const hwLocal = useMemo(() => observations
+    .filter((o) => o.source === 'HappyWhale' && o.hw?.individual)
+    .map((o) => ({
+      id: o.hw.encounterId,
+      lat: o.geojson.coordinates[1],
+      lng: o.geojson.coordinates[0],
+      date: o.observed_on,
+      time: o.observed_on ? Date.parse(`${o.observed_on}T12:00:00Z`) : 0,
+      region: o.place_guess,
+      speciesKey: o.hw.speciesKey,
+      media: o.photos?.[0]?.url ? { url: o.photos[0].url, thumbUrl: o.photos[0].url } : null,
+      individual: o.hw.individual,
+    })), [observations])
+  const whaleId = qp.ind ?? null
+  const setWhaleId = useCallback((id) => setQP({ ind: id ?? null }), [setQP])
+  const { track: whaleTrack, legs: whaleLegs } = useWhaleJourney(whaleId, { local: hwLocal, onMissing: () => setWhaleId(null) })
+  const exploreMapApiRef = useRef(null)
 
   // Aggregate sightings into species for the sidebar — group by binomial name
   // so observations from different sources and subspecies merge into one entry
@@ -619,10 +680,11 @@ export default function App() {
   const statusText = loading
     ? `Fetching observations from ${sourceName}…`
     : totalResults !== null
-    ? !coords
+    // A map view in the URL scopes the search to that area even with no location set, so it is NOT worldwide.
+    ? urlMapBounds
+      ? `${countPhrase} in the visible map area${coords && locationName ? ` near ${locationName}` : ''} — ${TIME_LABELS[timeWindow]}.`
+      : !coords
       ? `${countPhrase} worldwide — ${TIME_LABELS[timeWindow]}. Zoom in to see individual observations.`
-      : urlMapBounds
-      ? `${countPhrase} in the visible map area near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
       : `${countPhrase} near ${locationName || 'your location'} — ${TIME_LABELS[timeWindow]}.`
     : error
     ? `Error: ${error}`
@@ -703,6 +765,10 @@ export default function App() {
                 sightings={mapSightings}
                 center={coords}
                 activeSpecies={activeMapSpecies}
+                journey={whaleTrack}
+                journeyLegs={whaleLegs}
+                onShowJourney={setWhaleId}
+                mapApiRef={exploreMapApiRef}
                 onCenterChange={handleMapMove}
                 searchId={searchId}
                 initialView={(qp.mlat != null && qp.mlng != null && qp.z != null)
@@ -714,12 +780,25 @@ export default function App() {
                 <SeasonRibbon
                   pattern={seasonPattern}
                   styles={exploreStyles}
-                  question={selectedSpecies?.name
-                    ? `When is the ${selectedSpecies.name} here?`
-                    : `When are ${getTaxonMeta(activeTaxon).label.toLowerCase()} here?`}
+                  subjectLabel={selectedSpecies?.name || getTaxonMeta(activeTaxon).label}
                 />
               )}
             </div>
+            {whaleTrack?.individual ? (
+            <div className="species-sidebar" style={{ padding: 0, overflow: 'hidden' }}>
+              <WhaleCard
+                key={whaleId}
+                inline
+                track={whaleTrack}
+                speciesName={hwSpeciesName}
+                scientificName={hwScientificName(whaleTrack.individual.speciesKey)}
+                onClose={() => setWhaleId(null)}
+                onZoomJourney={() => exploreMapApiRef.current?.fitJourney()}
+                onSelectRelative={(id) => setWhaleId(id)}
+                onZoomStop={(e) => exploreMapApiRef.current?.zoomTo(e.lng, e.lat)}
+              />
+            </div>
+            ) : (
             <div className="species-sidebar">
               <div className={exploreStyles.speciesPanelHead} style={{ padding: '8px 12px 4px' }}>
                 <div className={exploreStyles.speciesPanelTitle}>Recent observations in view</div>
@@ -765,6 +844,7 @@ export default function App() {
                 )
               })}
             </div>
+            )}
           </div>
         )}
       </main>
@@ -774,8 +854,10 @@ export default function App() {
         <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>
         {', '}
         <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a>
-        {' & '}
+        {', '}
         <a href="https://www.gbif.org" target="_blank" rel="noopener noreferrer">GBIF</a>
+        {' & '}
+        <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">HappyWhale</a>
         {' '}— <strong>powered by citizen science</strong>.
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>

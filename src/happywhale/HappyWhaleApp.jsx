@@ -25,12 +25,11 @@ import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import {
   fetchSpeciesConfig,
   fetchEncounters,
-  fetchIndividualTrack,
-  sampleArrowPoints,
   speciesColor,
-  individualUrl,
 } from './happywhaleService.js'
-import { routeJourney } from './oceanRouting.js'
+import {
+  fmtDate, lngLatBoundsFor, useWhaleJourney, addJourneyPathLayers, addJourneyStopLayers, setJourneyOnMap, WhaleCard,
+} from './whaleJourney.jsx'
 import styles from './HappyWhaleApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 
@@ -68,49 +67,6 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
-function fmtDate(d) {
-  if (!d) return ''
-  return new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-// HappyWhale individual bios arrive as markdown ("Mother of [**Scuba**](url)").
-// Render just the subset they actually use — links and bold — as React nodes:
-// text stays escaped, and hrefs are regex-limited to http(s), so nothing a
-// bio author writes can inject markup.
-function renderBoldRuns(text, keyBase) {
-  const out = []
-  const re = /\*\*([^*]+)\*\*/g
-  let last = 0
-  let m
-  let i = 0
-  while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index))
-    out.push(<strong key={`${keyBase}b${i++}`}>{m[1]}</strong>)
-    last = m.index + m[0].length
-  }
-  if (last < text.length) out.push(text.slice(last))
-  return out
-}
-
-function renderMarkdownLite(text) {
-  const nodes = []
-  const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g
-  let last = 0
-  let m
-  let i = 0
-  while ((m = linkRe.exec(text))) {
-    if (m.index > last) nodes.push(...renderBoldRuns(text.slice(last, m.index), `t${i}`))
-    nodes.push(
-      <a key={`a${i}`} href={m[2]} target="_blank" rel="noopener noreferrer">
-        {renderBoldRuns(m[1], `l${i}`)}
-      </a>,
-    )
-    last = m.index + m[0].length
-    i++
-  }
-  if (last < text.length) nodes.push(...renderBoldRuns(text.slice(last), 'tail'))
-  return nodes
-}
 
 function countLabel(min, max) {
   if (min == null && max == null) return null
@@ -118,8 +74,6 @@ function countLabel(min, max) {
   const n = max ?? min
   return n === 1 ? '1 animal' : `${n} animals`
 }
-
-const SEX_GLYPH = { MALE: '♂', FEMALE: '♀' }
 
 // Geodesic circle polygon for the radius overlay (same as /quakes).
 function radiusCircleGeoJSON(centerLat, centerLng, radiusMiles, points = 96) {
@@ -137,22 +91,6 @@ function radiusCircleGeoJSON(centerLat, centerLng, radiusMiles, points = 96) {
   return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
 }
 
-// Wrap-aware bounds: shift each longitude to within 180° of the first point,
-// so a set of points spanning the antimeridian fits the short way around
-// instead of stretching the bounds across the whole globe (which zooms the
-// camera out to z≈1 centered somewhere meaningless).
-function lngLatBoundsFor(coords) {
-  if (!coords.length) return null
-  const ref = coords[0][0]
-  const b = new mapboxgl.LngLatBounds()
-  for (const [lng, lat] of coords) {
-    let L = lng
-    while (L - ref > 180) L -= 360
-    while (L - ref < -180) L += 360
-    b.extend([L, lat])
-  }
-  return b
-}
 
 // A species can have sightings in several oceans, and a box around all of
 // them centers the camera on empty water between the clusters (bottlenose:
@@ -249,8 +187,6 @@ export default function HappyWhaleApp() {
   const [center, setCenter] = useState(initialCenter)
   const [radius, setRadius] = useState(() => (RADIUS_OPTIONS.includes(initial.r) ? initial.r : DEFAULT_RADIUS))
   const [selectedInd, setSelectedInd] = useState(() => (Number.isFinite(initial.ind) ? initial.ind : null))
-  const [track, setTrack] = useState(null) // { individual, encounters } | null
-  const [journeyLegs, setJourneyLegs] = useState(null) // water-routed [[lng,lat],…] legs
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
@@ -260,8 +196,6 @@ export default function HappyWhaleApp() {
   const suppressFlyRef = useRef(!!(initialCamera || initialCenter))
   // Read by the camera effect without re-triggering it on journey changes.
   const selectedIndRef = useRef(null)
-  // Read by the journey fetch without re-triggering it on data refreshes.
-  const encountersRef = useRef([])
   // A shared link with both a camera and a journey shouldn't fit-bounds away
   // from the shared camera on load.
   const suppressTrackFitRef = useRef(!!(initialCamera && Number.isFinite(initial.ind)))
@@ -275,7 +209,9 @@ export default function HappyWhaleApp() {
 
   const isGlobal = !center
   selectedIndRef.current = selectedInd
-  encountersRef.current = encounters
+  // The selected whale's journey (shared with the main search — whaleJourney.jsx): sightings worldwide + legs routed
+  // through water. Falls back to the sightings on this map when HappyWhale's record lists none yet.
+  const { track, legs: journeyLegs } = useWhaleJourney(selectedInd, { local: encounters, onMissing: () => setSelectedInd(null) })
 
   const speciesByKey = useMemo(
     () => Object.fromEntries(speciesConfig.map((s) => [s.code, s])),
@@ -388,50 +324,8 @@ export default function HappyWhaleApp() {
         map.addLayer({ id: 'radius-fill', type: 'fill', source: 'radius-circle', paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.08 } })
         map.addLayer({ id: 'radius-line', type: 'line', source: 'radius-circle', paint: { 'line-color': '#38bdf8', 'line-width': 1.5, 'line-opacity': 0.7 } })
       }
-      if (!map.getSource('hw-track')) {
-        map.addSource('hw-track', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-        // Water-routed journey legs (see oceanRouting.js): a dotted sea path
-        // between consecutive stops…
-        map.addLayer({
-          id: 'hw-track-line',
-          type: 'line',
-          source: 'hw-track',
-          filter: ['==', ['geometry-type'], 'LineString'],
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': ['get', 'color'],
-            'line-width': 1.5,
-            'line-opacity': 0.65,
-            'line-dasharray': [1.5, 2.2],
-          },
-        })
-        // …with direction-of-travel arrows sampled along it. Pre-sampled
-        // point glyphs with a zoom-LOD rank (Mapbox line placement drops
-        // symbols unpredictably; see sampleArrowPoints).
-        const rankGate = (minRank) => ['case', ['>=', ['get', 'rank'], minRank], 26, 0]
-        map.addLayer({
-          id: 'hw-track-arrows',
-          type: 'symbol',
-          source: 'hw-track',
-          filter: ['==', ['geometry-type'], 'Point'],
-          layout: {
-            'text-field': '→',
-            'text-size': ['interpolate', ['linear'], ['zoom'],
-              2, rankGate(7), 3, rankGate(6), 4, rankGate(5), 5, rankGate(4),
-              6, rankGate(3), 7, rankGate(2), 8, rankGate(1), 9, rankGate(0),
-            ],
-            'text-rotate': ['get', 'rot'],
-            'text-rotation-alignment': 'map',
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-          },
-          paint: {
-            'text-color': ['get', 'color'],
-            'text-halo-color': 'rgba(0,0,0,0.55)',
-            'text-halo-width': 1.4,
-          },
-        })
-      }
+      // Journey path (dotted, water-routed, with direction arrows) sits under the encounter dots.
+      addJourneyPathLayers(map)
       if (!map.getSource('hw-encounters')) {
         map.addSource('hw-encounters', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({
@@ -439,13 +333,12 @@ export default function HappyWhaleApp() {
           type: 'circle',
           source: 'hw-encounters',
           paint: {
-            // Journey stops (seq set) render larger so the numbered badges
-            // fit. NB: a zoom interpolate must be the OUTERMOST expression —
+            // NB: a zoom interpolate must be the OUTERMOST expression —
             // wrapping it in ['+', …] silently rejects the whole layer.
             'circle-radius': ['interpolate', ['linear'], ['zoom'],
-              1, ['case', ['to-boolean', ['get', 'seq']], 8, ['case', ['get', 'identified'], 4.5, 3]],
-              6, ['case', ['to-boolean', ['get', 'seq']], 11, ['case', ['get', 'identified'], 8, 5.5]],
-              10, ['case', ['to-boolean', ['get', 'seq']], 15, ['case', ['get', 'identified'], 12, 8]],
+              1, ['case', ['get', 'identified'], 4.5, 3],
+              6, ['case', ['get', 'identified'], 8, 5.5],
+              10, ['case', ['get', 'identified'], 12, 8],
             ],
             'circle-color': ['get', 'color'],
             // Journey mode GHOSTS everything that isn't the selected whale —
@@ -456,27 +349,8 @@ export default function HappyWhaleApp() {
             'circle-stroke-color': ['case', ['get', 'identified'], '#ffffff', 'rgba(0,0,0,0.35)'],
           },
         })
-        // Chronological stop numbers for the active journey (1 = oldest).
-        // Numbered stops replace path lines entirely: real encounters carry no
-        // route information, and straight connectors send whales over land.
-        map.addLayer({
-          id: 'hw-journey-seq',
-          type: 'symbol',
-          source: 'hw-encounters',
-          filter: ['to-boolean', ['get', 'seq']],
-          layout: {
-            'text-field': ['to-string', ['get', 'seq']],
-            'text-size': 11,
-            'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-          },
-          paint: {
-            'text-color': '#ffffff',
-            'text-halo-color': 'rgba(0,0,0,0.7)',
-            'text-halo-width': 1.2,
-          },
-        })
+        // Numbered journey stops (1 = oldest) above everything else.
+        addJourneyStopLayers(map)
 
         map.on('mouseenter', 'hw-encounters-layer', () => { map.getCanvas().style.cursor = 'pointer' })
         map.on('mouseleave', 'hw-encounters-layer', () => { map.getCanvas().style.cursor = '' })
@@ -550,18 +424,11 @@ export default function HappyWhaleApp() {
     if (!map || !mapReady) return
     const src = map.getSource('hw-encounters')
     if (!src) return
-    // A journey is a full-history view: the selected whale's own encounters
-    // always render as dots even when the time-range/species filters would
-    // hide them. Each carries its chronological stop number (1 = oldest).
-    const seqById = new Map((track?.encounters || []).map((e, i) => [e.id, i + 1]))
-    const shown = new Set(filteredEncounters.map((e) => e.id))
-    const journeyEncounters = (track?.encounters || [])
-      .filter((e) => !shown.has(e.id))
-      .map((e) => ({ ...e, individual: e.individual || { id: selectedInd } }))
-    // Identified encounters go last so they render ON TOP of unidentified ones
-    // in dense clusters — and journey stops last of all.
-    const ordered = [...filteredEncounters, ...journeyEncounters]
-      .sort((a, b) => ((seqById.has(a.id) ? 2 : a.individual ? 1 : 0) - (seqById.has(b.id) ? 2 : b.individual ? 1 : 0)))
+    // A journey's stops draw in their own layer (addJourneyStopLayers), including sightings the time-range/species
+    // filters hide; here everything that isn't the selected whale ghosts.
+    const onJourney = new Set((track?.encounters || []).map((e) => e.id))
+    // Identified encounters go last so they render ON TOP of unidentified ones in dense clusters.
+    const ordered = [...filteredEncounters].sort((a, b) => (a.individual ? 1 : 0) - (b.individual ? 1 : 0))
     src.setData({
       type: 'FeatureCollection',
       features: ordered.map((e) => ({
@@ -570,8 +437,7 @@ export default function HappyWhaleApp() {
           color: speciesColor(e.speciesKey),
           speciesName: speciesName(e.speciesKey),
           identified: !!e.individual,
-          seq: seqById.get(e.id) ?? null,
-          dim: selectedInd != null && !seqById.has(e.id),
+          dim: selectedInd != null && !onJourney.has(e.id),
           date: e.date,
           region: e.region,
           location: e.location,
@@ -592,41 +458,7 @@ export default function HappyWhaleApp() {
     })
   }, [filteredEncounters, track, selectedInd, mapReady, speciesName])
 
-  // ─── Journey mode: fetch the selected individual's track ──────────────────
-  // Deliberately NOT keyed on mapReady — a second fetch after map init would
-  // produce a fresh track object, re-running the draw effect after its
-  // fit-suppression flag was consumed and stomping a URL-shared camera.
-  useEffect(() => {
-    if (selectedInd == null) { setTrack(null); return }
-    const ac = new AbortController()
-    fetchIndividualTrack({ id: selectedInd, signal: ac.signal })
-      .then((res) => {
-        if (ac.signal.aborted) return
-        if (!res.individual) { setSelectedInd(null); return }
-        if (!res.encounters.length) {
-          // Upstream inconsistency: /encounters links sightings to this
-          // individual but /individual/info lists none (seen live 2026-09,
-          // presumably fresh matches not yet propagated). Fall back to the
-          // sightings already loaded on the map, and let the card say so.
-          const local = encountersRef.current
-            .filter((e) => e.individual?.id === selectedInd)
-            .slice()
-            .sort((a, b) => a.time - b.time)
-          setTrack({ ...res, encounters: local, partial: true })
-          return
-        }
-        setTrack(res)
-      })
-      .catch((err) => {
-        if (ac.signal.aborted || err.name === 'AbortError') return
-        console.error('happywhale: individual track failed', err)
-        setSelectedInd(null)
-      })
-    return () => ac.abort()
-  }, [selectedInd])
-
-  // Frame the active journey (the numbered stops render via the encounters
-  // source — see the seq property above).
+  // Frame the active journey.
   const fitToTrack = useCallback((id) => {
     const map = mapRef.current
     if (!map || !track || (id != null && track.individual?.id !== id)) return
@@ -642,54 +474,11 @@ export default function HappyWhaleApp() {
     fitTrackRef.current?.()
   }, [track, mapReady])
 
-  // Route the journey's legs through water (async: lazy-loads the land mask
-  // on the first journey, then A* per leg).
-  useEffect(() => {
-    if (!track || track.encounters.length < 2) { setJourneyLegs(null); return }
-    let cancelled = false
-    routeJourney(track.encounters)
-      .then((legs) => { if (!cancelled) setJourneyLegs(legs) })
-      .catch(() => { if (!cancelled) setJourneyLegs(null) })
-    return () => { cancelled = true }
-  }, [track])
-
-  // A partial journey (upstream listed no sightings) may have resolved before
-  // the map's encounter data — fill it in when that data lands.
-  useEffect(() => {
-    if (!track?.partial || track.encounters.length) return
-    const local = encounters
-      .filter((e) => e.individual?.id === track.individual.id)
-      .slice()
-      .sort((a, b) => a.time - b.time)
-    if (local.length) setTrack((t) => (t && t.partial && !t.encounters.length ? { ...t, encounters: local } : t))
-  }, [encounters, track])
-
-  // Draw (or clear) the routed legs + direction arrows.
+  // Draw (or clear) the journey: numbered stops now, routed legs + arrows once routing finishes.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    const src = map.getSource('hw-track')
-    if (!src) return
-    if (!journeyLegs || !track) {
-      src.setData({ type: 'FeatureCollection', features: [] })
-      return
-    }
-    const color = speciesColor(track.individual?.speciesKey)
-    src.setData({
-      type: 'FeatureCollection',
-      features: [
-        ...journeyLegs.map((l) => ({
-          type: 'Feature',
-          properties: { color },
-          geometry: { type: 'LineString', coordinates: l.coords },
-        })),
-        ...sampleArrowPoints(journeyLegs).map((p) => ({
-          type: 'Feature',
-          properties: { color, rot: p.rot, rank: p.rank },
-          geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-        })),
-      ],
-    })
+    setJourneyOnMap(map, track, journeyLegs)
   }, [journeyLegs, track, mapReady])
 
   // ─── Radius circle overlay ────────────────────────────────────────────────
@@ -793,7 +582,7 @@ export default function HappyWhaleApp() {
     setSelectedInd(null)
     // The effects clear these too; doing it here as well guarantees no
     // leftover route/stop artifacts even if a state update is interrupted.
-    mapRef.current?.getSource('hw-track')?.setData({ type: 'FeatureCollection', features: [] })
+    setJourneyOnMap(mapRef.current, null)
     const cam = preJourneyCameraRef.current
     preJourneyCameraRef.current = null
     if (cam) mapRef.current?.flyTo({ center: cam.center, zoom: cam.zoom, duration: 1000, essential: true })
@@ -816,7 +605,7 @@ export default function HappyWhaleApp() {
     if (selectedIndRef.current != null) {
       setSelectedInd(null)
       preJourneyCameraRef.current = null
-      mapRef.current?.getSource('hw-track')?.setData({ type: 'FeatureCollection', features: [] })
+      setJourneyOnMap(mapRef.current, null)
     }
     const subset = key === 'all' ? encounters : encounters.filter((e) => e.speciesKey === key)
     const map = mapRef.current
@@ -1032,207 +821,6 @@ export default function HappyWhaleApp() {
 }
 
 // ─── "How this is sourced" modal ────────────────────────────────────────────
-// ─── Right-hand whale card (the /ships card idiom: glass card, segmented
-// tabs). Tab state lives here; the parent remounts the card per whale
-// (key={selectedInd}) so a new whale always opens on Overview. ────────────────
-
-// Relatives are not a structured API field — researchers encode them as
-// happywhale.com/individual links in the bio ("Mother of [**Scuba**](…)").
-function familyLinks(bio, selfId) {
-  if (!bio) return []
-  const out = []
-  const seen = new Set()
-  const re = /\[([^\]]+)\]\(https?:\/\/happywhale\.com\/individual\/(\d+)\/?\)/g
-  let m
-  while ((m = re.exec(bio))) {
-    const id = Number(m[2])
-    if (id === selfId || seen.has(id)) continue
-    seen.add(id)
-    out.push({ id, label: m[1].replace(/\*\*/g, '') })
-  }
-  return out
-}
-
-const havKmApp = (lat1, lng1, lat2, lng2) => {
-  const r = Math.PI / 180
-  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
-    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lng2 - lng1) * r) / 2) ** 2
-  return 2 * 6371 * Math.asin(Math.sqrt(a))
-}
-
-const SEX_WORDS = { MALE: 'Male', FEMALE: 'Female' }
-
-// "British Columbia, Canada" → "British Columbia": the card is tight on
-// width and the country rarely disambiguates; full text stays in tooltips.
-const regionShort = (r) => (r || '').split(',')[0].trim()
-
-function WhaleCard({ track, speciesName, scientificName, onClose, onZoomJourney, onSelectRelative, onZoomStop }) {
-  const [tab, setTab] = useState('overview')
-  const ind = track.individual
-  const encs = track.encounters
-  const fam = useMemo(() => familyLinks(ind.bio, ind.id), [ind])
-  const span = encs.length ? [encs[0].date, encs[encs.length - 1].date] : null
-  // Overview facts, all derived from the loaded sightings.
-  const facts = useMemo(() => {
-    const heroEnc = [...encs].reverse().find((e) => e.media?.url || e.media?.thumbUrl)
-    let distKm = 0
-    for (let i = 1; i < encs.length; i++) distKm += havKmApp(encs[i - 1].lat, encs[i - 1].lng, encs[i].lat, encs[i].lng)
-    const regionCount = new Map()
-    for (const e of encs) if (e.region) regionCount.set(e.region, (regionCount.get(e.region) || 0) + 1)
-    const regions = [...regionCount.entries()].sort((a, b) => b[1] - a[1])
-    const years = new Set(encs.map((e) => (e.date || '').slice(0, 4)).filter(Boolean))
-    return {
-      hero: heroEnc ? (heroEnc.media.url || heroEnc.media.thumbUrl) : null,
-      heroDate: heroEnc?.date || null,
-      distKm: Math.round(distKm),
-      regions,
-      years: years.size,
-    }
-  }, [encs])
-  const tabs = [
-    ['overview', 'Overview'],
-    ['family', fam.length ? `Family · ${fam.length}` : 'Family'],
-    ['sightings', `Sightings · ${encs.length}`],
-  ]
-  return (
-    <div className={styles.wcWrap}>
-      <div className={styles.wcCard} role="dialog" aria-label="Whale card">
-        <button type="button" className={styles.wcClose} onClick={onClose} aria-label="Close whale card">×</button>
-
-        <div className={styles.wcHead}>
-          {ind.avatar?.thumbUrl
-            ? <img className={styles.wcAvatar} src={ind.avatar.thumbUrl} alt="" />
-            : <span className={styles.journeyDot} style={{ background: speciesColor(ind.speciesKey) }} />}
-          <div>
-            <div className={styles.wcName}>
-              {SEX_GLYPH[ind.sex] ? `${SEX_GLYPH[ind.sex]} ` : ''}{ind.nickname || 'Identified individual'}
-            </div>
-            <div className={styles.journeyMeta}>
-              {speciesName(ind.speciesKey)}{ind.primaryId ? ` · ${ind.primaryId}` : ''}
-            </div>
-            <div className={styles.journeyMeta}>
-              {encs.length} encounters{span ? ` · ${fmtDate(span[0])} → ${fmtDate(span[1])}` : ''}
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.wcTabs} role="tablist">
-          {tabs.map(([id, label]) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id}
-              className={`${styles.wcTab} ${tab === id ? styles.wcTabOn : ''}`} onClick={() => setTab(id)}>{label}</button>
-          ))}
-        </div>
-
-        {tab === 'overview' && (
-          <div>
-            {track.partial && (
-              <div className={styles.journeyDisclaimer}>
-                HappyWhale's record for this whale doesn't list its sightings yet —
-                showing {encs.length ? `the ${encs.length}` : 'none'} from the current map search.
-              </div>
-            )}
-            {facts.hero && (
-              <img className={styles.wcHero} src={facts.hero} alt=""
-                title={facts.heroDate ? `Photographed ${fmtDate(facts.heroDate)} — © the contributing photographer, via HappyWhale` : ''} />
-            )}
-            {(scientificName || SEX_WORDS[ind.sex]) && (
-              <div className={styles.journeyMeta}>
-                {scientificName && <em>{scientificName}</em>}
-                {scientificName && SEX_WORDS[ind.sex] ? ' · ' : ''}{SEX_WORDS[ind.sex] || ''}
-              </div>
-            )}
-            {encs.length > 0 && (
-              <div className={styles.statGrid}>
-                <div className={styles.statBox}><span className={styles.statVal}>{facts.years}</span><span className={styles.statKey}>{facts.years === 1 ? 'year seen' : 'years seen'}</span></div>
-                <div className={styles.statBox}><span className={styles.statVal}>{facts.distKm >= 100 ? `${facts.distKm.toLocaleString()}` : '—'}</span><span className={styles.statKey}>km ≥ traveled</span></div>
-                <div className={styles.statBox}><span className={styles.statVal}>{facts.regions.length}</span><span className={styles.statKey}>{facts.regions.length === 1 ? 'region' : 'regions'}</span></div>
-              </div>
-            )}
-            {(facts.regions.length > 0 || encs.length > 0) && (
-              <div className={styles.wcKVs}>
-                {facts.regions.length > 0 && (
-                  <div className={styles.wcKV}>
-                    <span className={styles.wcK}>Seen in</span>
-                    <span className={styles.wcV} title={facts.regions.map(([r, n]) => `${r} (${n})`).join(' · ')}>
-                      {facts.regions.slice(0, 3).map(([r, n]) => `${regionShort(r)} (${n})`).join(' · ')}
-                      {facts.regions.length > 3 ? ` · +${facts.regions.length - 3} more` : ''}
-                    </span>
-                  </div>
-                )}
-                {encs.length > 0 && (
-                  <div className={styles.wcKV}>
-                    <span className={styles.wcK}>First seen</span>
-                    <span className={styles.wcV}>{fmtDate(encs[0].date)}{encs[0].region ? ` · ${regionShort(encs[0].region)}` : ''}</span>
-                  </div>
-                )}
-                {encs.length > 0 && (
-                  <div className={styles.wcKV}>
-                    <span className={styles.wcK}>Last seen</span>
-                    <span className={styles.wcV}>{fmtDate(encs[encs.length - 1].date)}{encs[encs.length - 1].region ? ` · ${regionShort(encs[encs.length - 1].region)}` : ''}</span>
-                  </div>
-                )}
-                <div className={styles.wcKV}>
-                  <span className={styles.wcK}>On the map</span>
-                  <span className={styles.wcV}>Stops numbered ① oldest → newest</span>
-                </div>
-              </div>
-            )}
-            <div className={styles.journeyDisclaimer}>
-              Exact routes of whales between points are not known, but estimated. Distance
-              is the shortest path between sightings — the whale swam at least this far.
-            </div>
-            {ind.bio && <div className={styles.journeyBio}>{renderMarkdownLite(ind.bio)}</div>}
-            <button type="button" className={styles.journeyZoom} onClick={onZoomJourney}>⟶ Zoom to journey</button>
-            <a className={styles.journeyLink} href={individualUrl(ind.id)} target="_blank" rel="noopener noreferrer">
-              View on HappyWhale ↗
-            </a>
-          </div>
-        )}
-
-        {tab === 'family' && (
-          <div>
-            {fam.length === 0 && (
-              <div className={styles.journeyMeta}>
-                No relatives linked in this whale's records yet — family appears when
-                researchers link relatives in the HappyWhale bio.
-              </div>
-            )}
-            {fam.map((f) => (
-              <button key={f.id} type="button" className={styles.wcRow} onClick={() => onSelectRelative(f.id)}
-                title="Open this relative's journey">
-                <span className={styles.wcRowMain}>{f.label}</span>
-                <span className={styles.wcRowAction}>journey ⟶</span>
-              </button>
-            ))}
-            {fam.length > 0 && (
-              <div className={styles.journeyDisclaimer}>
-                Relatives as linked by researchers in the HappyWhale bio.
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'sightings' && (
-          <div>
-            {encs.map((e, i) => (
-              <button key={e.id} type="button" className={styles.wcRow} onClick={() => onZoomStop(e)}
-                title="Zoom to this sighting on the map">
-                <span className={styles.wcSeq}>{i + 1}</span>
-                {e.media?.thumbUrl && <img className={styles.wcThumb} src={e.media.thumbUrl} alt="" loading="lazy" />}
-                <span className={styles.wcRowMain}>
-                  {fmtDate(e.date)}
-                  <span className={styles.wcRowSub}>{[e.location, e.region].filter(Boolean).join(' · ') || e.ocean || ''}</span>
-                </span>
-                <span className={styles.wcRowAction}>⌖</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 function MethodologyModal({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }

@@ -2,7 +2,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 /**
- * SeasonRibbon — "which months are they here?", docked on the map.
+ * SeasonRibbon — sightings by month in this area, docked on the map.
  *
  * A read-only histogram of sighting density by month across all years of
  * records, for every species on the map — or, when a species is selected
@@ -13,7 +13,9 @@ const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
  *   subjectLabel — species common name when one is selected, else null
  *   styles       — CSS module from parent
  */
-export default function SeasonRibbon({ pattern = [], subjectLabel = null, question = null, styles }) {
+// The heading is name-first on purpose: subject names can be one species ("Orca") or a group ("Cetaceans"),
+// so a sentence like "When is the … here?" can't be grammatical for both. Callers pass only the name.
+export default function SeasonRibbon({ pattern = [], subjectLabel = null, styles }) {
   const maxCount = Math.max(...pattern.map((p) => p.count), 1)
   const total = pattern.reduce((s, p) => s + p.count, 0)
   const thisMonth = new Date().getMonth()
@@ -23,7 +25,7 @@ export default function SeasonRibbon({ pattern = [], subjectLabel = null, questi
     <div className={styles.ribbon} data-map-bottom-bar="">
       <div className={styles.ribbonHead}>
         <div className={styles.ribbonTitle}>
-          {question || (subjectLabel ? `When is the ${subjectLabel} here?` : 'When are they here?')}
+          {subjectLabel ? `${subjectLabel} — sightings by month in this area` : 'Sightings by month in this area'}
           <small>{total.toLocaleString()} sightings · all years combined</small>
         </div>
       </div>

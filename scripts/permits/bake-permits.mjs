@@ -40,9 +40,7 @@ async function query(layer, params) {
   for (let offset = 0; ; ) {
     const p = new URLSearchParams({ outFields: '*', outSR: '4326', f: 'json', ...params })
     if (offset) p.set('resultOffset', String(offset))
-    const res = await fetch(`${layer}/query?${p}`, { headers: UA })
-    if (!res.ok) throw new Error(`${layer} → HTTP ${res.status}`)
-    const j = await res.json()
+    const j = await getJson(`${layer}/query?${p}`).catch((e) => { throw new Error(`${layer} → ${e.message}`) })
     if (j.error) throw new Error(`${layer} → ${JSON.stringify(j.error)}`)
     out.push(...j.features)
     if (!j.exceededTransferLimit || !j.features.length) return out
@@ -51,9 +49,7 @@ async function query(layer, params) {
 }
 async function queryGeojson(layer, params) {
   const p = new URLSearchParams({ outFields: '*', outSR: '4326', f: 'geojson', ...params })
-  const res = await fetch(`${layer}/query?${p}`, { headers: UA })
-  if (!res.ok) throw new Error(`${layer} → HTTP ${res.status}`)
-  const j = await res.json()
+  const j = await getJson(`${layer}/query?${p}`).catch((e) => { throw new Error(`${layer} → ${e.message}`) })
   if (j.error) throw new Error(`${layer} → ${JSON.stringify(j.error)}`)
   if (j.properties?.exceededTransferLimit) throw new Error(`${layer} → truncated; add paging`)
   return j
@@ -793,10 +789,20 @@ function violationLevel(trail, today = new Date().toISOString().slice(0, 10)) {
   return counts.pollution || counts.evasion >= 3 ? { level: 'red', ...counts } : counts.evasion || counts.minor ? { level: 'orange', ...counts } : null
 }
 
+// Agency servers drop connections now and then (the Corps feed reset one mid-bake, 2026-10-14): 60 s timeout, and a
+// network error or 5xx is retried up to 3 times with a growing pause. A 4xx is a real answer and is not retried.
 async function getJson(url) {
-  const res = await fetch(url, { headers: UA })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(60000) })
+      if (res.status >= 500 && attempt < 3) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { final: true })
+      return await res.json()
+    } catch (e) {
+      if (e.final || attempt >= 3) throw e
+      await new Promise((r) => setTimeout(r, 3000 * attempt))
+    }
+  }
 }
 // Every place a record cites a doc, in words, for the source page's "Used on the map for" list.
 function usesOf(records, unmapped) {

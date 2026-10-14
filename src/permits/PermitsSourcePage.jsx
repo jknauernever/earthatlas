@@ -2,12 +2,13 @@
  * /permits/source/<key>: one data-service record behind a /permits source link, readable (Josh 2026-10-13: "the
  * source ↗ links are linking to non-human readable documents"). Same layout and CSS as /ships/source/<id>: who
  * published it and under what licence, when EarthAtlas read it, where to see it at the source, what it says, what the
- * map uses it for, and the data exactly as received. Data: public/permits-data/records/<key>.json (scripts/permits/bake-permits.mjs).
+ * map uses it for, and the data exactly as received. Data: records/<key>.json via permitsData.js (scripts/permits/bake-permits.mjs).
  */
 import { Fragment, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loading } from '../components/panel'
 import styles from '../ships/SourceRecordPage.module.css'
+import { fetchPermitsJson, permitsBase } from './permitsData.js'
 
 const day = (x) => (x ? String(x).slice(0, 10) : null)
 
@@ -18,9 +19,7 @@ export default function PermitsSourcePage() {
   const [raw, setRaw] = useState(false)
   useEffect(() => {
     if (!/^[A-Za-z0-9_.-]+$/.test(key || '')) { setError('That record doesn’t exist.'); return }
-    fetch(`/permits-data/records/${key}.json`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? 'That record doesn’t exist.' : `Couldn’t load it (${r.status}).`))))
-      .then(setRec).catch((e) => setError(e.message))
+    fetchPermitsJson(`records/${key}.json`).then(setRec).catch(() => setError('That record doesn’t exist, or couldn’t be loaded.'))
   }, [key])
   useEffect(() => { if (rec) document.title = `Source record · ${rec.title} · EarthAtlas PermitTracker` }, [rec])
 
@@ -48,6 +47,9 @@ export default function PermitsSourcePage() {
           <section className={styles.facts}>
             {rec.url && <a className={styles.primaryLink} href={rec.url} target="_blank" rel="noopener noreferrer">See it at the source ↗</a>}
             {!rec.url && rec.home && <a className={styles.primaryLink} href={rec.home.href} target="_blank" rel="noopener noreferrer">Visit {rec.home.label} ↗</a>}
+            {rec.copies?.map((c, i) => (
+              <a key={c} className={styles.primaryLink} href={`${permitsBase()}/notices/${c}`} target="_blank" rel="noopener noreferrer">EarthAtlas’s archived copy{rec.copies.length > 1 ? ` ${i + 1}` : ''} (PDF) ↗</a>
+            ))}
             {rec.look_up && (
               <div className={styles.ids}>
                 {!rec.url && <span className={styles.idsHint}>To find it there, look up:</span>}

@@ -19,7 +19,8 @@
 //
 // Nothing is estimated: a value the services do not return is left out, never filled in.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 
 const CURATED = 'data/permits/curated.json'
 const OUT_DIR = 'public/permits-data'
@@ -31,6 +32,7 @@ export const SERVICES = {
   echoFacilities: 'https://echogeo.epa.gov/arcgis/rest/services/ECHO/Facilities/MapServer/0',
   wq303d: 'https://gis.ecology.wa.gov/serverext/rest/services/Authoritative/WQ/FeatureServer/4',
   shellfish: 'https://services8.arcgis.com/rGGrs6HCnw87OFOT/ArcGIS/rest/services/Commercial_Shellfish_Growing_Areas/FeatureServer/0',
+  aquatics: 'https://gis.ecology.wa.gov/serverext/rest/services/SEA/Aquatics/MapServer/1',
 }
 
 async function query(layer, params) {
@@ -351,7 +353,7 @@ function corpsRecords(features, curatedNumbers, docs, raw) {
       applicant: p.applicant || p.projectName?.split(' (')[0] || 'Not stated in the record',
       type: p.permitType ? (p.vtype === 'wrda' ? `${p.permitType} verification` : p.permitType) : ORM_TYPE[p.vtype] || 'Corps action',
       lat, lon, approx: false,
-      position: { text: 'Position: the Army Corps database’s own point for this action.', src: key },
+      position: { text: 'from the Army Corps record', src: key },
       refs: [{ label: p.identifier, src: key }, ...(p.ajdUrl ? [{ label: `${n}: approved jurisdictional determination`, src: `${key}-ajd` }] : [])],
       status: { label, cls, src: key },
       // The feed has no description for most actions; the popup then shows only its title, never a repeat of it.
@@ -445,6 +447,199 @@ async function parisDocsOf(permit) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return parisRows(await res.text(), permit)
   } catch (e) { console.warn(`  PARIS ${permit}: ${e.message}`); return null }
+}
+
+// ─── Army Corps public notices (Regulatory Request System) ───
+// The Corps lists a notice only while its comment period is open, then archives it. Each bake reads the open list
+// (one request, nationwide) and keeps San Juan ones: the notice's own point in the county box, or county named
+// San Juan. Every notice found is archived for good in data/permits/corps-notices/<id>.json (committed; never deleted)
+// with its PDF copied to public/permits-data/notices/ (`copies` holds the file names), so the project description stays readable after the Corps
+// takes the notice down. US Government work (public domain).
+const RRS = 'https://rrs.usace.army.mil/api/publicnotice'
+const NOTICE_TYPE = { SP: 'Standard permit public notice', SPN: 'Special public notice', LOP: 'Letter of Permission notice', DWOFA: 'Funding agreement notice' }
+const daBase = (da) => /^(NWS-\d{4}-\d+)/.exec(String(da || ''))?.[1] || String(da || '')
+const isoDay = (v) => (v ? String(v).slice(0, 10) : null)
+export async function archiveNotices({ dir = 'data/permits/corps-notices', pdfDir = `${OUT_DIR}/notices`, include = () => false } = {}) {
+  mkdirSync(dir, { recursive: true }); mkdirSync(pdfDir, { recursive: true })
+  const res = await fetch(`${RRS}/getPublicNotices`, { method: 'POST', headers: { ...UA, 'Content-Type': 'application/json' }, body: '{}' })
+  if (!res.ok) throw new Error(`RRS list → HTTP ${res.status}`)
+  const list = (await res.json())?.data?.publicNotices || []
+  const now = new Date().toISOString()
+  const hits = list.filter((n) => include(n) || (n.districtCode === 'NWS' && ((n.longitude >= BBOX[0] && n.longitude <= BBOX[2] && n.latitude >= BBOX[1] && n.latitude <= BBOX[3]) || /san juan/i.test(n.county || ''))))
+  for (const n of hits) {
+    const file = `${dir}/${n.publicNoticeID}.json`
+    const prev = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null
+    let notice = n
+    try { const d = await getJson(`${RRS}/getPublicNotice?id=${n.publicNoticeID}`); if (d?.data) notice = d.data } catch (e) { console.warn(`  notice ${n.publicNoticeID}: ${e.message}`) }
+    const copies = prev?.copies || []
+    for (const [i, u] of (notice.urls || []).entries()) {
+      const out = `${pdfDir}/${n.publicNoticeID}-${i + 1}.pdf`
+      if (existsSync(out)) continue
+      try { const r = await fetch(u, { headers: UA }); if (!r.ok) throw new Error(`HTTP ${r.status}`); writeFileSync(out, Buffer.from(await r.arrayBuffer())); copies.push(`${n.publicNoticeID}-${i + 1}.pdf`) } catch (e) { console.warn(`  notice PDF ${u}: ${e.message}`) }
+    }
+    writeFileSync(file, JSON.stringify({ first_retrieved: prev?.first_retrieved || now, last_retrieved: now, copies, notice: notice || prev?.notice }, null, 1))
+  }
+  console.log(`corps notices: ${list.length} open nationwide, ${hits.length} San Juan`)
+  return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')))
+}
+function noticeRows(n) {
+  return rowsOf([['Project', n.projectName], ['Applicant', n.applicantName || n.applicantCompany], ['Corps file number', n.daNumber],
+    ['Kind of notice', NOTICE_TYPE[n.actionType] || n.actionType], ['Notice published', isoDay(n.startDate)], ['Comments accepted until', isoDay(n.commentsEndDate)],
+    ['County', n.county], ['Location', n.latitude != null ? `${n.latitude}, ${n.longitude}` : null], ['Watershed (HUC)', n.hydrologicUnitCode],
+    ['What the notice says', n.description]])
+}
+// Attach each archived notice to its Corps record (same file number), or make a record for a project the permit
+// database doesn't hold yet.
+export function noticeRecords(archived, projects, docs, raw) {
+  const out = []
+  for (const a of archived) {
+    const n = a.notice
+    if (!n) continue
+    const key = `pn-${n.publicNoticeID}`
+    const base = daBase(n.daNumber)
+    docs[key] = { title: `Army Corps public notice: ${n.projectName}`, agency: 'corps', kind: 'Record', record: true,
+      url: n.urls?.[0] || null, look_up: n.daNumber, ...(a.copies?.length ? { copies: a.copies } : {}) }
+    raw.set(key, { api: `${RRS}/getPublicNotice?id=${n.publicNoticeID}`, payload: n, rows: noticeRows(n) })
+    const trail = [
+      ...(isoDay(n.startDate) ? [{ date: isoDay(n.startDate), agency: 'corps', event: `Corps public notice published (${NOTICE_TYPE[n.actionType] || n.actionType})`, src: key }] : []),
+      ...(isoDay(n.commentsEndDate) ? [{ date: isoDay(n.commentsEndDate), agency: 'corps', event: 'Public comment period ends', src: key }] : []),
+    ]
+    const r = projects.find((p) => p.id === `orm-${base}` || (p.refs || []).some((x) => x.src === `orm-${base}`))
+    if (r) {
+      r.facts = [...(r.facts || []), { label: 'The project, as the Corps’ public notice describes it', value: n.description, src: key }]
+      r.trail = [...(r.trail || []), ...trail]
+      r.refs = [...(r.refs || []), { label: `${n.daNumber}: public notice`, src: key }]
+      continue
+    }
+    if (n.latitude == null) { console.warn(`  notice ${n.publicNoticeID}: no position`); continue }
+    const open = isoDay(n.commentsEndDate) >= new Date().toISOString().slice(0, 10)
+    out.push({
+      id: key, layer: 'structures', county: 'San Juan', name: n.projectName, applicant: n.applicantName || n.applicantCompany || 'Not stated in the notice',
+      type: NOTICE_TYPE[n.actionType] || 'Corps public notice', lat: n.latitude, lon: n.longitude, approx: false,
+      position: { text: 'from the Corps’ public notice', src: key },
+      refs: [{ label: n.daNumber, src: key }],
+      status: { label: open ? `Open for public comment until ${isoDay(n.commentsEndDate)}` : 'Public notice issued; comment period closed', cls: 'warn', src: key },
+      summary: { text: n.description, src: key }, facts: [], trail, joins: [], source: 'corps-notice',
+    })
+  }
+  return out
+}
+
+// ─── Ecology's federal-permit unit (401 water quality certifications, CZM decisions, state administrative orders) ───
+// Three public reads, all keyed by Ecology's Aquatics project id:
+//   1. "Aquatics Locations" map layer: every project the unit handled, with a point, the Corps file number, the
+//      project type and flags (401 / CZM / AO action, in water, in wetland). San Juan = WRIA 02.
+//   2. Status viewer (GET, filtered to San Juan County): 401 and CZM status with dates, the description and the
+//      project's history (Corps actions and Ecology orders, each with its reference number). Covers recent projects.
+//   3. Decisions page: the 401/CZM decision PDFs of the last six months.
+const AQ_STATUS = 'https://apps.ecology.wa.gov/aquatics/status'
+const AQ_DECISIONS = 'https://apps.ecology.wa.gov/aquatics/decisions/'
+const htmlLines = (h) => h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, '\n').split('\n')
+  .map((l) => decodeHtml(l).replace(/ /g, ' ').trim()).filter(Boolean)
+const mdyLoose = (v) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(v || ''); return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null }
+const fedNumber = (ref) => (/^\d{9}$/.test(ref || '') ? `NWS-${ref.slice(0, 4)}-${ref.slice(4)}` : null)
+// One Status-viewer card per project: label lines, each followed by its value(s); status definitions skipped.
+function parseAquaticsStatus(h) {
+  const lines = htmlLines(h), out = new Map()
+  const DEF = /^(Pre-Filing|In Review|Decision Issued|Closed - No Action) - /
+  for (let i = 0; i < lines.length - 1; i++) {
+    const m = /^(.*) \((\d{3,7})\)$/.exec(lines[i])
+    if (!m || lines[i + 1] !== 'County') continue
+    const c = { id: m[2], name: m[1], history: [] }
+    let j = i + 1, cur = null
+    for (; j < lines.length && lines[j] !== 'Close'; j++) {
+      const x = lines[j]
+      if (['County', 'Description', 'Project Proponent', 'AO Status', 'AO Status Date', 'CZM Status', 'CZM Request Status Date', 'WQC Request Status', 'WQC Request Status Date', 'Project History', 'Waterbody', 'WRIA', 'Region', 'Project Manager'].includes(x)) { cur = x; continue }
+      if (/Status Definition$/.test(x) || DEF.test(x)) continue
+      const h = /^(\d{1,2}\/\d{1,2}\/\d{4}) - (FED|ECY): (.*)$/.exec(x)
+      if (cur === 'Project History' && h) { c.history.push({ date: mdyLoose(h[1]), by: h[2], what: h[3] }); continue }
+      if (cur === 'Project History' && /^Reference #:/.test(x)) continue
+      if (cur === 'Project History' && /^End Date:/.test(x)) { const l = c.history.at(-1); if (l) l.end = mdyLoose(x.replace('End Date:', '').trim()); continue }
+      if (cur === 'Project History' && c.history.length && !c.history.at(-1).ref) { c.history.at(-1).ref = x; continue }
+      const key = { 'AO Status': 'ao', 'AO Status Date': 'aoDate', 'CZM Status': 'czm', 'CZM Request Status Date': 'czmDate', 'WQC Request Status': 'wqc', 'WQC Request Status Date': 'wqcDate', Description: 'description', 'Project Proponent': 'proponent', Waterbody: 'waterbody', County: 'county' }[cur]
+      if (key && !c[key]) c[key] = /Date$/.test(key) ? mdyLoose(x) : x
+    }
+    out.set(c.id, c)
+    i = j
+  }
+  return out
+}
+// The decisions table: Aquatics id, issue date, Corps number, Ecology order number, applicant, project, county, action, PDF.
+function parseAquaticsDecisions(h) {
+  const out = []
+  for (const r of h.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []) {
+    const c = [...r.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((x) => decodeHtml(x[1]))
+    const pdf = /\/aquatics\/downloadaction\/(\d+)/.exec(r)?.[1]
+    if (c.length >= 8 && /SAN JUAN/i.test(c[6]) && pdf) out.push({ id: c[0], date: mdyLoose(c[1]), fed: c[2], order: c[3], action: c[7], url: `https://apps.ecology.wa.gov/aquatics/downloadaction/${pdf}` })
+  }
+  return out
+}
+function aquaticsRows(a, st) {
+  return rowsOf([['Project', a.ProjectName], ['Applicant', a.Applicant], ['Ecology Aquatics id', a.AquaticsId], ['Kind of project', a.ProjectCategory],
+    ['Corps file number', fedNumber(a.FederalReferenceNumber) || a.FederalReferenceNumber], ['Waterbody', st?.waterbody || a.Waterbody],
+    ['401 water quality certification', st?.wqc ? `${st.wqc}${st.wqcDate ? ` (${st.wqcDate})` : ''}` : a.Has401Action ? 'A 401 action is on record' : 'No 401 action on record'],
+    ['Coastal Zone consistency', st?.czm ? `${st.czm}${st.czmDate ? ` (${st.czmDate})` : ''}` : a.HasCZMAction ? 'A CZM action is on record' : null],
+    ['State order (Ecology administrative order, RCW 90.48)', st?.ao ? `${st.ao}${st.aoDate ? ` (${st.aoDate})` : ''}` : a.HasAOAction ? 'An order is on record' : null],
+    ['Denied', a.HasDeniedAction ? 'Yes' : null], ['In water / in a wetland', [a.InWater ? 'in water' : null, a.InWetland ? 'in a wetland' : null].filter(Boolean).join(', ')],
+    ['Still open at Ecology', a.IsActiveFlag ? 'Yes' : 'No'], ['Where Ecology’s point comes from', a.LocationSource], ['What the project is', st?.description],
+    ...(st?.history || []).map((x) => [`History, ${x.date}`, `${x.by === 'FED' ? 'Army Corps' : 'Ecology'}: ${x.what}${x.ref ? ` (reference ${x.ref})` : ''}${x.end ? `, comments until ${x.end}` : ''}`])])
+}
+async function ecologyAquatics(docs, raw, projects) {
+  const pts = (await query(SERVICES.aquatics, { where: '1=1', geometry: BBOX.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', returnGeometry: 'false' }))
+    .map((f) => f.attributes).filter((a) => !a.WRIA || /^\(02\)/.test(a.WRIA))
+  let status = new Map(), decisions = []
+  try { status = parseAquaticsStatus(await (await fetch(`${AQ_STATUS}?CountyName=SAN%20JUAN&Paging.ItemsPerPage=500`, { headers: UA })).text()) } catch (e) { console.warn(`  Ecology status viewer: ${e.message}`) }
+  try { decisions = parseAquaticsDecisions(await (await fetch(AQ_DECISIONS, { headers: UA })).text()) } catch (e) { console.warn(`  Ecology decisions: ${e.message}`) }
+  const byNumber = new Map()
+  for (const r of projects) for (const k of [r.id, ...(r.refs || []).map((x) => x.src)]) if (/^orm-NWS-/.test(k)) byNumber.set(k.slice(4), r)
+  const out = []
+  let attached = 0
+  for (const a of pts) {
+    const id = String(a.AquaticsId), st = status.get(id), key = `aq-${id}`
+    docs[key] = { title: `Ecology federal permits record: ${a.ProjectName} (Aquatics ${id})`, agency: 'ecology', kind: 'Record', record: true,
+      url: st ? `${AQ_STATUS}?ProjectId=${id}` : null, look_up: `Aquatics ${id}` }
+    raw.set(key, { api: `${SERVICES.aquatics}/query?where=AquaticsId%3D%27${id}%27&outFields=*&f=json`, payload: { layer: a, status: st || null }, rows: aquaticsRows(a, st) })
+    const fed = fedNumber(a.FederalReferenceNumber)
+    const history = st?.history || []
+    const orders = history.filter((x) => x.by === 'ECY' && /^401$/.test(x.what) && x.ref)
+    const has401 = !!(a.Has401Action || orders.length || st?.wqc === 'Decision Issued')
+    const trail = history.map((x) => ({ date: x.date, agency: x.by === 'FED' ? 'corps' : 'ecology', src: key,
+      event: x.by === 'FED' ? `Corps: ${x.what}${x.ref ? ` (file ${fedNumber(x.ref) || x.ref})` : ''}` : /^401$/.test(x.what) ? `401 certification issued${x.ref ? `, order ${x.ref}` : ''}` : x.what.replace(/^ECY - PN/, 'Ecology public notice:') }))
+    if (st?.wqc && st.wqcDate && !history.some((x) => x.date === st.wqcDate)) trail.push({ date: st.wqcDate, agency: 'ecology', event: `401 request: ${st.wqc}`, src: key })
+    for (const d of decisions.filter((x) => x.id === id)) {
+      const dk = `ecy-aq-${id}-${d.order || d.action.replace(/\W+/g, '')}-${d.date}`
+      docs[dk] = { title: `Ecology ${d.action}${d.order ? `, Order ${d.order}` : ''}`, about: a.ProjectName, agency: 'ecology', kind: 'PDF', url: d.url }
+      trail.push({ date: d.date, agency: 'ecology', event: `${d.action} issued${d.order ? `, order ${d.order}` : ''}`, src: dk })
+    }
+    const facts = [
+      { label: '401 water quality certification', value: st?.wqc ? `${st.wqc}${st.wqcDate ? `, ${st.wqcDate}` : ''}` : has401 ? 'A 401 action is on record' : 'No 401 action on record', src: key },
+      ...(st?.description ? [{ label: 'What the project is (Ecology)', value: st.description, src: key }] : []),
+    ]
+    const r = fed && byNumber.get(fed)
+    if (r) {
+      // Same Corps file: Ecology's record joins the existing one.
+      r.facts = [...(r.facts || []), ...facts]
+      r.trail = [...(r.trail || []), ...trail.filter((t) => !(r.trail || []).some((u) => u.date === t.date && u.event === t.event))]
+      r.refs = [...(r.refs || []), { label: `Ecology Aquatics ${id}`, src: key }]
+      if (has401) r.cert401 = true
+      attached++
+      continue
+    }
+    if (a.Latitude == null || a.Longitude == null) continue
+    const fedKind = history.filter((x) => x.by === 'FED').at(0)?.what
+    out.push({
+      id: key, layer: 'structures', county: 'San Juan', name: a.ProjectName, applicant: a.Applicant || 'Not stated in the record',
+      type: a.ProjectCategory || 'Project reviewed by Ecology', lat: a.Latitude, lon: a.Longitude, approx: false,
+      position: { text: 'from Ecology’s record', src: key },
+      refs: [{ label: `Ecology Aquatics ${id}`, src: key }, ...(fed ? [{ label: `Corps file ${fed}`, src: key }] : [])],
+      status: { label: st?.wqc ? `401: ${st.wqc.toLowerCase()}` : has401 ? '401 action on record' : fedKind ? `Corps: ${fedKind.toLowerCase()}` : a.IsActiveFlag ? 'Open at Ecology' : 'Closed at Ecology', cls: 'n', src: key },
+      ...(st?.description ? { summary: { text: st.description, src: key } } : {}),
+      facts: facts.filter((f) => f.label !== 'What the project is (Ecology)'), trail: trail.sort((x, y) => String(x.date).localeCompare(String(y.date))), joins: [],
+      source: 'ecology-aquatics', ...(has401 ? { cert401: true } : {}), ...(fed ? { corpsRef: fed } : {}), ...(a.HasAOAction ? { stateOrder: true } : {}),
+    })
+  }
+  console.log(`ecology aquatics: ${pts.length} San Juan projects (${status.size} with status detail, ${decisions.length} recent decisions); ${attached} joined to Corps records, ${out.length} mapped on their own`)
+  return out
 }
 
 async function getJson(url) {
@@ -542,8 +737,8 @@ async function main() {
     const vio = fkey && raw.get(fkey).dfr ? violationsOf(raw.get(fkey).dfr, p.permit, fkey) : null
     let position
     if (c.pos) position = { lat: c.pos.lat, lon: c.pos.lon, text: c.pos.text, src: c.pos.src }
-    else if (p.lat != null) position = { lat: p.lat, lon: p.lon, text: `Position: EPA ECHO's ${String(p.latlongType || 'permit').toLowerCase()} point for this permit.`, src: key }
-    else if (fac && inBox(fac.FAC_LAT, fac.FAC_LONG)) position = { lat: fac.FAC_LAT, lon: fac.FAC_LONG, text: "Position: EPA ECHO's facility point (no usable outfall point).", src: fkey }
+    else if (p.lat != null) position = { lat: p.lat, lon: p.lon, text: 'from EPA’s permit record', src: key }
+    else if (fac && inBox(fac.FAC_LAT, fac.FAC_LONG)) position = { lat: fac.FAC_LAT, lon: fac.FAC_LONG, text: 'from EPA’s facility record (the permit record has no usable point)', src: fkey }
     else { console.warn(`  ${p.permit}: no position in the county, left off the map`); continue }
     const facts = [
       { label: 'Permit expires', value: p.expires || 'Not stated', src: key },
@@ -588,6 +783,10 @@ async function main() {
   if ((ormAll.total ?? 0) >= 5000) throw new Error(`ORM feed: ${ormAll.total} Seattle District records; over the 5,000 cap, add paging`)
   const corps = corpsRecords(ormAll.results?.features || [], curatedNumbers, docs, raw)
   const projects = [...curated.projects, ...corps]
+  let archived = []
+  try { archived = await archiveNotices() } catch (e) { console.warn(`  corps notices: ${e.message} (archived notices still used)`); archived = existsSync('data/permits/corps-notices') ? readdirSync('data/permits/corps-notices').filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(`data/permits/corps-notices/${f}`, 'utf8'))) : [] }
+  projects.push(...noticeRecords(archived, projects, docs, raw))
+  projects.push(...await ecologyAquatics(docs, raw, projects))
   const docked = joinDocks(projects, docs)
 
   // Every src must name a doc. Checked after the NPDES pass, which adds the echo-<permit> docs curated.json cites.
@@ -664,7 +863,7 @@ async function main() {
       console.warn(`  ${key}: no payload and no earlier copy`)
     }
     writeFileSync(file, JSON.stringify({
-      key, title: d.title, agency: d.agency, publisher: tags[d.agency]?.[1] || d.agency, sender: SENDER[d.agency] || null, url: d.url || null, look_up: d.look_up || null,
+      key, title: d.title, agency: d.agency, copies: d.copies || null, publisher: tags[d.agency]?.[1] || d.agency, sender: SENDER[d.agency] || null, url: d.url || null, look_up: d.look_up || null,
       home: HOME[d.agency] || null, licence: LICENCE[d.agency] || null, retrieved: r ? baked : null, api: r?.api || d.api || null,
       rows: r?.rows || [], uses: uses.get(key) || (key.startsWith('doh-class-') ? [{ id: null, name: d.look_up, what: 'Shellfish growing area classification on the map' }] : []),
       payload: r?.payload ?? null,
@@ -694,4 +893,5 @@ async function main() {
   console.log(`permits.json: ${JSON.stringify(meta.counts)}; source records ${[...raw.keys()].length} read, ${kept} kept from last bake`)
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
+// Runs when executed (npm run permits:bake), not when a test imports the notice helpers.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => { console.error(e); process.exit(1) })

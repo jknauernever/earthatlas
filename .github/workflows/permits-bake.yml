@@ -1,0 +1,42 @@
+# /permits weekly bake: re-reads every source (Army Corps permits + open public notices, EPA ECHO violations, Ecology
+# PARIS documents, Ecology 303(d), DOH shellfish) and publishes to Blob permits/ (scripts/permits/publish.mjs), which
+# earthatlas.org/permits reads. No commit, no Vercel build.
+#
+# Weekly because the Corps lists a public notice only while its comment period is open (about 30 days); each run
+# archives any San Juan notice (data + PDF) for good. The archive lives on Blob and is pulled before every bake.
+# publish.mjs refuses to replace the live data if the fresh bake lost much of it (an agency down, a feed changed).
+# Uploads use one-file tokens from api/cron/permits-upload-token.js (CRON_SECRET), never a Blob token.
+name: permits-bake
+
+on:
+  schedule:
+    - cron: '37 13 * * 1'   # Mondays 13:37 UTC (06:37 Pacific); GitHub may start it late
+  workflow_dispatch:
+    inputs:
+      dry_run: { description: 'Bake and gate only; upload nothing', type: boolean, default: false }
+
+concurrency:
+  group: permits-bake
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PERMITS_TOKEN_URL: https://earthatlas.org/api/cron/permits-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Pull the Corps notice archive from Blob
+        run: node scripts/permits/publish.mjs --pull
+      - name: Bake
+        run: node scripts/permits/bake-permits.mjs
+      - name: Gate and publish
+        run: node scripts/permits/publish.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

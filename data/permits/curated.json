@@ -25,7 +25,7 @@
    "lon": -122.9679,
    "approx": false,
    "position": {
-    "text": "Position: address match for 485 Broken Point Road (US Census geocoder). 512 Broken Point Road geocodes about 300 m south.",
+    "text": "address match for 485 Broken Point Road; 512 Broken Point Road is about 300 m south",
     "src": "census-broken-point"
    },
    "refs": [
@@ -170,7 +170,7 @@
    "lon": -122.98074,
    "approx": true,
    "position": {
-    "text": "Position approximate: the Bell Island named-feature point (GeoNames). The cable runs from Shaw (Plat of Tibbs Landing, Lot 2) to Bell, and the old cable crosses Pole Pass from Orcas.",
+    "text": "approximate: Bell Island. The cable runs from Shaw (Plat of Tibbs Landing, Lot 2) to Bell, and the old cable crosses Pole Pass from Orcas",
     "src": "geonames-bell-island"
    },
    "refs": [
@@ -305,7 +305,7 @@
    "lon": -122.93129,
    "approx": false,
    "position": {
-    "text": "Position: the Indian Cove named-feature point (GeoNames). Landfalls are 514 Indian Cove Road (Shaw) and 1 Canoe Island Road.",
+    "text": "Indian Cove (named place). The landfalls are 514 Indian Cove Road (Shaw) and 1 Canoe Island Road",
     "src": "geonames-indian-cove"
    },
    "refs": [
@@ -428,7 +428,7 @@
    "lon": -122.9724,
    "approx": true,
    "position": {
-    "text": "Position approximate: the Double Island point (Wikipedia). The Orcas landfall, Perseverance Point at 324 Perseverance Lane, could not be geocoded.",
+    "text": "approximate: Double Island. The Orcas landfall, Perseverance Point at 324 Perseverance Lane, could not be placed",
     "src": "wiki-double-island"
    },
    "refs": [
@@ -557,7 +557,7 @@
    "lon": -123.12729,
    "approx": false,
    "position": {
-    "text": "Position: address match for 1165 West Valley Road (US Census geocoder), inside Section 12, T35N R4W as the order states. The pond itself is not a named feature.",
+    "text": "address match for 1165 West Valley Road, inside Section 12, T35N R4W as the order states",
     "src": "census-west-valley"
    },
    "refs": [
@@ -687,7 +687,7 @@
    "lon": -123.20077,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2022-00056"
    },
    "refs": [
@@ -780,7 +780,7 @@
    "lon": -122.89854,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2022-00061"
    },
    "refs": [
@@ -823,7 +823,7 @@
    "lon": -123.00372,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2021-00304"
    },
    "refs": [
@@ -865,7 +865,7 @@
    "lon": -122.83681,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this record.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2026-00264"
    },
    "refs": [
@@ -906,7 +906,7 @@
    "lon": -123.00055,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2025-00624"
    },
    "refs": [
@@ -950,7 +950,7 @@
    "lon": -122.84657,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2022-00876"
    },
    "refs": [
@@ -987,7 +987,7 @@
    "lon": -122.98114,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2026-00732"
    },
    "refs": [
@@ -1027,7 +1027,7 @@
    "lon": -122.9611,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this permit.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2026-00749"
    },
    "refs": [
@@ -1067,7 +1067,7 @@
    "lon": -122.94236,
    "approx": false,
    "position": {
-    "text": "Position: the Corps database's own point for this record.",
+    "text": "from the Army Corps record",
     "src": "orm-NWS-2025-00697"
    },
    "refs": [
@@ -1108,7 +1108,7 @@
    "lon": -123.01568,
    "approx": false,
    "position": {
-    "text": "Position: the Friday Harbor Marina named-feature point (GeoNames). The staff report gives 204 Front Street and three parcels.",
+    "text": "Friday Harbor Marina (named place). The staff report gives 204 Front Street and three parcels",
     "src": "geonames-friday-harbor"
    },
    "refs": [
@@ -1186,7 +1186,7 @@
    "lon": -122.94349,
    "approx": true,
    "position": {
-    "text": "Position approximate: the WSF Orcas terminal point (WSDOT terminal locations). The county dock is next to the terminal.",
+    "text": "approximate: the Orcas ferry terminal; the county dock is next to it",
     "src": "wsdot-terminals"
    },
    "refs": [],
@@ -1230,7 +1230,7 @@
    "lon": -122.91743,
    "approx": true,
    "position": {
-    "text": "Position approximate: Madrona Point, Eastsound (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: Madrona Point, Eastsound (the source names the place, not a point)",
     "src": "osm-node-9080154689"
    },
    "refs": [],
@@ -1272,7 +1272,7 @@
    "lon": -122.9317,
    "approx": true,
    "position": {
-    "text": "Position approximate: the middle of Blind Bay Road (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: the middle of Blind Bay Road (the source names the road, not a point)",
     "src": "osm-way-4735624"
    },
    "refs": [],
@@ -1308,7 +1308,7 @@
    "lon": -123.06648,
    "approx": true,
    "position": {
-    "text": "Position approximate: False Bay Drive beside False Bay (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: False Bay Drive beside False Bay (the source names the road, not a point)",
     "src": "osm-way-4738274"
    },
    "refs": [],
@@ -1344,7 +1344,7 @@
    "lon": -123.01101,
    "approx": true,
    "position": {
-    "text": "Position approximate: Jackson Beach (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: Jackson Beach (the source names the place, not a point)",
     "src": "osm-node-356543286"
    },
    "refs": [],
@@ -1380,7 +1380,7 @@
    "lon": -122.83008,
    "approx": true,
    "position": {
-    "text": "Position approximate: the middle of Center Island (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: the middle of Center Island (the source names the island, not a point)",
     "src": "osm-way-18727701"
    },
    "refs": [],
@@ -1416,7 +1416,7 @@
    "lon": -123.03986,
    "approx": true,
    "position": {
-    "text": "Position approximate: the middle of Waldron Island (the source does not say where on the island the float is) (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: the middle of Waldron Island (the source doesn’t say where on the island the float is)",
     "src": "osm-relation-5411062"
    },
    "refs": [],
@@ -1452,7 +1452,7 @@
    "lon": -122.83546,
    "approx": true,
    "position": {
-    "text": "Position approximate: the hamlet of Olga (OpenStreetMap). The source names the place, not an exact point.",
+    "text": "approximate: the hamlet of Olga (the source names the place, not a point)",
     "src": "osm-node-150979255"
    },
    "refs": [],
@@ -1592,7 +1592,7 @@
    "pos": {
     "lat": 48.49085,
     "lon": -122.81487,
-    "text": "Position: EPA's facility point. The outfall layer's coordinates for this permit are wrong (off the coast of Vancouver Island), so they are not used.",
+    "text": "from EPA’s facility record. EPA’s outfall record puts this permit off Vancouver Island, so it isn’t used",
     "src": "echo-WAG030038"
    }
   },
@@ -2030,7 +2030,7 @@
    "San Juan County"
   ],
   "town": [
-   "TOWN",
+   "FRIDAY HBR",
    "Town of Friday Harbor"
   ],
   "noaa": [

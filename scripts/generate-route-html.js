@@ -69,7 +69,7 @@ const ROUTES = [
     url: 'https://earthatlas.org/permits',
     title: 'PermitTracker: water permits, San Juan County · EarthAtlas',
     description:
-      'Every 2026 Clean Water Act permit and related action found in San Juan County, WA, joined across the Army Corps, Ecology, EPA, WDFW, the county, the town and NOAA, with impaired waters and shellfish areas. Every value links to its source. An EarthAtlas tool.',
+      'Clean Water Act permits and related actions in San Juan County, WA, joined across the Army Corps, Ecology, EPA, WDFW, San Juan County, the Town of Friday Harbor and NOAA, with violations, impaired waters and shellfish areas. Every value links to its source. An EarthAtlas tool.',
     // TODO: dedicated permits-social.png; generic EarthAtlas card as stopgap.
     image: 'https://earthatlas.org/earthatlas-social.jpg',
     imageAlt: 'EarthAtlas PermitTracker map of water permits in San Juan County, Washington',

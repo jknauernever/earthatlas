@@ -1,6 +1,7 @@
 /**
  * EarthAtlas /permits (PermitTracker): Clean Water Act permits and related actions in San Juan County, WA, 2026.
- * Data: public/permits-data/permits.json + wq303d.geojson + shellfish.geojson, baked by scripts/permits/bake-permits.mjs from
+ * Data: permits.json + wq303d.geojson + shellfish.geojson (permitsData.js: Blob in production, public/permits-data/ on
+ * localhost), baked weekly by scripts/permits/bake-permits.mjs from
  * data/permits/curated.json (hand-compiled) and live EPA ECHO / Ecology / DOH services.
  *
  * Follows docs/MAP_TOOL_CONVENTIONS.md: URL state (camera, basemap, selected record, layers), county aerials default
@@ -24,6 +25,7 @@ import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import SourcesFooter from '../components/panel/SourcesFooter.jsx'
 import { STATUS_WORDS, statusKey } from '../ships/permitStatus.js'
+import { fetchPermitsJson } from './permitsData.js'
 import { PERMITS_SOURCES, PERMITS_SOURCES_INTRO, PERMITS_SOURCES_NOTES } from './permitsSources.js'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './PermitsApp.module.css'
@@ -31,9 +33,6 @@ import styles from './PermitsApp.module.css'
 installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const DATA_URL = '/permits-data/permits.json'
-const WQ_URL = '/permits-data/wq303d.geojson'
-const SHELL_URL = '/permits-data/shellfish.geojson'
 const DEFAULT_VIEW = { center: [-122.98, 48.6], zoom: 10 }
 
 // Same basemaps as /sanjuan-docks: the county's 2025 aerials by default (no sun-glint on the water).
@@ -63,11 +62,15 @@ const DEFAULT_BASEMAP = 'sjc2025'
 const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[1]).style
 
 // Record layers (points) and receiving-water layers (polygons). Ids are the URL keys.
+// One color per kind of permit (Josh 2026-10-14: "label the colored dots for which type of permit they represent").
+// A record's kind comes from its own source documents (permitKindOf below), never from a guess.
 const LAYERS = [
-  { id: 'structures', label: 'Fill, dredge & in-water structures', note: 'Corps §404/§10 and Ecology §401', color: '#38bdf8' },
-  { id: 'npdes', label: 'Discharge permits', note: 'NPDES (§402)', color: '#f472b6' },
-  { id: 'local', label: 'Local & related actions', note: 'Town, county', color: '#fbbf24' },
+  { id: 'cert401', label: '401', desc: 'Ecology’s water-quality sign-off', note: 'Ecology’s water-quality sign-off: a Clean Water Act §401 certification of a federal permit, or a state order (Ecology’s “administrative order” under RCW 90.48) for waters the Corps doesn’t cover', color: '#a78bfa' },
+  { id: 'structures', label: '404', desc: 'Army Corps permit to build in the water', note: 'Army Corps permit to build or place fill in the water (Clean Water Act §404 / Rivers and Harbors Act §10)', color: '#38bdf8' },
+  { id: 'npdes', label: '402', desc: 'Discharge permit (sewage, stormwater, boatyards)', note: 'Discharge permit (Clean Water Act §402, NPDES), issued by Ecology', color: '#f472b6' },
+  { id: 'local', label: 'Other', desc: 'No permit record found yet', note: 'In-water work or a related county action with no 404, 401 or 402 record found', color: '#fbbf24' },
 ]
+const DEFAULT_OFF = ['shell', 'wq'] // sorted, as the URL writes them
 const WATERS = [
   { id: 'wq', label: 'Impaired waters', note: 'Ecology 303(d), Category 5', color: '#f97316' },
   { id: 'shell', label: 'Shellfish growing areas', note: 'DOH classification', color: '#4ade80' },
@@ -75,10 +78,24 @@ const WATERS = [
 // Matched by substring in this order, so "Conditionally Approved" is caught before "Approved".
 const SHELL_COLORS = { Conditionally: '#facc15', Prohibited: '#ef4444', Restricted: '#fb923c', Approved: '#4ade80' }
 
+// Which permits a record has, from the documents it cites: an Army Corps record (404 / §10, or a §408 request or a
+// jurisdictional determination), an Ecology 401 certification, an NPDES permit (402). `tag` is the dot's map label.
+function permitKindOf(r, docs) {
+  if (r.layer === 'npdes') return { layer: 'npdes', tag: '402' }
+  const keys = [...new Set((JSON.stringify(r).match(/"src":"[^"]+"/g) || []).map((m) => m.slice(7, -1)))]
+  const corps = keys.some((k) => docs[k]?.agency === 'corps') || !!r.corpsRef
+  const has401 = keys.some((k) => /401 certification/i.test(docs[k]?.title || '')) || !!r.cert401
+  const corpsTag = r.corpsKind === 's408' ? '408' : r.corpsKind === 'jds' ? 'JD' : '404'
+  if (has401) return { layer: 'cert401', tag: corps ? '401 + 404' : '401' }
+  if (r.stateOrder) return { layer: 'cert401', tag: 'State order' }
+  if (corps) return { layer: 'structures', tag: corpsTag }
+  return { layer: 'local', tag: '' }
+}
+
 function readUrlState() {
   const sp = new URLSearchParams(window.location.search)
   const num = (k) => { const v = sp.get(k); return v == null || v === '' ? NaN : Number(v) }
-  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off'), win: sp.get('win') }
+  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off') }
 }
 function writeUrlQuery(qs) {
   const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
@@ -155,6 +172,7 @@ const LAW = {
   nepa: ['National Environmental Policy Act §102', 'https://www.law.cornell.edu/uscode/text/42/4332'],
   sma: ['Washington Shoreline Management Act', 'https://app.leg.wa.gov/rcw/default.aspx?cite=90.58'],
   hpa: ['Washington Hydraulic Code', 'https://app.leg.wa.gov/rcw/default.aspx?cite=77.55'],
+  rcw9048: ['RCW 90.48', 'https://app.leg.wa.gov/rcw/default.aspx?cite=90.48'],
 }
 const law = (k) => `<a class="${styles.popupLink}" href="${LAW[k][1]}" target="_blank" rel="noopener noreferrer">${LAW[k][0]} ↗</a>`
 function whyLines(r, docs) {
@@ -166,22 +184,24 @@ function whyLines(r, docs) {
     const what = /stormwater/i.test(r.type) ? 'Stormwater that runs off this site' : /wastewater/i.test(r.type) ? 'Treated wastewater from this plant' : 'Water this operation releases'
     lines.push(`${what} goes to ${water ? escapeHtml(water) : 'a water body'}. Discharging pollutants to water needs a permit under ${law('s402')} (NPDES); in Washington, Ecology issues it, under its own water pollution law as well.`)
   }
-  const corps = r.corpsKind || (/Army Corps/.test(titles) ? 'curated' : null)
+  const corps = r.corpsKind || (/Army Corps/.test(titles) || r.corpsRef ? 'curated' : null)
   if (corps === 's408') lines.push(`Changing anything built by a federal Corps project${r.civilWorks ? ` (here: ${escapeHtml(r.civilWorks)})` : ''} needs Corps permission under ${law('s408')}. The Corps decided none was needed here.`)
   else if (corps === 'jds' || /jurisdictional determination/i.test(titles)) lines.push(`A jurisdictional determination is the Corps’ ruling on whether a site holds “waters of the United States”; that decides whether ${law('s404')} applies to work there.`)
   else if (corps) lines.push(`Building in or over navigable water (docks, piles, floats, buoys, cables) needs an Army Corps permit under ${law('s10')}; putting fill or dredged material in water needs one under ${law('s404')}.${r.corpsKind ? ' The Corps record does not say which applies here.' : ''}`)
   if (corps === 'nepa_ea' || /environmental assessment/i.test(`${titles} ${events}`)) lines.push(`For a permit with possible significant effects, the Corps writes an environmental assessment under ${law('nepa')}.`)
-  if (/401 certification/i.test(titles)) lines.push(`Before the Corps can issue its permit, Ecology must certify under ${law('s401')} that the work will meet Washington’s water quality standards.`)
+  if (r.stateOrder && !r.cert401) lines.push(`For waters the Corps doesn’t regulate (such as isolated wetlands), Ecology approves the work with an administrative order under Washington’s water pollution law (${law('rcw9048')}).`)
+  if (/401 certification/i.test(titles) || r.cert401) lines.push(`Before the Corps can issue its permit, Ecology must certify under ${law('s401')} that the work will meet Washington’s water quality standards.`)
   if (/Coastal Zone/i.test(titles)) lines.push(`Ecology also decides whether a federal permit is consistent with Washington’s coastal program (${law('czma')}).`)
   if (/marine mammal|incidental take/i.test(`${titles} ${events}`)) lines.push(`In-water noise from pile work can harm marine mammals; NOAA Fisheries authorizes that “incidental take” under ${law('mmpa')}.`)
-  if (/shoreline/i.test(`${events} ${titles}`) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'county'))) lines.push(`Work on Washington’s shorelines needs county (or town) approval under the ${law('sma')}.`)
+  if (/shoreline/i.test(`${events} ${titles}`) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'county'))) lines.push(`Work on Washington’s shorelines needs approval from San Juan County (inside Friday Harbor, from the Town of Friday Harbor) under the ${law('sma')}.`)
   if (/WDFW|HPA/i.test(events) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'wdfw'))) lines.push(`Work in or near salt or fresh water needs a WDFW Hydraulic Project Approval under the ${law('hpa')}.`)
   if (!lines.length) lines.push(`Not a permit itself: a related ${escapeHtml(String(r.type).toLowerCase())} step on the shore. Any in-water work it leads to needs the permits above (${law('s10')}, ${law('s404')}, ${law('s401')}).`)
   return lines
 }
 function whyHtml(r, docs) {
-  return `<div class="${styles.why}"><div class="${styles.whyTitle}">Why it needs a permit <span>EarthAtlas’s summary of the law</span></div>` +
-    `<ul>${whyLines(r, docs).map((l) => `<li>${l}</li>`).join('')}</ul></div>`
+  // A closed turndown at the bottom of the popup, like the document sections (Josh 2026-10-14).
+  return `<details class="${styles.doc} ${styles.why}"><summary>Why it needs a permit <span class="${styles.whyNote}">EarthAtlas’s summary of the law</span></summary>` +
+    `<ul>${whyLines(r, docs).map((l) => `<li>${l}</li>`).join('')}</ul></details>`
 }
 
 
@@ -202,6 +222,14 @@ function dockHtml(d, tags) {
     (d.permits.length > 15 ? `<p class="${styles.docText}">${d.permits.length - 15} more on EarthAtlas Docks.</p>` : '')
 }
 
+// "Map location: from the Army Corps record (NWS-2003-00823 ↗)" (Josh 2026-10-14): where the dot comes from, with a
+// short link to that source. A note of more than one sentence gets "Source:" before the link instead.
+function mapLocationHtml(r, docs, href) {
+  const d = docs[r.position.src]
+  const text = escapeHtml(String(r.position.text).replace(/\.$/, ''))
+  const link = href && d ? `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${d.url ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(d.look_up || d.title)} ↗</a>` : ''
+  return `<div class="${styles.matchNote}"><b>Map location:</b> ${text}${link ? (/\. /.test(text) ? `. Source: ${link}` : ` (${link})`) : ''}</div>`
+}
 function recordHtml(r, docs, tags, byId, unmappedById) {
   const groups = new Map() // doc key → { rows, paras, events }
   const g = (key) => {
@@ -258,13 +286,10 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
   return `<div class="${styles.popup}">` +
     `<div class="${styles.popupTitle}">${escapeHtml(r.name)}</div>` +
     `<div class="${styles.place}">${statusPill(r.status)} ${place}</div>` +
-    whyHtml(r, docs) +
     `<div class="${styles.popupCount}">${items.length} source document${items.length === 1 ? '' : 's'} from ${agencyCount} publisher${agencyCount === 1 ? '' : 's'}, by date</div>` +
     html + flags +
     (joins.length ? `<div class="${styles.joins}"><b>Linked records:</b> ${joins.join(' · ')}</div>` : '') +
-    `<div class="${styles.matchNote}">${escapeHtml(r.position.text)}` +
-    (posHref ? ` <a class="${styles.popupLink}" href="${escapeHtml(posHref)}"${docs[r.position.src].url ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(docs[r.position.src].title)} ↗</a>` : '') +
-    `</div></div>`
+    mapLocationHtml(r, docs, posHref) + whyHtml(r, docs) + `</div>`
 }
 function wqHtml(p, docs, tags) {
   const d = docs[p.doc]
@@ -314,27 +339,27 @@ export default function PermitsApp() {
   const basemapMenuRef = useRef(null)
   const [mapView, setMapView] = useState(initialCamera)
   const [selected, setSelected] = useState(initial.r || null)
-  const [off, setOff] = useState(() => new Set((initial.off || '').split(',').filter(Boolean)))
-  const [onlyWindow, setOnlyWindow] = useState(initial.win === '1')
+  // Impaired waters and shellfish areas start off (Josh 2026-10-14); a shared link carries its own choice (off=none = all on).
+  const [off, setOff] = useState(() => new Set(initial.off == null ? DEFAULT_OFF : initial.off.split(',').filter((x) => x && x !== 'none')))
 
   // ─── Data ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([DATA_URL, WQ_URL, SHELL_URL].map((u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json() })))
+    Promise.all(['permits.json', 'wq303d.geojson', 'shellfish.geojson'].map(fetchPermitsJson))
       .then(([d, wq, shell]) => { setData(d); setWaters({ wq, shell }) })
       .catch((e) => setError(`Could not load permit data (${e.message}).`))
   }, [])
 
-  const records = useMemo(() => (data ? [...data.projects, ...data.npdes] : []), [data])
+  const records = useMemo(() => (data ? [...data.projects, ...data.npdes].map((r) => ({ ...r, ...permitKindOf(r, data.docs) })) : []), [data])
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records])
   const unmappedById = useMemo(() => new Map((data?.unmapped || []).filter((u) => u.id).map((u) => [u.id, u])), [data])
-  const visible = useMemo(() => records.filter((r) => !off.has(r.layer) && (!onlyWindow || windowOpen(r))), [records, off, onlyWindow])
+  const visible = useMemo(() => records.filter((r) => !off.has(r.layer)), [records, off])
   const counts = useMemo(() => Object.fromEntries(LAYERS.map((l) => [l.id, records.filter((r) => r.layer === l.id).length])), [records])
 
   const geojson = useMemo(() => ({
     type: 'FeatureCollection',
     features: visible.map((r) => ({
       type: 'Feature', geometry: { type: 'Point', coordinates: [r.lon, r.lat] },
-      properties: { id: r.id, layer: r.layer, approx: !!r.approx },
+      properties: { id: r.id, layer: r.layer, approx: !!r.approx, tag: r.tag || '' },
     })),
   }), [visible])
 
@@ -418,6 +443,13 @@ export default function PermitsApp() {
         'circle-stroke-color': ['case', ['get', 'approx'], ['match', ['get', 'layer'], ...LAYERS.flatMap((l) => [l.id, l.color]), '#9ca3af'], '#ffffff'],
       },
     })
+    // The permit type next to each dot once zoomed in (the legend explains the numbers).
+    map.addLayer({
+      id: 'records-tag', type: 'symbol', source: 'records', minzoom: 11.5, filter: ['!=', ['get', 'tag'], ''],
+      layout: { 'text-field': ['get', 'tag'], 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'], 'text-size': 11,
+        'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-allow-overlap': false, 'text-optional': true },
+      paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10, 14, 23, 0.85)', 'text-halo-width': 1.4 },
+    })
     applyWaters(map, off)
   }, [mapReady, styleLoads, waters, geojson, off])
 
@@ -439,12 +471,12 @@ export default function PermitsApp() {
     if (basemap !== DEFAULT_BASEMAP) sp.set('bm', basemap)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(4)); sp.set('lng', mapView.lng.toFixed(4)); sp.set('z', mapView.zoom.toFixed(1)) }
     if (selected) sp.set('r', selected)
-    if (off.size) sp.set('off', [...off].sort().join(','))
-    if (onlyWindow) sp.set('win', '1')
+    const offKey = [...off].sort().join(',')
+    if (offKey !== DEFAULT_OFF.join(',')) sp.set('off', offKey || 'none')
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basemap, mapView, selected, off, onlyWindow, mapReady])
+  }, [basemap, mapView, selected, off, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -471,7 +503,6 @@ export default function PermitsApp() {
   const toggle = (id) => setOff((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const list = useMemo(() => [...visible].sort((a, b) =>
     latestPast(b).localeCompare(latestPast(a)) || a.name.localeCompare(b.name)), [visible])
-  const nOpen = records.filter(windowOpen).length
 
   if (!MAPBOX_TOKEN) return <div className={q.container}><div className={q.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div></div>
 
@@ -518,24 +549,20 @@ export default function PermitsApp() {
         {error ? <div className={styles.infoMeta}>{error}</div> : !data ? <div className={styles.infoMeta}>Loading…</div> : (
           <>
             <div className={styles.infoMeta}>
-              Clean Water Act permits and the actions around them, joined across the Corps, Ecology, EPA, WDFW, the county,
-              the town and NOAA. Click a point for its full record; every value links to its source.
+              Clean Water Act permits and the actions around them, joined across the Army Corps, Ecology, EPA, WDFW, San Juan County,
+              the Town of Friday Harbor and NOAA. Click a point for its full record; every value links to its source.
             </div>
 
             <div className={styles.section}>
-              <div className={styles.sectionTitle}>Permits and actions</div>
+              <div className={styles.sectionTitle}>Permits, by Clean Water Act section</div>
               {LAYERS.map((l) => (
                 <label key={l.id} className={styles.toggle} title={l.note}>
                   <input type="checkbox" checked={!off.has(l.id)} onChange={() => toggle(l.id)} />
-                  <span className={styles.swatch} style={{ background: l.color }} />{l.label}
+                  <span className={styles.swatch} style={{ background: l.color }} />
+                  <span className={styles.kind}><b>{l.label}</b> {l.desc}</span>
                   <span className={styles.count}>{counts[l.id]}</span>
                 </label>
               ))}
-              <label className={styles.toggle}>
-                <input type="checkbox" checked={onlyWindow} onChange={(e) => setOnlyWindow(e.target.checked)} />
-                In-water work window open today
-                <span className={styles.count}>{nOpen}</span>
-              </label>
               <div className={styles.legendHollow}><span className={styles.swatch} style={{ background: 'transparent', borderColor: LAYERS[0].color, borderWidth: 2 }} />Hollow dot: position approximate</div>
             </div>
 

@@ -38,5 +38,8 @@ scripts/bake-birdcast/raw/
 scripts/bake-climatetrace/raw
 scripts/bake-climatetrace/build
 
+# /impact county records (Decatur) — 56 MB of downloaded PDFs, never commit
+docs/impact/county-record/
+
 # /sanjuan-docks raw inputs (parcels, SmartGov fetch, ML imagery) — ~230 MB, never commit; outputs bake to public/hpa
 data/sanjuan-docks/

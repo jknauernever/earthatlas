@@ -218,7 +218,7 @@ function violationsOf(dfr, permit, srcKey) {
   for (const v of rowsFor(R.CWAPSComplianceNew, permit, 'Violations')) {
     const d = mdy(v.ScheduleDate || v.VioStartDate)
     if (!d) continue
-    events.push({ date: d, agency: 'epa', src: srcKey, title: `EPA: ${v.ViolationCode}, ${v.ViolationDesc}`,
+    events.push({ date: d, agency: 'epa', src: srcKey, sev: /not reported|unachieved/i.test(v.ViolationDesc) && !/late/i.test(v.ViolationDesc) ? 'evasion' : 'minor', title: `EPA: ${v.ViolationCode}, ${v.ViolationDesc}`,
       event: `${EVENT_WORDS[v.ScheduleEventDesc] || sentence(v.ScheduleEventDesc || 'Deadline')} due: ${SCHEDULE_WORDS[v.ViolationDesc] || v.ViolationDesc}` })
   }
   // Effluent limit exceedances, by month. ECHO's value is the percent over the limit, or "LIMIT VIOLATION".
@@ -230,7 +230,7 @@ function violationsOf(dfr, permit, srcKey) {
       const d = mdy(H[`Mnth${n}Start`])
       if (!d) continue
       const pct = /(\d+(?:\.\d+)?%)/.exec(val)?.[1]
-      events.push({ date: d, agency: 'epa', src: srcKey, title: `EPA: ${p.ParameterName}, ${p.DischargePoint}, ${p.MeasurementType}: ${val}`,
+      events.push({ date: d, agency: 'epa', src: srcKey, sev: 'pollution', title: `EPA: ${p.ParameterName}, ${p.DischargePoint}, ${p.MeasurementType}: ${val}`,
         event: `${p.ParameterName} over its permit limit in ${monthName(d)}${pct ? ` (by ${pct})` : ''}, outfall ${String(p.DischargePoint).split(' ')[0]}` })
     }
   }
@@ -242,7 +242,7 @@ function violationsOf(dfr, permit, srcKey) {
       const a = mdy(QH[`Qtr${n}Start`]), b = mdy(QH[`Qtr${n}End`])
       if (!c || !a) continue
       const what = x.MissingLate === 'LATE' ? 'filed late' : 'not received'
-      events.push({ date: a, agency: 'epa', src: srcKey, title: `EPA: ${x.MissingLate} DMRs, ${QH[`Qtr${n}Start`]} to ${QH[`Qtr${n}End`]}`,
+      events.push({ date: a, agency: 'epa', src: srcKey, sev: x.MissingLate === 'LATE' ? 'minor' : 'evasion', title: `EPA: ${x.MissingLate} DMRs, ${QH[`Qtr${n}Start`]} to ${QH[`Qtr${n}End`]}`,
         event: `${c} monitoring report${c === 1 ? '' : 's'} ${what}, ${monthName(a)} to ${monthName(b || a)}` })
     }
   }
@@ -297,17 +297,46 @@ function dfrRows(dfr, facName) {
 }
 
 // ─── Army Corps: every action the public permit feed (ORM2) holds in the county box, all years and categories ───
-// The feed ignores its bbox parameter and caps results at 5,000, so it is read by district (Seattle, org:NWS, under
-// 5,000 records) and filtered to the box here. Records hand-compiled in curated.json (same Corps number) are skipped.
+// The feed ignores its bbox parameter and caps results at 5,000, so it is read by district (Seattle, org:NWS) and
+// category (ormDistrict), and filtered to the box here. Records hand-compiled in curated.json (same Corps number) are skipped.
 // The feed holds individual permits, Letters of Permission, emergency actions, jurisdictional determinations,
 // environmental assessments, Section 408 requests and WSDOT-funded (WRDA 214) verifications; it does not hold most
 // Nationwide or General Permit verifications.
 const ORM_API = 'https://permits.ops.usace.army.mil/orm-public-api'
-const ormSearch = `${ORM_API}/permits/search?da=true&max=5000&q=org:NWS`
+// The feed is flaky by category: one response holds the district's Section 408 requests, the next has none (seen
+// 2026-10-14). So each category is read on its own and an empty answer is retried; a category that stays empty
+// after six tries is taken as empty (and the publish gate refuses a drop against the live data).
+const ORM_KINDS = ['issued', 'pending', 'wrda', 'jds', 'nepa_ea', 'nepa_eis', 'emergency', 's408', 'dwhs', '214_other']
+async function ormDistrict() {
+  const features = []
+  for (const kind of ORM_KINDS) {
+    let got = []
+    for (let attempt = 1; attempt <= 6; attempt++) {
+      const j = await getJson(`${ORM_API}/permits/search?da=true&max=5000&q=${encodeURIComponent(`org:NWS AND vtype:${kind}`)}`)
+      if ((j.total ?? 0) >= 5000) throw new Error(`ORM feed: ${j.total} ${kind} records; over the 5,000 cap, add paging`)
+      got = j.results?.features || []
+      if (got.length) break
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+    features.push(...got)
+  }
+  return features
+}
 const ormBase = (id) => String(id).replace(/-(TTR|DOT)$/, '')
 const ormYmd = (v) => (/^\d{8}$/.test(v || '') ? `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}` : (v && v !== 'N/A' ? usDate(v) : null))
 const ORM_TYPE = { s408: 'Section 408 permission request', jds: 'Approved jurisdictional determination', nepa_ea: 'Environmental assessment', emergency: 'Emergency action' }
-const sentenceCase = (t) => { const x = String(t || '').toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1) }
+// Sentence case that keeps acronyms (DMRs, pH, NPDES) as written.
+const sentenceCase = (t) => {
+  const x = String(t || ''), allCaps = x === x.toUpperCase()
+  return x.split(' ').map((w, i) => (!allCaps && /^[A-Z]{2,6}s?$|^[a-z]+[A-Z]/.test(w) ? w : i ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(' ')
+}
+// Ecology's "Benchmark/Limit" column is "min / max", either side "-" when there is none.
+function limitWords(v) {
+  const m = /^\s*([^/]*?)\s*\/\s*([^/]*?)\s*$/.exec(v || '')
+  if (!m) return v || ''
+  const lo = m[1] && m[1] !== '-' ? m[1] : null, hi = m[2] && m[2] !== '-' ? m[2] : null
+  return lo && hi ? `${lo} to ${hi}` : hi ? `max ${hi}` : lo ? `min ${lo}` : ''
+}
 
 function corpsRecords(features, curatedNumbers, docs, raw) {
   const groups = new Map()
@@ -642,6 +671,128 @@ async function ecologyAquatics(docs, raw, projects) {
   return out
 }
 
+// ─── Ended discharge permits (history) ───
+// EPA's outfall layer holds only current permits. ECHO's CWA facility search (county + state, all statuses) also
+// returns terminated permits and coverages with their dates and EPA's facility point; those not already mapped as
+// current become history records.
+const ECHO_CWA = 'https://echodata.epa.gov/echo/cwa_rest_services'
+const ECHO_COLS = '1,26,27,25,53,56,57,58,59,60,61,68'
+async function endedPermits(current) {
+  const q = await getJson(`${ECHO_CWA}.get_facilities?output=JSON&p_st=WA&p_co=SAN%20JUAN`)
+  const qid = q?.Results?.QueryID
+  if (!qid) throw new Error('ECHO CWA search: no QueryID')
+  const rows = []
+  for (let page = 1; ; page++) {
+    const r = (await getJson(`${ECHO_CWA}.get_qid?output=JSON&qid=${qid}&pageno=${page}&qcolumns=${ECHO_COLS}`))?.Results?.Facilities || []
+    rows.push(...r)
+    if (r.length < 5000) break
+  }
+  return { rows: rows.filter((x) => !current.has(x.SourceID) && /terminat/i.test(x.CWPPermitStatusDesc || '') && x.FacLat != null), api: `${ECHO_CWA}.get_facilities?output=JSON&p_st=WA&p_co=SAN%20JUAN` }
+}
+
+// ─── Ecology's own violation records (PARIS "Violations and Permit Triggers") ───
+// An ASP.NET form: GET for the form state, POST a county + date-range search, then POST "Next page" until every row
+// is read (10 per page). Each row names its permit and links to Ecology's page for that violation.
+const PARIS_VIO = 'https://apps.ecology.wa.gov/paris/ComplianceAndViolations/ViolationsAndPermitTriggers.aspx'
+function aspForm(h) {
+  const f = {}
+  for (const m of h.matchAll(/<input[^>]*>/g)) {
+    const t = m[0], n = /name="([^"]+)"/.exec(t)?.[1], v = /value="([^"]*)"/.exec(t)?.[1], ty = /type="([^"]+)"/.exec(t)?.[1]
+    if (n && !['submit', 'button', 'checkbox', 'image'].includes(ty)) f[n] = decodeHtml(v ?? '')
+  }
+  for (const m of h.matchAll(/<select[^>]*name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)) {
+    f[m[1]] = decodeHtml((/<option[^>]*selected[^>]*value="([^"]*)"/.exec(m[2]) || /<option[^>]*value="([^"]*)"/.exec(m[2]))?.[1] ?? '')
+  }
+  return f
+}
+export async function parisViolations(from = '2000-01-01') {
+  const jar = new Map()
+  // Gentle: one page a second, and a dropped connection is retried (Ecology's server closes fast bursts).
+  // Hard limits so a slow or looping server can never stall the weekly bake: 60 s per request, 150 requests in all
+  // (the full read takes about 70). Whatever was read before a limit is kept.
+  let budget = 150
+  const sendOnce = async (body) => {
+    if (--budget < 0) throw new Error('request budget used up')
+    if (body) await new Promise((r) => setTimeout(r, 1000))
+    const res = await fetch(PARIS_VIO, { method: body ? 'POST' : 'GET', redirect: 'follow', signal: AbortSignal.timeout(60000),
+      headers: { ...UA, cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; '), ...(body ? { 'content-type': 'application/x-www-form-urlencoded' } : {}) },
+      body: body ? new URLSearchParams(body).toString() : undefined })
+    for (const c of res.headers.getSetCookie?.() || []) { const [kv] = c.split(';'); const i = kv.indexOf('='); jar.set(kv.slice(0, i), kv.slice(i + 1)) }
+    if (!res.ok) throw new Error(`PARIS violations → HTTP ${res.status}`)
+    return res.text()
+  }
+  const send = async (body) => {
+    for (let attempt = 1; ; attempt++) {
+      try { return await sendOnce(body) } catch (e) { if (attempt >= 3 || budget < 0) throw e; await new Promise((r) => setTimeout(r, 3000 * attempt)) }
+    }
+  }
+  const P = 'ctl00$ContentPlaceHolder1$'
+  const us = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}/${iso.slice(0, 4)}`
+  const rows = new Map()
+  let form = aspForm(await send(null))
+  // One search over [a, b]; every page read. Returns whether every row it reported was seen.
+  async function searchRange(a, b, permit) {
+    const search = { [`${P}txtCounty`]: 'San Juan', ...(permit ? { [`${P}txtPermitNumber`]: permit } : {}) }
+    for (const [name, iso] of [['dtstart', a], ['DtPickerEndDate', b]]) {
+      search[`${P}${name}`] = iso; search[`${P}${name}$dateInput`] = us(iso)
+      search[`ctl00_ContentPlaceHolder1_${name}_dateInput_ClientState`] = JSON.stringify({ enabled: true, emptyMessage: '', validationText: `${iso}-00-00-00`, valueAsString: `${iso}-00-00-00`, lastSetTextBoxValue: us(iso) })
+    }
+    let h = await send({ ...form, ...search, [`${P}Search$BtnSearch`]: 'Search' })
+    const total = Number(/(\d+)<\/strong> items in/.exec(h)?.[1] || 0)
+    const pages = Number(/items in <strong>(\d+)<\/strong>/.exec(h)?.[1] || 1)
+    const seen = new Set()
+    for (let page = 1; total && page <= pages; page++) {
+      for (const tr of h.match(/<tr[^>]*class="rg(?:Row|AltRow)[^"]*"[^>]*>[\s\S]*?<\/tr>/g) || []) {
+        const td = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((x) => x[1])
+        const id = /ViolationId=(\d+)/.exec(td[0] || '')?.[1]
+        if (!id) continue
+        seen.add(id)
+        if (rows.has(id)) continue
+        const c = td.map((x) => decodeHtml(x))
+        rows.set(id, { id, facility: c[1], permit: c[2], permitType: c[4], date: mdyLoose(c[7]), addressed: c[8], category: c[9], type: c[10], parameter: c[11], units: c[12],
+          statBase: c[13], value: c[14], limit: c[15], notes: c[16], override: c[17], feature: c[18],
+          url: `https://apps.ecology.wa.gov/paris/ComplianceAndViolations/PopupViolationTrigger.aspx?ViolationId=${id}` })
+      }
+      const next = page < pages && /name="([^"]+)"[^>]*class="[^"]*rgPageNext/.exec(h)?.[1]
+      if (!next) break
+      h = await send({ ...aspForm(h), ...search, __EVENTTARGET: next, __EVENTARGUMENT: '' })
+    }
+    form = aspForm(h)
+    return { total, complete: seen.size >= total }
+  }
+  // One county search, every page read. Ecology lists some violations more than once (identical rows, same
+  // ViolationId), so its "N items" counts rows and the distinct violations can be fewer: checked 2026-10-14,
+  // 334 rows = 291 violations, every year accounted for.
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    const all = await searchRange(from, today)
+    console.log(`  PARIS violations: ${rows.size} distinct violations in ${all.total} listed rows`)
+  } catch (e) { console.warn(`  PARIS violations stopped early (${e.message}); keeping ${rows.size}`) }
+  return [...rows.values()]
+}
+
+// ─── How serious a violation is (Josh 2026-10-14: "anything pollution or evasion related should be red") ───
+//   pollution: discharged over a permit limit or benchmark        → red ring
+//   evasion:   a required report, sample or analysis never done   → red ring if 3+ in three years, else orange
+//   minor:     filed late, a lab error, plant near design capacity → orange ring
+// Warning letters and notices are the agency's response, not a violation, and carry no severity.
+function ecologySeverity(v) {
+  const t = `${v.type} ${v.category}`
+  if (/benchmark exceedance|effluent violation|numeric effluent/i.test(t)) return 'pollution'
+  if (/frequency of sampling|analysis not conducted|failure to submit|not received|not submitted/i.test(t)) return 'evasion'
+  return 'minor'
+}
+// A permit's ring from its worst violation in the last three years.
+function violationLevel(trail, today = new Date().toISOString().slice(0, 10)) {
+  const since = `${Number(today.slice(0, 4)) - 3}${today.slice(4)}`
+  const recent = trail.filter((t) => t.sev && t.date >= since && t.date <= today)
+  const n = (k) => recent.filter((t) => t.sev === k).length
+  const counts = { pollution: n('pollution'), evasion: n('evasion'), minor: n('minor'), since }
+  // Red: any pollution violation, or repeated evasion (3+ in three years; Josh 2026-10-14). One or two missed
+  // reports, or only smaller violations: orange.
+  return counts.pollution || counts.evasion >= 3 ? { level: 'red', ...counts } : counts.evasion || counts.minor ? { level: 'orange', ...counts } : null
+}
+
 async function getJson(url) {
   const res = await fetch(url, { headers: UA })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -775,13 +926,56 @@ async function main() {
       ...(ecyDocs?.length ? { ecyDocs: { src: paris, list: ecyDocs } } : {}),
     })
   }
+  try {
+    const ended = await endedPermits(new Set(permits.keys()))
+    for (const x of ended.rows) {
+      const id = x.SourceID, key = `echo-${id}`, paris = `ecy-paris-${id}`
+      const kind = permitKind(id, x.CWPNAICSCodes)
+      docs[key] = { title: `EPA ECHO: ${kind.toLowerCase()} ${id} (ended)`, agency: 'epa', kind: 'Record', record: true,
+        url: x.RegistryID ? echoDfr(x.RegistryID) : parisDocs(id), look_up: id }
+      raw.set(key, { api: ended.api, payload: x, rows: rowsOf([['Permit number', id], ['Facility or project', x.CWPName], ['Status (EPA’s term)', x.CWPPermitStatusDesc],
+        ['Kind', x.CWPPermitTypeDesc], ['Effective', mdy(x.CWPEffectiveDate)], ['Ended', mdy(x.CWPTerminationDate)], ['Expiration date', mdy(x.CWPExpirationDate)],
+        ['Industry (EPA codes)', x.CWPNAICSDescs], ['Last inspection', mdy(x.CWPDateLastInspection)], ['EPA facility id (FRS)', x.RegistryID]]) })
+      docs[paris] = { title: `Ecology permit documents: ${id}`, agency: 'ecology', kind: 'Page', url: parisDocs(id) }
+      const ecyDocs = await parisDocsOf(id)
+      const eff = mdy(x.CWPEffectiveDate), end = mdy(x.CWPTerminationDate)
+      npdes.push({
+        id: `npdes-${id}`, layer: 'npdes', ended: true, county: 'San Juan', name: x.CWPName, applicant: x.CWPName, type: kind,
+        lat: Number(x.FacLat), lon: Number(x.FacLong), approx: false,
+        position: { text: 'from EPA’s facility record', src: key },
+        refs: [{ label: id, src: key }, { label: `${id}: Ecology's permit documents`, src: paris }],
+        status: { raw: x.CWPPermitStatusDesc, by: 'EPA ECHO', cls: 'n', src: key },
+        summary: { text: `${kind}${eff ? `, in force ${eff}` : ''}${end ? ` until it ended ${end}` : ''}.`, src: key },
+        facts: [...(x.CWPNAICSDescs ? [{ label: 'What the facility or project does (EPA industry codes)', value: x.CWPNAICSDescs, src: key }] : [])],
+        trail: [...(eff ? [{ date: eff, agency: 'epa', event: `Permit or coverage effective (${id})`, src: key }] : []), ...(end ? [{ date: end, agency: 'epa', event: 'Permit or coverage ended', src: key }] : [])],
+        joins: [], ...(ecyDocs?.length ? { ecyDocs: { src: paris, list: ecyDocs } } : {}),
+      })
+    }
+    console.log(`ended discharge permits: ${ended.rows.length}`)
+  } catch (e) { console.warn(`  ended discharge permits: ${e.message}`) }
+  // Ecology's own violation records, grouped per permit; each line links to Ecology's page for that violation.
+  try {
+    const vios = await parisViolations()
+    const byPermit = new Map(npdes.map((r) => [r.refs?.[0]?.label, r]))
+    let n = 0
+    for (const v of vios) {
+      const r = byPermit.get(v.permit)
+      if (!r || !v.date) continue
+      const key = `ecy-vio-${v.permit}`
+      const what = [v.parameter && `${v.parameter}${v.value ? ` ${v.value}${v.units ? ` ${v.units}` : ''}` : ''}${limitWords(v.limit) ? ` (limit or benchmark: ${limitWords(v.limit)})` : ''}`, v.feature && `at ${v.feature}`].filter(Boolean).join(' ')
+      docs[key] ??= { title: `Ecology violation records: ${v.permit}`, agency: 'ecology', kind: 'Page', url: PARIS_VIO }
+      r.trail.push({ date: v.date, agency: 'ecology', src: key, url: v.url, sev: ecologySeverity(v), title: `Ecology PARIS: ${v.type}; ${v.category}${v.notes ? `; ${v.notes}` : ''}${v.addressed && v.addressed !== 'N/A' ? `; addressed: ${v.addressed}` : ''}`,
+        event: `Ecology: ${sentenceCase(v.type || v.category)}${what ? `, ${what}` : ''}` })
+      n++
+    }
+    console.log(`ecology violations: ${vios.length} in the county, ${n} attached to mapped permits`)
+  } catch (e) { console.warn(`  ecology violations: ${e.message}`) }
+  for (const r of npdes) { const v = violationLevel(r.trail); if (v) r.violations = v }
   npdes.sort((a, b) => a.name.localeCompare(b.name))
 
   // ── Army Corps: every record in the county box from the public feed ──
   const curatedNumbers = new Set(Object.keys(curated.docs).filter((k) => k.startsWith('orm-')).map((k) => k.slice(4)))
-  const ormAll = await getJson(ormSearch)
-  if ((ormAll.total ?? 0) >= 5000) throw new Error(`ORM feed: ${ormAll.total} Seattle District records; over the 5,000 cap, add paging`)
-  const corps = corpsRecords(ormAll.results?.features || [], curatedNumbers, docs, raw)
+  const corps = corpsRecords(await ormDistrict(), curatedNumbers, docs, raw)
   const projects = [...curated.projects, ...corps]
   let archived = []
   try { archived = await archiveNotices() } catch (e) { console.warn(`  corps notices: ${e.message} (archived notices still used)`); archived = existsSync('data/permits/corps-notices') ? readdirSync('data/permits/corps-notices').filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(`data/permits/corps-notices/${f}`, 'utf8'))) : [] }
@@ -894,4 +1088,4 @@ async function main() {
 }
 
 // Runs when executed (npm run permits:bake), not when a test imports the notice helpers.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => { console.error(e); process.exit(1) })
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => { console.error(e); process.exit(1) })

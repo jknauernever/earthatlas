@@ -54,6 +54,13 @@ if (live) {
   const was = count(live)
   for (const k of Object.keys(now)) if (now[k] < Math.floor(was[k] * 0.9)) problems.push(`${k}: ${now[k]} now vs ${was[k]} live`)
 }
+// Per category too: the Corps feed can silently drop a whole category (its 408 requests, 2026-10-14), which the
+// totals above would miss.
+if (live) {
+  const kinds = (d) => d.projects.filter((p) => p.source === 'orm-feed').reduce((m, p) => ({ ...m, [p.corpsKind]: (m[p.corpsKind] || 0) + 1 }), {})
+  const was = kinds(live), nowK = kinds(fresh)
+  for (const [k, n] of Object.entries(was)) if ((nowK[k] || 0) < Math.ceil(n * 0.5)) problems.push(`Corps ${k}: ${nowK[k] || 0} now vs ${n} live`)
+}
 const withViolations = fresh.npdes.filter((r) => (r.trail || []).some((t) => t.title)).length
 if (withViolations < fresh.npdes.length * 0.5) problems.push(`only ${withViolations} of ${fresh.npdes.length} discharge permits have EPA violation records (EPA's facility reports may have failed)`)
 console.log(`fresh: ${JSON.stringify(now)}${live ? `; live: ${JSON.stringify(count(live))}` : '; nothing live yet'}`)

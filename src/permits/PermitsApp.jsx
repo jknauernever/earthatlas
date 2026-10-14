@@ -1,5 +1,5 @@
 /**
- * EarthAtlas /permits (PermitTracker): Clean Water Act permits and related actions in San Juan County, WA, 2026.
+ * EarthAtlas /permits (PermitTracker): Clean Water Act permits and related actions in the San Juan Islands (San Juan County, WA).
  * Data: permits.json + wq303d.geojson + shellfish.geojson (permitsData.js: Blob in production, public/permits-data/ on
  * localhost), baked weekly by scripts/permits/bake-permits.mjs from
  * data/permits/curated.json (hand-compiled) and live EPA ECHO / Ecology / DOH services.
@@ -70,6 +70,7 @@ const LAYERS = [
   { id: 'npdes', label: '402', desc: 'Discharge permit (sewage, stormwater, boatyards)', note: 'Discharge permit (Clean Water Act §402, NPDES), issued by Ecology', color: '#f472b6' },
   { id: 'local', label: 'Other', desc: 'No permit record found yet', note: 'In-water work or a related county action with no 404, 401 or 402 record found', color: '#fbbf24' },
 ]
+const VIO_COLORS = { red: '#ef4444', orange: '#fb923c' }
 const DEFAULT_OFF = ['shell', 'wq'] // sorted, as the URL writes them
 const WATERS = [
   { id: 'wq', label: 'Impaired waters', note: 'Ecology 303(d), Category 5', color: '#f97316' },
@@ -81,7 +82,7 @@ const SHELL_COLORS = { Conditionally: '#facc15', Prohibited: '#ef4444', Restrict
 // Which permits a record has, from the documents it cites: an Army Corps record (404 / §10, or a §408 request or a
 // jurisdictional determination), an Ecology 401 certification, an NPDES permit (402). `tag` is the dot's map label.
 function permitKindOf(r, docs) {
-  if (r.layer === 'npdes') return { layer: 'npdes', tag: '402' }
+  if (r.layer === 'npdes') return { layer: 'npdes', tag: r.ended ? '402 · ended' : '402' }
   const keys = [...new Set((JSON.stringify(r).match(/"src":"[^"]+"/g) || []).map((m) => m.slice(7, -1)))]
   const corps = keys.some((k) => docs[k]?.agency === 'corps') || !!r.corpsRef
   const has401 = keys.some((k) => /401 certification/i.test(docs[k]?.title || '')) || !!r.cert401
@@ -262,7 +263,7 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
     const d = docs[key]
     const events = grp.events.sort((a, b) => a.date.localeCompare(b.date)).map((t) =>
       `<li class="${t.date > today ? styles.future : ''}"${t.title ? ` title="${escapeHtml(t.title)}"` : ''}><span class="${styles.when}">${fmtDate(t.date)}</span><span>` +
-      `${t.agency !== d.agency ? agencyChip(tags, t.agency) : ''}${escapeHtml(t.event)}</span></li>`).join('')
+      `${t.agency !== d.agency ? agencyChip(tags, t.agency) : ''}${escapeHtml(t.event)}${t.url ? ` <a class="${styles.popupLink}" href="${escapeHtml(t.url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ''}</span></li>`).join('')
     const isPosition = r.position?.src === key
     return `<details class="${styles.doc}"><summary><span class="${styles.docDate}">${date ? escapeHtml(date) : 'undated'}</span>` +
       `${agencyChip(tags, d.agency)}${escapeHtml(d.title)}</summary>` +
@@ -286,6 +287,9 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
   return `<div class="${styles.popup}">` +
     `<div class="${styles.popupTitle}">${escapeHtml(r.name)}</div>` +
     `<div class="${styles.place}">${statusPill(r.status)} ${place}</div>` +
+    (r.violations ? `<div class="${styles.vioLine}" style="border-color:${VIO_COLORS[r.violations.level]}"><b>Violations since ${escapeHtml(r.violations.since)}:</b> ` +
+      [[r.violations.pollution, 'over a pollution limit'], [r.violations.evasion, 'reports or samples never done'], [r.violations.minor, 'smaller (late, lab errors, capacity)']]
+        .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') + ` <span class="${styles.whyNote}">(listed in the sections below)</span></div>` : '') +
     `<div class="${styles.popupCount}">${items.length} source document${items.length === 1 ? '' : 's'} from ${agencyCount} publisher${agencyCount === 1 ? '' : 's'}, by date</div>` +
     html + flags +
     (joins.length ? `<div class="${styles.joins}"><b>Linked records:</b> ${joins.join(' · ')}</div>` : '') +
@@ -353,13 +357,14 @@ export default function PermitsApp() {
   const byId = useMemo(() => new Map(records.map((r) => [r.id, r])), [records])
   const unmappedById = useMemo(() => new Map((data?.unmapped || []).filter((u) => u.id).map((u) => [u.id, u])), [data])
   const visible = useMemo(() => records.filter((r) => !off.has(r.layer)), [records, off])
+  const vioCounts = useMemo(() => ({ red: records.filter((r) => r.violations?.level === 'red').length, orange: records.filter((r) => r.violations?.level === 'orange').length }), [records])
   const counts = useMemo(() => Object.fromEntries(LAYERS.map((l) => [l.id, records.filter((r) => r.layer === l.id).length])), [records])
 
   const geojson = useMemo(() => ({
     type: 'FeatureCollection',
     features: visible.map((r) => ({
       type: 'Feature', geometry: { type: 'Point', coordinates: [r.lon, r.lat] },
-      properties: { id: r.id, layer: r.layer, approx: !!r.approx, tag: r.tag || '' },
+      properties: { id: r.id, layer: r.layer, approx: !!r.approx, tag: r.tag || '', vio: r.violations?.level || '' },
     })),
   }), [visible])
 
@@ -431,6 +436,15 @@ export default function PermitsApp() {
     map.addLayer({ id: 'shell-line', type: 'line', source: 'shell', paint: { 'line-color': shellColor, 'line-width': 1.2, 'line-opacity': 0.8 } })
     map.addLayer({ id: 'wq-fill', type: 'fill', source: 'wq', paint: { 'fill-color': '#f97316', 'fill-opacity': 0.14 } })
     map.addLayer({ id: 'wq-line', type: 'line', source: 'wq', paint: { 'line-color': '#f97316', 'line-width': 1.4, 'line-dasharray': [2, 1.5] } })
+    // Violations (discharge permits only): red = pollution or evasion, orange = smaller, last three years.
+    map.addLayer({
+      id: 'records-vio', type: 'circle', source: 'records', filter: ['!=', ['get', 'vio'], ''],
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 8.5, 14, 13],
+        'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': 3,
+        'circle-stroke-color': ['match', ['get', 'vio'], 'red', VIO_COLORS.red, VIO_COLORS.orange],
+      },
+    })
     map.addLayer({
       id: 'records', type: 'circle', source: 'records',
       paint: {
@@ -545,12 +559,13 @@ export default function PermitsApp() {
       </div>
 
       <div className={styles.info}>
-        <div className={styles.infoTitle}>Water permits · San Juan County</div>
+        <div className={styles.infoTitle}>Water permits · San Juan Islands (San Juan County, WA)</div>
         {error ? <div className={styles.infoMeta}>{error}</div> : !data ? <div className={styles.infoMeta}>Loading…</div> : (
           <>
             <div className={styles.infoMeta}>
-              Clean Water Act permits and the actions around them, joined across the Army Corps, Ecology, EPA, WDFW, San Juan County,
-              the Town of Friday Harbor and NOAA. Click a point for its full record; every value links to its source.
+              Clean Water Act permits for work in and around the waters of the San Juan Islands: Army Corps permits to build
+              in the water (404), Ecology’s water-quality sign-offs (401) and discharge permits (402), with their violations.
+              Click a dot for its full record; every value links to its source.
             </div>
 
             <div className={styles.section}>
@@ -563,6 +578,9 @@ export default function PermitsApp() {
                   <span className={styles.count}>{counts[l.id]}</span>
                 </label>
               ))}
+              <div className={styles.legendHollow}><span className={styles.swatch} style={{ background: 'transparent', borderColor: VIO_COLORS.red, borderWidth: 2.5 }} />Red ring: discharged over a pollution limit, or repeatedly failed to report or sample (3+ times, last 3 years)<span className={styles.count}>{vioCounts.red}</span></div>
+              <div className={styles.legendHollow}><span className={styles.swatch} style={{ background: 'transparent', borderColor: VIO_COLORS.orange, borderWidth: 2.5 }} />Orange ring: smaller violations (late reports, lab errors, a missed report or two)<span className={styles.count}>{vioCounts.orange}</span></div>
+              <div className={styles.legendNote}>Only discharge permits (402) carry violation records; no ring on a 404 or 401 dot does not mean a clean record.</div>
               <div className={styles.legendHollow}><span className={styles.swatch} style={{ background: 'transparent', borderColor: LAYERS[0].color, borderWidth: 2 }} />Hollow dot: position approximate</div>
             </div>
 
@@ -606,14 +624,15 @@ export default function PermitsApp() {
             <div className={styles.section}>
               <div className={styles.infoMeta}>
                 Sources:{' '}
-                <a className={styles.source} href="https://permits.ops.usace.army.mil/orm-public" target="_blank" rel="noopener noreferrer">Army Corps permits ↗</a>{' · '}
-                <a className={styles.source} href="https://apps.ecology.wa.gov/aquatics/decisions/" target="_blank" rel="noopener noreferrer">Ecology Aquatics decisions ↗</a>{' · '}
-                <a className={styles.source} href="https://echo.epa.gov/facilities/facility-search" target="_blank" rel="noopener noreferrer">EPA ECHO ({data.meta.counts.npdes} discharge permits) ↗</a>{' · '}
-                <a className={styles.source} href="https://apps.ecology.wa.gov/waterqualityatlas/wqa/map" target="_blank" rel="noopener noreferrer">Ecology Water Quality Atlas ↗</a>{' · '}
-                <a className={styles.source} href="https://doh.wa.gov/bs/node/5891" target="_blank" rel="noopener noreferrer">DOH shellfish growing areas ↗</a>
+                <a className={styles.source} href="https://permits.ops.usace.army.mil/orm-public" target="_blank" rel="noopener noreferrer">U.S. Army Corps of Engineers permit database (404)</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/aquatics/status" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology water-quality certifications (401)</a>{' · '}
+                <a className={styles.source} href="https://echo.epa.gov/facilities/facility-search" target="_blank" rel="noopener noreferrer">U.S. EPA discharge permits and violations (402)</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/paris/PermitSearch.aspx" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology discharge permit documents</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/waterqualityatlas/wqa/map" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology impaired waters</a>{' · '}
+                <a className={styles.source} href="https://doh.wa.gov/bs/node/5891" target="_blank" rel="noopener noreferrer">Washington Dept. of Health shellfish growing areas</a>
               </div>
               <div className={styles.infoMeta} style={{ marginTop: 4 }}>
-                Live layers read {fmtDate(data.meta.baked.slice(0, 10))}; hand-compiled records {fmtDate(data.meta.curated)}.
+                Agency records read {fmtDate(data.meta.baked.slice(0, 10))} (updated weekly); hand-compiled 2026 records {fmtDate(data.meta.curated)}.
               </div>
             </div>
 

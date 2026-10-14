@@ -65,6 +65,18 @@ const ROUTES = [
       'San Juan County docks, dock permits, WDFW HPA, shoreline permits, San Juan Islands, overwater structures, Friends of the San Juans, nearshore habitat',
   },
   {
+    out: 'permits.html',
+    url: 'https://earthatlas.org/permits',
+    title: 'PermitTracker: water permits, San Juan County · EarthAtlas',
+    description:
+      'Every 2026 Clean Water Act permit and related action found in San Juan County, WA, joined across the Army Corps, Ecology, EPA, WDFW, the county, the town and NOAA, with impaired waters and shellfish areas. Every value links to its source. An EarthAtlas tool.',
+    // TODO: dedicated permits-social.png; generic EarthAtlas card as stopgap.
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas PermitTracker map of water permits in San Juan County, Washington',
+    keywords:
+      'Clean Water Act permits, Section 404, Section 401 water quality certification, NPDES, San Juan County, San Juan Islands, Army Corps permits, Ecology, shoreline permits, 303(d), shellfish',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

@@ -35,6 +35,14 @@
       "destination": "/sanjuan-docks.html"
     },
     {
+      "source": "/permits",
+      "destination": "/permits.html"
+    },
+    {
+      "source": "/permits/source/:key",
+      "destination": "/permits.html"
+    },
+    {
       "source": "/carbon",
       "destination": "/carbon.html"
     },

@@ -1,0 +1,2077 @@
+{
+ "about": "Hand-compiled 2026-10-13 from the public records each value links to; edit by hand. Every src is a key into docs. scripts/permits/bake-permits.mjs merges this with live EPA ECHO NPDES, Ecology 303(d) and DOH shellfish layers into public/permits/permits.json.",
+ "compiled": "2026-10-13",
+ "agencies": {
+  "corps": "Army Corps",
+  "ecology": "Ecology",
+  "wdfw": "WDFW",
+  "county": "San Juan County",
+  "noaa": "NOAA Fisheries",
+  "epa": "EPA / Ecology NPDES",
+  "town": "Town of Friday Harbor",
+  "parks": "State Parks"
+ },
+ "projects": [
+  {
+   "id": "broken-point",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "485 & 512 Broken Point Road Shoreline",
+   "applicant": "Corinne Storey",
+   "island": "Shaw Island",
+   "water": "Harney Channel",
+   "type": "Shoreline armoring",
+   "lat": 48.59197,
+   "lon": -122.9679,
+   "approx": false,
+   "position": {
+    "text": "Position: address match for 485 Broken Point Road (US Census geocoder). 512 Broken Point Road geocodes about 300 m south.",
+    "src": "census-broken-point"
+   },
+   "refs": [
+    {
+     "label": "NWS-2025-00725",
+     "src": "orm-NWS-2025-00725"
+    },
+    {
+     "label": "WQC Order 24558",
+     "src": "ecy-29513"
+    },
+    {
+     "label": "Aquatics 146172",
+     "src": "ecy-29513"
+    }
+   ],
+   "status": {
+    "label": "Corps permit issued",
+    "cls": "ok",
+    "src": "orm-NWS-2025-00725"
+   },
+   "summary": {
+    "text": "Remove about 515 LF of timber bulkhead, build 133 LF of new rock bulkhead, extend the southern rockery 50 LF, add beach nourishment, and regrade the rest of the shore to a natural slope.",
+    "src": "ecy-29513"
+   },
+   "facts": [
+    {
+     "label": "Bulkhead removed",
+     "value": "~515 LF timber",
+     "src": "ecy-29513"
+    },
+    {
+     "label": "New or extended rock",
+     "value": "133 LF new + 50 LF rockery extension",
+     "src": "ecy-29513"
+    },
+    {
+     "label": "Net armoring (EarthAtlas arithmetic)",
+     "value": "about 332 LF less",
+     "src": "ecy-29513"
+    },
+    {
+     "label": "Soft-shore work",
+     "value": "Beach nourishment, slope regrade",
+     "src": "ecy-29513"
+    },
+    {
+     "label": "Mitigation",
+     "value": "None described in the order",
+     "src": "ecy-29513"
+    }
+   ],
+   "window": {
+    "from": "09-01",
+    "to": "03-01",
+    "text": "Sep 1 to Mar 1",
+    "src": "ecy-29513"
+   },
+   "flags": [
+    {
+     "text": "Ecology's order says the Corps processed this under the Nationwide Permit program; the Corps database records a Standard Permit. Both claims are kept.",
+     "srcs": [
+      "ecy-29513",
+      "orm-NWS-2025-00725"
+     ]
+    }
+   ],
+   "trail": [
+    {
+     "date": "2025-10-09",
+     "agency": "ecology",
+     "event": "Pre-filing meeting request",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2025-10-14",
+     "agency": "corps",
+     "event": "Corps notifies Ecology of the application",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2025-11-12",
+     "agency": "ecology",
+     "event": "401 request received",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2025-12-16",
+     "agency": "ecology",
+     "event": "Public notice",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2026-01-23",
+     "agency": "county",
+     "event": "Shoreline exemption issued; SEPA exempt (as listed in Ecology's order)",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2026-04-06",
+     "agency": "ecology",
+     "event": "401 certification issued, Order 24558",
+     "src": "ecy-29513"
+    },
+    {
+     "date": "2026-04-14",
+     "agency": "ecology",
+     "event": "Coastal Zone consistency decision",
+     "src": "ecy-29566"
+    },
+    {
+     "date": "2026-08-06",
+     "agency": "corps",
+     "event": "Final environmental assessment",
+     "src": "orm-NWS-2025-00725"
+    },
+    {
+     "date": "2026-09-08",
+     "agency": "corps",
+     "event": "Permit issued with special conditions",
+     "src": "orm-NWS-2025-00725"
+    },
+    {
+     "date": "2029-03-01",
+     "agency": "ecology",
+     "event": "401 order expires",
+     "src": "ecy-29513"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "opalco-bell",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "OPALCO Bell Island Submarine Cable Replacement",
+   "applicant": "Orcas Power and Light Cooperative",
+   "island": "Orcas, Bell, Shaw",
+   "water": "Wasp Passage and Pole Pass",
+   "type": "Submarine utility cable",
+   "lat": 48.59621,
+   "lon": -122.98074,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the Bell Island named-feature point (GeoNames). The cable runs from Shaw (Plat of Tibbs Landing, Lot 2) to Bell, and the old cable crosses Pole Pass from Orcas.",
+    "src": "geonames-bell-island"
+   },
+   "refs": [
+    {
+     "label": "NWS-2021-00673",
+     "src": "orm-NWS-2021-00673"
+    },
+    {
+     "label": "WQC Order 24672",
+     "src": "ecy-30163"
+    },
+    {
+     "label": "Aquatics 145797",
+     "src": "ecy-30163"
+    }
+   ],
+   "status": {
+    "label": "Corps permit pending",
+    "cls": "warn",
+    "src": "orm-NWS-2021-00673"
+   },
+   "summary": {
+    "text": "Replace the Orcas–Bell cable with a shorter 2-inch, 15 kV Kerite cable from Shaw to Bell across Wasp Passage, and remove the old cable in Pole Pass.",
+    "src": "ecy-30163"
+   },
+   "facts": [
+    {
+     "label": "Cable",
+     "value": "2 in., 15 kV insulated",
+     "src": "ecy-30163"
+    },
+    {
+     "label": "Surveys on file",
+     "value": "Eelgrass/macroalgae 2019 and 2024",
+     "src": "ecy-30163"
+    },
+    {
+     "label": "Conditions",
+     "value": "No anchors or spuds in seagrass or kelp; barges may not ground out",
+     "src": "ecy-30163"
+    },
+    {
+     "label": "Corps review",
+     "value": "NEPA environmental assessment in progress",
+     "src": "orm-NWS-2021-00673"
+    }
+   ],
+   "window": {
+    "from": "09-01",
+    "to": "03-01",
+    "text": "Wasp Passage Sep 1 to Mar 1; Pole Pass removal Sep 1 to Jan 15",
+    "src": "ecy-30163"
+   },
+   "trail": [
+    {
+     "date": "2025-05-27",
+     "agency": "corps",
+     "event": "Application received",
+     "src": "orm-NWS-2021-00673"
+    },
+    {
+     "date": "2025-06-11",
+     "agency": "county",
+     "event": "SEPA mitigated DNS (as listed in Ecology's order)",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2025-06-24",
+     "agency": "ecology",
+     "event": "Pre-filing meeting request",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2026-04-02",
+     "agency": "ecology",
+     "event": "401 request received",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2026-04-10",
+     "agency": "ecology",
+     "event": "Public notice",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2026-05-15",
+     "agency": "corps",
+     "event": "Corps public notice date (no notice document found)",
+     "src": "orm-NWS-2021-00673"
+    },
+    {
+     "date": "2026-06-04",
+     "agency": "wdfw",
+     "event": "Hydraulic Project Approval (as listed in Ecology's order)",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2026-06-17",
+     "agency": "ecology",
+     "event": "401 certification issued, Order 24672",
+     "src": "ecy-30163"
+    },
+    {
+     "date": "2026-06-26",
+     "agency": "ecology",
+     "event": "Coastal Zone consistency decision",
+     "src": "ecy-30245"
+    },
+    {
+     "date": "2030-12-31",
+     "agency": "ecology",
+     "event": "401 order expires",
+     "src": "ecy-30163"
+    }
+   ],
+   "joins": [
+    "opalco-canoe",
+    "opalco-double",
+    "var-stilla"
+   ]
+  },
+  {
+   "id": "opalco-canoe",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "OPALCO Canoe Island Submarine Cable Replacement",
+   "applicant": "Orcas Power and Light Cooperative",
+   "island": "Shaw, Canoe Island",
+   "water": "Indian Cove, Upright Channel",
+   "type": "Submarine utility cable",
+   "lat": 48.56371,
+   "lon": -122.93129,
+   "approx": false,
+   "position": {
+    "text": "Position: the Indian Cove named-feature point (GeoNames). Landfalls are 514 Indian Cove Road (Shaw) and 1 Canoe Island Road.",
+    "src": "geonames-indian-cove"
+   },
+   "refs": [
+    {
+     "label": "NWS-2021-00674",
+     "src": "orm-NWS-2021-00674"
+    },
+    {
+     "label": "WQC Order 24619",
+     "src": "ecy-30161"
+    },
+    {
+     "label": "Aquatics 141103",
+     "src": "ecy-30161"
+    }
+   ],
+   "status": {
+    "label": "Corps permit pending",
+    "cls": "warn",
+    "src": "orm-NWS-2021-00674"
+   },
+   "summary": {
+    "text": "Replace the Shaw–Canoe cable with a 2-inch, 15 kV cable carrying an embedded fiber line, landed by horizontal directional drilling.",
+    "src": "ecy-30161"
+   },
+   "facts": [
+    {
+     "label": "Method",
+     "value": "Horizontal directional drilling with an inadvertent-return plan",
+     "src": "ecy-30161"
+    },
+    {
+     "label": "Forage fish",
+     "value": "Shoreline trenching only after a WDFW-approved survey finds no surf smelt eggs",
+     "src": "ecy-30161"
+    },
+    {
+     "label": "Corps review",
+     "value": "NEPA environmental assessment in progress",
+     "src": "orm-NWS-2021-00674"
+    }
+   ],
+   "window": {
+    "from": "09-01",
+    "to": "03-01",
+    "text": "Sep 1 to Mar 1",
+    "src": "ecy-30161"
+   },
+   "trail": [
+    {
+     "date": "2021-12-15",
+     "agency": "county",
+     "event": "SEPA mitigated DNS (as listed in Ecology's order)",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2025-06-24",
+     "agency": "ecology",
+     "event": "Pre-filing meeting request",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2026-03-27",
+     "agency": "ecology",
+     "event": "401 request received",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2026-04-07",
+     "agency": "ecology",
+     "event": "Public notice",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2026-05-15",
+     "agency": "corps",
+     "event": "Corps public notice date (no notice document found)",
+     "src": "orm-NWS-2021-00674"
+    },
+    {
+     "date": "2026-06-04",
+     "agency": "wdfw",
+     "event": "Hydraulic Project Approval (as listed in Ecology's order)",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2026-06-17",
+     "agency": "ecology",
+     "event": "401 certification issued, Order 24619",
+     "src": "ecy-30161"
+    },
+    {
+     "date": "2026-06-25",
+     "agency": "ecology",
+     "event": "Coastal Zone consistency decision",
+     "src": "ecy-30233"
+    },
+    {
+     "date": "2030-12-31",
+     "agency": "ecology",
+     "event": "401 order expires",
+     "src": "ecy-30161"
+    }
+   ],
+   "joins": [
+    "opalco-bell",
+    "opalco-double"
+   ]
+  },
+  {
+   "id": "opalco-double",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "OPALCO Double and Alegria Islands Cable Replacement",
+   "applicant": "Orcas Power and Light Cooperative",
+   "island": "Orcas, Double, Alegria",
+   "water": "West Sound",
+   "type": "Submarine utility cable",
+   "lat": 48.60677,
+   "lon": -122.9724,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the Double Island point (Wikipedia). The Orcas landfall, Perseverance Point at 324 Perseverance Lane, could not be geocoded.",
+    "src": "wiki-double-island"
+   },
+   "refs": [
+    {
+     "label": "NWS-2021-00503",
+     "src": "orm-NWS-2021-00503"
+    },
+    {
+     "label": "WQC Order 24620",
+     "src": "ecy-30129"
+    },
+    {
+     "label": "Aquatics 141102",
+     "src": "ecy-30129"
+    }
+   ],
+   "status": {
+    "label": "Corps permit pending",
+    "cls": "warn",
+    "src": "orm-NWS-2021-00503"
+   },
+   "summary": {
+    "text": "Replace two cables from Perseverance Point on Orcas to Double Island and Alegria Island with two 2-inch, 15 kV Kerite cables.",
+    "src": "ecy-30129"
+   },
+   "facts": [
+    {
+     "label": "Cables",
+     "value": "Two, 2 in., 15 kV",
+     "src": "ecy-30129"
+    },
+    {
+     "label": "Forage fish",
+     "value": "Surf smelt survey required before shoreline trenching",
+     "src": "ecy-30129"
+    },
+    {
+     "label": "Corps review",
+     "value": "NEPA environmental assessment in progress",
+     "src": "orm-NWS-2021-00503"
+    }
+   ],
+   "window": {
+    "from": "09-01",
+    "to": "01-15",
+    "text": "Sep 1 to Jan 15",
+    "src": "ecy-30129"
+   },
+   "trail": [
+    {
+     "date": "2021-12-15",
+     "agency": "county",
+     "event": "SEPA mitigated DNS (as listed in Ecology's order)",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2025-05-27",
+     "agency": "corps",
+     "event": "Application received",
+     "src": "orm-NWS-2021-00503"
+    },
+    {
+     "date": "2025-06-24",
+     "agency": "ecology",
+     "event": "Pre-filing meeting request",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2026-02-12",
+     "agency": "ecology",
+     "event": "401 request received",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2026-03-25",
+     "agency": "ecology",
+     "event": "Public notice",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2026-05-15",
+     "agency": "corps",
+     "event": "Corps public notice date (no notice document found)",
+     "src": "orm-NWS-2021-00503"
+    },
+    {
+     "date": "2026-06-04",
+     "agency": "wdfw",
+     "event": "Hydraulic Project Approval (as listed in Ecology's order)",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2026-06-15",
+     "agency": "ecology",
+     "event": "401 certification issued, Order 24620",
+     "src": "ecy-30129"
+    },
+    {
+     "date": "2026-06-25",
+     "agency": "ecology",
+     "event": "Coastal Zone consistency decision",
+     "src": "ecy-30234"
+    },
+    {
+     "date": "2030-12-31",
+     "agency": "ecology",
+     "event": "401 order expires",
+     "src": "ecy-30129"
+    }
+   ],
+   "joins": [
+    "opalco-bell",
+    "opalco-canoe"
+   ]
+  },
+  {
+   "id": "lawson",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Lawson Pond Dam Replacement",
+   "applicant": "Lawson Construction & Lawson Quarry Inc.",
+   "island": "San Juan Island",
+   "water": "Lawson Pond, Rabbit Chase Creek, Wetlands A and C",
+   "type": "Dam and wetland",
+   "lat": 48.54941,
+   "lon": -123.12729,
+   "approx": false,
+   "position": {
+    "text": "Position: address match for 1165 West Valley Road (US Census geocoder), inside Section 12, T35N R4W as the order states. The pond itself is not a named feature.",
+    "src": "census-west-valley"
+   },
+   "refs": [
+    {
+     "label": "NWS-2024-205",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "WQC Order 24654",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "Aquatics 143315",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "WAR315848",
+     "src": "echo-WAR315848"
+    }
+   ],
+   "status": {
+    "label": "401 issued",
+    "cls": "ok",
+    "src": "ecy-30371"
+   },
+   "summary": {
+    "text": "Remove a 1940s earthen dam and 18-inch culvert spillway that no longer meets dam safety standards and rebuild in the same footprint with two 24-inch culverts and an emergency spillway. The pond is dewatered during work, which also removes its largemouth bass, the only fish found in a 2024 survey.",
+    "src": "ecy-30371"
+   },
+   "facts": [
+    {
+     "label": "Wetland impact",
+     "value": "Up to 1,330 sq ft, temporary",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "Stream impact",
+     "value": "20 LF ditched streambed",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "Armoring",
+     "value": "At least 20 LF quarry spall",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "Mitigation",
+     "value": "Restoration plan, 5 years of monitoring",
+     "src": "ecy-30371"
+    },
+    {
+     "label": "Corps permit type",
+     "value": "Nationwide Permit program (per Ecology's order; no Corps database record found by this number)",
+     "src": "ecy-30371"
+    }
+   ],
+   "window": {
+    "from": "07-15",
+    "to": "10-15",
+    "text": "Jul 15 to Oct 15",
+    "src": "ecy-30371"
+   },
+   "trail": [
+    {
+     "date": "2025-12-27",
+     "agency": "ecology",
+     "event": "Pre-filing meeting request",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2026-03-30",
+     "agency": "corps",
+     "event": "Corps notifies Ecology it is processing a Nationwide Permit (as listed in Ecology's order)",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2026-03-30",
+     "agency": "ecology",
+     "event": "401 request received",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2026-04-17",
+     "agency": "ecology",
+     "event": "Public notice",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2026-06-17",
+     "agency": "epa",
+     "event": "Stormwater coverage WAR315848 to Richard Lawson LLC; receiving water Lawson Pond",
+     "src": "echo-WAR315848"
+    },
+    {
+     "date": "2026-06-30",
+     "agency": "county",
+     "event": "SEPA modified mitigated DNS (as listed in Ecology's order)",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2026-07-16",
+     "agency": "ecology",
+     "event": "401 certification issued, Order 24654",
+     "src": "ecy-30371"
+    },
+    {
+     "date": "2032-12-31",
+     "agency": "ecology",
+     "event": "401 order expires",
+     "src": "ecy-30371"
+    }
+   ],
+   "joins": [
+    "n-lawson"
+   ]
+  },
+  {
+   "id": "stuart-moorage",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Stuart Island Moorage Improvements",
+   "applicant": "Washington State Parks",
+   "island": "Stuart Island",
+   "water": "Reid Harbor",
+   "type": "Moorage and piles",
+   "lat": 48.67526,
+   "lon": -123.20077,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2022-00056"
+   },
+   "refs": [
+    {
+     "label": "NWS-2022-00056",
+     "src": "orm-NWS-2022-00056"
+    },
+    {
+     "label": "RTID 0648-XF124",
+     "src": "fr-2026-16329"
+    }
+   ],
+   "status": {
+    "label": "Letter of Permission issued",
+    "cls": "ok",
+    "src": "orm-NWS-2022-00056"
+   },
+   "summary": {
+    "text": "Replace the timber moorage facility and offshore float in Reid Harbor and replace creosote pumpout dolphins with steel piles. Part of State Parks' Marine Facilities Replacement Program, which also covers Prevost Harbor, Fossil Bay on Sucia, and Olga Pier.",
+    "src": "fr-2026-16329"
+   },
+   "facts": [
+    {
+     "label": "Program in-water days",
+     "value": "Up to 160 over 5 years, up to 69 with pile work",
+     "src": "fr-2026-16329"
+    },
+    {
+     "label": "Marine mammals",
+     "value": "Harassment-only take requested for 10 species",
+     "src": "fr-2026-16329"
+    },
+    {
+     "label": "Related grant",
+     "value": "$150,000 Clean Vessel Act grant, Reid Harbor pumpout barge piles",
+     "src": "parks-cva-grants"
+    }
+   ],
+   "window": {
+    "from": "09-01",
+    "to": "02-15",
+    "text": "Sep 1, 2026 to Feb 15, 2027 (Reid Harbor)",
+    "src": "fr-2026-16329"
+   },
+   "trail": [
+    {
+     "date": "2026-01-09",
+     "agency": "corps",
+     "event": "Letter of Permission issued with special conditions",
+     "src": "orm-NWS-2022-00056"
+    },
+    {
+     "date": "2026-03-30",
+     "agency": "noaa",
+     "event": "Notice of receipt, marine mammal take application",
+     "src": "noaa-parks-ita"
+    },
+    {
+     "date": "2026-06-25",
+     "agency": "parks",
+     "event": "Clean Vessel Act grant announced",
+     "src": "parks-cva-grants"
+    },
+    {
+     "date": "2026-08-11",
+     "agency": "noaa",
+     "event": "Proposed 5-year rule published",
+     "src": "fr-2026-16329"
+    },
+    {
+     "date": "2026-09-10",
+     "agency": "noaa",
+     "event": "Comment period closed (date per news coverage)",
+     "src": "noaa-parks-ita"
+    }
+   ],
+   "joins": [
+    "sucia-pumpout"
+   ]
+  },
+  {
+   "id": "sucia-pumpout",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Sucia Island Floating Pumpout Station",
+   "applicant": "Washington State Parks",
+   "island": "Sucia Island",
+   "type": "Moorage and piles",
+   "lat": 48.74975,
+   "lon": -122.89854,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2022-00061"
+   },
+   "refs": [
+    {
+     "label": "NWS-2022-00061",
+     "src": "orm-NWS-2022-00061"
+    }
+   ],
+   "status": {
+    "label": "Letter of Permission issued",
+    "cls": "ok",
+    "src": "orm-NWS-2022-00061"
+   },
+   "summary": {
+    "text": "Floating pumpout station. Fossil Bay moorage replacement on Sucia is scheduled in a later year of the State Parks program.",
+    "src": "fr-2026-16329"
+   },
+   "trail": [
+    {
+     "date": "2026-01-12",
+     "agency": "corps",
+     "event": "Letter of Permission issued with special conditions",
+     "src": "orm-NWS-2022-00061"
+    }
+   ],
+   "joins": [
+    "stuart-moorage"
+   ]
+  },
+  {
+   "id": "deer-harbor-piles",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Deer Harbor Boatworks Emergency Pile Replacement",
+   "applicant": "Deer Harbor Boatworks",
+   "island": "Orcas Island",
+   "water": "Deer Harbor",
+   "type": "Moorage and piles",
+   "lat": 48.62583,
+   "lon": -123.00372,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2021-00304"
+   },
+   "refs": [
+    {
+     "label": "NWS-2021-00304",
+     "src": "orm-NWS-2021-00304"
+    }
+   ],
+   "status": {
+    "label": "After-the-fact permit issued",
+    "cls": "ok",
+    "src": "orm-NWS-2021-00304"
+   },
+   "summary": {
+    "text": "After-the-fact authorization for emergency pile replacement. The same business holds Boatyard General Permit coverage WAG030103.",
+    "src": "orm-NWS-2021-00304"
+   },
+   "trail": [
+    {
+     "date": "2026-09-25",
+     "agency": "corps",
+     "event": "Letter of Permission issued with special conditions",
+     "src": "orm-NWS-2021-00304"
+    }
+   ],
+   "joins": [
+    "n-deerharbor"
+   ]
+  },
+  {
+   "id": "veucod",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Emergency Float Stabilization",
+   "applicant": "Veucod Island LLC",
+   "island": "Not stated in the record",
+   "type": "Emergency",
+   "lat": 48.50257,
+   "lon": -122.83681,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this record.",
+    "src": "orm-NWS-2026-00264"
+   },
+   "refs": [
+    {
+     "label": "NWS-2026-00264",
+     "src": "orm-NWS-2026-00264"
+    }
+   ],
+   "status": {
+    "label": "Emergency action finalized",
+    "cls": "n",
+    "src": "orm-NWS-2026-00264"
+   },
+   "summary": {
+    "text": "Emergency float stabilization; the record lists severe rain causing flood conditions as the event.",
+    "src": "orm-NWS-2026-00264"
+   },
+   "trail": [
+    {
+     "date": "2026-03-31",
+     "agency": "corps",
+     "event": "Emergency action begins",
+     "src": "orm-NWS-2026-00264"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "jensen-cove",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Jensen's Shipyard Cove Facility Replacement",
+   "applicant": "Port of Friday Harbor",
+   "island": "San Juan Island",
+   "water": "Shipyard Cove",
+   "type": "Moorage and piles",
+   "lat": 48.52746,
+   "lon": -123.00055,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2025-00624"
+   },
+   "refs": [
+    {
+     "label": "NWS-2025-00624",
+     "src": "orm-NWS-2025-00624"
+    }
+   ],
+   "status": {
+    "label": "Corps review pending",
+    "cls": "warn",
+    "src": "orm-NWS-2025-00624"
+   },
+   "summary": {
+    "text": "Replacement of the Port's Shipyard Cove facility (HOP). Albert Jensen and Sons Shipyard, next door, holds Boatyard General Permit coverage.",
+    "src": "orm-NWS-2025-00624"
+   },
+   "trail": [
+    {
+     "date": "2026-05-15",
+     "agency": "corps",
+     "event": "Application received (Letter of Permission)",
+     "src": "orm-NWS-2025-00624"
+    }
+   ],
+   "joins": [
+    "n-jensen",
+    "fh-marina"
+   ]
+  },
+  {
+   "id": "hunter-bay",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Hunter Bay Marine Facility",
+   "applicant": "San Juan County Public Works",
+   "island": "Lopez Island",
+   "water": "Hunter Bay",
+   "type": "Public dock",
+   "lat": 48.45943,
+   "lon": -122.84657,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2022-00876"
+   },
+   "refs": [
+    {
+     "label": "NWS-2022-00876",
+     "src": "orm-NWS-2022-00876"
+    }
+   ],
+   "status": {
+    "label": "Corps review pending",
+    "cls": "warn",
+    "src": "orm-NWS-2022-00876"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-06-26",
+     "agency": "corps",
+     "event": "Standard permit application received",
+     "src": "orm-NWS-2022-00876"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "var-stilla",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Float Replacement",
+   "applicant": "Var Stilla Properties LLC",
+   "island": "Not stated in the record",
+   "type": "Moorage and piles",
+   "lat": 48.59523,
+   "lon": -122.98114,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2026-00732"
+   },
+   "refs": [
+    {
+     "label": "NWS-2026-00732",
+     "src": "orm-NWS-2026-00732"
+    }
+   ],
+   "status": {
+    "label": "Corps review pending",
+    "cls": "warn",
+    "src": "orm-NWS-2026-00732"
+   },
+   "summary": {
+    "text": "Float replacement.",
+    "src": "orm-NWS-2026-00732"
+   },
+   "trail": [
+    {
+     "date": "2026-09-01",
+     "agency": "corps",
+     "event": "Application received (Letter of Permission)",
+     "src": "orm-NWS-2026-00732"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "west-beach",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Mooring Buoy Replacement",
+   "applicant": "West Beach Resort Inc.",
+   "island": "Orcas Island",
+   "type": "Mooring buoys",
+   "lat": 48.6883,
+   "lon": -122.9611,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this permit.",
+    "src": "orm-NWS-2026-00749"
+   },
+   "refs": [
+    {
+     "label": "NWS-2026-00749",
+     "src": "orm-NWS-2026-00749"
+    }
+   ],
+   "status": {
+    "label": "Corps review pending",
+    "cls": "warn",
+    "src": "orm-NWS-2026-00749"
+   },
+   "summary": {
+    "text": "Replacement of resort mooring buoys.",
+    "src": "orm-NWS-2026-00749"
+   },
+   "trail": [
+    {
+     "date": "2026-10-06",
+     "agency": "corps",
+     "event": "Application received (Letter of Permission)",
+     "src": "orm-NWS-2026-00749"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "jd-tg",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Approved Jurisdictional Determination",
+   "applicant": "TG Dynamics Group II LLC",
+   "island": "Not stated in the record",
+   "type": "Jurisdiction",
+   "lat": 48.5754,
+   "lon": -122.94236,
+   "approx": false,
+   "position": {
+    "text": "Position: the Corps database's own point for this record.",
+    "src": "orm-NWS-2025-00697"
+   },
+   "refs": [
+    {
+     "label": "NWS-2025-00697",
+     "src": "orm-NWS-2025-00697"
+    }
+   ],
+   "status": {
+    "label": "Finalized",
+    "cls": "n",
+    "src": "orm-NWS-2025-00697"
+   },
+   "summary": {
+    "text": "The Corps' formal finding of which waters on a site are federally regulated, made under the amended 2023 rule.",
+    "src": "usace-jd-NWS-2025-00697"
+   },
+   "trail": [
+    {
+     "date": "2026-03-18",
+     "agency": "corps",
+     "event": "Approved JD finalized",
+     "src": "usace-jd-NWS-2025-00697"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "fh-marina",
+   "layer": "local",
+   "county": "San Juan",
+   "name": "Port of Friday Harbor Marina Repairs",
+   "applicant": "Port of Friday Harbor",
+   "island": "San Juan Island",
+   "water": "Friday Harbor",
+   "type": "Moorage and piles",
+   "lat": 48.53842,
+   "lon": -123.01568,
+   "approx": false,
+   "position": {
+    "text": "Position: the Friday Harbor Marina named-feature point (GeoNames). The staff report gives 204 Front Street and three parcels.",
+    "src": "geonames-friday-harbor"
+   },
+   "refs": [
+    {
+     "label": "LUA2025-0065",
+     "src": "fh-lua2025-0065"
+    },
+    {
+     "label": "LUA2025-0066",
+     "src": "fh-lua2025-0066"
+    }
+   ],
+   "status": {
+    "label": "Town shoreline permit heard",
+    "cls": "ok",
+    "src": "fh-lua2025-0065"
+   },
+   "summary": {
+    "text": "Remove 84 timber piles and about 20,357 sq ft of floats; install 88 steel piles and the same area of grated floats. No Corps record for this work was found in the area search.",
+    "src": "fh-lua2025-0065"
+   },
+   "facts": [
+    {
+     "label": "Piles out",
+     "value": "84 timber",
+     "src": "fh-lua2025-0065"
+    },
+    {
+     "label": "Piles in",
+     "value": "88 steel (28 at 12 in., 60 at 16 in.)",
+     "src": "fh-lua2025-0065"
+    },
+    {
+     "label": "Floats",
+     "value": "~20,357 sq ft, replaced with grated floats",
+     "src": "fh-lua2025-0065"
+    }
+   ],
+   "flags": [
+    {
+     "text": "The staff report notes that pile counts in the project's marine mammal plan differ from the application. Both are in the record.",
+     "srcs": [
+      "fh-lua2025-0065"
+     ]
+    }
+   ],
+   "trail": [
+    {
+     "date": "2026-01-08",
+     "agency": "town",
+     "event": "Revised SEPA DNS; staff recommends approval",
+     "src": "fh-lua2025-0066"
+    },
+    {
+     "date": "2026-01-15",
+     "agency": "town",
+     "event": "Town Council hearing on the shoreline permit",
+     "src": "fh-lua2025-0065"
+    }
+   ],
+   "joins": [
+    "jensen-cove"
+   ]
+  },
+  {
+   "id": "orcas-landing",
+   "layer": "local",
+   "county": "San Juan",
+   "name": "Orcas Landing Marine Facility Replacement",
+   "applicant": "San Juan County Public Works",
+   "island": "Orcas Island",
+   "water": "Harney Channel",
+   "type": "Public dock",
+   "lat": 48.59733,
+   "lon": -122.94349,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the WSF Orcas terminal point (WSDOT terminal locations). The county dock is next to the terminal.",
+    "src": "wsdot-terminals"
+   },
+   "refs": [],
+   "status": {
+    "label": "Seeking funding",
+    "cls": "n",
+    "src": "sjc-news-2148"
+   },
+   "summary": {
+    "text": "Full replacement, about $4 million, of the creosote-timber public dock next to the ferry terminal. No permit record found yet.",
+    "src": "sjc-news-2148"
+   },
+   "facts": [
+    {
+     "label": "Estimated cost",
+     "value": "~$4M",
+     "src": "sjc-news-2148"
+    }
+   ],
+   "trail": [
+    {
+     "date": "2026-04-02",
+     "agency": "county",
+     "event": "Federal Community Project Funding request forwarded",
+     "src": "sjc-news-2148"
+    }
+   ],
+   "joins": [
+    "n-orcasvillage"
+   ]
+  },
+  {
+   "id": "madrona-point",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Madrona Point Marine Facility Repair, Eastsound",
+   "applicant": "San Juan County Public Works",
+   "island": "Orcas Island",
+   "type": "Moorage and piles",
+   "lat": 48.68218,
+   "lon": -122.91743,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: Madrona Point, Eastsound (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-node-9080154689"
+   },
+   "refs": [],
+   "status": {
+    "label": "Construction out to bid",
+    "cls": "n",
+    "src": "cc-madrona-point"
+   },
+   "summary": {
+    "text": "Replace timber piles with steel and a new gangway support frame; $296,427 bid; listed start Oct 23, 2026.",
+    "src": "cc-madrona-point"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-09-29",
+     "agency": "county",
+     "event": "County contract listed for bids ($296,427)",
+     "src": "cc-madrona-point"
+    },
+    {
+     "date": "2026-10-23",
+     "agency": "county",
+     "event": "Listed construction start",
+     "src": "cc-madrona-point"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "blind-bay-road",
+   "layer": "local",
+   "county": "San Juan",
+   "name": "Blind Bay Road Relocation and Shoreline Restoration",
+   "applicant": "San Juan County",
+   "island": "Shaw Island",
+   "type": "Road relocation and shoreline restoration",
+   "lat": 48.57988,
+   "lon": -122.9317,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the middle of Blind Bay Road (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-way-4735624"
+   },
+   "refs": [],
+   "status": {
+    "label": "Grant applied for (RCO 26-1227)",
+    "cls": "n",
+    "src": "rco-cca-esrp-2026"
+   },
+   "summary": {
+    "text": "About a mile of armored Shaw Island shoreline; $364,000 requested for design (RCO 26-1227).",
+    "src": "rco-cca-esrp-2026"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-06",
+     "agency": "rco",
+     "event": "County applies for $364,000 design grant (RCO 26-1227)",
+     "src": "rco-cca-esrp-2026"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "false-bay-road",
+   "layer": "local",
+   "county": "San Juan",
+   "name": "False Bay Road Relocation and Shoreline Restoration",
+   "applicant": "San Juan County",
+   "island": "San Juan Island",
+   "type": "Road relocation and shoreline restoration",
+   "lat": 48.49061,
+   "lon": -123.06648,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: False Bay Drive beside False Bay (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-way-4738274"
+   },
+   "refs": [],
+   "status": {
+    "label": "Grant applied for (RCO 26-1262)",
+    "cls": "n",
+    "src": "rco-cca-esrp-2026"
+   },
+   "summary": {
+    "text": "Realign 1,600 ft of road and remove armoring on San Juan Island; $175,000 requested (RCO 26-1262).",
+    "src": "rco-cca-esrp-2026"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-06",
+     "agency": "rco",
+     "event": "County applies for $175,000 design grant (RCO 26-1262)",
+     "src": "rco-cca-esrp-2026"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "jackson-beach",
+   "layer": "local",
+   "county": "San Juan",
+   "name": "Jackson Beach restoration vs. barge landing",
+   "applicant": "San Juan County",
+   "island": "San Juan Island",
+   "type": "Shoreline restoration",
+   "lat": 48.51982,
+   "lon": -123.01101,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: Jackson Beach (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-node-356543286"
+   },
+   "refs": [],
+   "status": {
+    "label": "Restoration cancelled; committee formed",
+    "cls": "n",
+    "src": "salish-current-jackson-beach"
+   },
+   "summary": {
+    "text": "Council cancelled the restoration in January; Public Works moved rock to stabilize erosion; about $500,000 in salmon funds reallocated; a committee formed in May.",
+    "src": "salish-current-jackson-beach"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-05-05",
+     "agency": "county",
+     "event": "Committee formed to reconcile restoration and the barge landing",
+     "src": "salish-current-jackson-beach"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "center-island-cable",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Center Island submarine cable",
+   "applicant": "OPALCO",
+   "island": "Center Island",
+   "type": "Submarine utility cable",
+   "lat": 48.48942,
+   "lon": -122.83008,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the middle of Center Island (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-way-18727701"
+   },
+   "refs": [],
+   "status": {
+    "label": "Cable laid",
+    "cls": "ok",
+    "src": "opalco-blog-2026-01"
+   },
+   "summary": {
+    "text": "About 3,500 ft from Decatur (drilled) to Center Island (trenched); permits from the county, WDFW, Corps and DNR. Cable laid.",
+    "src": "opalco-blog-2026-01"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-01-06",
+     "agency": "press",
+     "event": "OPALCO reports the new cable laid",
+     "src": "opalco-blog-2026-01"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "waldron-float",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Waldron Island county float repair",
+   "applicant": "San Juan County Public Works",
+   "island": "Waldron Island",
+   "type": "Public dock",
+   "lat": 48.69915,
+   "lon": -123.03986,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the middle of Waldron Island (the source does not say where on the island the float is) (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-relation-5411062"
+   },
+   "refs": [],
+   "status": {
+    "label": "Float repair",
+    "cls": "n",
+    "src": "sjc-news-2142"
+   },
+   "summary": {
+    "text": "1999 float towed to Friday Harbor for flotation repairs.",
+    "src": "sjc-news-2142"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-03-30",
+     "agency": "county",
+     "event": "Float towed to Friday Harbor for flotation repairs; closed Apr 5 to 11",
+     "src": "sjc-news-2142"
+    }
+   ],
+   "joins": []
+  },
+  {
+   "id": "olga-pier",
+   "layer": "structures",
+   "county": "San Juan",
+   "name": "Olga Pier replacement",
+   "applicant": "Washington State Parks",
+   "island": "Orcas Island",
+   "type": "Public pier",
+   "lat": 48.61955,
+   "lon": -122.83546,
+   "approx": true,
+   "position": {
+    "text": "Position approximate: the hamlet of Olga (OpenStreetMap). The source names the place, not an exact point.",
+    "src": "osm-node-150979255"
+   },
+   "refs": [],
+   "status": {
+    "label": "Covered by a proposed marine mammal rule",
+    "cls": "n",
+    "src": "fr-2026-16329"
+   },
+   "summary": {
+    "text": "Covered by the proposed marine mammal rule; in-water work planned Sep 2030 to Feb 2031.",
+    "src": "fr-2026-16329"
+   },
+   "facts": [],
+   "trail": [
+    {
+     "date": "2026-08-11",
+     "agency": "noaa",
+     "event": "Proposed incidental take rule published",
+     "src": "fr-2026-16329"
+    },
+    {
+     "date": "2030-09-01",
+     "agency": "noaa",
+     "event": "Planned in-water work window opens (to Feb 15, 2031)",
+     "src": "fr-2026-16329"
+    }
+   ],
+   "joins": []
+  }
+ ],
+ "unmapped": [],
+ "npdes_curated": {
+  "WA0023582": {
+   "id": "n-fh",
+   "name": "Friday Harbor STP",
+   "extra": [
+    {
+     "label": "Upgrade",
+     "value": "Plant upgrade construction began Sept 2025",
+     "src": "sjj-60098"
+    },
+    {
+     "label": "Plan",
+     "value": "2018 Wastewater Facilities Plan",
+     "src": "fh-wwfp"
+    }
+   ],
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WA0030589": {
+   "id": "n-fb",
+   "name": "Fisherman Bay STP (Lopez)",
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WA0021822": {
+   "id": "n-roche",
+   "name": "Roche Harbor Resort WWTP",
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WA0029891": {
+   "id": "n-rosario",
+   "name": "Rosario WWTP",
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WA0030571": {
+   "id": "n-eastsound",
+   "name": "Eastsound Sewer and Water District WWTP",
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WA0030911": {
+   "id": "n-orcasvillage",
+   "name": "Eastsound Orcas Village WWTP",
+   "note": {
+    "text": "All six San Juan County treatment plant permits expired between 2020 and 2022. Ecology now plans individual nutrient permits after the 2025 appeals board ruling against the Puget Sound Nutrient General Permit; no draft for a San Juan County plant was found.",
+    "src": "ecy-nutrient-permit"
+   }
+  },
+  "WAG994262": {
+   "id": "n-rochemarine",
+   "name": "Roche Harbor Marine"
+  },
+  "WAG030072": {
+   "id": "n-imc",
+   "name": "Islands Marine Center"
+  },
+  "WAG994386": {
+   "id": "n-jensen",
+   "name": "Albert Jensen and Sons Shipyard",
+   "joins": [
+    "jensen-cove"
+   ]
+  },
+  "WAG030054": {
+   "id": "n-westsound",
+   "name": "West Sound Marina",
+   "extra": [
+    {
+     "label": "Penalty",
+     "value": "$1,200 (issued 2025-10-20): the abandoned tug El Capitan sank at its berth in Nov 2023, releasing about 50 gal of oil",
+     "src": "ecy-penalties-2026-05"
+    }
+   ]
+  },
+  "WAG030103": {
+   "id": "n-deerharbor",
+   "name": "Deer Harbor Boatworks",
+   "joins": [
+    "deer-harbor-piles"
+   ]
+  },
+  "WAG030038": {
+   "id": "n-reed",
+   "name": "Reed Bros Shipyard",
+   "flags": [
+    {
+     "text": "EPA's outfall layer places this permit off Vancouver Island; the facility layer places it at Reads Bay. The facility point is used.",
+     "srcs": [
+      "echo-WAG030038"
+     ]
+    }
+   ],
+   "pos": {
+    "lat": 48.49085,
+    "lon": -122.81487,
+    "text": "Position: EPA's facility point. The outfall layer's coordinates for this permit are wrong (off the coast of Vancouver Island), so they are not used.",
+    "src": "echo-WAG030038"
+   }
+  },
+  "WAR316014": {
+   "id": "n-airport-o",
+   "name": "Orcas Island Airport"
+  },
+  "WAR315848": {
+   "id": "n-lawson",
+   "name": "Richard Lawson LLC",
+   "joins": [
+    "lawson"
+   ]
+  },
+  "WAR315672": {
+   "id": "n-school",
+   "name": "Orcas Island School District"
+  },
+  "WAR310880": {
+   "id": "n-lopezlanding",
+   "name": "Lopez Landing (Land Resources NW)"
+  },
+  "WAR307694": {
+   "id": "n-pool",
+   "name": "Friends of Lopez Island Pool"
+  },
+  "WAR011746": {
+   "id": "n-sjts",
+   "name": "San Juan Island Transfer Station"
+  },
+  "WAR011747": {
+   "id": "n-ots",
+   "name": "Orcas Island Transfer Station"
+  },
+  "WAR126258": {
+   "id": "n-lopezdrop",
+   "name": "Lopez Island Drop Box Facility"
+  },
+  "WAR001541": {
+   "id": "n-fhairport",
+   "name": "Friday Harbor Airport"
+  }
+ },
+ "docs": {
+  "cc-madrona-point": {
+   "title": "ConstructConnect bid listing: Madrona Point Marine Facility Repair",
+   "agency": "press",
+   "kind": "Page",
+   "url": "https://projects.constructconnect.com/details/7694322-madrona-point-marine-facility-repair&find_loc=washington-98245"
+  },
+  "census-broken-point": {
+   "title": "US Census geocoder match: 485 Broken Point Rd, Shaw Island",
+   "agency": "census",
+   "kind": "Record",
+   "url": null,
+   "record": true,
+   "api": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=485%20Broken%20Point%20Rd%2C%20Shaw%20Island%2C%20WA%2098286&benchmark=Public_AR_Current&format=json"
+  },
+  "census-west-valley": {
+   "title": "US Census geocoder match: 1165 West Valley Rd, Friday Harbor",
+   "agency": "census",
+   "kind": "Record",
+   "url": null,
+   "record": true,
+   "api": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=1165%20West%20Valley%20Road%2C%20Friday%20Harbor%2C%20WA%2098250&benchmark=Public_AR_Current&format=json"
+  },
+  "echo-WAR315848": {
+   "title": "EPA ECHO: stormwater coverage WAR315848",
+   "agency": "epa",
+   "kind": "Record",
+   "url": null,
+   "record": true,
+   "api": "https://services.arcgis.com/cJ9YHowT8TU7DUyn/ArcGIS/rest/services/ECHO_NPDES_Facilities_Outfalls/FeatureServer/0/query?where=external_permit_nmbr%3D%27WAR315848%27&outFields=*&f=json"
+  },
+  "ecy-29513": {
+   "title": "Ecology 401 certification, Order 24558",
+   "about": "Broken Point Road Shoreline",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/29513"
+  },
+  "ecy-29566": {
+   "title": "Ecology Coastal Zone consistency decision",
+   "about": "Broken Point Road Shoreline",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/29566"
+  },
+  "ecy-30129": {
+   "title": "Ecology 401 certification, Order 24620",
+   "about": "OPALCO Double and Alegria cables",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30129"
+  },
+  "ecy-30161": {
+   "title": "Ecology 401 certification, Order 24619",
+   "about": "OPALCO Canoe Island cable",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30161"
+  },
+  "ecy-30163": {
+   "title": "Ecology 401 certification, Order 24672",
+   "about": "OPALCO Bell Island cable",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30163"
+  },
+  "ecy-30233": {
+   "title": "Ecology Coastal Zone consistency decision",
+   "about": "OPALCO Canoe Island cable",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30233"
+  },
+  "ecy-30234": {
+   "title": "Ecology Coastal Zone consistency decision",
+   "about": "OPALCO Double and Alegria cables",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30234"
+  },
+  "ecy-30245": {
+   "title": "Ecology Coastal Zone consistency decision",
+   "about": "OPALCO Bell Island cable",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30245"
+  },
+  "ecy-30371": {
+   "title": "Ecology 401 certification, Order 24654",
+   "about": "Lawson Pond Dam Replacement",
+   "agency": "ecology",
+   "kind": "PDF",
+   "url": "https://apps.ecology.wa.gov/aquatics/downloadaction/30371"
+  },
+  "ecy-nutrient-permit": {
+   "title": "Ecology: Puget Sound Nutrient General Permit",
+   "agency": "ecology",
+   "kind": "Page",
+   "url": "https://ecology.wa.gov/Regulations-Permits/Permits-certifications/nutrient-permit"
+  },
+  "ecy-penalties-2026-05": {
+   "title": "Ecology news: quarterly penalties, 20 May 2026",
+   "agency": "ecology",
+   "kind": "Page",
+   "url": "https://ecology.wa.gov/about-us/who-we-are/news/2026/may-20-quarterly-penalties"
+  },
+  "fh-lua2025-0065": {
+   "title": "Town of Friday Harbor staff report, LUA2025-0065",
+   "agency": "town",
+   "kind": "PDF",
+   "url": "https://www.fridayharbor.org/DocumentCenter/View/10903/LUA2025-0065_Replace-Pilings_Staff-Report_Final"
+  },
+  "fh-lua2025-0066": {
+   "title": "Town of Friday Harbor SEPA notice of decision, LUA2025-0066",
+   "agency": "town",
+   "kind": "PDF",
+   "url": "https://www.fridayharbor.org/DocumentCenter/View/10906/LUA2025-0066---Marina-Repairs---SEPA-_NoticeofDecision_Final"
+  },
+  "fh-wwfp": {
+   "title": "Town of Friday Harbor Wastewater Facilities Plan",
+   "agency": "town",
+   "kind": "Page",
+   "url": "https://www.fridayharbor.org/2369/Wastewater-Facilities-Plan"
+  },
+  "fr-2026-16329": {
+   "title": "Federal Register 2026-16329: proposed marine mammal rule, State Parks marine facilities",
+   "agency": "noaa",
+   "kind": "Page",
+   "url": "https://www.federalregister.gov/documents/2026/08/11/2026-16329/takes-of-marine-mammals-incidental-to-specified-activities-taking-marine-mammals-incidental-to-the"
+  },
+  "geonames-bell-island": {
+   "title": "GeoNames: Bell Island",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.geonames.org/search.html?q=Bell%20Island&country=US&adminCode1=WA"
+  },
+  "geonames-friday-harbor": {
+   "title": "GeoNames: Friday Harbor places",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.geonames.org/search.html?q=Friday%20Harbor&country=US&adminCode1=WA"
+  },
+  "geonames-indian-cove": {
+   "title": "GeoNames: Indian Cove",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.geonames.org/search.html?q=Indian%20Cove&country=US&adminCode1=WA"
+  },
+  "noaa-parks-ita": {
+   "title": "NOAA Fisheries: incidental take authorization, State Parks marine facilities",
+   "agency": "noaa",
+   "kind": "Page",
+   "url": "https://www.fisheries.noaa.gov/action/incidental-take-authorization-washington-state-parks-and-recreation-commissions-marine"
+  },
+  "opalco-blog-2026-01": {
+   "title": "OPALCO blog, January 2026",
+   "agency": "press",
+   "kind": "Page",
+   "url": "https://www.opalco.com/delivering-power-quality-of-life/2026/01/"
+  },
+  "orm-NWS-2021-00304": {
+   "title": "Army Corps permit database: NWS-2021-00304",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2021-00304",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2021-00304%22",
+   "look_up": "NWS-2021-00304"
+  },
+  "orm-NWS-2021-00503": {
+   "title": "Army Corps permit database: NWS-2021-00503",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2021-00503",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2021-00503%22",
+   "look_up": "NWS-2021-00503"
+  },
+  "orm-NWS-2021-00673": {
+   "title": "Army Corps permit database: NWS-2021-00673",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2021-00673",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2021-00673%22",
+   "look_up": "NWS-2021-00673"
+  },
+  "orm-NWS-2021-00674": {
+   "title": "Army Corps permit database: NWS-2021-00674",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2021-00674",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2021-00674%22",
+   "look_up": "NWS-2021-00674"
+  },
+  "orm-NWS-2022-00056": {
+   "title": "Army Corps permit database: NWS-2022-00056",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2022-00056",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2022-00056%22",
+   "look_up": "NWS-2022-00056"
+  },
+  "orm-NWS-2022-00061": {
+   "title": "Army Corps permit database: NWS-2022-00061",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2022-00061",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2022-00061%22",
+   "look_up": "NWS-2022-00061"
+  },
+  "orm-NWS-2022-00876": {
+   "title": "Army Corps permit database: NWS-2022-00876",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2022-00876",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2022-00876%22",
+   "look_up": "NWS-2022-00876"
+  },
+  "orm-NWS-2025-00624": {
+   "title": "Army Corps permit database: NWS-2025-00624",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2025-00624",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2025-00624%22",
+   "look_up": "NWS-2025-00624"
+  },
+  "orm-NWS-2025-00697": {
+   "title": "Army Corps permit database: NWS-2025-00697",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2025-00697",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2025-00697%22",
+   "look_up": "NWS-2025-00697"
+  },
+  "orm-NWS-2025-00725": {
+   "title": "Army Corps permit database: NWS-2025-00725",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2025-00725",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2025-00725%22",
+   "look_up": "NWS-2025-00725"
+  },
+  "orm-NWS-2026-00264": {
+   "title": "Army Corps permit database: NWS-2026-00264",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2026-00264",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2026-00264%22",
+   "look_up": "NWS-2026-00264"
+  },
+  "orm-NWS-2026-00732": {
+   "title": "Army Corps permit database: NWS-2026-00732",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2026-00732",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2026-00732%22",
+   "look_up": "NWS-2026-00732"
+  },
+  "orm-NWS-2026-00749": {
+   "title": "Army Corps permit database: NWS-2026-00749",
+   "agency": "corps",
+   "kind": "Record",
+   "record": true,
+   "url": "https://permits.ops.usace.army.mil/orm-public?q=NWS-2026-00749",
+   "api": "https://permits.ops.usace.army.mil/orm-public-api/permits/search?sa=true&q=identifier:%22NWS-2026-00749%22",
+   "look_up": "NWS-2026-00749"
+  },
+  "parks-cva-grants": {
+   "title": "Washington State Parks: Clean Vessel Act grants, June 2026",
+   "agency": "parks",
+   "kind": "Page",
+   "url": "https://parks.wa.gov/node/3650"
+  },
+  "rco-cca-esrp-2026": {
+   "title": "RCO: 2026 estuary and salmon restoration applications",
+   "agency": "rco",
+   "kind": "PDF",
+   "url": "https://rco.wa.gov/wp-content/uploads/2026/06/CCA-ESRPRestoreProtectApplications-2026.pdf"
+  },
+  "salish-current-jackson-beach": {
+   "title": "Salish Current, 5 May 2026: Jackson Beach committee",
+   "agency": "press",
+   "kind": "Page",
+   "url": "https://salish-current.org/2026/05/05/committee-tasked-with-making-shoreline-restoration-barge-landing-co-exist/"
+  },
+  "sjc-news-2142": {
+   "title": "San Juan County news: Waldron float repair",
+   "agency": "county",
+   "kind": "Page",
+   "url": "https://sanjuancountywa.gov/CivicAlerts.asp?AID=2142"
+  },
+  "sjc-news-2148": {
+   "title": "San Juan County news: Orcas Landing funding request",
+   "agency": "county",
+   "kind": "Page",
+   "url": "https://sanjuancountywa.gov/CivicAlerts.asp?AID=2148"
+  },
+  "sjj-60098": {
+   "title": "San Juan Journal: Friday Harbor treatment plant upgrade",
+   "agency": "press",
+   "kind": "Page",
+   "url": "https://www.sanjuanjournal.com/?p=60098"
+  },
+  "usace-jd-NWS-2025-00697": {
+   "title": "Army Corps approved jurisdictional determination, NWS-2025-00697",
+   "agency": "corps",
+   "kind": "PDF",
+   "url": "https://publibrary.sec.usace.army.mil/resource?title=Approved%20Jurisdictional%20Determination%20for%20NWS-2025-00697%20TG%20Dynamics%20Group%20II%20LLC%20&documentId=4f9da2ad-42b6-44e7-baee-491c6b9695de"
+  },
+  "wiki-double-island": {
+   "title": "Wikipedia: Double Island (Washington)",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://en.wikipedia.org/wiki/Double_Island_(Washington)"
+  },
+  "wsdot-terminals": {
+   "title": "WSDOT ferry terminal locations: Orcas",
+   "agency": "wsdot",
+   "kind": "Record",
+   "url": null,
+   "record": true,
+   "api": "https://www.wsdot.wa.gov/ferries/api/terminals/rest/terminallocations"
+  },
+  "osm-node-9080154689": {
+   "title": "OpenStreetMap: Madrona Point",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/node/9080154689"
+  },
+  "osm-way-4735624": {
+   "title": "OpenStreetMap: Blind Bay Road",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/way/4735624"
+  },
+  "osm-way-4738274": {
+   "title": "OpenStreetMap: False Bay Drive",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/way/4738274"
+  },
+  "osm-node-356543286": {
+   "title": "OpenStreetMap: Jackson Beach",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/node/356543286"
+  },
+  "osm-way-18727701": {
+   "title": "OpenStreetMap: Center Island",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/way/18727701"
+  },
+  "osm-relation-5411062": {
+   "title": "OpenStreetMap: Waldron Island",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/relation/5411062"
+  },
+  "osm-node-150979255": {
+   "title": "OpenStreetMap: Olga",
+   "agency": "geo",
+   "kind": "Page",
+   "url": "https://www.openstreetmap.org/node/150979255"
+  }
+ },
+ "agency_tags": {
+  "corps": [
+   "USACE",
+   "U.S. Army Corps of Engineers, Seattle District"
+  ],
+  "ecology": [
+   "ECY",
+   "Washington State Department of Ecology"
+  ],
+  "wdfw": [
+   "WDFW",
+   "Washington Department of Fish and Wildlife"
+  ],
+  "county": [
+   "SJC",
+   "San Juan County"
+  ],
+  "town": [
+   "TOWN",
+   "Town of Friday Harbor"
+  ],
+  "noaa": [
+   "NOAA",
+   "NOAA Fisheries / Federal Register"
+  ],
+  "epa": [
+   "EPA",
+   "U.S. EPA (ECHO), permits issued by Ecology"
+  ],
+  "parks": [
+   "PARKS",
+   "Washington State Parks"
+  ],
+  "rco": [
+   "RCO",
+   "Washington Recreation and Conservation Office"
+  ],
+  "doh": [
+   "DOH",
+   "Washington State Department of Health"
+  ],
+  "census": [
+   "CENSUS",
+   "U.S. Census Bureau geocoder"
+  ],
+  "geo": [
+   "PLACE",
+   "Place-name gazetteer"
+  ],
+  "wsdot": [
+   "WSDOT",
+   "Washington State Department of Transportation"
+  ],
+  "press": [
+   "PRESS",
+   "News or third-party summary"
+  ],
+  "earthatlas": [
+   "EA",
+   "EarthAtlas (joined from another EarthAtlas tool)"
+  ]
+ }
+}

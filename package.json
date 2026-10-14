@@ -10,6 +10,7 @@
     "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && node scripts/generate-sitemap.js && node scripts/generate-birdsong-stations.js && vite build && node scripts/generate-route-html.js",
     "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",
+    "permits:bake": "node scripts/permits/bake-permits.mjs",
     "dev:parcel-tiles": "node scripts/bake-parcels/serve-tiles.mjs",
     "lint": "eslint src --ext .js,.jsx",
     "test:ships": "node --env-file-if-exists=.env.local --test lib/ships/test/*.test.js",

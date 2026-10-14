@@ -61,6 +61,9 @@ addUrl('/quakes')
 // San Juan County docks
 addUrl('/sanjuan-docks')
 
+// PermitTracker (water permits)
+addUrl('/permits')
+
 // Carbon
 addUrl('/carbon')
 

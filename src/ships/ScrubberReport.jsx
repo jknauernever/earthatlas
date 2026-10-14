@@ -287,7 +287,8 @@ export default function ScrubberReport() {
               <h2 className={c.h2}>By place</h2>
               <div className={c.note}>County and city from the <Src k="census">US Census Bureau</Src><span className={c.noPrint}>; open a row for its terminals and ships</span>.</div>
             </div>
-            <PlaceTable view={view} open={st.open} setOpen={(open) => set({ open })} months={data.coverage.months} />
+            <PlaceTable view={view} open={st.open} setOpen={(open) => set({ open })}
+              months={data.period.months.filter((m) => data.coverage.months.includes(m) || view.estMonths.has(m))} />
           </section>
 
           {view.shipList.length > 0 && Object.keys(view.info).length > 0 && <>
@@ -875,6 +876,7 @@ function DayChart({ month, days, keys, onClose }) {
  * a baseline with a tick at each January; the first and last month under it; hover a bar for the month and its count.
  */
 function Spark({ months, values }) {
+  if (!months.length) return null // no month with data in the picked period (e.g. only months NOAA hasn’t published, no estimate)
   const max = Math.max(1, ...months.map((m) => values[m] || 0))
   const W = 6, H = 20
   const tip = (m) => `${monthName(m, 'long')}: ${fmt(values[m] || 0)} call${(values[m] || 0) === 1 ? '' : 's'}`

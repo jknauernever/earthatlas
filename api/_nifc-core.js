@@ -33,6 +33,7 @@ const SERVICES = {
       'poly_IncidentName', 'attr_IncidentName', 'poly_GISAcres', 'attr_IncidentSize',
       'attr_PercentContained', 'attr_FireCause', 'attr_IncidentTypeCategory',
       'attr_FireDiscoveryDateTime', 'attr_FireBehaviorGeneral', 'poly_IRWINID',
+      'attr_ICS209ReportDateTime',
     ].join(','),
   },
   incidents: {
@@ -43,6 +44,7 @@ const SERVICES = {
     outFields: [
       'IncidentName', 'IncidentTypeCategory', 'IncidentSize', 'DiscoveryAcres',
       'PercentContained', 'FireCause', 'FireDiscoveryDateTime', 'IrwinID',
+      'ICS209ReportDateTime',
     ].join(','),
   },
 }
@@ -95,6 +97,7 @@ export function normalizeNifc(geojson, layer) {
     const cause = p.attr_FireCause || p.FireCause || null
     const type = p.attr_IncidentTypeCategory || p.IncidentTypeCategory || null
     const discovered = num(p.attr_FireDiscoveryDateTime) ?? num(p.FireDiscoveryDateTime)
+    const reported = num(p.attr_ICS209ReportDateTime) ?? num(p.ICS209ReportDateTime)
     feats.push({
       type: 'Feature',
       geometry: f.geometry,
@@ -106,11 +109,31 @@ export function normalizeNifc(geojson, layer) {
         type, // WF wildfire / RX prescribed / CX complex
         behavior: p.attr_FireBehaviorGeneral || null,
         discovered_ms: discovered ?? null,
+        reported_ms: reported ?? null, // latest ICS-209 situation report
         irwin: p.poly_IRWINID || p.IrwinID || null,
       },
     })
   }
   return { type: 'FeatureCollection', features: feats, _count: feats.length, _layer: layer }
+}
+
+// WFIGS "Current" keeps an incident until someone records it out, and many
+// never are: 100%-contained fires sit there for months (e.g. an April fire
+// with a Final 209 still listed in late September), as do small records
+// nobody updated after initial attack. A fire whose last official word —
+// its latest ICS-209 report, else its discovery — is older than these
+// windows is history, not a current fire. Actively managed fires file 209s
+// every day or few, so long-running big fires are unaffected. Shared by
+// /fire and the /inmotion fire feed so both give one answer.
+export const CONTAINED_STALE_MS = 7 * 86400e3
+export const UNCONTAINED_STALE_MS = 30 * 86400e3
+export function isStaleNifcIncident(p, now = Date.now()) {
+  // Snapshots baked before reported_ms existed: no basis to judge.
+  if (!p || p.reported_ms === undefined) return false
+  const last = Math.max(p.reported_ms || 0, p.discovered_ms || 0)
+  if (!last) return false
+  const age = now - last
+  return p.contained >= 100 ? age > CONTAINED_STALE_MS : age > UNCONTAINED_STALE_MS
 }
 
 function num(v) {

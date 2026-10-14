@@ -25,7 +25,7 @@ import zlib from 'node:zlib'
 import { writeFileSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { simplifyNifc } from './_nifc-core.js'
+import { simplifyNifc, isStaleNifcIncident } from './_nifc-core.js'
 import { fetchBirdcastFrame, latestBirdcastHour, BIRDCAST_LAT, BIRDCAST_LON } from './_birdcast-core.js'
 
 const MISSING = -32768
@@ -431,8 +431,11 @@ async function nameEventsFromNifc(events, now = Date.now()) {
     const r = await fetch(`${BLOB_PUBLIC_BASE}/fire/nifc-incidents.json`)
     if (!r.ok) return
     const fc = await r.json()
+    // Stale records (contained or unreported for weeks) are dropped before
+    // matching too, so a months-old fire can't lend its name and discovery
+    // date to fresh heat nearby.
     const incidents = (fc.features || [])
-      .filter((f) => f.geometry?.type === 'Point' && f.properties?.name)
+      .filter((f) => f.geometry?.type === 'Point' && f.properties?.name && !isStaleNifcIncident(f.properties, now))
       .map((f) => ({
         lng: f.geometry.coordinates[0],
         lat: f.geometry.coordinates[1],

@@ -10,6 +10,7 @@
 
 import styles from './FireApp.module.css'
 import { renderNifcCard } from './nifc.js'
+import { isStaleNifcIncident } from '../../api/_nifc-core.js'
 import { renderInciwebCard } from './inciweb.js'
 // Circular with firms.js (it imports getActiveFireContext from here) — safe:
 // both sides only touch the import inside function bodies, never at eval.
@@ -50,6 +51,13 @@ let perimDetail = null            // 'low' | 'full' — what cachedPerim holds
 let perimUpgradeInFlight = false
 const perimUpgradeHooked = new WeakSet() // maps we've attached the zoom watcher to
 
+// Perimeters of stale incidents (see isStaleNifcIncident) are dropped with
+// their markers, so a months-old contained fire leaves no outline either.
+function freshPerims(fc) {
+  const now = Date.now()
+  return { ...fc, features: fc.features.filter((f) => !isStaleNifcIncident(f.properties, now)) }
+}
+
 // Swap in full-fidelity perimeters once the user zooms in far enough to see
 // the difference. Failure keeps the low copy and retries on the next zoomend.
 async function maybeUpgradePerims(map) {
@@ -60,9 +68,9 @@ async function maybeUpgradePerims(map) {
     const r = await fetch(`${API_BASE}/api/nifc?layer=perimeters`)
     const fc = r.ok ? await r.json() : null
     if (fc && fc.type === 'FeatureCollection' && fc._upstream == null && fc._error == null && fc.features.length) {
-      cachedPerim = fc
+      cachedPerim = freshPerims(fc)
       perimDetail = 'full'
-      if (map.getSource(PERIM_SRC)) map.getSource(PERIM_SRC).setData(fc)
+      if (map.getSource(PERIM_SRC)) map.getSource(PERIM_SRC).setData(cachedPerim)
     }
   } catch { /* transient — low detail stays up */ }
   finally { perimUpgradeInFlight = false }
@@ -297,6 +305,7 @@ export async function getActiveFireContext({ signal } = {}) {
         const t = String(p.type || '').toUpperCase()
         if (t && t !== 'WF' && t !== 'CX') continue
         if ((p.acres == null || p.acres === 0) && p.discovered_ms && (now - p.discovered_ms) > ZERO_ACRE_MAX_AGE_MS) continue
+        if (isStaleNifcIncident(p, now)) continue
         pts.push(f)
       }
       if (fc) incidentsOnly = pts
@@ -383,6 +392,8 @@ export async function loadUsFires(map, { signal } = {}) {
     // not a fire of consequence. New zero-acre starts still show for their first
     // day-and-a-half in case they grow.
     if ((p.acres == null || p.acres === 0) && p.discovered_ms && (now - p.discovered_ms) > ZERO_ACRE_MAX_AGE_MS) continue
+    // Contained/unreported for weeks → history, not a current fire.
+    if (isStaleNifcIncident(p, now)) continue
     seen.push({ norm: normName(p.name), c: f.geometry.coordinates })
     pts.push({ type: 'Feature', geometry: f.geometry, properties: { ...p, source: 'wfigs', iconKey: FLAME_STATE('wfigs', p.contained) } })
   }
@@ -391,6 +402,7 @@ export async function loadUsFires(map, { signal } = {}) {
     if (!f.geometry) continue
     const p = f.properties || {}
     if (!p.name) continue
+    if (isStaleNifcIncident(p, now)) continue
     const c = centroidOf(f.geometry)
     if (!c) continue
     const n = normName(p.name)
@@ -410,7 +422,7 @@ export async function loadUsFires(map, { signal } = {}) {
   }
   // Keep the last good perimeters if that feed alone failed (incidents succeeded).
   if (perimFC && perimFC.type === 'FeatureCollection') {
-    cachedPerim = perimFC
+    cachedPerim = freshPerims(perimFC)
     perimDetail = wantFull ? 'full' : 'low'
   } else if (!cachedPerim) cachedPerim = EMPTY_FC
   cachedPts = { type: 'FeatureCollection', features: pts }

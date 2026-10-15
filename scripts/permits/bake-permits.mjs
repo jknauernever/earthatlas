@@ -867,7 +867,14 @@ async function main() {
   const dfrOf = async (frs) => {
     if (dfrOnly && !dfrOnly.includes(frs)) return null
     if (!dfrs.has(frs)) {
-      try { const j = await getJson(dfrApi(frs)); dfrs.set(frs, j?.Results?.Message === 'Success' || j?.Results ? j : null) } catch (e) { console.warn(`  DFR ${frs}: ${e.message}`); dfrs.set(frs, null) }
+      // EPA drops back-to-back requests from CI (6 of 33 failed, 2026-10-14): one report a second, and a failed one
+      // gets a second round of retries after 10 s.
+      await new Promise((r) => setTimeout(r, 1000))
+      let j = null
+      for (let round = 1; round <= 2 && !j; round++) {
+        try { j = await getJson(dfrApi(frs)) } catch (e) { if (round === 2) console.warn(`  DFR ${frs}: ${e.message}`); else await new Promise((r) => setTimeout(r, 10000)) }
+      }
+      dfrs.set(frs, j?.Results ? j : null)
     }
     return dfrs.get(frs)
   }

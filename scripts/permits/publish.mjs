@@ -61,8 +61,12 @@ if (live) {
   const was = kinds(live), nowK = kinds(fresh)
   for (const [k, n] of Object.entries(was)) if ((nowK[k] || 0) < Math.ceil(n * 0.5)) problems.push(`Corps ${k}: ${nowK[k] || 0} now vs ${n} live`)
 }
-const withViolations = fresh.npdes.filter((r) => (r.trail || []).some((t) => t.title)).length
-if (withViolations < fresh.npdes.length * 0.5) problems.push(`only ${withViolations} of ${fresh.npdes.length} discharge permits have EPA violation records (EPA's facility reports may have failed)`)
+// Current discharge permits with EPA violation records (ended permits have none): against the live data when there is
+// one (EPA's facility reports can fail in bulk), else at least half.
+const withEpa = (d) => d.npdes.filter((r) => !r.ended && (r.trail || []).some((t) => String(t.title || '').startsWith('EPA'))).length
+const nowEpa = withEpa(fresh), wasEpa = live ? withEpa(live) : null
+if (wasEpa != null ? nowEpa < Math.floor(wasEpa * 0.9) : nowEpa < fresh.npdes.filter((r) => !r.ended).length * 0.5)
+  problems.push(`only ${nowEpa} current discharge permits have EPA violation records${wasEpa != null ? ` vs ${wasEpa} live` : ''} (EPA's facility reports may have failed)`)
 console.log(`fresh: ${JSON.stringify(now)}${live ? `; live: ${JSON.stringify(count(live))}` : '; nothing live yet'}`)
 if (problems.length && !args.has('--force')) { console.error(`REFUSED, not published:\n  ${problems.join('\n  ')}`); process.exit(1) }
 

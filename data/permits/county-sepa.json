@@ -1,0 +1,92 @@
+{
+ "202602759": {
+  "sepa": "202602759",
+  "lead": "San Juan County",
+  "fileNumber": null,
+  "county": "SAN JUAN",
+  "region": "Northwest",
+  "type": "MDNS, REVISED",
+  "issued": "2026-06-30",
+  "commentsDue": null,
+  "proposalName": "Lawson Pond Dam Removal and Replacement",
+  "description": "Description of proposal\nLawson Pond is an approximately 13.8-acre privately owned reservoir and wetland system associated with Tax Parcel Number 451211003000 at 1165 West Valley Road on San Juan Island. The pond and existing earthen dam historically supported irrigation and agricultural uses, with water rights to a nearby farm and to the City of Friday Harbor. The existing dam has been described as an earthen structure approximately 14 feet tall and approximately 110 feet long, with an additional 100-foot “saddle dam,” with historical mapping indicating that the present-day pond area was formed after the construction of the dam, believed to be in the mid-1940’s.\nThe existing dam has deteriorated over time and has been identified for replacement by the Washington State Department of Ecology, Dam Safety. Concerns include seepage, embankment stability, erosion, and outlet/spillway limitations. Project materials indicate that the replacement dam would occupy the existing dam footprint. The project does not propose to expand the pond or alter the existing rural agricultural land use.\nThe project area includes Lawson Pond, the existing dam embankment, outflow and spillway areas, wetlands identified in the project materials as Wetland A, Wetland B, and Wetland C, wetland buffers, access and staging areas, adjacent forest and pasture lands, and dewatering discharge or dispersal areas identified in the dewatering plan. The surrounding area includes rural, forested, agricultural, and wetland conditions.\nThe project consists of the following principal elements:\n• Temporary dewatering and controlled drawdown of Lawson Pond to allow safe construction and invasive fish removal.\n• Removal of the existing deficient embankment and outlet/spillway components.\n• Excavation of unsuitable, saturated, or potentially liquefiable soils and placement of engineered embankment materials.\n• Construction of a new earthen embankment dam within the existing dam footprint.\n• Replacement of undersized or deficient culverts, spillway features, and outflow infrastructure.\n• Limited armoring or stabilization of the outflow channel where necessary for dam safety and erosion control.\n• Temporary construction access, staging, grading, erosion control, and equipment operations.\n• Restoration of disturbed wetland, wetland buffer, access shoulder, and staging areas using native plantings and erosion control seed mixes.\n• Removal of invasive largemouth bass through non-chemical means with a complete drawdown, biologist-supported collection, and a dry pond bed period intended to ensure eradication.\n• Long-term monitoring, maintenance, and adaptive management of restoration areas.\nThe dewatering plan estimates a pond volume of approximately 60 acre-feet and proposes gradual drawdown over approximately 3.5 to 5 weeks, during the early summer 2026 dry-season window. Primary discharge would use the existing 8-inch HDPE pipe network and controlled application to Amaro Farm pasture areas under existing water rights. It is the County’s understanding that the Lawson Pond Dam owner has been communicating the plan with Amaro Farm owners. Backup options include using the inactive Friday Harbor water supply basin as a settling basin, if approved and needed, and upland forest dispersal for residual water outside wetland and stream buffers. Residual water near the dam work area may be pumped and dispersed in an upland forested area more than approximately 200 feet from Wetland C and downstream drainage features.",
+  "related": "202602201",
+  "location": "Address: 1165 West Valley Road, Friday Harbor, WA 98250\nLongitude: -123.731250 Latitude: 48.325332\nParcel: 451211003000",
+  "parcels": [
+   "451211003000"
+  ],
+  "applicant": "Richard Lawson LLC",
+  "documents": [
+   {
+    "id": "221558",
+    "name": "LANDUSE-25-0080_MODIFIED SEPA MDNS_LAWSON POND DAM REPLACEMENT_issued 30 JUNE 2026.pdf",
+    "size": "2 MB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=221558"
+   }
+  ],
+  "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Record.aspx?SEPANumber=202602759",
+  "lat": 48.325332,
+  "lon": -123.73125,
+  "read": "2026-10-15"
+ },
+ "202603287": {
+  "sepa": "202603287",
+  "lead": "San Juan County",
+  "fileNumber": "LANDUSE-26-0009",
+  "county": "SAN JUAN",
+  "region": "Northwest",
+  "type": "MDNS",
+  "issued": "2026-08-05",
+  "commentsDue": "2026-08-19",
+  "proposalName": "Cullinan Single Family Dock and Variance",
+  "description": "The applicant proposes the construction of a single family dock:\n• 3’ X 7’ (21 sq ft) concrete shore mount\n• 6’ X 60’ (360 sq ft) grated aluminum ramp\n• Four (4) 12” diameter galvanized steel piling with a gantry lift for raising gangway ramp\n• 3’7” X 48’ (172 sq ft) grated ramp\n• 8’ X 4’ (32 sq ft) grated landing float\n• 8’ X 59’ (472 sq ft) grated moorage float\n• Four (4) 1 ¼ elastic SeaFlex float anchors secured to:\n• Four (4) SeaFlex anchors held in place by drilled retaining poles\n• Float will be served with electricity and water",
+  "related": null,
+  "location": "Address: 214 Myers Road San Juan Island, Friday Harbor, WA 98250\nLongitude: -122.995000 Latitude: 48.535000\nParcel: TPN 251822004000\nSection/Township/Range: PR GL 1 (PARCEL B PER BLM AFN 2019-1003005) Sec 18, T 35N, R 2W",
+  "parcels": [
+   "TPN 251822004000"
+  ],
+  "applicant": "James Cullinan",
+  "documents": [
+   {
+    "id": "223585",
+    "name": "2026-08-05_ LANDUSE-26-0009_SAV study.pdf",
+    "size": "643 KB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=223585"
+   },
+   {
+    "id": "223586",
+    "name": "2026-08-05_LANDUSE-26-0009 biological impact assessment.pdf",
+    "size": "5 MB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=223586"
+   },
+   {
+    "id": "223587",
+    "name": "2026-08-05_LANDUSE-26-0009_MDNS Final.pdf",
+    "size": "293 KB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=223587"
+   },
+   {
+    "id": "224374",
+    "name": "202603287_ECYCommentLetter.pdf",
+    "size": "253 KB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=224374"
+   },
+   {
+    "id": "223590",
+    "name": "CULLINAN-JAMES FH - A-PLANSET REVISED 06-08-2026.pdf",
+    "size": "3 MB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=223590"
+   },
+   {
+    "id": "223588",
+    "name": "Signed RVSD SEPA Environmental Checklist.pdf",
+    "size": "2 MB",
+    "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Document/DocumentOpenHandler.ashx?DocumentId=223588"
+   }
+  ],
+  "url": "https://apps.ecology.wa.gov/separ/Main/SEPA/Record.aspx?SEPANumber=202603287",
+  "lat": 48.535,
+  "lon": -122.995,
+  "read": "2026-10-15"
+ }
+}

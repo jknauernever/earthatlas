@@ -1,0 +1,134 @@
+/* ---------------------------------------------------------------------------
+   Salish Sea Explorer's popup frame (.ssx-*), for Friends of the San Juans layers on EarthAtlas.
+   The .ssx rules below are copied verbatim from salish-sea-propmapper src/index.css so the popups match SSE exactly;
+   change them there first. Only the host section (Mapbox in place of Google's InfoWindow) and the small
+   reset (SSE gets it from Tailwind's preflight) are EarthAtlas's own. Montserrat is loaded by popupFrame.js.
+   Palette from Friends of the San Juans' assets: sea blue #0297BA, driftwood
+   #B69866, kelp lime #92C642, sunrise orange #F8A01D (caveats only),
+   chartreuse #E6E533 (the one call-to-action), ink #212021.
+   --------------------------------------------------------------------------- */
+
+/* Host: a Mapbox popup created with className 'ssx-host'. SSE's InfoWindow card look (cream, 14 px corner, warm
+   shadow), with the frame's own × in place of Mapbox's (create the popup with closeButton: false). */
+.mapboxgl-popup.ssx-host { z-index: 14; }
+.mapboxgl-popup.ssx-host .mapboxgl-popup-content { padding: 0; background: #FBF7EF; border-radius: 14px; box-shadow: 0 10px 30px rgba(40,30,10,.20), 0 1px 3px rgba(40,30,10,.12); overflow: auto; overscroll-behavior: contain; }
+.mapboxgl-popup.ssx-host .mapboxgl-popup-close-button { display: none; }
+.ssx-host.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.ssx-host.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.ssx-host.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip { border-bottom-color: #FBF7EF; }
+.ssx-host.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.ssx-host.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.ssx-host.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip { border-top-color: #FBF7EF; }
+.ssx-host.mapboxgl-popup-anchor-left .mapboxgl-popup-tip { border-top-color: transparent; border-bottom-color: transparent; border-right-color: #FBF7EF; }
+.ssx-host.mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-top-color: transparent; border-bottom-color: transparent; border-left-color: #FBF7EF; }
+@media (min-width: 601px) {
+  /* The global popup rule lets content grow unbounded; the frame is tall (photo + story), so it scrolls inside
+     the card like SSE's InfoWindow, with the sticky × staying put. */
+  .mapboxgl-popup.ssx-host .mapboxgl-popup-content { max-height: min(78vh, 720px); overflow: auto; }
+}
+@media (max-width: 600px) {
+  /* Bottom sheet (global rules): full width like SSE's phone sheet, cream grab strip */
+  .mapboxgl-popup.ssx-host .mapboxgl-popup-content { background: #FBF7EF; }
+  .ssx-host .ea-popup-grab { background: #FBF7EF; }
+  .ssx-host .ssx { width: 100% !important; max-width: none; }
+  .ssx-host .ssx-photo img { max-height: 200px; }
+}
+
+/* Tailwind preflight equivalents SSE relies on; :where() keeps them below every .ssx-* rule */
+:where(.ssx) button { font-family: inherit; font-size: 100%; line-height: inherit; color: inherit; margin: 0; }
+:where(.ssx) a { color: inherit; text-decoration: inherit; }
+:where(.ssx) img { display: block; max-width: 100%; }
+:where(.ssx) table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+:where(.ssx) [hidden] { display: none; }
+
+/* ---- Verbatim from SSE src/index.css ---- */
+.ssx { --accent: #0297BA; width: 380px; max-width: 100%; background: #FBF7EF; color: #1A1A1A; font-family: "Montserrat", ui-sans-serif, system-ui, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: auto; position: relative; box-sizing: border-box; }
+.ssx *, .ssx *::before, .ssx *::after { box-sizing: border-box; }
+.ssx-edge { height: 5px; background: var(--accent); }
+.ssx-xwrap { position: sticky; top: 0; height: 0; z-index: 3; display: flex; justify-content: flex-end; pointer-events: none; }
+.ssx-x { pointer-events: auto; margin: 10px 10px 0 0; width: 30px; height: 30px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgba(251,247,239,.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); color: rgba(26,26,26,.85); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.22); padding: 0; }
+.ssx-x:hover { background: rgba(251,247,239,.95); color: #1A1A1A; }
+.ssx-photo { position: relative; aspect-ratio: 16 / 9; background: #DCD3C2; overflow: hidden; }
+.ssx-photo[hidden] { display: none; }
+.ssx-slide { position: absolute; inset: 0; }
+.ssx-slide[hidden] { display: none; }
+.ssx-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ssx-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 16px 9px; font-size: 12px; font-weight: 500; color: #fff; background: linear-gradient(transparent, rgba(20,15,5,.62)); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.ssx-cap i { font-style: normal; opacity: .82; }
+.ssx-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: #212021; font-size: 24px; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.3); padding: 0 0 3px; z-index: 2; }
+.ssx-arrow:hover { background: #fff; }
+.ssx-prev { left: 10px; }
+.ssx-next { right: 10px; }
+.ssx-count { position: absolute; top: 12px; left: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(33,32,33,.72); color: #fff; font-family: "Montserrat", system-ui, sans-serif; font-size: 11.5px; font-weight: 700; z-index: 2; }
+.ssx-head { padding: 14px 44px 8px 18px; }
+.ssx-photo + .ssx-head { padding-right: 18px; }
+.ssx-layer { display: flex; align-items: center; gap: 7px; font-family: "Montserrat", system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.ssx-sw { width: 16px; height: 4px; border-radius: 2px; background: var(--accent); flex: none; }
+.ssx-sw-fill { height: 11px; border-radius: 3px; opacity: .75; border: 1px solid; }
+.ssx-sw-pt { width: 10px; height: 10px; border-radius: 50%; }
+.ssx-ttl { font-family: "Montserrat", system-ui, sans-serif; font-size: 22px; font-weight: 700; line-height: 1.15; margin-top: 5px; color: #212021; letter-spacing: -0.01em; text-wrap: balance; }
+.ssx-sub { font-size: 13.5px; font-weight: 500; color: #33302A; margin-top: 4px; }
+.ssx-stats { display: flex; padding: 8px 18px 14px; }
+.ssx-stat { flex: 1; min-width: 0; padding-right: 12px; }
+.ssx-stat + .ssx-stat { border-left: 1px solid #E3DBCB; padding-left: 12px; }
+.ssx-v { font-family: "Montserrat", system-ui, sans-serif; font-size: 22px; font-weight: 700; color: #036E88; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ssx-v-text { font-size: 17px; line-height: 1.15; }
+.ssx-v small { font-size: 12px; font-weight: 700; color: #4A4640; margin-left: 2px; }
+.ssx-l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #3F3B34; margin-top: 4px; }
+.ssx-block { margin: 0 18px 12px; padding: 12px 14px 13px 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.55; color: #1A1A1A; position: relative; }
+.ssx-block::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 2px; }
+.ssx-k { font-family: "Montserrat", system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.ssx-story { background: #F1E8D6; }
+.ssx-story .ssx-k { color: #6A5324; }
+.ssx-story::before { background: #B69866; }
+.ssx-act { background: #EDF5DC; }
+.ssx-act .ssx-k { color: #3D6410; }
+.ssx-act::before { background: #92C642; }
+.ssx-block p { margin: 0 0 6px; }
+.ssx-block p:last-child { margin-bottom: 0; }
+.ssx-btn-row { margin-top: 9px; }
+.ssx-btn-sun { display: inline-block; background: #E6E533; color: #222 !important; font-family: "Montserrat", system-ui, sans-serif; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 6px; text-decoration: none !important; }
+.ssx-btn-sun:hover { background: #EEEC55; }
+.ssx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 18px 12px; }
+.ssx-chips[hidden] { display: none; }
+.ssx-chip { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #EBE3D3; color: #2E2B26; }
+.ssx-chip-on { background: #E3F1C8; color: #2F520C; }
+.ssx-chip-warn { background: #FDE9C8; color: #6E3D03; }
+.ssx-chip-teal { background: #D8F0F7; color: #045A6E; }
+.ssx-details { margin: 0 18px 12px; border-top: 1px solid #E3DBCB; }
+.ssx-tg { display: flex; width: 100%; justify-content: space-between; align-items: center; background: none; border: 0; padding: 11px 0 7px; cursor: pointer; font-family: "Montserrat", system-ui, sans-serif; font-size: 12.5px; font-weight: 700; color: #141414; }
+.ssx-tg span:last-child { color: #3F3B34; font-weight: 600; font-size: 12px; }
+.ssx-caret { display: inline-block; font-style: normal; transition: transform .15s; }
+.ssx-tg.open .ssx-caret { transform: rotate(180deg); }
+.ssx-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 6px; }
+.ssx-table[hidden] { display: none; }
+.ssx-table td { padding: 4px 0; vertical-align: top; }
+.ssx-table td:first-child { color: #33302A; font-weight: 500; white-space: nowrap; padding-right: 14px; width: 38%; }
+.ssx-table td:last-child { color: #1A1A1A; word-break: break-word; font-variant-numeric: tabular-nums; }
+.ssx-table a, .ssx-src a { color: #045A6E; text-decoration: underline; text-underline-offset: 2px; }
+.ssx-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 10px 18px 12px; border-top: 1px solid #E3DBCB; background: #F3EDE0; font-size: 12.5px; color: #33302A; line-height: 1.45; }
+.ssx-src { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.ssx-src a { text-decoration: none; font-weight: 600; }
+.ssx-btns { display: flex; gap: 5px; flex: none; }
+.ssx-btn { font-family: "Montserrat", system-ui, sans-serif; font-size: 11.5px; font-weight: 700; color: #212021 !important; padding: 5px 10px; border-radius: 6px; border: 1.5px solid #D9CFBF; background: #FBF7EF; white-space: nowrap; cursor: pointer; text-decoration: none !important; }
+.ssx-btn:hover { background: #F1E8D6; }
+/* "From Friends" related-article rows inside the popup frame */
+.ssx-from { margin: 0 18px 12px; padding-top: 4px; }
+.ssx-from .ssx-k { color: #036E88; margin-bottom: 6px; }
+.ssx-art { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid #E3DBCB; text-decoration: none !important; color: #1A1A1A !important; }
+.ssx-art:first-of-type { border-top: 0; }
+.ssx-art:hover .ssx-art-title { color: #036E88; text-decoration: underline; }
+.ssx-art-img { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; flex: none; background: #E3DBCB; display: block; }
+.ssx-art-noimg { background: linear-gradient(135deg, #DCD3C2, #C9BFAA); }
+.ssx-art-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ssx-art-title { font-weight: 700; font-size: 13.5px; line-height: 1.3; }
+.ssx-art-meta { font-size: 11.5px; font-weight: 600; color: #4A4640; letter-spacing: .02em; }
+.ssx-art-sum { font-size: 13px; line-height: 1.45; color: #2E2B26; margin-top: 2px; }
+
+/* Source line under a quoted "Why it matters" block */
+.ssx-cite { margin-top: 6px; font-size: 12.5px; color: #5C5648; }
+.ssx-cite a { color: inherit; text-decoration: underline; text-decoration-color: rgba(92,86,72,.4); }
+
+/* EarthAtlas: the Friends logo in the footer (required wherever Friends data shows; not in SSE, whose header carries it). */
+.ssx-friends { order: 2; flex: none; display: block; }
+.ssx-friends img { height: 30px; width: auto; display: block; }

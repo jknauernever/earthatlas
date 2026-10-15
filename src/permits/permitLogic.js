@@ -36,6 +36,7 @@ export const docHref = (docs, key) => {
 // jurisdictional determination), an Ecology 401 certification, an NPDES permit (402). `tag` is the dot's map label.
 export function permitKindOf(r, docs) {
   if (r.layer === 'npdes') return { layer: 'npdes', tag: r.ended ? '402 · ended' : '402' }
+  if (r.layer === 'hpa') return { layer: 'hpa', tag: 'HPA' }
   const keys = [...new Set((JSON.stringify(r).match(/"src":"[^"]+"/g) || []).map((m) => m.slice(7, -1)))]
   const corps = keys.some((k) => docs[k]?.agency === 'corps') || !!r.corpsRef
   const has401 = keys.some((k) => /401 certification/i.test(docs[k]?.title || '')) || !!r.cert401

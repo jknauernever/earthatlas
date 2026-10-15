@@ -47,6 +47,10 @@
       "destination": "/permits.html"
     },
     {
+      "source": "/permits/dashboard",
+      "destination": "/permits.html"
+    },
+    {
       "source": "/carbon",
       "destination": "/carbon.html"
     },

@@ -43,3 +43,6 @@ docs/impact/county-record/
 
 # /sanjuan-docks raw inputs (parcels, SmartGov fetch, ML imagery) — ~230 MB, never commit; outputs bake to public/hpa
 data/sanjuan-docks/
+
+# /permits WDFW HPA files fetched by scripts/permits/hpa-fetch.mjs (re-fetchable cache)
+scripts/permits/cache/

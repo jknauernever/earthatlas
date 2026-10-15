@@ -1,0 +1,376 @@
+{
+ "2022-4-68+01": {
+  "permit": "2022-4-68+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b4Fi",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMmku/jERZD87NmMohaejFAz.tVXBuX4GJSsSezEqVovM58l8",
+  "issued": "2022-02-01",
+  "expires": "2027-01-15",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and January 15 of any year. Due to the lengthy spawning period for surf smelt in this portion of Puget Sound work will also be allowed from September 1 through December 31 and January 1 through January 15 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey. Work must begin within seventy-two hours of survey and you must complete the work within two weeks of the survey. The biologist must follow the department-approved intertidal forage fish spawning protocol and use the standard department data sheets when conducting forage fish spawning beach surveys. Further information is available on the department's web site http://wdfw.wa.gov/licensing/hpa/technical_assistance.html . The biologist must submit the completed, data sheets to the department within seventy-two hours of completing the survey to WDFW by e-mail at HPAapplications@dfw.wa.gov; mail to Post Office Box 43234, Olympia, Washington 98504-3234; or fax to (360) 902-2946. In addition, the biologist must preserve the winnowed portion of the sediment samples and retain them for a minimum of four weeks. The sediment samples must be provided to WDFW staff upon request."
+  ],
+  "species": {
+   "smelt": {
+    "provision": 1,
+    "quote": "Due to the lengthy spawning period for surf smelt in this portion of Puget Sound work will also be allowed from September 1 through December 31 and January 1 through January 15 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey."
+   },
+   "sandlance": null,
+   "herring": {
+    "provision": 19,
+    "quote": "This will ensure protection of seagrass, kelp beds and herring spawning habitat."
+   }
+  },
+  "eggSurvey": {
+   "provision": 1,
+   "quote": "Due to the lengthy spawning period for surf smelt in this portion of Puget Sound work will also be allowed from September 1 through December 31 and January 1 through January 15 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey."
+  },
+  "provisions": 31,
+  "surveys": [
+   {
+    "name": "Killough Forage Fish Survey BATCH 01.11.2023.pdf",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FN7Kc/zj7yU9.BLK54A.A2Err8hXzDokNC_vIVb6_5nv0byrc",
+    "permitCopy": true
+   },
+   {
+    "name": "Killough Forage Fish Survey BATCH 01.11.2023.pdf",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FN6Fp/ID2aZZJsuBmUXjSxJKOgvLWFQKOqEcZRTGVGji0L2c0",
+    "dates": [
+     "January 11, 2023"
+    ],
+    "result": "Single surf smelt egg found",
+    "needsPerson": false
+   }
+  ]
+ },
+ "2018-4-743+01": {
+  "permit": "2018-4-743+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b2XN",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMpwr/izQuADW4C2zH.J0BDDs.W09ZnVgwrzLKlUF13DBlulw",
+  "issued": "2018-10-05",
+  "expires": "2023-10-04",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and March 1of any year.",
+   "Project construction may start immediately and must be completed by October 4, 2023. Due to the year around spawning period for surf smelt in this portion of Puget Sound and other fish and shellfish habitats present at the job site, work will be allowed from September 1 through December 31 and January 1 through March 1 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey. Work must begin within seventy-two hours of survey and you must complete the work within two weeks of the survey. The biologist must follow the department-approved intertidal forage fish spawning protocol and use the standard department data sheets when conducting forage fish spawning beach surveys. A list of certified biologists, the approved protocol and data sheets are available on the department's web site http://wdfw.wa.gov/licensing/hpa/technical_assistance.html . The biologist must submit the completed, data sheets to the department within seventy-two hours of completing the survey to WDFW by e-mail at HPAapplications@dfw.wa.gov; mail to Post Office Box 43234, Olympia, Washington 98504-3234; or fax to (360) 902- 2946. In addition, the biologist must preserve the winnowed portion of the sediment samples and retain them for a minimum of four weeks. The sediment samples must be provided to WDFW staff upon request."
+  ],
+  "species": {
+   "smelt": {
+    "provision": 2,
+    "quote": "Due to the year around spawning period for surf smelt in this portion of Puget Sound and other fish and shellfish habitats present at the job site, work will be allowed from September 1 through December 31 and January 1 through March 1 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey."
+   },
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": {
+   "provision": 2,
+   "quote": "Due to the year around spawning period for surf smelt in this portion of Puget Sound and other fish and shellfish habitats present at the job site, work will be allowed from September 1 through December 31 and January 1 through March 1 of any year if a biologist approved by the Department of Fish and Wildlife does not detect surf smelt eggs during a beach survey."
+  },
+  "provisions": 29,
+  "surveys": [
+   {
+    "name": "Forage Fish Survey Data sheet.jpg",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FN2SI/M61lORWtLfL6ILv4VYHe8HyKDwKlj5WTAREhutpdvlQ",
+    "needsPerson": true,
+    "image": true
+   },
+   {
+    "name": "Email FFS OIYC forage fish survey.pdf",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FLjRv/s7hyi.0LUu0lcwk1p8f0qtR8s2jCA0vjwaINq5KSH1U",
+    "dates": [
+     "November 1, 2018"
+    ],
+    "result": null,
+    "needsPerson": true
+   }
+  ]
+ },
+ "2019-4-608+01": {
+  "permit": "2019-4-608+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b32i",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FOY0L/OffDv8yJzzqRlhghZh1RgnN.n_WRU6RMyib7nJ1xCjA",
+  "issued": "2019-09-27",
+  "expires": "2024-09-01",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and January 15 of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": {
+    "provision": 19,
+    "quote": "This will ensure protection of seagrass, kelp beds and herring spawning habitat."
+   }
+  },
+  "eggSurvey": null,
+  "provisions": 33,
+  "surveys": [
+   {
+    "name": "Mix Dock Forage Fish Survey.pdf",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMyqi/VaZRjaghn_tKRqsesPmt0YhqOHvDq3NhnY_kcVtwdIw",
+    "dates": [
+     "December 7, 2020"
+    ],
+    "result": null,
+    "needsPerson": true
+   },
+   {
+    "name": "Forage Fish Survey (APP ID #17418).pdf",
+    "url": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMyqj/__kk44UWAQlXRKFgcGltMA7DHJUXvAWRNOP.nXKmgbw",
+    "dates": [
+     "December 7, 2020",
+     "12/17/20"
+    ],
+    "result": "No forage fish eggs were found",
+    "needsPerson": false
+   }
+  ]
+ },
+ "2016-4-225+01": {
+  "permit": "2016-4-225+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b17a",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMp8R/J3JB.bDhCQgPSlrYAFRE7CFN5H0lDfHAMjAoMMRHqbc",
+  "issued": "2016-04-13",
+  "expires": "2018-12-31",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and January 15 of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 20,
+  "surveys": []
+ },
+ "2014-4-352+01": {
+  "permit": "2014-4-352+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b75l",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMlVO/H4GUF6wIC5tmxYIGNofQyXe9TlqREwE0DfTLuT0l5V4",
+  "issued": "2014-11-12",
+  "expires": "2019-11-11",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 14,
+  "surveys": []
+ },
+ "2018-9-2+01": {
+  "permit": "2018-9-2+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b29c",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMmo8/GzW7luBSNRGZ30ot4qnOmM4lymO7dew1MGsIe5ZOnZM",
+  "issued": "2018-02-20",
+  "expires": "2023-02-18",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [
+   "Work under this HPA may begin immediately and must be completed by FEBRUARY 18, 2023. Work below the OHWM will only occur within the periods specified as follows for each Tidal Reference Area (TRA): TRA 4: Tahlequah, Point Defiance, and Vashon WSF Terminal Facility JULY 15 through SEPTEMBER 30, additionally: OCTOBER 1 - FEBRUARY 15 if Provision 2 can be met. TRA 5: Bainbridge, Bremerton, Fauntleroy, and Southworth WSF Terminal Facility and Eagle Harbor WSF Maintenance Facility JULY 15 - FEBRUARY 15 if Provision 2 can be met. Colman WSF Terminal Facility AUGUST 1 - FEBRUARY 15 if Provision 2 can be met. TRA 6: Edmonds and Kingston WSF Terminal Facility JULY 15 - AUGUST 31, additionally: SEPTEMBER 1 - FEBRUARY 15 if Provision 2 can be met. TRA 7: Clinton and Mukilteo WSF Terminal Facility JULY 15 - FEBRUARY 15 if Provision 2 can be met. TRA 8: Anacortes WSF Terminal Facility JULY 15 - FEBRUARY 15 if Provision 2 can be met. TRA 10: Friday Harbor, Keystone, Lopez, Orcas, Shaw, and Port Townsend WSF Terminal Facility JULY 15\u0003±\u0003 FEBRUARY 15 if Provision 2 can be met.",
+   "1. TIMING LIMITATIONS: Work may occur year -around.",
+   "1. TIMING LIMITATIONS: Work may occur year-around.",
+   "1. TIMING LIMITATIONS: a. JUVENILE SALMONID MIGRATION PROTECTION: If a temporary floating work platform is used shoreward of minus 10 feet (tidal reference MLLW=0.0 feet) and/or closer than 50 feet from the water's edge at any water level, the use of a temporary floating work platform in this area may only occur from JULY 15 through FEBRUARY 15 for the protection of outmigrating juvenile salmonids.",
+   "1. TIMING LIMITATIONS: Washing must be only done at the time of maximum daily tidal flows. Maximum tidal flows occur from one hour after high or low slack tide to one hour prior to the next high or low slack tide. a. JUVENILE SALMONID MIGRATION PROTECTION: If a temporary floating work platform is used shoreward of minus 10 feet (tidal reference MLLW=0.0 feet) and/or closer than 50 feet from the water's edge at any water level the use of a temporary floating work platform in this area may only occur from JULY 15 through FEBRUARY 15 for the protection of outmigrating juvenile salmonids.",
+   "1. TIMING LIMITATIONS: a. JUVENILE SALMONID MIGRATION PROTECTION: If a temporary floating work platform is used shoreward of minus 10 feet (tidal reference MLLW=0.0 feet) and/or closer than 50 feet from the water's edge at any water level, the use of a temporary floating work platform in this area may only occur from JULY 15 through FEBRUARY 15 for the protection of outmigrating juvenile salmonids.",
+   "1. TIMING LIMITATIONS: Inter-tidal and sub-tidal sampling work must follow timing limitations in provisions 1 and 2 for the protection of migrating juvenile salmonids and forage fish provided: Sub-tidal Wet Rotary Sample Boring completely containing drilling mud and other products is allowed year around."
+  ],
+  "species": {
+   "smelt": {
+    "provision": 2,
+    "quote": "The location is inspected by a Washington Department of Fish and Wildlife (WDFW) representative, or biologist acceptable to WDFW, and it is determined that no herring, surf smelt or sand lance spawning is occurring or has recently occurred, or appropriate spawning habitat isn't present."
+   },
+   "sandlance": {
+    "provision": 2,
+    "quote": "The location is inspected by a Washington Department of Fish and Wildlife (WDFW) representative, or biologist acceptable to WDFW, and it is determined that no herring, surf smelt or sand lance spawning is occurring or has recently occurred, or appropriate spawning habitat isn't present."
+   },
+   "herring": {
+    "provision": 2,
+    "quote": "The location is inspected by a Washington Department of Fish and Wildlife (WDFW) representative, or biologist acceptable to WDFW, and it is determined that no herring, surf smelt or sand lance spawning is occurring or has recently occurred, or appropriate spawning habitat isn't present."
+   }
+  },
+  "eggSurvey": {
+   "provision": 2,
+   "quote": "Work must begin within seventy-two hours of survey Page 1 of 21 Washington Department of Fish & Wildlife PO Box 43234 HYDRAULIC PROJECT APPROVAL Olympia, WA 98504-3234 (360) 902-2200 Issued Date: February 20, 2018 Permit Number: 2018-9-2+01 Project End Date: February 18, 2023 FPA/Public Notice Number: N/A Application ID: 11304 and you must complete the work within two weeks of the survey."
+  },
+  "provisions": 113,
+  "surveys": []
+ },
+ "2024-4-582+01": {
+  "permit": "2024-4-582+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b5ZL",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000DjLvL/FiOeFDsoLUUl4Mx43xQEA.k2vmv9OmaMAa.PLojUHY4",
+  "issued": "2024-10-16",
+  "expires": "2029-10-10",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, in-water work must occur between September 1 and March 1 of any year included in this Hydraulic Project Approval (HPA). Work must be completed by October 10, 2029."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 40,
+  "surveys": []
+ },
+ "2024-4-638+01": {
+  "permit": "2024-4-638+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b5bc",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000Dj5Nw/Oklu00c2P_c4dz4e.kO9mUeoTU5X6eppIxyClz1kEYA",
+  "issued": "2024-11-08",
+  "expires": "2028-11-05",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, in-water work must occur between September 1 and March 1 of any year included in this Hydraulic Project Approval (HPA). Work must be completed by November 5, 2028."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 33,
+  "surveys": []
+ },
+ "2015-4-411+01": {
+  "permit": "2015-4-411+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b0et",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMmec/W7ragoxzZ62gbF2xLnwG1u6OYWiXq7k_WnYaMfZX6MY",
+  "issued": "2015-06-15",
+  "expires": "2015-12-31",
+  "status": "HPA Issued (Expired)",
+  "read": "2026-10-15",
+  "timing": [],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 18,
+  "surveys": []
+ },
+ "2021-4-821+01": {
+  "permit": "2021-4-821+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b4AT",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMnk3/vH7kCn5L_XBRLZr.nfePOFGMG.8WTNzoNpbZMxw.l1s",
+  "issued": "2021-11-19",
+  "expires": "2026-11-18",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and March 1 of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 19,
+  "surveys": []
+ },
+ "2022-4-721+01": {
+  "permit": "2022-4-721+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b4dp",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FLKc1/6KTwgqmKD1XtHenxbDtd9nIU9kLEM_c_geeE.vFAKgY",
+  "issued": "2022-11-03",
+  "expires": "2027-11-02",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1st and January 15th of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": {
+    "provision": 17,
+    "quote": "This will ensure protection of seagrass, kelp beds and herring spawning habitat."
+   }
+  },
+  "eggSurvey": null,
+  "provisions": 30,
+  "surveys": []
+ },
+ "2021-4-898+01": {
+  "permit": "2021-4-898+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b4Ch",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMeVm/7BKZnCkTgvljkzDWVuk0APVKl5U0K_O.ZTTrtnyeG_8",
+  "issued": "2021-12-16",
+  "expires": "2026-12-15",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line must occur from September 1 and January 15 of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": {
+    "provision": 16,
+    "quote": "This will ensure protection of seagrass, kelp beds and herring spawning habitat."
+   }
+  },
+  "eggSurvey": null,
+  "provisions": 28,
+  "surveys": []
+ },
+ "2022-4-299+01": {
+  "permit": "2022-4-299+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000000b4ON",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs00000FMnAk/EPIfy_CqC2PJnDGsFFfptnHVLwP8tw4izy6tkqJzy48",
+  "issued": "2022-05-24",
+  "expires": "2027-05-23",
+  "status": "HPA Issued (Active)",
+  "read": "2026-10-15",
+  "timing": [
+   "To protect fish and shellfish habitats at the job site, work below the ordinary high water line (OHWL) must occur from September 1 and March 1 of any year."
+  ],
+  "species": {
+   "smelt": null,
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": null,
+  "provisions": 28,
+  "surveys": []
+ },
+ "2026-4-742+01": {
+  "permit": "2026-4-742+01",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000005Xx4r",
+  "file": "https://dfwhpa.my.salesforce.com/sfc/p/820000008gcg/a/cs000014q7lm/SHWcRQf0wE9r3HrrlFhefA332Jq6dIMpcZ4m0.xKnpM",
+  "issued": "2026-10-12",
+  "expires": null,
+  "status": "HPA Active",
+  "read": "2026-10-15",
+  "timing": [],
+  "species": {
+   "smelt": {
+    "provision": 19,
+    "quote": "For the protection of spawning surf smelt, avoid disturbance to exposed beach gravels."
+   },
+   "sandlance": null,
+   "herring": null
+  },
+  "eggSurvey": {
+   "provision": 19,
+   "quote": "If equipment or materials will impact beach habitats, you must contact the habitat biologist below and a forage fish spawning survey will be required before work can continue."
+  },
+  "provisions": 22,
+  "surveys": []
+ }
+}

@@ -6,6 +6,10 @@
 # archives any San Juan notice (data + PDF) for good. The archive lives on Blob and is pulled before every bake.
 # publish.mjs refuses to replace the live data if the fresh bake lost much of it (an agency down, a feed changed).
 # Uploads use one-file tokens from api/cron/permits-upload-token.js (CRON_SECRET), never a Blob token.
+# After the bake, WDFW's HPA records for permits at spawning areas are re-read in headless Chrome (hpa-fetch.mjs; files
+# cached between runs) and conditions + "needs review" re-attached (add-habitat.mjs). If WDFW can't be read, the run
+# warns and publishes with the conditions last committed in data/permits/hpa-conditions.json. San Juan County SEPA
+# reviews (sepa-fetch.mjs, plain GETs, record pages cached) are joined the same way.
 name: permits-bake
 
 on:
@@ -38,5 +42,21 @@ jobs:
         run: node scripts/permits/publish.mjs --pull
       - name: Bake
         run: node scripts/permits/bake-permits.mjs
+      - name: Cache WDFW permit files and SEPA records
+        uses: actions/cache@v4
+        with: { path: scripts/permits/cache, key: permits-cache-${{ github.run_id }}, restore-keys: permits-cache- }
+      - name: Read San Juan County SEPA reviews (Ecology SEPA Register)
+        run: node scripts/permits/sepa-fetch.mjs || echo "::warning::SEPA Register read failed; publishing with the committed data/permits/county-sepa.json"
+      - name: Read WDFW applications and permits (HPAs)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr >/dev/null
+          export CHROME_PATH=$(which google-chrome)
+          # New San Juan applications since 2025 (each record read once, then kept in data/permits/hpa-applications.json).
+          node scripts/permits/hpa-search.mjs --since 2025-01-01 \
+            || echo "::warning::WDFW application search failed; publishing with the committed data/permits/hpa-applications.json"
+          node scripts/permits/add-habitat.mjs
+          node scripts/permits/hpa-fetch.mjs --refresh-lists \
+            || echo "::warning::WDFW HPA read failed; publishing with the committed data/permits/hpa-conditions.json"
+          node scripts/permits/add-habitat.mjs
       - name: Gate and publish
         run: node scripts/permits/publish.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

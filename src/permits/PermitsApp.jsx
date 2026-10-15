@@ -28,6 +28,14 @@ import { STATUS_WORDS, statusKey } from '../ships/permitStatus.js'
 import { fetchPermitsJson } from './permitsData.js'
 import { LAW, fmtDate, recordPage, docHref, permitKindOf, whyItems, calm, whatOf, activityYears } from './permitLogic.js'
 import { PERMITS_SOURCES, PERMITS_SOURCES_INTRO, PERMITS_SOURCES_NOTES } from './permitsSources.js'
+import { HABITATS, FACTOR_BY_ID, FRIENDS_LOGO, FRIENDS_PAGE, LIST_M, distanceWords } from './habitat.js'
+import { QUESTION_BY_ID } from './dashboardLogic.js'
+import { TIERS, GAPS } from './review.js'
+import ProjectPicker from './ProjectPicker.jsx'
+import { processOf, statusShown } from './process.js'
+import { addFriendsHabitat, LAYERS_OF, CLICK_LAYERS } from '../friends/habitatOverlay.js'
+import { buildFriendsHabitatPopup, installPopupFrameHandlers, preloadFriendsContent, POPUP_CLOSE_EVENT } from '../friends/habitatPopups.js'
+import '../friends/ssx.css'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './PermitsApp.module.css'
 
@@ -69,10 +77,13 @@ const LAYERS = [
   { id: 'cert401', label: '401', desc: 'Ecology’s water-quality sign-off', note: 'Ecology’s water-quality sign-off: a Clean Water Act §401 certification of a federal permit, or a state order (Ecology’s “administrative order” under RCW 90.48) for waters the Corps doesn’t cover', color: '#a78bfa' },
   { id: 'structures', label: '404', desc: 'Army Corps permit to build in the water', note: 'Army Corps permit to build or place fill in the water (Clean Water Act §404 / Rivers and Harbors Act §10)', color: '#38bdf8' },
   { id: 'npdes', label: '402', desc: 'Discharge permit (sewage, stormwater, boatyards)', note: 'Discharge permit (Clean Water Act §402, NPDES), issued by Ecology', color: '#f472b6' },
+  { id: 'hpa', label: 'HPA', desc: 'WDFW permit for work in or near water', note: 'Washington Department of Fish and Wildlife Hydraulic Project Approval (RCW 77.55) with no Corps or Ecology record found yet; from WDFW’s own application search', color: '#2dd4bf' },
   { id: 'local', label: 'Other', desc: 'No permit record found yet', note: 'In-water work or a related county action with no 404, 401 or 402 record found', color: '#fbbf24' },
 ]
 const VIO_COLORS = { red: '#ef4444', orange: '#fb923c' }
-const DEFAULT_OFF = ['shell', 'wq'] // sorted, as the URL writes them
+// Only permits show at county scale; waters and habitat appear from this zoom, all on (Josh 2026-10-15).
+const HABITAT_MIN_ZOOM = 12
+const DEFAULT_OFF = [] // sorted, as the URL writes them
 const WATERS = [
   { id: 'wq', label: 'Impaired waters', note: 'Ecology 303(d), Category 5', color: '#f97316' },
   { id: 'shell', label: 'Shellfish growing areas', note: 'DOH classification', color: '#4ade80' },
@@ -83,7 +94,7 @@ const SHELL_COLORS = { Conditionally: '#facc15', Prohibited: '#ef4444', Restrict
 function readUrlState() {
   const sp = new URLSearchParams(window.location.search)
   const num = (k) => { const v = sp.get(k); return v == null || v === '' ? NaN : Number(v) }
-  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off'), t: sp.get('t') }
+  return { bm: sp.get('bm'), lat: num('lat'), lng: num('lng'), z: num('z'), r: sp.get('r'), off: sp.get('off'), t: sp.get('t'), q: sp.get('q') }
 }
 function writeUrlQuery(qs) {
   const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
@@ -94,7 +105,6 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 const todayIso = () => new Date().toISOString().slice(0, 10)
-const latestPast = (r) => (r.trail || []).map((t) => t.date).filter((d) => d <= todayIso()).sort().pop() || ''
 
 // Is an in-water work window ("MM-DD" to "MM-DD", may wrap the new year) open today?
 function windowOpen(r) {
@@ -126,7 +136,7 @@ function agencyChip(tags, agency) {
 // "In force" etc. for an ECHO status; EPA's own term on hover.
 const ECHO_ALIAS = { 'admin continued': 'administratively continued' }
 function statusPill(st) {
-  if (!st.raw) return `<span class="${styles.pill} ${styles[st.cls]}">${escapeHtml(st.label)}</span>`
+  if (!st.raw) return `<span class="${styles.pill} ${styles[st.cls]}">${escapeHtml(statusShown(st.label))}</span>`
   const k = ECHO_ALIAS[statusKey(st.raw)] || statusKey(st.raw)
   const w = STATUS_WORDS[k]
   const title = `${st.by || 'The source'} lists it as “${st.raw}”${w ? `: ${w.long}` : ''}`
@@ -169,6 +179,88 @@ function mapLocationHtml(r, docs, href) {
   const link = href && d ? `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${d.url ? ' target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(d.look_up || d.title)} ↗</a>` : ''
   return `<div class="${styles.matchNote}"><b>Map location:</b> ${text}${link ? (/\. /.test(text) ? `. Source: ${link}` : ` (${link})`) : ''}</div>`
 }
+// Waters and habitat near the record's map point (habitat.js; attached by the bake as `near`), each with its own source:
+// Ecology / DOH records for the waters, Friends for habitat (with the Friends logo, required wherever Friends data
+// shows). Distances are from the map point, not the project footprint.
+function factorsHtml(r, docs) {
+  if (!r.near?.length && !r.receiving?.length) return ''
+  const link = (href, text, local) => `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${local ? '' : ' target="_blank" rel="noopener noreferrer"'}>${text}</a>`
+  const rows = r.near.map((x) => {
+    const f = FACTOR_BY_ID[x.h]
+    if (!f) return ''
+    const href = f.friends ? FRIENDS_PAGE : docHref(docs, x.src)
+    const src = href ? ` ${link(href, f.friends ? 'Friends ↗' : `${escapeHtml(docs[x.src]?.title || 'source')} ↗`, !f.friends && !docs[x.src]?.url)}` : ''
+    return `<li><span class="${styles.habDot}" style="background:${f.color}"></span>` +
+      `<span><b>${escapeHtml(f.short)}</b>, ${distanceWords(x.m)}${x.name ? ` <span class="${styles.whyNote}">(${escapeHtml(x.name)})</span>` : ''}` +
+      `${f.note ? ` <span class="${styles.whyNote}">${escapeHtml(f.note)}</span>` : ''}<span class="${styles.whyNote}">${src}</span></span></li>`
+  }).join('')
+  const friends = r.near.some((x) => FACTOR_BY_ID[x.h]?.friends)
+  // Discharge permits: waters named as their receiving water (the plant's map point is not its outfall).
+  const recv = (r.receiving || []).map((x) => { const f = FACTOR_BY_ID[x.h]; const href = docHref(docs, x.src)
+    return `<li><span class="${styles.habDot}" style="background:${f.color}"></span><span><b>${escapeHtml(f.short)}</b>, receives this discharge <span class="${styles.whyNote}">(${escapeHtml(x.name)})${href ? ` ${link(href, `${escapeHtml(docs[x.src]?.title || 'source')} ↗`, !docs[x.src]?.url)}` : ''}</span></span></li>` }).join('')
+  return `<div class="${styles.habBox}"><div class="${styles.habHead}"><b>Waters and habitat within ${LIST_M} m</b>` +
+    (friends ? `<a href="${FRIENDS_PAGE}" target="_blank" rel="noopener noreferrer"><img src="${FRIENDS_LOGO}" alt="Friends of the San Juans"></a>` : '') + `</div>` +
+    `<ul class="${styles.habList}">${recv}${rows}</ul>` +
+    `<div class="${styles.whyNote}">Distance from this record’s map point${r.approx ? ' (position approximate)' : ''}, not the project’s footprint.</div></div>`
+}
+
+// "Needs review" (review.js, attached by the bake): the gaps, the way to act, and Friends' marks. Public, draft rules.
+const TIER_COLOR = { now: '#dc2626', watch: '#f59e0b', record: '#64748b' }
+function reviewHtml(r) {
+  const v = r.review
+  if (!v) return ''
+  return `<div class="${styles.reviewBox}" style="border-color:${TIER_COLOR[v.tier]}"><div><span class="${styles.tierPill}" style="background:${TIER_COLOR[v.tier]}">Needs review · ${TIERS[v.tier].label}</span></div>` +
+    `<ul class="${styles.habList}">${v.gaps.map((g) => `<li title="${escapeHtml(GAPS[g.id])}"><span>${escapeHtml(g.text)}${g.mark ? ` <b>Friends: ${escapeHtml(g.mark.status)}${g.mark.note ? `, ${escapeHtml(g.mark.note)}` : ''}</b>` : ''}</span></li>`).join('')}</ul>` +
+    `<div class="${styles.whyNote}">${escapeHtml(v.lever)} Draft rules, to be confirmed with Friends of the San Juans.</div></div>`
+}
+
+// "Where it is" (process.js): one row per review track this record shows evidence of, each step done (dated, linked to
+// its source), under way, not part of this path, or not in public records.
+const STEP_MARK = { done: '●', now: '◐', na: '–', unknown: '○' }
+function processHtml(r, docs) {
+  const tracks = processOf(r)
+  if (!tracks.length) return ''
+  const src = (k) => { const href = k && docHref(docs, k); return href ? ` <a class="${styles.popupLink}" href="${escapeHtml(href)}"${docs[k]?.url ? ' target="_blank" rel="noopener noreferrer"' : ''}>↗</a>` : '' }
+  return `<details class="${styles.doc} ${styles.process}" open><summary>Where it is in the review process</summary>` + tracks.map((t) =>
+    `<div class="${styles.track}"><div class="${styles.trackName}">${escapeHtml(t.label)}</div><ol class="${styles.steps}">` +
+    t.steps.map((s) => `<li class="${styles['step_' + s.state]}" title="${escapeHtml(s.text || '')}"><span class="${styles.stepMark}">${STEP_MARK[s.state]}</span>` +
+      `<span><b>${escapeHtml(s.name)}</b>${s.date ? ` ${fmtDate(s.date)}` : ''}` +
+      (s.state === 'unknown' ? `<span class="${styles.whyNote}"> ${escapeHtml(s.text || 'not in public records we hold')}</span>`
+        : s.text && s.text !== s.name ? `<span class="${styles.whyNote}"> ${escapeHtml(s.text)}</span>` : '') + `${src(s.src)}</span></li>`).join('') +
+    `</ol>${t.note ? `<div class="${styles.whyNote}">${escapeHtml(t.note)}</div>` : ''}</div>`).join('') +
+    `<div class="${styles.whyNote}">● done · ◐ under way · – not part of this path · ○ not in public records we hold</div></details>`
+}
+
+// What the WDFW permit at this site says about the forage fish spawning nearby (scripts/permits/hpa-conditions.mjs,
+// attached by the bake as `conditions`): for each species whose spawning beach or area is near the point, the
+// provision that names it, quoted, or that none does. States the permit's words only; never judges them sufficient.
+const SPECIES_NEAR = [['smelt', 'Surf smelt', /surf smelt/i], ['sandlance', 'Pacific sand lance', /sand lance/i]]
+function conditionsHtml(r) {
+  if (!r.conditions?.length) return ''
+  const near = []
+  for (const x of r.near || []) {
+    if (x.h === 'hhe') near.push(['herring', 'Pacific herring', `spawning area ${distanceWords(x.m)}`])
+    if (x.h === 'hfd') for (const [k, label, re] of SPECIES_NEAR) if (re.test(x.name || '')) near.push([k, label, `documented spawning beach ${distanceWords(x.m)}`])
+  }
+  const seen = new Set(), species = near.filter(([k]) => !seen.has(k) && seen.add(k))
+  const a = (href, text) => `<a class="${styles.popupLink}" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${text}</a>`
+  return r.conditions.map((c) => `<div class="${styles.habBox}"><div class="${styles.habHead}"><b>Spawning-season conditions in WDFW permit ${escapeHtml(c.permit)}</b></div>` +
+    `<div class="${styles.whyNote}">Hydraulic Project Approval issued ${fmtDate(c.issued)} · ${a(c.file, 'the permit ↗')} · ${a(c.record, 'WDFW record ↗')}</div>` +
+    (species.length ? `<ul class="${styles.habList}">${species.map(([k, label, where]) => {
+      const q = c.species?.[k]
+      return `<li><span><b>${label}</b> (${where}): ${q ? `provision ${q.provision}, “${escapeHtml(q.quote)}”` : `<b>not named in the permit.</b>`}</span></li>`
+    }).join('')}</ul>` : '') +
+    (c.timing?.length ? `<div><b>Work window:</b> ${escapeHtml(c.timing[0].split(/(?<=\.)\s/)[0])}</div>` : `<div><b>No timing limitation in the permit.</b></div>`) +
+    // Survey files: named as WDFW lists them, each linked; what each says is quoted from its own text, never inferred.
+    (c.surveys?.length
+      ? `<div><b>Files in WDFW’s record named as forage fish surveys:</b></div><ul class="${styles.habList}">${c.surveys.map((f) => `<li><span>${a(f.url, `${escapeHtml(f.name)} ↗`)}: ` +
+        (f.permitCopy ? 'a copy of the permit, not a survey.'
+          : f.image ? 'a photo or scan, not read here; open it to see the result.'
+          : `${f.dates?.length ? `dated ${escapeHtml(f.dates[0])}; ` : ''}${f.result ? `the file says “${escapeHtml(f.result)}”${f.ocr ? ' (read from a scan by OCR; check the file)' : ''}.` : 'no egg result stated in its text; open it to check.'}`) + `</span></li>`).join('')}</ul>`
+      : `<div>No file in WDFW’s record is named as a forage fish survey.</div>`) +
+    `<div class="${styles.whyNote}">The permit’s and the files’ own words, read ${fmtDate(c.read)}.</div></div>`).join('')
+}
+
 // "What it is" (permitLogic.js whatOf), its source named after it.
 function whatHtml(r, docs) {
   const w = whatOf(r)
@@ -232,8 +324,9 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
   const place = [r.type, r.island].filter(Boolean).map(escapeHtml).join(' · ')
   return `<div class="${styles.popup}">` +
     `<div class="${styles.popupTitle}">${escapeHtml(r.name)}</div>` +
+    reviewHtml(r) +
     `<div class="${styles.place}">${statusPill(r.status)} ${place} · <a class="${styles.popupLink}" href="/permits/report/${encodeURIComponent(r.id)}" target="_blank" rel="noopener noreferrer">Printable report ↗</a></div>` +
-    whatHtml(r, docs) +
+    whatHtml(r, docs) + processHtml(r, docs) + factorsHtml(r, docs) + conditionsHtml(r) +
     (r.violations ? `<div class="${styles.vioLine}" style="border-color:${VIO_COLORS[r.violations.level]}"><b>Violations since ${escapeHtml(r.violations.since)}:</b> ` +
       [[r.violations.pollution, 'over a pollution limit'], [r.violations.evasion, 'reports or samples never done'], [r.violations.minor, 'smaller (late, lab errors, capacity)']]
         .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') + ` <span class="${styles.whyNote}">(listed in the sections below)</span></div>` : '') +
@@ -279,6 +372,7 @@ export default function PermitsApp() {
   const [styleLoads, setStyleLoads] = useState(0)
   const [data, setData] = useState(null)
   const [waters, setWaters] = useState(null)
+  const [habitat, setHabitat] = useState(null)
   const [error, setError] = useState(null)
   const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
@@ -291,13 +385,18 @@ export default function PermitsApp() {
   const [mapView, setMapView] = useState(initialCamera)
   const [selected, setSelected] = useState(initial.r || null)
   // Impaired waters and shellfish areas start off (Josh 2026-10-14); a shared link carries its own choice (off=none = all on).
+  // A dashboard question (?q=, dashboardLogic.js): the map shows only the records that answer it.
+  const [qf, setQf] = useState(() => (QUESTION_BY_ID[initial.q] ? initial.q : null))
   const [off, setOff] = useState(() => new Set(initial.off == null ? DEFAULT_OFF : initial.off.split(',').filter((x) => x && x !== 'none')))
 
   // ─── Data ─────────────────────────────────────────────────────────────────
+  useEffect(() => { installPopupFrameHandlers(); preloadFriendsContent() }, [])
   useEffect(() => {
     Promise.all(['permits.json', 'wq303d.geojson', 'shellfish.geojson'].map(fetchPermitsJson))
       .then(([d, wq, shell]) => { setData(d); setWaters({ wq, shell }) })
       .catch((e) => setError(`Could not load permit data (${e.message}).`))
+    // Static with the site (scripts/permits/import-friends-habitat.mjs), not part of the weekly Blob bake.
+    fetch('/permits-data/friends-habitat.geojson').then((r) => (r.ok ? r.json() : null)).then(setHabitat).catch(() => {})
   }, [])
 
   const records = useMemo(() => (data ? [...data.projects, ...data.npdes].map((r) => ({ ...r, ...permitKindOf(r, data.docs), years: activityYears(r) })) : []), [data])
@@ -313,7 +412,7 @@ export default function PermitsApp() {
   const allTime = !span || (y0 <= yearBounds[0] && y1 >= yearBounds[1])
   const inTime = (r) => allTime || r.years.some((y) => y >= y0 && y <= y1)
   const timed = useMemo(() => records.filter(inTime), [records, y0, y1, allTime]) // eslint-disable-line react-hooks/exhaustive-deps
-  const visible = useMemo(() => timed.filter((r) => !off.has(r.layer)), [timed, off])
+  const visible = useMemo(() => timed.filter((r) => !off.has(r.layer) && (!qf || QUESTION_BY_ID[qf].test(r))), [timed, off, qf])
   const vioCounts = useMemo(() => ({ red: timed.filter((r) => r.violations?.level === 'red').length, orange: timed.filter((r) => r.violations?.level === 'orange').length }), [timed])
   const counts = useMemo(() => Object.fromEntries(LAYERS.map((l) => [l.id, timed.filter((r) => r.layer === l.id).length])), [timed])
 
@@ -345,6 +444,25 @@ export default function PermitsApp() {
     if (fly && mapRef.current) mapRef.current.easeTo({ center: [r.lon, r.lat], zoom: Math.max(mapRef.current.getZoom(), 12) })
     showPopup([r.lon, r.lat], recordHtml(r, data.docs, data.tags, byId, unmappedById), r.id)
   }, [byId, data, unmappedById, showPopup])
+  // A Friends habitat feature: Salish Sea Explorer's own popup (src/friends/habitatPopups.js), plus the Friends logo
+  // in its footer (required wherever Friends data shows).
+  const showHabitatPopup = useCallback((lngLat, props) => {
+    const map = mapRef.current
+    if (!map) return
+    const { mid, lengthRank, ...own } = props // eslint-disable-line no-unused-vars
+    const html = () => buildFriendsHabitatPopup(own.h, own).replace('<div class="ssx-foot">',
+      `<div class="ssx-foot"><a class="ssx-friends" href="${FRIENDS_PAGE}" target="_blank" rel="noopener noreferrer"><img src="${FRIENDS_LOGO}" alt="Friends of the San Juans"></a>`)
+    popupRef.current?.remove()
+    const popup = new mapboxgl.Popup({ className: 'ssx-host', maxWidth: '380px', closeButton: false, offset: 10 }).setLngLat(lngLat).setHTML(html()).addTo(map)
+    const close = () => popup.remove()
+    window.addEventListener(POPUP_CLOSE_EVENT, close)
+    popup.on('close', () => window.removeEventListener(POPUP_CLOSE_EVENT, close))
+    preloadFriendsContent().then(() => { if (popup.isOpen()) popup.setHTML(html()) })
+    popupRef.current = keepPopupOnMap(popup)
+    setSelected(null)
+  }, [])
+  const showHabitatPopupRef = useRef(showHabitatPopup)
+  showHabitatPopupRef.current = showHabitatPopup
   const openRecordRef = useRef(openRecord)
   openRecordRef.current = openRecord
 
@@ -361,6 +479,9 @@ export default function PermitsApp() {
     })
     mapRef.current = map
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    // North-up and flat: the Friends habitat overlays are painted in screen space (as on Salish Sea Explorer).
+    map.dragRotate.disable(); map.touchZoomRotate.disableRotation(); map.setMaxPitch(0)
+    map.on('zoom', () => thinPinsRef.current?.())
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     for (const id of ['records', 'wq-fill', 'shell-fill']) {
       map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer' })
@@ -368,7 +489,18 @@ export default function PermitsApp() {
     }
     // Points sit above polygons: one click opens only the topmost thing.
     map.on('click', 'records', (e) => { const f = e.features?.[0]; if (f) openRecordRef.current(f.properties.id, false) })
-    const pointHit = (e) => map.getLayer('records') && map.queryRenderedFeatures(e.point, { layers: ['records'] }).length > 0
+    const habitatAt = (e) => map.queryRenderedFeatures(e.point, { layers: CLICK_LAYERS.filter((l) => map.getLayer(l)) })[0]
+    map.on('click', (e) => {
+      if (map.getLayer('records') && map.queryRenderedFeatures(e.point, { layers: ['records'] }).length) return
+      const f = habitatAt(e)
+      if (f) showHabitatPopupRef.current(e.lngLat, f.properties)
+    })
+    for (const id of CLICK_LAYERS) {
+      map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', id, () => { map.getCanvas().style.cursor = '' })
+    }
+    // Points sit above habitat, habitat above receiving waters: one click opens only the topmost thing.
+    const pointHit = (e) => (map.getLayer('records') && map.queryRenderedFeatures(e.point, { layers: ['records'] }).length > 0) || !!habitatAt(e)
     map.on('click', 'wq-fill', (e) => { if (pointHit(e)) return; const f = e.features?.[0]; if (f && dataRef.current) showPopup(e.lngLat, wqHtml(f.properties, dataRef.current.docs, dataRef.current.tags), null) })
     map.on('click', 'shell-fill', (e) => {
       if (pointHit(e) || map.queryRenderedFeatures(e.point, { layers: ['wq-fill'].filter((l) => map.getLayer(l)) }).length) return
@@ -389,10 +521,10 @@ export default function PermitsApp() {
     map.addSource('wq', { type: 'geojson', data: waters.wq })
     map.addSource('records', { type: 'geojson', data: geojson })
     const shellColor = ['case', ...Object.entries(SHELL_COLORS).flatMap(([k, c]) => [['in', k, ['get', 'CLASS']], c]), '#9ca3af']
-    map.addLayer({ id: 'shell-fill', type: 'fill', source: 'shell', paint: { 'fill-color': shellColor, 'fill-opacity': 0.18 } })
-    map.addLayer({ id: 'shell-line', type: 'line', source: 'shell', paint: { 'line-color': shellColor, 'line-width': 1.2, 'line-opacity': 0.8 } })
-    map.addLayer({ id: 'wq-fill', type: 'fill', source: 'wq', paint: { 'fill-color': '#f97316', 'fill-opacity': 0.14 } })
-    map.addLayer({ id: 'wq-line', type: 'line', source: 'wq', paint: { 'line-color': '#f97316', 'line-width': 1.4, 'line-dasharray': [2, 1.5] } })
+    map.addLayer({ id: 'shell-fill', minzoom: HABITAT_MIN_ZOOM, type: 'fill', source: 'shell', paint: { 'fill-color': shellColor, 'fill-opacity': 0.18 } })
+    map.addLayer({ id: 'shell-line', minzoom: HABITAT_MIN_ZOOM, type: 'line', source: 'shell', paint: { 'line-color': shellColor, 'line-width': 1.2, 'line-opacity': 0.8 } })
+    map.addLayer({ id: 'wq-fill', minzoom: HABITAT_MIN_ZOOM, type: 'fill', source: 'wq', paint: { 'fill-color': '#f97316', 'fill-opacity': 0.14 } })
+    map.addLayer({ id: 'wq-line', minzoom: HABITAT_MIN_ZOOM, type: 'line', source: 'wq', paint: { 'line-color': '#f97316', 'line-width': 1.4, 'line-dasharray': [2, 1.5] } })
     // Violations (discharge permits only): red = pollution or evasion, orange = smaller, last three years.
     map.addLayer({
       id: 'records-vio', type: 'circle', source: 'records', filter: ['!=', ['get', 'vio'], ''],
@@ -422,7 +554,16 @@ export default function PermitsApp() {
       paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(10, 14, 23, 0.85)', 'text-halo-width': 1.4 },
     })
     applyWaters(map, off)
-  }, [mapReady, styleLoads, waters, geojson, off])
+  }, [mapReady, styleLoads, waters, geojson, off]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Friends habitat, drawn as Salish Sea Explorer draws it (src/friends/habitatOverlay.js), under the permit dots.
+  const thinPinsRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !habitat || styledMapRef.current !== map || !map.getLayer('records-vio') || map.getSource('fhab')) return
+    thinPinsRef.current = addFriendsHabitat(map, habitat, 'records-vio', { minZoom: HABITAT_MIN_ZOOM })
+    applyWaters(map, off)
+  }, [mapReady, styleLoads, habitat, waters]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { mapRef.current?.getSource('records')?.setData(geojson) }, [geojson])
   useEffect(() => { if (mapRef.current?.getLayer('wq-fill')) applyWaters(mapRef.current, off) }, [off, mapReady])
@@ -445,10 +586,11 @@ export default function PermitsApp() {
     const offKey = [...off].sort().join(',')
     if (offKey !== DEFAULT_OFF.join(',')) sp.set('off', offKey || 'none')
     if (!allTime) sp.set('t', `${y0}-${y1}`)
+    if (qf) sp.set('q', qf)
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basemap, mapView, selected, off, mapReady, y0, y1, allTime])
+  }, [basemap, mapView, selected, off, mapReady, y0, y1, allTime, qf])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -473,8 +615,7 @@ export default function PermitsApp() {
   }, [])
 
   const toggle = (id) => setOff((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  const list = useMemo(() => [...visible].sort((a, b) =>
-    latestPast(b).localeCompare(latestPast(a)) || a.name.localeCompare(b.name)), [visible])
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   if (!MAPBOX_TOKEN) return <div className={q.container}><div className={q.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div></div>
 
@@ -496,6 +637,10 @@ export default function PermitsApp() {
           onSelect={(r) => mapRef.current && flyToSearchResult(mapRef.current, r)}
         />
       </MapSearch>
+
+      {/* Projects pill — /ships' ShipPicker construct: find a project by name, applicant, number or place. */}
+      {data && <ProjectPicker records={records} layers={LAYERS} picked={selected ? byId.get(selected)?.name : null}
+        onPick={(r) => { setPickerOpen(false); openRecord(r.id, true) }} open={pickerOpen} onOpen={setPickerOpen} />}
 
       <div className={q.basemapMenu} ref={basemapMenuRef}>
         <button className={basemapMenuOpen ? q.basemapToggleActive : q.basemapToggle} onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap">
@@ -523,8 +668,14 @@ export default function PermitsApp() {
             <div className={styles.infoMeta}>
               Clean Water Act permits for work in and around the waters of the San Juan Islands: Army Corps permits to build
               in the water (404), Ecology’s water-quality sign-offs (401) and discharge permits (402), with their violations.
-              Click a dot for its full record; every value links to its source.
+              Click a dot for its full record; every value links to its source.{' '}
+              <a className={styles.source} href="/permits/dashboard">Open the dashboard →</a>
             </div>
+            {qf && <div className={styles.qBanner}>
+              <span>Showing: <b>{QUESTION_BY_ID[qf].title}</b> ({visible.length})</span>
+              <a className={styles.source} href={`/permits/dashboard?q=${qf}`}>Dashboard</a>
+              <button type="button" className={styles.qClear} onClick={() => setQf(null)}>Show all</button>
+            </div>}
 
             <div className={styles.section}>
               <TimeSpan bounds={yearBounds} value={[y0, y1]} onChange={(v) => setSpan(v)} shown={timed.length} total={records.length} />
@@ -546,7 +697,8 @@ export default function PermitsApp() {
             </div>
 
             <div className={styles.section}>
-              <div className={styles.sectionTitle}>Receiving waters</div>
+              {/* Receiving waters and habitat are weighed alike in a permit decision (Josh 2026-10-15): one section. */}
+              <div className={styles.sectionTitle}>Waters and habitat{(mapView?.zoom ?? DEFAULT_VIEW.zoom) < HABITAT_MIN_ZOOM && <span className={styles.timeLabel}> · shows from zoom {HABITAT_MIN_ZOOM}</span>}</div>
               {WATERS.map((w) => (
                 <label key={w.id} className={styles.toggle} title={w.note}>
                   <input type="checkbox" checked={!off.has(w.id)} onChange={() => toggle(w.id)} />
@@ -554,19 +706,15 @@ export default function PermitsApp() {
                   <span className={styles.count}>{w.id === 'wq' ? data.meta.counts.wq303d : data.meta.counts.shellfish}</span>
                 </label>
               ))}
-            </div>
-
-            <div className={styles.section}>
-              <div className={styles.sectionTitle}>Records, newest activity first</div>
-              <div className={styles.list}>
-                {list.map((r) => (
-                  <button key={r.id} type="button" className={`${styles.item} ${r.id === selected ? styles.itemActive : ''}`} onClick={() => openRecord(r.id, true)}>
-                    <span className={styles.itemDot} style={{ background: LAYERS.find((l) => l.id === r.layer)?.color }} />
-                    <span><span className={styles.itemName}>{r.name}</span><br /><span className={styles.itemSub}>{r.type}</span></span>
-                    <span className={styles.itemDate}>{fmtDate(latestPast(r))}</span>
-                  </button>
-                ))}
-              </div>
+              {HABITATS.map((h) => (
+                <label key={h.id} className={styles.toggle} title={h.credit}>
+                  <input type="checkbox" checked={!off.has(h.id)} onChange={() => toggle(h.id)} />
+                  <span className={h.kind === 'fill' ? styles.swatchSq : styles.swatchLine} style={{ background: h.color, opacity: h.kind === 'fill' ? 0.7 : 1 }} />{h.label}
+                </label>
+              ))}
+              <a className={styles.friendsCredit} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">
+                <img src={FRIENDS_LOGO} alt="" />Habitat maps courtesy of Friends of the San Juans
+              </a>
             </div>
 
             {data.unmapped.length > 0 && <details className={`${styles.section} ${styles.details}`}>
@@ -609,6 +757,7 @@ function applyWaters(map, off) {
   const vis = (id) => (off.has(id) ? 'none' : 'visible')
   for (const l of ['wq-fill', 'wq-line']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', vis('wq'))
   for (const l of ['shell-fill', 'shell-line']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', vis('shell'))
+  for (const [h, ids] of Object.entries(LAYERS_OF)) for (const l of ids) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', vis(h))
 }
 
 // "Activity" span for the panel top (panel standard: the time control sits above the datasets). Two handles on one

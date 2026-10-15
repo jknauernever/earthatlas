@@ -1,0 +1,42 @@
+{
+ "0049267": {
+  "apps": "0049267",
+  "status": "Modification Issued - Major",
+  "permit": "2026-4-11+02",
+  "permitStatus": "Active",
+  "kind": "HPA - Standard",
+  "project": "Woody Debris Installations in San Juan County",
+  "types": "Habitat Enhancement or Restoration",
+  "submitted": "10/2/2026, 05:40 PM",
+  "issued": "10/6/2026",
+  "county": "San Juan",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000005O8RO",
+  "address": ", WA",
+  "lat": 48.540189,
+  "lon": -123.136609,
+  "sites": 2,
+  "positionFrom": "Hydraulic Project Approval 0045592.pdf",
+  "read": "2026-10-15",
+  "first_seen": "2026-10-15"
+ },
+ "0049444": {
+  "apps": "0049444",
+  "status": "HPA Issued",
+  "permit": "2026-4-742+01",
+  "permitStatus": "Active",
+  "kind": "HPA - Standard",
+  "project": "2026 Reid Harbor Ramp Repairs",
+  "types": "Water Access",
+  "submitted": "9/3/2026, 12:18 AM",
+  "issued": "10/12/2026",
+  "county": "San Juan",
+  "record": "https://hpa.wdfw.wa.gov/s/application-search-results?recordId=0f0cs000005Xx4r",
+  "address": ", WA",
+  "lat": 48.67487,
+  "lon": -123.20506,
+  "sites": 1,
+  "positionFrom": "Hydraulic Project Approval 0049444.pdf",
+  "read": "2026-10-15",
+  "first_seen": "2026-10-15"
+ }
+}

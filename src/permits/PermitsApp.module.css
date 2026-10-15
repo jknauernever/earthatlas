@@ -107,3 +107,31 @@
 .timeQuick { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
 .timeChip, .timeChipOn { font: inherit; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(229, 231, 235, 0.85); cursor: pointer; }
 .timeChipOn { border-color: #38bdf8; color: #fff; background: rgba(56, 189, 248, 0.18); }
+
+/* Friends habitat (habitat.js): panel toggles + credit, popup box, dashboard-question banner. */
+.swatchLine { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+.friendsCredit { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: rgba(229, 231, 235, 0.85); text-decoration: none; font-size: 11.5px; }
+.friendsCredit img { width: 72px; height: auto; flex: none; border-radius: 4px; }
+.friendsCredit:hover { color: #fff; }
+.habBox { margin: 8px 0; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc; font-size: 12px; }
+.habHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.habHead img { width: 64px; height: auto; display: block; }
+.habList { list-style: none; margin: 0 0 4px; padding: 0; }
+.habList li { display: flex; gap: 6px; align-items: baseline; margin: 2px 0; }
+.habDot { width: 9px; height: 9px; border-radius: 50%; flex: none; transform: translateY(1px); }
+.habBox .whyNote { margin-left: 0; font-size: 11px; }
+.qBanner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; padding: 7px 10px; border-radius: 8px;
+  background: rgba(14, 116, 144, 0.25); border: 1px solid rgba(45, 212, 191, 0.5); font-size: 12px; }
+.qClear { margin-left: auto; font: inherit; font-size: 11.5px; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3); background: transparent; color: #fff; cursor: pointer; }
+.reviewBox { margin: 6px 0 8px; padding: 8px 10px; border: 1.5px solid; border-radius: 8px; background: #fff7f7; font-size: 12px; }
+.tierPill { display: inline-block; color: #fff; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin-bottom: 4px; }
+/* "Where it is" (process.js) */
+.process summary { font-weight: 600; }
+.track { margin: 6px 0 2px; }
+.trackName { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.04em; }
+.steps { list-style: none; margin: 2px 0 0; padding: 0; font-size: 12px; }
+.steps li { display: flex; gap: 6px; align-items: baseline; margin: 1px 0; }
+.stepMark { width: 12px; flex: none; text-align: center; }
+.step_done .stepMark { color: #0e7490; }
+.step_now .stepMark { color: #dc2626; }
+.step_na, .step_unknown { color: #6b7280; }

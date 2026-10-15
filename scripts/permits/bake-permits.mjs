@@ -21,6 +21,113 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
+import { indexHabitat, habitatNear, waterFeatures, receivingMatches } from '../../src/permits/habitat.js'
+import { reviewOf } from '../../src/permits/review.js'
+
+const HABITAT_FILE = 'public/permits-data/friends-habitat.geojson' // scripts/permits/import-friends-habitat.mjs
+const HPA_CONDITIONS = 'data/permits/hpa-conditions.json' // scripts/permits/hpa-conditions.mjs
+// County SEPA reviews (scripts/permits/sepa-fetch.mjs → data/permits/county-sepa.json): each joins the /permits project
+// it names nearby (shared name words, within 300 m when both have a position), adding its determination and comment
+// deadline as events; one that names no project becomes its own record. Idempotent: earlier SEPA joins are removed first.
+const COUNTY_SEPA = 'data/permits/county-sepa.json'
+// Name words: the dock join's nameWords (NAME_STOP drops generic words like LLC, ISLAND, DOCK, REPAIR).
+export function attachSepa(d, today = new Date().toISOString().slice(0, 10)) {
+  const sepa = existsSync(COUNTY_SEPA) ? JSON.parse(readFileSync(COUNTY_SEPA, 'utf8')) : {}
+  d.projects = d.projects.filter((r) => !r.id.startsWith('sepa-'))
+  for (const r of d.projects) { r.trail = (r.trail || []).filter((t) => !t.sepa); delete r.sepa }
+  const inBox = (x) => x.lat != null && x.lon >= BBOX[0] && x.lon <= BBOX[2] && x.lat >= BBOX[1] && x.lat <= BBOX[3]
+  for (const s of Object.values(sepa)) {
+    const key = `sepa-${s.sepa}`
+    const agency = /friday harbor/i.test(s.lead || '') ? 'town' : /san juan county/i.test(s.lead || '') ? 'county' : 'ecology'
+    d.docs[key] = { title: `SEPA Register ${s.sepa}: ${s.proposalName} (${s.type})`, agency, kind: 'Page', url: s.url, look_up: `SEPA ${s.sepa}` }
+    const pos = inBox(s) ? { lat: s.lat, lon: s.lon } : null
+    const w = nameWords(s.proposalName, s.applicant)
+    const match = d.projects.map((r) => ({ r, shared: [...nameWords(r.name, r.applicant)].filter((x) => w.has(x)).length, m: pos ? metres([pos.lon, pos.lat], [r.lon, r.lat]) : null }))
+      .filter((x) => x.shared && (x.m == null || x.m <= 300)).sort((a, b) => b.shared - a.shared || (a.m ?? 0) - (b.m ?? 0))[0]?.r
+    const events = [{ date: s.issued, agency, src: key, sepa: true, event: `SEPA ${s.type} issued${s.fileNumber ? ` (${s.fileNumber})` : ''}` },
+      ...(s.commentsDue ? [{ date: s.commentsDue, agency, src: key, sepa: true, event: 'SEPA comment period ends' }] : [])].filter((e) => e.date)
+    const ref = { sepa: s.sepa, type: s.type, issued: s.issued, commentsDue: s.commentsDue || null, src: key }
+    if (match) { match.trail = [...(match.trail || []), ...events]; match.sepa = [...(match.sepa || []), ref]; continue }
+    if (!pos) continue
+    const open = s.commentsDue && s.commentsDue >= today
+    d.projects.push({ id: key, layer: 'local', county: 'San Juan', name: s.proposalName, applicant: s.applicant, type: 'County SEPA review', island: null,
+      lat: pos.lat, lon: pos.lon, approx: false, position: { text: 'from the SEPA Register record', src: key },
+      status: { label: open ? `SEPA comments open until ${s.commentsDue}` : `SEPA ${s.type} issued`, cls: open ? 'warn' : 'n', src: key },
+      summary: s.description ? { text: s.description.split('\n')[0].slice(0, 400), src: key } : undefined,
+      refs: [{ label: s.fileNumber || `SEPA ${s.sepa}`, src: key }], trail: events, joins: [], source: 'sepa-register', sepa: [ref] })
+  }
+}
+
+// WDFW Hydraulic Project Approval applications (scripts/permits/hpa-search.mjs → data/permits/hpa-applications.json):
+// each joins the project with that permit at its dock, or one it names within 300 m; otherwise it is its own record
+// (layer 'hpa'). Under review (Submitted / Accepted) counts as open. Idempotent like attachSepa.
+const HPA_APPS = 'data/permits/hpa-applications.json'
+const usDay = (s) => { const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s || ''); return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null }
+export function attachHpaApps(d) {
+  const apps = existsSync(HPA_APPS) ? JSON.parse(readFileSync(HPA_APPS, 'utf8')) : {}
+  d.projects = d.projects.filter((r) => !r.id.startsWith('hpa-'))
+  for (const r of d.projects) { r.trail = (r.trail || []).filter((t) => !t.hpaApp); delete r.hpaApps }
+  const inBox = (x) => x.lat != null && x.lon >= BBOX[0] && x.lon <= BBOX[2] && x.lat >= BBOX[1] && x.lat <= BBOX[3]
+  for (const a of Object.values(apps)) {
+    const key = `hpa-${a.apps}`
+    d.docs[key] = { title: `WDFW HPA application ${a.apps}: ${a.project}`, agency: 'wdfw', kind: 'Page', url: a.record, look_up: `APPS ${a.apps}` }
+    const submitted = usDay(a.submitted), issued = usDay(a.issued)
+    const events = [{ date: submitted, agency: 'wdfw', src: key, hpaApp: true, event: `HPA application submitted (APPS ${a.apps})` },
+      ...(issued ? [{ date: issued, agency: 'wdfw', src: key, hpaApp: true, event: `Hydraulic Project Approval issued${a.permit ? ` (${a.permit})` : ''}` }] : [])].filter((e) => e.date)
+    const ref = { apps: a.apps, permit: a.permit, status: a.status, permitStatus: a.permitStatus, submitted, issued, src: key }
+    const w = nameWords(a.project)
+    const match = d.projects.find((r) => a.permit && (r.docks || []).some((k) => k.permits.some((p) => p.agency === 'wdfw' && String(p.number || '').includes(a.permit))))
+      || (inBox(a) ? d.projects.map((r) => ({ r, shared: [...nameWords(r.name, r.applicant)].filter((x) => w.has(x)).length, m: metres([a.lon, a.lat], [r.lon, r.lat]) }))
+        .filter((x) => x.shared && x.m <= 300).sort((x, y) => y.shared - x.shared || x.m - y.m)[0]?.r : null)
+    if (match) { match.trail = [...(match.trail || []), ...events]; match.hpaApps = [...(match.hpaApps || []), ref]; continue }
+    if (!inBox(a)) continue
+    d.projects.push({ id: key, layer: 'hpa', county: 'San Juan', name: a.project, applicant: null, type: a.types || 'Hydraulic project', island: null,
+      lat: a.lat, lon: a.lon, approx: false, position: { text: `from WDFW’s ${a.positionFrom === 'WDFW record page' ? 'record' : 'permit document'}`, src: key },
+      status: { label: `WDFW: ${a.status}`, cls: /Submitted|Accepted/.test(a.status) && !/Rejected|Withdrawn|Incomplete/.test(a.status) ? 'warn' : /Issued/.test(a.status) ? 'ok' : 'n', src: key },
+      refs: [{ label: a.permit || `APPS ${a.apps}`, src: key }], trail: events, joins: [], source: 'wdfw-apps', hpaApps: [ref],
+      ...(a.sites > 1 ? { note: { text: `The permit lists ${a.sites} work sites; the map shows the first.`, src: key } } : {}) })
+  }
+}
+
+// "Needs review" (src/permits/review.js) on each record, with Friends' marks from data/permits/reviews.json
+// ({ "<record id>:<gap id>": { status: confirmed|dismissed|acted, note, date } }).
+const REVIEWS = 'data/permits/reviews.json'
+export function attachReview(records) {
+  const marks = existsSync(REVIEWS) ? JSON.parse(readFileSync(REVIEWS, 'utf8')) : {}
+  for (const r of records) {
+    const rv = reviewOf(r)
+    if (!rv) { delete r.review; continue }
+    for (const g of rv.gaps) { const m = marks[`${r.id}:${g.id}`]; if (m) g.mark = m }
+    r.review = rv
+  }
+}
+
+// Spawning-season conditions read from the WDFW HPAs at each record's dock (hpa-conditions.mjs), as `conditions`.
+export function attachConditions(records) {
+  const byPermit = existsSync(HPA_CONDITIONS) ? JSON.parse(readFileSync(HPA_CONDITIONS, 'utf8')) : {}
+  for (const r of records) {
+    const nums = [...(r.docks || []).flatMap((d) => d.permits).filter((p) => p.agency === 'wdfw' && p.number)
+      .flatMap((p) => String(p.number).split(/\s*,\s*/)), ...(r.hpaApps || []).map((a) => a.permit).filter(Boolean)]
+    const found = [...new Set(nums)].map((n) => byPermit[n]).filter(Boolean)
+    if (found.length) r.conditions = found; else delete r.conditions
+  }
+}
+// Waters and habitat near each record's map point (src/permits/habitat.js): Friends habitat plus this bake's 303(d)
+// and shellfish layers. Also run on its own by add-habitat.mjs.
+export function attachFactors(records, wq, shell) {
+  const waters = waterFeatures(wq, shell)
+  const index = indexHabitat({ features: [...waters, ...JSON.parse(readFileSync(HABITAT_FILE, 'utf8')).features] })
+  for (const r of records) {
+    // Discharge permits: impaired waters and shellfish areas named as (part of) the receiving water.
+    const rw = (r.facts || []).find((f) => f.label === 'Receiving water')?.value
+    const m = r.layer === 'npdes' ? receivingMatches(rw, waters) : []
+    if (m.length) r.receiving = m; else delete r.receiving
+    delete r.habitat // earlier name of `near`
+    if (!Number.isFinite(r.lat) || !Number.isFinite(r.lon)) continue
+    const near = habitatNear(index, r.lon, r.lat)
+    if (near.length) r.near = near; else delete r.near
+  }
+}
 
 const CURATED = 'data/permits/curated.json'
 const OUT_DIR = 'public/permits-data'
@@ -1095,6 +1202,9 @@ async function main() {
       wq303d: wq.features.length, shellfish: shell.features.length,
     },
   }
+  attachFactors([...projects, ...npdes], wq, shell)
+  attachConditions(projects)
+  attachReview([...projects, ...npdes])
   writeFileSync(`${OUT_DIR}/permits.json`, JSON.stringify({ meta, agencies: curated.agencies, tags, projects, npdes, unmapped: curated.unmapped, docs: clientDocs }))
   writeFileSync(`${OUT_DIR}/wq303d.geojson`, JSON.stringify(wq))
   writeFileSync(`${OUT_DIR}/shellfish.geojson`, JSON.stringify(shell))

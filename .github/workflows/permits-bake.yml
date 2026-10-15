@@ -44,7 +44,10 @@ jobs:
         run: node scripts/permits/bake-permits.mjs
       - name: Cache WDFW permit files and SEPA records
         uses: actions/cache@v4
-        with: { path: scripts/permits/cache, key: permits-cache-${{ github.run_id }}, restore-keys: permits-cache- }
+        with:
+          path: scripts/permits/cache
+          key: permits-cache-${{ github.run_id }}
+          restore-keys: permits-cache-
       - name: Read San Juan County SEPA reviews (Ecology SEPA Register)
         run: node scripts/permits/sepa-fetch.mjs || echo "::warning::SEPA Register read failed; publishing with the committed data/permits/county-sepa.json"
       - name: Read WDFW applications and permits (HPAs)

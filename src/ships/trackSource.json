@@ -85,8 +85,8 @@
     "version": "2026-10-15",
     "sourceLayer": "offshore",
     "maxzoom": 12,
-    "tiles": null,
-    "geojson": null,
-    "note": "Registered offshore facilities (scripts/ships/bake-offshore/bake.mjs). tiles/geojson = Blob URLs, filled in when uploaded for production; localhost reads build/."
+    "tiles": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15.pmtiles",
+    "geojson": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15.geojson",
+    "note": "Registered offshore facilities (scripts/ships/bake-offshore/bake.mjs + boem.mjs), uploaded by prod.sh upload-offshore; localhost reads build/ when present."
   }
 }

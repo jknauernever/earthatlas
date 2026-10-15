@@ -12,6 +12,8 @@
 #   zsh scripts/ships/prod.sh warm-ports         pre-load Salish port cards (args pass through)
 #   zsh scripts/ships/prod.sh import-ct-ports    back up, then Climate TRACE port sources (port-card Ship emissions)
 #   zsh scripts/ships/prod.sh upload-ct-voyages  upload the baked Climate TRACE voyage packs (ship-card Emissions) to Vercel Blob
+#   zsh scripts/ships/prod.sh upload-offshore    upload the baked offshore facilities (PMTiles + GeoJSON, scripts/ships/bake-offshore) to Vercel Blob
+#   zsh scripts/ships/prod.sh register-sources   back up, then record the SkyTruth Cerulean + offshore register sources in ships.sources
 #   zsh scripts/ships/prod.sh import-ct-stays    Climate TRACE port stays → terminals (needs migration 018 + the voyage bake's ct-stays file)
 #   zsh scripts/ships/prod.sh import-official-ports  back up, then official port lists (DFO harbours, USACE port areas, Transport Canada) for the Salish box
 #   zsh scripts/ships/prod.sh import-gisis       back up, then IMO GISIS scrubber notifications + ISPS port facilities (from the saved CSVs)
@@ -186,6 +188,26 @@ case "${1:-}" in
     [ -f "$file" ] || { echo "prod.sh: $file not found (run the MPA bake first)" >&2; exit 2 }
     BLOB_READ_WRITE_TOKEN="$(envval BLOB_READ_WRITE_TOKEN)" npx vercel blob put "$file" --access public --pathname "ships/mpa/${url:t}" \
       --content-type application/octet-stream --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" | grep -o 'https://[^ ]*' | head -1
+    ;;
+  upload-offshore)
+    # Registered offshore facilities baked by scripts/ships/bake-offshore/ (BOEM, EMODnet, USWTDB): the map's PMTiles and the
+    # GeoJSON the slick card's nearest-facility check reads. Josh approved 2026-10-15. Paths = trackSource.json offshore.version.
+    need BLOB_READ_WRITE_TOKEN
+    ver=$(python3 -c "import json; print(json.load(open('src/ships/trackSource.json'))['offshore']['version'])")
+    for f in offshore-$ver.pmtiles offshore-$ver.geojson; do
+      file=scripts/ships/bake-offshore/build/$f
+      [ -f "$file" ] || { echo "prod.sh: $file not found (run the offshore bake first)" >&2; exit 2 }
+      ct=$([[ $f == *.geojson ]] && echo application/geo+json || echo application/octet-stream)
+      url=$(BLOB_READ_WRITE_TOKEN="$(envval BLOB_READ_WRITE_TOKEN)" npx vercel blob put "$file" --access public --pathname "ships/offshore/$f" \
+        --content-type $ct --allow-overwrite true --rw-token "$(envval BLOB_READ_WRITE_TOKEN)" 2>&1 | grep -o 'https://[^ ]*' | head -1)
+      remote=$(curl -sI "$url?v=$(date +%s)" | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}')
+      [ "$remote" = "$(stat -f %z "$file")" ] && echo "uploaded $f (verified): $url" || { echo "prod.sh: $f is $remote bytes on Blob" >&2; exit 1 }
+    done
+    ;;
+  register-sources)
+    need SHIPS_PROD_DATABASE_URL
+    backup register-sources
+    prod_node scripts/ships/register-sources.mjs
     ;;
   warm-ports)
     # Pre-load Salish Sea port cards (2026 months) so they open instantly; settled months are kept for good.

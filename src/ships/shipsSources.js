@@ -164,6 +164,30 @@ export const SHIPS_SOURCES = [
     ],
   },
   {
+    heading: 'Oil slicks',
+    sources: [
+      { name: 'SkyTruth Cerulean', href: 'https://cerulean.skytruth.org', publisher: 'SkyTruth', licence: 'SkyTruth', licenceHref: 'https://skytruth.org/cerulean/',
+        method: 'Oil slicks SkyTruth’s models find in Sentinel-1 radar images, and the ships, offshore structures and unidentified (no AIS) vessels its model ranks as likely sources. Read live from SkyTruth’s public API. The map shows the slicks SkyTruth itself treats as credible: matched to a likely source, or, under 3 days old (before ship matching runs), shaped like a ship’s slick; slicks its reviewers marked as not oil are left out. Ship cards list slicks linked to an MMSI only for the dates that ship held it. A model’s match is a lead, not a finding. Every slick and source links to its page on Cerulean.',
+        citation: 'Oil slicks: SkyTruth Cerulean. Contains modified Copernicus Sentinel data.' },
+    ],
+  },
+  {
+    heading: 'Offshore facilities',
+    sources: [
+      { name: 'BOEM / BSEE platform structures (US Outer Continental Shelf)', href: 'https://www.data.boem.gov/Main/Platform.aspx',
+        publisher: 'Bureau of Ocean Energy Management / Bureau of Safety and Environmental Enforcement', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
+        method: 'Every platform and structure registered in US federal waters (Gulf, Pacific, Alaska): name, kind, operator, water depth, install and removal dates. Gulf positions as BOEM publishes them (NAD27, about 20 m from modern maps). Not for navigation.' },
+      { name: 'EMODnet Human Activities: Oil and Gas, Offshore Installations; Energy, Wind Farms', href: 'https://emodnet.ec.europa.eu/en/human-activities',
+        publisher: 'European Marine Observation and Data Network (data originators Cogea Srl and CETMAR)', licence: 'CC BY 4.0', licenceHref: 'https://creativecommons.org/licenses/by/4.0/',
+        method: 'Offshore oil and gas installations and wind farms in European seas, compiled from national registers: name, operator, status and dates.',
+        citation: 'This data was downloaded from the EMODnet Portal (https://emodnet.ec.europa.eu/en/).' },
+      { name: 'U.S. Wind Turbine Database', href: 'https://energy.usgs.gov/uswtdb',
+        publisher: 'U.S. Geological Survey, American Clean Power Association and Lawrence Berkeley National Laboratory', licence: 'Public domain', licenceHref: USC105,
+        method: 'Every offshore wind turbine in US waters.',
+        citation: 'Map services and data are available from U.S. Wind Turbine Database, provided by the U.S. Geological Survey, American Clean Power Association, and Lawrence Berkeley National Laboratory via https://energy.usgs.gov/uswtdb' },
+    ],
+  },
+  {
     heading: 'Protected areas',
     sources: [
       { name: 'NOAA Marine Protected Areas Inventory (2024)', href: 'https://marineprotectedareas.noaa.gov/dataanalysis/mpainventory/',

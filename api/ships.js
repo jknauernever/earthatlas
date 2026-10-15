@@ -50,6 +50,7 @@ import { scrubberMmsis } from '../lib/ships/scrubberFilter.js'
 import { scrubberReport, scrubberReportDays, readScrubberEdition, listScrubberEditions, scrubberTerminalSummary } from '../lib/ships/scrubberReport.js'
 import { scrubberPortsBatch, scrubberWorldPorts } from '../lib/ships/scrubberPorts.js'
 import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
+import { slickCandidateShips } from '../lib/ships/ceruleanClient.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
 import { searchVesselsFull, vesselKinds, getVessel, getRecord, getRecordView, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
@@ -96,6 +97,13 @@ async function hasTrack(mmsi, month) {
   return false
 }
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+// The ships SkyTruth Cerulean lists as candidate sources of one slick: the proof (like hasTrack) that an MMSI is real and
+// worth asking GFW about. at = the slick's time, so each MMSI resolves to the ship that held it then.
+async function slickVessels(slickId) {
+  if (!/^\d{1,10}$/.test(String(slickId || ''))) return null
+  // Cerulean's web-app records (the public API can drop a slick that the app still shows).
+  return slickCandidateShips(slickId).catch(() => null)
+}
 const gfwFor = () => (process.env.GFW_API_TOKEN ? gfwClient(process.env.GFW_API_TOKEN, { minIntervalMs: 0, log: () => {} }) : null)
 
 // Bake-only ops (Josh 2026-10-01: secret-locked). They hand out a whole compiled table in one response, so they answer
@@ -355,6 +363,15 @@ export default async function handler(req, res) {
       const r = await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString())
       return send(res, 200, r, r.status === 'unresolved' ? 'no-store' : undefined)
     }
+    //   /api/ships?op=slickShips&slick=<Cerulean slick id> → { at, ships: { <mmsi>: lookup } } for the slick's likely ship
+    //   sources (score > 0, at most 8): our database first, then GFW (same lookup as the track popups).
+    if (op === 'slickShips') {
+      const sv = await slickVessels(p.get('slick'))
+      if (!sv) return send(res, 404, { error: 'no such slick' })
+      const items = sv.vessels.filter((v) => Number(v.score) > 0).slice(0, 8).map((v) => ({ mmsi: v.mmsi, at: sv.at }))
+      const found = items.length ? await lookupShips(q, S, items, gfwFor()) : []
+      return send(res, 200, { at: sv.at, ships: Object.fromEntries(found.map((x) => [x.mmsi, x])) }, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
     //   /api/ships?op=lookup&items=<mmsi>:<YYYY-MM>:<unix t0>,…   (≤30) → { ships: [...] }
     if (op === 'lookup') {
       const items = (p.get('items') || '').split(',').slice(0, 30).map((x) => x.split(':'))
@@ -372,9 +389,11 @@ export default async function handler(req, res) {
       const items = (p.get('items') || '').split(',').slice(0, 10).map((x) => x.split(':'))
         .filter(([m, mo]) => /^\d{9}$/.test(m) && MONTH.test(mo))
       if (!items.length) return send(res, 400, { error: 'no valid items' })
-      const ok = await Promise.all(items.map(([m, mo]) => hasTrack(m, mo)))
+      // Proof the MMSI is real: a track in that month, or (slick=ID) SkyTruth listing it as that slick's candidate source.
+      const listed = p.get('slick') ? new Set(((await slickVessels(p.get('slick')))?.vessels || []).map((v) => v.mmsi)) : new Set()
+      const ok = await Promise.all(items.map(([m, mo]) => listed.has(m) || hasTrack(m, mo)))
       const mmsis = items.filter((_, k) => ok[k]).map(([m]) => m)
-      if (!mmsis.length) return send(res, 404, { error: 'no tracks for these MMSIs in those months' })
+      if (!mmsis.length) return send(res, 404, { error: 'no tracks or slick sources for these MMSIs in those months' })
       const gfw = gfwFor()
       if (!gfw) return send(res, 503, { error: 'GFW not configured' })
       const pool = shipsPool()

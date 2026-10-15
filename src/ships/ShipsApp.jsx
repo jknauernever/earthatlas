@@ -45,6 +45,8 @@ import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColu
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
 import { addLocalAerials } from '../lib/localAerials.js'
+import { CERULEAN_APP } from '../../lib/ships/cerulean.js'
+import SlickCard, { NEAR_DISTS, NEAR_DEFAULT, NEAR_COLOR, distWords, beforeWords, topShip, rankedSources } from './SlickCard.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
@@ -299,6 +301,80 @@ function mpaPopupHTML(p) {
     `</div>`
   )
 }
+// ─── Oil slicks (SkyTruth Cerulean; Josh 2026-10-14) ─────────────────────────
+// Live tiles from SkyTruth's API through /api/cerulean, which applies SkyTruth's own "credible" rule (lib/ships/cerulean.js),
+// for the same months as the tracks and dark vessels. Alarm red (Josh 2026-10-14: oil slicks are bad), deeper the
+// stronger the slick's best source match, and always the top layer of the map (above labels and every other layer); a dot
+// per slick when zoomed out (most slicks are a few km² and vanish below z7). Click → the ranked likely sources; a ship
+// opens its card. Every slick and source links to its page on Cerulean.
+const SLICK_ICON = '<path d="M12 3c3 4 6 7.4 6 10.8a6 6 0 0 1-12 0C6 10.4 9 7 12 3z"/><path d="M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/>'
+const SLICKS = {
+  id: 'slicks', name: 'Oil slicks', sub: 'seen by satellite radar, with likely sources', hue: '#ff1a1a', iconSvg: SLICK_ICON,
+  sourceName: 'SkyTruth Cerulean', sourceUrl: CERULEAN_APP,
+}
+// "Narrow to" chips: [url code, label, what the slick must carry]. Picking several shows slicks with any of them.
+const SLICK_KINDS = [
+  ['v', 'Ships', ['has', 'source_type_1_ids']],
+  ['i', 'Infrastructure', ['has', 'source_type_2_ids']],
+  ['d', 'Unidentified vessels', ['has', 'source_type_3_ids']],
+  ['r', 'Reviewed by SkyTruth', ['has', 'hitl_cls']],
+]
+// SkyTruth reviewers' "not oil" labels (public.cls: Not oil, Land, Sea ice, Artefact) are never drawn, whatever the model said.
+const SLICK_NOT_OIL = ['!', ['in', ['coalesce', ['get', 'hitl_cls'], 0], ['literal', [1, 10, 11, 12]]]]
+const slickFilter = (kinds) => {
+  const picked = SLICK_KINDS.filter(([k]) => kinds.includes(k)).map(([, , f]) => f)
+  return picked.length ? ['all', SLICK_NOT_OIL, ['any', ...picked]] : SLICK_NOT_OIL
+}
+const slickTileUrl = (from, to, pts) => `${TILES_BASE}/api/cerulean?op=tile&from=${from}&to=${to}${pts ? '&g=c' : ''}&z={z}&x={x}&y={y}`
+const SLICK_SCORE = ['coalesce', ['get', 'max_source_collated_score'], 0]
+const SLICK_FILL = '#ff1a1a'
+const SLICK_FILL_OPACITY = ['interpolate', ['linear'], SLICK_SCORE, 0, 0.55, 0.5, 0.72, 1.5, 0.9]
+const SLICK_LAYERS = ['slick-fill', 'slick-line', 'slick-dot']
+function keepSlicksOnTop(map) {
+  const ids = map.getStyle()?.layers?.map((l) => l.id)
+  if (!ids || !SLICK_LAYERS.every((id) => ids.includes(id))) return
+  if (ids.slice(-SLICK_LAYERS.length).join() === SLICK_LAYERS.join()) return
+  for (const id of SLICK_LAYERS) map.moveLayer(id) // no beforeId = to the very top, in this order
+}
+// Slick focus layers (SlickCard.jsx holds the card): the shown ship's track, where it was at the image time, its closest
+// approach, the "within" ring around the slick, and the radar image. All under the slick layers (slicks stay on top).
+const FOCUS_SRC = 'slick-focus', FOCUS_RADAR = 'slick-radar'
+const FOCUS_LAYERS = ['slick-focus-ring', 'slick-focus-casing', 'slick-focus-line', 'slick-focus-est', 'slick-focus-dir', 'slick-focus-pt', 'slick-focus-label']
+// ─── Offshore facilities (official registers only; Josh 2026-10-15) ───
+// Oil and gas platforms and wind farms from EMODnet (Europe), the US Wind Turbine Database (US offshore turbines) and BOEM
+// (US Outer Continental Shelf), baked by scripts/ships/bake-offshore/ into one PMTiles file (/api/ship-tracks?r=offshore).
+const OFFSHORE_ICON = '<path d="M5 21h14"/><path d="M8 21V11h8v10"/><path d="M12 11V4"/><path d="M9 7h6"/><path d="M6 11l2-3h8l2 3"/>'
+const OFFSHORE = {
+  id: 'offshore', name: 'Offshore facilities', sub: 'oil, gas and wind, from official registers', hue: '#fbbf24', iconSvg: OFFSHORE_ICON,
+}
+const OFF_PLATFORM = '#fbbf24', OFF_WIND = '#e5e7eb'
+const offshoreTileUrl = `${TILES_BASE}/api/ship-tracks?r=offshore&v=${trackSource.offshore.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const OFFSHORE_LAYERS = ['offshore-farm-fill', 'offshore-farm-line', 'offshore-pt']
+// Each feature's own source: the register, what it is, its licence, and a link to the dataset.
+export const OFFSHORE_SOURCES = {
+  'emodnet-platforms': { name: 'EMODnet Human Activities, Oil and Gas, Offshore Installations', href: 'https://emodnet.ec.europa.eu/en/human-activities', licence: 'CC BY 4.0',
+    credit: 'Downloaded from the EMODnet Portal; data originator Cogea Srl' },
+  'emodnet-windfarms': { name: 'EMODnet Human Activities, Energy, Wind Farms', href: 'https://emodnet.ec.europa.eu/en/human-activities', licence: 'CC BY 4.0',
+    credit: 'Downloaded from the EMODnet Portal; data originator CETMAR' },
+  uswtdb: { name: 'U.S. Wind Turbine Database', href: 'https://energy.usgs.gov/uswtdb', licence: 'Public domain',
+    credit: 'U.S. Geological Survey, American Clean Power Association and Lawrence Berkeley National Laboratory' },
+  boem: { name: 'BOEM / BSEE platform structures', href: 'https://www.data.boem.gov/', licence: 'Public domain', credit: 'Bureau of Ocean Energy Management' },
+}
+const OFF_STATUS = { operating: 'Operating', construction: 'Under construction', planned: 'Planned or approved', removed: 'Removed or decommissioned', other: 'Other' }
+function offshorePopupHTML(p) {
+  const s = styles
+  const src = OFFSHORE_SOURCES[p.src] || {}
+  const what = p.k === 'platform' ? 'Oil and gas platform' : p.k === 'turbine' ? 'Offshore wind turbine' : 'Offshore wind farm'
+  const row = (k, v) => (v == null || v === '' ? '' : `<div class="${s.popupRow}"><span class="${s.popupK}">${k}</span><span class="${s.popupV}">${escapeHtml(v)}</span></div>`)
+  return `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}">${what}</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(p.name || 'Unnamed')}</div>` +
+    `<div class="${s.popupMeta}">${escapeHtml([p.country, OFF_STATUS[p.status] && `${OFF_STATUS[p.status]}${p.statusRaw && p.statusRaw !== OFF_STATUS[p.status] ? ` (“${p.statusRaw}”)` : ''}`].filter(Boolean).join(' · '))}</div>` +
+    row('Operator', p.operator) + row('Kind', p.what) + row('Produces', p.product) + row('Since', p.since) +
+    row('Turbines', p.turbines) + row('Capacity', p.mw ? `${Number(p.mw) >= 10 ? Math.round(p.mw) : Number(p.mw).toFixed(1)} MW` : null) +
+    row('Water depth', p.depth ? `${Math.round(p.depth)} m` : null) + row('Note', p.note) +
+    `<div class="${s.popupNote}">Data: <a href="${src.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(src.name || p.src)}</a>${p.sid ? ` (record ${escapeHtml(p.sid)})` : ''}. ${escapeHtml(src.credit || '')}. ${escapeHtml(src.licence || '')}.</div></div>`
+}
 // ─── Ports (World Port Index + Global Fishing Watch's named ports; Phase 3 step 3) ────────────────
 // One GeoJSON of every port (/api/ships?op=portsLayer, cached a day), sized by WPI harbour size; bigger harbours show
 // from further out. GFW-only ports (no WPI entry) are hollow rings. Click → the port card (PortCard.jsx).
@@ -403,7 +479,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
+    dk: sp.get('dk'), mp: sp.get('mp'), sl: sp.get('sl'), of: sp.get('of'), ofr: sp.get('ofr'), sk: sp.get('sk'), sd: sp.get('sd'), slk: sp.get('slk'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'),
     an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'),
     gh: sp.get('gh'), // DEV-ONLY prototype layer (GFW hourly lines), see GH_COLOR
@@ -432,7 +508,7 @@ function clearOfOverlays(map, isMobile) {
     return side === 'left' ? r.right - box.left : box.right - r.left
   }
   let left = Math.max(30, edge('#ships-panel', 'left') + 24, edge('#ships-dock', 'left') + 24)
-  let right = Math.max(30, edge('[aria-label="Ship card"], [aria-label="Terminal card"], [aria-label="Port card"]', 'right') + 24)
+  let right = Math.max(30, edge('[aria-label="Ship card"], [aria-label="Terminal card"], [aria-label="Port card"], [aria-label="Oil slick card"]', 'right') + 24)
   const minMap = 240 // px of map the tracks must get
   if (box.width - left - right < minMap) { const k = Math.max(0, box.width - minMap) / (left + right); left *= k; right *= k }
   return { top: 80, bottom: 40, left: Math.round(left), right: Math.round(right) }
@@ -476,6 +552,21 @@ export default function ShipsApp() {
   const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
   const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
+  const [slicksOn, setSlicksOn] = useState(initial.sl === '1')
+  const [offshoreOn, setOffshoreOn] = useState(initial.of === '1')
+  const [offRemoved, setOffRemoved] = useState(initial.ofr === '1') // removed / decommissioned facilities (5.8k in the Gulf alone) are off by default
+  const [slickDist, setSlickDist] = useState(() => (NEAR_DISTS.includes(Number(initial.sd)) ? Number(initial.sd) : NEAR_DEFAULT))
+  // Slick focus (Josh 2026-10-14): while a slick's popup is open, the map shows only the oil and the track Cerulean has
+  // for one ship (the most likely source, or the one picked in the popup's list); every other ship track is hidden.
+  const [slickId, setSlickId] = useState(/^\d{1,10}$/.test(initial.slk || '') ? initial.slk : null)
+  const slickFocus = slickId
+  const [slickData, setSlickData] = useState(null) // { near, detail, ships, place }
+  const [slickErr, setSlickErr] = useState(false)
+  const [slickShown, setSlickShown] = useState(null) // MMSI whose track is on the map
+  const [slickRadar, setSlickRadar] = useState(false)
+  const [slickFolded, setSlickFolded] = useState(false)
+  const [slickKinds, setSlickKinds] = useState(() => String(initial.sk || '').split(',').filter((k) => SLICK_KINDS.some(([c]) => c === k)))
+  const openShipRef = useRef(null) // the track click's ship opener, also used by the slick popup
   const fossilRef = useRef(null)       // TraceFacilitiesOverlay, made on first use
   const fossilCanvasRef = useRef(null)
   // A click on a drawn facility is the facility's; the other click handlers step aside.
@@ -511,7 +602,7 @@ export default function ShipsApp() {
   const [kinds, setKinds] = useState(() => (initial.k ? initial.k.split(',').filter(Boolean) : []))
   const [vesselId, setVesselId] = useState(initial.v || null)
   // The ship card reopens where the user left it: tab (ct) and folded (cf).
-  const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions'].includes(initial.ct) ? initial.ct : 'overview')
+  const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions', 'slicks'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
   const [vesselName, setVesselName] = useState(null)
   const [vesselShape, setVesselShape] = useState(null)   // { group, cls, lengthM } for the hover icon (shipIcon.js)
@@ -776,7 +867,7 @@ export default function ShipsApp() {
       }
       for (const [l, estimated] of [[gfwObs(ym), false], [gfwEst(ym), true]]) {
         if (!map.getLayer(l)) continue
-        map.setLayoutProperty(l, 'visibility', tracksOn ? 'visible' : 'none')
+        map.setLayoutProperty(l, 'visibility', tracksOn && !slickFocus ? 'visible' : 'none')
         map.setPaintProperty(l, 'line-opacity', estimated ? opacity * 0.65 : opacity)
         map.setFilter(l, ['all', estimated ? ['==', ['get', 'est'], 1] : ['!=', ['get', 'est'], 1], kindFilter || true])
       }
@@ -802,7 +893,7 @@ export default function ShipsApp() {
       }
       for (const l of [usLo(ym), usHi(ym), trkLine(ym)]) {
         if (!map.getLayer(l)) continue
-        map.setLayoutProperty(l, 'visibility', tracksOn ? 'visible' : 'none')
+        map.setLayoutProperty(l, 'visibility', tracksOn && !slickFocus ? 'visible' : 'none')
         map.setPaintProperty(l, 'line-opacity', opacity)
       }
       if (map.getLayer(trkLine(ym))) map.setFilter(trkLine(ym), kindFilter)
@@ -837,7 +928,7 @@ export default function ShipsApp() {
           }
           map.setFilter(g, chips ? (structural ? ['all', structural, chips] : chips) : false)
           map.setLayerZoomRange(g, l.minzoom ?? 0, l.maxzoom ?? 24)
-          map.setLayoutProperty(g, 'visibility', tracksOn && chips ? 'visible' : 'none')
+          map.setLayoutProperty(g, 'visibility', tracksOn && chips && !slickFocus ? 'visible' : 'none')
         }
       }
     }
@@ -853,7 +944,7 @@ export default function ShipsApp() {
         paint: { 'line-color': OWN_COLOR, 'line-width': OWN_HI_WIDTH, 'line-opacity': 1 } }, labelsId)
     }
     // A picked ship's own (blue) tracks show even with the Ship tracks layer off (Josh, 2026-09-27).
-    const ownVis = identityOn && vesselId ? 'visible' : 'none'
+    const ownVis = identityOn && vesselId && !slickFocus ? 'visible' : 'none'
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) map.setLayoutProperty(l, 'visibility', ownVis)
     const hi = pickedTrack ? ['all', ['==', ['get', 'mmsi'], pickedTrack.mmsi], ['==', ['get', 't0'], pickedTrack.t0]]
       : stopFocus?.t0s?.length ? ['in', ['get', 't0'], ['literal', stopFocus.t0s]] : ['==', ['get', 't0'], -1]
@@ -863,7 +954,7 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus, slickFocus])
 
   // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
   // every month; api/ship-tracks op=all), or every selected month.
@@ -936,6 +1027,7 @@ export default function ShipsApp() {
     let shown = false
     const hide = () => { map.getContainer().classList.remove(styles.hoverCrosshair); if (shown) { marker.remove(); tip.remove(); shown = false } }
     const onMove = (e) => {
+      if (map.getLayer(OWN_LINE) && map.getLayoutProperty(OWN_LINE, 'visibility') === 'none') { hide(); return } // hidden (slick focus)
       const hits = map.getLayer(OWN_LINE) ? map.queryRenderedFeatures([[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]], { layers: [OWN_LINE] }) : []
       let best = null
       for (const h of hits) {
@@ -1050,7 +1142,8 @@ export default function ShipsApp() {
     const onMove = (e) => { map.getCanvas().style.cursor = hit(e.point).length ? 'pointer' : '' }
     // line: the clicked line's own properties. GFW hourly lines carry the name, flag, IMO and GFW type that came with the
     // positions (what the ship's AIS broadcast, as GFW serves it), so an unidentified ship still gets its name shown.
-    const openShip = async (mmsi, t0, month, line = null) => {
+    // slick: a SkyTruth slick id that lists this MMSI as a likely source (proof for op=save when there's no track).
+    const openShip = async (mmsi, t0, month, line = null, slick = null) => {
       setPickedTrack(t0 ? { mmsi: Number(mmsi), t0: Number(t0) } : null)
       setStopFocus(null); stopMarkerRef.current?.remove()
       const when = new Date(t0 * 1000).toISOString()
@@ -1063,7 +1156,7 @@ export default function ShipsApp() {
         // is real), then resolve again, so the ship opens with a full card (Josh, 2026-09-26).
         if (d.status === 'unresolved' && month) {
           setIdentityOn(true); setPickerOpen(false); setVesselId(null); setTrackNote(`Looking up MMSI ${mmsi} with Global Fishing Watch…`)
-          const sv = await fetch(`/api/ships?op=save&items=${mmsi}:${month}`, { method: 'POST' }).catch(() => null)
+          const sv = await fetch(`/api/ships?op=save&items=${mmsi}:${month}${slick ? `&slick=${slick}` : ''}`, { method: 'POST' }).catch(() => null)
           if (sv?.ok) d = await resolve(true)
         }
         // Several of our ships share this MMSI: GFW's identity for this exact time may settle it.
@@ -1083,8 +1176,9 @@ export default function ShipsApp() {
         }
       } catch { setTrackNote('Could not look up this track’s ship.') }
     }
+    openShipRef.current = openShip
     const onClick = async (e) => {
-      if (facilityAt(e.point)) return
+      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
       if (portHit(map, e.point).length) return // a port marker on a lane opens the port, not the lane
       const hits = hit(e.point)
       if (!hits.length) return
@@ -1138,7 +1232,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !darkOn || !gfwRange) return
     const trackLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk')).map((l) => l.id)
     const onClick = async (e) => {
-      if (facilityAt(e.point)) return
+      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
       if (!map.getLayer('gfw-dark-fill') || portHit(map, e.point).length) return
       if (map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: trackLayers() }).length) return
       const f = map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] })[0]
@@ -1255,7 +1349,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !mpaOn) return
     const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
     const onClick = (e) => {
-      if (facilityAt(e.point)) return
+      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
       if (!map.getLayer('mpa-fill') || portHit(map, e.point).length) return
       if (map.getLayer(ANCHORAGE_FILL) && map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] }).length) return // the anchorage's popup
       const others = otherLayers()
@@ -1275,6 +1369,285 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     return () => { map.off('click', onClick); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
   }, [mapReady, mpaOn])
+
+  // ─── Offshore facilities layer + click popup ───
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (!map.style?._loaded) { const t = setTimeout(() => setStyleVersion((n) => n + 1), 200); return () => clearTimeout(t) }
+    if (!offshoreOn && !map.getSource('offshore')) return
+    if (!map.getSource('offshore')) {
+      map.addSource('offshore', { type: 'vector', tiles: [offshoreTileUrl], minzoom: 0, maxzoom: trackSource.offshore.maxzoom,
+        attribution: 'Offshore facilities: <a href="https://emodnet.ec.europa.eu/en/human-activities" target="_blank" rel="noopener">EMODnet</a>, <a href="https://energy.usgs.gov/uswtdb" target="_blank" rel="noopener">USWTDB</a>, <a href="https://www.data.boem.gov/" target="_blank" rel="noopener">BOEM</a>' })
+      const L = trackSource.offshore.sourceLayer
+      const poly = ['==', ['geometry-type'], 'Polygon'], gone = ['==', ['get', 'status'], 'removed'], later = ['in', ['get', 'status'], ['literal', ['planned', 'construction']]]
+      map.addLayer({ id: 'offshore-farm-fill', type: 'fill', source: 'offshore', 'source-layer': L, filter: poly,
+        paint: { 'fill-color': OFF_WIND, 'fill-opacity': ['case', later, 0.05, gone, 0.03, 0.16] } })
+      map.addLayer({ id: 'offshore-farm-line', type: 'line', source: 'offshore', 'source-layer': L, filter: poly,
+        paint: { 'line-color': OFF_WIND, 'line-width': 1.2, 'line-opacity': ['case', later, 0.5, gone, 0.3, 0.9], 'line-dasharray': ['case', later, ['literal', [2, 2]], ['literal', [1, 0]]] } })
+      const plat = ['==', ['get', 'k'], 'platform'], turb = ['==', ['get', 'k'], 'turbine']
+      const color = ['case', plat, OFF_PLATFORM, OFF_WIND]
+      map.addLayer({ id: 'offshore-pt', type: 'circle', source: 'offshore', 'source-layer': L, filter: ['==', ['geometry-type'], 'Point'],
+        paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, ['case', turb, 1, 1.8], 8, ['case', turb, 2.2, 3.5], 13, ['case', turb, 4, 6]],
+          'circle-color': ['case', gone, 'rgba(0,0,0,0)', color], 'circle-opacity': ['case', later, 0.45, 1],
+          'circle-stroke-color': ['case', gone, color, '#0a0e17'], 'circle-stroke-width': ['case', gone, 1.4, 0.8], 'circle-stroke-opacity': ['case', gone, 0.7, 1] } })
+    }
+    const kind = { 'offshore-farm-fill': ['==', ['geometry-type'], 'Polygon'], 'offshore-farm-line': ['==', ['geometry-type'], 'Polygon'], 'offshore-pt': ['==', ['geometry-type'], 'Point'] }
+    for (const id of OFFSHORE_LAYERS) {
+      map.setFilter(id, offRemoved ? kind[id] : ['all', kind[id], ['!=', ['get', 'status'], 'removed']])
+      map.setLayoutProperty(id, 'visibility', offshoreOn ? 'visible' : 'none')
+    }
+    keepSlicksOnTop(map)
+  }, [mapReady, styleVersion, offshoreOn, offRemoved])
+  const offshorePopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !offshoreOn) return
+    const hitAt = (pt) => {
+      const live = OFFSHORE_LAYERS.filter((l) => map.getLayer(l))
+      return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live })[0] : null
+    }
+    const onClick = (e) => {
+      if (facilityAt(e.point) || portHit(map, e.point).length || slickAt(e.point)) return
+      const f = hitAt(e.point)
+      if (!f) return
+      offshorePopupRef.current?.remove()
+      offshorePopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(offshorePopupHTML(f.properties)).addTo(map))
+    }
+    const onMove = (e) => { if (map.getCanvas().style.cursor !== 'pointer' && hitAt(e.point)) map.getCanvas().style.cursor = 'pointer' }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove); offshorePopupRef.current?.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, offshoreOn])
+
+  // ─── Oil slicks (SkyTruth Cerulean): same months as the dark vessels (gfwRange) ───
+  // Always the top layer of the map (keepSlicksOnTop); a dot per slick when zoomed out, outlines from z6.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !gfwRange) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    if (!slicksOn && !map.getSource('slicks')) return // never asked for: don't call SkyTruth at all
+    const url = slickTileUrl(gfwRange.from, gfwRange.to), ptsUrl = slickTileUrl(gfwRange.from, gfwRange.to, true)
+    for (const [id, u] of [['slicks', url], ['slick-pts', ptsUrl]]) { const cur = map.getSource(id); if (cur && cur.tiles?.[0] !== u) cur.setTiles([u]) }
+    if (!map.getSource('slicks')) {
+      if (!map.hasImage('slick-dot')) {
+        const n = 40, c = document.createElement('canvas'); c.width = c.height = n
+        const g = c.getContext('2d')
+        g.beginPath(); g.arc(n / 2, n / 2, n / 2 - 4, 0, Math.PI * 2)
+        g.fillStyle = SLICKS.hue; g.fill(); g.lineWidth = 3; g.strokeStyle = '#0a0e17'; g.stroke()
+        map.addImage('slick-dot', g.getImageData(0, 0, n, n), { pixelRatio: 2 })
+      }
+      // z2+ only: SkyTruth takes 20–30 s for a z0–1 tile (lib/ships/cerulean.js).
+      map.addSource('slicks', { type: 'vector', tiles: [url], minzoom: 2, maxzoom: 12,
+        attribution: `Oil slicks: <a href="${CERULEAN_APP}" target="_blank" rel="noopener">SkyTruth Cerulean</a> (contains modified Copernicus Sentinel data)` })
+      // Dots: one centroid per slick (an outline's own parts would each get a dot); only needed up to z9.
+      map.addSource('slick-pts', { type: 'vector', tiles: [ptsUrl], minzoom: 2, maxzoom: 9 })
+      map.addLayer({ id: 'slick-fill', type: 'fill', source: 'slicks', 'source-layer': 'default', minzoom: 6,
+        paint: { 'fill-color': SLICK_FILL, 'fill-opacity': SLICK_FILL_OPACITY } })
+      map.addLayer({ id: 'slick-line', type: 'line', source: 'slicks', 'source-layer': 'default', minzoom: 6,
+        paint: { 'line-color': SLICK_FILL, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.2, 12, 2.4], 'line-opacity': 1 } })
+      map.addLayer({ id: 'slick-dot', type: 'symbol', source: 'slick-pts', 'source-layer': 'default', maxzoom: 9,
+        layout: { 'icon-image': 'slick-dot', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.3, 6, 0.5, 8, 0.8] },
+        paint: { 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 7, 1, 9, 0] } })
+    }
+    for (const id of SLICK_LAYERS) {
+      map.setFilter(id, slickFilter(slickKinds))
+      map.setLayoutProperty(id, 'visibility', slicksOn ? 'visible' : 'none')
+    }
+    keepSlicksOnTop(map)
+  }, [mapReady, styleVersion, gfwRange, slicksOn, slickKinds, trackMonths])
+  // Always the top layer (Josh 2026-10-14): other layers get added or re-added later (tracks when the months change, ports,
+  // aerials), so put the slicks back on top whenever the style changes. Moving only when out of place keeps this cheap
+  // and stops it re-triggering itself.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const onStyle = () => keepSlicksOnTop(map)
+    map.on('styledata', onStyle)
+    return () => map.off('styledata', onStyle)
+  }, [mapReady])
+
+  // ─── Slick card + slick focus (Josh 2026-10-14) ───
+  // A click on a slick opens its card (SlickCard.jsx) and puts the map in slick focus: every other ship track hides,
+  // the other slicks fade, and only one ship's track draws (SkyTruth's most likely source first; the card's chart swaps it).
+  const slickAt = (pt) => {
+    const map = mapRef.current
+    const live = SLICK_LAYERS.filter((l) => map?.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
+    return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live })[0] || null : null
+  }
+  const openSlickCard = (id) => {
+    if (id == null) return
+    setPortId(null); setTerminalKey(null); setAnchorageKey(null)
+    setSlickFolded(false); setSlickShown(null); setSlickRadar(false); setSlickId(String(id))
+  }
+  // From a ship card's Oil slicks tab: turn the layer on and open the slick (the card's data fits the map to it).
+  const showSlick = useCallback((r) => { setSlicksOn(true); openSlickCard(r.slick_id) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !slicksOn) return
+    // Hover: a one-line hint, so a slick reads as clickable before anyone clicks it.
+    const tip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, maxWidth: '260px' })
+    let tipFor = null
+    const onClick = (e) => {
+      if (facilityAt(e.point) || portHit(map, e.point).length) return
+      const f = slickAt(e.point)
+      if (f?.properties?.id != null) { tip.remove(); tipFor = null; openSlickCard(f.properties.id) }
+    }
+    const onMove = (e) => {
+      const f = slickAt(e.point)
+      if (!f) { if (tipFor) { tip.remove(); tipFor = null } return }
+      map.getCanvas().style.cursor = 'pointer'
+      if (tipFor === f.properties.id) { tip.setLngLat(e.lngLat); return }
+      tipFor = f.properties.id
+      const t = f.properties.slick_timestamp ? new Date(`${String(f.properties.slick_timestamp).replace(' ', 'T')}Z`) : null
+      const day = t && !Number.isNaN(t.getTime()) ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''
+      tip.setLngLat(e.lngLat).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.4"><strong style="color:#b91c1c">Oil slick</strong>${day ? ` · ${day}` : ''}<br>Click for the ships that were near it</div>`).addTo(map)
+      const pe = tip.getElement(); if (pe) pe.style.pointerEvents = 'none'
+    }
+    const onOut = () => { tip.remove(); tipFor = null }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    map.on('mouseout', onOut)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove); map.off('mouseout', onOut); tip.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, slicksOn])
+
+  // The card's data: SkyTruth's candidate ships + tracks, its ranked sources, our identities, a place name.
+  useEffect(() => {
+    setSlickData(null); setSlickErr(false)
+    if (!slickId) return
+    const ctl = new AbortController()
+    const get = (u) => fetch(u, { signal: ctl.signal }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    const merge = (part) => setSlickData((d) => ({ ...(d || {}), ...part }))
+    get(`${TILES_BASE}/api/cerulean?op=near&id=${slickId}`).then((near) => {
+      merge({ near })
+      const [lng, lat] = near.slick.lnglat
+      get(`/api/geo/reverse?lat=${lat.toFixed(2)}&lng=${lng.toFixed(2)}`).then((g) => merge({ place: g?.name || null })).catch(() => {})
+    }).catch((e) => { if (e.name !== 'AbortError') setSlickErr(true) })
+    get(`${TILES_BASE}/api/cerulean?op=slick&id=${slickId}`).then((detail) => merge({ detail })).catch(() => {})
+    get(`/api/ships?op=slickShips&slick=${slickId}`).then((x) => merge({ ships: x.ships || {} })).catch(() => merge({ ships: {} }))
+    return () => ctl.abort()
+  }, [slickId])
+  // First ship shown: SkyTruth's most likely source, else the ship that came closest.
+  useEffect(() => {
+    if (!slickData?.near || slickShown) return
+    const top = topShip(slickData.near)
+    // When SkyTruth's best candidate isn't a ship (a platform, an unidentified vessel), no ship track is drawn until one is picked.
+    const best = rankedSources(slickData.near).find((x) => Number(x.source_collated_score) > 0)
+    const nearest = (slickData.near.ships || []).find((x) => x.dist != null)
+    // In a wind farm the "structure" may be a vessel working on it (Josh 2026-10-15), so lead with the best-ranked ship there.
+    const bestOther = best && best.source_type !== 'VESSEL' ? (slickData.near.others || []).find((o) => o.extId === String(best.mmsi_or_structure_id)) : null
+    const inWindFarm = ['windfarm', 'turbine'].includes(bestOther?.registered?.facility?.k)
+    const bestShip = rankedSources(slickData.near).find((x) => x.source_type === 'VESSEL')
+    setSlickShown(top?.mmsi || (inWindFarm ? bestShip?.mmsi_or_structure_id || nearest?.mmsi : best && best.source_type !== 'VESSEL' ? '' : nearest?.mmsi) || '')
+  }, [slickData, slickShown])
+  // Esc leaves slick focus.
+  useEffect(() => {
+    if (!slickId) return
+    const onKey = (e) => { if (e.key === 'Escape') setSlickId(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [slickId])
+
+  // The map in slick focus: selected slick bright with a white edge, the others faded; the shown ship's track; the ring.
+  const fittedRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !map.style?._loaded) return
+    const sel = slickId ? Number(slickId) : null
+    if (map.getLayer('slick-fill')) {
+      map.setPaintProperty('slick-fill', 'fill-opacity', sel == null ? SLICK_FILL_OPACITY : ['case', ['==', ['get', 'id'], sel], 0.95, 0.22])
+      map.setPaintProperty('slick-line', 'line-width', sel == null ? ['interpolate', ['linear'], ['zoom'], 6, 1.2, 12, 2.4] : ['case', ['==', ['get', 'id'], sel], 3, 1.2])
+      map.setPaintProperty('slick-line', 'line-opacity', sel == null ? 1 : ['case', ['==', ['get', 'id'], sel], 1, 0.3])
+      map.setPaintProperty('slick-dot', 'icon-opacity', sel == null ? ['interpolate', ['linear'], ['zoom'], 7, 1, 9, 0]
+        : ['case', ['==', ['get', 'id'], sel], ['interpolate', ['linear'], ['zoom'], 7, 1, 9, 0], 0.25])
+    }
+    const near = slickId ? slickData?.near : null
+    const ship = near?.ships?.find((x) => x.mmsi === slickShown)
+    const feats = []
+    if (near?.slick?.bbox) {
+      // "Within" ring: the slick's box grown by the distance, corners rounded by it (a stadium around the slick).
+      const [w, so, e, n] = near.slick.bbox, lat0 = (so + n) / 2
+      const kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 111320
+      const dx = slickDist / kx, dy = slickDist / ky, ring = []
+      const corners = [[e, n, 0], [w, n, 90], [w, so, 180], [e, so, 270]]
+      for (const [cx, cy, a0] of corners) for (let a = a0; a <= a0 + 90; a += 10) ring.push([cx + dx * Math.cos((a * Math.PI) / 180), cy + dy * Math.sin((a * Math.PI) / 180)])
+      ring.push(ring[0])
+      feats.push({ type: 'Feature', properties: { k: 'ring' }, geometry: { type: 'LineString', coordinates: ring } })
+    }
+    if (ship?.track?.length) {
+      let run = []
+      const flush = (est) => { if (run.length > 1) feats.push({ type: 'Feature', properties: { k: 'track', est }, geometry: { type: 'LineString', coordinates: run } }) }
+      ship.track.forEach((q, i) => {
+        if (i > 0 && q[3] !== ship.track[i - 1][3]) { run.push([q[0], q[1]]); flush(ship.track[i - 1][3]); run = [] }
+        run.push([q[0], q[1]])
+      })
+      flush(ship.track[ship.track.length - 1][3])
+      const name = (slickData?.ships?.[ship.mmsi]?.name || ship.name || `MMSI ${ship.mmsi}`).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase())
+      const c = ship.track.find((q) => q[2] * 1000 === Date.parse(ship.closest))
+      if (c) feats.push({ type: 'Feature', properties: { k: 'pt', label: `${ship.dist === 0 ? 'crossed it' : distWords(ship.dist)} · ${beforeWords(ship.closest, near.slick.at)} before` }, geometry: { type: 'Point', coordinates: [c[0], c[1]] } })
+      const last = ship.track[ship.track.length - 1]
+      feats.push({ type: 'Feature', properties: { k: 'now', label: `${name} at the image time` }, geometry: { type: 'Point', coordinates: [last[0], last[1]] } })
+    }
+    // SkyTruth's best candidate when it's a structure: a ring on it, named from the official register when one matches.
+    const best = rankedSources(near).find((x) => Number(x.source_collated_score) > 0)
+    const infra = slickId && best?.source_type === 'INFRA' ? (near?.others || []).find((o) => o.extId === String(best.mmsi_or_structure_id) && o.lnglat) : null
+    if (infra) {
+      const f = infra.registered?.facility
+      feats.push({ type: 'Feature', properties: { k: 'infra', label: f ? [f.name, f.operator].filter(Boolean).join(' · ') : 'Structure (not on the register)' }, geometry: { type: 'Point', coordinates: infra.lnglat } })
+    }
+    const data = { type: 'FeatureCollection', features: feats }
+    if (map.getSource(FOCUS_SRC)) map.getSource(FOCUS_SRC).setData(data)
+    else {
+      map.addSource(FOCUS_SRC, { type: 'geojson', data })
+      const lt = (k) => ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'k'], k]]
+      const pt = ['==', ['geometry-type'], 'Point']
+      map.addLayer({ id: 'slick-focus-ring', type: 'line', source: FOCUS_SRC, filter: lt('ring'), paint: { 'line-color': '#e2e8f0', 'line-opacity': 0.55, 'line-width': 1.2, 'line-dasharray': [3, 3] } })
+      map.addLayer({ id: 'slick-focus-casing', type: 'line', source: FOCUS_SRC, filter: lt('track'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0a0e17', 'line-width': 6, 'line-opacity': 0.8 } })
+      map.addLayer({ id: 'slick-focus-line', type: 'line', source: FOCUS_SRC, filter: ['all', lt('track'), ['==', ['get', 'est'], 0]], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': NEAR_COLOR, 'line-width': 3 } })
+      map.addLayer({ id: 'slick-focus-est', type: 'line', source: FOCUS_SRC, filter: ['all', lt('track'), ['==', ['get', 'est'], 1]], paint: { 'line-color': NEAR_COLOR, 'line-width': 2.2, 'line-dasharray': [1.5, 1.5] } })
+      map.addLayer({ id: 'slick-focus-dir', type: 'symbol', source: FOCUS_SRC, filter: lt('track'),
+        layout: { 'symbol-placement': 'line', 'symbol-spacing': 90, 'text-field': '▶', 'text-size': 11, 'text-keep-upright': false, 'text-rotation-alignment': 'map', 'text-allow-overlap': true },
+        paint: { 'text-color': NEAR_COLOR, 'text-halo-color': '#0a0e17', 'text-halo-width': 1 } })
+      map.addLayer({ id: 'slick-focus-pt', type: 'circle', source: FOCUS_SRC, filter: pt,
+        paint: { 'circle-radius': ['match', ['get', 'k'], 'now', 7, 'infra', 11, 5], 'circle-color': ['match', ['get', 'k'], 'now', '#0a0e17', 'infra', 'rgba(0,0,0,0)', NEAR_COLOR],
+          'circle-stroke-width': ['match', ['get', 'k'], 'infra', 3, 2.5], 'circle-stroke-color': ['match', ['get', 'k'], 'infra', OFF_PLATFORM, NEAR_COLOR] } })
+      map.addLayer({ id: 'slick-focus-label', type: 'symbol', source: FOCUS_SRC, filter: pt,
+        layout: { 'text-field': ['get', 'label'], 'text-size': 11.5, 'text-allow-overlap': false, 'symbol-sort-key': ['case', ['==', ['get', 'k'], 'pt'], 0, 1],
+          'text-anchor': ['match', ['get', 'k'], 'now', 'left', 'infra', 'left', 'top'], 'text-offset': ['match', ['get', 'k'], 'now', ['literal', [1.1, 0]], 'infra', ['literal', [1.6, 0]], ['literal', [0, 1.2]]] },
+        paint: { 'text-color': ['match', ['get', 'k'], 'infra', '#fde68a', '#cffafe'], 'text-halo-color': '#0a0e17', 'text-halo-width': 1.6 } })
+    }
+    // Radar image: Cerulean's Sentinel-1 tiles for this slick's scene, under the focus layers and the slick.
+    const radarUrl = slickId && slickRadar && near?.slick?.radar ? `${TILES_BASE}/api/cerulean?op=radar&id=${slickId}&z={z}&x={x}&y={y}` : null
+    if (map.getLayer(FOCUS_RADAR) && (!radarUrl || map.getSource(FOCUS_RADAR)?.tiles?.[0] !== radarUrl)) { map.removeLayer(FOCUS_RADAR); removeSourceSafe(map, FOCUS_RADAR) }
+    if (radarUrl && !map.getSource(FOCUS_RADAR)) {
+      map.addSource(FOCUS_RADAR, { type: 'raster', tiles: [radarUrl], tileSize: 256, minzoom: 6, maxzoom: 16,
+        attribution: 'Radar image: contains modified Copernicus Sentinel data, via <a href="https://cerulean.skytruth.org" target="_blank" rel="noopener">SkyTruth Cerulean</a>' })
+      map.addLayer({ id: FOCUS_RADAR, type: 'raster', source: FOCUS_RADAR, paint: { 'raster-opacity': 0.9 } }, 'slick-focus-ring')
+    }
+    // Order: radar, ring, track…, then the slick layers on top (keepSlicksOnTop).
+    for (const id of [FOCUS_RADAR, ...FOCUS_LAYERS]) if (map.getLayer(id)) map.moveLayer(id)
+    keepSlicksOnTop(map)
+    // Fit once per slick: the slick and the shown ship's track in the window, clear of the panel and the card.
+    if (near && slickShown != null && fittedRef.current !== `${slickId}:${slickShown}`) {
+      fittedRef.current = `${slickId}:${slickShown}`
+      const b = new mapboxgl.LngLatBounds()
+      const [w, so, e, n] = near.slick.bbox || [...near.slick.lnglat, ...near.slick.lnglat]
+      b.extend([w, so]); b.extend([e, n])
+      // Only the stretch of track near the slick (within 15 km): a ship can come from far away, and the slick must stay readable.
+      const [lng0, lat0] = near.slick.lnglat, kx0 = 111320 * Math.cos((lat0 * Math.PI) / 180)
+      for (const q of ship?.track || []) if (Math.hypot((q[0] - lng0) * kx0, (q[1] - lat0) * 111320) <= 15000) b.extend([q[0], q[1]])
+      if (infra) b.extend(infra.lnglat)
+      map.fitBounds(b, { padding: clearOfOverlays(map, isMobile), maxZoom: 13, duration: 1000 })
+    }
+    if (!slickId) fittedRef.current = null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, styleVersion, slickId, slickData, slickShown, slickDist, slickRadar])
 
   // ─── DEV-ONLY PROTOTYPE: GFW hourly lines (?gh=raw|routed on localhost; see GH_COLOR) ───
   // The water-routed version is now part of the normal Ship tracks row (GFW months); gh=raw stays for comparison.
@@ -1615,6 +1988,12 @@ export default function ShipsApp() {
     if (!tracksOn) sp.set('tr', '0')
     if (darkOn) sp.set('dk', '1')
     if (mpaOn) sp.set('mp', '1')
+    if (slicksOn) sp.set('sl', '1')
+    if (offshoreOn) sp.set('of', '1')
+    if (offshoreOn && offRemoved) sp.set('ofr', '1')
+    if (slicksOn && slickKinds.length) sp.set('sk', slickKinds.join(','))
+    if (slicksOn && slickDist !== NEAR_DEFAULT) sp.set('sd', String(slickDist))
+    if (slicksOn && slickId) sp.set('slk', slickId)
     if (vesselId && !ownAllYears) sp.set('oy', 'm')
     if (!portsOn) sp.set('pt', '0')
     if (ghProto) sp.set('gh', ghProto)
@@ -1639,7 +2018,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -1650,7 +2029,7 @@ export default function ShipsApp() {
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
-  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0) + (portsOn ? 1 : 0)
+  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0) + (slicksOn ? 1 : 0) + (offshoreOn ? 1 : 0) + (portsOn ? 1 : 0)
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
@@ -1709,7 +2088,7 @@ export default function ShipsApp() {
           )}
           {vesselId && backToPort && (
             <button type="button" className={styles.trackNote} style={{ textAlign: 'left', cursor: 'pointer' }}
-              onClick={() => { if (backToPort.anchorage) setAnchorageKey(backToPort.id); else if (backToPort.terminal) setTerminalKey(backToPort.id); else setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the {backToPort.anchorage ? 'anchorage' : backToPort.terminal ? 'terminal' : 'port'} card: {backToPort.name}</button>
+              onClick={() => { if (backToPort.slick) { setSlicksOn(true); setSlickShown(null); setSlickId(backToPort.id) } else if (backToPort.anchorage) setAnchorageKey(backToPort.id); else if (backToPort.terminal) setTerminalKey(backToPort.id); else setPortId(backToPort.id); setVesselId(null); setBackToPort(null) }}>← Back to the {backToPort.slick ? 'oil slick' : backToPort.anchorage ? 'anchorage' : backToPort.terminal ? 'terminal' : 'port'} card{backToPort.slick ? '' : `: ${backToPort.name}`}</button>
           )}
           {vesselId && (
             <VesselCard vesselId={vesselId} tab={cardTab} onTab={setCardTab} folded={cardFolded} onFold={setCardFolded}
@@ -1727,6 +2106,7 @@ export default function ShipsApp() {
                 </div>
               )}
               onShowPlace={showStop}
+              onShowSlick={showSlick}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')
                 const len = v.assertions.filter((a) => a.attribute === 'length_m' && Number(a.value_norm) > 0)
@@ -1776,6 +2156,23 @@ export default function ShipsApp() {
               const name = document.querySelector('[aria-label="Terminal card"] [class*="vesselName"]')?.firstChild?.textContent?.trim() || 'terminal'
               setBackToPort({ id: terminalKey, name, terminal: true }); setIdentityOn(true); setPickerOpen(false); setVesselName(null); setPickedTrack(null)
               fitToOwnRef.current = true; setVesselId(id)
+            }} />
+        </div>
+      )}
+
+      {slickId && !vesselId && (
+        <div className={styles.portWrap}>
+          <SlickCard id={slickId} data={slickData} error={slickErr} dist={slickDist} onDist={setSlickDist}
+            shown={slickShown} onShow={setSlickShown} radarOn={slickRadar} onRadar={setSlickRadar}
+            folded={slickFolded} onFold={setSlickFolded} onClose={() => setSlickId(null)}
+            onLocate={() => { fittedRef.current = null; setSlickData((d) => (d ? { ...d } : d)) }}
+            onOpenShip={(mmsi) => {
+              const at = slickData?.near?.slick?.at
+              if (!at) return
+              const id = slickId
+              setBackToPort({ slick: true, id, name: 'oil slick' })
+              setSlickId(null)
+              openShipRef.current?.(Number(mmsi), Math.floor(Date.parse(at) / 1000), at.slice(0, 7), null, id)
             }} />
         </div>
       )}
@@ -1834,7 +2231,7 @@ export default function ShipsApp() {
               <button type="button" className={styles.dockBtnSm} onClick={() => { if (isMobile) setMobileView('drawer'); else setPanelOpen(true) }} aria-label="Expand panel">▸</button>
             </div>
           </div>
-          {/* One flat list in the panel's order (Josh 2026-09-27): Ship tracks, Ports, Protected areas, Ship identity, Dark vessels. */}
+          {/* One flat list in the panel's order (Josh 2026-09-27): Ship tracks, Ports, Protected areas, Ship identity, Dark vessels, Oil slicks. */}
           <div className={styles.dockGroup}>
             <div className={styles.dockGrid}>
               {[
@@ -1843,6 +2240,8 @@ export default function ShipsApp() {
                 [MPA, mpaOn, () => setMpaOn((o) => !o)],
                 [IDENTITY, identityOn, toggleIdentity],
                 [DARK, darkOn, () => setDarkOn((o) => !o)],
+                [SLICKS, slicksOn, () => setSlicksOn((o) => !o)],
+                [OFFSHORE, offshoreOn, () => setOffshoreOn((o) => !o)],
               ].filter(Boolean).map(([def, on, toggle]) => (
                 <button key={def.id || def.name} type="button" className={`${styles.dockBtn} ${on ? styles.dockOn : ''}`}
                   style={on ? hueStyle(def.hue) : undefined} onClick={toggle} aria-pressed={on} aria-label={def.name}>
@@ -2056,6 +2455,58 @@ export default function ShipsApp() {
                     boats under 15 m and anything within 1 km of shore, doesn’t cover most of the open ocean, and some detections are noise.
                     About 5–6 days behind.{' '}
                     <a href={DARK.sourceUrl} target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch.</a> CC BY-NC 4.0.
+                  </>} />
+                <DatasetRow storageKey="ships.slicks" name={SLICKS.name} sub={SLICKS.sub} hue={SLICKS.hue}
+                  icon={<Icon svg={SLICKS.iconSvg} size={16} />} on={slicksOn} onToggle={() => setSlicksOn((o) => !o)}
+                  legend={<>
+                    <LegendSwatchRow swatch={<span style={{ width: 36, height: 10, borderRadius: 2, background: 'linear-gradient(90deg, rgba(255,26,26,0.55), #ff1a1a)' }} />}>
+                      Deeper red = stronger match to a likely source
+                    </LegendSwatchRow>
+                    {/* Folded (the panel must fit without scrolling with every row on). */}
+                    <LegendTurndown storageKey="ships.slicks.kinds" label={slickKinds.length ? `Narrowed to ${slickKinds.length} of ${SLICK_KINDS.length}` : 'Narrow to a kind of source'}>
+                      <LegendSwatchRow swatch={<span style={{ width: 9, height: 9, borderRadius: '50%', background: SLICKS.hue, border: '1.5px solid #0a0e17' }} />}>
+                        Zoomed out: a dot per slick
+                      </LegendSwatchRow>
+                      <div className={styles.chipRow} style={{ marginTop: 4 }} role="group" aria-label="Narrow oil slicks to">
+                        {SLICK_KINDS.map(([k, label]) => (
+                          <button key={k} type="button" aria-pressed={slickKinds.includes(k)} className={slickKinds.includes(k) ? styles.chipTrack : styles.chip}
+                            onClick={() => setSlickKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]))}>{label}</button>
+                        ))}
+                      </div>
+                    </LegendTurndown>
+                  </>}
+                  info={<>
+                    Oil on the sea surface found by SkyTruth’s Cerulean in Sentinel-1 radar images, for the months picked above. Shown when
+                    SkyTruth’s model matches a slick to a nearby ship, offshore structure or unidentified (no AIS) vessel, or, for slicks
+                    under 3 days old (before ship matching runs), when its shape looks like a ship’s slick. Slicks SkyTruth’s reviewers
+                    marked as not oil are left out. Click one for its likely sources, most likely first; a ship opens its card. A model’s
+                    match is a lead, not proof of who spilled. Radar covers coastal waters every few days, not everywhere every day.
+                    Data:{' '}<a href={SLICKS.sourceUrl} target="_blank" rel="noopener noreferrer">SkyTruth Cerulean</a>; contains
+                    modified Copernicus Sentinel data.
+                  </>} />
+                <DatasetRow storageKey="ships.offshore" name={OFFSHORE.name} sub={OFFSHORE.sub} hue={OFFSHORE.hue}
+                  icon={<Icon svg={OFFSHORE.iconSvg} size={16} />} on={offshoreOn} onToggle={() => setOffshoreOn((o) => !o)}
+                  legend={<>
+                    <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: OFF_PLATFORM }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.4px solid ${OFF_PLATFORM}`, boxSizing: 'border-box' }} /></span>}>
+                      Oil and gas platform; hollow = removed
+                    </LegendSwatchRow>
+                    <LegendSwatchRow swatch={<span style={{ width: 16, height: 10, border: `1.2px solid ${OFF_WIND}`, background: 'rgba(229,231,235,0.16)', borderRadius: 2 }} />}>
+                      Wind farm (dashed = planned); white dots = turbines or small farms
+                    </LegendSwatchRow>
+                    <div className={styles.chipRow} style={{ marginTop: 4 }}>
+                      <button type="button" aria-pressed={offRemoved} className={offRemoved ? styles.chipTrack : styles.chip} onClick={() => setOffRemoved((v) => !v)}
+                        title="Platforms and wind farms that have been removed or decommissioned (over 5,000 in the US Gulf alone)">Show removed</button>
+                    </div>
+                  </>}
+                  info={<>
+                    Offshore oil and gas platforms and wind farms from official registers: Europe from{' '}
+                    <a href={OFFSHORE_SOURCES['emodnet-platforms'].href} target="_blank" rel="noopener noreferrer">EMODnet</a> (CC BY 4.0), US offshore
+                    wind turbines from the <a href={OFFSHORE_SOURCES.uswtdb.href} target="_blank" rel="noopener noreferrer">U.S. Wind Turbine Database</a> (public
+                    domain) and US federal-waters platforms from <a href={OFFSHORE_SOURCES.boem.href} target="_blank" rel="noopener noreferrer">BOEM</a> (public
+                    domain). Click one for its record: name, operator, status and dates. There are no offshore platforms in the Salish Sea or off
+                    British Columbia. Other countries’ registers will be added.
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
                 changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}

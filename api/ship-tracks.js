@@ -316,6 +316,19 @@ function gfwLocal(t, ext) {
 const LOCAL_CACHE = 'no-store'
 const cache = new Map()
 async function pmtilesFor(t, region) {
+  if (region === 'offshore') {
+    // Registered offshore facilities (scripts/ships/bake-offshore/), one file like the protected areas.
+    let p = cache.get('offshore')
+    if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete('offshore'); p = null }
+    if (!p) {
+      const localPath = resolve(process.cwd(), `scripts/ships/bake-offshore/build/offshore-${manifest.offshore.version}.pmtiles`)
+      if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
+      else if (manifest.offshore.tiles) p = new PMTiles(new BlobRange(manifest.offshore.tiles))
+      else return null
+      cache.set('offshore', p)
+    }
+    return p
+  }
   if (region === 'mpa') {
     let p = cache.get('mpa')
     if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete('mpa'); p = null }
@@ -514,11 +527,12 @@ export default async function handler(req, res) {
   // DEV-ONLY PROTOTYPE (2026-09-29): GFW hourly positions → lines for BC + Alaska, read from a local bake
   // (scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Never served in production; 404 when the file is absent.
   if (region === 'gfwproto') return gfwProtoTile(searchParams, res)
-  if (!['salish', 'us', 'mpa', 'gfw'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
-  const t = region === 'mpa' ? 'mpa' : searchParams.get('t')
+  if (!['salish', 'us', 'mpa', 'gfw', 'offshore'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
+  const single = region === 'mpa' || region === 'offshore' // one-file layers: no months
+  const t = single ? region : searchParams.get('t')
   const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
-  if (region !== 'mpa' && !isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
-  const mmsiParam = region === 'mpa' ? null : searchParams.get('mmsi')
+  if (!single && !isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }
+  const mmsiParam = single ? null : searchParams.get('mmsi')
   if (mmsiParam != null) {
     if (!/^\d{9}$/.test(mmsiParam)) { res.statusCode = 400; return res.end('bad mmsi') }
     let features
@@ -546,7 +560,7 @@ export default async function handler(req, res) {
     tile = await p.getZxy(z, x, y)
   } catch (e) {
     console.error('[ship-tracks] tile', region, t, z, x, y, e?.message)
-    cache.delete(region === 'us' || region === 'gfw' ? `${region}:${t}` : t) // (t is 'mpa' for r=mpa)
+    cache.delete(region === 'us' || region === 'gfw' ? `${region}:${t}` : t) // (t is 'mpa' / 'offshore' for those)
     res.statusCode = 502
     res.setHeader('Cache-Control', 'no-store')
     return res.end('tile read failed')

@@ -16,6 +16,7 @@ const BY_ID = {
   'wa-ecology-spills': 'Washington State Dept. of Ecology',
   'emsa-thetis-mrv': 'EMSA',
   'wa-dnr-aquatic-uses': 'Washington State Dept. of Natural Resources',
+  'skytruth-cerulean': 'SkyTruth',
 }
 
 const STANDARD = [

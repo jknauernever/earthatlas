@@ -12,6 +12,7 @@ import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
 import ShipEmissions from './ShipEmissions.jsx'
 import { Loading, LoadingInline } from '../components/panel'
+import { CERULEAN_APP, matchWords, slickUrl, sourceUrl, slicksForPeriods } from '../../lib/ships/cerulean.js'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
@@ -163,7 +164,7 @@ export function Ev({ c }) {
 }
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
-export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl }) {
+export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
   const [tabOwn, setTabOwn] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
@@ -191,6 +192,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   // Wikimedia Commons photos (Wikidata P18 or the ship's Commons IMO category), licence-checked at import.
   const images = useMemo(() => orderImages(vessel?.assertions || []), [vessel])
   const current = useMemo(() => currentIdentity(vessel), [vessel])
+  const slicks = useOilSlicks(vessel)
 
   // Both directions: another vessel's record may match this one, or this one's record may match another.
   // (`tab` falls back to Overview when this ship has no Matches tab.)
@@ -201,7 +203,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
     : []
   // Ports of call come from GFW's port-visit events, so only ships with a GFW identity get the tab.
   const hasGfw = !!vessel?.assertions.some((a) => a.source_id === 'gfw-vessel-identity' && a.evidence_class === 'ais_self_reported')
-  const tab = (tabWanted === 'matches' && !candidates.length) || (tabWanted === 'ports' && !hasGfw) ? 'overview' : tabWanted
+  const tab = (tabWanted === 'matches' && !candidates.length) || (tabWanted === 'ports' && !hasGfw)
+    || (tabWanted === 'slicks' && !slicks?.likely.length) ? 'overview' : tabWanted
 
   const Src = ({ a }) => {
     const note = a.source_id === 'wikidata' ? LINK_NOTE[a.link_method] : null
@@ -354,6 +357,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               ...(hasGfw ? [['ports', 'Ports']] : []),
               ...(current.imo || current.mmsi ? [['emissions', 'Emissions']] : []),
               ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
+              ...(slicks?.likely.length ? [['slicks', `Oil slicks · ${slicks.likely.length}`]] : []),
               ...(candidates.length ? [['matches', `Matches · ${candidates.length}`]] : []),
               ['history', 'History']].map(([id, label]) => ( // History last (Josh 2026-09-30)
               <button key={id} type="button" role="tab" aria-selected={tab === id}
@@ -386,6 +390,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {tab === 'emissions' && <ShipEmissions vessel={vessel} />}
 
           {tab === 'incidents' && <Incidents list={vessel.incidents || []} />}
+
+          {tab === 'slicks' && slicks?.likely.length > 0 && <OilSlicks slicks={slicks} onShowSlick={onShowSlick} />}
 
           {tab === 'matches' && candidates.length > 0 && (
             <div className={styles.section}>
@@ -769,6 +775,74 @@ function Incidents({ list }) {
         )
       })}
       <div className={styles.legendNoteText}>Records are linked to this ship by official number, IMO or an MMSI it held at the time; name-only matches aren’t shown. Injuries appear as counts only.</div>
+    </div>
+  )
+}
+
+// ─── Oil slicks tab (SkyTruth Cerulean; Josh 2026-10-14) ──────────────────────
+// Slicks SkyTruth's model links to an MMSI this ship held at the slick's time (lib/ships/cerulean.js slicksForPeriods).
+// Read live through /api/cerulean; nothing is stored. The tab shows only when there's a likely match (score > 0,
+// SkyTruth's own threshold); weaker candidates are counted and left to Cerulean.
+function useOilSlicks(vessel) {
+  const [out, setOut] = useState(null)
+  const periods = useMemo(() => (vessel ? rowsFor(vessel.assertions, 'mmsi').filter((a) => /^\d{9}$/.test(a.value_norm))
+    .map((a) => ({ mmsi: a.value_norm, from: a.period_kind === 'unknown' ? null : a.from, to: a.period_kind === 'unknown' ? null : a.to })) : []), [vessel])
+  const mmsis = [...new Set(periods.map((p) => p.mmsi))].slice(0, 5).join(',')
+  useEffect(() => {
+    setOut(null)
+    if (!mmsis) return
+    const ctl = new AbortController()
+    fetch(`/api/cerulean?op=vessel&mmsi=${mmsis}`, { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        const held = slicksForPeriods(d.rows || [], periods)
+        const likely = held.filter((r) => Number(r.score) > 0).sort((a, b) => String(b.slick_timestamp).localeCompare(String(a.slick_timestamp)))
+        setOut({ likely, weaker: held.length - likely.length, outside: (d.rows || []).length - held.length, mmsis: mmsis.split(',') })
+      })
+      .catch(() => {})
+    return () => ctl.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mmsis])
+  return out
+}
+
+function OilSlicks({ slicks, onShowSlick }) {
+  const { likely, weaker, outside, mmsis } = slicks
+  const when = (t) => `${new Date(`${t}Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}, ${String(t).slice(11, 16)} UTC`
+  const area = (m2) => (m2 == null ? null : `${(m2 / 1e6).toFixed(m2 >= 1e7 ? 0 : 1)} km²`)
+  return (
+    <div className={styles.section}>
+      <div className={styles.legendNoteText}>
+        {likely.length === 1 ? 'One oil slick' : `${likely.length} oil slicks`} seen by satellite radar that SkyTruth’s model links to this ship,
+        newest first. A model’s match is a lead, not proof of who spilled.
+      </div>
+      {likely.map((r) => (
+        <div key={`${r.slick_id}-${r.mmsi}`} className={styles.incident}>
+          <div className={styles.incidentHead}>
+            <span className={styles.incidentTitle}>{matchWords(r.score)}{r.rank ? ` · #${r.rank} likely source` : ''}</span>
+            <span className={styles.period}>{when(r.slick_timestamp)}</span>
+          </div>
+          <div className={styles.incidentMeta}>
+            {[area(r.area), r.hitl_cls_name && `Reviewed by SkyTruth: ${r.hitl_cls_name}`].filter(Boolean).join(' · ')}
+          </div>
+          <div className={styles.incidentMeta}>
+            <span className={`${styles.ev} ${styles.evInf}`} title="Matched by SkyTruth’s computer model from the ship’s AIS track near the slick. Not a finding by an authority">Model match</span>{' '}
+            SkyTruth score {Number(r.score).toFixed(2)} on −5 to +5 · MMSI {r.mmsi}
+          </div>
+          <div className={styles.incidentMeta}>
+            {r.centroid && onShowSlick && <><button type="button" className={styles.inlineLink} onClick={() => onShowSlick(r)}>Show on map</button>{' · '}</>}
+            <a className={styles.sourceLink} href={slickUrl(r.slick_id)} target="_blank" rel="noopener noreferrer">Radar image and nearby ships on SkyTruth Cerulean</a>
+          </div>
+        </div>
+      ))}
+      <div className={styles.legendNoteText}>
+        {weaker > 0 && <>{weaker === 1 ? 'One weaker match isn’t' : `${weaker} weaker matches aren’t`} listed. </>}
+        {outside > 0 && <>{outside === 1 ? 'One slick linked' : `${outside} slicks linked`} to {mmsis.length === 1 ? 'this MMSI' : 'these MMSIs'} at
+          times this ship didn’t hold {mmsis.length === 1 ? 'it' : 'them'} {outside === 1 ? 'is' : 'are'} left out. </>}
+        All of this ship’s slicks on SkyTruth Cerulean:{' '}
+        {mmsis.map((m, i) => <span key={m}>{i > 0 && ', '}<a className={styles.sourceLink} href={sourceUrl(m)} target="_blank" rel="noopener noreferrer">MMSI {m}</a></span>)}.
+        {' '}Data: <a className={styles.sourceLink} href={CERULEAN_APP} target="_blank" rel="noopener noreferrer">SkyTruth Cerulean</a>; contains modified Copernicus Sentinel data.
+      </div>
     </div>
   )
 }

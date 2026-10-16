@@ -21,10 +21,10 @@ export const PERMITS_SOURCES = [
     sources: [
       { name: 'USACE Regulatory permit database (ORM2), public interface', href: 'https://permits.ops.usace.army.mil/orm-public',
         publisher: 'U.S. Army Corps of Engineers, Seattle District records', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
-        method: 'Read at each bake: every action the public permit database holds in the county box (−123.25, 48.40, −122.75, 48.80), all years and categories: individual permits and Letters of Permission (issued, denied, pending), emergency actions, jurisdictional determinations, environmental assessments, Section 408 requests and WSDOT-funded verifications. Positions, dates and decisions are the database’s own. Thirteen 2026 projects are also hand-joined to their Ecology, county and NOAA records in data/permits/curated.json. The database does not hold most Nationwide or General Permit verifications, which cover many small docks.' },
+        method: 'Read at each bake: every action the public permit database holds in the county box (−123.25, 48.40, −122.75, 48.80), all years and categories: individual permits and Letters of Permission (issued, denied, pending), emergency actions, jurisdictional determinations, environmental assessments, Section 408 requests and WSDOT-funded verifications. Positions, dates and decisions are the database’s own. Thirteen 2026 projects are also hand-joined to their Washington State Department of Ecology, county and NOAA records in data/permits/curated.json. The database does not hold most Nationwide or General Permit verifications, which cover many small docks.' },
       { name: 'USACE Regulatory Request System: public notices', href: 'https://rrs.usace.army.mil/rrs/public-notices?district=NWS',
         publisher: 'U.S. Army Corps of Engineers, Seattle District', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
-        method: 'Read at each bake: the Corps lists a notice only while its comment period is open. San Juan notices (the notice’s own point in the county, or county named San Juan) are archived for good with a copy of the notice PDF, attached to the matching Corps record by file number, or mapped as a new record if the permit database doesn’t hold the project yet.' },
+        method: 'Read at each bake: the U.S. Army Corps of Engineers lists a notice only while its comment period is open. San Juan notices (the notice’s own point in the county, or county named San Juan) are archived for good with a copy of the notice PDF, attached to the matching U.S. Army Corps of Engineers record by file number, or mapped as a new record if the permit database doesn’t hold the project yet.' },
       { name: 'USACE public library: approved jurisdictional determinations', href: 'https://publibrary.sec.usace.army.mil/',
         publisher: 'U.S. Army Corps of Engineers', licence: 'U.S. Government work (17 U.S.C. § 105)', licenceHref: USC105,
         method: 'The JD document for NWS-2025-00697.' },
@@ -36,7 +36,7 @@ export const PERMITS_SOURCES = [
   {
     heading: 'State water quality certification and coastal consistency (§401, CZMA)',
     sources: [
-      { name: 'Ecology Aquatics public viewer: decisions', href: 'https://apps.ecology.wa.gov/aquatics/decisions/',
+      { name: 'Washington State Department of Ecology Aquatics public viewer: decisions', href: 'https://apps.ecology.wa.gov/aquatics/decisions/',
         publisher: 'Washington State Department of Ecology, Shorelands and Environmental Assistance', licence: ECY_LICENCE, licenceHref: ECY_TERMS,
         method: 'Every SAN JUAN row (9 rows, 5 projects) and the order PDF each links to. Project facts, dates, work windows, and the other agencies’ approvals listed in each order’s supporting-documents table are taken from the order as written; where an order reports another agency’s action, the popup says so. The table is a rolling window (23 Feb to 21 Aug 2026 when read), so earlier 2026 decisions are not shown.',
         citation: 'Washington State Department of Ecology, Aquatics public viewer' },
@@ -45,16 +45,16 @@ export const PERMITS_SOURCES = [
   {
     heading: 'Discharges (§402, NPDES)',
     sources: [
-      { name: 'EPA ECHO NPDES facilities and outfalls', href: 'https://echo.epa.gov/facilities/facility-search',
-        publisher: 'U.S. Environmental Protection Agency, from ICIS-NPDES; Washington permits are issued by Ecology', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
-        method: 'Read live at each bake: every NPDES permit or general-permit coverage with a point in the county that is not terminated (individual wastewater permits, boatyard, sand-and-gravel and stormwater coverages). The kind of permit is read from the permit number and EPA’s industry codes only.' },
-      { name: 'EPA ECHO Detailed Facility Reports (violations and enforcement)', href: 'https://echo.epa.gov/facilities/facility-search',
+      { name: 'U.S. Environmental Protection Agency ECHO NPDES facilities and outfalls', href: 'https://echo.epa.gov/facilities/facility-search',
+        publisher: 'U.S. Environmental Protection Agency, from ICIS-NPDES; Washington permits are issued by Washington State Department of Ecology', licence: 'U.S. Government work, public domain (17 U.S.C. § 105)', licenceHref: USC105,
+        method: 'Read live at each bake: every NPDES permit or general-permit coverage with a point in the county that is not terminated (individual wastewater permits, boatyard, sand-and-gravel and stormwater coverages). The kind of permit is read from the permit number and U.S. Environmental Protection Agency’s industry codes only.' },
+      { name: 'U.S. Environmental Protection Agency ECHO Detailed Facility Reports (violations and enforcement)', href: 'https://echo.epa.gov/facilities/facility-search',
         publisher: 'U.S. Environmental Protection Agency', licence: 'U.S. Government work (17 U.S.C. § 105)', licenceHref: USC105,
-        method: 'Violations and enforcement per permit, read from EPA’s Detailed Facility Report for each facility at each bake: missed or late deadlines, effluent limit exceedances by month, missing or late monitoring reports by quarter, warning letters and other informal actions, formal actions, penalties and inspections. ECHO reports by facility; each row names its permit, so a popup shows only that permit’s own. Plain words are EarthAtlas’s; EPA’s own code and text are on hover.' },
-      { name: 'Ecology quarterly penalty release, May 2026', href: 'https://ecology.wa.gov/about-us/who-we-are/news/2026/may-20-quarterly-penalties',
+        method: 'Violations and enforcement per permit, read from U.S. Environmental Protection Agency’s Detailed Facility Report for each facility at each bake: missed or late deadlines, effluent limit exceedances by month, missing or late monitoring reports by quarter, warning letters and other informal actions, formal actions, penalties and inspections. ECHO reports by facility; each row names its permit, so a popup shows only that permit’s own. Plain words are EarthAtlas’s; U.S. Environmental Protection Agency’s own code and text are on hover.' },
+      { name: 'Washington State Department of Ecology quarterly penalty release, May 2026', href: 'https://ecology.wa.gov/about-us/who-we-are/news/2026/may-20-quarterly-penalties',
         publisher: 'Washington State Department of Ecology', licence: ECY_LICENCE, licenceHref: ECY_TERMS,
         method: 'The West Sound Marina penalty.' },
-      { name: 'Ecology Puget Sound Nutrient General Permit page', href: 'https://ecology.wa.gov/Regulations-Permits/Permits-certifications/nutrient-permit',
+      { name: 'Washington State Department of Ecology Puget Sound Nutrient General Permit page', href: 'https://ecology.wa.gov/Regulations-Permits/Permits-certifications/nutrient-permit',
         publisher: 'Washington State Department of Ecology', licence: ECY_LICENCE, licenceHref: ECY_TERMS,
         method: 'Why the treatment plant renewals are pending.' },
       { name: 'Town of Friday Harbor Wastewater Facilities Plan', href: 'https://www.fridayharbor.org/2369/Wastewater-Facilities-Plan',
@@ -65,11 +65,11 @@ export const PERMITS_SOURCES = [
   {
     heading: 'Joined from other sources',
     sources: [
-      { name: 'Ecology PARIS permit documents', href: 'https://apps.ecology.wa.gov/paris/PermitDocumentSearch.aspx',
+      { name: 'Washington State Department of Ecology PARIS permit documents', href: 'https://apps.ecology.wa.gov/paris/PermitDocumentSearch.aspx',
         publisher: 'Washington State Department of Ecology', licence: ECY_LICENCE, licenceHref: ECY_TERMS,
-        method: 'Read at each bake for every discharge permit: Ecology’s document list (permits, fact sheets, approval letters, reports), newest first, each linked to its PDF. Ecology’s automatic notices are shown by the report name Ecology gives them.' },
+        method: 'Read at each bake for every discharge permit: Washington State Department of Ecology’s document list (permits, fact sheets, approval letters, reports), newest first, each linked to its PDF. Washington State Department of Ecology’s automatic notices are shown by the report name Washington State Department of Ecology gives them.' },
       { name: 'EarthAtlas Docks (/sanjuan-docks)', href: '/sanjuan-docks',
-        publisher: 'EarthAtlas, from San Juan County SmartGov and pre-SmartGov permits and WDFW Hydraulic Project Approvals', licence: 'See the sources on /sanjuan-docks',
+        publisher: 'EarthAtlas, from San Juan County SmartGov and pre-SmartGov permits and Washington Department of Fish and Wildlife Hydraulic Project Approvals', licence: 'See the sources on /sanjuan-docks',
         method: 'A record is joined to a dock there only when the dock lies within 300 m AND its permits name the same applicant (the record’s surname or company name, or two shared name words). Position alone never joins. The join is EarthAtlas’s, not the agencies’, and the popup says so.' },
       { name: 'U.S. Code and Revised Code of Washington', href: 'https://www.law.cornell.edu/uscode/text/33/1344',
         publisher: 'Legal Information Institute (Cornell); Washington State Legislature', licence: 'Public law',
@@ -79,12 +79,12 @@ export const PERMITS_SOURCES = [
   {
     heading: 'Receiving waters',
     sources: [
-      { name: 'Ecology Water Quality Assessment, Category 5 (303(d))', href: 'https://apps.ecology.wa.gov/waterqualityatlas/wqa/map',
+      { name: 'Washington State Department of Ecology Water Quality Assessment, Category 5 (303(d))', href: 'https://apps.ecology.wa.gov/waterqualityatlas/wqa/map',
         publisher: 'Washington State Department of Ecology', licence: ECY_LICENCE, licenceHref: ECY_TERMS,
-        method: 'Read live at each bake: impaired waters intersecting the county bounding box, drawn as Ecology’s own polygons with listing number, impairment and waterbody. Each links to Ecology’s page for that listing and to it on Ecology’s map.' },
-      { name: 'DOH Commercial Shellfish Growing Areas and annual reports', href: 'https://doh.wa.gov/bs/node/5891',
+        method: 'Read live at each bake: impaired waters intersecting the county bounding box, drawn as Washington State Department of Ecology’s own polygons with listing number, impairment and waterbody. Each links to Washington State Department of Ecology’s page for that listing and to it on Washington State Department of Ecology’s map.' },
+      { name: 'Washington State Department of Health Commercial Shellfish Growing Areas and annual reports', href: 'https://doh.wa.gov/bs/node/5891',
         publisher: 'Washington State Department of Health, Office of Environmental Health and Safety', licence: 'Public agency record; terms not read',
-        method: 'Read live at each bake: San Juan growing areas with classification, reason and acres, as of the layer’s own update date. Each area links to DOH’s annual report for it, matched by name from DOH’s reports page.' },
+        method: 'Read live at each bake: San Juan growing areas with classification, reason and acres, as of the layer’s own update date. Each area links to Washington State Department of Health’s annual report for it, matched by name from Washington State Department of Health’s reports page.' },
     ],
   },
   {
@@ -131,16 +131,16 @@ export const PERMITS_SOURCES = [
         method: 'Orcas terminal point, used for the adjacent county dock (marked approximate).' },
       { name: 'BLM PLSS (CadNSDI)', href: 'https://www.blm.gov/programs/lands-and-realty/cadastral-survey',
         publisher: 'Bureau of Land Management', licence: 'U.S. Government work (17 U.S.C. § 105)', licenceHref: USC105,
-        method: 'Checks that each address point falls in the section, township and range the Ecology order states.' },
+        method: 'Checks that each address point falls in the section, township and range the Washington State Department of Ecology order states.' },
     ],
   },
 ]
 
 export const PERMITS_SOURCES_NOTES = [
   { heading: 'How to read it',
-    body: 'A fact stated by the issuing agency links to that agency’s document. Where one agency’s document reports another agency’s action (an Ecology order listing the WDFW approval date or the county’s SEPA determination), the link goes to the document that states it and the text says so. Where two sources disagree, both claims are kept. Arithmetic EarthAtlas did itself is labeled. A missing record is reported as “no record found” in a named source, never as proof that no review or permit exists.' },
+    body: 'A fact stated by the issuing agency links to that agency’s document. Where one agency’s document reports another agency’s action (an Washington State Department of Ecology order listing the Washington Department of Fish and Wildlife approval date or the county’s SEPA determination), the link goes to the document that states it and the text says so. Where two sources disagree, both claims are kept. Arithmetic EarthAtlas did itself is labeled. A missing record is reported as “no record found” in a named source, never as proof that no review or permit exists.' },
   { heading: 'What kind of data each part is, and how current',
-    body: 'NPDES permits, compliance, impaired waters and shellfish areas are read live from the agencies’ services at each bake (the date is in the panel). Corps, Ecology 401/CZM, county, town and NOAA records are hand-compiled from the documents they link to (data/permits/curated.json, 13 Oct 2026) and cover calendar year 2026.' },
+    body: 'NPDES permits, compliance, impaired waters and shellfish areas are read live from the agencies’ services at each bake (the date is in the panel). U.S. Army Corps of Engineers, Washington State Department of Ecology 401/CZM, county, town and NOAA records are hand-compiled from the documents they link to (data/permits/curated.json, 13 Oct 2026) and cover calendar year 2026.' },
   { heading: 'Not covered yet',
-    body: 'WDFW Hydraulic Project Approvals: WDFW’s public layer was last edited 2024-12-02, so 2026 HPA dates appear only as listed in Ecology orders. San Juan County SmartGov permits (2010 onward, read per parcel on /sanjuan-docks) are not joined here yet. The Ecology SEPA Register refuses automated search. Ecology PARIS permit documents are linked per permit, not read. Ecology’s Aquatics notices page loads by script and was not read.' },
+    body: 'Washington Department of Fish and Wildlife Hydraulic Project Approvals: Washington Department of Fish and Wildlife’s public layer was last edited 2024-12-02, so 2026 HPA dates appear only as listed in Washington State Department of Ecology orders. San Juan County SmartGov permits (2010 onward, read per parcel on /sanjuan-docks) are not joined here yet. The Washington State Department of Ecology SEPA Register refuses automated search. Washington State Department of Ecology PARIS permit documents are linked per permit, not read. Washington State Department of Ecology’s Aquatics notices page loads by script and was not read.' },
 ]

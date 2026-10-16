@@ -9,11 +9,11 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 export const latestPast = (r) => (r.trail || []).map((t) => t.date).filter((d) => d <= todayIso()).sort().pop() || ''
 
 // Still before a decision at the Corps or Ecology: the window in which comments and early contact can change a project.
-const OPEN = new Set(['Open at Ecology', 'Corps review pending', 'Corps permit pending', '401: pre-filing requested', '401: in review', 'Environmental assessment in progress'])
+const OPEN = new Set(['Open at Washington State Department of Ecology', 'U.S. Army Corps of Engineers review pending', 'U.S. Army Corps of Engineers permit pending', '401: pre-filing requested', '401: in review', 'Environmental assessment in progress'])
 const DECIDED = new Set(['Issued with special conditions', 'Issued without special conditions', 'Verified with special conditions', '401: decision issued', '401 issued',
-  'Corps permit issued', 'Letter of Permission issued', 'After-the-fact permit issued'])
+  'U.S. Army Corps of Engineers permit issued', 'Letter of Permission issued', 'After-the-fact permit issued'])
 // WDFW applications: Submitted or Accepted (not rejected, withdrawn or incomplete) are under review.
-const wdfwOpen = (label) => /^WDFW: (Submitted|Accepted)\b/.test(label || '') && !/Rejected|Withdrawn|Incomplete/.test(label)
+const wdfwOpen = (label) => /^Washington Department of Fish and Wildlife: (Submitted|Accepted)\b/.test(label || '') && !/Rejected|Withdrawn|Incomplete/.test(label)
 export const isOpen = (r) => r.layer !== 'npdes' && (OPEN.has(r.status?.label) || wdfwOpen(r.status?.label))
 export const isDecided = (r) => r.layer !== 'npdes' && DECIDED.has(r.status?.label)
 
@@ -28,10 +28,10 @@ export const atPriority = (r) => priorityHits(r).length > 0
 
 const TIER_ORDER = { now: 0, watch: 1, record: 2 }
 export const QUESTIONS = [
-  { id: 'review', title: 'Needs review', ask: 'Which permits need a look from Friends?',
-    why: 'A permit needs review when it has a gap (something Friends cares about that the permit does not show, stated from the records) and a way to act. Act now: a way to act exists today. On record: none left; kept as evidence of patterns. Draft rules, to be confirmed with Friends.',
+  { id: 'review', title: 'Needs review', ask: 'Which permits have a gap and a way to act?',
+    why: 'A permit is listed when its records show a gap (for example, spawning habitat nearby that the permit does not name) and a way to act. Act now: a way to act exists today. Watch: listed as open, but nothing has happened on it for over a year. On record: no way left to act; kept to show patterns.',
     test: (r) => !!r.review },
-  { id: 'open', title: 'Open now', ask: 'Which projects are still before the Corps or Ecology?',
+  { id: 'open', title: 'Open now', ask: 'Which projects are still before the U.S. Army Corps of Engineers or Washington State Department of Ecology?',
     why: 'Before a decision is the time when comments, conditions and avoidance can still change a project.',
     test: isOpen },
   { id: 'open-habitat', title: 'Open, at sensitive waters or habitat', ask: 'Which of those sit at sensitive waters or habitat?',
@@ -41,7 +41,7 @@ export const QUESTIONS = [
     why: 'Issued permits to check against what was built, and to compare conditions across similar projects. Newest first.',
     test: (r) => isDecided(r) && atPriority(r) },
   { id: 'violations', title: 'Discharge permits with violations', ask: 'Which discharge permits have violations?',
-    why: 'Permits with violations in EPA’s and Ecology’s records in the last three years; red = over a pollution limit or repeated missed reporting.',
+    why: 'Permits with violations in U.S. Environmental Protection Agency’s and Washington State Department of Ecology’s records in the last three years; red = over a pollution limit or repeated missed reporting.',
     test: (r) => r.layer === 'npdes' && !!r.violations },
 ]
 export const QUESTION_BY_ID = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]))

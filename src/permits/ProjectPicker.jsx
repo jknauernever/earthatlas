@@ -77,7 +77,7 @@ export default function ProjectPicker({ records, layers, picked, onPick, open, o
           <div className={styles.chips}>
             <button type="button" className={`${styles.chip} ${!kinds.length ? styles.chipOn : ''}`} onClick={() => setKinds([])}>Every kind</button>
             {layers.map((l) => chip(l.id, `${l.label} · ${l.desc}`, l.note))}
-            {chip('review', 'Needs review', 'A gap Friends cares about and a way to act (draft rules)')}
+            {chip('review', 'Needs review', 'A gap in the permit record and a way to act')}
           </div>
 
           {results && <div className={styles.head}>{results.length > MAX ? `First ${MAX} of ${results.length} projects, by name` : `${results.length} project${results.length === 1 ? '' : 's'}`}</div>}

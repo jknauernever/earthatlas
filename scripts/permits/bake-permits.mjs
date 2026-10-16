@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { pathToFileURL } from 'node:url'
 import { indexHabitat, habitatNear, waterFeatures, receivingMatches } from '../../src/permits/habitat.js'
 import { reviewOf } from '../../src/permits/review.js'
+import { official } from '../../src/permits/official.js'
 
 const HABITAT_FILE = 'public/permits-data/friends-habitat.geojson' // scripts/permits/import-friends-habitat.mjs
 const HPA_CONDITIONS = 'data/permits/hpa-conditions.json' // scripts/permits/hpa-conditions.mjs
@@ -86,6 +87,25 @@ export function attachHpaApps(d) {
       status: { label: `WDFW: ${a.status}`, cls: /Submitted|Accepted/.test(a.status) && !/Rejected|Withdrawn|Incomplete/.test(a.status) ? 'warn' : /Issued/.test(a.status) ? 'ok' : 'n', src: key },
       refs: [{ label: a.permit || `APPS ${a.apps}`, src: key }], trail: events, joins: [], source: 'wdfw-apps', hpaApps: [ref],
       ...(a.sites > 1 ? { note: { text: `The permit lists ${a.sites} work sites; the map shows the first.`, src: key } } : {}) })
+  }
+}
+
+// Agencies by their official names (src/permits/official.js) in everything EarthAtlas wrote into the data: statuses,
+// event names, record types, document titles, fact labels and reference labels. Source quotes (descriptions, fact
+// values, record rows) are left exactly as received.
+export function officialNames(d) {
+  for (const r of [...d.projects, ...d.npdes]) {
+    if (r.status?.label) r.status.label = official(r.status.label)
+    if (r.type) r.type = official(r.type)
+    for (const t of r.trail || []) t.event = official(t.event)
+    for (const f of r.facts || []) f.label = official(f.label)
+    for (const x of r.refs || []) x.label = official(x.label)
+    if (r.position?.text) r.position.text = official(r.position.text)
+  }
+  for (const doc of Object.values(d.docs)) {
+    doc.title = official(doc.title); if (doc.look_up) doc.look_up = official(doc.look_up)
+    // Our field labels, and our "History" lines; other values are the source's own.
+    for (const x of doc.rows || []) { x.label = official(x.label); if (/^History/.test(x.label)) x.value = official(x.value) }
   }
 }
 
@@ -441,6 +461,32 @@ function limitWords(v) {
   return lo && hi ? `${lo} to ${hi}` : hi ? `max ${hi}` : lo ? `min ${lo}` : ''
 }
 
+// The district feed carries no consultations (ESA, Essential Fish Habitat, historic review); a record looked up on its
+// own does (`sa=true`). Each pending or recently decided Corps file is looked up, and every consultation's start and
+// close become dated events (Josh 2026-10-15: the Sacks/Pollack dock's consultations were all "Withdrawn" in Jan 2024,
+// which the feed never showed). One request per file; a failed lookup keeps the feed's data.
+const SUB_WHO = (x) => x.agency || x.agencyNotified || 'an agency'
+export async function ormConsultations(records, raw, today = new Date().toISOString().slice(0, 10)) {
+  const recent = (r) => r.corpsKind === 'pending' || (r.trail || []).some((t) => t.date && t.date >= `${+today.slice(0, 4) - 3}${today.slice(4)}`)
+  let n = 0
+  for (const r of records.filter((x) => x.source === 'orm-feed' && recent(x))) {
+    const id = r.refs[0].label
+    let j
+    try { j = await getJson(`${ORM_API}/permits/search?sa=true&q=identifier:%22${encodeURIComponent(id)}%22`); n++ } catch (e) { console.warn(`  ORM ${id}: ${e.message}`); continue }
+    const fs = j.results?.features || []
+    if (!fs.length) continue
+    const prev = raw.get(r.id)
+    raw.set(r.id, { ...prev, payload: { ...prev.payload, detail: j }, rows: [...(prev.rows || []), ...ormRows(j).filter((x) => !(prev.rows || []).some((y) => y.label === x.label && y.value === x.value))] })
+    for (const [k, list] of Object.entries(fs[0].properties.subactions || {})) for (const x of list) {
+      const what = `${ORM_SUB[k] || k} with ${SUB_WHO(x)}`
+      if (x.beginDate) r.trail.push({ date: x.beginDate, agency: 'corps', event: `${what} began`, src: r.id })
+      if (x.endDate) r.trail.push({ date: x.endDate, agency: 'corps', event: `${what} closed${x.closureMethod ? `: ${x.closureMethod.toLowerCase()}` : x.effectsDetermination ? `: ${x.effectsDetermination}` : ''}`, src: r.id })
+    }
+    r.trail.sort((a, b) => a.date.localeCompare(b.date))
+  }
+  console.log(`  Corps consultations looked up: ${n}`)
+}
+
 function corpsRecords(features, curatedNumbers, docs, raw) {
   const groups = new Map()
   for (const f of features) {
@@ -714,7 +760,7 @@ function aquaticsRows(a, st) {
     ['State order (Ecology administrative order, RCW 90.48)', st?.ao ? `${st.ao}${st.aoDate ? ` (${st.aoDate})` : ''}` : a.HasAOAction ? 'An order is on record' : null],
     ['Denied', a.HasDeniedAction ? 'Yes' : null], ['In water / in a wetland', [a.InWater ? 'in water' : null, a.InWetland ? 'in a wetland' : null].filter(Boolean).join(', ')],
     ['Still open at Ecology', a.IsActiveFlag ? 'Yes' : 'No'], ['Where Ecology’s point comes from', a.LocationSource], ['What the project is', st?.description],
-    ...(st?.history || []).map((x) => [`History, ${x.date}`, `${x.by === 'FED' ? 'Army Corps' : 'Ecology'}: ${x.what}${x.ref ? ` (reference ${x.ref})` : ''}${x.end ? `, comments until ${x.end}` : ''}`])])
+    ...(st?.history || []).map((x) => [`History, ${x.date}`, `${x.by === 'FED' ? 'U.S. Army Corps of Engineers' : 'Washington State Department of Ecology'}: ${x.what}${x.ref ? ` (reference ${x.ref})` : ''}${x.end ? `, comments until ${x.end}` : ''}`])])
 }
 async function ecologyAquatics(docs, raw, projects) {
   const pts = (await query(SERVICES.aquatics, { where: '1=1', geometry: BBOX.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', returnGeometry: 'false' }))
@@ -1098,6 +1144,7 @@ async function main() {
   // ── Army Corps: every record in the county box from the public feed ──
   const curatedNumbers = new Set(Object.keys(curated.docs).filter((k) => k.startsWith('orm-')).map((k) => k.slice(4)))
   const corps = corpsRecords(await ormDistrict(), curatedNumbers, docs, raw)
+  await ormConsultations(corps, raw)
   const projects = [...curated.projects, ...corps]
   let archived = []
   try { archived = await archiveNotices() } catch (e) { console.warn(`  corps notices: ${e.message} (archived notices still used)`); archived = existsSync('data/permits/corps-notices') ? readdirSync('data/permits/corps-notices').filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(`data/permits/corps-notices/${f}`, 'utf8'))) : [] }

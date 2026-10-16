@@ -74,10 +74,10 @@ const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[1
 // One color per kind of permit (Josh 2026-10-14: "label the colored dots for which type of permit they represent").
 // A record's kind comes from its own source documents (permitKindOf below), never from a guess.
 const LAYERS = [
-  { id: 'cert401', label: '401', desc: 'Ecology’s water-quality sign-off', note: 'Ecology’s water-quality sign-off: a Clean Water Act §401 certification of a federal permit, or a state order (Ecology’s “administrative order” under RCW 90.48) for waters the Corps doesn’t cover', color: '#a78bfa' },
-  { id: 'structures', label: '404', desc: 'Army Corps permit to build in the water', note: 'Army Corps permit to build or place fill in the water (Clean Water Act §404 / Rivers and Harbors Act §10)', color: '#38bdf8' },
-  { id: 'npdes', label: '402', desc: 'Discharge permit (sewage, stormwater, boatyards)', note: 'Discharge permit (Clean Water Act §402, NPDES), issued by Ecology', color: '#f472b6' },
-  { id: 'hpa', label: 'HPA', desc: 'WDFW permit for work in or near water', note: 'Washington Department of Fish and Wildlife Hydraulic Project Approval (RCW 77.55) with no Corps or Ecology record found yet; from WDFW’s own application search', color: '#2dd4bf' },
+  { id: 'cert401', label: '401', desc: 'Washington State Department of Ecology’s water-quality sign-off', note: 'Washington State Department of Ecology’s water-quality sign-off: a Clean Water Act §401 certification of a federal permit, or a state order (Washington State Department of Ecology’s “administrative order” under RCW 90.48) for waters the U.S. Army Corps of Engineers doesn’t cover', color: '#a78bfa' },
+  { id: 'structures', label: '404', desc: 'U.S. Army Corps of Engineers permit to build in the water', note: 'U.S. Army Corps of Engineers permit to build or place fill in the water (Clean Water Act §404 / Rivers and Harbors Act §10)', color: '#38bdf8' },
+  { id: 'npdes', label: '402', desc: 'Discharge permit (sewage, stormwater, boatyards)', note: 'Discharge permit (Clean Water Act §402, NPDES), issued by Washington State Department of Ecology', color: '#f472b6' },
+  { id: 'hpa', label: 'HPA', desc: 'Washington Department of Fish and Wildlife permit for work in or near water', note: 'Washington Department of Fish and Wildlife Hydraulic Project Approval (RCW 77.55) with no U.S. Army Corps of Engineers or Washington State Department of Ecology record found yet; from Washington Department of Fish and Wildlife’s own application search', color: '#2dd4bf' },
   { id: 'local', label: 'Other', desc: 'No permit record found yet', note: 'In-water work or a related county action with no 404, 401 or 402 record found', color: '#fbbf24' },
 ]
 const VIO_COLORS = { red: '#ef4444', orange: '#fb923c' }
@@ -85,8 +85,8 @@ const VIO_COLORS = { red: '#ef4444', orange: '#fb923c' }
 const HABITAT_MIN_ZOOM = 12
 const DEFAULT_OFF = [] // sorted, as the URL writes them
 const WATERS = [
-  { id: 'wq', label: 'Impaired waters', note: 'Ecology 303(d), Category 5', color: '#f97316' },
-  { id: 'shell', label: 'Shellfish growing areas', note: 'DOH classification', color: '#4ade80' },
+  { id: 'wq', label: 'Impaired waters', note: 'Washington State Department of Ecology 303(d), Category 5', color: '#f97316' },
+  { id: 'shell', label: 'Shellfish growing areas', note: 'Washington State Department of Health classification', color: '#4ade80' },
 ]
 // Matched by substring in this order, so "Conditionally Approved" is caught before "Approved".
 const SHELL_COLORS = { Conditionally: '#facc15', Prohibited: '#ef4444', Restricted: '#fb923c', Approved: '#4ade80' }
@@ -126,12 +126,12 @@ function docLinks(docs, key) {
   const parts = []
   if (d.url) parts.push(a(d.url, `${OPEN_LABEL[d.kind] || 'Open'} ↗`))
   if (d.record) parts.push(a(recordPage(key), d.url ? 'data as received' : 'Open the record ↗', true))
-  if (d.map) parts.push(a(d.map, 'on Ecology’s map ↗'))
+  if (d.map) parts.push(a(d.map, 'on Washington State Department of Ecology’s map ↗'))
   return `<div class="${styles.docLinks}">${parts.join(' · ')}</div>`
 }
 function agencyChip(tags, agency) {
   const [tag, full] = tags[agency] || [String(agency || '').toUpperCase(), agency]
-  return `<span class="${styles.agency}" title="${escapeHtml(full)}">${escapeHtml(tag)}</span>`
+  return `<span class="${styles.agency}">${escapeHtml(full || tag)}</span>`
 }
 // "In force" etc. for an ECHO status; EPA's own term on hover.
 const ECHO_ALIAS = { 'admin continued': 'administratively continued' }
@@ -159,9 +159,9 @@ function ecyHtml(list) {
   const fs = list.find((x) => x.factSheet)
   const a = (x, label) => `<a class="${styles.popupLink}" href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`
   const shown = list.slice(0, 12)
-  return (fs ? `<p class="${styles.docText}">${a(fs, 'Ecology’s fact sheet')} explains what the facility discharges and how the permit’s limits were set${fs.date ? ` (${escapeHtml(fs.date)})` : ''}.</p>` : '') +
+  return (fs ? `<p class="${styles.docText}">${a(fs, 'Washington State Department of Ecology’s fact sheet')} explains what the facility discharges and how the permit’s limits were set${fs.date ? ` (${escapeHtml(fs.date)})` : ''}.</p>` : '') +
     `<ol class="${styles.events}">${shown.map((x) => `<li><span class="${styles.when}">${x.date ? fmtDate(x.date) : ''}</span><span>${escapeHtml(x.what)} ${a(x, 'PDF')}</span></li>`).join('')}</ol>` +
-    (list.length > shown.length ? `<p class="${styles.docText}">${list.length - shown.length} older documents on Ecology’s page.</p>` : '')
+    (list.length > shown.length ? `<p class="${styles.docText}">${list.length - shown.length} older documents on Washington State Department of Ecology’s page.</p>` : '')
 }
 // The same dock in EarthAtlas Docks: county and WDFW permits there, and how the match was made.
 function dockHtml(d, tags) {
@@ -185,33 +185,32 @@ function mapLocationHtml(r, docs, href) {
 function factorsHtml(r, docs) {
   if (!r.near?.length && !r.receiving?.length) return ''
   const link = (href, text, local) => `<a class="${styles.popupLink}" href="${escapeHtml(href)}"${local ? '' : ' target="_blank" rel="noopener noreferrer"'}>${text}</a>`
-  const rows = r.near.map((x) => {
+  const rows = (r.near || []).map((x) => {
     const f = FACTOR_BY_ID[x.h]
     if (!f) return ''
     const href = f.friends ? FRIENDS_PAGE : docHref(docs, x.src)
     const src = href ? ` ${link(href, f.friends ? 'Friends ↗' : `${escapeHtml(docs[x.src]?.title || 'source')} ↗`, !f.friends && !docs[x.src]?.url)}` : ''
     return `<li><span class="${styles.habDot}" style="background:${f.color}"></span>` +
       `<span><b>${escapeHtml(f.short)}</b>, ${distanceWords(x.m)}${x.name ? ` <span class="${styles.whyNote}">(${escapeHtml(x.name)})</span>` : ''}` +
-      `${f.note ? ` <span class="${styles.whyNote}">${escapeHtml(f.note)}</span>` : ''}<span class="${styles.whyNote}">${src}</span></span></li>`
+      `<span class="${styles.whyNote}">${src}</span></span></li>`
   }).join('')
-  const friends = r.near.some((x) => FACTOR_BY_ID[x.h]?.friends)
+  const friends = (r.near || []).some((x) => FACTOR_BY_ID[x.h]?.friends)
   // Discharge permits: waters named as their receiving water (the plant's map point is not its outfall).
   const recv = (r.receiving || []).map((x) => { const f = FACTOR_BY_ID[x.h]; const href = docHref(docs, x.src)
     return `<li><span class="${styles.habDot}" style="background:${f.color}"></span><span><b>${escapeHtml(f.short)}</b>, receives this discharge <span class="${styles.whyNote}">(${escapeHtml(x.name)})${href ? ` ${link(href, `${escapeHtml(docs[x.src]?.title || 'source')} ↗`, !docs[x.src]?.url)}` : ''}</span></span></li>` }).join('')
   return `<div class="${styles.habBox}"><div class="${styles.habHead}"><b>Waters and habitat within ${LIST_M} m</b>` +
     (friends ? `<a href="${FRIENDS_PAGE}" target="_blank" rel="noopener noreferrer"><img src="${FRIENDS_LOGO}" alt="Friends of the San Juans"></a>` : '') + `</div>` +
-    `<ul class="${styles.habList}">${recv}${rows}</ul>` +
-    `<div class="${styles.whyNote}">Distance from this record’s map point${r.approx ? ' (position approximate)' : ''}, not the project’s footprint.</div></div>`
+    `<ul class="${styles.habList}">${recv}${rows}</ul></div>`
 }
 
-// "Needs review" (review.js, attached by the bake): the gaps, the way to act, and Friends' marks. Public, draft rules.
+// "Needs review" (review.js, attached by the bake): the gaps, the way to act, and any review marks.
 const TIER_COLOR = { now: '#dc2626', watch: '#f59e0b', record: '#64748b' }
 function reviewHtml(r) {
   const v = r.review
   if (!v) return ''
   return `<div class="${styles.reviewBox}" style="border-color:${TIER_COLOR[v.tier]}"><div><span class="${styles.tierPill}" style="background:${TIER_COLOR[v.tier]}">Needs review · ${TIERS[v.tier].label}</span></div>` +
-    `<ul class="${styles.habList}">${v.gaps.map((g) => `<li title="${escapeHtml(GAPS[g.id])}"><span>${escapeHtml(g.text)}${g.mark ? ` <b>Friends: ${escapeHtml(g.mark.status)}${g.mark.note ? `, ${escapeHtml(g.mark.note)}` : ''}</b>` : ''}</span></li>`).join('')}</ul>` +
-    `<div class="${styles.whyNote}">${escapeHtml(v.lever)} Draft rules, to be confirmed with Friends of the San Juans.</div></div>`
+    `<ul class="${styles.habList}">${v.gaps.map((g) => `<li title="${escapeHtml(GAPS[g.id])}"><span>${escapeHtml(g.text)}${g.mark ? ` <b>Reviewed: ${escapeHtml(g.mark.status)}${g.mark.note ? `, ${escapeHtml(g.mark.note)}` : ''}</b>` : ''}</span></li>`).join('')}</ul>` +
+    `<div class="${styles.whyNote}">${escapeHtml(v.lever)}</div></div>`
 }
 
 // "Where it is" (process.js): one row per review track this record shows evidence of, each step done (dated, linked to
@@ -227,8 +226,7 @@ function processHtml(r, docs) {
       `<span><b>${escapeHtml(s.name)}</b>${s.date ? ` ${fmtDate(s.date)}` : ''}` +
       (s.state === 'unknown' ? `<span class="${styles.whyNote}"> ${escapeHtml(s.text || 'not in public records we hold')}</span>`
         : s.text && s.text !== s.name ? `<span class="${styles.whyNote}"> ${escapeHtml(s.text)}</span>` : '') + `${src(s.src)}</span></li>`).join('') +
-    `</ol>${t.note ? `<div class="${styles.whyNote}">${escapeHtml(t.note)}</div>` : ''}</div>`).join('') +
-    `<div class="${styles.whyNote}">● done · ◐ under way · – not part of this path · ○ not in public records we hold</div></details>`
+    `</ol>${t.note ? `<div class="${styles.whyNote}">${escapeHtml(t.note)}</div>` : ''}</div>`).join('') +''
 }
 
 // What the WDFW permit at this site says about the forage fish spawning nearby (scripts/permits/hpa-conditions.mjs,
@@ -244,8 +242,8 @@ function conditionsHtml(r) {
   }
   const seen = new Set(), species = near.filter(([k]) => !seen.has(k) && seen.add(k))
   const a = (href, text) => `<a class="${styles.popupLink}" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${text}</a>`
-  return r.conditions.map((c) => `<div class="${styles.habBox}"><div class="${styles.habHead}"><b>Spawning-season conditions in WDFW permit ${escapeHtml(c.permit)}</b></div>` +
-    `<div class="${styles.whyNote}">Hydraulic Project Approval issued ${fmtDate(c.issued)} · ${a(c.file, 'the permit ↗')} · ${a(c.record, 'WDFW record ↗')}</div>` +
+  return r.conditions.map((c) => `<div class="${styles.habBox}"><div class="${styles.habHead}"><b>Spawning-season conditions in Washington Department of Fish and Wildlife permit ${escapeHtml(c.permit)}</b></div>` +
+    `<div class="${styles.whyNote}">Hydraulic Project Approval issued ${fmtDate(c.issued)} · ${a(c.file, 'the permit ↗')} · ${a(c.record, 'Washington Department of Fish and Wildlife record ↗')}</div>` +
     (species.length ? `<ul class="${styles.habList}">${species.map(([k, label, where]) => {
       const q = c.species?.[k]
       return `<li><span><b>${label}</b> (${where}): ${q ? `provision ${q.provision}, “${escapeHtml(q.quote)}”` : `<b>not named in the permit.</b>`}</span></li>`
@@ -253,12 +251,12 @@ function conditionsHtml(r) {
     (c.timing?.length ? `<div><b>Work window:</b> ${escapeHtml(c.timing[0].split(/(?<=\.)\s/)[0])}</div>` : `<div><b>No timing limitation in the permit.</b></div>`) +
     // Survey files: named as WDFW lists them, each linked; what each says is quoted from its own text, never inferred.
     (c.surveys?.length
-      ? `<div><b>Files in WDFW’s record named as forage fish surveys:</b></div><ul class="${styles.habList}">${c.surveys.map((f) => `<li><span>${a(f.url, `${escapeHtml(f.name)} ↗`)}: ` +
+      ? `<div><b>Files in Washington Department of Fish and Wildlife’s record named as forage fish surveys:</b></div><ul class="${styles.habList}">${c.surveys.map((f) => `<li><span>${a(f.url, `${escapeHtml(f.name)} ↗`)}: ` +
         (f.permitCopy ? 'a copy of the permit, not a survey.'
-          : f.image ? 'a photo or scan, not read here; open it to see the result.'
-          : `${f.dates?.length ? `dated ${escapeHtml(f.dates[0])}; ` : ''}${f.result ? `the file says “${escapeHtml(f.result)}”${f.ocr ? ' (read from a scan by OCR; check the file)' : ''}.` : 'no egg result stated in its text; open it to check.'}`) + `</span></li>`).join('')}</ul>`
-      : `<div>No file in WDFW’s record is named as a forage fish survey.</div>`) +
-    `<div class="${styles.whyNote}">The permit’s and the files’ own words, read ${fmtDate(c.read)}.</div></div>`).join('')
+          : f.image ? 'photo or scan.'
+          : `${f.dates?.length ? `dated ${escapeHtml(f.dates[0])}; ` : ''}${f.result ? `the file says “${escapeHtml(f.result)}”${f.ocr ? ' (read by OCR)' : ''}.` : 'no egg result stated in its text.'}`) + `</span></li>`).join('')}</ul>`
+      : `<div>No file in Washington Department of Fish and Wildlife’s record is named as a forage fish survey.</div>`) +
+    `<div class="${styles.whyNote}">Read ${fmtDate(c.read)}.</div></div>`).join('')
 }
 
 // "What it is" (permitLogic.js whatOf), its source named after it.
@@ -329,7 +327,7 @@ function recordHtml(r, docs, tags, byId, unmappedById) {
     whatHtml(r, docs) + processHtml(r, docs) + factorsHtml(r, docs) + conditionsHtml(r) +
     (r.violations ? `<div class="${styles.vioLine}" style="border-color:${VIO_COLORS[r.violations.level]}"><b>Violations since ${escapeHtml(r.violations.since)}:</b> ` +
       [[r.violations.pollution, 'over a pollution limit'], [r.violations.evasion, 'reports or samples never done'], [r.violations.minor, 'smaller (late, lab errors, capacity)']]
-        .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') + ` <span class="${styles.whyNote}">(listed in the sections below)</span></div>` : '') +
+        .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') + `</div>` : '') +
     `<div class="${styles.popupCount}">${items.length} source document${items.length === 1 ? '' : 's'} from ${agencyCount} publisher${agencyCount === 1 ? '' : 's'}, by date</div>` +
     html + flags +
     (joins.length ? `<div class="${styles.joins}"><b>Linked records:</b> ${joins.join(' · ')}</div>` : '') +
@@ -359,7 +357,7 @@ function shellHtml(p, docs, tags) {
     (p.Updated ? `<tr><th>Layer updated</th><td>${escapeHtml(p.Updated)}</td></tr>` : '') + `</table>` +
     docLinks(docs, p.doc) + `</details>` +
     (p.report ? `<details class="${styles.doc}"><summary>${agencyChip(tags, 'doh')}${escapeHtml(docs[p.report].title)}</summary>` +
-      `<p class="${styles.docText}">DOH’s yearly review of this growing area: sampling results and the reasons for its classification.</p>${docLinks(docs, p.report)}</details>` : '') +
+      `<p class="${styles.docText}">Washington State Department of Health’s yearly review of this growing area: sampling results and the reasons for its classification.</p>${docLinks(docs, p.report)}</details>` : '') +
     `</div>`
 }
 
@@ -666,8 +664,8 @@ export default function PermitsApp() {
         {error ? <div className={styles.infoMeta}>{error}</div> : !data ? <div className={styles.infoMeta}>Loading…</div> : (
           <>
             <div className={styles.infoMeta}>
-              Clean Water Act permits for work in and around the waters of the San Juan Islands: Army Corps permits to build
-              in the water (404), Ecology’s water-quality sign-offs (401) and discharge permits (402), with their violations.
+              Clean Water Act permits for work in and around the waters of the San Juan Islands: U.S. Army Corps of Engineers permits to build
+              in the water (404), Washington State Department of Ecology’s water-quality sign-offs (401) and discharge permits (402), with their violations.
               Click a dot for its full record; every value links to its source.{' '}
               <a className={styles.source} href="/permits/dashboard">Open the dashboard →</a>
             </div>
@@ -734,10 +732,10 @@ export default function PermitsApp() {
               <div className={styles.infoMeta}>
                 Sources:{' '}
                 <a className={styles.source} href="https://permits.ops.usace.army.mil/orm-public" target="_blank" rel="noopener noreferrer">U.S. Army Corps of Engineers permit database (404)</a>{' · '}
-                <a className={styles.source} href="https://apps.ecology.wa.gov/aquatics/status" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology water-quality certifications (401)</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/aquatics/status" target="_blank" rel="noopener noreferrer">Washington Dept. of Washington State Department of Ecology water-quality certifications (401)</a>{' · '}
                 <a className={styles.source} href="https://echo.epa.gov/facilities/facility-search" target="_blank" rel="noopener noreferrer">U.S. EPA discharge permits and violations (402)</a>{' · '}
-                <a className={styles.source} href="https://apps.ecology.wa.gov/paris/PermitSearch.aspx" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology discharge permit documents</a>{' · '}
-                <a className={styles.source} href="https://apps.ecology.wa.gov/waterqualityatlas/wqa/map" target="_blank" rel="noopener noreferrer">Washington Dept. of Ecology impaired waters</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/paris/PermitSearch.aspx" target="_blank" rel="noopener noreferrer">Washington Dept. of Washington State Department of Ecology discharge permit documents</a>{' · '}
+                <a className={styles.source} href="https://apps.ecology.wa.gov/waterqualityatlas/wqa/map" target="_blank" rel="noopener noreferrer">Washington Dept. of Washington State Department of Ecology impaired waters</a>{' · '}
                 <a className={styles.source} href="https://doh.wa.gov/bs/node/5891" target="_blank" rel="noopener noreferrer">Washington Dept. of Health shellfish growing areas</a>
               </div>
               <div className={styles.infoMeta} style={{ marginTop: 4 }}>

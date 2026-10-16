@@ -51,6 +51,10 @@
       "destination": "/permits.html"
     },
     {
+      "source": "/permits/glossary",
+      "destination": "/permits.html"
+    },
+    {
       "source": "/carbon",
       "destination": "/carbon.html"
     },

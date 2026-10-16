@@ -42,6 +42,7 @@ import PermitsApp from './permits/PermitsApp.jsx'
 import PermitsSourcePage from './permits/PermitsSourcePage.jsx'
 import PermitsReport from './permits/PermitsReport.jsx'
 import PermitsDashboard from './permits/PermitsDashboard.jsx'
+import PermitsGlossary from './permits/PermitsGlossary.jsx'
 import CarbonApp from './carbon/CarbonApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
@@ -164,6 +165,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/permits/source/:key" element={<PermitsSourcePage />} />
           <Route path="/permits/report/:id" element={<PermitsReport />} />
           <Route path="/permits/dashboard" element={<PermitsDashboard />} />
+          <Route path="/permits/glossary" element={<PermitsGlossary />} />
           <Route path="/carbon" element={<CarbonApp />} />
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />

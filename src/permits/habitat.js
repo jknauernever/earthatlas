@@ -19,14 +19,13 @@ export const NEAR_M = 100
 // Ids are the URL keys (off=…). Colors are Salish Sea Explorer's for the same layers (cross-site consistency).
 export const HABITATS = [
   { id: 'hfd', label: 'Forage fish spawning beach, documented', short: 'Documented forage fish spawning beach', color: '#E11D74', kind: 'line',
-    credit: 'Friends of the San Juans forage fish egg surveys, with WDFW records' },
+    credit: 'Friends of the San Juans forage fish egg surveys, with Washington Department of Fish and Wildlife records' },
   { id: 'hfp', label: 'Forage fish spawning beach, potential', short: 'Potential forage fish spawning beach (suitable beach sediment)', color: '#F9A8D4', kind: 'line',
     credit: 'Friends of the San Juans' },
   { id: 'hhe', label: 'Herring spawning area', short: 'Herring spawning area (present or historic)', color: '#8B5CF6', kind: 'fill',
     credit: 'Washington Department of Fish and Wildlife; compiled by Friends of the San Juans' },
   { id: 'hee', label: 'Eelgrass meadow, deep edge', short: 'Eelgrass meadow (its mapped deep edge)', color: '#20B2AA', kind: 'line',
-    credit: 'Friends of the San Juans, Washington DNR and Friday Harbor Labs (countywide eelgrass study)',
-    note: 'The line is the meadow’s deep (seaward) edge; the meadow runs from there toward shore.' },
+    credit: 'Friends of the San Juans, Washington DNR and Friday Harbor Labs (countywide eelgrass study)' },
   { id: 'hkb', label: 'Bull kelp bed', short: 'Bull kelp bed', color: '#B89A3A', kind: 'fill',
     credit: 'Washington Department of Natural Resources and Friends of the San Juans' },
 ]
@@ -34,7 +33,7 @@ export const HABITAT_BY_ID = Object.fromEntries(HABITATS.map((h) => [h.id, h]))
 
 // Receiving waters, as on the map's water layers. `friends: false`: their source is the agency record (`src` doc key).
 export const WATERS = [
-  { id: 'wq', label: 'Impaired water (303(d) list)', short: 'Impaired water on Ecology’s 303(d) list', color: '#f97316', kind: 'fill', friends: false,
+  { id: 'wq', label: 'Impaired water (303(d) list)', short: 'Impaired water on Washington State Department of Ecology’s 303(d) list', color: '#f97316', kind: 'fill', friends: false,
     credit: 'Washington State Department of Ecology, 303(d) Category 5' },
   { id: 'shell', label: 'Shellfish growing area', short: 'Shellfish growing area', color: '#4ade80', kind: 'fill', friends: false,
     credit: 'Washington State Department of Health classification' },

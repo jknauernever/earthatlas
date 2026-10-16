@@ -6,7 +6,7 @@
  * fetches; run it by hand after any of them, or after import-friends-habitat.mjs.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { attachFactors, attachConditions, attachReview, attachSepa, attachHpaApps } from './bake-permits.mjs'
+import { attachFactors, attachConditions, attachReview, attachSepa, attachHpaApps, officialNames } from './bake-permits.mjs'
 
 const FILE = 'public/permits-data/permits.json'
 const d = JSON.parse(readFileSync(FILE, 'utf8'))
@@ -15,6 +15,7 @@ attachHpaApps(d)
 const read = (f) => JSON.parse(readFileSync(`public/permits-data/${f}`, 'utf8'))
 attachFactors([...d.projects, ...d.npdes], read('wq303d.geojson'), read('shellfish.geojson'))
 attachConditions(d.projects)
+officialNames(d)
 attachReview([...d.projects, ...d.npdes])
 writeFileSync(FILE, JSON.stringify(d))
 const all = [...d.projects, ...d.npdes]

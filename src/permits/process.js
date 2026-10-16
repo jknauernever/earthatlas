@@ -24,34 +24,39 @@ function corps(r) {
   const applied = first(ev(/application received|request submitted|application$/i))
   const notice = last(ev(/public notice/i))
   const decided = last(ev(/issued|verified|denied|withdrawn|canceled|letter of permission|nationwide permit|finalized|approved jd/i))
-  const pending = /Corps (review|permit) pending|assessment in progress/i.test(r.status?.label || '')
-  return { id: 'corps', label: 'Army Corps (§404 / §10)', steps: [
+  const pending = /U.S. Army Corps of Engineers (review|permit) pending|assessment in progress/i.test(r.status?.label || '')
+  // ESA / Essential Fish Habitat / historic consultations (bake ormConsultations): one step, closed only when all are.
+  const began = ev(/consultation with .* began|review .* began/i), closed = ev(/ closed(:|$)/i)
+  const how = [...new Set(closed.map((t) => (/closed: (.*)$/.exec(t.event) || [])[1]).filter(Boolean))]
+  const consult = began.length ? step('Agency consultations', closed.length >= began.length ? 'done' : 'now', closed.length >= began.length ? last(closed) : first(began),
+    `${began.length} (${[...new Set(began.map((t) => t.event.replace(/ began$/, '').replace(/ consultation with /, ', ')))].join('; ')})${closed.length >= began.length ? ` closed${how.length ? ` as ${how.join(', ')}` : ''}` : ' under way'}`) : null
+  return { id: 'corps', label: 'U.S. Army Corps of Engineers (§404 / §10)', steps: [
     step('Application', applied ? 'done' : 'unknown', applied),
     nwp || lop ? step('Public notice', 'na', null, nwp ? 'Not part of a nationwide permit' : 'Not part of a Letter of Permission') : step('Public notice', notice ? 'done' : 'unknown', notice),
     pending ? step('Decision', 'now', null, r.status.label) : step('Decision', decided ? 'done' : 'unknown', decided,
-      decided ? decided.event : 'Not in the Corps’ public database (most nationwide permit verifications are not published)'),
-  ] }
+      decided ? decided.event : 'Not in the U.S. Army Corps of Engineers’ public database'),
+  ].flatMap((x, i) => (i === 2 && consult ? [consult, x] : [x])) }
 }
 
 function ecology(r) {
   const ev = (re) => has(r, 'ecology', re)
   const st = r.status?.label || ''
-  const aq = r.source === 'ecology-aquatics' || /Ecology|401/.test(st) || (r.trail || []).some((t) => t.agency === 'ecology') || r.cert401
+  const aq = r.source === 'ecology-aquatics' || /Washington State Department of Ecology|401/.test(st) || (r.trail || []).some((t) => t.agency === 'ecology') || r.cert401
   if (!aq) return null
   const fact401 = (r.facts || []).find((f) => /401/.test(f.label))?.value || ''
   const prefile = first(ev(/pre-filing/i))
   const request = first(ev(/request received|request: in review/i))
   const notice = last(ev(/public notice/i))
   const decided = last(ev(/certification issued|order #|CZM decision|consistency decision|closed - no action|administrative order/i))
-  const open = /Open at Ecology|401: (in review|pre-filing)/i.test(st)
-  const closedNo401 = /Closed at Ecology/.test(st) && /no 401 action/i.test(fact401)
-  return { id: 'ecology', label: 'Ecology (§401 water quality / coastal zone)', steps: [
+  const open = /Open at Washington State Department of Ecology|401: (in review|pre-filing)/i.test(st)
+  const closedNo401 = /Closed at Washington State Department of Ecology/.test(st) && /no 401 action/i.test(fact401)
+  return { id: 'ecology', label: 'Washington State Department of Ecology (§401 water quality / coastal zone)', steps: [
     step('Pre-filing meeting request', prefile ? 'done' : 'unknown', prefile),
     step('Certification request', request ? 'done' : 'unknown', request),
     step('Public notice', notice ? 'done' : 'unknown', notice),
     decided ? step('Decision', 'done', decided)
-      : open ? step('Decision', 'now', null, 'Under Ecology review')
-      : closedNo401 ? step('Decision', 'done', null, 'Ecology review closed with no 401 decision (often: the Corps used a nationwide permit Ecology had already certified)')
+      : open ? step('Decision', 'now', null, 'Under Washington State Department of Ecology review')
+      : closedNo401 ? step('Decision', 'done', null, 'Washington State Department of Ecology review closed with no 401 decision on record')
       : step('Decision', 'unknown', null, fact401 || null),
   ] }
 }
@@ -62,9 +67,9 @@ function wdfw(r, today) {
   if (app) {
     const under = /Submitted|Accepted/.test(app.status) && !/Rejected|Withdrawn|Incomplete/.test(app.status)
     const ended = /Rejected|Withdrawn|Denied/.test(app.status)
-    return { id: 'wdfw', label: 'WDFW (Hydraulic Project Approval)', steps: [
+    return { id: 'wdfw', label: 'Washington Department of Fish and Wildlife (Hydraulic Project Approval)', steps: [
       step('Application', 'done', { date: app.submitted, src: app.src }, `APPS ${app.apps}`),
-      under ? step('Decision', 'now', null, `WDFW: ${app.status}`) : ended ? step('Decision', 'done', null, `WDFW: ${app.status}`)
+      under ? step('Decision', 'now', null, `Washington Department of Fish and Wildlife: ${app.status}`) : ended ? step('Decision', 'done', null, `Washington Department of Fish and Wildlife: ${app.status}`)
         : step('Decision', app.issued ? 'done' : 'unknown', { date: app.issued, src: app.src }, `Permit ${app.permit || ''} issued`.trim()),
       ...(app.permitStatus ? [step(/active/i.test(app.permitStatus) ? 'Active' : 'Ended', /active/i.test(app.permitStatus) ? 'now' : 'done', null, `Permit ${app.permitStatus.toLowerCase()}`)] : []),
     ] }
@@ -76,40 +81,43 @@ function wdfw(r, today) {
   const listed = has(r, 'wdfw', /hydraulic project approval/i)
   if (!hpas.length && !listed.length) return null
   const h = hpas[0]
-  if (!h) return { id: 'wdfw', label: 'WDFW (Hydraulic Project Approval)', steps: [step('Decision', 'done', listed[0])] }
+  if (!h) return { id: 'wdfw', label: 'Washington Department of Fish and Wildlife (Hydraulic Project Approval)', steps: [step('Decision', 'done', listed[0])] }
   const active = /active/i.test(h.status || '') || (h.expires && h.expires >= today)
-  return { id: 'wdfw', label: 'WDFW (Hydraulic Project Approval)', note: hpas.length > 1 ? `${hpas.length} WDFW permits at this dock; the latest is shown` : null, steps: [
+  return { id: 'wdfw', label: 'Washington Department of Fish and Wildlife (Hydraulic Project Approval)', note: hpas.length > 1 ? `${hpas.length} Washington Department of Fish and Wildlife permits at this dock; the latest is shown` : null, steps: [
     step('Decision', 'done', { date: h.date }, `Permit ${h.number || ''} issued`.trim()),
     step(active ? 'Active' : 'Ended', active ? 'now' : 'done', h.expires ? { date: h.expires } : null, active ? `Active${h.expires ? ` until ${h.expires}` : ''}` : (h.status || 'Expired')),
   ] }
 }
 
+// Only the project's own county events (SEPA Register joins, actions listed in Ecology's order). Permits at a nearby
+// dock are not this project's (Josh 2026-10-15); the report lists them under "Possibly related records".
 function county(r) {
   const own = has(r, null, /shoreline|SEPA/i).filter((t) => ['county', 'town'].includes(t.agency))
-  const dock = (r.docks || []).flatMap((d) => d.permits).filter((p) => p.agency === 'county' && /shoreline|SEPA|exempt/i.test(p.what || ''))
-    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
-  if (!own.length && !dock.length) return null
-  const steps = own.length ? own.map((t) => step(t.event.replace(/\s*\(as listed in Ecology's order\)/, ''), 'done', t))
-    : [step(dock[0].what, /ROUTED|OPEN|READY|REVIEW/i.test(dock[0].status || '') ? 'now' : 'done', { date: dock[0].date }, `${dock[0].number || ''} ${String(dock[0].status || '').toLowerCase()}`.trim())]
-  return { id: 'county', label: r.trail?.some((t) => t.agency === 'town') ? 'Town of Friday Harbor / County (shoreline, SEPA)' : 'San Juan County (shoreline, SEPA)',
-    note: own.length ? null : 'The latest shoreline or SEPA action at this dock', steps }
+  if (!own.length) return null
+  return { id: 'county', label: own.some((t) => t.agency === 'town') ? 'Town of Friday Harbor / County (shoreline, SEPA)' : 'San Juan County (shoreline, SEPA)',
+    steps: own.map((t) => step(t.event.replace(/\s*\(as listed in Washington State Department of Ecology's order\)/, ''), t.date > new Date().toISOString().slice(0, 10) ? 'now' : 'done', t)) }
 }
 
 /** The tracks this record shows evidence of, in the order a project usually meets them. */
+// Events dated before the record's own Corps file year belong to an earlier file on the same dock (an Ecology record
+// can list both), so they are left out of this project's tracks (the report's timeline still shows them, grouped).
 export function processOf(r, today = new Date().toISOString().slice(0, 10)) {
   if (r.layer === 'npdes') return []
-  return [corps(r), ecology(r), wdfw(r, today), county(r)].filter(Boolean)
+  const years = [r.id, r.corpsRef, ...(r.refs || []).map((x) => x.label)].map((s) => /NWS-(\d{4})-/.exec(s || '')?.[1]).filter(Boolean)
+  const from = years.length ? `${Math.max(...years)}-01-01` : null
+  const own = from ? { ...r, trail: (r.trail || []).filter((t) => !t.date || t.date >= from) } : r
+  return [corps(own), ecology(own), wdfw(own, today), county(own)].filter(Boolean)
 }
 
 /** Where an open project stands: the first track whose decision is under way, in plain words (dashboard counts). */
 export function stageOf(r) {
   for (const t of processOf(r)) {
     const s = t.steps.find((x) => x.state === 'now')
-    if (s) return `${t.id === 'corps' ? 'Corps' : t.id === 'ecology' ? 'Ecology 401' : t.id === 'wdfw' ? 'WDFW' : 'County'}: ${s.name.toLowerCase()}`
+    if (s) return `${t.id === 'corps' ? 'U.S. Army Corps of Engineers' : t.id === 'ecology' ? 'Washington State Department of Ecology 401' : t.id === 'wdfw' ? 'Washington Department of Fish and Wildlife' : 'County'}: ${s.name.toLowerCase()}`
   }
   return null
 }
 
 // Statuses as shown: an Ecology file's state is not the project's (Josh 2026-10-15, Crane Island).
-const SHOWN = { 'Closed at Ecology': 'Ecology review closed', 'Open at Ecology': 'Under Ecology review' }
+const SHOWN = { 'Closed at Washington State Department of Ecology': 'Washington State Department of Ecology review closed', 'Open at Washington State Department of Ecology': 'Under Washington State Department of Ecology review' }
 export const statusShown = (label) => SHOWN[label] || label

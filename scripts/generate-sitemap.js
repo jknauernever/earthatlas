@@ -64,6 +64,7 @@ addUrl('/sanjuan-docks')
 // PermitTracker (water permits)
 addUrl('/permits')
 addUrl('/permits/dashboard')
+addUrl('/permits/glossary')
 
 // Carbon
 addUrl('/carbon')

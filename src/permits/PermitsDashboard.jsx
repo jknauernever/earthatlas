@@ -79,13 +79,13 @@ export default function PermitsDashboard() {
     <div className={c.page}>
       <header className={c.top}>
         <a className={c.brand} href="/permits">EarthAtlas<span>PermitTracker</span></a>
-        <nav className={c.nav}><span className={c.navOn}>Dashboard</span><a href="/permits">Map</a></nav>
+        <nav className={c.nav}><span className={c.navOn}>Dashboard</span><a href="/permits">Map</a><a href="/permits/glossary">Terms</a></nav>
       </header>
       <main className={c.main}>
         <div className={c.kicker}>Water permits · San Juan County, Washington</div>
         <h1 className={c.title}>Where Clean Water Act permits meet the shoreline</h1>
         <p className={c.sub}>
-          Army Corps permits to build in the water (§404, §10), Ecology’s water-quality sign-offs (§401) and discharge
+          U.S. Army Corps of Engineers permits to build in the water (§404, §10), Washington State Department of Ecology’s water-quality sign-offs (§401) and discharge
           permits (§402), checked against impaired waters, shellfish growing areas and habitat mapped by Friends of the San
           Juans. Pick a question; every row opens the full record.
         </p>
@@ -131,7 +131,7 @@ export default function PermitsDashboard() {
                     <td>{qid === 'review'
                       ? <div className={c.review}>
                           <span className={c.tier} style={{ background: TIER_COLOR[r.review.tier] }}>{TIERS[r.review.tier].label}</span>
-                          {r.review.gaps.map((g, i) => <div key={i} className={c.gap} title={GAPS[g.id]}>{g.text}{g.mark && <span className={c.mark}> · Friends: {g.mark.status}{g.mark.note ? ` (${g.mark.note})` : ''}</span>}</div>)}
+                          {r.review.gaps.map((g, i) => <div key={i} className={c.gap} title={GAPS[g.id]}>{g.text}{g.mark && <span className={c.mark}> · Reviewed: {g.mark.status}{g.mark.note ? ` (${g.mark.note})` : ''}</span>}</div>)}
                           <div className={c.small}>{r.review.lever}</div>
                         </div>
                       : qid === 'violations'
@@ -141,7 +141,7 @@ export default function PermitsDashboard() {
                           <div key={x.h} className={c.hab}><i style={{ background: FACTOR_BY_ID[x.h].color }} />{FACTOR_BY_ID[x.h].label}{x.h === 'wq' || x.h === 'shell' ? ` (${x.name})` : ''}, {distanceWords(x.m)}</div>))
                         : <span className={c.small}>none mapped</span>}
                       {r.approx && <div className={c.small}>Map position approximate</div>}</td>
-                    <td className={c.date}>{fmtDate(latestPast(r)) || (activityYears(r).length ? <span title="No dated event in the record; year from the Army Corps file number">file {Math.max(...activityYears(r))}</span> : '—')}</td>
+                    <td className={c.date}>{fmtDate(latestPast(r)) || (activityYears(r).length ? <span title="No dated event in the record; year from the U.S. Army Corps of Engineers file number">file {Math.max(...activityYears(r))}</span> : '—')}</td>
                     <td className={c.actions}><a href={`/permits/report/${encodeURIComponent(r.id)}`} target="_blank" rel="noopener noreferrer">Report</a></td>
                   </tr>
                 ))}
@@ -153,9 +153,8 @@ export default function PermitsDashboard() {
           {usesFriends && (
             <a className={c.friends} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">
               <img src={FRIENDS_LOGO} alt="Friends of the San Juans" />
-              <span>Habitat data courtesy of Friends of the San Juans (forage fish spawning surveys; herring spawning from WDFW; eelgrass with
-                Washington DNR and Friday Harbor Labs; bull kelp with Washington DNR). Distances are from each record’s map point, not the
-                project’s footprint. Impaired waters: Washington Department of Ecology 303(d) list; shellfish growing areas: Washington
+              <span>Habitat data courtesy of Friends of the San Juans (forage fish spawning surveys; herring spawning from Washington Department of Fish and Wildlife; eelgrass with
+                Washington DNR and Friday Harbor Labs; bull kelp with Washington DNR). Impaired waters: Washington Department of Ecology 303(d) list; shellfish growing areas: Washington
                 Department of Health.</span>
             </a>
           )}

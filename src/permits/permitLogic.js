@@ -59,19 +59,19 @@ export function whyItems(r, docs) {
   if (r.layer === 'npdes') {
     const water = (r.facts || []).find((f) => f.label === 'Receiving water')?.value
     const what = /stormwater/i.test(r.type) ? 'Stormwater that runs off this site' : /wastewater/i.test(r.type) ? 'Treated wastewater from this plant' : 'Water this operation releases'
-    lines.push(L`${what} goes to ${water || 'a water body'}. Discharging pollutants to water needs a permit under ${law('s402')} (NPDES); in Washington, Ecology issues it, under its own water pollution law as well.`)
+    lines.push(L`${what} goes to ${water || 'a water body'}. Discharging pollutants to water needs a permit under ${law('s402')} (NPDES); in Washington, Washington State Department of Ecology issues it, under its own water pollution law as well.`)
   }
-  const corps = r.corpsKind || (/Army Corps/.test(titles) || r.corpsRef ? 'curated' : null)
-  if (corps === 's408') lines.push(L`Changing anything built by a federal Corps project${r.civilWorks ? ` (here: ${r.civilWorks})` : ''} needs Corps permission under ${law('s408')}. The Corps decided none was needed here.`)
-  else if (corps === 'jds' || /jurisdictional determination/i.test(titles)) lines.push(L`A jurisdictional determination is the Corps’ ruling on whether a site holds “waters of the United States”; that decides whether ${law('s404')} applies to work there.`)
-  else if (corps) lines.push(L`Building in or over navigable water (docks, piles, floats, buoys, cables) needs an Army Corps permit under ${law('s10')}; putting fill or dredged material in water needs one under ${law('s404')}.${r.corpsKind ? ' The Corps record does not say which applies here.' : ''}`)
-  if (corps === 'nepa_ea' || /environmental assessment/i.test(`${titles} ${events}`)) lines.push(L`For a permit with possible significant effects, the Corps writes an environmental assessment under ${law('nepa')}.`)
-  if (r.stateOrder && !r.cert401) lines.push(L`For waters the Corps doesn’t regulate (such as isolated wetlands), Ecology approves the work with an administrative order under Washington’s water pollution law (${law('rcw9048')}).`)
-  if (/401 certification/i.test(titles) || r.cert401) lines.push(L`Before the Corps can issue its permit, Ecology must certify under ${law('s401')} that the work will meet Washington’s water quality standards.`)
-  if (/Coastal Zone/i.test(titles)) lines.push(L`Ecology also decides whether a federal permit is consistent with Washington’s coastal program (${law('czma')}).`)
+  const corps = r.corpsKind || (/U.S. Army Corps of Engineers/.test(titles) || r.corpsRef ? 'curated' : null)
+  if (corps === 's408') lines.push(L`Changing anything built by a federal U.S. Army Corps of Engineers project${r.civilWorks ? ` (here: ${r.civilWorks})` : ''} needs U.S. Army Corps of Engineers permission under ${law('s408')}. The U.S. Army Corps of Engineers decided none was needed here.`)
+  else if (corps === 'jds' || /jurisdictional determination/i.test(titles)) lines.push(L`A jurisdictional determination is the U.S. Army Corps of Engineers’ ruling on whether a site holds “waters of the United States”; that decides whether ${law('s404')} applies to work there.`)
+  else if (corps) lines.push(L`Building in or over navigable water (docks, piles, floats, buoys, cables) needs an U.S. Army Corps of Engineers permit under ${law('s10')}; putting fill or dredged material in water needs one under ${law('s404')}.${r.corpsKind ? ' The U.S. Army Corps of Engineers record does not say which applies here.' : ''}`)
+  if (corps === 'nepa_ea' || /environmental assessment/i.test(`${titles} ${events}`)) lines.push(L`For a permit with possible significant effects, the U.S. Army Corps of Engineers writes an environmental assessment under ${law('nepa')}.`)
+  if (r.stateOrder && !r.cert401) lines.push(L`For waters the U.S. Army Corps of Engineers doesn’t regulate (such as isolated wetlands), Washington State Department of Ecology approves the work with an administrative order under Washington’s water pollution law (${law('rcw9048')}).`)
+  if (/401 certification/i.test(titles) || r.cert401) lines.push(L`Before the U.S. Army Corps of Engineers can issue its permit, Washington State Department of Ecology must certify under ${law('s401')} that the work will meet Washington’s water quality standards.`)
+  if (/Coastal Zone/i.test(titles)) lines.push(L`Washington State Department of Ecology also decides whether a federal permit is consistent with Washington’s coastal program (${law('czma')}).`)
   if (/marine mammal|incidental take/i.test(`${titles} ${events}`)) lines.push(L`In-water noise from pile work can harm marine mammals; NOAA Fisheries authorizes that “incidental take” under ${law('mmpa')}.`)
   if (/shoreline/i.test(`${events} ${titles}`) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'county'))) lines.push(L`Work on Washington’s shorelines needs approval from San Juan County (inside Friday Harbor, from the Town of Friday Harbor) under the ${law('sma')}.`)
-  if (/WDFW|HPA/i.test(events) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'wdfw'))) lines.push(L`Work in or near salt or fresh water needs a WDFW Hydraulic Project Approval under the ${law('hpa')}.`)
+  if (/Washington Department of Fish and Wildlife|HPA/i.test(events) || r.docks?.some((d) => d.permits.some((x) => x.agency === 'wdfw'))) lines.push(L`Work in or near salt or fresh water needs a Washington Department of Fish and Wildlife Hydraulic Project Approval under the ${law('hpa')}.`)
   if (!lines.length) lines.push(L`Not a permit itself: a related ${String(r.type).toLowerCase()} step on the shore. Any in-water work it leads to needs the permits above (${law('s10')}, ${law('s404')}, ${law('s401')}).`)
   return lines
 }
@@ -83,15 +83,15 @@ export const calm = (t) => { const x = String(t || ''); return x.length > 12 && 
 // facts or don't"). Returns { label, text, srcKey, srcLabel } or null. When only a permit at a nearby dock under the
 // same name describes anything, that permit is stated as what it is, at that dock.
 export function whatOf(r) {
-  const desc = (r.facts || []).find((f) => /What the project is|as the Corps’ public notice describes it/.test(f.label))
+  const desc = (r.facts || []).find((f) => /What the project is|as the U.S. Army Corps of Engineers’ public notice describes it/.test(f.label))
   if (r.summary?.text && r.summary.src) return { label: 'What it is:', text: r.summary.text, srcKey: r.summary.src }
   if (desc) return { label: 'What it is:', text: desc.value, srcKey: desc.src }
   const paren = /\(([^()]{3,})\)\s*$/.exec(r.name || '')?.[1]
-  if (paren && r.refs?.[0]) return { label: 'What it is:', text: paren, srcKey: r.refs[0].src, srcLabel: `Army Corps record ${r.refs[0].label}` }
-  if (r.source === 'ecology-aquatics' && r.type && r.type !== 'Project reviewed by Ecology') return { label: 'What it is:', text: r.type, srcKey: r.position.src, srcLabel: 'Ecology project category' }
+  if (paren && r.refs?.[0]) return { label: 'What it is:', text: paren, srcKey: r.refs[0].src, srcLabel: `U.S. Army Corps of Engineers record ${r.refs[0].label}` }
+  if (r.source === 'ecology-aquatics' && r.type && r.type !== 'Project reviewed by Washington State Department of Ecology') return { label: 'What it is:', text: r.type, srcKey: r.position.src, srcLabel: 'Washington State Department of Ecology project category' }
   const dock = r.docks?.[0], p = dock?.permits.find((x) => x.what && x.what !== 'No description in the record')
   if (p) return { label: `At a dock ${dock.m} m away${p.applicant ? `, permit to ${p.applicant}` : ''}:`, text: p.what, srcKey: dock.src,
-    srcLabel: `${p.agency === 'wdfw' ? 'WDFW Hydraulic Project Approval' : 'San Juan County permit'}${p.number ? ` ${p.number}` : ''}${p.date ? `, ${fmtDate(p.date)}` : ''}` }
+    srcLabel: `${p.agency === 'wdfw' ? 'Washington Department of Fish and Wildlife Hydraulic Project Approval' : 'San Juan County permit'}${p.number ? ` ${p.number}` : ''}${p.date ? `, ${fmtDate(p.date)}` : ''}` }
   return null
 }
 

@@ -186,7 +186,7 @@ export default function NewsArticlePage() {
             ← Explore {theme.label}
           </Link>
         </div>
-        <BuiltByCredit variant="light" />
+        <BuiltByCredit variant="light" aiNote={false} />
       </div>
     </div>
   )

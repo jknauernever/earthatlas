@@ -45,6 +45,7 @@ import {
 } from './cwfis.js'
 import { fetchFireNews, renderNewsCard, newsLocation } from './fireNews.js'
 import styles from './FireApp.module.css'
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -2307,6 +2308,10 @@ function MethodologyModal({ onClose }) {
             estimates, <strong>not forecasts</strong> of current conditions. NDVI and land cover are global.
             For active fire, defer to official sources such as NASA FIRMS and local agencies.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_RUNS_NOTE.heading}</h3>
+          <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
     </div>

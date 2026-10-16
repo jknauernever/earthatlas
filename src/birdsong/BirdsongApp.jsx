@@ -42,6 +42,7 @@ import {
 import styles from './BirdsongApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 import { LegendTurndown } from '../components/panel'
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -855,6 +856,10 @@ function MethodologyModal({ onClose }) {
             areas reflect more listeners, not necessarily more birds. Detection counts depend on a station's
             settings and uptime. Times are shown relative to now in your local timezone.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_RUNS_NOTE.heading}</h3>
+          <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
     </div>

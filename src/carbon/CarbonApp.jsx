@@ -32,6 +32,7 @@ import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import styles from './CarbonApp.module.css'
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -596,6 +597,10 @@ function MethodologyModal({ onClose }) {
             estimate — for carbon credits or transactions, commission ground-truthed measurement to a recognized
             registry standard. This tool is not a substitute for that.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_RUNS_NOTE.heading}</h3>
+          <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
     </div>

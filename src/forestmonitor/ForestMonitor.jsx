@@ -13,6 +13,9 @@ import { LegendTurndown } from '../components/panel'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import styles from './ForestMonitor.module.css'
+import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
+
+const AI_NOTE = aiExperimentNote('“Explain this spot in plain language” summaries are')
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -2039,6 +2042,16 @@ function MethodologyModal({ onClose }) {
             exploration of near-real-time forest disturbance. The cloud function source and all dataset choices live in this repo and are reviewable.
             Please cite the underlying datasets (above) if you reproduce or publish from this data — we're a thin presentation layer over their work.
           </p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>{SITE_DATA_NOTE.heading}</h3>
+          <p>{SITE_DATA_NOTE.body}</p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>{AI_NOTE.heading}</h3>
+          <p>{AI_NOTE.body}</p>
         </section>
 
         <button type="button" className={styles.modalCloseBtn} onClick={onClose}>Close</button>

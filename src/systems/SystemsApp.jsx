@@ -65,6 +65,9 @@ import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import useDockColumns from '../components/panel/useDockColumns.js'
 import DatasetRow from '../components/panel/DatasetRow.jsx'
 import styles from './SystemsApp.module.css'
+import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
+
+const AI_NOTE = aiExperimentNote('“Explain this view” and the short notes in map popups are')
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -3557,6 +3560,15 @@ function MethodologyModal({ onClose, layerMeta }) {
             described by where it blows <em>from</em>; currents by where they flow{' '}
             <em>toward</em> — both conventions are followed here.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_DATA_NOTE.heading}</h3>
+          <p>{SITE_DATA_NOTE.body}</p>
+        </section>
+
+        <section className={styles.modalSection}>
+          <h3>{AI_NOTE.heading}</h3>
+          <p>{AI_NOTE.body}</p>
         </section>
       </div>
     </div>

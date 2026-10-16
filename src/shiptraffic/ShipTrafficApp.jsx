@@ -24,7 +24,7 @@ import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
-import { DatasetRow, LegendSwatchRow, SourcesFooter, Loading } from '../components/panel/index.js'
+import { DatasetRow, LegendSwatchRow, SourcesFooter, Loading, SITE_RUNS_NOTE } from '../components/panel/index.js'
 import TrackMonths, { TRACK_KINDS, fmtMonth } from '../ships/TrackControls.jsx'
 import shipsStyles from '../ships/ShipsApp.module.css'
 import trackSource from '../ships/trackSource.json'
@@ -131,6 +131,7 @@ const NOTES = [
   { heading: 'Overlap', body: 'For each ~1 km square: the ships of the picked kinds that crossed it in the picked months (scaled to the busiest square), times the whales seen in it (scaled to the square with the most). Whales, not reports: several people reporting one group (same species, same day, within 2 km and 2 hours) count once, at the largest number anyone gave; every whale HappyWhale identified counts; a report placed only roughly (rounded to 0.1°) counts its whales across the whole ~10 km area it could be in, scored against the busiest such area, and very vague ones (over 10 km) are left out. A co-occurrence measure for exploring, not a ship-strike risk model.' },
   { heading: 'Close passes', body: 'A ship counts as passing a whale report when it was within 1 km of the report within 3 hours of it (reports with only a date: the same day). Only where ships were actually reported counts: estimated paths never do, and where two reported positions are more than 2 km apart (Global Fishing Watch positions are hourly), only those positions count, not the line between them. Recomputed daily.' },
   { heading: 'Caveats', body: 'Whale reports follow where people look and listen. Ships without AIS, or with it switched off, are not here. NOAA covers US waters; Canadian waters come from Global Fishing Watch and are fuller in recent months.' },
+  SITE_RUNS_NOTE,
 ]
 
 export default function ShipTrafficApp() {

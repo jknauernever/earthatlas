@@ -32,6 +32,7 @@ import {
 } from './whaleJourney.jsx'
 import styles from './HappyWhaleApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -874,6 +875,10 @@ function MethodologyModal({ onClose }) {
             absence of whales</strong>. Identifications depend on photo quality and catalog
             coverage, and recent encounters may still be awaiting a match.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_RUNS_NOTE.heading}</h3>
+          <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
     </div>

@@ -39,6 +39,7 @@ import {
   MAG_RAMP,
 } from './quakesService.js'
 import styles from './QuakesApp.module.css'
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -805,6 +806,10 @@ function MethodologyModal({ onClose }) {
             networks report more small quakes. Times are shown in your local timezone. For authoritative
             details on any event, click it and follow the link to its USGS event page.
           </p>
+        </section>
+        <section className={styles.modalSection}>
+          <h3>{SITE_RUNS_NOTE.heading}</h3>
+          <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
     </div>

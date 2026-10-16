@@ -28,6 +28,7 @@ import GlobalStats      from './components/GlobalStats'
 import WhaleReports     from './components/WhaleReports'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
+import { SITE_RUNS_NOTE, SITE_RUNS_SHORT } from './components/panel/siteRunsNote.js'
 
 // ─── Query param schema (stable reference) ────────────────────────
 const QP_SCHEMA = {
@@ -910,6 +911,7 @@ export default function App() {
         {' '}— <strong>powered by citizen science</strong>.
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+          {' · '}<span title={SITE_RUNS_NOTE.body}>{SITE_RUNS_SHORT}</span>
         </div>
       </footer>
 

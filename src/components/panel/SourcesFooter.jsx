@@ -77,11 +77,13 @@ export function SourcesModal({ title = 'How this is sourced', intro, sections = 
                     {src.href ? <a href={src.href} target="_blank" rel="noopener noreferrer">{src.name}</a> : src.name}
                     {src.publisher && <span className={s.sourcePublisher}> · {src.publisher}</span>}
                   </div>
-                  <div className={s.sourceMeta}>
-                    <span className={s.sourceLicence}>
-                      {src.licenceHref ? <a href={src.licenceHref} target="_blank" rel="noopener noreferrer">{src.licence}</a> : src.licence}
-                    </span>
-                  </div>
+                  {src.licence && (
+                    <div className={s.sourceMeta}>
+                      <span className={s.sourceLicence}>
+                        {src.licenceHref ? <a href={src.licenceHref} target="_blank" rel="noopener noreferrer">{src.licence}</a> : src.licence}
+                      </span>
+                    </div>
+                  )}
                   {src.method && <div className={s.sourceMethod}>{src.method}</div>}
                   {src.citation && <div className={s.sourceCitation}>Citation: “{src.citation}”</div>}
                 </li>

@@ -4,6 +4,9 @@
  * headers (scripts/ships/bake-*), not written fresh. When a source row changes, change it here too.
  * The rollup is in addition to each value's own inline source link, never a replacement.
  */
+
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+
 const CC_BY_NC = 'https://creativecommons.org/licenses/by-nc/4.0/'
 const CC0 = 'https://creativecommons.org/publicdomain/zero/1.0/'
 const USC105 = 'https://www.law.cornell.edu/uscode/text/17/105'
@@ -207,4 +210,5 @@ export const SHIPS_SOURCES_NOTES = [
   { heading: 'How to read it',
     body: 'A value a ship broadcast over AIS, a value a registry recorded, a community-edited value and an inference are always kept apart and labelled as such. ' +
       'An MMSI on its own never ties two records together: MMSIs get reused. Where two sources disagree, both claims are kept.' },
+  SITE_RUNS_NOTE,
 ]

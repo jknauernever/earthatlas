@@ -5,6 +5,9 @@
  * page a person can read (agency page or /permits/source/<key>), never a service endpoint.
  * When a source changes, change it here too.
  */
+
+import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+
 const USC105 = 'https://www.law.cornell.edu/uscode/text/17/105'
 const ECY_TERMS = 'https://ecology.wa.gov/About-us/Accountability-transparency/Website-information/Copyright-information'
 const ECY_LICENCE = 'Use allowed with credit and a link; commercial and political use prohibited'
@@ -143,4 +146,5 @@ export const PERMITS_SOURCES_NOTES = [
     body: 'NPDES permits, compliance, impaired waters and shellfish areas are read live from the agencies’ services at each bake (the date is in the panel). U.S. Army Corps of Engineers, Washington State Department of Ecology 401/CZM, county, town and NOAA records are hand-compiled from the documents they link to (data/permits/curated.json, 13 Oct 2026) and cover calendar year 2026.' },
   { heading: 'Not covered yet',
     body: 'Washington Department of Fish and Wildlife Hydraulic Project Approvals: Washington Department of Fish and Wildlife’s public layer was last edited 2024-12-02, so 2026 HPA dates appear only as listed in Washington State Department of Ecology orders. San Juan County SmartGov permits (2010 onward, read per parcel on /sanjuan-docks) are not joined here yet. The Washington State Department of Ecology SEPA Register refuses automated search. Washington State Department of Ecology PARIS permit documents are linked per permit, not read. Washington State Department of Ecology’s Aquatics notices page loads by script and was not read.' },
+  SITE_RUNS_NOTE,
 ]

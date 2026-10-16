@@ -21,7 +21,7 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
-import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import { SourcesFooter, SITE_RUNS_NOTE } from '../components/panel'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './HpaDocksApp.module.css'
 import { sjcAerialsSource } from '../lib/localAerials.js'
@@ -725,6 +725,19 @@ export default function HpaDocksApp() {
 
   const fused = showOsm && !!osmMeta
   const located = osmMeta?.located_by_counts
+  // "How this is sourced" rollup: the same sources the panel links inline, from the baked metadata.
+  const sourcesSections = [
+    meta && { heading: 'Dock permits', sources: meta.sources.filter((s) => s.count).map((s) => ({
+      name: s.name, href: s.page || s.service, method: `${s.count} permits.` })) },
+    fused && { heading: 'Dock positions', sources: [
+      { name: 'OpenStreetMap', href: 'https://www.openstreetmap.org/copyright', licence: 'ODbL, © OpenStreetMap contributors',
+        licenceHref: 'https://www.openstreetmap.org/copyright', method: `Dock tracings (${located.osm} docks).` },
+      { name: 'Friends of the San Juans shoreline survey, 2008–2009', href: FRIENDS_PAGE, licence: '© Friends of the San Juans',
+        method: `${osmMeta.friends_survey_count} survey points.` },
+      located.aerial > 0 && { name: 'San Juan County 2025 aerials', href: SJC_AERIALS_PAGE,
+        method: `Docks found in the 2025 aerial photos and confirmed by eye (${located.aerial} docks).` },
+    ].filter(Boolean) },
+  ].filter(Boolean)
   // Legend counts. Combined view: docks drawn as solid dots, by permit colour (the
   // approximate rings and no-permit docks have their own rows, so the rows add up to
   // the total). Permits-only view: permit sites by colour.
@@ -825,17 +838,6 @@ export default function HpaDocksApp() {
                 </>
               )}
             </div>
-            <div className={styles.infoMeta}>
-              Sources:{' '}
-              {meta.sources.filter((s) => s.count).map((s, i) => (
-                <span key={s.name}>{i ? ' · ' : ''}<a className={styles.source} href={s.page || s.service} target="_blank" rel="noopener noreferrer">{s.name} ({s.count} permits) ↗</a></span>
-              ))}
-              {fused && (
-                <> · <a className={styles.source} href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Dock tracings © OpenStreetMap contributors ({located.osm} docks) ↗</a>
-                  {located.aerial > 0 && <>{' · '}<a className={styles.source} href={SJC_AERIALS_PAGE} target="_blank" rel="noopener noreferrer">Docks found in San Juan County 2025 aerials ({located.aerial} docks) ↗</a></>}
-                  {' · '}<a className={styles.source} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">Friends of the San Juans shoreline survey, 2008–2009 ({osmMeta.friends_survey_count} survey points) ↗</a></>
-              )}
-            </div>
             {fused && (
               <a className={styles.friendsCredit} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">
                 <img src={FRIENDS_BADGE} alt="" />Dock survey data courtesy of Friends of the San Juans
@@ -870,7 +872,12 @@ export default function HpaDocksApp() {
                 {addStatus && <div className={styles.infoMeta}>{addStatus}</div>}
               </div>
             )}
-            <BuiltByCredit />
+            <SourcesFooter sections={sourcesSections} notes={[SITE_RUNS_NOTE]}
+              intro={fused && (
+                <a className={styles.friendsCredit} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">
+                  <img src={FRIENDS_BADGE} alt="" />Dock survey data courtesy of Friends of the San Juans
+                </a>
+              )} />
           </>
         )}
       </div>

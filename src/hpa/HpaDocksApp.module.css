@@ -40,8 +40,6 @@
 .addBtn { padding: 6px 10px; border-radius: 7px; border: 1px solid #facc15; background: rgba(250, 204, 21, 0.15); color: #fde68a; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; align-self: flex-start; }
 .addBtn:hover { background: rgba(250, 204, 21, 0.28); }
 .addBtnQuiet { padding: 6px 10px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, 0.15); background: transparent; color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
-.source { color: #fbbf24; text-decoration: none; }
-.source:hover { text-decoration: underline; }
 
 /* Raw attribute list in the shared white popup frame (index.css). */
 .popup { padding: 11px 13px; font-size: 12px; color: #1f2937; min-width: 260px; }

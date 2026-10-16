@@ -81,10 +81,13 @@ export default async function handler(req, res) {
   // A range that ended over a week ago only changes when SkyTruth reviews or re-scores old slicks.
   const settled = Date.parse(to) < Date.now() - 7 * 864e5
   const cache = settled ? 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800' : FRESH
-  if (upstream.status === 204 || upstream.status === 404) { res.statusCode = 204; res.setHeader('Cache-Control', cache); return res.end() }
+  // An empty tile is a 200 with no body, not a 204: Vercel's edge doesn't cache 204s, so every visitor's open-ocean tiles
+  // went through to SkyTruth (~0.4 s each, 2026-10-15). Mapbox reads a zero-length tile as empty.
+  const empty = () => { res.statusCode = 200; res.setHeader('Content-Type', 'application/x-protobuf'); res.setHeader('Content-Length', '0'); res.setHeader('Cache-Control', cache); return res.end() }
+  if (upstream.status === 204 || upstream.status === 404) return empty()
   if (!upstream.ok) return fail(upstream.status === 429 ? 429 : 502, `Cerulean ${upstream.status}`)
   const body = Buffer.from(await upstream.arrayBuffer())
-  if (!body.length) { res.statusCode = 204; res.setHeader('Cache-Control', cache); return res.end() }
+  if (!body.length) return empty()
   res.statusCode = 200
   res.setHeader('Content-Type', 'application/x-protobuf')
   res.setHeader('Content-Encoding', 'gzip')

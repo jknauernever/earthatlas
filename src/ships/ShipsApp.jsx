@@ -1505,7 +1505,11 @@ export default function ShipsApp() {
       if (tipFor === f.properties.id) { tip.setLngLat(e.lngLat); return }
       tipFor = f.properties.id
       const t = f.properties.slick_timestamp ? new Date(`${String(f.properties.slick_timestamp).replace(' ', 'T')}Z`) : null
-      const day = t && !Number.isNaN(t.getTime()) ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''
+      // The local date where the slick is, as on its card (the time-zone lookup loads on the first hover; UTC until then).
+      let tz = null
+      if (tzLookupRef.current) { try { tz = tzLookupRef.current(e.lngLat.lat, e.lngLat.lng) } catch { tz = null } }
+      else import('@photostructure/tz-lookup').then((m) => { tzLookupRef.current = m.default || m }).catch(() => {})
+      const day = t && !Number.isNaN(t.getTime()) ? `${t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: tz || 'UTC' })}${tz ? '' : ' (UTC)'}` : ''
       tip.setLngLat(e.lngLat).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.4"><strong style="color:#b91c1c">Oil slick</strong>${day ? ` · ${day}` : ''}<br>Click for the ships that were near it</div>`).addTo(map)
       const pe = tip.getElement(); if (pe) pe.style.pointerEvents = 'none'
     }

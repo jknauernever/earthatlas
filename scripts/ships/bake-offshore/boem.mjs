@@ -57,6 +57,28 @@ const ymd = (s) => (/^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.s
 const TYPE = { FIXED: 'Fixed platform', CAIS: 'Caisson', WP: 'Well protector', SEMI: 'Semisubmersible', SPAR: 'Spar', TLP: 'Tension leg platform',
   MTLP: 'Mini tension leg platform', MOPU: 'Mobile offshore production unit', CT: 'Compliant tower', FPSO: 'Floating production, storage and offloading' }
 
+// Gulf area names from BOEM's own field reference (the Area Code value list on platformStructuresFields), saved in raw/.
+// A Gulf structure name is only a label within its block ("A", "B", "1"); the platform is known by area + block + label,
+// e.g. "Vermilion 356 A" (Josh 2026-10-15: bare letters repeated all over the map).
+async function gulfAreas() {
+  const f = join(RAW, 'platformStructuresFields.html')
+  if (refresh || !existsSync(f)) execFileSync('curl', ['-fsSL', '--retry', '3', '-A', UA['User-Agent'], '-o', f, 'https://www.data.boem.gov/Main/HtmlPage.aspx?page=platformStructuresFields'])
+  const t = readFileSync(f, 'utf8').replace(/<[^>]+>/g, '\n').replace(/&amp;/g, '&')
+  const i = t.indexOf('The Value-Description Pairs are listed below:', t.indexOf('Area Code')), j = t.indexOf('Block Number', i)
+  const out = {}
+  for (const line of t.slice(i, j).split('\n')) {
+    const m = /^\s*([A-Z]{2})-\s*(.+?)\s*(?:\s{2,}\d+\.?|\.)?\s*$/.exec(line)
+    if (!m) continue
+    const name = m[2].replace(/\(THIS IS A FIELD\)/, '').replace(/\*/g, '').replace(/\bAREA\b/, '').trim()
+    out[m[1]] = /^NG \d/.test(name) ? name : name.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\bSt\b/, 'St.')
+  }
+  // BOEM's list reads "MINOS CANYON" for AC: the area is Alaminos Canyon (e.g. Hoover, AC 25, in BOEM's deepwater table).
+  if (out.AC === 'Minos Canyon') out.AC = 'Alaminos Canyon'
+  if (Object.keys(out).length < 50) throw new Error(`only ${Object.keys(out).length} BOEM area codes parsed`)
+  return out
+}
+const AREA = await gulfAreas()
+
 // Operators: current business name per company number (the row with no MMS term date).
 const operators = new Map()
 for (const r of (await zip('compalldelimit.zip')).map(csv)) if (r[0] && r[2] && !operators.has(r[0]) && !r[4]) operators.set(r[0], r[2])
@@ -77,10 +99,12 @@ for (const l of await zip('platstrufixed.zip')) {
   const cx = col(l, 9, 8), sn = col(l, 82, 3), xy = loc.get(`${cx}|${sn}`)
   if (!xy) continue
   const m = mast.get(cx) || {}, removed = dmy(col(l, 44, 11)), type = col(l, 85, 5)
-  add(xy[0], xy[1], { k: 'platform', src: 'boem', sid: `${cx}-${sn}`, name: col(l, 67, 15) || null, operator: operators.get(m.op) || null, country: 'United States',
+  const area = col(l, 1, 2), block = col(l, 3, 6).replace(/^0+/, ''), label = col(l, 67, 15)
+  const name = [AREA[area] || area, block, label].filter(Boolean).join(' ')
+  add(xy[0], xy[1], { k: 'platform', src: 'boem', sid: `${cx}-${sn}`, name, operator: operators.get(m.op) || null, country: 'United States',
     status: removed ? 'removed' : 'operating', statusRaw: removed ? `Removed ${removed}` : 'Installed', what: TYPE[type] || type || null,
     since: Number((dmy(col(l, 20, 11)) || '').slice(0, 4)) || null, removed: removed || null, depth: m.depthFt ? Math.round(m.depthFt * 0.3048) : null,
-    note: `${col(l, 1, 2)} ${col(l, 3, 6)}, complex ${cx}` })
+    note: `${area} ${block} ${label}, complex ${cx}` })
   gulf++
 }
 // ── Pacific ──
@@ -92,7 +116,7 @@ for (const r of (await zip('platstrupacdelimit.zip')).map(csv)) {
   const cx = r[3].trim(), sn = r[15].trim(), xy = pLoc.get(`${cx}|${sn}`) || [...pLoc.entries()].find(([k]) => k.startsWith(`${cx}|`))?.[1]
   if (!xy) continue
   const removed = ymd(r[10])
-  add(xy[0], xy[1], { k: 'platform', src: 'boem', sid: `${cx}-${sn}`, name: r[14] ? `Platform ${r[14]}` : null, country: 'United States',
+  add(xy[0], xy[1], { k: 'platform', src: 'boem', sid: `${cx}-${sn}`, name: r[14] ? `Platform ${r[14].length > 2 ? r[14].toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()) : r[14]}` : null, country: 'United States',
     status: removed ? 'removed' : 'operating', statusRaw: removed ? `Removed ${removed}` : 'Installed', since: Number((ymd(r[6]) || '').slice(0, 4)) || null,
     removed: removed || null, note: `${r[0]} ${r[1]}, complex ${cx} (Pacific OCS)` })
   pac++

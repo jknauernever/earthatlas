@@ -82,11 +82,11 @@
     "note": "The live bake is whatever pointer names (written by .github/workflows/ct-voyages-bake.yml, monthly with Climate TRACE's releases); the fields above are the hand-uploaded fallback. Climate TRACE voyages (Salish Sea, start dates 2024-2025, release v5_11_0 pulled 2026-09-29, polygon to 49.75 N; v3 adds deadweight / CO2-per-NM, stay positions and the northern Salish Sea), baked by scripts/ships/bake-ct-voyages; uploaded by prod.sh upload-ct-voyages"
   },
   "offshore": {
-    "version": "2026-10-15",
+    "version": "2026-10-15b",
     "sourceLayer": "offshore",
     "maxzoom": 12,
-    "tiles": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15.pmtiles",
-    "geojson": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15.geojson",
+    "tiles": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15b.pmtiles",
+    "geojson": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/offshore/offshore-2026-10-15b.geojson",
     "note": "Registered offshore facilities (scripts/ships/bake-offshore/bake.mjs + boem.mjs), uploaded by prod.sh upload-offshore; localhost reads build/ when present."
   }
 }

@@ -4,6 +4,7 @@
 //
 //   node scripts/ships/bake-offshore/bake.mjs            download (if not cached) + bake
 //   node scripts/ships/bake-offshore/bake.mjs --refresh  re-download first
+//   … --version 2026-10-15b                              file name (default: today's date)
 //
 // Sources (each feature keeps its source id + the source's own record id; raw replies kept in raw/ exactly as received):
 //   emodnet-platforms  EMODnet Human Activities, Oil and Gas, Offshore Installations (WFS emodnet:platforms), CC BY 4.0
@@ -70,7 +71,9 @@ for (const t of Array.isArray(tw) ? tw : []) {
 const boemFile = join(RAW, 'boem-platforms.geojson')
 if (existsSync(boemFile)) for (const f of JSON.parse(readFileSync(boemFile, 'utf8')).features || []) feats.push(f)
 
-const stamp = new Date().toISOString().slice(0, 10)
+// --version v: name the files offshore-<v> (a new name per re-bake: tiles are edge-cached for 30 days under the old one).
+const vi = process.argv.indexOf('--version')
+const stamp = vi >= 0 ? process.argv[vi + 1] : new Date().toISOString().slice(0, 10)
 const tally = {}
 for (const f of feats) { const k = `${f.properties.src}:${f.properties.status}`; tally[k] = (tally[k] || 0) + 1 }
 const gj = join(BUILD, `offshore-${stamp}.geojson`)

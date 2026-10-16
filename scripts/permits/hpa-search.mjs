@@ -24,6 +24,7 @@ const UA = 'EarthAtlas PermitTracker (https://earthatlas.org/permits)'
 const args = process.argv.slice(2)
 const flag = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null }
 const SINCE = flag('--since') || '2025-01-01', LIMIT = Number(flag('--limit') || Infinity), REFRESH = args.includes('--refresh')
+const RETRY_DAYS = 30
 const CHROME = process.env.CHROME_PATH || (existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome') ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : 'google-chrome')
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const formDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${MON[m - 1]} ${d}, ${y}` }
@@ -111,9 +112,17 @@ async function main() {
     const today = new Date().toISOString().slice(0, 10)
     for (const r of rows.slice(0, LIMIT)) {
       const prev = out[r.apps]
-      let pos = !REFRESH && prev?.lat != null ? { address: prev.address, lat: prev.lat, lon: prev.lon, positionFrom: prev.positionFrom } : (requests++, await recordPosition(page, r.record))
-      if (pos.lat == null) { const p = await pdfPosition(page, r); requests += 3; if (p) pos = { ...pos, ...p } }
-      else if (!pos.positionFrom) pos.positionFrom = 'WDFW record page'
+      // A record with no position anywhere is not retried for RETRY_DAYS unless its status changed (a newly issued
+      // permit PDF can bring coordinates); every week used to re-read ~70 of them (213 requests).
+      const recentMiss = prev?.lat == null && prev?.positionTried && prev.status === r.status && (Date.parse(today) - Date.parse(prev.positionTried)) / 864e5 < RETRY_DAYS
+      let pos
+      if (!REFRESH && prev?.lat != null) pos = { address: prev.address, lat: prev.lat, lon: prev.lon, positionFrom: prev.positionFrom }
+      else if (!REFRESH && recentMiss) pos = { address: prev.address, lat: null, lon: null, positionTried: prev.positionTried }
+      else {
+        pos = (requests++, await recordPosition(page, r.record))
+        if (pos.lat == null) { const p = await pdfPosition(page, r); requests += 3; pos = p ? { ...pos, ...p } : { ...pos, positionTried: today } }
+        else pos.positionFrom = 'WDFW record page'
+      }
       out[r.apps] = { ...r, ...pos, read: today, first_seen: prev?.first_seen || today }
       console.log(`  ${r.apps} ${r.status} ${r.permit || ''} ${r.project} @ ${pos.lat},${pos.lon}`)
     }

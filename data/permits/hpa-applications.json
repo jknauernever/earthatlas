@@ -14,9 +14,8 @@
   "address": ", WA",
   "lat": 48.540189,
   "lon": -123.136609,
-  "sites": 2,
   "positionFrom": "Hydraulic Project Approval 0045592.pdf",
-  "read": "2026-10-15",
+  "read": "2026-10-16",
   "first_seen": "2026-10-15"
  },
  "0049444": {
@@ -34,9 +33,8 @@
   "address": ", WA",
   "lat": 48.67487,
   "lon": -123.20506,
-  "sites": 1,
   "positionFrom": "Hydraulic Project Approval 0049444.pdf",
-  "read": "2026-10-15",
+  "read": "2026-10-16",
   "first_seen": "2026-10-15"
  }
 }

@@ -64,6 +64,14 @@ Agreed direction as of 2026-10-17. Source facts: docs/ACARTIA.md.
 
 - **Built 2026-10-17 (localhost, uncommitted):** tables + hourly refresh — see docs/WHALES_DB.md. `/api/whales` + `src/lib/whales.js` built 2026-10-17. Not yet: main-site + /whales search listing (Josh 2026-10-17), backfill, first prod run (needs a deploy).
 
+## Status (2026-10-17, built while Josh was away; pushes pre-authorized "as needed, judiciously")
+- **Phase 1 LIVE** (d4d70bb + 8c64133): whale DB, hourly refresh, /api/whales, main search + /whales. Maplify keys are
+  `maplify:<source>:<id>[:<time>]` (ids repeat across Maplify sources). Backfill 2024-01→now via scripts/whales/backfill.mjs.
+- **/shiptraffic rebuilt** (this batch): shared panel (month picker on top → Ship traffic / Whale reports / Overlap rows →
+  sources footer); ships = /ships' track tiles (NOAA US-wide + Salish detail + GFW), whales = /api/whales, overlap +
+  close passes = scripts/shiptraffic/overlap-bake.mjs (GitHub Actions daily 16:40 UTC, Blob shiptraffic/overlap-v1/).
+  Old pieces no longer used by the page: public/shiptraffic/{grid,whales}.json, api/vessel-tiles.js, src/shiptraffic/trackSource.json, scripts/bake-shiptraffic/.
+
 ## Phase 2 — /shiptraffic ships from /ships
 - Retire /shiptraffic's own NOAA bake and per-month PMTiles.
 - Reuse /ships track tiles: NOAA (`r=us`) for US waters, GFW (`r=gfw`) elsewhere incl. Canada (fixes the northern Salish gap).

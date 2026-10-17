@@ -376,3 +376,15 @@
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 }
+
+/* ─── Rebuilt panel (2026-10-17): shared panel kit + these few site bits ─── */
+.freshness { font-size: 10.5px; color: rgba(255, 255, 255, 0.5); margin-top: 6px; line-height: 1.4; }
+.statusNote { font-size: 11px; color: rgba(255, 255, 255, 0.55); padding: 2px 0 6px 30px; line-height: 1.4; }
+.dotSeen { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ec4899; border: 1px solid rgba(255, 255, 255, 0.55); }
+.dotHeard { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #ec4899; box-sizing: border-box; }
+.overlapRamp { display: inline-block; width: 22px; height: 8px; border-radius: 3px; background: linear-gradient(90deg, #7f1d1d, #ef4444, #f97316, #fbbf24, #fffbe6); }
+.popupShip { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; padding: 2px 0; }
+.popupShip a { color: #2e6da4; text-decoration: none; }
+.popupShip a:hover { text-decoration: underline; }
+.popupMuted { font-size: 11px; color: #6b7280; line-height: 1.4; }
+.popupDivider { height: 1px; background: #e5e7eb; margin: 7px 0; }

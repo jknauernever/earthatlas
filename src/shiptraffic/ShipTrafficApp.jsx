@@ -1,16 +1,16 @@
 /**
- * EarthAtlas ShipTraffic — Salish Sea vessel traffic vs. whale presence at
- * /shiptraffic.
+ * EarthAtlas Ship Traffic × Whales — /shiptraffic (rebuilt 2026-10-17, docs/WHALES_AND_SHIPTRAFFIC_PLAN.md).
  *
- * Three layers:
- *   - Vessels (yellow) : real MarineCadastre AIS vessel tracks, baked to our own
- *                        PMTiles (Salish Sea, by class + month) and served as MVT
- *                        by /api/vessel-tiles; filtered by vessel type + month.
- *   - Whales (magenta) : real iNaturalist + OBIS cetacean sightings as points.
- *   - Concern (heatmap): the computed ship×whale overlap surface — a red→white-hot
- *                        alarm heatmap, from a coarse grid aggregated client-side.
- * A month/year range drives all three. Vessel type + whale source filters apply
- * across the matching layers.
+ * One left panel (the shared panel kit, src/components/panel/): the month picker on top drives everything,
+ * then three datasets:
+ *   - Ship traffic : /ships' track tiles — NOAA MarineCadastre (US-wide, months late) and Global Fishing Watch
+ *                    hourly lines (everywhere else and every recent month, ~4 days behind). Yellow, by kind.
+ *   - Whale reports: our whale database (/api/whales — Whale Alert/Orca Network, SalishSea.io, Orcasound,
+ *                    HappyWhale, iNaturalist, OBIS), magenta dots; hydrophone detections as rings. Each popup
+ *                    lists the ships that passed within 1 km (close passes, baked daily).
+ *   - Overlap      : ships × whale reports per ~1 km cell over the picked months (scripts/shiptraffic/
+ *                    overlap-bake.mjs), a red heatmap scaled to what's in view.
+ * Everything a reader sees carries its own source inline; the "How this is sourced" rollup lists them all.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -23,109 +23,44 @@ import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
-import {
-  loadGrid,
-  loadWhales,
-  aggregate,
-  buildConcernPointsViewport,
-  buildWhaleGeoJSON,
-  monthRangeIndices,
-  fmtMonth,
-  interactionBand,
-  VESSEL_LINE_COLOR,
-  WHALE_POINT_COLOR,
-  CONCERN_HEATMAP_RAMP,
-  VESSEL_TYPE_LABELS,
-  WHALE_SOURCE_LABELS,
-  WHALE_SOURCE_URLS,
-  esriMonthTilesUrl,
-  esriSymbolsFor,
-  ESRI_SOURCE_LAYERS,
-  ESRI_ATTRIBUTION,
-} from './shiptrafficData.js'
-import trackSource from './trackSource.json'
-import styles from './ShipTrafficApp.module.css'
-import { createExploreService } from '../explore/shared-service.js'
-import { GBIF_TAXON_KEY, INAT_TAXON_ID, SPECIES_META } from '../explore/species-data/whales.js'
 import MapSheet from '../components/MapSheet.jsx'
+import { DatasetRow, LegendSwatchRow, SourcesFooter, Loading } from '../components/panel/index.js'
+import TrackMonths, { TRACK_KINDS, fmtMonth } from '../ships/TrackControls.jsx'
+import shipsStyles from '../ships/ShipsApp.module.css'
+import trackSource from '../ships/trackSource.json'
+import WhaleReports from '../components/WhaleReports.jsx'
+import { fetchWhales, whaleCredit, whaleName, whaleSourceLabel, WHALE_SOURCES } from '../lib/whales.js'
+import {
+  OVERLAP_INDEX_URL, FIRST_MONTH, SHIP_COLOR, WHALE_COLOR, OVERLAP_COLOR, OVERLAP_HEATMAP_RAMP, KIND_LABELS,
+  fmtDay, dateSpan, aggregateOverlap, overlapPointsInView, overlapBand,
+} from './shiptrafficData.js'
+import styles from './ShipTrafficApp.module.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-
 const DEFAULT_VIEW = { center: [-123.45, 48.1], zoom: 7.7 }
+const MONTH_CAP = 12 // each month is its own tile source (same cap as /ships)
+const TILES_BASE = typeof window !== 'undefined' ? window.location.origin : ''
+const DEV = import.meta.env.DEV ? '&dev=1' : ''
 
-// Vessel tracks: our own PMTiles of real MarineCadastre AIS, served as MVT by
-// /api/vessel-tiles (which range-reads the .pmtiles; see that file for why we
-// don't use Mapbox's native pmtiles:// under Vite). Each tile feature is a real
-// track tagged with `class` (one of our 7 types); the type chips filter it
-// client-side.
-//
-// Each tileset id is a MONTH ("2025-07"). Multi-month views (a year, "All", a
-// shift-click span) STACK the clean per-month tiles, sampled to VESSEL_MONTH_CAP
-// so the load stays bounded. We deliberately do NOT use a single combined
-// "all-months" tile: building one means decoding+merging the per-month tiles,
-// whose render buffer duplicates edge tracks → faint grid-line artifacts on the
-// dense views. Stacking the per-month tiles (each clean, no merge) avoids that
-// entirely; the only cost is N tile requests. Tracks vary little month to month,
-// so an even sample reads as the full span.
-//
-// The tiles URL MUST be absolute: Mapbox resolves a root-relative tile URL against
-// the Mapbox API base (not the page), so it silently never loads.
-// VITE_VESSEL_TILES_BASE lets plain-vite QA point at a standalone tile server.
-const VESSEL_TILES_BASE = (import.meta.env.VITE_VESSEL_TILES_BASE
-  || (typeof window !== 'undefined' ? window.location.origin : '')).trim()
-// `dev=1` (dev builds only): before vite.config.js routed /api/vessel-tiles, plain
-// Vite answered these URLs with the handler's JS source under a 1-year immutable
-// cache header, poisoning local browser caches. A distinct dev URL sidesteps those.
-const vesselTileUrl = (id) =>
-  `${VESSEL_TILES_BASE}/api/vessel-tiles?t=${id}&v=${trackSource.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
-const vesselSrcId = (id) => `ves-${id}`
-const vesselLayerId = (id) => `ves-${id}-line`
-const VESSEL_TILE_MAXZOOM = 10 // matches the tippecanoe bake; Mapbox over-zooms past this
-const SALISH_BBOX = [-124.85, 47.0, -122.05, 49.0] // [w,s,e,n] source bounds → no tile requests outside the region
-const VESSEL_ATTRIBUTION = 'Vessel tracks: MarineCadastre AIS (NOAA / BOEM / USCG)'
+// /ships' track tiles (api/ship-tracks.js). b / stamp = the month's build, so a rebuilt month gets new tile URLs.
+const usTileUrl = (ym, stamp) => `${TILES_BASE}/api/ship-tracks?r=us&t=${ym}&v=${trackSource.us.rules}${stamp ? `.${stamp}` : ''}${DEV}&z={z}&x={x}&y={y}`
+const gfwTileUrl = (ym, built) => `${TILES_BASE}/api/ship-tracks?r=gfw&t=${ym}&v=${trackSource.gfw.rules}${built ? `&b=${encodeURIComponent(built)}` : ''}${DEV}&z={z}&x={x}&y={y}`
+// The detailed Salish tracks (/ships' monthly NOAA bake, 2025-01 on): the US-wide tiles leave the Salish box out for
+// those months, so without these the Salish Sea would be empty of NOAA tracks.
+const salishTileUrl = (ym) => `${TILES_BASE}/api/ship-tracks?t=${ym}&v=${trackSource.version}${DEV}&z={z}&x={x}&y={y}`
+const usSrc = (ym) => `st-us-${ym}`
+const gfwSrc = (ym) => `st-gfw-${ym}`
+const salSrc = (ym) => `st-sal-${ym}`
+const shipLayers = (ym) => [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`, `${gfwSrc(ym)}-obs`, `${gfwSrc(ym)}-est`]
+const SHIP_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5]
+const NOAA_ATTR = 'Ship tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener">MarineCadastre AIS</a> (NOAA / BOEM / USCG)'
+const GFW_ATTR = 'Ship tracks outside NOAA coverage: <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a>'
 
-// ESRI "US Vessel Traffic" tiles fill the area OUTSIDE our baked bbox as ambient
-// context (same US/MarineCadastre source, professionally tiled). Our own tiles are
-// clipped to the bbox; ESRI is clipped to its COMPLEMENT via a `within` expression,
-// so the two never overlap and layer order doesn't matter. ESRI is per-month
-// services, so we stack the same months the slider selects.
-const [BW, BS, BE, BN] = SALISH_BBOX
-const BBOX_POLY = { type: 'Polygon', coordinates: [[[BW, BS], [BE, BS], [BE, BN], [BW, BN], [BW, BS]]] }
-const esriSrcId = (id) => `esri-${id}`
-const esriLayerId = (id, sl) => `esri-${id}-${sl}`
-
-// How many monthly tilesets to stack at once. A full year (12) stacks them all;
-// "All" (24) samples down to this many evenly. Bounds tile requests + GPU layers.
-const VESSEL_MONTH_CAP = 12
-// How many of the selected months to stack as ESRI context outside the bbox. Kept
-// low — each is an external Esri tile service and it's only ambient context.
-const ESRI_CONTEXT_CAP = 4
-// Esri only publishes US_Vessel_Traffic through this month; newer months 404 with a
-// JSON body that crashes Mapbox's MVT decoder (Unimplemented type: 3). Clamp any
-// later selection to this month — lanes barely change, and it's just context.
-const ESRI_LATEST = '2025-06'
-// Zoom hand-off: below this, the ESRI overview shows everywhere (incl. over our
-// box); above it, our precise tiles take over INSIDE the box and ESRI fades out
-// there. Avoids ever clipping ESRI geographically (Mapbox can't), since only one
-// layer is visible inside the box at a given zoom. Outside the box ESRI always shows.
-const ZSW_LO = 8.0  // ESRI-only at/below
-const ZSW_HI = 9.0  // ours-only at/above (inside the box)
-
-// Evenly sample `cap` items (keeping first + last) from a list.
-function sampleEvenly(arr, cap) {
-  if (arr.length <= cap) return arr.slice()
-  const out = []
-  const step = (arr.length - 1) / (cap - 1)
-  for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
-  return [...new Set(out)]
-}
-
-// Months to stack for range months[a..b] — the selected months, evenly sampled to
-// the cap (a single month returns just itself).
-function tilesetsForRange(months, a, b) {
-  if (!months.length) return []
-  return sampleEvenly(months.slice(a, b + 1), VESSEL_MONTH_CAP)
-}
+const WHALE_SRC = 'st-whales'
+const WHALE_LAYER = 'st-whales-pts'
+const OVERLAP_SRC = 'st-overlap'
+const OVERLAP_LAYER = 'st-overlap-heat'
+const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
@@ -134,83 +69,33 @@ const BASEMAPS = [
   { id: 'streets', label: 'Streets', style: 'mapbox://styles/mapbox/streets-v12' },
 ]
 const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
+const ALL_KINDS = TRACK_KINDS.map(([k]) => k)
 
-const VESSEL_TYPES = Object.keys(VESSEL_TYPE_LABELS)
-const WHALE_SOURCES = Object.keys(WHALE_SOURCE_LABELS)
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
-const WHALE_LAYER = 'st-whale-pts'
-const WHALE_SRC = 'st-whale-src'
-const CONCERN_LAYER = 'st-concern-heat'
-const CONCERN_SRC = 'st-concern-src'
-
-const EMPTY_FC = { type: 'FeatureCollection', features: [] }
-
-// Exact paint shared by the curated and the ambient whale layers, so a GBIF point
-// outside the bbox is pixel-identical to a curated point inside it.
-const WHALE_CIRCLE_PAINT = {
-  'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2, 9, 3.5, 11, 6, 13, 9, 16, 14],
-  'circle-color': WHALE_POINT_COLOR,
-  'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.65, 12, 0.8],
-  'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 13, 1],
-  'circle-stroke-color': 'rgba(255,255,255,0.5)',
+function sampleEvenly(arr, cap) {
+  if (arr.length <= cap) return arr.slice()
+  const out = []
+  const step = (arr.length - 1) / (cap - 1)
+  for (let i = 0; i < cap; i++) out.push(arr[Math.round(i * step)])
+  return [...new Set(out)]
 }
 
-// Ambient whales: live GBIF cetacean sightings fill the world OUTSIDE our baked
-// bbox, reusing the same /explore service /whales uses. Inside the bbox our curated
-// iNat+OBIS points own the map (and drive the concern math); any GBIF point landing
-// inside is dropped so the two never double-draw. Timeline-coherent — queried for
-// the SAME month range the strip selects, so the whole map is one temporal snapshot.
-const WHALE_GBIF_LAYER = 'st-whale-gbif-pts'
-const WHALE_GBIF_SRC = 'st-whale-gbif-src'
-const WHALE_GBIF_CAP = 500 // max ambient points per viewport fetch
-const cetaceanService = createExploreService({
-  gbifTaxonKey: GBIF_TAXON_KEY,
-  inatTaxonId: INAT_TAXON_ID,
-  speciesMeta: SPECIES_META,
-  keepInatRecords: true, // GBIF is our ONLY ambient source — keep its iNat-sourced
-                         // records (≈99% of cetacean obs) instead of dropping them.
-})
-
-// GBIF eventDate range spanning the selected months[a..b], with full-day bounds so
-// the last month is included: ["2024-03","2024-05"] → "2024-03-01,2024-05-31".
-function eventDateForRange(months, r) {
-  if (!months?.length || !r) return null
-  const a = months[r[0]], b = months[r[1]]
-  if (!a || !b) return null
-  const [by, bm] = b.split('-').map(Number)
-  const last = new Date(by, bm, 0).getDate()
-  return `${a}-01,${b}-${String(last).padStart(2, '0')}`
-}
-
-// Inside the Salish bbox, our curated data owns the map (BW/BS/BE/BN from SALISH_BBOX).
-const inSalishBbox = (lng, lat) => lng >= BW && lng <= BE && lat >= BS && lat <= BN
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-
-// ─── Shareable URL state ────────────────────────────────────────────────────
+// ─── Shareable URL state (docs/MAP_TOOL_CONVENTIONS.md) ─────────────────────
 function readUrlState() {
   if (typeof window === 'undefined') return {}
   const sp = new URLSearchParams(window.location.search)
-  const num = (k) => {
-    const v = sp.get(k)
-    if (v == null || v === '') return null
-    const n = Number(v)
-    return Number.isFinite(n) ? n : null
-  }
-  const list = (k) => {
-    const v = sp.get(k)
-    return v == null ? null : v.split(',').filter(Boolean)
-  }
+  const num = (k) => { const v = sp.get(k); if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null }
+  const [a, b] = (sp.get('tm') || '').split('_')
+  const ok = (m) => /^\d{4}-\d{2}$/.test(m || '')
   return {
-    ts: num('ts'), te: num('te'),
-    ly: list('ly'), vt: list('vt'), ws: list('ws'),
+    tm: ok(a) ? [a, ok(b) ? b : a].sort() : null,
+    ly: sp.get('ly'),
+    tk: sp.get('tk'),
     bm: sp.get('bm'),
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
 }
-
 function writeUrlQuery(qs) {
   if (typeof window === 'undefined') return
   const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
@@ -218,175 +103,104 @@ function writeUrlQuery(qs) {
   window.history.replaceState(window.history.state, '', url)
 }
 
-const LAYER_CODE = { vessels: 'v', whales: 'w', concern: 'c' }
-const CODE_LAYER = { v: 'vessels', w: 'whales', c: 'concern' }
-const LAYER_ORDER = ['vessels', 'whales', 'concern']
+const SOURCES = [
+  {
+    heading: 'Ship traffic',
+    sources: [
+      { name: 'MarineCadastre AIS vessel traffic', href: 'https://hub.marinecadastre.gov/pages/vesseltraffic', publisher: 'NOAA Office for Coastal Management, BOEM, U.S. Coast Guard', licence: 'Public domain',
+        method: 'Ship tracks for US waters, published months after the fact; the same tracks /ships draws.' },
+      { name: 'Global Fishing Watch AIS (hourly positions)', href: 'https://globalfishingwatch.org', publisher: 'Global Fishing Watch', licence: 'CC BY-NC 4.0', licenceHref: 'https://creativecommons.org/licenses/by-nc/4.0/',
+        method: 'Hourly ship positions joined into tracks for Canadian waters and every month NOAA has not published yet, about 4 days behind. Dashed = our estimated path along the water between two positions. Powered by Global Fishing Watch.' },
+    ],
+  },
+  {
+    heading: 'Whale reports',
+    sources: Object.entries(WHALE_SOURCES).map(([id, w]) => ({
+      name: w.label, href: w.url, publisher: w.publisher, licence: w.license || 'See each report',
+      method: id === 'maplify' ? 'Whale Alert and its partner channels (Orca Network, Ocean Wise WhaleReport, NOAA right whale reports and others), via the Acartia data cooperative.'
+        : id === 'orcasound' ? 'Hydrophone detections ("heard, not seen"), via SalishSea.io.'
+        : id === 'obis' ? 'Human sightings from research surveys (no acoustic or tag records; OBIS copies of HappyWhale and iNaturalist left out).'
+        : id === 'inaturalist' ? 'Observations their observers licensed for reuse; obscured locations stay obscured.'
+        : 'Reports refreshed hourly into the EarthAtlas whale database; each report is shown once.',
+    })),
+  },
+]
+const NOTES = [
+  { heading: 'Overlap', body: 'For each ~1 km square: the ships of the picked kinds that crossed it in the picked months (scaled to the busiest square), times the whale reports in it (scaled to the square with the most). A co-occurrence measure for exploring, not a ship-strike risk model.' },
+  { heading: 'Close passes', body: 'A ship counts as passing a whale report when its track came within 1 km of the report within 3 hours of it (reports with only a date: the same day). Recomputed daily.' },
+  { heading: 'Caveats', body: 'Whale reports follow where people look and listen. Ships without AIS, or with it switched off, are not here. NOAA covers US waters; Canadian waters come from Global Fishing Watch and are fuller in recent months.' },
+]
 
 export default function ShipTrafficApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const popupRef = useRef(null)
-  const aggRef = useRef(null)            // latest aggregation, for the moveend concern rebuild
-  const cellMetaRef = useRef(null)       // grid cell {lngStep, latStep}, for click hit-testing
-  const vesselSrcRef = useRef(new Set()) // active per-month vessel source ids
-  const esriSrcRef = useRef(new Set())   // active ESRI context source ids (outside bbox)
-  const whaleGbifAbortRef = useRef(null) // in-flight ambient-GBIF fetch, aborted on each refetch
-  const gbifEventDateRef = useRef(null)  // GBIF date range for the selected timeline (read inside moveend)
-  const whalesVisibleRef = useRef(true)  // current whale-layer visibility (read inside moveend)
-  const [mapReady, setMapReady] = useState(false)
-  // Per-view social share card capture (docs/MAP_TOOL_CONVENTIONS.md §6).
-  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
-
-  const initial = (typeof window !== 'undefined') ? readUrlState() : {}
+  const initial = useMemo(() => readUrlState(), [])
   const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
     ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null
+  const [mapReady, setMapReady] = useState(false)
+  const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
-  const [grid, setGrid] = useState(null)
-  const [whales, setWhales] = useState(null)
-  const [loadErr, setLoadErr] = useState(null)
-  const months = grid?.meta?.months || whales?.meta?.months || []
+  // ─── Month lists (from /ships' Blob indexes) + the overlap index ────────────
+  const [usIdx, setUsIdx] = useState(null)
+  const [gfwIdx, setGfwIdx] = useState(null)
+  const [overlapIdx, setOverlapIdx] = useState(null)
+  const [salishMonths, setSalishMonths] = useState(trackSource.months || [])
+  useEffect(() => {
+    fetch('/api/ship-tracks?op=salishindex').then((r) => (r.ok ? r.json() : null))
+      .then((j) => { const ms = Object.keys(j?.months || {}).sort(); if (ms.length) setSalishMonths(ms) }).catch(() => {})
+  }, [])
+  useEffect(() => {
+    const get = (u) => fetch(u, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    get(trackSource.us.index).then((j) => setUsIdx(j?.months || {}))
+    get(trackSource.gfw.index).then((j) => setGfwIdx(j || { months: {} }))
+    // Dev builds fall back to a local bake (scripts/shiptraffic/overlap-bake.mjs --out public/dev-data/shiptraffic/overlap-v1
+    // --no-publish, then write its index.json) so the layer can be checked before production has baked anything.
+    get(OVERLAP_INDEX_URL).then((j) => (j || !import.meta.env.DEV ? j : get('/dev-data/shiptraffic/overlap-v1/index.json')))
+      .then((j) => setOverlapIdx(j || { months: {} }))
+  }, [])
+  const months = useMemo(() => {
+    if (!usIdx || !gfwIdx) return []
+    return [...new Set([...Object.keys(usIdx), ...Object.keys(gfwIdx.months || {})])].filter((m) => m >= FIRST_MONTH).sort()
+  }, [usIdx, gfwIdx])
+  const gfwThrough = gfwIdx?.fetched_through || null
 
+  // ─── Picks (URL state) ──────────────────────────────────────────────────
+  const [sel, setSel] = useState(initial.tm) // [fromYm, toYm]; null = the latest month
   const [visible, setVisible] = useState(() => {
-    if (initial.ly) {
-      const set = new Set(initial.ly.map((c) => CODE_LAYER[c]).filter(Boolean))
-      return { vessels: set.has('vessels'), whales: set.has('whales'), concern: set.has('concern') }
-    }
-    return { vessels: true, whales: true, concern: true }
+    const ly = initial.ly
+    return ly ? { ships: ly.includes('s'), whales: ly.includes('w'), overlap: ly.includes('o') } : { ships: true, whales: true, overlap: true }
   })
-
-  const [vesselTypes, setVesselTypes] = useState(() => new Set(initial.vt?.length ? initial.vt.filter((t) => VESSEL_TYPES.includes(t)) : VESSEL_TYPES))
-  const [whaleSources, setWhaleSources] = useState(() => new Set(initial.ws?.length ? initial.ws.filter((s) => WHALE_SOURCES.includes(s)) : WHALE_SOURCES))
-  const [range, setRange] = useState(null)
-
+  const [kinds, setKinds] = useState(() => {
+    const tk = (initial.tk || '').split(',').filter((k) => ALL_KINDS.includes(k))
+    return tk.length ? tk : []
+  }) // [] = every kind
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const basemapMenuRef = useRef(null)
-  const [showMethodology, setShowMethodology] = useState(false)
-  // Seed with the actual starting camera (URL camera if present, else the default
-  // view) so a share link pins lat/lng/z from first render — not only after the
-  // first pan/zoom fires moveend. moveend keeps it current thereafter.
-  const [mapView, setMapView] = useState(
-    initialCamera || { lat: DEFAULT_VIEW.center[1], lng: DEFAULT_VIEW.center[0], zoom: DEFAULT_VIEW.zoom },
-  )
-  const suppressFlyRef = useRef(!!initialCamera)
+  const [mapView, setMapView] = useState(initialCamera || { lat: DEFAULT_VIEW.center[1], lng: DEFAULT_VIEW.center[0], zoom: DEFAULT_VIEW.zoom })
 
-  // ─── Load both data files once ────────────────────────────────────────────
-  useEffect(() => {
-    const ac = new AbortController()
-    Promise.all([loadGrid(ac.signal), loadWhales(ac.signal)])
-      .then(([g, w]) => {
-        if (ac.signal.aborted) return
-        setGrid(g)
-        setWhales(w)
-        cellMetaRef.current = g.meta.cell
-        const m = g.meta.months
-        // The URL omits ts when the range starts at the first month and te when it
-        // ends at the last (see the persist effect), so a range touching either end
-        // carries only ONE of the two. Restore whenever EITHER is present —
-        // monthRangeIndices defaults a missing start to 0 and a missing end to the
-        // last month. Requiring both (&&) silently dropped 2024/2025/end-spans → All.
-        const [a, b] = (Number.isFinite(initial.ts) || Number.isFinite(initial.te))
-          ? monthRangeIndices(m, m[initial.ts], m[initial.te])
-          : [0, m.length - 1]
-        setRange([a, b])
-      })
-      .catch((err) => {
-        if (ac.signal.aborted || err.name === 'AbortError') return
-        setLoadErr('Could not load the ship-traffic data.')
-      })
-    return () => ac.abort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const range = useMemo(() => {
+    if (!months.length) return null
+    const last = months.length - 1
+    if (!sel) return [last, last]
+    const a = months.indexOf(sel[0]), b = months.indexOf(sel[1])
+    if (a < 0 || b < 0) return [last, last]
+    return [a, Math.max(a, b)]
+  }, [months, sel])
+  const pickedMonths = useMemo(() => {
+    if (!range) return []
+    const span = months.slice(range[0], range[1] + 1)
+    return span.length > MONTH_CAP ? span.slice(-MONTH_CAP) : span
+  }, [months, range])
+  const span = useMemo(() => (pickedMonths.length ? dateSpan(pickedMonths[0], pickedMonths[pickedMonths.length - 1]) : null), [pickedMonths])
+  const kindsActive = kinds.length ? kinds : ALL_KINDS
 
-  // ─── Aggregate concern grid over the window + filters ─────────────────────
-  const agg = useMemo(() => {
-    if (!grid || !range) return null
-    return aggregate(grid, { months, startIdx: range[0], endIdx: range[1], vesselTypes, whaleSources })
-  }, [grid, range, vesselTypes, whaleSources, months])
-
-  const whaleGeo = useMemo(() => {
-    if (!whales || !range) return null
-    return buildWhaleGeoJSON(whales, range[0], range[1], whaleSources, WHALE_SOURCES)
-  }, [whales, range, whaleSources])
-
-  // Which vessel tilesets to show (usually one aggregate; per-month for spans).
-  const vesselTilesets = useMemo(() => {
-    if (!range || !months.length) return []
-    return tilesetsForRange(months, range[0], range[1])
-  }, [range, months])
-
-
-  // Rebuild the concern heatmap normalized to the current viewport.
-  const pushConcern = useCallback((map) => {
-    if (!map || !aggRef.current) return
-    const src = map.getSource(CONCERN_SRC)
-    if (!src) return
-    const b = map.getBounds()
-    const bounds = { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }
-    src.setData(buildConcernPointsViewport(aggRef.current.cells, bounds))
-  }, [])
-
-  // Fetch live GBIF cetacean points for the part of the viewport OUTSIDE our bbox
-  // and render them as the same dots as the curated layer. Skipped entirely when
-  // whales are hidden or the viewport sits fully inside the bbox (our data owns it),
-  // so zooming into the Salish Sea makes zero GBIF requests. Honors the selected
-  // timeline via gbifEventDateRef. AbortController cancels the prior fetch on each
-  // call so rapid panning doesn't pile up requests.
-  const pushGbifWhales = useCallback(async (map) => {
-    if (!map) return
-    const src = map.getSource(WHALE_GBIF_SRC)
-    if (!src) return
-    if (!whalesVisibleRef.current) { src.setData(EMPTY_FC); return }
-    const b = map.getBounds()
-    const sw = b.getSouthWest(), ne = b.getNorthEast()
-    if (sw.lng >= BW && ne.lng <= BE && sw.lat >= BS && ne.lat <= BN) { src.setData(EMPTY_FC); return }
-    const eventDate = gbifEventDateRef.current
-    if (!eventDate) return
-    whaleGbifAbortRef.current?.abort()
-    const ctrl = new AbortController()
-    whaleGbifAbortRef.current = ctrl
-    try {
-      const { sightings } = await cetaceanService.fetchRecentSightings({
-        bounds: { minLat: sw.lat, maxLat: ne.lat, minLng: sw.lng, maxLng: ne.lng },
-        eventDate, limit: WHALE_GBIF_CAP, signal: ctrl.signal,
-      })
-      const features = []
-      for (const s of sightings) {
-        if (s.lng == null || s.lat == null) continue
-        if (inSalishBbox(s.lng, s.lat)) continue // curated layer owns inside the box
-        features.push({
-          type: 'Feature',
-          properties: {
-            src: 'gbif',
-            species: s.common || s.scientific || 'Cetacean',
-            m: s.date || '',
-            url: s.id ? `https://www.gbif.org/occurrence/${s.id}` : null,
-          },
-          geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-        })
-      }
-      src.setData({ type: 'FeatureCollection', features })
-    } catch (err) {
-      if (err?.name !== 'AbortError') console.warn('[shiptraffic] GBIF whales', err) // eslint-disable-line no-console
-    }
-  }, [])
-
-  // Find the aggregated grid cell containing a clicked lng/lat (whale-bearing
-  // cells only — that's what the grid stores). Returns the cell with its
-  // vessel + whale breakdown, or null.
-  const findCellAt = useCallback((lngLat) => {
-    const cells = aggRef.current?.cells
-    const meta = cellMetaRef.current
-    if (!cells || !meta) return null
-    const hx = meta.lngStep / 2
-    const hy = meta.latStep / 2
-    for (const c of cells) {
-      if (Math.abs(lngLat.lng - c.lng) <= hx && Math.abs(lngLat.lat - c.lat) <= hy) return c
-    }
-    return null
-  }, [])
-
-  // ─── Map init (once) ──────────────────────────────────────────────────────
+  // ─── Map init ───────────────────────────────────────────────────────────
+  const whalesRef = useRef([])
+  const overlapRef = useRef(null)
+  if (import.meta.env.DEV && typeof window !== 'undefined') window.__st = { mapRef, whalesRef, overlapRef } // dev-only QA handle
+  const closeCacheRef = useRef(new Map()) // month → Promise<closepasses json|null>
   useEffect(() => {
     if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
     if (!ensureWebGLSupport(containerRef.current)) return
@@ -399,333 +213,259 @@ export default function ShipTrafficApp() {
       zoom: start ? start.zoom : DEFAULT_VIEW.zoom,
     })
     mapRef.current = map
-    // Swallow vessel tile/source errors so a single failed tile degrades
-    // gracefully instead of becoming an uncaught global that spams Sentry. Real
-    // config errors still surface in the console.
     map.on('error', (e) => {
       const msg = e?.error?.message || ''
-      if (e?.sourceId?.startsWith('ves-') || e?.sourceId?.startsWith('esri-') || /Unimplemented type|tile/i.test(msg)) return
-      // eslint-disable-next-line no-console
-      console.warn('[shiptraffic] map error', e?.error || e)
+      if (e?.sourceId?.startsWith('st-') || /tile/i.test(msg)) return
+      console.warn('[shiptraffic] map error', e?.error || e) // eslint-disable-line no-console
     })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('moveend', () => {
       const c = map.getCenter()
       setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() })
-      pushConcern(map) // re-normalize concern colors to the new viewport
-      pushGbifWhales(map) // refresh ambient GBIF whales for the new viewport
     })
-
-    const vesselLayerIds = () => [...vesselSrcRef.current]
-      .map((sid) => `${sid}-line`).filter((id) => map.getLayer(id))
-
-    // One click handler for the whole map: a concern cell gives the full area
-    // readout (vessels + whales + overlap, with sources); else a whale point or
-    // a vessel track gives its own detail.
-    map.on('click', (e) => {
-      const whaleLayers = [WHALE_LAYER, WHALE_GBIF_LAYER].filter((l) => map.getLayer(l))
-      const whaleHit = whaleLayers.length ? map.queryRenderedFeatures(e.point, { layers: whaleLayers })[0] : null
-      const cell = findCellAt(e.lngLat)
-      let html = null
-      if (cell) html = cellPopupHTML(cell, whaleHit?.properties)
-      else if (whaleHit) html = whalePopupHTML(whaleHit.properties)
-      else {
-        const vids = vesselLayerIds()
-        const vHit = vids.length ? map.queryRenderedFeatures(e.point, { layers: vids })[0] : null
-        if (vHit) html = vesselPopupHTML(vHit.properties)
+    map.on('style.load', () => {
+      if (!map.getSource(OVERLAP_SRC)) {
+        map.addSource(OVERLAP_SRC, { type: 'geojson', data: EMPTY_FC })
+        map.addLayer({ id: OVERLAP_LAYER, type: 'heatmap', source: OVERLAP_SRC, paint: {
+          'heatmap-weight': ['interpolate', ['linear'], ['get', 'w'], 0, 0.05, 0.3, 0.45, 1, 1],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 6, 1.1, 12, 2.6],
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...OVERLAP_HEATMAP_RAMP],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 6, 14, 9, 26, 13, 48],
+          'heatmap-opacity': 0.85,
+        } })
       }
-      if (!html) return
-      popupRef.current?.remove()
-      popupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(html).addTo(map))
-    })
-
-    // Pointer cursor over anything clickable.
-    map.on('mousemove', (e) => {
-      const overFeature = map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER, WHALE_GBIF_LAYER, ...vesselLayerIds()].filter((id) => map.getLayer(id)) }).length > 0
-      map.getCanvas().style.cursor = (overFeature || findCellAt(e.lngLat)) ? 'pointer' : ''
-    })
-
-    const addStaticLayers = () => {
-      // Vessel tracks are per-month sources added dynamically (below) so only the
-      // months in view load; here we just set up concern + whales above them.
-      // Concern heatmap (below whale points).
-      if (!map.getSource(CONCERN_SRC)) {
-        map.addSource(CONCERN_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-        map.addLayer({
-          id: CONCERN_LAYER,
-          type: 'heatmap',
-          source: CONCERN_SRC,
-          paint: {
-            // weight is the normalized overlap index (0..1); a slight power curve
-            // lifts mid-range concern so it's visible, not just the very top cells.
-            'heatmap-weight': ['interpolate', ['linear'], ['get', 'w'], 0, 0.05, 0.3, 0.45, 1, 1],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 6, 1.1, 12, 2.6],
-            'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...CONCERN_HEATMAP_RAMP],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 6, 14, 9, 26, 13, 48],
-            'heatmap-opacity': 0.9,
-          },
-        })
-      }
-      // Ambient GBIF whale points (added first → below the curated layer; paint is
-      // identical so order is purely cosmetic and they never overlap anyway).
-      if (!map.getSource(WHALE_GBIF_SRC)) {
-        map.addSource(WHALE_GBIF_SRC, { type: 'geojson', data: EMPTY_FC })
-        map.addLayer({ id: WHALE_GBIF_LAYER, type: 'circle', source: WHALE_GBIF_SRC, paint: WHALE_CIRCLE_PAINT })
-      }
-      // Curated whale points (top).
       if (!map.getSource(WHALE_SRC)) {
         map.addSource(WHALE_SRC, { type: 'geojson', data: EMPTY_FC })
-        map.addLayer({ id: WHALE_LAYER, type: 'circle', source: WHALE_SRC, paint: WHALE_CIRCLE_PAINT })
+        map.addLayer({ id: WHALE_LAYER, type: 'circle', source: WHALE_SRC, paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.5, 9, 3.8, 11, 6, 13, 9, 16, 14],
+          // Seen = filled dot; heard on a hydrophone = ring.
+          'circle-color': ['case', ['==', ['get', 'kind'], 'acoustic'], 'rgba(0,0,0,0)', WHALE_COLOR],
+          'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.75, 12, 0.9],
+          // A zoom curve must be the OUTERMOST expression (Mapbox drops the whole layer otherwise), so the case sits in its stops.
+          'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, ['case', ['==', ['get', 'kind'], 'acoustic'], 2, 0.4], 13, ['case', ['==', ['get', 'kind'], 'acoustic'], 2, 1]],
+          'circle-stroke-color': ['case', ['==', ['get', 'kind'], 'acoustic'], WHALE_COLOR, 'rgba(255,255,255,0.55)'],
+        } })
       }
       setMapReady(true)
-    }
-
-    map.on('style.load', () => addStaticLayers())
+    })
     return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ─── Sync vessel sources (stack the sampled per-month tiles in view) ───────
-  // Adds one vector source+layer per month id in `vesselTilesets`, removes stale
-  // ones, and applies the vessel-type filter + visibility. Keyed on mapReady so it
-  // re-applies after a basemap swap (which drops all sources/layers).
+  // ─── Ship tracks: one source per picked month (NOAA and/or GFW), sampled to the cap ─────
+  const addedRef = useRef(new Set())
+  const shipMonths = useMemo(() => sampleEvenly(pickedMonths, MONTH_CAP), [pickedMonths])
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady || !map.getLayer(CONCERN_LAYER)) return
-    const types = VESSEL_TYPES.filter((t) => vesselTypes.has(t))
-    const typeFilter = ['in', ['get', 'class'], ['literal', types]]
-    const show = visible.vessels
-    // Stacked months overlap; dim each by √(count) so density reads as brightness
-    // build-up instead of saturating (1 month ≈ 0.7; 12 ≈ 0.20). Our tiles fade IN
-    // as you zoom past the hand-off — below it the ESRI overview shows instead.
-    const opacityVal = show ? Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, vesselTilesets.length))) : 0
-    const opacity = ['interpolate', ['linear'], ['zoom'], ZSW_LO, 0, ZSW_HI, opacityVal]
-    const wanted = new Set(vesselTilesets.map(vesselSrcId))
+    if (!map || !mapReady || !usIdx || !gfwIdx || !map.style?._loaded) return
+    const opacity = Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, shipMonths.length))) // the /ships + old /shiptraffic rule
+    const kindFilter = kinds.length ? ['in', ['get', 'kind'], ['literal', kinds]] : null
+    for (const ym of [...addedRef.current]) {
+      if (shipMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)) || map.getSource(salSrc(ym)))) continue
+      for (const l of shipLayers(ym)) if (map.getLayer(l)) map.removeLayer(l)
+      for (const s of [usSrc(ym), gfwSrc(ym), salSrc(ym)]) if (map.getSource(s)) map.removeSource(s)
+      addedRef.current.delete(ym)
+    }
+    const below = map.getLayer(OVERLAP_LAYER) ? OVERLAP_LAYER : undefined
+    for (const ym of shipMonths) {
+      const us = usIdx[ym]
+      const gfw = gfwIdx.months?.[ym]
+      if (us && !map.getSource(usSrc(ym))) {
+        const stamp = us.classes?.rules ? us.classes.rules.replace(/^.*-(cls\d+)$/, '$1') : null
+        map.addSource(usSrc(ym), { type: 'vector', tiles: [usTileUrl(ym, stamp)], minzoom: trackSource.us.minzoom, maxzoom: trackSource.us.maxzoom, attribution: NOAA_ATTR })
+        map.addLayer({ id: `${usSrc(ym)}-line`, type: 'line', source: usSrc(ym), 'source-layer': trackSource.us.sourceLayer,
+          layout: { 'line-join': 'round' }, paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, below)
+        addedRef.current.add(ym)
+      }
+      if (salishMonths.includes(ym) && !map.getSource(salSrc(ym))) {
+        map.addSource(salSrc(ym), { type: 'vector', tiles: [salishTileUrl(ym)], minzoom: 5, maxzoom: 10, bounds: trackSource.bbox, attribution: NOAA_ATTR })
+        map.addLayer({ id: `${salSrc(ym)}-line`, type: 'line', source: salSrc(ym), 'source-layer': trackSource.sourceLayer,
+          layout: { 'line-join': 'round' }, paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, below)
+        addedRef.current.add(ym)
+      }
+      if (gfw && !map.getSource(gfwSrc(ym))) {
+        map.addSource(gfwSrc(ym), { type: 'vector', tiles: [gfwTileUrl(ym, gfw.built)], minzoom: trackSource.gfw.minzoom, maxzoom: trackSource.gfw.maxzoom, attribution: GFW_ATTR })
+        map.addLayer({ id: `${gfwSrc(ym)}-obs`, type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer,
+          layout: { 'line-join': 'round' }, paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, below)
+        map.addLayer({ id: `${gfwSrc(ym)}-est`, type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer,
+          paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-opacity': opacity * 0.65, 'line-dasharray': [2, 2] } }, below)
+        addedRef.current.add(ym)
+      }
+      const vis = visible.ships ? 'visible' : 'none'
+      for (const l of [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`]) {
+        if (!map.getLayer(l)) continue
+        map.setFilter(l, kindFilter)
+        map.setLayoutProperty(l, 'visibility', vis)
+        map.setPaintProperty(l, 'line-opacity', opacity)
+      }
+      for (const [l, est] of [[`${gfwSrc(ym)}-obs`, false], [`${gfwSrc(ym)}-est`, true]]) {
+        if (!map.getLayer(l)) continue
+        map.setFilter(l, ['all', est ? ['==', ['get', 'est'], 1] : ['!=', ['get', 'est'], 1], kindFilter || true])
+        map.setLayoutProperty(l, 'visibility', vis)
+        map.setPaintProperty(l, 'line-opacity', est ? opacity * 0.65 : opacity)
+      }
+    }
+  }, [mapReady, usIdx, gfwIdx, salishMonths, shipMonths, kinds, visible.ships])
 
-    // Remove tilesets no longer in view.
-    for (const sid of [...vesselSrcRef.current]) {
-      if (wanted.has(sid)) continue
-      const lid = `${sid}-line`
-      if (map.getLayer(lid)) map.removeLayer(lid)
-      if (map.getSource(sid)) map.removeSource(sid)
-      vesselSrcRef.current.delete(sid)
-    }
-    // Add new tilesets + refresh filter/visibility on all.
-    for (const id of vesselTilesets) {
-      const sid = vesselSrcId(id)
-      const lid = vesselLayerId(id)
-      if (!map.getSource(sid)) {
-        map.addSource(sid, {
-          type: 'vector',
-          tiles: [vesselTileUrl(id)],
-          minzoom: 5,
-          maxzoom: VESSEL_TILE_MAXZOOM,
-          bounds: SALISH_BBOX,
-          attribution: VESSEL_ATTRIBUTION,
-        })
-        map.addLayer({
-          id: lid,
-          type: 'line',
-          source: sid,
-          'source-layer': trackSource.sourceLayer,
-          layout: { 'line-join': 'round' },
-          paint: {
-            'line-color': VESSEL_LINE_COLOR,
-            'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
-            'line-blur': 0.6,
-          },
-        }, CONCERN_LAYER) // keep vessels beneath concern + whales
-        vesselSrcRef.current.add(sid)
-      }
-      if (map.getLayer(lid)) {
-        map.setFilter(lid, typeFilter)
-        map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
-        map.setPaintProperty(lid, 'line-opacity', opacity)
-      }
-    }
-
-    // ─── ESRI context tiles OUTSIDE our bbox ───────────────────────────────
-    // Stack a few of the selected months from Esri's US Vessel Traffic, recolored
-    // to match, clipped to the COMPLEMENT of our bbox (`line-opacity` 0 `within`
-    // it) so it never overlaps our tiles — it just fills the surrounding waters so
-    // our box doesn't end at a hard edge. Capped low: each is an external tile
-    // service, and it's only ambient context.
-    const esriMonths = [...new Set(
-      sampleEvenly(vesselTilesets, ESRI_CONTEXT_CAP).map((m) => (m > ESRI_LATEST ? ESRI_LATEST : m)),
-    )]
-    const esriOp = show ? Math.max(0.10, 0.6 / Math.sqrt(Math.max(1, esriMonths.length))) : 0
-    // Full everywhere when zoomed out / outside our box; inside the box it fades OUT
-    // as you zoom past the hand-off, where our own tiles take over. `zoom` must be
-    // the input to a TOP-LEVEL interpolate, so the within-box test lives in the stops.
-    const esriOpacityExpr = ['interpolate', ['linear'], ['zoom'],
-      ZSW_LO, esriOp,                                       // zoomed out: full everywhere
-      ZSW_HI, ['case', ['within', BBOX_POLY], 0, esriOp]]   // zoomed in: 0 inside box, full outside
-    const symbols = esriSymbolsFor(vesselTypes)
-    const wantedEsri = new Set(esriMonths.map(esriSrcId))
-    for (const sid of [...esriSrcRef.current]) {
-      if (wantedEsri.has(sid)) continue
-      for (const sl of ESRI_SOURCE_LAYERS) {
-        if (map.getLayer(`${sid}-${sl}`)) map.removeLayer(`${sid}-${sl}`)
-      }
-      if (map.getSource(sid)) map.removeSource(sid)
-      esriSrcRef.current.delete(sid)
-    }
-    for (const ym of esriMonths) {
-      const sid = esriSrcId(ym)
-      if (!map.getSource(sid)) {
-        map.addSource(sid, {
-          type: 'vector',
-          tiles: [esriMonthTilesUrl(ym)],
-          minzoom: 0,
-          maxzoom: 16,
-          attribution: ESRI_ATTRIBUTION,
-        })
-        for (const sl of ESRI_SOURCE_LAYERS) {
-          map.addLayer({
-            id: esriLayerId(ym, sl),
-            type: 'line',
-            source: sid,
-            'source-layer': sl,
-            layout: { 'line-join': 'round' },
-            paint: {
-              'line-color': VESSEL_LINE_COLOR,
-              'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5],
-              'line-blur': 0.6,
-            },
-          }, CONCERN_LAYER)
-        }
-        esriSrcRef.current.add(sid)
-      }
-      for (const sl of ESRI_SOURCE_LAYERS) {
-        const lid = esriLayerId(ym, sl)
-        if (!map.getLayer(lid)) continue
-        map.setFilter(lid, ['in', ['get', '_symbol'], ['literal', symbols]])
-        map.setLayoutProperty(lid, 'visibility', show ? 'visible' : 'none')
-        map.setPaintProperty(lid, 'line-opacity', esriOpacityExpr)
-      }
-    }
-  }, [vesselTilesets, vesselTypes, visible.vessels, mapReady])
-
-  // ─── Push concern (viewport-normalized) + whale data ──────────────────────
+  // ─── Whale reports (our database) for the view + picked dates ──────────────
+  const [whales, setWhales] = useState(null) // { sightings, sources, updated, truncated } for the current view
+  const [whalesErr, setWhalesErr] = useState(null)
+  const viewBoundsRef = useRef(null)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady || !agg || !grid) return
-    aggRef.current = agg
-    pushConcern(map)
-    if (map.getLayer(CONCERN_LAYER)) map.setLayoutProperty(CONCERN_LAYER, 'visibility', visible.concern ? 'visible' : 'none')
-  }, [agg, grid, visible.concern, mapReady, pushConcern])
+    if (!map || !mapReady || !span || !visible.whales) return
+    const b = map.getBounds()
+    const bounds = { minLat: Math.max(-90, b.getSouth()), maxLat: Math.min(90, b.getNorth()), minLng: Math.max(-180, b.getWest()), maxLng: Math.min(180, b.getEast()) }
+    viewBoundsRef.current = bounds
+    const ctl = new AbortController()
+    setWhalesErr(null)
+    fetchWhales({ bounds, from: span.from, to: span.to, limit: 2000, signal: ctl.signal })
+      .then((j) => setWhales(j))
+      .catch((e) => { if (e.name !== 'AbortError') setWhalesErr('Whale reports could not be loaded.') })
+    return () => ctl.abort()
+  }, [mapReady, span, visible.whales, mapView.lat, mapView.lng, mapView.zoom])
+
+  const whalesInView = useMemo(() => {
+    const b = mapRef.current?.getBounds()
+    if (!whales?.sightings || !b) return []
+    return whales.sightings.filter((w) => w.lat >= b.getSouth() && w.lat <= b.getNorth() && w.lng >= b.getWest() && w.lng <= b.getEast())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whales, mapView])
 
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapReady || !whaleGeo) return
-    map.getSource(WHALE_SRC)?.setData(whaleGeo)
-    if (map.getLayer(WHALE_LAYER)) map.setLayoutProperty(WHALE_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
-  }, [whaleGeo, visible.whales, mapReady])
-
-  // Keep the ambient GBIF layer coherent with the selected timeline + visibility,
-  // and refetch on range/visibility change (moveend covers pans). The curated layer
-  // toggles with the same `whales` control, so GBIF mirrors it.
-  useEffect(() => {
-    gbifEventDateRef.current = eventDateForRange(months, range)
-    whalesVisibleRef.current = visible.whales
     const map = mapRef.current
     if (!map || !mapReady) return
-    if (map.getLayer(WHALE_GBIF_LAYER)) map.setLayoutProperty(WHALE_GBIF_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
-    pushGbifWhales(map)
-  }, [months, range, visible.whales, mapReady, pushGbifWhales])
+    const list = whales?.sightings || []
+    whalesRef.current = list
+    map.getSource(WHALE_SRC)?.setData({
+      type: 'FeatureCollection',
+      features: list.map((w, i) => ({ type: 'Feature', properties: { i, kind: w.kind }, geometry: { type: 'Point', coordinates: [w.lng, w.lat] } })),
+    })
+    if (map.getLayer(WHALE_LAYER)) map.setLayoutProperty(WHALE_LAYER, 'visibility', visible.whales ? 'visible' : 'none')
+  }, [whales, visible.whales, mapReady])
 
-  // ─── Persist URL ──────────────────────────────────────────────────────────
+  // ─── Overlap: the picked months' baked grids ───────────────────────────────
+  const gridCacheRef = useRef(new Map())
+  const [grids, setGrids] = useState(null)
   useEffect(() => {
-    if (!grid || !range) return
-    const sp = new URLSearchParams()
-    if (range[0] !== 0) sp.set('ts', String(range[0]))
-    if (range[1] !== months.length - 1) sp.set('te', String(range[1]))
-    const ly = LAYER_ORDER.filter((l) => visible[l]).map((l) => LAYER_CODE[l])
-    if (ly.length !== 3) sp.set('ly', ly.join(','))
-    if (vesselTypes.size !== VESSEL_TYPES.length) sp.set('vt', VESSEL_TYPES.filter((t) => vesselTypes.has(t)).join(','))
-    if (whaleSources.size !== WHALE_SOURCES.length) sp.set('ws', WHALE_SOURCES.filter((s) => whaleSources.has(s)).join(','))
-    if (basemap !== 'satellite') sp.set('bm', basemap)
-    if (mapView) {
-      sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1))
-    }
-    writeUrlQuery(sp.toString())
-    if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [grid, range, visible, vesselTypes, whaleSources, basemap, mapView, months, mapReady])
+    if (!overlapIdx || !pickedMonths.length) return
+    let dead = false
+    const entries = pickedMonths.map((m) => [m, overlapIdx.months?.[m]]).filter(([, e]) => e?.grid)
+    Promise.all(entries.map(([m, e]) => {
+      const key = `${m}|${e.built}`
+      if (!gridCacheRef.current.has(key)) {
+        gridCacheRef.current.set(key, fetch(`${e.grid}?b=${encodeURIComponent(e.built)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null))
+      }
+      return gridCacheRef.current.get(key)
+    })).then((gs) => { if (!dead) setGrids(gs.filter(Boolean)) })
+    return () => { dead = true }
+  }, [overlapIdx, pickedMonths])
+  const overlap = useMemo(() => (grids ? aggregateOverlap(grids, kindsActive) : null), [grids, kindsActive])
+  const overlapMonths = grids?.length || 0
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    overlapRef.current = overlap
+    const b = map.getBounds()
+    map.getSource(OVERLAP_SRC)?.setData(overlap ? overlapPointsInView(overlap.cells, { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }) : EMPTY_FC)
+    if (map.getLayer(OVERLAP_LAYER)) map.setLayoutProperty(OVERLAP_LAYER, 'visibility', visible.overlap ? 'visible' : 'none')
+  }, [overlap, visible.overlap, mapReady, mapView])
 
-  // ─── Basemap switch ───────────────────────────────────────────────────────
+  // ─── Clicks: a whale report (with its close passes), else an overlap square ─
+  const closePassesFor = useCallback((w) => {
+    const ym = String(w.observed_date || '').slice(0, 7)
+    const e = overlapIdx?.months?.[ym]
+    if (!e?.closepasses) return Promise.resolve(null)
+    const key = `${ym}|${e.built}`
+    if (!closeCacheRef.current.has(key)) {
+      closeCacheRef.current.set(key, fetch(`${e.closepasses}?b=${encodeURIComponent(e.built)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null))
+    }
+    return closeCacheRef.current.get(key).then((j) => (j ? { rule: j.rule, ships: j.whales?.[w.id] || [] } : null))
+  }, [overlapIdx])
+
+  const showWhalePopup = useCallback((w, lngLat) => {
+    const map = mapRef.current
+    if (!map) return
+    popupRef.current?.remove()
+    const popup = new mapboxgl.Popup({ offset: 8, maxWidth: '300px' }).setLngLat(lngLat || [w.lng, w.lat]).setHTML(whalePopupHTML(w, undefined)).addTo(map)
+    popupRef.current = keepPopupOnMap(popup)
+    closePassesFor(w).then((cp) => { if (popupRef.current === popup) popup.setHTML(whalePopupHTML(w, cp)) })
+  }, [closePassesFor])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const onClick = (e) => {
+      const hit = map.getLayer(WHALE_LAYER) ? map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER] })[0] : null
+      if (hit) { const w = whalesRef.current[hit.properties.i]; if (w) showWhalePopup(w, e.lngLat); return }
+      const ov = overlapRef.current
+      if (!ov || !visible.overlap) return
+      const { lngStep, latStep } = ov.cell || {}
+      const c = ov.cells.find((x) => Math.abs(e.lngLat.lng - x.lng) <= lngStep / 2 && Math.abs(e.lngLat.lat - x.lat) <= latStep / 2)
+      if (!c) return
+      popupRef.current?.remove()
+      popupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '290px' }).setLngLat(e.lngLat).setHTML(cellPopupHTML(c, pickedMonths)).addTo(map))
+    }
+    const onMove = (e) => {
+      const over = map.getLayer(WHALE_LAYER) && map.queryRenderedFeatures(e.point, { layers: [WHALE_LAYER] }).length
+      map.getCanvas().style.cursor = over ? 'pointer' : ''
+    }
+    map.on('click', onClick)
+    map.on('mousemove', onMove)
+    return () => { map.off('click', onClick); map.off('mousemove', onMove) }
+  }, [mapReady, showWhalePopup, visible.overlap, pickedMonths])
+
+  // ─── URL + share card ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!months.length) return
+    const sp = new URLSearchParams()
+    if (sel) sp.set('tm', sel[0] === sel[1] ? sel[0] : `${sel[0]}_${sel[1]}`)
+    const ly = [visible.ships && 's', visible.whales && 'w', visible.overlap && 'o'].filter(Boolean).join('')
+    if (ly !== 'swo') sp.set('ly', ly || '-')
+    if (kinds.length) sp.set('tk', kinds.join(','))
+    if (basemap !== 'satellite') sp.set('bm', basemap)
+    sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1))
+    writeUrlQuery(sp.toString())
+    if (mapReady) scheduleViewCard(captureShareImage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [months.length, sel, visible, kinds, basemap, mapView, mapReady])
+
+  // ─── Basemap ─────────────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
-    if (appliedBasemapRef.current === basemap) return
+    if (!map || !mapReady || appliedBasemapRef.current === basemap) return
     appliedBasemapRef.current = basemap
     setMapReady(false)
+    addedRef.current.clear()
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
-
   useEffect(() => {
     if (!basemapMenuOpen) return
     const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [basemapMenuOpen])
-
   useEffect(() => {
-    const prevTitle = document.title
+    const prev = document.title
     document.title = 'Ship Traffic & Whales — Salish Sea · EarthAtlas'
-    return () => { document.title = prevTitle }
-  }, [])
-
-  // ─── Handlers ─────────────────────────────────────────────────────────────
-  const handleSelect = useCallback((r) => {
-    flyToSearchResult(mapRef.current, r)
-  }, [])
-
-  const toggleLayer = useCallback((layer) => setVisible((v) => ({ ...v, [layer]: !v[layer] })), [])
-
-  const toggleSetMember = (setter, value, allValues) => {
-    setter((prev) => {
-      const next = new Set(prev)
-      if (next.has(value)) next.delete(value); else next.add(value)
-      return next.size === 0 ? new Set(allValues) : next
-    })
-  }
-
-  const applyYear = useCallback((year) => {
-    if (!months.length) return
-    if (year === 'all') { setRange([0, months.length - 1]); return }
-    const idxs = months.map((m, i) => (m.startsWith(String(year)) ? i : -1)).filter((i) => i >= 0)
-    if (idxs.length) setRange([idxs[0], idxs[idxs.length - 1]])
-  }, [months])
-
-  // Click a month → that single month. Shift-click → span from the current
-  // anchor to the clicked month.
-  const pickMonth = useCallback((idx, shift) => {
-    setRange((prev) => (shift && prev ? [Math.min(prev[0], idx), Math.max(prev[0], idx)] : [idx, idx]))
+    return () => { document.title = prev }
   }, [])
 
   if (!MAPBOX_TOKEN) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.tokenError}>
-          <strong>Mapbox token missing.</strong> Set <code>VITE_MAPBOX_TOKEN</code> to load the map.
-        </div>
-      </div>
-    )
+    return <div className={styles.container}><div className={styles.tokenError}><strong>Mapbox token missing.</strong> Set <code>VITE_MAPBOX_TOKEN</code> to load the map.</div></div>
   }
 
-  const startKey = range ? months[range[0]] : null
-  const endKey = range ? months[range[1]] : null
-  const whaleCount = whaleGeo?.features.length ?? 0
-  const concernCount = agg ? agg.cells.filter((c) => c.iRaw > 0).length : 0
-  const rngLen = range ? range[1] - range[0] + 1 : 0
-  const isAll = !!range && range[0] === 0 && range[1] === months.length - 1
-  const isYear = (y) => rngLen === 12 && startKey?.startsWith(String(y)) && endKey?.startsWith(String(y))
-  const rangeLabel = !range ? ''
-    : isAll ? 'All (2024–2025)'
-    : rngLen === 1 ? fmtMonth(startKey)
-    : isYear(2024) ? '2024' : isYear(2025) ? '2025'
-    : `${fmtMonth(startKey)} – ${fmtMonth(endKey)}`
+  const latestYm = months[months.length - 1]
+  const pickedLast = pickedMonths[pickedMonths.length - 1]
+  const shipsThrough = pickedLast && gfwIdx?.months?.[pickedLast] && pickedLast === latestYm && gfwThrough ? gfwThrough : null
+  const whaleUpdated = whales?.updated ? Object.values(whales.updated).filter(Boolean).sort().pop() : null
+  const minsAgo = whaleUpdated ? Math.max(0, Math.round((Date.now() - Date.parse(whaleUpdated)) / 60000)) : null
+  const kindChip = (k, label) => (
+    <button key={k} type="button" className={kinds.includes(k) ? shipsStyles.chipTrack : shipsStyles.chip}
+      onClick={() => setKinds((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))}>{label}</button>
+  )
+  const reportSources = [...new Set(whalesInView.map((w) => whaleSourceLabel(w)))]
 
   return (
     <div className={styles.container}>
@@ -734,29 +474,20 @@ export default function ShipTrafficApp() {
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home"><span className={styles.wordmark}>Earth<em>Atlas</em></span></a>
         <span className={styles.subBadge}>Ship Traffic × Whales</span>
       </div>
 
       <div className={styles.searchBox}>
         <GeoSearch
-          placeholder="Search a place in the Salish Sea…"
-          proximity={() => {
-            const m = mapRef.current
-            if (!m) return undefined
-            try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined }
-          }}
-          onSelect={handleSelect}
+          placeholder="Search a place…"
+          proximity={() => { const m = mapRef.current; if (!m) return undefined; try { const c = m.getCenter(); return { lng: c.lng, lat: c.lat } } catch { return undefined } }}
+          onSelect={(r) => flyToSearchResult(mapRef.current, r)}
         />
       </div>
 
       <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button
-          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap"
-        >
+        <button className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle} onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
           </svg>
@@ -765,8 +496,7 @@ export default function ShipTrafficApp() {
           <div className={styles.basemapMenuPanel}>
             <div className={styles.basemapMenuTitle}>Basemap</div>
             {BASEMAPS.map((b) => (
-              <button key={b.id} className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem}
-                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}>
+              <button key={b.id} className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem} onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}>
                 <span className={styles.basemapMenuItemLabel}>{b.label}</span>
                 {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
               </button>
@@ -775,249 +505,123 @@ export default function ShipTrafficApp() {
         )}
       </div>
 
-      <MapSheet title="Salish Sea" className={styles.panel}>
-        <div className={styles.panelHead}>
-          <span className={styles.panelTitle}>Salish Sea</span>
+      <MapSheet title="Ship traffic × whales" className={styles.panel}>
+        <div className={styles.panelHead}><span className={styles.panelTitle}>Ship traffic × whales</span></div>
+        <div className={styles.panelBody}>
+          {!range ? <Loading>Loading months…</Loading> : (
+            <>
+              <div className={shipsStyles.panelWhen}>
+                <TrackMonths months={months} range={range} styles={shipsStyles} cap={MONTH_CAP}
+                  onRange={([a, b]) => { const s = [months[a], months[b]]; setSel(a === months.length - 1 && b === a ? null : s) }} />
+                <div className={styles.freshness}>
+                  {shipsThrough ? `Ships through ${fmtDay(shipsThrough)}` : `Ships: ${fmtMonth(pickedMonths[0])}${pickedMonths.length > 1 ? ` – ${fmtMonth(pickedLast)}` : ''}`}
+                  {minsAgo != null && ` · whale reports updated ${minsAgo < 90 ? `${minsAgo} min` : `${Math.round(minsAgo / 60)} h`} ago`}
+                </div>
+              </div>
+
+              <DatasetRow storageKey="shiptraffic.ships" name="Ship traffic" sub={kinds.length ? kinds.map((k) => KIND_LABELS[k]).join(', ') : 'every kind'}
+                hue={SHIP_COLOR} icon={<ShipIcon />} on={visible.ships} onToggle={() => setVisible((v) => ({ ...v, ships: !v.ships }))}
+                controls={<div>
+                  <div className={shipsStyles.fieldLabel}>Kind of ship</div>
+                  <div className={shipsStyles.chipRow}>
+                    <button type="button" className={!kinds.length ? shipsStyles.chipTrack : shipsStyles.chip} onClick={() => setKinds([])}>Every kind</button>
+                    {TRACK_KINDS.map(([k, label]) => kindChip(k, label))}
+                  </div>
+                </div>}
+                legend={<LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 18, height: 2, background: SHIP_COLOR }} />}>Brighter = busier; dashed = estimated path</LegendSwatchRow>}
+                info={<>Ship tracks from AIS: <a className={shipsStyles.sourceLink} href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre</a> for US waters (public domain, months late) and <a className={shipsStyles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> hourly positions elsewhere and for recent months (CC BY-NC 4.0, about 4 days behind). The same tracks as <a className={shipsStyles.sourceLink} href="/ships">/ships</a>.</>}
+              />
+
+              <DatasetRow storageKey="shiptraffic.whales" name="Whale reports" sub={whales ? `${whalesInView.length.toLocaleString()} in view` : 'loading…'}
+                hue={WHALE_COLOR} icon={<WhaleIcon />} on={visible.whales} onToggle={() => setVisible((v) => ({ ...v, whales: !v.whales }))}
+                status={whalesErr ? <div className={styles.statusError}>{whalesErr}</div> : (!whales ? <Loading>Loading whale reports…</Loading> : whales.truncated ? <div className={styles.statusNote}>Showing the newest 2,000 — zoom in or pick fewer months for all.</div> : null)}
+                controls={whalesInView.length ? <WhaleReports reports={whalesInView} tone="dark" bare onSelect={(w) => { mapRef.current?.easeTo({ center: [w.lng, w.lat], zoom: Math.max(mapRef.current.getZoom(), 11) }); showWhalePopup(w) }} /> : <div className={styles.statusNote}>No whale reports in view for these months.</div>}
+                legend={<>
+                  <LegendSwatchRow swatch={<span className={styles.dotSeen} />}>Seen{reportSources.length ? ` · ${reportSources.slice(0, 3).join(', ')}${reportSources.length > 3 ? '…' : ''}` : ''}</LegendSwatchRow>
+                  <LegendSwatchRow swatch={<span className={styles.dotHeard} />}>Heard on a hydrophone (Orcasound)</LegendSwatchRow>
+                </>}
+                info={<>Every whale, dolphin and porpoise report we know about, each shown once: Whale Alert (with Orca Network and other channels), SalishSea.io, Orcasound, HappyWhale, iNaturalist and OBIS, refreshed hourly. Click a report for its source and the ships that passed within 1 km. The ⌄ list shows every report in view.</>}
+              />
+
+              <DatasetRow storageKey="shiptraffic.overlap" name="Overlap" sub={overlapMonths ? `${overlapMonths} month${overlapMonths === 1 ? '' : 's'}` : (overlapIdx ? 'not baked for these months yet' : 'loading…')}
+                hue={OVERLAP_COLOR} icon={<OverlapIcon />} on={visible.overlap} onToggle={() => setVisible((v) => ({ ...v, overlap: !v.overlap }))}
+                legend={<LegendSwatchRow swatch={<span className={styles.overlapRamp} />}>Where ships{kinds.length ? ' of the picked kinds' : ''} and whale reports meet; brighter = more, relative to this view</LegendSwatchRow>}
+                info={<>For each ~1 km square: ships that crossed it in the picked months (scaled to the busiest square) × whale reports in it (scaled to the square with the most). Click a square for its numbers. A co-occurrence measure for exploring, not a ship-strike risk model. Recomputed daily from the same ship tracks and whale reports.</>}
+              />
+
+              <SourcesFooter intro="Ship tracks, whale reports and where they overlap in the Salish Sea and beyond. Every value on the map links its own source; this is the full list." sections={SOURCES} notes={NOTES} />
+            </>
+          )}
         </div>
-
-          <div className={styles.panelBody}>
-            {loadErr && <div className={styles.statusError}>{loadErr}</div>}
-            {!grid && !loadErr && <div className={styles.status}>Loading data…</div>}
-
-            {grid && range && (
-              <>
-                {/* Timeframe */}
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Timeframe · <span className={styles.fieldHint}>{rangeLabel}</span></label>
-                  <div className={styles.chipRow}>
-                    <button className={isAll ? styles.chipActive : styles.chip} onClick={() => applyYear('all')}>All</button>
-                    <button className={isYear(2024) ? styles.chipActive : styles.chip} onClick={() => applyYear(2024)}>2024</button>
-                    <button className={isYear(2025) ? styles.chipActive : styles.chip} onClick={() => applyYear(2025)}>2025</button>
-                  </div>
-                  <MonthStrip months={months} range={range} onPick={pickMonth} />
-                  <div className={styles.monthHint}>Click a month · shift-click for a span</div>
-                </div>
-
-                {/* Layers */}
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Layers</label>
-                  <div className={styles.layerRows}>
-                    <LayerRow on={visible.vessels} onToggle={() => toggleLayer('vessels')}
-                      swatch="linear-gradient(90deg,#ca8a04,#eab308,#fde047)" label="Vessel traffic" sub="MarineCadastre AIS" />
-                    <LayerRow on={visible.whales} onToggle={() => toggleLayer('whales')}
-                      swatch="radial-gradient(circle,#f472b6,#db2777)" label="Whale sightings" count={whaleCount} />
-                    <LayerRow on={visible.concern} onToggle={() => toggleLayer('concern')}
-                      swatch="linear-gradient(90deg,#991b1b,#f97316,#fffbe6)" label="Concern (overlap)" count={concernCount} />
-                  </div>
-                </div>
-
-                {/* Vessel type filter */}
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Vessel class</label>
-                  <div className={styles.chipRow}>
-                    {VESSEL_TYPES.map((t) => (
-                      <button key={t} className={vesselTypes.has(t) ? styles.chipActive : styles.chip}
-                        onClick={() => toggleSetMember(setVesselTypes, t, VESSEL_TYPES)}>{VESSEL_TYPE_LABELS[t]}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Whale source filter */}
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>Whale source</label>
-                  <div className={styles.chipRow}>
-                    {WHALE_SOURCES.map((s) => {
-                      const disabled = (grid.meta.whaleCounts?.[s] ?? 0) === 0 && s === 'happywhale'
-                      return (
-                        <button key={s} className={whaleSources.has(s) && !disabled ? styles.chipActive : styles.chip}
-                          onClick={() => !disabled && toggleSetMember(setWhaleSources, s, WHALE_SOURCES)}
-                          disabled={disabled} title={disabled ? 'No data yet (API not live)' : undefined}
-                          style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>{WHALE_SOURCE_LABELS[s]}</button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className={styles.statGrid}>
-                  <div className={styles.statBox}><span className={styles.statVal}>{whaleCount.toLocaleString()}</span><span className={styles.statKey}>whale sightings</span></div>
-                  <div className={styles.statBox}><span className={styles.statVal}>{concernCount.toLocaleString()}</span><span className={styles.statKey}>concern cells</span></div>
-                </div>
-
-                <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>ⓘ How this is sourced</button>
-                <div className={styles.builtBy}>
-                  EarthAtlas is built by{' '}
-                  <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>KnauerNever.com</a>
-                </div>
-              </>
-            )}
-          </div>
       </MapSheet>
-
-      <div className={styles.tip}>Click anywhere for the area's vessel + whale data · yellow = tracks · magenta = whales · red glow = overlap</div>
-
-      {showMethodology && <MethodologyModal onClose={() => setShowMethodology(false)} counts={grid?.meta?.whaleCounts} />}
     </div>
   )
 }
 
-const MONTH_LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
-
-// Clickable month grid (one row per year). Click a cell → single month;
-// shift-click → span from the current anchor. Active months are highlighted.
-function MonthStrip({ months, range, onPick }) {
-  const years = [...new Set(months.map((m) => m.slice(0, 4)))]
-  return (
-    <div className={styles.monthStrip}>
-      {years.map((y) => (
-        <div className={styles.monthRow} key={y}>
-          <span className={styles.monthYear}>’{y.slice(2)}</span>
-          {MONTH_LETTERS.map((L, mi) => {
-            const idx = months.indexOf(`${y}-${String(mi + 1).padStart(2, '0')}`)
-            if (idx < 0) return <span key={mi} className={styles.monthCellEmpty} />
-            const active = range && idx >= range[0] && idx <= range[1]
-            return (
-              <button
-                key={mi}
-                className={active ? styles.monthCellActive : styles.monthCell}
-                onClick={(e) => onPick(idx, e.shiftKey)}
-                title={fmtMonth(months[idx])}
-              >{L}</button>
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  )
+// ─── Popups ─────────────────────────────────────────────────────────────────
+function whenText(w) {
+  if (w.time_precision === 'exact' && w.observed_at) {
+    const t = new Date(w.observed_at)
+    return `${t.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · ${t.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+  }
+  return fmtDay(w.observed_date)
 }
 
-function LayerRow({ on, onToggle, swatch, label, count, sub }) {
-  return (
-    <button className={on ? styles.layerRowOn : styles.layerRow} onClick={onToggle}>
-      <span className={styles.layerSwatch} style={{ background: swatch, opacity: on ? 1 : 0.3 }} />
-      <span className={styles.layerLabel}>
-        {label}
-        {sub && <span className={styles.layerSub}>{sub}</span>}
-      </span>
-      {count != null && <span className={styles.layerCount}>{count.toLocaleString()}</span>}
-      <span className={styles.layerCheck}>{on ? '●' : '○'}</span>
-    </button>
-  )
-}
-
-function whalePopupHTML(p) {
-  const src = p.src
-  // Ambient GBIF points carry a per-occurrence url; curated points use their
-  // source's landing page. Same template either way — only the source label differs.
-  const url = p.url || WHALE_SOURCE_URLS[src] || '#'
-  const label = WHALE_SOURCE_LABELS[src] || (src === 'gbif' ? 'GBIF' : src)
+function whalePopupHTML(w, cp) {
+  const credit = whaleCredit(w)
+  const n = w.count ? (w.count.max ?? w.count.min) : null
+  const ships = cp?.ships || []
+  const rule = cp?.rule ? `within ${cp.rule.metres / 1000} km, ±${cp.rule.hours} h` : 'within 1 km, ±3 h'
+  const shipRows = ships.slice(0, 8).map(([vid, kind, m, dt]) => {
+    const label = KIND_LABELS[kind] || 'Ship'
+    const when = dt == null ? 'same day' : dt === 0 ? 'at the time' : `${Math.abs(dt) < 60 ? `${Math.abs(dt)} min` : `${(Math.abs(dt) / 60).toFixed(1)} h`} ${dt < 0 ? 'before' : 'after'}`
+    const name = /^\d{9}$/.test(vid) ? `<a href="/ships?q=${vid}" target="_blank" rel="noopener">${escapeHtml(label)} · MMSI ${vid}</a>` : escapeHtml(label)
+    return `<div class="${styles.popupShip}"><span>${name}</span><span class="${styles.popupMuted}">${m} m · ${when}</span></div>`
+  }).join('')
+  const closeBlock = cp === undefined
+    ? `<div class="${styles.popupMuted}">Checking for passing ships…</div>`
+    : !cp ? `<div class="${styles.popupMuted}">Passing ships aren't computed for this month yet.</div>`
+    : ships.length
+    ? `<div class="${styles.popupK}">${ships.length} ship${ships.length === 1 ? '' : 's'} passed ${rule}</div>${shipRows}${ships.length > 8 ? `<div class="${styles.popupMuted}">and ${ships.length - 8} more</div>` : ''}`
+      + `<div class="${styles.popupSrc}">Ships: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener">NOAA MarineCadastre</a> · <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a></div>`
+    : `<div class="${styles.popupMuted}">No AIS ship tracks passed ${rule}.</div>`
   return (
     `<div class="${styles.popup}">` +
-    `<div class="${styles.popupHead}">Whale sighting</div>` +
-    `<div class="${styles.popupSpecies}">${escapeHtml(p.species || 'Cetacean')}</div>` +
-    `<div class="${styles.popupMeta}">${escapeHtml(p.m || '')}</div>` +
-    `<div class="${styles.popupSrc}">Source: <a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a></div>` +
+    `<div class="${styles.popupHead}">${w.kind === 'acoustic' ? 'Whale heard' : 'Whale report'}</div>` +
+    `<div class="${styles.popupSpecies}">${escapeHtml(whaleName(w))}${n > 1 ? ` × ${n}` : ''}</div>` +
+    `<div class="${styles.popupMuted}">${escapeHtml(whenText(w))}${w.observer ? ` · ${escapeHtml(w.observer)}` : ''}</div>` +
+    (w.individual?.label ? `<div class="${styles.popupMuted}">${escapeHtml(w.individual.label)}</div>` : '') +
+    `<div class="${styles.popupSrc}">${w.url ? `<a href="${escapeHtml(w.url)}" target="_blank" rel="noopener">${escapeHtml(credit)} ↗</a>` : escapeHtml(credit)}</div>` +
+    `<div class="${styles.popupDivider}"></div>` + closeBlock +
     `</div>`
   )
 }
 
-// Rich "click a spot" readout for a concern grid cell: vessels + whales +
-// overlap for the current timeframe/filters, each with its inline source.
-function cellPopupHTML(cell, whaleProps) {
-  const vSum = cell.vSum || 0
-  const wSum = cell.wSum || 0
-  const nI = cell.nI || 0  // 0..1 relative to the most-concerning cell in the region
-  const band = interactionBand(nI)
-  const wBySrc = cell.wBySrc || {}
-  // Each present source as a linked name with its count, e.g. "iNaturalist (1) · OBIS (4)".
-  const srcLinks = WHALE_SOURCES.filter((s) => wBySrc[s])
-    .map((s) => `<a href="${WHALE_SOURCE_URLS[s]}" target="_blank" rel="noopener noreferrer">${WHALE_SOURCE_LABELS[s]}</a> (${wBySrc[s]})`)
-    .join(' · ')
+function cellPopupHTML(c, months) {
+  const band = overlapBand(c.nI)
+  const kinds = Object.entries(c.byKind).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${escapeHtml(KIND_LABELS[k] || k)} ${n.toLocaleString()}`).join(' · ')
+  const span = months.length === 1 ? fmtMonth(months[0]) : `${fmtMonth(months[0])} – ${fmtMonth(months[months.length - 1])}`
   return (
     `<div class="${styles.popup}">` +
-    `<div class="${styles.popupHead}">This area · selected timeframe</div>` +
-    (whaleProps ? `<div class="${styles.popupSpecies}">${escapeHtml(whaleProps.species || 'Cetacean')}</div>` : '') +
-    `<div class="${styles.popupRow}"><span class="${styles.popupDotV}"></span><span class="${styles.popupK}">Vessel transits</span><span class="${styles.popupV}">${vSum.toLocaleString()}</span></div>` +
-    `<div class="${styles.popupSrc}">Source: <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a></div>` +
-    `<div class="${styles.popupRow}"><span class="${styles.popupDotW}"></span><span class="${styles.popupK}">Whale sightings</span><span class="${styles.popupV}">${wSum.toLocaleString()}</span></div>` +
-    `<div class="${styles.popupSrc}">Sources: ${srcLinks || `<a href="${WHALE_SOURCE_URLS.inat}" target="_blank" rel="noopener noreferrer">iNaturalist</a> · <a href="${WHALE_SOURCE_URLS.obis}" target="_blank" rel="noopener noreferrer">OBIS</a>`}</div>` +
-    `<div class="${styles.popupIx} ${styles['popupIx_' + band.tone]}">${escapeHtml(band.label)} · ${Math.round(nI * 100)}/100</div>` +
-    `<div class="${styles.popupFormula}">relative ship×whale overlap (0–100 across the region)</div>` +
+    `<div class="${styles.popupHead}">This ~1 km square · ${escapeHtml(span)}</div>` +
+    `<div class="${styles.popupRow}"><span class="${styles.popupDotV}"></span><span class="${styles.popupK}">Ships crossing</span><span class="${styles.popupV}">${c.v.toLocaleString()}</span></div>` +
+    (kinds ? `<div class="${styles.popupMuted}">${kinds}</div>` : '') +
+    `<div class="${styles.popupSrc}">Ships: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener">NOAA MarineCadastre</a> · <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a></div>` +
+    `<div class="${styles.popupRow}"><span class="${styles.popupDotW}"></span><span class="${styles.popupK}">Whale reports</span><span class="${styles.popupV}">${c.w.toLocaleString()}</span></div>` +
+    `<div class="${styles.popupSrc}">Whales: EarthAtlas whale database (Whale Alert, SalishSea.io, Orcasound, HappyWhale, iNaturalist, OBIS)</div>` +
+    `<div class="${styles.popupIx} ${styles['popupIx_' + band.tone] || ''}">${escapeHtml(band.label)} · ${Math.round(c.nI * 100)}/100</div>` +
+    `<div class="${styles.popupFormula}">relative ship × whale overlap across the region</div>` +
     `</div>`
   )
 }
 
-function vesselPopupHTML(p) {
-  const label = VESSEL_TYPE_LABELS[p.class] ?? 'Vessel'
-  const meta = [p.month && fmtMonth(p.month), p.mmsi ? `MMSI ${p.mmsi}` : null].filter(Boolean).join(' · ')
-  return (
-    `<div class="${styles.popup}">` +
-    `<div class="${styles.popupHead}">Vessel track</div>` +
-    `<div class="${styles.popupSpecies}">${escapeHtml(label)}</div>` +
-    (meta ? `<div class="${styles.popupMeta}">${escapeHtml(meta)}</div>` : '') +
-    `<div class="${styles.popupSrc}">Source: <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a> (NOAA / BOEM / USCG)</div>` +
-    `</div>`
-  )
+// ─── Icons (≈16 px, currentColor) ─────────────────────────────────────────────
+function ShipIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l2 4h14l2-4-9-3-9 3z" /><path d="M12 14V4" /><path d="M8 8h8" /></svg>
 }
-
-function MethodologyModal({ onClose, counts }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div className={styles.modalBackdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">×</button>
-        <h2 className={styles.modalTitle}>How this is sourced</h2>
-
-        <section className={styles.modalSection}>
-          <h3>What you're looking at</h3>
-          <p>
-            <strong>Yellow</strong> tracks are real vessel traffic; <strong>magenta</strong> dots are whale
-            sightings; the <strong>red glow</strong> is where they overlap — the areas of concern. A month/year
-            range drives all three.
-          </p>
-        </section>
-
-        <section className={styles.modalSection}>
-          <h3>Where the data comes from</h3>
-          <ul>
-            <li>
-              <strong>Vessel traffic — MarineCadastre AIS.</strong> Real monthly AIS
-              vessel tracks from{' '}
-              <a href="https://marinecadastre.gov/ais/" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre</a>{' '}
-              (U.S. Coast Guard AIS), clipped to the Salish Sea and tiled by class and
-              month, drawn straight from the raw tracks. AIS is published with a
-              multi-month processing lag, so the timeframe ends at the latest
-              available month.
-            </li>
-            <li>
-              <strong>Whale sightings — real.</strong>{' '}
-              <a href="https://www.inaturalist.org/" target="_blank" rel="noopener noreferrer">iNaturalist</a>{' '}
-              (order Cetacea{counts?.inat ? `, ${counts.inat.toLocaleString()} obs` : ''}) and{' '}
-              <a href="https://obis.org/" target="_blank" rel="noopener noreferrer">OBIS</a>
-              {counts?.obis ? ` (${counts.obis.toLocaleString()})` : ''}, Jan 2024 – Jun 2025.{' '}
-              <a href="https://happywhale.com/" target="_blank" rel="noopener noreferrer">Happywhale</a> joins
-              when its public API ships.
-            </li>
-            <li>
-              <strong>Concern heatmap.</strong> A coarse grid of local vessel density × whale presence,
-              aggregated over your selected months and filters — a co-occurrence heuristic for exploration,
-              <strong> not</strong> a validated ship-strike risk model.
-            </li>
-          </ul>
-        </section>
-
-        <section className={styles.modalSection}>
-          <h3>Caveats</h3>
-          <p>
-            Whale "presence" is observed-sighting density, biased toward where people and surveys go. Vessel
-            tracks are shown for representative months across long ranges (they vary little month to month).
-          </p>
-        </section>
-      </div>
-    </div>
-  )
+function WhaleIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 13c2 4 6 6 11 5 4-1 6-4 7-7l-3 1c0-2-1-4-3-4-1 3-4 4-7 4-2 0-4 0-5 1z" /><circle cx="8" cy="13" r="0.6" fill="currentColor" /></svg>
+}
+function OverlapIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="12" r="5" /><circle cx="15" cy="12" r="5" /></svg>
 }

@@ -36,3 +36,17 @@
   padding: 6px 8px; border-radius: 6px; background: #f0f2f5; color: #3d4f5f; font-size: 11.5px; cursor: pointer;
 }
 .more:hover { background: #e6e9ee; }
+
+/* Dark glass panels (/shiptraffic, shared panel kit). */
+.dark { color: rgba(255, 255, 255, 0.92); border-top-color: rgba(255, 255, 255, 0.08); }
+.dark .count { color: rgba(255, 255, 255, 0.7); background: rgba(255, 255, 255, 0.08); }
+.dark .sources, .dark .credit, .dark .ind { color: rgba(255, 255, 255, 0.6); }
+.dark .sources a, .dark .credit a { color: rgba(120, 200, 255, 0.95); }
+.dark .n, .dark .when { color: rgba(255, 255, 255, 0.45); }
+.dark .row { border-bottom-color: rgba(255, 255, 255, 0.06); }
+.dark .tag { color: #f9a8d4; background: rgba(236, 72, 153, 0.15); }
+.dark .more { background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.8); }
+.dark .more:hover { background: rgba(255, 255, 255, 0.12); }
+.bare { padding: 0; border-top: 0; }
+/* Inside a panel turndown the list scrolls on its own, so opening it never makes the whole panel scroll. */
+.bare .list { max-height: 228px; overflow-y: auto; padding-right: 4px; }

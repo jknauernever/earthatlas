@@ -1,0 +1,37 @@
+# /shiptraffic overlap + close passes (scripts/shiptraffic/overlap-bake.mjs, docs/WHALES_AND_SHIPTRAFFIC_PLAN.md
+# Phases 3–4). Reads /ships' NOAA (us-v2) and GFW (gfw-v1) track packs from Blob and whale reports from
+# /api/whales; writes small per-month files to Blob shiptraffic/overlap-v1/.
+#
+#   daily (cron): months whose ship sources were rebuilt since the last bake, plus the last 45 days
+#                 (new GFW days and whale reports keep arriving)
+#   Run workflow: months = "auto" or a list ("2024-01,2024-02")
+#
+# Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET); CI never holds a Blob token.
+name: shiptraffic-overlap-bake
+
+on:
+  schedule:
+    - cron: '40 16 * * *'   # after the daily GFW track bake (its 06:17 cron runs ~12:30–15:00 UTC)
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'auto, or a comma list of YYYY-MM'
+        default: 'auto'
+
+concurrency:
+  group: shiptraffic-overlap-bake
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Bake + publish
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/shiptraffic/overlap-bake.mjs --months "${{ github.event.inputs.months || 'auto' }}"

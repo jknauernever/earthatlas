@@ -7,6 +7,8 @@
  * the channel and source it came through, the observer, and a link to the original
  * record when the source has one. Hydrophone detections say so. Shows a few rows and
  * grows on "Show more", so it never forces the panel to scroll.
+ *
+ * tone 'dark' for the dark glass map panels (/shiptraffic); bare = no heading/border (inside a DatasetRow turndown).
  */
 import { useState } from 'react'
 import { whaleName, whaleSourceLabel, whaleSourceCounts, whaleCredit } from '../lib/whales.js'
@@ -32,7 +34,7 @@ function countText(c) {
   return n > 1 ? `${n}` : null
 }
 
-export default function WhaleReports({ reports = [], onSelect, title = 'Whale reports in view' }) {
+export default function WhaleReports({ reports = [], onSelect, title = 'Whale reports in view', tone = 'light', bare = false }) {
   const [shown, setShown] = useState(PAGE)
   if (!reports.length) return null
   const sources = whaleSourceCounts(reports)
@@ -40,11 +42,13 @@ export default function WhaleReports({ reports = [], onSelect, title = 'Whale re
   const key = (r) => r.observed_at || `${r.observed_date || ''}T12:00:00Z`
   const rows = [...reports].sort((a, b) => key(b).localeCompare(key(a))).slice(0, shown)
   return (
-    <section className={s.box} aria-label={title}>
-      <div className={s.head}>
-        <span className={s.title}>{title}</span>
-        <span className={s.count}>{reports.length.toLocaleString()}</span>
-      </div>
+    <section className={`${s.box} ${tone === 'dark' ? s.dark : ''} ${bare ? s.bare : ''}`} aria-label={title}>
+      {!bare && (
+        <div className={s.head}>
+          <span className={s.title}>{title}</span>
+          <span className={s.count}>{reports.length.toLocaleString()}</span>
+        </div>
+      )}
       <div className={s.sources}>
         from{' '}
         {sources.map((src, i) => (

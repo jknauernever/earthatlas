@@ -127,6 +127,17 @@ export function whaleToRow(s) {
   }
 }
 
+/** "View on …" text for a report's link: the site it actually opens (a Whale Alert report links its SalishSea.io page). */
+export function whaleLinkLabel(s) {
+  if (!s?.url) return null
+  let host = ''
+  try { host = new URL(s.url).host } catch { return `View on ${whaleSourceLabel(s)}` }
+  const site = /salishsea\.io$/.test(host) ? 'SalishSea.io' : /inaturalist\.org$/.test(host) ? 'iNaturalist'
+    : /happywhale\.com$/.test(host) ? 'HappyWhale' : /obis\.org$/.test(host) ? 'OBIS' : /orcasound\.net$/.test(host) ? 'Orcasound'
+    : /facebook\.com$/.test(host) ? 'Facebook (Orca Network group)' : whaleSourceLabel(s)
+  return `View on ${site}`
+}
+
 /** Extra fields ExploreMap's popup reads for a whale-database sighting (credit + link). */
 export function whalePopupFields(s) {
   const src = WHALE_SOURCES[s.source] || {}
@@ -134,7 +145,7 @@ export function whalePopupFields(s) {
     whale: s,
     credit: whaleCredit(s),
     url: s.url || src.url || null,
-    linkText: s.url ? `View on ${whaleSourceLabel(s)}` : `Source: ${whaleSourceLabel(s)}`,
+    linkText: s.url ? whaleLinkLabel(s) : `Source: ${whaleSourceLabel(s)}`,
     hw: hwFrom(s),
   }
 }
@@ -158,4 +169,28 @@ export function taxonMayIncludeWhales(taxon) {
   if (Array.isArray(taxon.ancestorIds) && taxon.ancestorIds.includes(CETACEA)) return true
   // Below Cetacea or a non-whale mammal: ask (the API answers by taxon subtree, edge-cached).
   return taxon.iconicTaxon === 'Mammalia' || !taxon.iconicTaxon
+}
+
+// HappyWhale media licence levels → readable text ('C' = the photographer keeps all rights).
+const HW_PHOTO_LICENSE = {
+  PUBLIC_DOMAIN: 'Public domain', CC_BY: 'CC BY', CC_BY_SA: 'CC BY-SA', CC_BY_ND: 'CC BY-ND', CC_BY_NC: 'CC BY-NC',
+  CC_BY_NC_SA: 'CC BY-NC-SA', CC_BY_NC_ND: 'CC BY-NC-ND', C: '©',
+}
+
+/**
+ * A report's photo with its own credit line, or null:
+ *   { url, thumb, credit: 'Photo: Jane Doe · CC BY-NC 4.0', href: link to the original record }
+ * Every photo is shown with whoever took it (or the channel it came through) and its licence, inline.
+ */
+export function whalePhoto(s) {
+  const p = s?.photo
+  if (!p || !(p.url || p.thumb)) return null
+  const lic = p.license
+    ? (HW_PHOTO_LICENSE[p.license] || LICENSE_TEXT(String(p.license).replace(/^cc/i, 'CC').replace(/^CC-?0$/i, 'CC0-1.0')) || p.license)
+    : null
+  // iNaturalist's own attribution already reads "(c) Name, some rights reserved (CC BY-NC)".
+  const who = p.attribution
+    || (s.source === 'happywhale' ? 'HappyWhale contributor' : s.observer || `${whaleSourceLabel(s)} reporter`)
+  const credit = /\(c\)|©/i.test(who) ? `Photo: ${who}` : `Photo: ${lic === '©' || !lic ? `© ${who}` : `${who} · ${lic}`}`
+  return { url: p.url || p.thumb, thumb: p.thumb || p.url, credit, href: s.url || null }
 }

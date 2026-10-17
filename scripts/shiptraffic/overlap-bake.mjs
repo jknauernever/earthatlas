@@ -25,6 +25,8 @@ import zlib from 'node:zlib'
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { put } from '@vercel/blob/client'
+import { groupSightings, locationRadiusM, spreadBox, groupPoints, nearPoints, APPROX_M, TOO_VAGUE_M } from '../../lib/whales/precision.js'
+import { WHALE_SOURCES } from '../../lib/whales/sources.js'
 
 const BLOB_BASE = process.env.SHIPS_BLOB_BASE || 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com'
 const SITE = process.env.SITE_BASE || 'https://earthatlas.org'
@@ -217,14 +219,55 @@ export async function bakeMonth(ym, { us, gfw }) {
 
   // Whales: counts per cell + close passes.
   const whales = await whalesFor(ym)
-  const whaleCells = new Map()
+  // Whale weight per cell = WHALES, not reports (Josh 2026-10-17): the reports of one group of animals are grouped
+  // (lib/whales/precision.js), each group counts its whales, and a group placed only roughly spreads its whales
+  // evenly over the box it could be in. notes = what each cell's whales are, for the popup.
+  const whaleCells = new Map() // whales placed precisely in the cell
+  const areaCells = new Map()  // whales placed only roughly whose area covers the cell — the FULL count (Josh 2026-10-17: area level)
+  const groupRows = [] // [lng, lat, whales, species, sources, dLat, dLng, reports, points] — the page derives a square's breakdown from these
+  for (const g of groupSightings(whales.filter((w) => inBox(w.lng, w.lat)))) {
+    const at = g.members.reduce((best, m) => (locationRadiusM(m) < locationRadiusM(best) ? m : best), g.members[0])
+    if (locationRadiusM(at) > TOO_VAGUE_M) { stats.tooVague = (stats.tooVague || 0) + g.whales; continue }
+    const box = spreadBox(at)
+    const cellsHere = []
+    const pts = box ? [] : groupPoints(g)
+    if (!box) {
+      // Every square within 1 km of any of its reports (lib/whales/precision.js nearPoints), full count in each.
+      const seen = new Set()
+      for (let p = 0; p < pts.length; p += 2) {
+        const ci = Math.floor((pts[p] - W) / CELL.lngStep), cj = Math.floor((pts[p + 1] - S) / CELL.latStep)
+        for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+          const i = ci + di, j = cj + dj
+          if (i < 0 || j < 0 || i >= NX || W + (i + 1) * CELL.lngStep > E + CELL.lngStep || S + j * CELL.latStep >= N) continue
+          const c = j * NX + i
+          if (seen.has(c) || !nearPoints(pts, W + (i + 0.5) * CELL.lngStep, S + (j + 0.5) * CELL.latStep)) continue
+          seen.add(c); cellsHere.push(c)
+        }
+      }
+      if (!cellsHere.length) cellsHere.push(cellOf(at.lng, at.lat))
+    } else {
+      const seen = new Set()
+      for (let y = Math.max(S, at.lat - box.dLat); y < Math.min(N, at.lat + box.dLat); y += CELL.latStep / 2) {
+        for (let x = Math.max(W, at.lng - box.dLng); x < Math.min(E, at.lng + box.dLng); x += CELL.lngStep / 2) {
+          const c = cellOf(x, y)
+          if (!seen.has(c)) { seen.add(c); cellsHere.push(c) }
+        }
+      }
+      if (!cellsHere.length) cellsHere.push(cellOf(at.lng, at.lat))
+    }
+    if (!box) for (const c of cellsHere) whaleCells.set(c, (whaleCells.get(c) || 0) + g.whales)
+    else for (const c of cellsHere) areaCells.set(c, (areaCells.get(c) || 0) + g.whales)
+    const srcs = [...new Set(g.members.map((m) => WHALE_SOURCES[m.source]?.label || m.source))].join(', ')
+    groupRows.push([Math.round(at.lng * 1e5) / 1e5, Math.round(at.lat * 1e5) / 1e5, g.whales, g.species, srcs,
+      box ? Math.round(box.dLat * 1e4) / 1e4 : 0, box ? Math.round(box.dLng * 1e4) / 1e4 : 0, g.members.length, pts])
+  }
   const close = {}
   const radCellsX = Math.ceil(CLOSE_M / (M_PER_DEG_LAT * Math.cos(((S + N) / 2) * Math.PI / 180) * CELL.lngStep))
   const radCellsY = Math.ceil(CLOSE_M / (M_PER_DEG_LAT * CELL.latStep))
   for (const w of whales) {
     if (!inBox(w.lng, w.lat)) continue
-    const wc = cellOf(w.lng, w.lat)
-    whaleCells.set(wc, (whaleCells.get(wc) || 0) + 1)
+    // A roughly placed report can't be judged against "within 1 km".
+    if (locationRadiusM(w) >= APPROX_M) continue
     const { t, tol } = whaleTime(w)
     const ci = Math.floor((w.lng - W) / CELL.lngStep)
     const cj = Math.floor((w.lat - S) / CELL.latStep)
@@ -268,15 +311,19 @@ export async function bakeMonth(ym, { us, gfw }) {
     KINDS.forEach((k, ix) => { const n = byKind.get(k)?.size || 0; all += n; if (n > vmax[ix]) vmax[ix] = n })
     if (all > vmaxAll) vmaxAll = all
   }
+  const r2 = (v) => Math.round(v * 100) / 100
   const cells = []
-  for (const [c, nw] of whaleCells) {
+  // Row: [i, j, whales here, …vessels per kind (KINDS order), whales in the area (roughly placed)].
+  for (const c of new Set([...whaleCells.keys(), ...areaCells.keys()])) {
     const byKind = vessels.get(c)
-    cells.push([c % NX, Math.floor(c / NX), nw, ...KINDS.map((k) => byKind?.get(k)?.size || 0)])
+    const i = c % NX, j = Math.floor(c / NX)
+    cells.push([i, j, r2(whaleCells.get(c) || 0), ...KINDS.map((k) => byKind?.get(k)?.size || 0), r2(areaCells.get(c) || 0)])
   }
   cells.sort((a, b) => a[1] - b[1] || a[0] - b[0])
   const built = new Date().toISOString()
   const grid = { version: VERSION, month: ym, built, bbox: BBOX, cell: CELL, nx: NX, kinds: KINDS, sources, whales: whales.length,
-    trafficCells: vessels.size, vmax, vmaxAll, cells }
+    trafficCells: vessels.size, vmax, vmaxAll, cells, groups: groupRows,
+    whaleRule: 'whales, not reports: one group of animals (same species, day, ≤2 km, ≤2 h) counts once; roughly placed groups count in full across the area they could be in (last cell column)' }
   const closepasses = { version: VERSION, month: ym, built, rule: { metres: CLOSE_M, hours: CLOSE_H, dateOnly: 'same local day', reportedPositionsOnlyBeyondMetres: SEG_MAX_M, estimatedPaths: 'excluded' }, whales: close }
   return { grid, closepasses, stats: { ...stats, trafficCells: vessels.size, whaleCells: cells.length, whales: whales.length, closeWhales: Object.keys(close).length } }
 }

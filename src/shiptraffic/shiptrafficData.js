@@ -18,7 +18,8 @@ export const SHIP_COLOR = '#fde047'   // the /ships track yellow
 export const WHALE_COLOR = '#ec4899'  // magenta
 export const OVERLAP_COLOR = '#ef4444'
 export const OVERLAP_HEATMAP_RAMP = [
-  0, 'rgba(0,0,0,0)', 0.15, 'rgba(127,29,29,0.55)', 0.35, '#b91c1c', 0.55, '#ef4444', 0.75, '#f97316', 0.9, '#fbbf24', 1, '#fffbe6',
+  // One hue, faint → deep red (never white, and no yellow/orange: the ship tracks are yellow).
+  0, 'rgba(239,68,68,0)', 0.1, 'rgba(239,68,68,0.22)', 0.35, 'rgba(239,68,68,0.55)', 0.6, '#ef4444', 0.85, '#dc2626', 1, '#b91c1c',
 ]
 
 export const KIND_LABELS = {
@@ -37,10 +38,11 @@ export function dateSpan(fromYm, toYm, today = new Date().toISOString().slice(0,
 }
 
 /**
- * Sum the picked months' overlap grids. Returns { cells: [{ i, j, lng, lat, w, v, byKind, iRaw, nI }], maxV }.
- * v = distinct vessels of the picked kinds summed over months (vessel-months); w = whale reports.
- * Ship traffic is scaled by the busiest cell in each month (vmax), whales by the busiest whale cell,
- * and iRaw = scaled ships × scaled whales; nI is iRaw relative to the region's top cell (0..1).
+ * Sum the picked months' overlap grids. Returns { cells: [{ i, j, lng, lat, w, a, v, byKind, iRaw, nI }], maxV }.
+ * v = distinct vessels of the picked kinds summed over months (vessel-months); w = whales placed in the cell;
+ * a = whales placed only roughly whose area (~10 km) covers the cell, at full count (Josh 2026-10-17: area level).
+ * Ship score = v ÷ the busiest cell (vmax per month, summed); whale score = max(w, a) ÷ the most whales anywhere (one
+ * scale); iRaw = ship score × whale score; nI is iRaw relative to the region's top cell (0..1).
  */
 export function aggregateOverlap(grids, kinds) {
   if (!grids.length) return { cells: [], maxV: 0 }
@@ -54,8 +56,9 @@ export function aggregateOverlap(grids, kinds) {
       const [i, j, w] = row
       const key = j * g.nx + i
       let c = byCell.get(key)
-      if (!c) byCell.set(key, (c = { i, j, w: 0, v: 0, byKind: {} }))
+      if (!c) byCell.set(key, (c = { i, j, w: 0, a: 0, v: 0, byKind: {} }))
       c.w += w
+      c.a += row[3 + g.kinds.length] || 0 // grids baked before 2026-10-17 have no area column
       for (const ix of kindIdx) {
         const n = row[3 + ix]
         if (!n) continue
@@ -65,12 +68,15 @@ export function aggregateOverlap(grids, kinds) {
     }
   }
   const cells = [...byCell.values()]
-  const maxW = Math.max(1, ...cells.map((c) => c.w))
+  // One scale for both: whales seen in the square OR in its ~10 km area, against the most whales anywhere — so 15
+  // roughly placed whales don't rank with 65 placed precisely just because they're scored on a smaller scale.
+  const maxW = Math.max(1, ...cells.map((c) => Math.max(c.w, c.a)))
   const [W, S] = meta.bbox
   for (const c of cells) {
     c.lng = W + (c.i + 0.5) * meta.cell.lngStep
     c.lat = S + (c.j + 0.5) * meta.cell.latStep
-    c.iRaw = (vScale ? Math.min(1, c.v / vScale) : 0) * (c.w / maxW)
+    c.whaleScore = Math.max(c.w, c.a) / maxW
+    c.iRaw = (vScale ? Math.min(1, c.v / vScale) : 0) * c.whaleScore
   }
   const top = Math.max(0, ...cells.map((c) => c.iRaw))
   for (const c of cells) c.nI = top ? c.iRaw / top : 0

@@ -333,9 +333,19 @@ async function main() {
   } else months = String(args.months).split(',').filter((m) => all.includes(m))
   console.log(`overlap bake: ${months.length} month(s): ${months.join(' ')}${SHARDS ? ` (first ${SHARDS} shards only)` : ''}`)
   mkdirSync(OUT, { recursive: true })
+  const failed = []
   for (const ym of months) {
     const t0 = Date.now()
-    const { grid, closepasses, stats } = await bakeMonth(ym, { us: src.us[ym] || null, gfw: src.gfw[ym] || null })
+    // A 500 MB pack stream can be cut mid-way ("other side closed"); redo the month, then move on.
+    let baked = null
+    for (let attempt = 1; attempt <= 3 && !baked; attempt++) {
+      try { baked = await bakeMonth(ym, { us: src.us[ym] || null, gfw: src.gfw[ym] || null }) } catch (e) {
+        console.warn(`  ${ym}: attempt ${attempt} failed: ${e.message}${e.cause ? ` (${e.cause.message || e.cause})` : ''}`)
+        if (attempt < 3) await new Promise((ok) => setTimeout(ok, 15000 * attempt))
+      }
+    }
+    if (!baked) { failed.push(ym); continue }
+    const { grid, closepasses, stats } = baked
     const gj = JSON.stringify(grid)
     const cj = JSON.stringify(closepasses)
     writeFileSync(resolve(OUT, `${ym}-grid.json`), gj)
@@ -344,8 +354,10 @@ async function main() {
     if (!PUBLISH) continue
     const g = await upload(`shiptraffic/${VERSION}/${ym}/grid.json`, gj)
     const c = await upload(`shiptraffic/${VERSION}/${ym}/closepasses.json`, cj)
-    // Read → merge → write per month, so a crash mid-run never loses finished months.
-    const idx = await readIndex()
+    // One writer (the workflow's concurrency group): the index read at the start is kept in memory and written after
+    // each month, so a crash never loses finished months. (Re-reading it per month dropped months: the Blob CDN can
+    // answer with a copy up to a minute old, 2026-10-17.)
+    const idx = index
     idx.months[ym] = {
       grid: g, closepasses: c, built: grid.built,
       sources: { us: src.us[ym]?.built || null, gfw: src.gfw[ym]?.built || null },
@@ -357,6 +369,7 @@ async function main() {
     await upload(`shiptraffic/${VERSION}/index.json`, JSON.stringify(idx))
     console.log(`  ✓ published ${ym}`)
   }
+  if (failed.length) { console.error(`failed months (next run retries them): ${failed.join(' ')}`); process.exit(1) }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e); process.exit(1) })

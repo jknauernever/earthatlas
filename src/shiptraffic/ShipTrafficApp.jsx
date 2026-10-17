@@ -127,7 +127,7 @@ const SOURCES = [
 ]
 const NOTES = [
   { heading: 'Overlap', body: 'For each ~1 km square: the ships of the picked kinds that crossed it in the picked months (scaled to the busiest square), times the whale reports in it (scaled to the square with the most). A co-occurrence measure for exploring, not a ship-strike risk model.' },
-  { heading: 'Close passes', body: 'A ship counts as passing a whale report when its track came within 1 km of the report within 3 hours of it (reports with only a date: the same day). Recomputed daily.' },
+  { heading: 'Close passes', body: 'A ship counts as passing a whale report when it was within 1 km of the report within 3 hours of it (reports with only a date: the same day). Only where ships were actually reported counts: estimated paths never do, and where two reported positions are more than 2 km apart (Global Fishing Watch positions are hourly), only those positions count, not the line between them. Recomputed daily.' },
   { heading: 'Caveats', body: 'Whale reports follow where people look and listen. Ships without AIS, or with it switched off, are not here. NOAA covers US waters; Canadian waters come from Global Fishing Watch and are fuller in recent months.' },
 ]
 

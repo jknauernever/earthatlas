@@ -35,6 +35,10 @@ export const BBOX = [-125.5, 46.9, -122.0, 49.9] // w,s,e,n — Salish Sea, Stra
 export const CELL = { lngStep: 0.012, latStep: 0.0081 } // ≈ 0.9 km
 export const CLOSE_M = 1000
 export const CLOSE_H = 3
+// Close passes measure against where ships actually were: our estimated water paths (GFW `est` lines) never count,
+// and between two reported positions more than SEG_MAX_M apart (GFW is hourly) only the positions themselves count,
+// not the straight line between them.
+export const SEG_MAX_M = 2000
 const FIRST_MONTH = '2024-01'
 const KINDS = ['cargo', 'tanker', 'passenger', 'fishing', 'tug', 'pleasure', 'other', 'unknown']
 
@@ -155,12 +159,12 @@ function whaleTime(w) {
 export async function bakeMonth(ym, { us, gfw }) {
   const vessels = new Map() // cell → Map(kind → Set(vessel id))
   const segs = new Map()    // cell → [segment index…]
-  const segList = []        // [vesselId, kind, ax, ay, ta, bx, by, tb]
+  const segList = []        // [vesselId, kind, ax, ay, ta, bx, by, tb, closeMode] closeMode 0 = never, 1 = endpoints only, 2 = whole segment
   const stats = { lines: 0, inBox: 0, segments: 0 }
 
-  const addSegment = (vid, kind, ax, ay, ta, bx, by, tb) => {
+  const addSegment = (vid, kind, ax, ay, ta, bx, by, tb, closeMode) => {
     const si = segList.length
-    segList.push([vid, kind, ax, ay, ta, bx, by, tb])
+    segList.push([vid, kind, ax, ay, ta, bx, by, tb, closeMode])
     stats.segments++
     const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax) / CELL.lngStep, Math.abs(by - ay) / CELL.latStep) * 2))
     const seen = new Set()
@@ -204,7 +208,8 @@ export async function bakeMonth(ym, { us, gfw }) {
       const [ax, ay] = c[i - 1]
       const [bx, by] = c[i]
       if (!inBox(ax, ay) && !inBox(bx, by)) continue
-      addSegment(vid, kind, ax, ay, ts[i - 1], bx, by, ts[i])
+      const closeMode = r.est === 1 ? 0 : metres(ax, ay, bx, by) > SEG_MAX_M ? 1 : 2
+      addSegment(vid, kind, ax, ay, ts[i - 1], bx, by, ts[i], closeMode)
     }
   }
 
@@ -234,13 +239,15 @@ export async function bakeMonth(ym, { us, gfw }) {
         for (const si of list) {
           if (done.has(si)) continue
           done.add(si)
-          const [vid, kind, ax, ay, ta, bx, by, tb] = segList[si]
-          // Closest point on the segment (local planar metres), then its interpolated time.
+          const [vid, kind, ax, ay, ta, bx, by, tb, closeMode] = segList[si]
+          if (!closeMode) continue
+          // Closest point on the segment (local planar metres), then its interpolated time. Long segments: endpoints only.
           const k = Math.cos(w.lat * Math.PI / 180) * M_PER_DEG_LAT
           const px = (w.lng - ax) * k, py = (w.lat - ay) * M_PER_DEG_LAT
           const vx = (bx - ax) * k, vy = (by - ay) * M_PER_DEG_LAT
           const vv = vx * vx + vy * vy
-          const u = vv ? Math.max(0, Math.min(1, (px * vx + py * vy) / vv)) : 0
+          let u = vv ? Math.max(0, Math.min(1, (px * vx + py * vy) / vv)) : 0
+          if (closeMode === 1) u = Math.hypot(px, py) <= Math.hypot(px - vx, py - vy) ? 0 : 1
           const d = Math.hypot(px - u * vx, py - u * vy)
           if (d > CLOSE_M) continue
           const tp = ta + (tb - ta) * u
@@ -272,7 +279,7 @@ export async function bakeMonth(ym, { us, gfw }) {
   const built = new Date().toISOString()
   const grid = { version: VERSION, month: ym, built, bbox: BBOX, cell: CELL, nx: NX, kinds: KINDS, sources, whales: whales.length,
     trafficCells: vessels.size, vmax, vmaxAll, cells }
-  const closepasses = { version: VERSION, month: ym, built, rule: { metres: CLOSE_M, hours: CLOSE_H, dateOnly: 'same local day' }, whales: close }
+  const closepasses = { version: VERSION, month: ym, built, rule: { metres: CLOSE_M, hours: CLOSE_H, dateOnly: 'same local day', reportedPositionsOnlyBeyondMetres: SEG_MAX_M, estimatedPaths: 'excluded' }, whales: close }
   return { grid, closepasses, stats: { ...stats, trafficCells: vessels.size, whaleCells: cells.length, whales: whales.length, closeWhales: Object.keys(close).length } }
 }
 

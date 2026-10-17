@@ -84,6 +84,8 @@ function monthBarReserve(map) {
 // eBird ids are `ebird-<subId>-<speciesCode>` (see normalizeEBirdObs), and the
 // checklist page is the canonical public URL for an eBird observation.
 function observationUrl(s) {
+  // Whale-database sightings (src/lib/whales.js whalePopupFields) bring their own link.
+  if (s.url) return s.url
   const id = String(s.id)
   if (s.source === 'iNaturalist') return 'https://www.inaturalist.org/observations/' + id.replace('inat-', '')
   if (s.source === 'eBird') return 'https://ebird.org/checklist/' + id.split('-')[1]
@@ -208,8 +210,9 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
           ${s.place ? `<div>\u{1F4CD} ${s.place}</div>` : ''}
           ${(s.date || s.observer) ? `<div>${[
             s.date ? `\u{1F4C5} ${formatDate(s.date)}${formatTime(s.time) ? ` at ${formatTime(s.time)}` : ''}` : '',
-            s.observer ? `\u{1F464} ${s.observer}` : '',
+            s.observer ? `\u{1F464} ${escapeHtml(s.observer)}` : '',
           ].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>` : ''}
+          ${s.credit ? `<div style="color:#3d4f5f">\u24D8 ${escapeHtml(s.credit)}</div>` : ''}
         </div>
         <div style="
           display:flex;gap:6px;margin-top:8px;
@@ -231,7 +234,7 @@ function buildPopupHTML(s, { fallbackColor, fallbackEmoji }) {
             font-size:11px;font-weight:500;line-height:1.2;
             text-decoration:none;
             border:1px solid #e0e4e8;
-          ">View on ${s.source || 'GBIF'} \u2197</a>
+          ">${escapeHtml(s.linkText || `View on ${s.source || 'GBIF'}`)} \u2197</a>
         </div>
       </div>
     </div>
@@ -633,8 +636,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
   }, [])
 
   // ─── Update center (programmatic flyTo) ──────────────────────────────────
+  // Only a CHANGE of origin moves the map. On mount the origin hasn't changed, so a shared link whose map view
+  // (mlat/mlng/z) differs from its search origin (lat/lng) — what every link saved after a pan looks like — stays
+  // where the link put it instead of flying back to the origin at the default zoom.
+  const prevCenterRef = useRef(center ? { lat: center.lat, lng: center.lng } : null)
   useEffect(() => {
     if (!mapRef.current || !center) return
+    const prev = prevCenterRef.current
+    prevCenterRef.current = { lat: center.lat, lng: center.lng }
+    if (prev && Math.abs(prev.lat - center.lat) < 1e-9 && Math.abs(prev.lng - center.lng) < 1e-9) return
     const uc = userCenterRef.current
     if (uc && Math.abs(uc.lat - center.lat) < 0.001 && Math.abs(uc.lng - center.lng) < 0.001) return
     // Skip if map is already at the target center (avoids stuck flyingRef on init)

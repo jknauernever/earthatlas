@@ -23,14 +23,18 @@ import LocationSearch from './components/LocationSearch'
 import TimeSlider from './components/TimeSlider'
 import SeasonRibbon from './components/SeasonRibbon'
 import Controls from '../components/Controls'
+import WhaleReports from '../components/WhaleReports'
 
 import { reverseGeocode, fmtDate } from './utils'
 import { inBounds } from './wildQuery'
+import { fetchWhales, whaleIndex, isWhaleDuplicate, WHALE_SOURCES } from '../lib/whales.js'
 
 const SOURCE_URLS = {
   GBIF: 'https://www.gbif.org',
   iNaturalist: 'https://www.inaturalist.org',
   eBird: 'https://ebird.org',
+  // Whale-database sources (Whale Alert, HappyWhale, SalishSea.io, Orcasound, OBIS)
+  ...Object.fromEntries(Object.values(WHALE_SOURCES).map((w) => [w.label, w.url])),
 }
 
 // View-local species colors: the species visible right now get distinct hues
@@ -117,6 +121,7 @@ export default function ExploreApp({ config }) {
   const mapZoomRef = useRef(null)
   const mapBoundsRef = useRef(null)
   const abortRef = useRef(null)
+  const mapApiRef = useRef(null) // ExploreMap's zoomTo, for the whale reports list
 
   // Compute approximate viewport bounds from center + zoom (for initial load).
   // Clamped to valid coordinates — at world zooms the raw span exceeds ±90/±180
@@ -147,17 +152,20 @@ export default function ExploreApp({ config }) {
     const g = h.gbif.rows.filter((r) => inBounds(r, viewBB))
     const i = h.inat.rows.filter((r) => inBounds(r, viewBB))
     const e = h.ebird.filter((r) => inBounds(r, viewBB))
+    const w = (h.whales?.rows || []).filter((r) => inBounds(r, viewBB))
 
-    // Merge sources (GBIF already excludes iNat-sourced records), newest
-    // first so the MAX_SIGHTINGS cap keeps the most recent.
-    const all = [...g, ...i, ...e]
+    // Merge sources (GBIF already excludes iNat-sourced records; copies of
+    // whale-database reports were dropped at load), newest first so the
+    // MAX_SIGHTINGS cap keeps the most recent.
+    const all = [...g, ...i, ...e, ...w]
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
 
     // Cell totals scaled by the in-view fraction of held rows — the honest
     // "available here" figure for display.
     const gFrac = h.gbif.rows.length ? g.length / h.gbif.rows.length : 1
     const iFrac = h.inat.rows.length ? i.length / h.inat.rows.length : 1
-    const apiTotal = Math.max(Math.round(h.gbif.total * gFrac) + Math.round(h.inat.total * iFrac), all.length)
+    const wFrac = h.whales?.rows.length ? w.length / h.whales.rows.length : 1
+    const apiTotal = Math.max(Math.round(h.gbif.total * gFrac) + Math.round(h.inat.total * iFrac) + Math.round((h.whales?.total || 0) * wFrac), all.length)
 
     const shown = all.length > MAX_SIGHTINGS ? all.slice(0, MAX_SIGHTINGS) : all
     setTooManyResults(shown.length < apiTotal)
@@ -184,11 +192,15 @@ export default function ExploreApp({ config }) {
       const geo = bounds
         ? { lat: loc.lat, lng: loc.lng, bounds }
         : { lat: loc.lat, lng: loc.lng, bounds: boundsFromZoom(loc.lat, loc.lng) }
-      const [recentResult, patternResult, inatResult, ebirdResult] = await Promise.allSettled([
+      const whaleFrom = new Date(Date.now() - (config.defaults.days - 1) * 86400000).toISOString().slice(0, 10)
+      const [recentResult, patternResult, inatResult, ebirdResult, whaleResult] = await Promise.allSettled([
         fetchRecentSightings({ ...geo, days: config.defaults.days, limit: MAX_SIGHTINGS, signal }),
         fetchSeasonalPattern({ ...geo, signal }),
         fetchINatSightings({ ...geo, days: config.defaults.days, limit: MAX_SIGHTINGS, signal }),
         fetchEBirdSightings({ ...geo, days: config.defaults.days, signal }),
+        config.whaleDb
+          ? fetchWhales({ bounds: geo.bounds, from: whaleFrom, taxon: config.whaleDb.taxon, limit: 2000, signal })
+          : Promise.resolve(null),
       ])
 
       if (signal.aborted) return
@@ -198,13 +210,18 @@ export default function ExploreApp({ config }) {
       const inatSightings   = inatData.sightings
       const ebirdSightings  = ebirdResult.status === 'fulfilled'  ? ebirdResult.value : []
       const pattern         = patternResult.status === 'fulfilled' ? patternResult.value : []
+      const whaleData       = whaleResult.status === 'fulfilled' ? whaleResult.value : null
+      // Every report once: drop GBIF / iNat copies of reports the whale database has.
+      const wIdx = whaleData?.sightings?.length ? whaleIndex(whaleData.sightings) : null
+      const notDup = (r) => !isWhaleDuplicate(r, wIdx)
 
 
       heldRef.current = {
         cell: recentData.cell || inatData.cell || geo.bounds,
-        gbif: { rows: recentData.sightings, total: recentData.total, capped: !!recentData.capped },
-        inat: { rows: inatSightings, total: inatData.total, capped: !!inatData.capped },
+        gbif: { rows: recentData.sightings.filter(notDup), total: recentData.total - (recentData.sightings.length - recentData.sightings.filter(notDup).length), capped: !!recentData.capped },
+        inat: { rows: inatSightings.filter(notDup), total: inatData.total - (inatSightings.length - inatSightings.filter(notDup).length), capped: !!inatData.capped },
         ebird: ebirdSightings,
+        whales: whaleData ? { rows: (whaleData.sightings || []).map(service.normalizeWhale), total: whaleData.total || 0, capped: !!whaleData.truncated } : null,
       }
       applyView(geo.bounds)
       setSeasonPattern(pattern)
@@ -222,7 +239,7 @@ export default function ExploreApp({ config }) {
         setFetching(false)
       }
     }
-  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, fetchEBirdSightings, applyView, config.defaults.days, MAX_SIGHTINGS])
+  }, [fetchRecentSightings, fetchSeasonalPattern, fetchINatSightings, fetchEBirdSightings, applyView, config.defaults.days, config.whaleDb, service, MAX_SIGHTINGS])
 
   // ─── Cold load: if URL has coords on mount, load data immediately ─────────
   const coldLoaded = useRef(false)
@@ -308,7 +325,7 @@ export default function ExploreApp({ config }) {
     const contained = h && h.cell && bounds
       && bounds.minLat >= h.cell.minLat && bounds.maxLat <= h.cell.maxLat
       && bounds.minLng >= h.cell.minLng && bounds.maxLng <= h.cell.maxLng
-    if (contained && !h.gbif.capped && !h.inat.capped) {
+    if (contained && !h.gbif.capped && !h.inat.capped && !h.whales?.capped) {
       applyView(bounds)
       return
     }
@@ -500,6 +517,9 @@ export default function ExploreApp({ config }) {
             <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
             {' \u00b7 '}
             <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
+            {config.whaleDb && Object.values(WHALE_SOURCES).filter((w) => w.label !== 'iNaturalist').map((w) => (
+              <span key={w.label}>{' \u00b7 '}<a className={styles.footerLink} href={w.url} target="_blank" rel="noopener">{w.label}</a></span>
+            ))}
           </div>
           <div className={styles.footerText}>
             Built by <a className={styles.footerLink} href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
@@ -596,13 +616,13 @@ export default function ExploreApp({ config }) {
               <div className={styles.statSub}>
                 {capped ? <span>Zoom in to see all · </span> : <span>complete for this view · </span>}
                 from{' '}
-                {['iNaturalist', 'eBird', 'GBIF']
-                  .map(src => ({ src, n: filteredSightings.filter(s => s.source === src).length }))
-                  .filter(({ n }) => n > 0)
+                {Object.entries(filteredSightings.reduce((m, s) => ((m[s.source] = (m[s.source] || 0) + 1), m), {}))
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([src, n]) => ({ src, n }))
                   .map(({ src, n }, i, arr) => (
                     <span key={src}>
                       {i > 0 && (i === arr.length - 1 ? ' & ' : ', ')}
-                      <a href={SOURCE_URLS[src]} target="_blank" rel="noopener">{src}</a>
+                      <a href={SOURCE_URLS[src]} target="_blank" rel="noopener">{src}</a>{' '}({n.toLocaleString()})
                     </span>
                   ))}
               </div>
@@ -658,6 +678,7 @@ export default function ExploreApp({ config }) {
                 center={location}
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
+                mapApiRef={mapApiRef}
                 initialView={qp.z != null ? { zoom: qp.z } : null}
                 config={{
                   fallbackColor: config.fallback.color,
@@ -719,6 +740,16 @@ export default function ExploreApp({ config }) {
 
         </div>
 
+        {/* Every whale-database report in view, newest first, each with its own credit */}
+        {config.whaleDb && (
+          <div className={styles.whaleReportsCard}>
+            <WhaleReports
+              reports={filteredSightings.filter((s) => s.whale).map((s) => s.whale)}
+              onSelect={(r) => mapApiRef.current?.zoomTo(r.lng, r.lat)}
+            />
+          </div>
+        )}
+
       </div>{/* end mainLayout */}
 
       <div className={styles.footerWave}>
@@ -733,6 +764,9 @@ export default function ExploreApp({ config }) {
           <a className={styles.footerLink} href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a>
           {' \u00b7 '}
           <a className={styles.footerLink} href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
+          {config.whaleDb && Object.values(WHALE_SOURCES).filter((w) => w.label !== 'iNaturalist').map((w) => (
+            <span key={w.label}>{' \u00b7 '}<a className={styles.footerLink} href={w.url} target="_blank" rel="noopener">{w.label}</a></span>
+          ))}
         </div>
         <div className={styles.footerText}>
           <a className={styles.footerLink} href="/">EarthAtlas.org</a>

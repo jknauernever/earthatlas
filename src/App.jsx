@@ -12,6 +12,7 @@ import { quantizeBounds } from './explore/wildQuery'
 import { fetchHappyWhaleObservations, hwSpeciesUnder, hwSpeciesName, hwScientificName, HW_GBIF_INSTITUTION } from './happywhale/hwMainSource'
 import { useWhaleJourney, WhaleCard } from './happywhale/whaleJourney.jsx'
 import { track } from './utils/analytics'
+import { fetchWhales, whaleIndex, isWhaleDuplicate, whaleToRow, whalePopupFields, taxonMayIncludeWhales, WHALE_SOURCES } from './lib/whales.js'
 
 import Header           from './components/Header'
 import Controls         from './components/Controls'
@@ -24,6 +25,7 @@ import ObservationModal from './components/ObservationModal'
 import LoadingState     from './components/LoadingState'
 import EmptyState       from './components/EmptyState'
 import GlobalStats      from './components/GlobalStats'
+import WhaleReports     from './components/WhaleReports'
 import { Analytics } from '@vercel/analytics/react'
 import './App.css'
 
@@ -381,7 +383,15 @@ export default function App() {
         // a whale, seals, penguins… Unknown speciesKeys are left out (see hwMainSource).
         const canFilterHW = !!selSp?.id && hwSpeciesUnder(selSp.id).size > 0
 
-        const [inatData, ebirdData, gbifData, hwData] = await Promise.all([
+        // Our whale database (/api/whales — Whale Alert, SalishSea.io, Orcasound, HappyWhale, iNaturalist, OBIS):
+        // whenever the search can include whales — a whale (or any group above whales) picked, or a place with no
+        // species picked. Every report shows once (src/lib/whales.js).
+        const canFilterWhales = selSp
+          ? taxonMayIncludeWhales({ id: selSp.id, iconicTaxon: selSp.iconicTaxon })
+          : !effectiveAnywhere && (!iconicFilter || iconicFilter === 'Mammalia')
+        const whaleFrom = d1 || new Date(Date.now() - 3650 * 86400000).toISOString().slice(0, 10)
+
+        const [inatData, ebirdData, gbifData, hwData, whaleData] = await Promise.all([
           fetchObservations({
             ...locParams,
             d1, d2: d1 ? d2 : undefined, perPage, slim: 'card',
@@ -423,29 +433,49 @@ export default function App() {
                 d1, d2: d1 ? d2 : undefined,
               }).catch(() => null)
             : Promise.resolve(null),
+
+          canFilterWhales
+            ? fetchWhales({
+                bounds: searchBounds || undefined,
+                from: whaleFrom, to: d2,
+                taxon: selSp?.id || undefined,
+                limit: 1000,
+              }).catch(() => null)
+            : Promise.resolve(null),
         ])
 
         // With the live HappyWhale rows loaded, drop HappyWhale's own (older) copies on GBIF so nothing counts twice.
         const hwLive = !!hwData
 
+        // Every whale report once: the whale database's copy wins (it carries the full credit), so this page's own
+        // iNaturalist / HappyWhale / GBIF copies of those reports are dropped.
+        const whaleRows = (whaleData?.sightings || []).map(whaleToRow)
+        const wIdx = whaleRows.length ? whaleIndex(whaleData.sightings) : null
+        const notDup = (r) => !isWhaleDuplicate(r, wIdx)
+
         const gbifFiltered = (gbifData.results || []).filter(
           r => r.datasetKey !== GBIF_INAT_DATASET && r.datasetKey !== GBIF_EBIRD_DATASET
             && r.basisOfRecord !== 'LIVING_SPECIMEN'
             && !(hwLive && r.institutionCode === HW_GBIF_INSTITUTION)
-        )
+        ).filter(notDup)
+        const inatKept = (inatData.results || []).filter(notDup)
+        const hwKept = (hwData?.results || []).filter(notDup)
 
         allResults = [
-          ...(inatData.results || []),
+          ...inatKept,
           ...(ebirdData.results || []),
           ...gbifFiltered,
-          ...(hwData?.results || []),
+          ...hwKept,
+          ...whaleRows,
         ]
         // Use iNat total as primary count, add unique GBIF records (excluding
-        // iNat/eBird datasets already counted) and eBird observations
-        const inatTotal = inatData.total_results || 0
+        // iNat/eBird datasets already counted), eBird observations, and the
+        // whale database's reports (minus the copies dropped above)
+        const inatTotal = (inatData.total_results || 0) - ((inatData.results || []).length - inatKept.length)
         const ebirdTotal = ebirdData.total_results || 0
         const gbifUniqueCount = gbifFiltered.length // already deduplicated against iNat/eBird datasets
-        totalCount = inatTotal + ebirdTotal + gbifUniqueCount + (hwData?.total_results || 0)
+        const hwTotal = (hwData?.total_results || 0) - ((hwData?.results || []).length - hwKept.length)
+        totalCount = inatTotal + ebirdTotal + gbifUniqueCount + hwTotal + (whaleData?.total || 0)
 
       }
 
@@ -586,6 +616,13 @@ export default function App() {
         photos: obs.photos?.map(p => p.url?.replace('square', 'medium')).filter(Boolean) || [],
         source: isEBird ? 'eBird' : isGBIF ? 'GBIF' : isHW ? 'HappyWhale' : 'iNaturalist',
         hw: obs.hw || null, // HappyWhale encounter + identified individual (popup journey button)
+        // Whale-database report: its own source label, observer, time, credit line and link.
+        ...(obs.whale ? {
+          source: obs.source,
+          observer: obs.whale.observer || null,
+          time: obs.whale.observed_at || null,
+          ...whalePopupFields(obs.whale),
+        } : {}),
       }
     }).filter(Boolean)
   }, [observations])
@@ -594,7 +631,7 @@ export default function App() {
   // The whale's sightings worldwide on this map, its card in the sidebar. HappyWhale rows already loaded stand in when
   // its record lists none yet.
   const hwLocal = useMemo(() => observations
-    .filter((o) => o.source === 'HappyWhale' && o.hw?.individual)
+    .filter((o) => o.source === 'HappyWhale' && o.hw?.individual) // live rows and whale-database rows alike
     .map((o) => ({
       id: o.hw.encounterId,
       lat: o.geojson.coordinates[1],
@@ -669,7 +706,7 @@ export default function App() {
 
   // ─── Status text ───────────────────────────────────────────────
   const TIME_LABELS = { hour: 'past hour', day: 'past day', week: 'past week', month: 'past month', year: 'past year', all: 'all time' }
-  const sourceName = 'iNaturalist, eBird & GBIF'
+  const sourceName = 'iNaturalist, eBird, GBIF & whale-sighting networks'
   const displayedCount = observations.length
   const isSampled = totalResults !== null && displayedCount > 0 && displayedCount < totalResults
   const countPhrase = totalResults !== null
@@ -843,6 +880,11 @@ export default function App() {
                   </div>
                 )
               })}
+              {/* Every whale-database report in view, newest first, each with its own credit */}
+              <WhaleReports
+                reports={observations.filter((o) => o.whale).map((o) => o.whale)}
+                onSelect={(r) => exploreMapApiRef.current?.zoomTo(r.lng, r.lat)}
+              />
             </div>
             )}
           </div>
@@ -858,6 +900,13 @@ export default function App() {
         <a href="https://www.gbif.org" target="_blank" rel="noopener noreferrer">GBIF</a>
         {' & '}
         <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">HappyWhale</a>
+        {', with whale reports from '}
+        {['maplify', 'salishsea', 'orcasound', 'obis'].map((k, i, a) => (
+          <span key={k}>
+            {i > 0 && (i === a.length - 1 ? ' & ' : ', ')}
+            <a href={WHALE_SOURCES[k].url} target="_blank" rel="noopener noreferrer">{WHALE_SOURCES[k].label}</a>
+          </span>
+        ))}
         {' '}— <strong>powered by citizen science</strong>.
         <div className="built-by">
           Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>

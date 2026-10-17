@@ -705,6 +705,30 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
   }
 }
 
+// Dev middleware for /api/whales: runs the Node handler itself against the whales database
+// (WHALES_DATABASE_URL from .env.local — there is no separate dev DB). WHALES_SCHEMA may point
+// it at a throwaway whales_t_* schema while proving changes.
+function whalesApiPlugin(whalesDbUrl, whalesSchema) {
+  return {
+    name: 'whales-api',
+    configureServer(server) {
+      if (whalesDbUrl && !process.env.WHALES_DATABASE_URL) process.env.WHALES_DATABASE_URL = whalesDbUrl
+      // Always mirror .env.local, so removing WHALES_SCHEMA there (vite restarts on .env changes) really switches back to "whales".
+      process.env.WHALES_SCHEMA = whalesSchema || ''
+      server.middlewares.use('/api/whales', async (req, res) => {
+        try {
+          const { default: handler } = await server.ssrLoadModule('/api/whales.js')
+          req.url = `/api/whales${req.url === '/' ? '' : req.url}`
+          await handler(req, res)
+        } catch (err) {
+          res.statusCode = 502
+          res.end(String(err).slice(0, 200))
+        }
+      })
+    },
+  }
+}
+
 // Dev middleware: serve /api/inciweb by mirroring the production Edge function.
 function inciwebProxyPlugin() {
   return {
@@ -982,6 +1006,7 @@ export default defineConfig(({ mode }) => {
     systemsExplainPlugin(anthropicKey, mapboxToken),
     dockReviewPlugin(),
     shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || '', env.SHIPS_PROD_DATABASE_URL || ''),
+    whalesApiPlugin(env.WHALES_DATABASE_URL || process.env.WHALES_DATABASE_URL || '', env.WHALES_SCHEMA || ''),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

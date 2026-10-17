@@ -7,6 +7,7 @@
 
 import { fetchEBirdRecentRaw, fetchEBirdSpeciesRecentRaw } from '../services/eBird'
 import { quantizeBounds, recentWindow } from './wildQuery'
+import { whaleName, whaleSourceLabel, whalePopupFields } from '../lib/whales.js'
 
 // All GBIF/iNat traffic routes through our edge proxies in production so
 // every visitor shares one cached upstream call per unique (quantized)
@@ -106,6 +107,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       observer: occ.recordedBy || occ.institutionCode || occ.datasetName || 'GBIF contributor',
       photos: (occ.media || []).filter(m => m.type === 'StillImage' && m.identifier).slice(0, 2).map(m => m.identifier),
       source: 'GBIF',
+      occurrenceID: occ.occurrenceID || null, // matches the whale database's copies (src/lib/whales.js)
     }
   }
 
@@ -137,6 +139,37 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
       observer: obs.user?.login || 'iNaturalist observer',
       photos: photo ? [photo] : [],
       source: 'iNaturalist',
+    }
+  }
+
+  // A whale-database sighting (/api/whales, src/lib/whales.js) in this subsite's
+  // sighting shape — same species keys, colors and facts as GBIF / iNat rows,
+  // plus its own credit line and link for the popup and the reports list.
+  function normalizeWhale(w) {
+    const sciName = w.taxon?.scientific || ''
+    const binomial = sciName.split(/\s+/).slice(0, 2).join(' ')
+    const speciesKey = gbifKeyFromScientific(sciName) || gbifKeyFromScientific(binomial)
+    const meta = speciesKey ? getSpeciesMeta(speciesKey) : null
+    return {
+      id: `wdb-${w.id}`,
+      speciesKey: speciesKey || binomial || w.taxon?.reported_as || 'unidentified',
+      common: meta?.common || whaleName(w),
+      scientific: sciName,
+      color: meta?.color || defaultColor,
+      emoji: meta?.emoji || defaultEmoji,
+      fact: meta?.fact || null,
+      speciesPhoto: meta?.photoUrl || null,
+      iucn: meta?.iucn || null,
+      lat: w.lat,
+      lng: w.lng,
+      date: w.observed_date || null,
+      time: w.observed_at || null,
+      place: null,
+      observer: w.observer || null,
+      photos: w.photo ? [w.photo.url || w.photo.thumb] : [],
+      source: whaleSourceLabel(w),
+      ...whalePopupFields(w),
+      hw: null, // subsite maps have no journey view; the reports list names the identified whale
     }
   }
 
@@ -509,6 +542,7 @@ export function createExploreService({ gbifTaxonKey, inatTaxonId, speciesMeta, f
     fetchEBirdSightings,
     aggregateSpecies,
     getSpeciesMeta,
+    normalizeWhale,
     speciesMeta, // curated catalog — powers the unified bar's species select
   }
 }

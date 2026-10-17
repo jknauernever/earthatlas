@@ -59,6 +59,8 @@ const config = {
   inatTaxonId: INAT_TAXON_ID,
   newsQuery: 'whales ocean cetacean marine',
   postFilter: null,
+  // Our whale database (/api/whales): every whale report we know about, each once (src/lib/whales.js).
+  whaleDb: { taxon: INAT_TAXON_ID },
 }
 
 config.service = createExploreService({

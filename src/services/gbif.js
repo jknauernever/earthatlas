@@ -153,6 +153,8 @@ function normalizeOccurrence(occ) {
     datasetName: occ.datasetName || null,
     basisOfRecord: occ.basisOfRecord || null,
     institutionCode: occ.institutionCode || null,
+    // The original record id — matches the whale database's OBIS / HappyWhale copies (src/lib/whales.js isWhaleDuplicate).
+    occurrenceID: occ.occurrenceID || null,
   }
 }
 

@@ -1625,3 +1625,13 @@
   .ribbonProv { display: none; }
 }
 
+
+/* ─── Whale reports (src/components/WhaleReports.jsx) ──────────────────────── */
+.whaleReportsCard {
+  margin-top: 16px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e6e1d6);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.whaleReportsCard > section { border-top: 0; }

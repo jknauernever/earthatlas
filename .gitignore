@@ -46,3 +46,6 @@ data/sanjuan-docks/
 
 # /permits WDFW HPA files fetched by scripts/permits/hpa-fetch.mjs (re-fetchable cache)
 scripts/permits/cache/
+
+# Whale backfill progress + logs (scripts/whales/backfill.mjs) — resumable state, never commit
+scripts/whales/cache/

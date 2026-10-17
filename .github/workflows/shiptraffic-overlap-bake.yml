@@ -34,4 +34,5 @@ jobs:
       - name: Bake + publish
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NODE_OPTIONS: --max-old-space-size=6144   # full NOAA + GFW months hold ~1M track segments (2026-05 ran out at the default heap)
         run: node scripts/shiptraffic/overlap-bake.mjs --months "${{ github.event.inputs.months || 'auto' }}"

@@ -64,15 +64,21 @@ function metres(ax, ay, bx, by) {
 // ─── Packs: 'SHTP', uint32 N, (N+1) uint32 offsets, N gzip'd NDJSON shards (api/ship-tracks.js) ───
 async function range(url, a, b) {
   for (let i = 0; ; i++) {
-    const r = await fetch(url, { headers: { Range: `bytes=${a}-${b}`, 'Accept-Encoding': 'identity' } })
-    const buf = r.ok ? Buffer.from(await r.arrayBuffer()) : null
+    let buf = null, status = 0
+    try {
+      const r = await fetch(url, { headers: { Range: `bytes=${a}-${b}`, 'Accept-Encoding': 'identity' } })
+      status = r.status
+      buf = r.ok ? Buffer.from(await r.arrayBuffer()) : null
+    } catch (e) { status = e.message }
     if (buf && buf.length === b - a + 1) return buf
-    if (i >= 20) throw new Error(`range ${a}-${b} of ${url}: HTTP ${r.status}`)
+    if (i >= 20) throw new Error(`range ${a}-${b} of ${url}: ${status}`)
     await new Promise((ok) => setTimeout(ok, 500 * (i + 1)))
   }
 }
 
-/** Calls onLine(record) for every track line in the pack, streaming the body shard by shard. */
+/** Calls onLine(record) for every track line in the pack. The body is read in ~32 MB ranges (whole shards each),
+ * every range retried on its own: one long GET of a 500 MB pack was cut off about a minute in (2026-10-17). */
+const CHUNK = 32 * 1024 * 1024
 async function eachLine(url, onLine) {
   const head = await range(url, 0, 7)
   if (head.toString('ascii', 0, 4) !== 'SHTP') throw new Error(`not a pack: ${url}`)
@@ -81,34 +87,24 @@ async function eachLine(url, onLine) {
   const off = (i) => offBuf.readUInt32LE(i * 4)
   const dataStart = 8 + (n + 1) * 4
   const last = SHARDS ? Math.min(n, SHARDS) : n
-  const end = dataStart + off(last) - 1
-  const res = await fetch(url, { headers: { Range: `bytes=${dataStart}-${end}`, 'Accept-Encoding': 'identity' } })
-  if (!res.ok) throw new Error(`pack body ${url}: HTTP ${res.status}`)
-  let shard = 0
-  let pos = 0 // bytes of the body consumed so far
-  let pending = []
-  let pendingLen = 0
-  const flushShard = () => {
-    const want = off(shard + 1) - off(shard)
-    const buf = Buffer.concat(pending, pendingLen)
-    const chunk = buf.subarray(0, want)
-    const rest = buf.subarray(want)
-    if (want > 0) {
-      for (const line of zlib.gunzipSync(chunk).toString('utf8').split('\n')) if (line) onLine(JSON.parse(line))
+  let bytes = 0
+  for (let a = 0; a < last;) {
+    let b = a + 1
+    while (b < last && off(b + 1) - off(a) <= CHUNK) b++
+    const lo = off(a), hi = off(b)
+    if (hi > lo) {
+      const buf = await range(url, dataStart + lo, dataStart + hi - 1)
+      bytes += buf.length
+      for (let sh = a; sh < b; sh++) {
+        const want = off(sh + 1) - off(sh)
+        if (!want) continue
+        const chunk = buf.subarray(off(sh) - lo, off(sh + 1) - lo)
+        for (const line of zlib.gunzipSync(chunk).toString('utf8').split('\n')) if (line) onLine(JSON.parse(line))
+      }
     }
-    pending = rest.length ? [rest] : []
-    pendingLen = rest.length
-    shard++
+    a = b
   }
-  for await (const c of res.body) {
-    pending.push(Buffer.from(c))
-    pendingLen += c.length
-    pos += c.length
-    while (shard < last && pendingLen >= off(shard + 1) - off(shard)) flushShard()
-  }
-  while (shard < last && pendingLen >= off(shard + 1) - off(shard)) flushShard()
-  if (shard < last) throw new Error(`pack ${url}: stream ended at shard ${shard}/${last}`)
-  return { shards: last, of: n, bytes: pos }
+  return { shards: last, of: n, bytes }
 }
 
 // ─── One month ───────────────────────────────────────────────────────────────
@@ -163,8 +159,9 @@ export async function bakeMonth(ym, { us, gfw }) {
   const stats = { lines: 0, inBox: 0, segments: 0 }
 
   const addSegment = (vid, kind, ax, ay, ta, bx, by, tb, closeMode) => {
-    const si = segList.length
-    segList.push([vid, kind, ax, ay, ta, bx, by, tb, closeMode])
+    // Only segments that can count as a close pass are kept for that search (memory: full months hold ~1M segments).
+    const si = closeMode ? segList.length : -1
+    if (closeMode) segList.push([vid, kind, ax, ay, ta, bx, by, tb, closeMode])
     stats.segments++
     const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax) / CELL.lngStep, Math.abs(by - ay) / CELL.latStep) * 2))
     const seen = new Set()
@@ -180,6 +177,7 @@ export async function bakeMonth(ym, { us, gfw }) {
       let set = byKind.get(kind)
       if (!set) byKind.set(kind, (set = new Set()))
       set.add(vid)
+      if (si < 0) continue
       let list = segs.get(c)
       if (!list) segs.set(c, (list = []))
       list.push(si)

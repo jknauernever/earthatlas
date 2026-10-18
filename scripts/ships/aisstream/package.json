@@ -1,0 +1,9 @@
+{
+  "name": "earthatlas-aisstream-recorder",
+  "private": true,
+  "type": "module",
+  "description": "aisstream.io recorder for /ships (docs/AISSTREAM_RECORDER_PLAN.md). Deployed to Fly.io; not part of the Vercel site.",
+  "scripts": { "start": "node recorder.mjs" },
+  "dependencies": { "ws": "8.22.0", "@vercel/blob": "2.4.0" },
+  "engines": { "node": ">=22" }
+}

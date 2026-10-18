@@ -1,0 +1,24 @@
+# aisstream recorder for /ships (scripts/ships/aisstream/recorder.mjs). No HTTP service: it only holds one outbound
+# WebSocket and writes to the /data volume. Secrets: AISSTREAM_API_KEY (required), CRON_SECRET (enables Blob uploads).
+app = "earthatlas-aisstream"
+primary_region = "sjc"
+kill_signal = "SIGTERM"
+kill_timeout = 10
+swap_size_mb = 512
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATA_DIR = "/data"
+
+[mounts]
+  source = "aisdata"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[restart]]
+  policy = "always"

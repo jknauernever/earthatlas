@@ -120,7 +120,7 @@ def build(ym):
             SELECT mmsi, base_date_time AS t, longitude AS lon, latitude AS lat, vessel_type,
                    CAST(floor((latitude - {land_mask.BBOX['s']}) / {land_mask.CELL_DEG}) AS BIGINT) * {land_mask.NX}
                      + CAST(floor((longitude - {land_mask.BBOX['w']}) / {land_mask.CELL_DEG}) AS BIGINT) AS cell
-              FROM read_parquet('{files}')
+              FROM read_parquet('{files}', union_by_name=true)
              WHERE latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
                AND NOT (latitude = 0 AND longitude = 0)
                AND mmsi % {NB} = {bk}
@@ -230,7 +230,7 @@ def build(ym):
     # Static identity evidence per MMSI: each distinct value with first/last seen.
     con.execute(f"""
       COPY (
-        WITH p AS (SELECT * FROM read_parquet('{files}'))
+        WITH p AS (SELECT * FROM read_parquet('{files}', union_by_name=true))
         SELECT mmsi, attr, value, min(base_date_time) AS first_seen, max(base_date_time) AS last_seen, count(*) AS n
           FROM (
             SELECT mmsi, base_date_time, 'name' AS attr, vessel_name AS value FROM p WHERE vessel_name <> ''

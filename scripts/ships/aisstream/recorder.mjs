@@ -1,7 +1,12 @@
 /**
  * aisstream.io recorder for /ships (docs/AISSTREAM_RECORDER_PLAN.md, docs/AISSTREAM.md).
  *
- * Holds ONE aisstream WebSocket over the salish-v6 box and writes NOAA MarineCadastre-shaped position rows:
+ * EarthAtlas's one intake for live ship positions (Josh 2026-10-18: "one place" for every live location stream). Each
+ * source is a module in sources/ (aisstream.mjs: one aisstream.io WebSocket; wsf.mjs: Washington State Ferries' vessel
+ * positions, polled) that turns its feed into the same observation and hands it to ingest(). From there, one pipeline for
+ * all sources: at most one row per MMSI per UTC minute (whichever source it came from), the newest position per MMSI for
+ * the live snapshot, one trail per MMSI, and the source on every row. Over the salish-v6 box it writes
+ * NOAA MarineCadastre-shaped position rows (plus a `source` column):
  *   DATA_DIR/raw/YYYY-MM-DD/HH.ndjson.gz        one hour of rows (the current hour is HH.ndjson, appended every few seconds)
  *   DATA_DIR/raw/YYYY-MM-DD/HH.coverage.json    per-minute message counts (0 = not receiving that minute) + hour stats
  *   DATA_DIR/points/YYYY-MM-DD.parquet          after the UTC day ends: compact.py → same columns/types as
@@ -22,7 +27,7 @@
  * BLOB_PREFIX through api/cron/ships-upload-token.js (one-file tokens; the recorder never holds the Blob write token).
  * Uploads retry on every daily check, so days recorded before the endpoint allowed this prefix upload later.
  *
- * Env: AISSTREAM_API_KEY (required), DATA_DIR (./data), CRON_SECRET, UPLOAD_TOKEN_URL, BLOB_PREFIX,
+ * Env: AISSTREAM_API_KEY, WSDOT_ACCESS_CODE (each source starts only with its key), DATA_DIR (./data), CRON_SECRET, UPLOAD_TOKEN_URL, BLOB_PREFIX,
  *      ROTATE_SECONDS (3600; a smaller value only for local tests), RAW_KEEP_DAYS (30), PYTHON (python3)
  * Run:  AISSTREAM_API_KEY=… node recorder.mjs
  */
@@ -31,11 +36,10 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import WebSocket from 'ws'
+import * as aisstream from './sources/aisstream.mjs'
+import * as wsf from './sources/wsf.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const KEY = process.env.AISSTREAM_API_KEY
-if (!KEY) { console.error('AISSTREAM_API_KEY is required'); process.exit(1) }
 const DATA = path.resolve(process.env.DATA_DIR || path.join(HERE, 'data'))
 const CRON_SECRET = process.env.CRON_SECRET || ''
 const TOKEN_URL = process.env.UPLOAD_TOKEN_URL || 'https://earthatlas.org/api/cron/ships-upload-token'
@@ -48,12 +52,6 @@ const LIVE_PATH = process.env.LIVE_PATH || 'ships/live/salish-v6.json'
 const LIVE_EVERY_MS = 60_000, LIVE_KEEP_S = 24 * 3600, TRAIL_S = 30 * 60
 // salish-v6 (scripts/ships/bake-ais/region.py): W -126.2 S 47.0 E -122.05 N 49.6. aisstream corners are [lat, lon].
 const BOX = { w: -126.2, s: 47.0, e: -122.05, n: 49.6 }
-const SUBSCRIPTION = {
-  APIKey: KEY,
-  BoundingBoxes: [[[BOX.s, BOX.w], [BOX.n, BOX.e]]],
-  FilterMessageTypes: ['PositionReport', 'StandardClassBPositionReport', 'ExtendedClassBPositionReport', 'ShipStaticData', 'StaticDataReport'],
-}
-const STALE_MS = 120_000 // outages are silent: the socket stays open with no data (docs/AISSTREAM.md)
 const FLUSH_MS = 5_000
 
 const log = (...a) => console.log(new Date().toISOString(), ...a)
@@ -96,8 +94,10 @@ const slotKey = (d) => {
   return { day, hh: String(Math.floor(secs / ROTATE_S)).padStart(4, '0') }
 }
 let cur = null // { day, hh, rows: [], coverage }
-const seenMinute = new Map() // mmsi → 'YYYY-MM-DD HH:MM' of its last kept row
-const newCoverage = () => ({ minutesMsgs: Array(60).fill(0), msgs: 0, rows: 0, dupDropped: 0, invalidDropped: 0, reconnects: 0, firstMsg: null, lastMsg: null })
+// Every vessel-minute already recorded in the last few minutes ('mmsi|YYYY-MM-DDTHH:MM'). A set, not just each ship's last
+// minute: sources arrive out of order (WSF positions are ~30 s old on arrival, so one can land after AIS's next minute).
+const seenMinute = new Set()
+const newCoverage = () => ({ minutesMsgs: Array(60).fill(0), msgs: 0, rows: 0, dupDropped: 0, invalidDropped: 0, reconnects: 0, firstMsg: null, lastMsg: null, sources: {} })
 const hourDir = (day) => path.join(DATA, 'raw', day)
 function writeCoverage(c = cur) {
   if (!c) return
@@ -124,7 +124,7 @@ function closeHour(c) {
 }
 function rollTo(day, hh) {
   if (cur && cur.day === day && cur.hh === hh) return
-  if (cur) { flush(); closeHour(cur); saveIdentity(); saveLatest() }
+  if (cur) { flush(); closeHour(cur); saveIdentity(); saveLatest(); saveSourceMmsis() }
   // Resume an hour's coverage if we restarted inside it.
   let coverage = newCoverage()
   try { coverage = { ...coverage, ...JSON.parse(fs.readFileSync(path.join(hourDir(day), `${hh}.coverage.json`), 'utf8')) } } catch {}
@@ -149,21 +149,21 @@ function saveLatest() {
   fs.renameSync(LATEST_FILE + '.tmp', LATEST_FILE)
 }
 const round5 = (x) => Math.round(x * 1e5) / 1e5
-const POSITION = new Set(['PositionReport', 'StandardClassBPositionReport', 'ExtendedClassBPositionReport'])
-function parseTime(s) { // "2026-10-17 23:55:51.313911604 +0000 UTC"
-  const [d, t] = s.split(' ')
-  return new Date(`${d}T${t.slice(0, 12)}Z`)
+// Extras a source attaches to a ship's newest position (e.g. a ferry's route, destination and ETA), for the live snapshot.
+const extras = new Map()
+// Every MMSI each source has ever reported (saved with latest.json), so a vessel keeps its identity on the map — e.g. a WSF
+// ferry stays a ferry even when its newest position came from AIS (Josh 2026-10-18: ferries flipped color between sources).
+const SOURCE_MMSIS_FILE = path.join(DATA, 'source-mmsis.json')
+const sourceMmsis = {}
+try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(SOURCE_MMSIS_FILE, 'utf8')))) sourceMmsis[k] = new Set(v) } catch {}
+function saveSourceMmsis() {
+  fs.writeFileSync(SOURCE_MMSIS_FILE + '.tmp', JSON.stringify(Object.fromEntries(Object.entries(sourceMmsis).map(([k, v]) => [k, [...v]]))))
+  fs.renameSync(SOURCE_MMSIS_FILE + '.tmp', SOURCE_MMSIS_FILE)
 }
-function onMessage(buf) {
-  let j
-  try { j = JSON.parse(buf.toString('utf8')) } catch { return }
-  const type = j.MessageType
-  if (type === 'SubscriptionConfirmation') { log('subscribed; compression', j.Message?.CompressionEnabled); return }
-  const b = j.Message?.[type]
-  const md = j.MetaData
-  if (!b || !md?.time_utc) return
-  const t = parseTime(md.time_utc)
-  if (Number.isNaN(+t)) return
+const health = {}   // source name → { …its own state } for status.json and the live snapshot
+
+/** Count one message from a source (feeds the hour's coverage: a minute counts as recorded when any source delivered). */
+function activity(source) {
   const now = new Date()
   const { day, hh } = slotKey(now)
   rollTo(day, hh)
@@ -172,69 +172,66 @@ function onMessage(buf) {
   c.msgs++; c.firstMsg ||= nowIso; c.lastMsg = nowIso
   const secOfDay = now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds()
   c.minutesMsgs[ROTATE_S >= 3600 ? now.getUTCMinutes() : Math.min(59, Math.floor(((secOfDay % ROTATE_S) * 60) / ROTATE_S))]++
-  lastMessageAt = Date.now()
-  const mmsi = b.UserID
-  if (!(mmsi >= 100_000_000 && mmsi <= 999_999_999)) { c.invalidDropped++; return }
-  if (type !== 'PositionReport' && type !== 'StandardClassBPositionReport') noteStatic(type, b, mmsi)
-  if (!POSITION.has(type)) return
-  const lat = b.Latitude, lon = b.Longitude
+  const sc = (c.sources[source] ||= { msgs: 0, rows: 0 })
+  sc.msgs++
+}
+
+/**
+ * One position from any source: { source, mmsi, t: Date, lat, lon, sog, cog, heading, status, transceiver, extras? }.
+ * The newest position per MMSI (any source) becomes its live position; at most one row per MMSI per minute is recorded.
+ */
+function ingest(o) {
+  if (!cur) activity(o.source)
+  const c = cur.coverage
+  const { mmsi, lat, lon, t } = o
+  if (!(mmsi >= 100_000_000 && mmsi <= 999_999_999) || Number.isNaN(+t)) { c.invalidDropped++; return }
   if (!(lat >= BOX.s && lat <= BOX.n && lon >= BOX.w && lon <= BOX.e) || (lat === 0 && lon === 0)) { c.invalidDropped++; return }
+  if (o.source !== 'aisstream') (sourceMmsis[o.source] ||= new Set()).add(mmsi)
+  const ts = Math.floor(+t / 1000)
+  const prev = latest.get(mmsi)
   const minute = t.toISOString().slice(0, 16)
-  if (seenMinute.get(mmsi) === minute) { c.dupDropped++; return }
-  seenMinute.set(mmsi, minute)
+  const key = `${mmsi}|${minute}`
+  const keep = !seenMinute.has(key)
+  // Live: the newest observation wins, whichever source; its trail gets the minute's recorded position.
+  if (!prev || ts >= prev.t) {
+    const trail = prev && ts - prev.t <= TRAIL_S ? prev.trail : []
+    if (keep) {
+      trail.push([round5(lon), round5(lat), ts])
+      while (trail.length && ts - trail[0][2] > TRAIL_S) trail.shift()
+    }
+    latest.set(mmsi, { t: ts, lon: round5(lon), lat: round5(lat), sog: o.sog ?? null, cog: o.cog ?? null, heading: o.heading ?? null,
+      status: o.status ?? null, cls: o.transceiver ?? null, src: o.source, trail })
+    if (o.extras) extras.set(mmsi, { ...o.extras, t: ts })
+    else if (extras.get(mmsi)?.t < ts - 600) extras.delete(mmsi)
+  }
+  if (!keep) { c.dupDropped++; return }
+  seenMinute.add(key)
   const id = identity.get(mmsi) || {}
   const row = {
     mmsi,
     base_date_time: t.toISOString().slice(0, 19).replace('T', ' '),
     longitude: lon, latitude: lat,
-    sog: b.Sog ?? null, cog: b.Cog ?? null,
-    heading: b.TrueHeading >= 0 && b.TrueHeading <= 359 ? b.TrueHeading : null,
+    sog: o.sog ?? null, cog: o.cog ?? null, heading: o.heading ?? null,
     vessel_name: id.vessel_name ?? null, imo: id.imo ?? null, call_sign: id.call_sign ?? null,
     vessel_type: id.vessel_type ?? null,
-    status: type === 'PositionReport' ? b.NavigationalStatus : null,
+    status: o.status ?? null,
     length: id.length ?? null, width: id.width ?? null, draft: id.draft ?? null,
     cargo: null,
-    transceiver: type === 'PositionReport' ? 'A' : 'B',
+    transceiver: o.transceiver ?? null,
+    source: o.source,
   }
   cur.rows.push(JSON.stringify(row))
   c.rows++
-  const ts = Math.floor(+t / 1000)
-  const prev = latest.get(mmsi)
-  const trail = prev && ts - prev.t <= TRAIL_S ? prev.trail : []
-  trail.push([round5(lon), round5(lat), ts])
-  while (trail.length && ts - trail[0][2] > TRAIL_S) trail.shift()
-  latest.set(mmsi, { t: ts, lon: round5(lon), lat: round5(lat), sog: row.sog, cog: row.cog, heading: row.heading, status: row.status, cls: row.transceiver, trail })
+  c.sources[o.source] ||= { msgs: 0, rows: 0 }
+  c.sources[o.source].rows++
 }
-
-// ── Connection with backoff + stale detection ─────────────────────────────────
-let ws = null, lastMessageAt = 0, attempt = 0, connectedAt = 0, stopping = false
-function connect() {
-  if (stopping) return
-  log('connecting', attempt ? `(attempt ${attempt + 1})` : '')
-  const sock = new WebSocket('wss://stream.aisstream.io/v0/stream', { perMessageDeflate: true })
-  ws = sock
-  sock.on('open', () => { connectedAt = Date.now(); lastMessageAt = Date.now(); sock.send(JSON.stringify(SUBSCRIPTION)) })
-  sock.on('message', onMessage)
-  sock.on('unexpected-response', (_req, res) => log('http', res.statusCode))
-  sock.on('error', (e) => log('socket error', e.message))
-  sock.on('close', (code, reason) => {
-    if (ws !== sock) return
-    ws = null
-    if (stopping) return
-    if (Date.now() - connectedAt > 5 * 60_000) attempt = 0 // a healthy stretch resets the backoff
-    const wait = Math.min(60_000, 1000 * 2 ** attempt) * (0.5 + Math.random())
-    attempt++
-    if (cur) cur.coverage.reconnects++
-    log(`closed ${code} ${reason.toString().slice(0, 80)}; reconnect in ${Math.round(wait / 1000)} s`)
-    setTimeout(connect, wait)
-  })
+/** A source's identity facts for an MMSI; only fills fields the AIS static messages haven't. */
+function noteIdentity(mmsi, fields) {
+  const id = identity.get(mmsi) || {}
+  for (const [k, v] of Object.entries(fields)) if (v != null && id[k] == null) id[k] = v
+  identity.set(mmsi, id)
 }
-setInterval(() => {
-  if (ws && ws.readyState === WebSocket.OPEN && Date.now() - lastMessageAt > STALE_MS) {
-    log(`no data for ${Math.round((Date.now() - lastMessageAt) / 1000)} s; reconnecting`)
-    ws.terminate()
-  }
-}, 15_000)
+const ctx = { BOX, log, ingest, activity, noteStatic, noteIdentity, health, onReconnect: () => { if (cur) cur.coverage.reconnects++ } }
 
 // ── Flush, status, daily compaction + uploads ────────────────────────────────
 setInterval(flush, FLUSH_MS)
@@ -242,13 +239,13 @@ setInterval(() => {
   // Close the hour on the clock too, so a quiet stretch doesn't leave last hour's file open.
   const now = slotKey(new Date())
   if (cur && (cur.day < now.day || (cur.day === now.day && cur.hh < now.hh))) { flush(); closeHour(cur); saveIdentity(); cur = null }
-  // Forget per-minute dedupe keys older than 2 minutes (the map would otherwise grow without bound).
-  const keep = new Date(Date.now() - 120_000).toISOString().slice(0, 16)
-  for (const [k, m] of seenMinute) if (m < keep) seenMinute.delete(k)
+  // Forget vessel-minutes older than 5 minutes (the set would otherwise grow without bound).
+  const keepFrom = new Date(Date.now() - 5 * 60_000).toISOString().slice(0, 16)   // 5 minutes covers any source's lag
+  for (const k of seenMinute) if (k.slice(k.indexOf('|') + 1) < keepFrom) seenMinute.delete(k)
 }, 30_000)
 
 function status() {
-  const s = { updated: new Date().toISOString(), connected: !!(ws && ws.readyState === WebSocket.OPEN), lastMessageAt: lastMessageAt ? new Date(lastMessageAt).toISOString() : null,
+  const s = { updated: new Date().toISOString(), sources: health,
     currentHour: cur ? { day: cur.day, hh: cur.hh, msgs: cur.coverage.msgs, rows: cur.coverage.rows, minutesReceiving: cur.coverage.minutesMsgs.filter(Boolean).length } : null,
     identities: identity.size, box: BOX }
   fs.writeFileSync(path.join(DATA, 'status.json'), JSON.stringify(s, null, 1))
@@ -273,19 +270,25 @@ const run = (cmd, args) => new Promise((ok, fail) => execFile(cmd, args, { maxBu
 let liveToken = null, liveTokenAt = 0
 function liveSnapshot() {
   const now = Math.floor(Date.now() / 1000)
-  const ships = [], trails = {}
+  const ships = [], trails = {}, ext = {}
   for (const [mmsi, p] of latest) {
     if (now - p.t > LIVE_KEEP_S) { latest.delete(mmsi); continue }
     const id = identity.get(mmsi) || {}
-    ships.push([mmsi, p.t, p.lon, p.lat, p.sog, p.cog, p.heading, p.status, p.cls, id.vessel_name ?? null, id.vessel_type ?? null, id.length ?? null])
+    ships.push([mmsi, p.t, p.lon, p.lat, p.sog, p.cog, p.heading, p.status, p.cls, id.vessel_name ?? null, id.vessel_type ?? null, id.length ?? null, p.src || 'aisstream'])
+    const ex = extras.get(mmsi)
+    if (ex && p.t - ex.t <= 600) ext[mmsi] = ex   // a ferry's route/ETA stays shown for 10 min, even if AIS has the newer fix
     // Trails only for ships under way (≥ 1 kn at their last report): /whalewatch draws trails only for moving boats.
     const tr = (p.sog ?? 0) >= 1 ? p.trail.filter((q) => now - q[2] <= TRAIL_S) : []
     if (tr.length >= 2) trails[mmsi] = tr
   }
-  return { version: 'aisstream-live-v1', source: 'aisstream.io', sourceUrl: 'https://aisstream.io', box: BOX,
-    generated: new Date().toISOString(), lastMessageAt: lastMessageAt ? new Date(lastMessageAt).toISOString() : null,
-    connected: !!(ws && ws.readyState === WebSocket.OPEN),
-    fields: ['mmsi', 't', 'lon', 'lat', 'sog', 'cog', 'heading', 'status', 'cls', 'name', 'vessel_type', 'length'], ships, trails }
+  // lastMessageAt / connected stay aisstream's (the data watchdog reads them); every source's state is in `sources`.
+  const ais = health.aisstream || {}
+  return { version: 'live-v2', source: 'aisstream.io + Washington State Ferries', box: BOX,
+    sourceUrls: { aisstream: 'https://aisstream.io', wsf: 'https://wsdot.wa.gov/travel/washington-state-ferries' },
+    generated: new Date().toISOString(), lastMessageAt: ais.lastMessageAt || null, connected: !!ais.connected, sources: health,
+    fields: ['mmsi', 't', 'lon', 'lat', 'sog', 'cog', 'heading', 'status', 'cls', 'name', 'vessel_type', 'length', 'src'], ships, trails, extras: ext,
+    // vessels by source fleet (every MMSI a non-AIS source has reported), whatever source has the newest position
+    fleets: Object.fromEntries(Object.entries(sourceMmsis).map(([k, v]) => [k, [...v]])) }
 }
 let liveBusy = false, lastLiveError = '', liveErrorRepeats = 0
 async function publishLive() {
@@ -391,17 +394,19 @@ async function daily() {
 setInterval(daily, 10 * 60_000)
 setInterval(() => { if (CRON_SECRET) upload(`${BLOB_PREFIX}/status.json`, JSON.stringify(status()), 'application/json').catch((e) => log('status upload failed', e.message.slice(0, 120))) }, 60 * 60_000)
 
+let stopping = false
 function shutdown(sig) {
   if (stopping) return
   stopping = true
   log(sig, 'flushing and exiting')
-  try { flush(); saveIdentity(); saveLatest(); status() } catch (e) { log('shutdown error', e.message) }
-  try { ws?.close() } catch {}
+  try { flush(); saveIdentity(); saveLatest(); saveSourceMmsis(); status() } catch (e) { log('shutdown error', e.message) }
+  aisstream.stop?.(); wsf.stop?.()
   setTimeout(() => process.exit(0), 500)
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
 
 log('recorder starting; data', DATA, 'box', JSON.stringify(BOX), 'uploads', CRON_SECRET ? BLOB_PREFIX : 'off', 'identities', identity.size)
-connect()
+aisstream.start(ctx)
+wsf.start(ctx)
 setTimeout(daily, 30_000)

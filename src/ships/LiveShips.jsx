@@ -3,7 +3,9 @@
  * recorder hears in the Salish Sea box is now (its newest AIS report), like /whalewatch's LIVE. No button or link yet.
  *
  * Data: the recorder's snapshot (scripts/ships/aisstream/recorder.mjs → Blob ships/live/salish-v6.json, rewritten every
- * 60 s: the latest position per MMSI from the last 24 h, and 30-minute trails for ships under way). Polled every minute
+ * 60 s; one row per MMSI from every live source it records — aisstream.io AIS and Washington State Ferries' own positions —
+ * the newest position winning, from the last 24 h, with 30-minute trails for ships under way; ferries carry route,
+ * terminals and ETA). Polled every minute
  * while the tab is visible. Shown: ships reported in the last SHOW_H hours, colored by the AIS ship type they broadcast
  * (the same kinds as the track filter), arrows for ships under way (pointing along heading, or course when no heading),
  * dots for the rest, fainter the older the report. Hover: name, kind, speed, heading, how long ago, source. Click: the
@@ -16,6 +18,8 @@ import { TRACK_KINDS } from './TrackControls.jsx'
 const LIVE_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/live/salish-v6.json'
 const LIVE_DEV_URL = '/dev-data/aisstream-live.json'
 const AISSTREAM = 'https://aisstream.io'
+const WSF = 'https://wsdot.wa.gov/travel/washington-state-ferries'
+const SOURCE_NAME = { aisstream: 'aisstream.io live AIS', wsf: 'Washington State Ferries (WSDOT) vessel positions' }
 const POLL_MS = 60_000
 const SHOW_H = 2              // ships reported in the last 2 hours ("where ships are now")
 const MOVING_KN = 1
@@ -26,6 +30,9 @@ const TRAIL_PTS = 'live-ships-trail-pts', TRAIL_PT = 'live-ships-trail-pt'
 export const LIVE_KIND_COLOR = { cargo: '#60a5fa', tanker: '#f87171', passenger: '#c084fc', fishing: '#34d399', tug: '#fb923c',
   pleasure: '#f472b6', other: '#e5e7eb', unknown: '#9ca3af' }
 const KIND_LABEL = Object.fromEntries(TRACK_KINDS)
+// Washington State Ferries (positions from WSF's own feed): their own color, and slightly larger arrows, dots and trails.
+export const FERRY_COLOR = '#facc15'
+const FERRY_LABEL = 'Washington State Ferries'
 // AIS ship & cargo code → kind (scripts/ships/bake-ais/build_tracks.py KIND_SQL).
 function kindOf(v) {
   if (!v) return 'unknown'
@@ -42,14 +49,23 @@ const fmtAgo = (s) => (s < 90 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} m
 const fmtClock = (ms) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver', timeZoneName: 'short' })
 const pad3 = (d) => String(Math.round(d) % 360).padStart(3, '0')
 
+const fmtT = (ms) => (ms ? new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver' }) : null)
+function ferryLine(x) {
+  if (!x) return ''
+  const leg = x.from && x.to ? `${esc(x.from)} → ${esc(x.to)}` : x.from ? `At ${esc(x.from)}` : ''
+  const late = x.schedDep && x.leftDock ? Math.round((x.leftDock - x.schedDep) / 60000) : null
+  const bits = [leg, x.eta ? `ETA ${fmtT(x.eta)}` : null, late != null ? (late > 0 ? `left ${late} min late` : 'left on time') : null].filter(Boolean)
+  return bits.length ? `<br>${bits.join(' · ')}` : ''
+}
 function tipHTML(p) {
-  const kind = KIND_LABEL[p.kind] || 'Not reported'
+  const kind = p.isFerry === 1 ? FERRY_LABEL : KIND_LABEL[p.kind] || 'Not reported'
+  const x = p.ferry ? JSON.parse(p.ferry) : null
   const motion = p.moving ? `${Number(p.sog).toFixed(1)} kn · heading ${pad3(p.dir)}°`
     : `<span style="color:#4b5563">${p.sog != null ? `${Number(p.sog).toFixed(1)} kn` : 'Speed not reported'} (not under way)</span>`
   return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">`
     + `<b>${esc(p.name || 'Name not broadcast')}</b><br><span style="color:#4b5563">${esc(kind)} (AIS type${p.vtype ? ` ${p.vtype}` : ' not reported'}) · MMSI ${p.mmsi}</span><br>`
-    + `<b style="color:#047857">Live AIS</b>, reported ${fmtAgo(p.ageS)} (${fmtClock(p.t * 1000)})<br>${motion}<br>`
-    + `<span style="color:#4b5563">Source: aisstream.io live AIS · click for the ship’s card</span></div>`
+    + `<b style="color:#047857">Live</b>, reported ${fmtAgo(p.ageS)} (${fmtClock(p.t * 1000)})${ferryLine(x)}<br>${motion}<br>`
+    + `<span style="color:#4b5563">Source: ${SOURCE_NAME[p.src] || SOURCE_NAME.aisstream} · click for the ship’s card</span></div>`
 }
 
 // A white arrow (pointing north) for an SDF icon, recolored per kind by the layer.
@@ -81,19 +97,24 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
 
   const data = useMemo(() => {
     const points = [], trails = [], trailPts = [], byKind = {}
-    for (const [mmsi, t, lon, lat, sog, cog, heading, , , name, vtype] of snap?.ships || []) {
+    // A ferry by VESSEL, not by row: every MMSI WSF has reported (snapshot fleets.wsf), whichever source has its newest position.
+    const wsfFleet = new Set(snap?.fleets?.wsf || [])
+    for (const [mmsi, t, lon, lat, sog, cog, heading, , , name, vtype, , src] of snap?.ships || []) {
       const ageS = nowS - t
       if (ageS > SHOW_H * 3600) continue
       const kind = kindOf(vtype)
       const moving = (sog ?? 0) >= MOVING_KN
-      byKind[kind] = (byKind[kind] || 0) + 1
+      const ferry = src === 'wsf' || wsfFleet.has(mmsi)
+      const color = ferry ? FERRY_COLOR : LIVE_KIND_COLOR[kind]
+      byKind[ferry ? 'wsf' : kind] = (byKind[ferry ? 'wsf' : kind] || 0) + 1
       points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] },
-        properties: { mmsi, t, sog, dir: heading ?? cog ?? 0, moving: moving ? 1 : 0, kind, color: LIVE_KIND_COLOR[kind], name: name || '', vtype: vtype || 0, ageS } })
+        properties: { mmsi, t, sog, dir: heading ?? cog ?? 0, moving: moving ? 1 : 0, kind, color, isFerry: ferry ? 1 : 0, name: name || '', vtype: vtype || 0, ageS,
+          src: src || 'aisstream', ...(snap.extras?.[mmsi] ? { ferry: JSON.stringify(snap.extras[mmsi]) } : {}) } })
       const tr = moving ? snap.trails?.[mmsi] : null
       if (tr?.length >= 2) {
-        trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { color: LIVE_KIND_COLOR[kind] } })
+        trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { color, isFerry: ferry ? 1 : 0 } })
         tr.forEach((q, i) => trailPts.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [q[0], q[1]] },
-          properties: { color: LIVE_KIND_COLOR[kind], name: name || `MMSI ${mmsi}`, t: q[2] ?? null, i: i + 1, n: tr.length } }))
+          properties: { color, name: name || `MMSI ${mmsi}`, t: q[2] ?? null, i: i + 1, n: tr.length } }))
       }
     }
     return { points, trails, trailPts, byKind }
@@ -107,19 +128,20 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
       map.addSource(TRAILS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addSource(TRAIL_PTS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addSource(SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] },
-        attribution: 'Live ships: AIS from <a href="https://aisstream.io" target="_blank" rel="noopener">aisstream.io</a>, recorded by EarthAtlas' })
+        attribution: 'Live ships: AIS from <a href="https://aisstream.io" target="_blank" rel="noopener">aisstream.io</a> and ferry positions from <a href="https://wsdot.wa.gov/travel/washington-state-ferries" target="_blank" rel="noopener">Washington State Ferries</a>, recorded by EarthAtlas' })
       const fade = ['interpolate', ['linear'], ['get', 'ageS'], 0, 1, 1800, 0.85, SHOW_H * 3600, 0.4]
       map.addLayer({ id: TRAIL, type: 'line', source: TRAILS, layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1, 12, 2.5], 'line-opacity': 0.75 } })
+        paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'isFerry'], 1], 1.8, 1], 12, ['case', ['==', ['get', 'isFerry'], 1], 4, 2.5]], 'line-opacity': 0.75 } })
       map.addLayer({ id: TRAIL_PT, type: 'circle', source: TRAIL_PTS, minzoom: 10,
         paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 3.5],
           'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1 } })
       map.addLayer({ id: DOT, type: 'circle', source: SRC, filter: ['!=', ['get', 'moving'], 1],
-        paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 2.2, 12, 4.5],
+        paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'isFerry'], 1], 3.2, 2.2], 12, ['case', ['==', ['get', 'isFerry'], 1], 6.5, 4.5]],
           'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 1, 'circle-opacity': fade, 'circle-stroke-opacity': fade } })
       map.addLayer({ id: ARROW, type: 'symbol', source: SRC, filter: ['==', ['get', 'moving'], 1],
         layout: { 'icon-image': 'live-arrow', 'icon-rotate': ['get', 'dir'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true,
-          'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.45, 12, 0.85] },
+          'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'isFerry'],
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'isFerry'], 1], 0.62, 0.45], 12, ['case', ['==', ['get', 'isFerry'], 1], 1.15, 0.85]] },
         paint: { 'icon-color': ['get', 'color'], 'icon-halo-color': '#0a0e17', 'icon-halo-width': 1.2, 'icon-opacity': fade } })
       const tip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: tipClass, maxWidth: '280px' })
       map.on('mousemove', TRAIL_PT, (e) => {
@@ -153,7 +175,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
 
   const updated = snap?.generated ? Date.parse(snap.generated) : null
   const narrow = typeof window !== 'undefined' && window.innerWidth < 768
-  const kinds = TRACK_KINDS.filter(([k]) => data.byKind[k])
+  const kinds = [['wsf', FERRY_LABEL], ...TRACK_KINDS].filter(([k]) => data.byKind[k])
   return (
     // Beside the left panel on desktop (it is ~330 px wide); full width under the top bar on phones.
     <div style={{ position: 'absolute', top: 64, ...(narrow ? { left: 16, right: 16 } : { left: 344, maxWidth: 'min(560px, calc(100vw - 620px))' }), zIndex: 5,
@@ -162,14 +184,15 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
       <div>
         <b style={{ color: '#fbbf24', letterSpacing: 0.5 }}>LIVE</b>{' '}
         {snap ? <>{data.points.length.toLocaleString('en-US')} ships reported in the last {SHOW_H} hours · arrows are under way ·{' '}
-          <a href={AISSTREAM} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>aisstream.io</a> live AIS, updated {fmtClock(updated)}</>
+          <a href={AISSTREAM} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>aisstream.io</a> live AIS and{' '}
+          <a href={WSF} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Washington State Ferries</a>, updated {fmtClock(updated)}</>
           : 'Loading live AIS…'}
       </div>
       {kinds.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 4 }}>
           {kinds.map(([k, label]) => (
             <span key={k} style={{ whiteSpace: 'nowrap' }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: LIVE_KIND_COLOR[k], marginRight: 4 }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: k === 'wsf' ? FERRY_COLOR : LIVE_KIND_COLOR[k], marginRight: 4 }} />
               {label} {data.byKind[k]}
             </span>
           ))}

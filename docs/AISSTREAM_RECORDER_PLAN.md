@@ -3,6 +3,20 @@
 Drafted 2026-10-18 for Josh.
 
 ## Status (2026-10-18, 07:15 UTC): built and live
+- **Multi-source (2026-10-18, ~20:20 UTC):** the recorder is EarthAtlas's one intake for live ship positions. Each source is
+  a module in `scripts/ships/aisstream/sources/` (`aisstream.mjs`: the WebSocket; `wsf.mjs`: Washington State Ferries'
+  `/vessellocations`, polled every 15 s with `WSDOT_ACCESS_CODE`, a Fly secret). All feed one `ingest()`:
+  - at most one row per MMSI per UTC minute, whichever source supplied it (a set of recent vessel-minutes, since WSF
+    fixes arrive ~30 s old and can land after AIS's next minute);
+  - the newest position per MMSI for the live snapshot, one trail per MMSI;
+  - a `source` column on every row (daily Parquet: NOAA's columns plus `source`; `build_tracks.py` reads days with or
+    without it via `union_by_name`).
+  - Live snapshot `live-v2`: `src` per ship, `extras` (ferry route, terminals, ETA, scheduled departure, time it left the
+    dock), `fleets.wsf` (every MMSI WSF has reported, so a ferry stays a ferry when AIS has the newer fix), and per-source
+    health in `sources`. `lastMessageAt` stays aisstream's for the data watchdog.
+  - Local test (2.5 min): 613 live ships, 0 duplicate MMSIs; 1,033 rows, 0 duplicate vessel-minutes (aisstream 976, wsf 57).
+  - The /ships live view (`?live=1`) draws WSF ferries in their own color, slightly larger, with route, ETA and minutes late.
+  - Adding a source = one module in `sources/` calling `ctx.ingest()` (+ `ctx.activity()`, `ctx.noteIdentity()`).
 - **Recording since 2026-10-18 04:48 UTC** on Fly.io: app `earthatlas-aisstream`, one `shared-cpu-1x` 256 MB
   machine in `sjc` (Fly has no Seattle region), 1 GB volume `aisdata` at `/data`, restart policy `always`.
   Secrets: `AISSTREAM_API_KEY`, `CRON_SECRET`. Code: `scripts/ships/aisstream/` (`recorder.mjs`, `compact.py`,

@@ -7,5 +7,6 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY recorder.mjs compact.py daypack.py ./
+COPY sources ./sources
 ENV DATA_DIR=/data NODE_ENV=production
 CMD ["node", "recorder.mjs"]

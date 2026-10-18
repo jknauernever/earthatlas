@@ -12,6 +12,7 @@ import MapSheet from '../components/MapSheet.jsx'
 import { LegendTurndown } from '../components/panel'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import styles from './ForestMonitor.module.css'
 import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
 
@@ -263,7 +264,7 @@ function _readUrlState() {
 // Serialize the current view state to a query string. Defaults are omitted
 // to keep the canonical "no params" URL clean.
 function _viewStateToQuery({
-  mode, start, end, landuse, basemap, opacity, lat, lng, zoom,
+  mode, start, end, landuse, basemap, photo, opacity, lat, lng, zoom,
   operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity,
 }) {
   const sp = new URLSearchParams()
@@ -272,6 +273,7 @@ function _viewStateToQuery({
   if (end) sp.set('end', end)
   if (landuse && landuse !== 'all') sp.set('lu', landuse)
   if (basemap && basemap !== DEFAULT_BASEMAP_ID) sp.set('bm', basemap)
+  writePhoto(sp, photo)
   if (opacity != null && Math.abs(opacity - 0.85) > 0.005) {
     sp.set('op', String(Math.round(opacity * 100)))
   }
@@ -394,8 +396,7 @@ export default function ForestMonitor() {
   const [basemap, setBasemap] = useState(
     BASEMAPS.some((b) => b.id === _initial.basemap) ? _initial.basemap : DEFAULT_BASEMAP_ID
   )
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const basemapMenuRef = useRef(null)
+  const photos = useMapPhotos(mapRef, { mapReady, basemap })   // the photo picker shared by every site (components/basemap)
   // Opacity of the OPERA disturbance raster overlay (0–1). Default 0.85.
   const [opacity, setOpacity] = useState(
     _initial.opacity != null
@@ -596,6 +597,7 @@ export default function ForestMonitor() {
       end:   isoDay(dateRange[1]),
       landuse,
       basemap,
+      photo: photos.photo,
       opacity,
       operaVisible,
       commodityVisible,
@@ -609,7 +611,7 @@ export default function ForestMonitor() {
     })
     _writeUrlQuery(qs)
     if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [mode, dateRange, landuse, basemap, opacity, mapView,
+  }, [mode, dateRange, landuse, basemap, photos.photo, opacity, mapView,
       operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity, mapReady])
 
   // ─── Fetch tile URL whenever mode or date range changes ──────────────────
@@ -1107,21 +1109,6 @@ export default function ForestMonitor() {
     })
   }, [extraOpacity, mapReady])
 
-  // ─── Basemap menu: close on outside click / Esc ──────────────────────────
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onClick = (e) => {
-      if (!basemapMenuRef.current?.contains(e.target)) setBasemapMenuOpen(false)
-    }
-    const onKey = (e) => { if (e.key === 'Escape') setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [basemapMenuOpen])
-
   // ─── Methodology modal click delegation ──────────────────────────────────
   // Popup HTML is plain strings, so we can't attach React onClick. Instead
   // intercept any click on an element with data-action="show-methodology".
@@ -1273,48 +1260,8 @@ export default function ForestMonitor() {
         />
       </MapSearch>
 
-      <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button
-          type="button"
-          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)}
-          aria-label="Change basemap"
-          aria-expanded={basemapMenuOpen}
-          title={`Basemap: ${BASEMAPS.find((b) => b.id === basemap)?.label || ''}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" />
-            <polyline points="2 17 12 22 22 17" />
-            <polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={styles.basemapMenuPanel} role="menu">
-            <div className={styles.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => {
-              const active = basemap === b.id
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={active}
-                  className={active ? styles.basemapMenuItemActive : styles.basemapMenuItem}
-                  onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}
-                >
-                  <span className={`${styles.basemapSwatch} ${styles[`basemapSwatch_${b.id}`]}`} />
-                  <span className={styles.basemapMenuItemLabel}>{b.label}</span>
-                  {active && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={styles.basemapMenuCheck}>
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={styles.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} />
 
       {/* Layer panel — floating left panel on desktop, bottom sheet on phones */}
       <MapSheet

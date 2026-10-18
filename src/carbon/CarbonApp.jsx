@@ -26,6 +26,7 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
@@ -139,8 +140,7 @@ export default function CarbonApp() {
   const initialPolyRef = useRef(initial.poly || null)
 
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const basemapMenuRef = useRef(null)
+  const photos = useMapPhotos(mapRef, { mapReady, basemap })   // the photo picker shared by every site (components/basemap)
   const [activeOverlay, setActiveOverlay] = useState(() => (OVERLAYS.some((o) => o.id === initial.ov) ? initial.ov : null))
 
   const [drawnRing, setDrawnRing] = useState(null)       // [[lng,lat],…] closed ring, or null
@@ -308,19 +308,13 @@ export default function CarbonApp() {
   useEffect(() => {
     const sp = new URLSearchParams()
     if (basemap !== 'satellite') sp.set('bm', basemap)
+    writePhoto(sp, photos.photo)
     if (activeOverlay) sp.set('ov', activeOverlay)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     if (drawnRing && drawnRing.length >= 3) sp.set('poly', encodePoly(drawnRing))
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [basemap, activeOverlay, mapView, drawnRing, mapReady])
-
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [basemapMenuOpen])
+  }, [basemap, photos.photo, activeOverlay, mapView, drawnRing, mapReady])
 
   // ─── Per-route SEO (the static carbon.html covers crawlers) ───────────────
   useEffect(() => {
@@ -395,24 +389,8 @@ export default function CarbonApp() {
       </MapSearch>
 
       {/* Basemap picker */}
-      <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle} onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={styles.basemapMenuPanel}>
-            <div className={styles.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => (
-              <button key={b.id} className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem} onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}>
-                <span className={styles.basemapMenuItemLabel}>{b.label}</span>
-                {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={styles.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} />
 
       {/* Control / results panel — floating left panel on desktop, bottom sheet on phones */}
       <MapSheet

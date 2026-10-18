@@ -47,7 +47,7 @@ import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
-import { addLocalAerials, setBaseImagery, localAerialsInView, photoLayers, isPhotoChoice, BASE_IMAGERY, LOCAL_AERIALS, YEAR_NOTES } from '../lib/localAerials.js'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { CERULEAN_APP } from '../../lib/ships/cerulean.js'
 import SlickCard, { NEAR_DISTS, NEAR_DEFAULT, NEAR_COLOR, distWords, beforeWords, topShip, rankedSources } from './SlickCard.jsx'
 
@@ -552,23 +552,8 @@ export default function ShipsApp() {
   const isMobile = useIsMobile()
   const initial = useMemo(() => readUrlState(), [])
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  // Photos on the satellite map (Josh 2026-10-18): ONE choice, and the map shows exactly that (lib/localAerials.js photoLayers).
-  const [photo, setPhoto] = useState(() => (isPhotoChoice(initial.ph) ? initial.ph : 'best'))
-  const { choice: aerialChoice, base: baseImagery } = useMemo(() => photoLayers(photo), [photo])
-  const [imageryTick, setImageryTick] = useState(0)
-  // The imagery line sits just above the map credits, which wrap to more lines as sources come into view.
-  const [creditsH, setCreditsH] = useState(24)
-  useEffect(() => {
-    const el = mapRef.current?.getContainer().querySelector('.mapboxgl-ctrl-bottom-right')
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => setCreditsH(el.offsetHeight))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [mapReady])
-  const imageryRef = useRef({ aerialChoice, baseImagery })
-  imageryRef.current = { aerialChoice, baseImagery }
-  const basemapMenuRef = useRef(null)
+  // Photos on the satellite map (Josh 2026-10-18): ONE choice, and the map shows exactly that (components/basemap, shared by every site).
+  const photos = useMapPhotos(mapRef, { mapReady, basemap, initialPhoto: initial.ph })
   const [mapView, setMapView] = useState(initial.lat != null && initial.lng != null && initial.z != null ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null)
   const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
 
@@ -667,10 +652,6 @@ export default function ShipsApp() {
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => {
       map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
-      // Local government aerials (San Juan County, Metro Vancouver, Nanaimo, Vancouver) replace Mapbox satellite inside their
-      // areas when zoomed in (Josh 2026-10-10: no sun-glint splotches; docks and piers stay visible), each credited while
-      // in view. Satellite basemap only; Mapbox everywhere else.
-      if (addLocalAerials(map, imageryRef.current.aerialChoice)) setBaseImagery(map, imageryRef.current.baseImagery)
       setMapReady(true)
       setStyleVersion((n) => n + 1)
     })
@@ -685,24 +666,6 @@ export default function ShipsApp() {
     appliedBasemapRef.current = basemap
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
-  // A new year, a source switched off, or other imagery underneath: re-lay the photos on the current style.
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !mapReady) return
-    if (addLocalAerials(map, aerialChoice)) setBaseImagery(map, baseImagery)
-    setImageryTick((n) => n + 1) // the layers changed after this render: recount what is shown
-  }, [aerialChoice, baseImagery, mapReady, styleVersion])
-  // What the picker offers (local sources in view) and the imagery line on the map: after each move.
-  const aerialsHere = useMemo(() => (mapReady && basemap === 'satellite' ? localAerialsInView(mapRef.current, aerialChoice) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mapView, aerialChoice, basemap, mapReady, styleVersion, imageryTick])
-
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [basemapMenuOpen])
 
   useEffect(() => { document.title = 'Ships — the open record of every ship · EarthAtlas' }, [])
 
@@ -2116,12 +2079,12 @@ export default function ShipsApp() {
     if (query.trim()) sp.set('q', query.trim())
     if (kinds.length) sp.set('k', kinds.join(','))
     if (basemap !== 'satellite') sp.set('bm', basemap)
-    if (photo !== 'best') sp.set('ph', photo)
+    writePhoto(sp, photos.photo)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [photos.photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -2303,80 +2266,8 @@ export default function ShipsApp() {
         </div>
       )}
 
-      <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)} aria-label="Choose basemap" title="Basemap">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={styles.basemapMenuPanel}>
-            <div className={styles.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => (
-              <button key={b.id} className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem}
-                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}>
-                <span className={styles.basemapMenuItemLabel}>{b.label}</span>
-                {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
-              </button>
-            ))}
-            {basemap === 'satellite' && (() => {
-              // One list, one pick: what is picked is what the map shows (Josh 2026-10-18).
-              const item = (id, label, sub) => (
-                <button key={id} type="button" className={photo === id ? styles.basemapMenuItemActive : styles.basemapMenuItem} onClick={() => setPhoto(id)}>
-                  <span className={styles.basemapMenuItemLabel}>{label}{sub && <span className={styles.photoSub}>{sub}</span>}</span>
-                  {photo === id && <span className={styles.basemapMenuCheck}>✓</span>}
-                </button>)
-              const yearChips = (prefix, years) => (
-                <div className={styles.yearChips}>
-                  {years.map((y) => {
-                    const id = `${prefix}-${y}`
-                    return <button key={y} type="button" className={photo === id ? styles.yearChipOn : styles.yearChip} onClick={() => setPhoto(id)}
-                      title={YEAR_NOTES[id] ? `${y}: ${YEAR_NOTES[id]}` : undefined}>{y}{YEAR_NOTES[id] ? '*' : ''}</button>
-                  })}
-                </div>)
-              // Local sources: those in view, plus the picked one wherever the map is.
-              const here = new Set(aerialsHere.map((a) => a.key))
-              const pickedKey = photo.split('-')[0]
-              const locals = LOCAL_AERIALS.filter((a) => here.has(a.key) || (a.key === pickedKey && /^\w+-\d{4}$/.test(photo)))
-              const note = YEAR_NOTES[photo]
-              return <>
-                <div className={styles.basemapMenuTitle}>Photos</div>
-                {item('best', 'Best available', 'newest local photos where we have them, Mapbox elsewhere')}
-                {locals.map((a) => (
-                  <div key={a.key} className={styles.photoGroup}>
-                    <div className={styles.photoGroupName}>{a.name}</div>
-                    {yearChips(a.key, [...a.years].reverse())}
-                  </div>
-                ))}
-                {!locals.length && <div className={styles.basemapHint}>Zoom in on the San Juan Islands, Greater Vancouver or Nanaimo to pick local photos by year.</div>}
-                {note && <div className={styles.basemapHint}>* {photo.split('-')[1]}: {note}</div>}
-                {item('mapbox', 'Mapbox satellite')}
-                {item('usgs', 'USGS aerial photos', 'US only')}
-                <div className={styles.photoGroup}>
-                  <div className={styles.photoGroupName}>Sentinel-2 cloudless</div>
-                  {yearChips('s2', BASE_IMAGERY.filter((b) => b.id.startsWith('s2-')).map((b) => b.year))}
-                </div>
-              </>
-            })()}
-          </div>
-        )}
-      </div>
-
-      {basemap === 'satellite' && mapReady && (() => {
-        // Which photos are on screen, each linked to where they come from (Josh 2026-10-16: the year shows on the map too).
-        const b = BASE_IMAGERY.find((x) => x.id === baseImagery) || BASE_IMAGERY[0]
-        const bHref = b.href || (b.source?.attribution.match(/href="([^"]+)"/) || [])[1]
-        const shown = aerialsHere.filter((a) => a.shown)
-        return (
-          <div className={styles.imageryLine} style={{ bottom: creditsH + 6 }}>
-            Photos:{' '}
-            {shown.map((a, i) => <span key={a.key}>{i > 0 && ', '}<a href={a.href} target="_blank" rel="noopener noreferrer">{a.name} {a.year}</a></span>)}
-            {shown.length > 0 && ' over '}
-            <a href={bHref} target="_blank" rel="noopener noreferrer">{b.id === 'mapbox' ? 'Mapbox satellite (dates vary)' : b.label}</a>
-          </div>
-        )
-      })()}
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={styles.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} />
 
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 

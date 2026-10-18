@@ -61,6 +61,7 @@ import { TapeVectorField } from './flightField.js'
 import ClipStudio from './ClipStudio.jsx'
 import { captureStill, mapboxBasemapSource } from './clipRecorder.js'
 import ShareControl from '../components/ShareControl.jsx'
+import { BasemapMenu, ImageryLine, useMapPhotos, photoCreditText } from '../components/basemap/index.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import useDockColumns from '../components/panel/useDockColumns.js'
 import DatasetRow from '../components/panel/DatasetRow.jsx'
@@ -758,8 +759,11 @@ export default function SystemsApp() {
     const ks = (initial.es || '').split(',').filter((k) => SECTOR_STYLE[k])
     return ks.length ? new Set(ks) : null
   })
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const basemapMenuRef = useRef(null)
+  // The photo picker shared by every site (components/basemap). Its usual URL key `ph` is already the ocean-acidity
+  // layer's here (shared links carry ph=1), so /inmotion keeps the photo choice under `pt` instead.
+  const photos = useMapPhotos(mapRef, { mapReady, basemap, initialPhoto: new URLSearchParams(window.location.search).get('pt') || 'best' })
+  const photosRef = useRef(photos)   // clips stamp the photos on screen per frame
+  photosRef.current = photos
   // Layer navigation (Claude Design handoff, 2026-08-22): an icon DOCK is the
   // default everywhere — one monoline icon per dataset, click = toggle, hover
   // tooltip. Desktop: dock ⇄ expanded panel (panelOpen). Mobile: pill ⇄ dock
@@ -2793,7 +2797,6 @@ export default function SystemsApp() {
     [],
   )
   const getClipBrand = useCallback(() => {
-    const imagery = basemap === 'satellite' ? '© Mapbox © Maxar' : '© Mapbox © OpenStreetMap'
     const fmtD = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     const activeNow = () => {
       const { layerOn, layerStatus } = stateRef.current
@@ -2804,6 +2807,8 @@ export default function SystemsApp() {
     const sourceLine = () => {
       const rc = replayRef.current || eventReplayRef.current
       const when = rc && !rc.atLive ? `showing ${fmtD(rc.t)}` : fmtD(Date.now())
+      // The photos actually drawn (Sentinel-2, local aerials, Mapbox), as the Photos line on the map says.
+      const imagery = photoCreditText(photosRef.current)
       return [...activeNow().map((d) => `${d.name}: ${d.sourceName}`), imagery, when].join(' · ')
     }
     return { sourceLine, shareUrl: window.location.href, layerIds: activeNow().map((d) => d.id) }
@@ -2833,6 +2838,7 @@ export default function SystemsApp() {
     }
     if (density !== 'med') sp.set('d', density)
     if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (photos.photo !== 'best') sp.set('pt', photos.photo) // not `ph` (the acidity layer's key): see useMapPhotos above
     if (layerOn.emissions && traceMeasure !== PRIMARY_MEASURE) sp.set('eg', traceMeasure)
     if (layerOn.emissions && traceSectors) sp.set('es', [...traceSectors].join(','))
     if (layerOn.fungi && fungiWant !== 'hyphae') sp.set('fgm', fungiWant)
@@ -2846,7 +2852,7 @@ export default function SystemsApp() {
     // The URL is now canonical for this view — queue its social share card
     // (debounced + deduped; see src/lib/shareCard.js).
     if (mapReady) scheduleViewCard(captureShareImage)
-  }, [layerOn, density, basemap, mapView, mapReady, captureShareImage, traceMeasure, traceSectors, fungiWant, fungiThreadsOn])
+  }, [layerOn, density, basemap, photos.photo, mapView, mapReady, captureShareImage, traceMeasure, traceSectors, fungiWant, fungiThreadsOn])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -2857,13 +2863,6 @@ export default function SystemsApp() {
     appliedBasemapRef.current = basemap
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
-
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [basemapMenuOpen])
 
   // ─── Per-route SEO (client side; the static systems.html covers crawlers) ─
   useEffect(() => {
@@ -3161,32 +3160,9 @@ export default function SystemsApp() {
       )}
 
       {/* Basemap picker */}
-      <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button
-          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)}
-          aria-label="Choose basemap" title="Basemap"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={styles.basemapMenuPanel}>
-            <div className={styles.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => (
-              <button
-                key={b.id}
-                className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem}
-                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}
-              >
-                <span className={styles.basemapMenuItemLabel}>{b.label}</span>
-                {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={styles.basemapMenu} />
+      {/* Lifted above the replay transport bar while it shows (it spans the bottom centre, over the line's spot). */}
+      <ImageryLine photos={photos} mapRef={mapRef} className={(replay || eventReplay || fireReplay) ? styles.imageryLineAboveBar : ''} />
 
       {/* Share this view — link + per-view social card */}
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}

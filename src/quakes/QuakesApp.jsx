@@ -23,6 +23,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
@@ -248,8 +249,7 @@ export default function QuakesApp() {
     initial.t && (initial.t === 'custom' || TIME_PRESETS.some((p) => p.id === initial.t)) ? initial.t : 'month'
   ))
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const basemapMenuRef = useRef(null)
+  const photos = useMapPhotos(mapRef, { mapReady, basemap })   // the photo picker shared by every site (components/basemap)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showMethodology, setShowMethodology] = useState(false)
   // Below 768px the panel becomes a bottom sheet, which owns collapsing —
@@ -473,6 +473,7 @@ export default function QuakesApp() {
       }
     }
     if (basemap !== 'satellite') sp.set('bm', basemap)
+    writePhoto(sp, photos.photo)
     if (mapView) {
       sp.set('lat', mapView.lat.toFixed(3))
       sp.set('lng', mapView.lng.toFixed(3))
@@ -480,7 +481,7 @@ export default function QuakesApp() {
     }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [feed, center, radius, activePreset, range, basemap, mapView, mapReady])
+  }, [feed, center, radius, activePreset, range, basemap, photos.photo, mapView, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
   const appliedBasemapRef = useRef(basemap)
@@ -492,12 +493,6 @@ export default function QuakesApp() {
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
 
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [basemapMenuOpen])
 
   // ─── Per-route SEO (client side; the static quakes.html covers crawlers) ──
   useEffect(() => {
@@ -592,32 +587,8 @@ export default function QuakesApp() {
       </MapSearch>
 
       {/* Basemap picker */}
-      <div className={styles.basemapMenu} ref={basemapMenuRef}>
-        <button
-          className={basemapMenuOpen ? styles.basemapToggleActive : styles.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)}
-          aria-label="Choose basemap" title="Basemap"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={styles.basemapMenuPanel}>
-            <div className={styles.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => (
-              <button
-                key={b.id}
-                className={b.id === basemap ? styles.basemapMenuItemActive : styles.basemapMenuItem}
-                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}
-              >
-                <span className={styles.basemapMenuItemLabel}>{b.label}</span>
-                {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={styles.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} />
 
       {/* Control panel — floating left panel on desktop, bottom sheet on phones */}
       <MapSheet

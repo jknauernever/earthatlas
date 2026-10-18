@@ -129,6 +129,8 @@ export const BASE_IMAGERY = [
     attribution: `<a href="https://cloudless.eox.at" target="_blank" rel="noopener">EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data ${y})</a>` } })),
 ]
 const BASE_LAYER = 'base-imagery'
+// What 'best' draws when zoomed out (setBaseImagery).
+export const BEST_BASE = 's2-2025'
 
 const overlaps = (map, [w, s, e, n]) => {
   const b = map.getBounds()
@@ -214,9 +216,12 @@ export function addLocalAerials(map, choice = null) {
 export function setBaseImagery(map, id) {
   const slot = photoSlot(map)
   if (!slot) return false
-  const pick = BASE_IMAGERY.find((b) => b.id === id && b.source)
+  // 'best' = Sentinel-2 cloudless 2025 below LOCAL_AERIALS_SHOW_FROM, where it renders water far better than Mapbox (Josh
+  // 2026-10-18); from z11 the layer stops drawing and Mapbox satellite / the local aerials show.
+  const best = id === 'best'
+  const pick = BASE_IMAGERY.find((b) => b.id === (best ? BEST_BASE : id) && b.source)
   // A new style has none of ours; on the same style, swap only when the pick changed.
-  if (map.getLayer(BASE_LAYER) && map.__baseImagery === pick?.id) return true
+  if (map.getLayer(BASE_LAYER) && map.__baseImagery === (best ? id : pick?.id)) return true
   if (map.getLayer(BASE_LAYER)) map.removeLayer(BASE_LAYER)
   if (map.getSource(BASE_LAYER)) map.removeSource(BASE_LAYER)
   map.__baseImagery = null
@@ -224,8 +229,8 @@ export function setBaseImagery(map, id) {
   map.addSource(BASE_LAYER, pick.source)
   // Under every local aerial: before the lowest one on the map, else before the style's layer above its photos.
   const firstLocal = (map.getStyle().layers || []).find((l) => l.id !== BASE_LAYER && ours(l.id))
-  map.addLayer({ id: BASE_LAYER, type: 'raster', source: BASE_LAYER }, firstLocal?.id || slot.before)
-  map.__baseImagery = pick.id
+  map.addLayer({ id: BASE_LAYER, type: 'raster', source: BASE_LAYER, ...(best && { maxzoom: LOCAL_AERIALS_SHOW_FROM }) }, firstLocal?.id || slot.before)
+  map.__baseImagery = best ? id : pick.id
   return true
 }
 
@@ -244,7 +249,8 @@ export function localAerialsInView(map, choice = null) {
 
 /**
  * /ships' one Photos choice (Josh 2026-10-18: pick one thing and see it, no hidden layering) → what to draw.
- *   'best'              every local source's newest year where it has photos, Mapbox satellite elsewhere (the default)
+ *   'best'              Sentinel-2 2025 below z11; from z11 every local source's newest year where it has photos, Mapbox
+ *                       satellite elsewhere (the default)
  *   'mapbox'            Mapbox satellite only
  *   'usgs', 's2-<year>' that imagery only
  *   '<key>-<year>'      one local source in one year, Mapbox satellite around it
@@ -255,7 +261,7 @@ export function photoLayers(photo) {
   const [key, y] = String(photo || '').split('-')
   const a = LOCAL_AERIALS.find((x) => x.key === key)
   if (a && a.years.includes(Number(y))) return { choice: { ...allOff, [key]: Number(y) }, base: 'mapbox' }
-  return { choice: {}, base: 'mapbox' }
+  return { choice: {}, base: 'best' }
 }
 export const isPhotoChoice = (photo) => photo === 'best' || BASE_IMAGERY.some((b) => b.id === photo)
   || LOCAL_AERIALS.some((a) => a.years.some((y) => photo === `${a.key}-${y}`))

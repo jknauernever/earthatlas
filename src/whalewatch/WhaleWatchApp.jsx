@@ -34,7 +34,7 @@ import VesselCard, { currentIdentity } from '../ships/VesselCard.jsx'
 import trackSource from '../ships/trackSource.json'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LoadingInline, Chevron } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_NOTES } from '../ships/shipsSources.js'
-import { addLocalAerials } from '../lib/localAerials.js'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import shipsStyles from '../ships/ShipsApp.module.css'
 import own from './WhaleWatchApp.module.css'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
@@ -57,6 +57,7 @@ const FLEET_COLOR = '#c4b5fd'   // on record (pale violet: reads on water, fores
                                 // or in replay where it was at the hour shown; smaller, no name. Boats added with the search follow the same rule.
 const PICK_COLOR = '#ffffff'    // the boat whose card is open: the trip picked in its Trips tab
 const LINE_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 0.6, 10, 1.1, 14, 2]
+const CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 1.6, 10, 2.1, 14, 3]   // LINE_WIDTH + 1 (zoom may only sit at the top of an interpolate)
 const PICK_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 1.6, 10, 2.4, 14, 3.5]
 const SRC = 'ww-tracks', CASING = 'ww-casing', LINE = 'ww-line', EST = 'ww-est', PICK = 'ww-pick'
 const LINE_OPACITY = 0.7
@@ -148,6 +149,7 @@ export default function WhaleWatchApp() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
+  const photos = useMapPhotos(mapRef, { mapReady })   // the photo picker shared by every site (components/basemap)
   const [styleVersion, setStyleVersion] = useState(0)
   const [mapView, setMapView] = useState(initial.lat != null && initial.lng != null && initial.z != null ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null)
 
@@ -192,7 +194,6 @@ export default function WhaleWatchApp() {
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => {
       map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
-      addLocalAerials(map)   // local government aerials over Mapbox satellite when zoomed in, each credited in the map credits while in view (as /ships)
       setMapReady(true)
       setStyleVersion((n) => n + 1)
     })
@@ -395,7 +396,7 @@ export default function WhaleWatchApp() {
       map.addSource(SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       const color = FLEET_COLOR
       map.addLayer({ id: CASING, type: 'line', source: SRC, filter: OBSERVED, layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0a0e17', 'line-width': ['+', LINE_WIDTH, 1], 'line-opacity': 0.35 } }, labelsId)
+        paint: { 'line-color': '#0a0e17', 'line-width': CASING_WIDTH, 'line-opacity': 0.35 } }, labelsId)
       map.addLayer({ id: LINE, type: 'line', source: SRC, filter: OBSERVED, layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': color, 'line-width': LINE_WIDTH, 'line-opacity': LINE_OPACITY } }, labelsId)
       map.addLayer({ id: EST, type: 'line', source: SRC, filter: ESTIMATED, layout: { 'line-join': 'round' },
@@ -533,11 +534,12 @@ export default function WhaleWatchApp() {
     if (t != null) sp.set('t', new Date(t * 1000).toISOString().slice(0, 13))
     if (!fleetOn) sp.set('fl', '0')
     if (allTracks) sp.set('tk', '1')
+    writePhoto(sp, photos.photo)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel, tripT0, cardTab, added, hidden, fleetOn, allTracks, mapView, mapReady, playing ? null : t])
+  }, [sel, tripT0, cardTab, added, hidden, fleetOn, allTracks, photos.photo, mapView, mapReady, playing ? null : t])
 
   const pickShip = (r) => {
     setPickerOpen(false)
@@ -620,6 +622,8 @@ export default function WhaleWatchApp() {
       </ShipPicker>
 
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
+      <BasemapMenu basemap="satellite" photos={photos} className={styles.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} raise={72} />   {/* above the time bar */}
 
       {startS != null && endS != null && (
         <WhaleTimeBar start={startS} end={endS} t={t} onT={setT} playing={playing} onPlaying={setPlaying} speed={speed} onSpeed={setSpeed}

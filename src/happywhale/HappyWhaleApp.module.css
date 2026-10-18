@@ -60,44 +60,6 @@
 
 /* ─── Basemap picker ─────────────────────────────────────────────────────── */
 .basemapMenu { position: absolute; top: 154px; right: 10px; z-index: 10; }
-.basemapToggle, .basemapToggleActive {
-  width: 36px; height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: #0f1726;
-  color: rgba(255, 255, 255, 0.85);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; padding: 0;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-}
-.basemapToggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
-.basemapToggleActive { background: #131c30; color: #38bdf8; border-color: rgba(56, 189, 248, 0.5); }
-.basemapMenuPanel {
-  position: absolute; top: 42px; right: 0;
-  width: 160px; padding: 4px;
-  background: rgba(10, 14, 23, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-}
-.basemapMenuTitle {
-  padding: 8px 10px 4px;
-  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.5); font-weight: 600;
-}
-.basemapMenuItem, .basemapMenuItemActive {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 7px 10px;
-  border: 0; background: transparent; color: #e5e7eb;
-  font: inherit; font-size: 13px; text-align: left;
-  border-radius: 6px; cursor: pointer;
-  transition: background 0.1s ease;
-}
-.basemapMenuItem:hover { background: rgba(255, 255, 255, 0.05); }
-.basemapMenuItemActive { background: rgba(56, 189, 248, 0.12); color: #fff; }
-.basemapMenuItemLabel { flex: 1; font-weight: 500; }
-.basemapMenuCheck { color: #38bdf8; }
 
 /* ─── Control panel ──────────────────────────────────────────────────────── */
 /* Panel behavior matches /fire and /forestmonitor: the panel itself scrolls

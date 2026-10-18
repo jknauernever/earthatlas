@@ -1,0 +1,64 @@
+/* The shared basemap + photos menu (from /ships). The wrapper's position comes from each site (className). */
+.wrap { position: absolute; z-index: 10; }   /* top/right: the site's own class */
+.toggle, .toggleActive {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #0f1726;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.toggle:hover { background: #131c30; color: #fff; border-color: rgba(255, 255, 255, 0.22); }
+.toggleActive { background: #131c30; color: #22d3ee; border-color: rgba(34, 211, 238, 0.5); }
+.panel {
+  position: absolute; top: 42px; right: 0;
+  width: 160px; padding: 4px;
+  background: rgba(10, 14, 23, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.panel:has(.group) { width: 260px; max-height: calc(100vh - 260px); overflow-y: auto; }
+.title {
+  padding: 8px 10px 4px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5); font-weight: 600;
+}
+.item, .itemActive {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
+  border: 0; background: transparent; color: #e5e7eb;
+  font: inherit; font-size: 13px; text-align: left;
+  border-radius: 6px; cursor: pointer;
+  transition: background 0.1s ease;
+}
+.item:hover { background: rgba(255, 255, 255, 0.05); }
+.itemActive { background: rgba(34, 211, 238, 0.12); color: #fff; }
+.itemLabel { flex: 1; font-weight: 500; }
+.check { color: #22d3ee; }
+.sub { display: block; font-size: 11px; font-weight: 400; color: rgba(255, 255, 255, 0.5); margin-top: 1px; }
+.group { padding: 5px 10px 6px; }
+.groupName { font-size: 13px; font-weight: 500; color: #e5e7eb; margin-bottom: 5px; }
+.yearChips { display: flex; flex-wrap: wrap; gap: 4px; }
+.yearChip, .yearChipOn {
+  font: inherit; font-size: 11.5px; padding: 2px 7px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.16); background: transparent; color: rgba(255, 255, 255, 0.8);
+}
+.yearChip:hover { background: rgba(255, 255, 255, 0.06); }
+.yearChipOn { background: rgba(34, 211, 238, 0.18); border-color: rgba(34, 211, 238, 0.6); color: #fff; }
+.hint { padding: 4px 10px 8px; font-size: 12px; line-height: 1.4; color: rgba(255, 255, 255, 0.55); }
+.imageryLine {
+  position: absolute; right: 10px; bottom: 30px; z-index: 5; max-width: min(420px, calc(100vw - 20px));
+  padding: 3px 8px; border-radius: 6px; background: rgba(10, 14, 23, 0.72);
+  font-size: 11.5px; line-height: 1.35; color: rgba(255, 255, 255, 0.75); text-align: right;
+}
+.imageryLine a { color: #e5e7eb; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.35); }
+@media (max-width: 768px) {
+  .toggle, .toggleActive { width: 44px; height: 44px; }   /* touch size, as the sites' own menus had */
+  .panel { top: 50px; }
+  .item, .itemActive { padding: 11px 10px; }
+  .imageryLine { max-width: calc(100vw - 120px); }       /* clear of a left icon dock / pill */
+}

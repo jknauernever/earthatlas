@@ -21,6 +21,7 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import ZoomIndicator from '../components/ZoomIndicator.jsx'
 import ShareControl from '../components/ShareControl.jsx'
+import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { SourcesFooter, SITE_RUNS_NOTE } from '../components/panel'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './HpaDocksApp.module.css'
@@ -366,8 +367,12 @@ export default function HpaDocksApp() {
   const initialCamera = Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z)
     ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : DEFAULT_BASEMAP))
-  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const basemapMenuRef = useRef(null)
+  // The basemap whose style is on the map (set by the basemap switch below, before its setStyle).
+  const appliedBasemapRef = useRef(basemap)
+  // The photo picker shared by every site (components/basemap), on the Satellite basemap only: the county-aerials
+  // basemap is its own style (county photos from z10 over a flat water fill), which the shared photos must not
+  // rearrange — so the hook runs only while the Satellite style is the one actually loaded.
+  const photos = useMapPhotos(mapRef, { mapReady: mapReady && basemap === 'satellite' && appliedBasemapRef.current === 'satellite', basemap })
   const [mapView, setMapView] = useState(initialCamera)
   const [selected, setSelected] = useState(initial.p || null) // site_id of the open popup
   const [selectedDock, setSelectedDock] = useState(initial.d || null) // facility_id of the open dock popup
@@ -687,6 +692,7 @@ export default function HpaDocksApp() {
   useEffect(() => {
     const sp = new URLSearchParams()
     if (basemap !== DEFAULT_BASEMAP) sp.set('bm', basemap)
+    writePhoto(sp, photos.photo)
     if (mapView) {
       sp.set('lat', mapView.lat.toFixed(4))
       sp.set('lng', mapView.lng.toFixed(4))
@@ -698,10 +704,9 @@ export default function HpaDocksApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basemap, mapView, selected, selectedDock, showOsm, mapReady])
+  }, [basemap, photos.photo, mapView, selected, selectedDock, showOsm, mapReady])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
-  const appliedBasemapRef = useRef(basemap)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || appliedBasemapRef.current === basemap) return
@@ -709,13 +714,6 @@ export default function HpaDocksApp() {
     setMapReady(false) // style.load flips it back and the layer effect re-adds the dots
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
-
-  useEffect(() => {
-    if (!basemapMenuOpen) return
-    const onDoc = (e) => { if (basemapMenuRef.current && !basemapMenuRef.current.contains(e.target)) setBasemapMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [basemapMenuOpen])
 
   useEffect(() => {
     const prev = document.title
@@ -774,32 +772,8 @@ export default function HpaDocksApp() {
         />
       </MapSearch>
 
-      <div className={q.basemapMenu} ref={basemapMenuRef}>
-        <button
-          className={basemapMenuOpen ? q.basemapToggleActive : q.basemapToggle}
-          onClick={() => setBasemapMenuOpen((o) => !o)}
-          aria-label="Choose basemap" title="Basemap"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
-          </svg>
-        </button>
-        {basemapMenuOpen && (
-          <div className={q.basemapMenuPanel}>
-            <div className={q.basemapMenuTitle}>Basemap</div>
-            {BASEMAPS.map((b) => (
-              <button
-                key={b.id}
-                className={b.id === basemap ? q.basemapMenuItemActive : q.basemapMenuItem}
-                onClick={() => { setBasemap(b.id); setBasemapMenuOpen(false) }}
-              >
-                <span className={q.basemapMenuItemLabel}>{b.label}</span>
-                {b.id === basemap && <span className={q.basemapMenuCheck}>✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <BasemapMenu basemaps={BASEMAPS} basemap={basemap} onBasemap={setBasemap} photos={photos} className={q.basemapMenu} />
+      <ImageryLine photos={photos} mapRef={mapRef} />
 
       <div className={styles.info}>
         <div className={styles.infoTitle}>Dock permits — San Juan County</div>

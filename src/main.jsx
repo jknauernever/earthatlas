@@ -47,6 +47,7 @@ import CarbonApp from './carbon/CarbonApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
 import ShipTrafficApp from './shiptraffic/ShipTrafficApp.jsx'
+import WhaleWatchApp from './whalewatch/WhaleWatchApp.jsx'
 import ShipsApp from './ships/ShipsApp.jsx'
 import SourceRecordPage from './ships/SourceRecordPage.jsx'
 import PermitPage from './ships/PermitPage.jsx'
@@ -170,6 +171,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />
           <Route path="/shiptraffic" element={<ShipTrafficApp />} />
+          <Route path="/whalewatch" element={<WhaleWatchApp />} />
           <Route path="/ships" element={<ShipsApp />} />
           <Route path="/ships/source/:id" element={<SourceRecordPage />} />
           <Route path="/ships/permit/:id" element={<PermitPage />} />

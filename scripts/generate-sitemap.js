@@ -78,6 +78,9 @@ addUrl('/happywhale')
 // ShipTraffic
 addUrl('/shiptraffic')
 
+// Whale Watch (whale-watching boats' tracks)
+addUrl('/whalewatch')
+
 // Ships (vessel identity)
 addUrl('/ships')
 

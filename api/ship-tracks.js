@@ -224,13 +224,13 @@ async function mapLimit(items, n, fn) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k]) } }))
   return out
 }
-export async function allTracksForMmsi(mmsi) {
+export async function allTracksForMmsi(mmsi, { from = null } = {}) {   // from 'YYYY-MM': only that month onward (/whalewatch: last 12 months)
   await usUrls(manifest.months?.[0] || '2000-01') // loads the US index
   const usM = Object.keys(usIndex?.months || {})
   const salishM = new Set(Object.keys((await salishNow()).months || {}))
   const [w, s, e, n] = manifest.bbox
   const inside = (f) => f.geometry.coordinates.every(([x, y]) => x >= w && x <= e && y >= s && y <= n)
-  const months = [...new Set([...usM, ...salishM])].sort()
+  const months = [...new Set([...usM, ...salishM])].sort().filter((t) => !from || t >= from)
   let failed = 0
   const per = await mapLimit(months, 16, async (t) => {
     const got = []
@@ -244,7 +244,7 @@ export async function allTracksForMmsi(mmsi) {
   })
   const features = per.flat()
   // GFW hourly lines for the months and places NOAA doesn't cover (the bake already dropped NOAA-covered positions).
-  const gfwM = Object.keys((await gfwIndexNow().catch(() => ({ months: {} }))).months || {})
+  const gfwM = Object.keys((await gfwIndexNow().catch(() => ({ months: {} }))).months || {}).filter((t) => !from || t >= from)
   const gfwPer = await mapLimit(gfwM, 8, async (t) => {
     try { return (await tracksForMmsi(t, mmsi, 'gfw')) || [] } catch (err) { failed++; packs.delete(`gfw:${t}`); console.error('[ship-tracks] all gfw', t, err?.message); return [] }
   })
@@ -479,10 +479,11 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ kind, ...body }))
   }
   if (searchParams.get('op') === 'all') {
-    const m = searchParams.get('mmsi') || ''
+    const m = searchParams.get('mmsi') || '', from = searchParams.get('from') || null
     if (!/^\d{9}$/.test(m)) { res.statusCode = 400; return res.end('bad mmsi') }
+    if (from && !isTileset(from)) { res.statusCode = 400; return res.end('bad from (YYYY-MM)') }
     let r
-    try { r = await allTracksForMmsi(Number(m)) } catch (e) { console.error('[ship-tracks] all', e?.message); res.statusCode = 502; return res.end('tracks read failed') }
+    try { r = await allTracksForMmsi(Number(m), { from }) } catch (e) { console.error('[ship-tracks] all', e?.message); res.statusCode = 502; return res.end('tracks read failed') }
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/geo+json')
     // A partial read (a month failed) must not be cached for a month; the page's &v= key changes when months are added.
@@ -508,7 +509,7 @@ export default async function handler(req, res) {
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/json')
     res.setHeader('Cache-Control', idx.local ? LOCAL_CACHE : 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600')
-    return res.end(JSON.stringify({ version: idx.version, updated: idx.updated, local: !!idx.local,
+    return res.end(JSON.stringify({ version: idx.version, updated: idx.updated, fetched_through: idx.fetched_through || null, local: !!idx.local,
       months: Object.fromEntries(Object.entries(idx.months || {}).map(([m, e]) => [m, { areas: e.areas, built: e.built, noaa_excluded: e.noaa_excluded }])) }))
   }
   if (searchParams.get('op') === 'near') {

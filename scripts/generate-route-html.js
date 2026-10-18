@@ -124,6 +124,17 @@ const ROUTES = [
       'Salish Sea vessel traffic, ship strike risk, whale ship interaction, AIS vessel density, San Juan Islands orcas, Southern Resident killer whales, MarineCadastre AIS, cetacean sightings map, iNaturalist whales, OBIS, Haro Strait shipping',
   },
   {
+    out: 'whalewatch.html',
+    url: 'https://earthatlas.org/whalewatch',
+    title: 'Whale Watch — Salish Sea whale-watching boats · EarthAtlas',
+    description:
+      'Where the Salish Sea’s whale-watching boats went over the last 12 months: the tracks of the Pacific Whale Watch Association members’ boats, each tied to its company by an official record. Search any ship to add it. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Whale Watch — tracks of the Salish Sea whale-watching boats',
+    keywords:
+      'whale watching boats, Salish Sea whale watching, San Juan Islands whale watching, Pacific Whale Watch Association, whale watch boat tracks, AIS boat tracks, orca whale watching, Haro Strait, Victoria whale watching',
+  },
+  {
     out: 'ships.html',
     url: 'https://earthatlas.org/ships',
     title: 'Ships — the open record of every ship · EarthAtlas',

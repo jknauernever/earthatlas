@@ -5,6 +5,7 @@
 //
 //   /api/ships?op=search&q=<name | IMO | MMSI | callsign>[&kinds=CARGO,FISHING] → { results: [...] }   (≤ 25)
 //   /api/ships?op=kinds                                    → { kinds: [{ kind, n }] }  (GFW classification)
+//   /api/ships?op=fleet&key=whalewatch                     → { key, name, members: [{ vessel_id, name, company, basis, source_url, mmsiPeriods }] }
 //   /api/ships?op=vessel&id=<uuid>                         → { vessel, assertions, links, outgoing, sources }
 //   /api/ships?op=record&id=<source record id>             → the raw source payload (traceability)
 //   /api/ships?op=mmsi&mmsi=<9 digits>&at=<ISO time>       → { status, vesselIds }
@@ -73,6 +74,7 @@ import { storeAnchorageStays, STAY_BAKE_VERSION, ANCHORAGE_STAYS_SOURCE } from '
 import { startRun, finishRun } from '../lib/ships/store.js'
 import { importMcBatch } from '../lib/ships/mcMonths.js'
 import { searchPlaces } from '../lib/ships/placeSearch.js'
+import { readFleet } from '../lib/ships/fleets.js'
 import { timingSafeEqual } from 'node:crypto'
 import { gzipSync, gunzipSync } from 'node:zlib'
 
@@ -136,6 +138,13 @@ export default async function handler(req, res) {
       return send(res, 200, { query: text, kinds, results: r.results, type: r.type, total: r.total, capped: r.capped || false })
     }
     if (op === 'kinds') return send(res, 200, { kinds: await vesselKinds(q, S) })
+    // A fleet's current boats (migration 034, lib/ships/fleets.js): /whalewatch reads 'whalewatch'. Each member carries its
+    // evidence (basis + source) and the vessel's MMSI periods its tracks are matched against. 5 min at the edge: an added
+    // boat shows within minutes, no deploy.
+    if (op === 'fleet') {
+      const f = await readFleet(q, S, p.get('key') || '')
+      return f ? send(res, 200, f, 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600') : send(res, 404, { error: 'no such fleet' })
+    }
     //   /api/ships?op=places&q=<text> → { places: [{ kind: terminal|anchorage|facility|port, id, name, matched, lat, lon, sub, area, terminalKey? }] }
     //   our own places for the "Fly to a place" box (lib/ships/placeSearch.js; Josh 2026-10-07)
     if (op === 'places') return send(res, 200, { places: await searchPlaces(q, S, p.get('q') || '') }, 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400')

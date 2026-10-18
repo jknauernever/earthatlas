@@ -28,6 +28,8 @@ const ST_INDEX = /^shiptraffic\/overlap-v\d+\/index\.json$/
 // aisstream recorder (scripts/ships/aisstream/recorder.mjs): one NOAA-shaped Parquet per recorded UTC day + small index/status.
 const AIS_DAY = /^ships\/bake-inputs\/salish-v\d+\/aisstream\/points\/\d{4}-\d{2}-\d{2}\.parquet$/
 const AIS_SMALL = /^ships\/bake-inputs\/salish-v\d+\/aisstream\/(index|status)\.json$/
+// The recorder's live snapshot (latest position per ship, rewritten every 60 s) for /whalewatch's LIVE view.
+const AIS_LIVE = /^ships\/live\/salish-v\d+\.json$/
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET
@@ -38,16 +40,17 @@ export default async function handler(req, res) {
     const chunks = []
     for await (const c of req) chunks.push(c)
     const { pathname } = JSON.parse(Buffer.concat(chunks).toString() || '{}')
+    const isLive = AIS_LIVE.test(pathname || '')
     const isIndex = INDEX.test(pathname || '') || pathname === CT_POINTER || ST_INDEX.test(pathname || '') || AIS_SMALL.test(pathname || '')
-    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '') && !AIS_DAY.test(pathname || '')) throw new Error(`path not allowed: ${pathname}`)
+    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '') && !AIS_DAY.test(pathname || '') && !isLive) throw new Error(`path not allowed: ${pathname}`)
     const token = await generateClientTokenFromReadWriteToken({
       token: process.env.BLOB_READ_WRITE_TOKEN,
       pathname,
       addRandomSuffix: false,
       allowOverwrite: true, // a re-bake of the same month replaces its own files
-      maximumSizeInBytes: isIndex ? 256 * 1024 : 5 * 1024 ** 3,
+      maximumSizeInBytes: isIndex ? 256 * 1024 : isLive ? 8 * 1024 ** 2 : 5 * 1024 ** 3,
       // The index must turn over quickly; a month's files change only on a re-bake.
-      cacheControlMaxAge: isIndex ? 60 : 60 * 60 * 24 * 30,
+      cacheControlMaxAge: isIndex || isLive ? 60 : 60 * 60 * 24 * 30,   // 60 s is Blob's minimum
       validUntil: Date.now() + 2 * 60 * 60 * 1000,
     })
     res.setHeader('content-type', 'application/json')

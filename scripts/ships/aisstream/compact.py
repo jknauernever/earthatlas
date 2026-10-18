@@ -31,7 +31,9 @@ COLS = {  # NOAA order and types (DESCRIBE of a salish-v6 cache file)
     "draft": "FLOAT", "cargo": "INTEGER", "transceiver": "VARCHAR",
 }
 con = duckdb.connect()
-con.execute("SET memory_limit='96MB'; SET threads=1; SET preserve_insertion_order=false")
+tmp = os.path.join(data, "tmp"); os.makedirs(tmp, exist_ok=True)
+# temp_directory: the sort / dedupe spill to disk instead of failing as a full day grows (2026-10-18).
+con.execute(f"SET memory_limit='96MB'; SET threads=1; SET preserve_insertion_order=false; SET temp_directory='{tmp}'")
 if files + nfiles:
     src = "[" + ",".join(f"'{f}'" for f in files + nfiles) + "]"
     cols = "{" + ",".join(f"'{k}':'{v}'" for k, v in COLS.items()) + "}"

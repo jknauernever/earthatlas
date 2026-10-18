@@ -21,6 +21,7 @@ data, day = sys.argv[1], sys.argv[2]
 final = len(sys.argv) > 3 and sys.argv[3] == "final"
 name = sys.argv[4] if len(sys.argv) > 4 else "tracks.pack"
 VERSION, N = "aisstream-v1", 1024
+NB = 16   # MMSI groups processed one at a time (memory)
 GAP_MIN, MAX_KNOTS, MIN_DT_S, PARKED_M = 30, 60, 30, 100
 KIND_SQL = """CASE
   WHEN v IS NULL OR v = 0 THEN 'unknown'
@@ -49,40 +50,47 @@ through = None
 if files:
     src = "[" + ",".join(f"'{f}'" for f in files) + "]"
     cols = "{'mmsi':'INTEGER','base_date_time':'TIMESTAMP','longitude':'DOUBLE','latitude':'DOUBLE','vessel_type':'INTEGER'}"
-    con.execute(f"""
-      CREATE TEMP TABLE p AS
-      SELECT DISTINCT ON (mmsi, base_date_time) mmsi, base_date_time AS t, longitude AS lon, latitude AS lat, vessel_type
-        FROM read_ndjson({src}, columns={cols}, compression='auto_detect', ignore_errors=true)
-       WHERE base_date_time >= '{day} 00:00:00' AND base_date_time < '{nxt} 00:00:00' AND mmsi IS NOT NULL""")
-    through = con.execute("SELECT max(t) FROM p").fetchone()[0]
-    con.execute(f"""
-      CREATE TEMP TABLE s AS
-      WITH q AS (
-        SELECT *, lag(t) OVER w AS pt, lag(lat) OVER w AS plat, lag(lon) OVER w AS plon
-          FROM p WINDOW w AS (PARTITION BY mmsi ORDER BY t)
-      ), b AS (
-        SELECT *, epoch(t) - epoch(pt) AS dts,
-               -- nautical miles between consecutive positions (equirectangular; fine at these distances)
-               sqrt(power((lat - plat) * 60, 2) + power((lon - plon) * 60 * cos(radians((lat + plat) / 2)), 2)) AS nm
-          FROM q
-      )
-      SELECT *, sum(CASE WHEN pt IS NULL THEN 1 WHEN dts > {GAP_MIN * 60} THEN 1
-                         WHEN nm / (greatest(dts, {MIN_DT_S}) / 3600.0) > {MAX_KNOTS} THEN 1 ELSE 0 END)
-                OVER (PARTITION BY mmsi ORDER BY t ROWS UNBOUNDED PRECEDING) AS sid
-        FROM b""")
-    rows = con.execute(f"""
-      SELECT mmsi, {KIND_SQL} AS kind, v, t0, t1, n, c, ts FROM (
-        SELECT mmsi, mode(vessel_type) AS v, epoch(min(t))::BIGINT AS t0, epoch(max(t))::BIGINT AS t1, count(*) AS n,
-               list([round(lon, 5), round(lat, 5)] ORDER BY t) AS c, list(epoch(t)::BIGINT ORDER BY t) AS ts,
-               sqrt(power((max(lat) - min(lat)) * 111320, 2) + power((max(lon) - min(lon)) * 111320 * cos(radians(avg(lat))), 2)) AS span_m
-          FROM s GROUP BY mmsi, sid HAVING count(*) >= 2
-      ) WHERE span_m >= {PARKED_M} ORDER BY mmsi, t0""")
-    while True:
-        batch = rows.fetchmany(5000)
-        if not batch:
-            break
-        for mmsi, kind, v, t0, t1, n, c, ts in batch:
-            shards[mmsi % N].append(json.dumps({"mmsi": mmsi, "kind": kind, "vtype": v, "t0": t0, "t1": t1, "n": n, "c": c, "ts": ts}, separators=(",", ":")))
+    # Ships in NB groups by MMSI (every step is per ship, so the result is identical): a whole day at once ran out of
+    # the 128 MB DuckDB limit on the 256 MB Fly machine (2026-10-18, from ~250k rows).
+    tmax = []
+    for bk in range(NB):
+        con.execute(f"""
+          CREATE OR REPLACE TEMP TABLE p AS
+          SELECT DISTINCT ON (mmsi, base_date_time) mmsi, base_date_time AS t, longitude AS lon, latitude AS lat, vessel_type
+            FROM read_ndjson({src}, columns={cols}, compression='auto_detect', ignore_errors=true)
+           WHERE base_date_time >= '{day} 00:00:00' AND base_date_time < '{nxt} 00:00:00' AND mmsi IS NOT NULL AND mmsi % {NB} = {bk}""")
+        tmax.append(con.execute("SELECT max(t) FROM p").fetchone()[0])
+        con.execute(f"""
+          CREATE OR REPLACE TEMP TABLE s AS
+          WITH q AS (
+            SELECT *, lag(t) OVER w AS pt, lag(lat) OVER w AS plat, lag(lon) OVER w AS plon
+              FROM p WINDOW w AS (PARTITION BY mmsi ORDER BY t)
+          ), b AS (
+            SELECT *, epoch(t) - epoch(pt) AS dts,
+                   -- nautical miles between consecutive positions (equirectangular; fine at these distances)
+                   sqrt(power((lat - plat) * 60, 2) + power((lon - plon) * 60 * cos(radians((lat + plat) / 2)), 2)) AS nm
+              FROM q
+          )
+          SELECT *, sum(CASE WHEN pt IS NULL THEN 1 WHEN dts > {GAP_MIN * 60} THEN 1
+                             WHEN nm / (greatest(dts, {MIN_DT_S}) / 3600.0) > {MAX_KNOTS} THEN 1 ELSE 0 END)
+                    OVER (PARTITION BY mmsi ORDER BY t ROWS UNBOUNDED PRECEDING) AS sid
+            FROM b""")
+        con.execute("DROP TABLE p")
+        rows = con.execute(f"""
+          SELECT mmsi, {KIND_SQL} AS kind, v, t0, t1, n, c, ts FROM (
+            SELECT mmsi, mode(vessel_type) AS v, epoch(min(t))::BIGINT AS t0, epoch(max(t))::BIGINT AS t1, count(*) AS n,
+                   list([round(lon, 5), round(lat, 5)] ORDER BY t) AS c, list(epoch(t)::BIGINT ORDER BY t) AS ts,
+                   sqrt(power((max(lat) - min(lat)) * 111320, 2) + power((max(lon) - min(lon)) * 111320 * cos(radians(avg(lat))), 2)) AS span_m
+              FROM s GROUP BY mmsi, sid HAVING count(*) >= 2
+          ) WHERE span_m >= {PARKED_M} ORDER BY mmsi, t0""")
+        while True:
+            batch = rows.fetchmany(5000)
+            if not batch:
+                break
+            for mmsi, kind, v, t0, t1, n, c, ts in batch:
+                shards[mmsi % N].append(json.dumps({"mmsi": mmsi, "kind": kind, "vtype": v, "t0": t0, "t1": t1, "n": n, "c": c, "ts": ts}, separators=(",", ":")))
+        con.execute("DROP TABLE s")
+    through = max((x for x in tmax if x), default=None)
 
 blobs = [gzip.compress(("\n".join(sh) + "\n").encode() if sh else b"", 6) if sh else b"" for sh in shards]
 offsets, o = [], 0

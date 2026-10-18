@@ -1,7 +1,7 @@
 /**
  * Upload passes for the /ships track bakes (.github/workflows/ships-us-tracks-bake.yml, ships-gfw-*.yml; scripts/ships/bake-us/)
  * the Climate TRACE voyage bake (.github/workflows/ct-voyages-bake.yml) and the /shiptraffic overlap bake
- * (.github/workflows/shiptraffic-overlap-bake.yml).
+ * (.github/workflows/shiptraffic-overlap-bake.yml) and the aisstream recorder on Fly.io (scripts/ships/aisstream/recorder.mjs).
  *
  * Same pattern as api/cron/trace-upload-token.js: the bake runs in GitHub
  * Actions (Vercel can't run tippecanoe or stream 1.6 GB of Parquet), its
@@ -25,6 +25,9 @@ const CT_POINTER = 'ships/ct-voyages/latest.json'
 // /shiptraffic overlap + close passes (.github/workflows/shiptraffic-overlap-bake.yml, scripts/shiptraffic/overlap-bake.mjs).
 const ST_FILE = /^shiptraffic\/overlap-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(grid|closepasses)\.json$/
 const ST_INDEX = /^shiptraffic\/overlap-v\d+\/index\.json$/
+// aisstream recorder (scripts/ships/aisstream/recorder.mjs): one NOAA-shaped Parquet per recorded UTC day + small index/status.
+const AIS_DAY = /^ships\/bake-inputs\/salish-v\d+\/aisstream\/points\/\d{4}-\d{2}-\d{2}\.parquet$/
+const AIS_SMALL = /^ships\/bake-inputs\/salish-v\d+\/aisstream\/(index|status)\.json$/
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET
@@ -35,8 +38,8 @@ export default async function handler(req, res) {
     const chunks = []
     for await (const c of req) chunks.push(c)
     const { pathname } = JSON.parse(Buffer.concat(chunks).toString() || '{}')
-    const isIndex = INDEX.test(pathname || '') || pathname === CT_POINTER || ST_INDEX.test(pathname || '')
-    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '')) throw new Error(`path not allowed: ${pathname}`)
+    const isIndex = INDEX.test(pathname || '') || pathname === CT_POINTER || ST_INDEX.test(pathname || '') || AIS_SMALL.test(pathname || '')
+    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '') && !AIS_DAY.test(pathname || '')) throw new Error(`path not allowed: ${pathname}`)
     const token = await generateClientTokenFromReadWriteToken({
       token: process.env.BLOB_READ_WRITE_TOKEN,
       pathname,

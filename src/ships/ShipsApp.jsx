@@ -30,6 +30,9 @@ import ShipPicker from './ShipPicker.jsx'
 import { ViewIn } from './viewIn.jsx'
 import { shipIcon } from './shipIcon.js'
 import TrackMonths, { TRACK_KINDS, fmtMonth } from './TrackControls.jsx'
+import LiveShips from './LiveShips.jsx'
+// Hidden live view (?live=1, Josh 2026-10-18): where every ship the aisstream recorder hears is now. No UI link yet.
+const LIVE_MODE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('live') === '1'
 import { TraceFacilitiesOverlay } from '../systems/traceFacilitiesOverlay.js'
 import { traceCardShell, traceCardBody } from '../systems/traceCard.js'
 import { loadTraceIndex, TRACE_URL } from '../systems/traceData.js'
@@ -576,7 +579,7 @@ export default function ShipsApp() {
   const dockRef = useRef(null)
 
   const [identityOn, setIdentityOn] = useState(initial.id !== '0')
-  const [tracksOn, setTracksOn] = useState(initial.tr !== '0')
+  const [tracksOn, setTracksOn] = useState(initial.tr != null ? initial.tr !== '0' : !LIVE_MODE)   // the live view opens without past tracks
   const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
   const [slicksOn, setSlicksOn] = useState(initial.sl === '1')
@@ -2083,6 +2086,7 @@ export default function ShipsApp() {
     const sp = new URLSearchParams()
     if (!identityOn) sp.set('id', '0')
     if (!tracksOn) sp.set('tr', '0')
+    if (LIVE_MODE) sp.set('live', '1')
     if (darkOn) sp.set('dk', '1')
     if (mpaOn) sp.set('mp', '1')
     if (slicksOn) sp.set('sl', '1')
@@ -2134,6 +2138,7 @@ export default function ShipsApp() {
       <div className={styles.mapWrap} ref={containerRef} />
       <canvas className={styles.fossilCanvas} ref={fossilCanvasRef} aria-hidden="true" />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
+      {LIVE_MODE && mapReady && <LiveShips map={mapRef.current} mapReady={mapReady} styleVersion={styleVersion} openShipRef={openShipRef} tipClass={styles.hoverTip} />}
       {ghProto && (
         <div style={{ position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 5, maxWidth: 'min(640px, calc(100vw - 32px))',
           background: 'rgba(10,14,23,0.88)', color: '#e5e7eb', border: `1px solid ${GH_COLOR}`, borderRadius: 8, padding: '6px 10px', font: '12px/1.4 system-ui, sans-serif' }}>

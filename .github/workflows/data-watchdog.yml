@@ -3,7 +3,8 @@
 # non-runs (ships-counts never fired) told nobody. Every hour this:
 #   1. opens (or adds to) one issue per data workflow whose recent runs failed, assigned to Josh (GitHub emails him),
 #      and closes it with a note when that workflow's latest run succeeds again;
-#   2. opens an issue when published data goes stale (GFW tracks, the /ships changelog numbers).
+#   2. opens an issue when published data goes stale (GFW tracks, the /ships changelog numbers);
+#   3. opens an issue when the aisstream recorder stops (live snapshot 20+ minutes old), closed when it records again.
 # Issues carry the label "data-alert" so Claude sessions can list them too: gh issue list --label data-alert
 name: data-watchdog
 
@@ -126,4 +127,25 @@ jobs:
                   alert(title, [f'{what}: **{day}** ({age} days ago; alert after {max_days}).', url], f'stale-{day}')
               else:
                   resolve(title, f'Fresh again: {what} {day}.')
+
+          # 3. The aisstream recorder (Fly.io app earthatlas-aisstream, scripts/ships/aisstream): it rewrites the live snapshot
+          #    every 60 s. Stale for 20+ minutes = not recording (machine down, aisstream outage, or uploads failing).
+          title = 'Recording stopped: aisstream recorder (live AIS)'
+          url = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/live/salish-v6.json'
+          try:
+              live = get(url)
+              gen = dt.datetime.fromisoformat(live['generated'].replace('Z', '+00:00'))
+              last = dt.datetime.fromisoformat(live['lastMessageAt'].replace('Z', '+00:00')) if live.get('lastMessageAt') else gen
+              mins = int((now - min(gen, last)).total_seconds() // 60)
+          except Exception as e:
+              alert(title, [f'Could not read {url}: {e}'], f'read-error-{now.date()}-{now.hour}')
+          else:
+              if mins >= 20:
+                  alert(title, [f'Newest live snapshot {live["generated"]}, last aisstream message {live.get("lastMessageAt")} '
+                                f'(**{mins} minutes** ago; alert after 20). Ships seen in the last 24 h: {len(live.get("ships", []))}.', url, '',
+                                'Check: `fly logs -a earthatlas-aisstream` and `fly status -a earthatlas-aisstream`; restart with '
+                                '`fly apps restart earthatlas-aisstream`. Every minute without data is lost (aisstream keeps no history). '
+                                'Closes itself when the snapshot is fresh again.'], f'stale-{gen.isoformat()}')
+              else:
+                  resolve(title, f'Recording again: live snapshot {live["generated"]}.')
           EOF

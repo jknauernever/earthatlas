@@ -24,7 +24,8 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const TOKEN_URL = process.env.SHIPS_TOKEN_URL || 'https://earthatlas.org/api/cron/ships-upload-token'
 const BLOB_BASE = process.env.SHIPS_BLOB_BASE || 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com'
 const ts = JSON.parse(readFileSync(resolve(HERE, '../../../src/ships/trackSource.json'), 'utf8'))
-const TILESET = ts.version // salish-v6
+// SHIPS_TILESET=ais-v1: the aisstream recorder's months (region ais-v1, .github/workflows/ships-aisstream-month.yml), same layout.
+const TILESET = process.env.SHIPS_TILESET || ts.version // salish-v6
 const INDEX = `ships/tracks/${TILESET}/index.json`
 
 async function tokenFor(pathname) {
@@ -74,7 +75,9 @@ async function uploadIdentity(ym, idDir) {
 }
 
 const entryFrom = (m, urls) => ({ ...urls, built: m.built, rules: m.rules?.version, pmtiles_bytes: m.pmtiles_bytes, pack_bytes: m.pack?.bytes,
-  tracks: m.stats?.tracks, vessels: m.stats?.vessels })
+  tracks: m.stats?.tracks, vessels: m.stats?.vessels,
+  // ais-v1 months are partial while they're recorded: the first and last recorded day (set by ships-aisstream-month.yml).
+  ...(process.env.AIS_FIRST ? { first: process.env.AIS_FIRST, through: process.env.AIS_THROUGH || null } : {}) })
 
 /** Read → merge → write → re-read until our months are in (another writer can race us). */
 async function writeIndex(entries) {

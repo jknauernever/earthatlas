@@ -315,6 +315,30 @@ export async function aisIndexNow() {
   }
   return aisIndex
 }
+// The aisstream recorder's MONTHS for the /ships map (scripts/ships/bake-ais, region ais-v1, rebuilt daily by
+// .github/workflows/ships-aisstream-month.yml): PMTiles + pack per month, the months NOAA hasn't published. A rebuilt month
+// keeps its URL, so caches key on its build time. In dev a local bake (build/ais-v1/track_tiles) wins over Blob.
+const AISM_INDEX = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/ais-v1/index.json'
+const aismLocalDir = () => resolve(process.cwd(), 'scripts/ships/bake-ais/build/ais-v1/track_tiles')
+const aismLocal = (t, ext) => { const f = resolve(aismLocalDir(), `tracks-${t}.${ext}`); return process.env.VERCEL_ENV !== 'production' && existsSync(f) ? f : null }
+let aismIndex = null, aismIndexAt = 0
+export async function aisMonthsNow() {
+  if (process.env.VERCEL_ENV !== 'production' && existsSync(aismLocalDir())) {
+    const { readdirSync, readFileSync } = await import('node:fs')
+    const months = {}
+    for (const f of readdirSync(aismLocalDir())) {
+      const m = f.match(/^tracks-(\d{4}-\d{2})\.json$/)
+      if (m) { const j = JSON.parse(readFileSync(resolve(aismLocalDir(), f), 'utf8')); months[m[1]] = { built: j.built, local: true, tracks: j.stats?.tracks } }
+    }
+    if (Object.keys(months).length) return { version: 'ais-v1', months, local: true }
+  }
+  if (!aismIndex || Date.now() - aismIndexAt > 5 * 60 * 1000) {
+    const r = await fetch(`${AISM_INDEX}?t=${Math.floor(Date.now() / 300000)}`).catch(() => null)
+    aismIndex = r?.ok ? await r.json().catch(() => ({ months: {} })) : { months: {} } // no index yet (404) = no such months
+    aismIndexAt = Date.now()
+  }
+  return aismIndex
+}
 export async function gfwIndexNow() {
   const local = resolve(gfwLocalDir(), 'index.json')
   if (process.env.VERCEL_ENV !== 'production' && existsSync(local)) {
@@ -361,6 +385,21 @@ async function pmtilesFor(t, region) {
       if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
       else p = new PMTiles(new BlobRange(manifest.mpa.tiles))
       cache.set('mpa', p)
+    }
+    return p
+  }
+  if (region === 'aism') {
+    const u = (await aisMonthsNow()).months?.[t]
+    if (!u) return null
+    const key = `aism:${t}:${u.built}`
+    let p = cache.get(key)
+    if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete(key); p = null }
+    if (!p) {
+      const local = aismLocal(t, 'pmtiles')
+      if (local) { const src = new LocalFileSource(local); p = new PMTiles(src); p.local = src }
+      else if (u.tiles) p = new PMTiles(new BlobRange(u.tiles, u.pmtiles_bytes))
+      else return null
+      cache.set(key, p)
     }
     return p
   }
@@ -527,6 +566,15 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ version: idx.version, updated: idx.updated || null, fallback: !!idx.fallback,
       months: Object.fromEntries(Object.entries(idx.months || {}).map(([m, e]) => [m, { built: e.built || null }])) }))
   }
+  if (searchParams.get('op') === 'aisindex') {   // the aisstream recorder's months for the map (see aisMonthsNow)
+    let idx
+    try { idx = await aisMonthsNow() } catch (e) { console.error('[ship-tracks] ais index', e?.message); idx = { months: {} } }
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Cache-Control', idx.local ? LOCAL_CACHE : 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600')
+    return res.end(JSON.stringify({ version: idx.version || 'ais-v1', local: !!idx.local,
+      months: Object.fromEntries(Object.entries(idx.months || {}).map(([m, e]) => [m, { built: e.built || null, first: e.first || null, through: e.through || null }])) }))
+  }
   if (searchParams.get('op') === 'gfwindex') {
     let idx
     try { idx = await gfwIndexNow() } catch (e) { console.error('[ship-tracks] gfw index', e?.message); idx = { months: {} } }
@@ -552,7 +600,7 @@ export default async function handler(req, res) {
   // DEV-ONLY PROTOTYPE (2026-09-29): GFW hourly positions → lines for BC + Alaska, read from a local bake
   // (scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Never served in production; 404 when the file is absent.
   if (region === 'gfwproto') return gfwProtoTile(searchParams, res)
-  if (!['salish', 'us', 'mpa', 'gfw', 'offshore'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
+  if (!['salish', 'us', 'mpa', 'gfw', 'offshore', 'aism'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
   const single = region === 'mpa' || region === 'offshore' // one-file layers: no months
   const t = single ? region : searchParams.get('t')
   const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
@@ -560,6 +608,18 @@ export default async function handler(req, res) {
   const mmsiParam = single ? null : searchParams.get('mmsi')
   if (mmsiParam != null) {
     if (!/^\d{9}$/.test(mmsiParam)) { res.statusCode = 400; return res.end('bad mmsi') }
+    // One ship's recorded aisstream tracks in a month: its lines from that month's daily packs (minute positions, ts per
+    // vertex). Today's pack changes hourly, so this answer is cached briefly.
+    if (region === 'aism') {
+      const days = Object.keys((await aisIndexNow().catch(() => ({ days: {} }))).days || {}).filter((d) => d.startsWith(`${t}-`)).sort()
+      let features = []
+      try { features = (await mapLimit(days, 8, (d) => tracksForMmsi(d, Number(mmsiParam), 'ais'))).flat().filter(Boolean) }
+      catch (e) { console.error('[ship-tracks] ais month pack', t, e?.message); res.statusCode = 502; return res.end('pack read failed') }
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/geo+json')
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600')
+      return res.end(JSON.stringify({ type: 'FeatureCollection', features }))
+    }
     let features
     try { features = await tracksForMmsi(t, Number(mmsiParam), region) } catch (e) { console.error('[ship-tracks] pack', region, t, e?.message); packs.delete(`${region}:${t}`); res.statusCode = 502; return res.end('pack read failed') }
     if (!features) { res.statusCode = 404; return res.end('month not built') }
@@ -585,7 +645,8 @@ export default async function handler(req, res) {
     tile = await p.getZxy(z, x, y)
   } catch (e) {
     console.error('[ship-tracks] tile', region, t, z, x, y, e?.message)
-    cache.delete(region === 'us' || region === 'gfw' ? `${region}:${t}` : t) // (t is 'mpa' / 'offshore' for those)
+    if (region === 'aism') { for (const k of [...cache.keys()]) if (k.startsWith(`aism:${t}:`)) cache.delete(k) }
+    else cache.delete(region === 'us' || region === 'gfw' ? `${region}:${t}` : t) // (t is 'mpa' / 'offshore' for those)
     res.statusCode = 502
     res.setHeader('Cache-Control', 'no-store')
     return res.end('tile read failed')

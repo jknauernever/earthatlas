@@ -248,7 +248,7 @@ def build(ym):
     os.remove(ndjson)
 
     manifest = dict(region=REGION, month=ym, built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    source="MarineCadastre daily AIS points (NOAA/BOEM/USCG), CC0",
+                    source=region.R.get("source", "MarineCadastre daily AIS points (NOAA/BOEM/USCG), CC0"),
                     rules=dict(version="v5", inland_m=land_mask.INLAND_M, line_step_m=LINE_STEP_M, line_land_min_m=LINE_LAND_MIN_M, land=region.R["land_note"], bbox=region.BBOX, gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S,
                                parked_m=PARKED_M, simplify_deg=SIMPLIFY_DEG,
                                tippecanoe="-Z5 -z10 --simplification=10 --simplification-at-maximum-zoom=1 --drop-densest-as-needed"),

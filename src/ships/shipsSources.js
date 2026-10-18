@@ -31,6 +31,9 @@ export const SHIPS_SOURCES = [
         publisher: 'Global Fishing Watch, Inc.', licence: 'CC BY-NC 4.0 (non-commercial)', licenceHref: CC_BY_NC,
         method: 'One position per ship per hour, about 4 days behind. Drawn as lines for British Columbia, Alaska and the US West Coast, and for the Salish Sea in months NOAA has not published yet (then replaced by NOAA’s lines). Where two hourly positions are joined along the water instead of a straight line, the line is dashed (an EarthAtlas estimate).',
         citation: 'Powered by Global Fishing Watch.' },
+      { name: 'aisstream.io live AIS, recorded by EarthAtlas', href: 'https://aisstream.io',
+        publisher: 'AIS Stream; recorded by EarthAtlas',
+        method: 'Salish Sea tracks from October 18, 2026, for months NOAA has not published yet: EarthAtlas records the live feed (at most one position per ship per minute) and builds lines with the same rules as the NOAA tracks, updated daily. Positions as the ships broadcast them, not corrected. Coverage is thinner than NOAA’s in the Strait of Juan de Fuca and on the outer coast.' },
     ],
   },
   {

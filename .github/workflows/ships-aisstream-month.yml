@@ -1,0 +1,74 @@
+# The aisstream recorder's months on the /ships map (Josh 2026-10-18). The Fly.io recorder (scripts/ships/aisstream) uploads
+# each finished UTC day as a NOAA-schema Parquet file shortly after 01:00 UTC. Daily, this rebuilds the month that day
+# belongs to with the same bake as the NOAA Salish months (build_tracks.py, region ais-v1: same box, same OSM land masks)
+# and publishes tiles + pack + manifest to ships/tracks/ais-v1/YYYY-MM/, listed in ships/tracks/ais-v1/index.json, which
+# api/ship-tracks.js (op=aisindex, r=aism) and the /ships page read. A month NOAA later publishes is drawn from NOAA instead.
+# Small: one month of one box (~0.5 M rows a day), a few minutes. Writes go through the CRON_SECRET-locked upload-token
+# endpoint; CI never holds a Blob credential.
+name: ships-aisstream-month
+on:
+  schedule:
+    - cron: '23 2 * * *'   # daily 02:23 UTC (GitHub may start it late; a later run just rebuilds with more days)
+  workflow_dispatch:
+    inputs:
+      months: { description: 'Optional: these months (YYYY-MM, space-separated) instead of yesterday’s', default: '' }
+concurrency:
+  group: ships-aisstream-month
+  cancel-in-progress: false
+env:
+  SHIPS_REGION: ais-v1
+  SHIPS_TILESET: ais-v1
+  BAKE_INPUTS: https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/bake-inputs/salish-v6
+jobs:
+  month:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      ONLY: ${{ inputs.months || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet duckdb numpy shapely pyshp pyproj
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-tilejoin-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+      - name: Coastline masks (the NOAA Salish months' own)
+        run: |
+          mkdir -p scripts/ships/bake-ais/cache/land
+          for f in salish-v6-osm-inland-500m.parquet salish-v6-osm-land-0m.parquet; do curl -fsSL -o "scripts/ships/bake-ais/cache/land/$f" "$BAKE_INPUTS/$f"; done
+      - name: Months
+        id: months
+        run: |
+          if [ -n "$ONLY" ]; then echo "list=$ONLY" >> "$GITHUB_OUTPUT"; else echo "list=$(date -u -d yesterday +%Y-%m)" >> "$GITHUB_OUTPUT"; fi
+      - name: Bake + publish
+        env:
+          LIST: ${{ steps.months.outputs.list }}
+        run: |
+          cd scripts/ships/bake-ais
+          for ym in $LIST; do
+            echo "::group::$ym"
+            out=$(python3 fetch_aisstream_points.py "$ym") || { rc=$?; [ $rc -eq 3 ] && { echo "no recorded days in $ym"; echo "::endgroup::"; continue; }; exit $rc; }
+            echo "$out"
+            days=$(echo "$out" | tail -1)
+            export AIS_FIRST=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][0])")
+            export AIS_THROUGH=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][-1])")
+            python3 build_tracks.py "$ym"
+            node publish.mjs "$ym" build/ais-v1/track_tiles build/ais-v1
+            echo "::endgroup::"
+          done

@@ -12,6 +12,7 @@ each other.
              MarineCadastre AIS has strong coverage up to ~49.5 N (Vancouver,
              Burrard Inlet, Nanaimo, Roberts Bank), and a west edge at -126.2
              puts the detailed/US-wide seam in open ocean, off Cape Flattery.
+  ais-v1      same box and land as salish-v6, points from the aisstream recorder (2026-10-18 →)
   wa-columbia-v1  W -124.3 S 45.55 E -122.55 N 47.0  (2026-10-07, scrubber-ship calls
              report) Grays Harbor and the lower Columbia River up to Vancouver WA.
              Terminal calls only: no land mask, tracks or tiles are built for it.
@@ -46,6 +47,22 @@ REGIONS = {
         land_prefix="salish-v6-osm",
         build=os.path.join(HERE, "build", "v6"),
         tiles=os.path.join(HERE, "build", "v6", "track_tiles"),
+    ),
+    # aisstream.io recordings (scripts/ships/aisstream, Fly.io recorder, from 2026-10-18): the months NOAA hasn't published,
+    # baked like salish-v6 (same box, same OSM land masks) from the recorder's daily NOAA-schema Parquet files
+    # (fetch_aisstream_points.py) into ships/tracks/ais-v1 (publish.mjs with SHIPS_TILESET=ais-v1).
+    "ais-v1": dict(
+        bbox=dict(w=-126.2, s=47.0, e=-122.05, n=49.6),
+        land_source="osm",
+        land=os.path.join(HERE, "cache", "land", "salish-v6-land-osm.geojson"),
+        land_note="OpenStreetMap coastline land polygons minus OSM inland water (natural=water, waterway=riverbank), "
+                  "© OpenStreetMap contributors, ODbL; cut to the box by make_land.py",
+        points=os.path.join(HERE, "cache", "points", "ais-v1"),
+        land_cache=os.path.join(HERE, "cache", "land"),
+        land_prefix="salish-v6-osm",
+        build=os.path.join(HERE, "build", "ais-v1"),
+        tiles=os.path.join(HERE, "build", "ais-v1", "track_tiles"),
+        source="aisstream.io live AIS, recorded by EarthAtlas (scripts/ships/aisstream); positions as broadcast",
     ),
     "wa-columbia-v1": dict(
         bbox=dict(w=-124.3, s=45.55, e=-122.55, n=47.0),

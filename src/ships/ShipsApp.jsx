@@ -127,6 +127,16 @@ const GFW_TRACK_ATTRIBUTION = 'Ship tracks outside NOAA coverage: <a href="https
   + ' hourly positions; estimated paths along the water use coastlines © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>,'
   + ' <a href="https://arcgis.dnr.alaska.gov/arcgis/rest/services/OpenData/Physical_AlaskaCoast/MapServer/4" target="_blank" rel="noopener">Alaska DNR</a>,'
   + ' <a href="https://open.canada.ca/data/en/dataset/a4b190fe-e090-4e6d-881e-b87956c07977" target="_blank" rel="noopener">NRCan National Hydro Network</a>'
+// Recorded live AIS (aisstream.io, our Fly.io recorder from 2026-10-18; scripts/ships/bake-ais region ais-v1, rebuilt daily):
+// the Salish box's tracks for months NOAA hasn't published, drawn like the NOAA Salish tracks. b = build time (new tile URLs
+// after each daily rebuild).
+const aisSrc = (ym) => `shiptrk-ais-${ym}`
+const aisLine = (ym) => `shiptrk-ais-${ym}-line`
+const aisTileUrl = (ym, built) =>
+  `${TILES_BASE}/api/ship-tracks?r=aism&t=${ym}${built ? `&b=${encodeURIComponent(built)}` : ''}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const AIS_RECORDING_START = '2026-10-18' // the recorder's first day (scripts/ships/aisstream)
+const fmtAisDay = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+const AIS_TRACK_ATTRIBUTION = 'Salish Sea ship tracks after NOAA’s latest month: live AIS from <a href="https://aisstream.io" target="_blank" rel="noopener">aisstream.io</a>, recorded by EarthAtlas'
 const usSrc = (ym) => `shiptrk-us-${ym}`
 const usLo = (ym) => `shiptrk-us-${ym}-lo`
 const usHi = (ym) => `shiptrk-us-${ym}-hi`
@@ -725,7 +735,15 @@ export default function ShipsApp() {
         setGfwMonths(Object.keys(idx?.months || {}).sort())
       }).catch(() => setGfwMonths([]))
   }, [])
-  const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || []), ...gfwMonths])].sort(), [salishMonths, usMonths, gfwMonths])
+  // Recorded live-AIS months (api op=aisindex): the Salish box's minute tracks for months NOAA hasn't published.
+  const [aisMonths, setAisMonths] = useState([])
+  const aisInfoRef = useRef({}) // month → { built, first, through }
+  useEffect(() => {
+    fetch('/api/ship-tracks?op=aisindex').then((r) => (r.ok ? r.json() : null))
+      .then((idx) => { aisInfoRef.current = idx?.months || {}; setAisMonths(Object.keys(idx?.months || {}).sort()) })
+      .catch(() => setAisMonths([]))
+  }, [])
+  const allTrackMonths = useMemo(() => [...new Set([...salishMonths, ...(usMonths || []), ...gfwMonths, ...aisMonths])].sort(), [salishMonths, usMonths, gfwMonths, aisMonths])
   const dockCols = useDockColumns(dockRef, `${allTrackMonths.length > 0}-${isMobile}-${mobileView}-${panelOpen}`)
   const defaultSel = [salishMonths[Math.max(0, salishMonths.length - TRACK_MONTH_CAP)], salishMonths[salishMonths.length - 1]]
   const [trackSel, setTrackSel] = useState(() => {
@@ -857,9 +875,9 @@ export default function ShipsApp() {
     const opacity = Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, trackMonths.length)))
     // Drop months no longer selected (a basemap swap already dropped everything).
     for (const ym of [...addedMonthsRef.current]) {
-      if (trackMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)))) continue
-      for (const l of [trkLine(ym), usLo(ym), usHi(ym), gfwObs(ym), gfwEst(ym)].flatMap((id) => [GHOST_S + id, GHOST_C + id, id])) if (map.getLayer(l)) map.removeLayer(l)
-      for (const src of [trkSrc(ym), usSrc(ym), gfwSrc(ym)]) removeSourceSafe(map, src)
+      if (trackMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)) || map.getSource(aisSrc(ym)))) continue
+      for (const l of [trkLine(ym), usLo(ym), usHi(ym), gfwObs(ym), gfwEst(ym), aisLine(ym)].flatMap((id) => [GHOST_S + id, GHOST_C + id, id])) if (map.getLayer(l)) map.removeLayer(l)
+      for (const src of [trkSrc(ym), usSrc(ym), gfwSrc(ym), aisSrc(ym)]) removeSourceSafe(map, src)
       addedMonthsRef.current.delete(ym)
     }
     const byClass = trackClasses.length && classMmsis?.key === trackClasses.join(',')
@@ -905,6 +923,19 @@ export default function ShipsApp() {
         map.setLayoutProperty(l, 'visibility', tracksOn && !slickFocus ? 'visible' : 'none')
         map.setPaintProperty(l, 'line-opacity', estimated ? opacity * 0.65 : opacity)
         map.setFilter(l, ['all', estimated ? ['==', ['get', 'est'], 1] : ['!=', ['get', 'est'], 1], kindFilter || true])
+      }
+      // Recorded live AIS in the Salish box (months NOAA hasn't published), from z5 like the NOAA Salish tracks.
+      if (aisMonths.includes(ym) && !salishMonths.includes(ym)) {
+        if (!map.getSource(aisSrc(ym))) {
+          addedMonthsRef.current.add(ym)
+          map.addSource(aisSrc(ym), { type: 'vector', tiles: [aisTileUrl(ym, aisInfoRef.current[ym]?.built)], minzoom: 5, maxzoom: 10,
+            bounds: trackSource.bbox, attribution: AIS_TRACK_ATTRIBUTION })
+          map.addLayer({ id: aisLine(ym), type: 'line', source: aisSrc(ym), 'source-layer': trackSource.sourceLayer, minzoom: KIND_HANDOVER_Z,
+            layout: { 'line-join': 'round' }, paint: { 'line-color': TRACK_COLOR, 'line-width': TRACK_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, labelsId)
+        }
+        map.setLayoutProperty(aisLine(ym), 'visibility', tracksOn && !slickFocus ? 'visible' : 'none')
+        map.setPaintProperty(aisLine(ym), 'line-opacity', opacity)
+        map.setFilter(aisLine(ym), kindFilter)
       }
       // Months with no US-wide bake (GFW-only months after NOAA's latest) get no US source.
       if (!(usMonths || []).includes(ym) && !salishMonths.includes(ym)) continue
@@ -953,7 +984,7 @@ export default function ShipsApp() {
     const styleLayer = Object.fromEntries(map.getStyle().layers.map((l) => [l.id, l]))
     for (const ym of trackMonths) {
       for (const [id, structural] of [[gfwObs(ym), ['!=', ['get', 'est'], 1]], [gfwEst(ym), ['==', ['get', 'est'], 1]],
-        [usLo(ym), null], [usHi(ym), outsideSalish], [trkLine(ym), null]]) {
+        [usLo(ym), null], [usHi(ym), outsideSalish], [trkLine(ym), null], [aisLine(ym), null]]) {
         const l = styleLayer[id]
         if (!l) continue
         for (const [pfx, chips] of [[GHOST_S, ghostS], [GHOST_C, ghostC]]) {
@@ -990,7 +1021,7 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, termShips, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus, slickFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, termShips, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, aisMonths, pickedTrack, stopFocus, slickFocus])
 
   // Where NOAA's minute-by-minute positions stop (Lovel 2026-10-13): the Salish detail box's north and west edges, drawn
   // with the tracks. Beyond them lines come from hourly positions (Global Fishing Watch); the panel note says so.
@@ -1035,10 +1066,17 @@ export default function ShipsApp() {
       get(`/api/ship-tracks?r=us&t=${ym}&mmsi=${m}&v=${trackSource.us.rules}`)
         .then((fc) => ({ features: salishM.has(ym) ? fc.features.filter((f) => !insideSalish(f)) : fc.features })),
       ...(gfwMonths.includes(ym) ? [get(`/api/ship-tracks?r=gfw&t=${ym}&mmsi=${m}&v=${trackSource.gfw.rules}`)] : []),
+      // Recorded live AIS (minute positions); where it covers a stretch, that ship's hourly GFW lines step aside (below).
+      ...(aisMonths.includes(ym) && !salishM.has(ym) ? [get(`/api/ship-tracks?r=aism&t=${ym}&mmsi=${m}&b=${encodeURIComponent(aisInfoRef.current[ym]?.built || '')}`)] : []),
     ])))
-      .then(done)
+      .then((fcs) => {
+        const all = fcs.flatMap((fc) => fc.features)
+        const ais = all.filter((f) => f.properties.src === 'ais')
+        done([{ features: all.filter((f) => f.properties.src !== 'gfw' || !ais.some((a) => a.properties.mmsi === f.properties.mmsi
+          && a.properties.t0 <= f.properties.t1 && a.properties.t1 >= f.properties.t0)) }])
+      })
     return () => ctl.abort()
-  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, gfwMonths, salishMonths, allTrackMonths.length])
+  }, [vesselId, mmsiPeriods, trackMonths, ownAllYears, usMonths, gfwMonths, salishMonths, aisMonths, allTrackMonths.length])
   const fitToOwnRef = useRef(false) // set when a ship is picked from search; a track click doesn't move the map
   useEffect(() => {
     const map = mapRef.current
@@ -1188,7 +1226,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !trackMonths.length) return
     // Lines with an MMSI (Salish tracks, US-wide from z9) open their ship. Zoomed-out US tiles
     // merge lines per type (no MMSI), so a click there lists the ships that passed (op=near).
-    const layers = trackMonths.flatMap((ym) => [trkLine(ym), usHi(ym), usLo(ym), gfwObs(ym), gfwEst(ym)])
+    const layers = trackMonths.flatMap((ym) => [trkLine(ym), usHi(ym), usLo(ym), gfwObs(ym), gfwEst(ym), aisLine(ym)])
     const hit = (pt) => {
       const live = layers.filter((l) => map.getLayer(l))
       if (!live.length) return []
@@ -1276,7 +1314,7 @@ export default function ShipsApp() {
     map.on('mousemove', onMove)
     map.on('click', onClick)
     return () => { map.off('mousemove', onMove); map.off('click', onClick); nearPopupRef.current?.remove() }
-  }, [mapReady, trackMonths, gfwMonths])
+  }, [mapReady, trackMonths, gfwMonths, aisMonths])
 
   // ─── Dark-vessel cell popup: regional context for one grid cell ───────────
   // (nearPopupRef: the zoomed-out "ships that passed here" popup, opened by the tracks click handler)
@@ -2489,6 +2527,12 @@ export default function ShipsApp() {
                         hourly positions only. BC and Alaska: hourly positions from Global Fishing Watch
                         ({fmtMonth(gfwMonths[0])}{gfwMonths.length > 1 ? ` – ${fmtMonth(gfwMonths[gfwMonths.length - 1])}` : ''}); dashed stretches are
                         EarthAtlas’s estimate of the path along the water between two hourly positions.{' '}
+                      </>}
+                      {aisMonths.length > 0 && <>
+                        Since {fmtAisDay(aisInfoRef.current[aisMonths[0]]?.first || AIS_RECORDING_START)}, the Salish Sea also has per-minute tracks
+                        from live AIS (<a href="https://aisstream.io" target="_blank" rel="noopener noreferrer">aisstream.io</a>, recorded by EarthAtlas
+                        and updated daily) for the months NOAA hasn’t published yet. They are thinner than NOAA’s in the Strait of Juan de Fuca and on
+                        the outer coast, and where the hourly positions overlap them, the same ship can show twice.{' '}
                       </>}
                       US waters, {fmtMonth(allTrackMonths[0])} – {fmtMonth(allTrackMonths[allTrackMonths.length - 1])}, with more detailed
                       tracks in the Salish Sea for {fmtMonth(salishMonths[0])} – {fmtMonth(salishMonths[salishMonths.length - 1])}. Zoom in and

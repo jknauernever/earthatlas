@@ -15,10 +15,11 @@
 
 import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client'
 
-// One folder per rules version and month; index.json lists the months. tracks-clsN / manifest-clsN: a month's
+// One folder per rules version and month; index.json lists the months (ais-v1: the aisstream recorder's months,
+// .github/workflows/ships-aisstream-month.yml, rebuilt daily under the same names). tracks-clsN / manifest-clsN: a month's
 // zoomed-out tiles rebuilt with ship classes (scripts/ships/bake-us/add_classes.py).
-const MONTH_FILE = /^ships\/tracks\/(us|gfw|salish)-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(tracks\.pmtiles|tracks\.pack|manifest\.json|vessels\.json\.gz|identity\.ndjson\.gz|tracks-cls\d+\.pmtiles|manifest-cls\d+\.json)$/
-const INDEX = /^ships\/tracks\/(us|gfw|salish|aisstream)-v\d+\/index\.json$/
+const MONTH_FILE = /^ships\/tracks\/(us|gfw|salish|ais)-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(tracks\.pmtiles|tracks\.pack|manifest\.json|vessels\.json\.gz|identity\.ndjson\.gz|tracks-cls\d+\.pmtiles|manifest-cls\d+\.json)$/
+const INDEX = /^ships\/tracks\/(us|gfw|salish|ais|aisstream)-v\d+\/index\.json$/
 // Climate TRACE voyages (.github/workflows/ct-voyages-bake.yml): one folder per bake version; latest.json points at the live one.
 const CT_FILE = /^ships\/ct-voyages\/v\d+-\d{12}\/(ct-voyages-(mmsi|imo)\.pack|ct-stays-matched\.ndjson\.gz|manifest\.json)$/
 const CT_POINTER = 'ships/ct-voyages/latest.json'

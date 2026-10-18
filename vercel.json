@@ -308,6 +308,10 @@
       "schedule": "10 * * * *"
     },
     {
+      "path": "/api/cron/aisstream-cleanup",
+      "schedule": "7 * * * *"
+    },
+    {
       "path": "/api/cron/gh-dispatch?wf=mrms",
       "schedule": "*/10 * * * *"
     },

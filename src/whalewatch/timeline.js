@@ -36,7 +36,7 @@ export function buildTimeline(features) {
       const L = cum[cum.length - 1] || 1
       times = cum.map((d) => t0 + ((t1 - t0) * d) / L)
     }
-    segs.push({ t0: times[0], t1: times[times.length - 1], c, ts: times, exact })
+    segs.push({ t0: times[0], t1: times[times.length - 1], c, ts: times, exact, src: f.properties.src || 'noaa', f })
   }
   segs.sort((a, b) => a.t0 - b.t0)
   return segs
@@ -149,4 +149,24 @@ export function homePort(segs, ports, maxM = 6000) {
   const named = port && distM <= maxM
   return { name: named ? port.properties.n : null, portId: named ? port.properties.i : null, lngLat: best.lngLat,
     nights: best.n, days: lastOfDay.size, distM: named ? Math.round(distM) : null }
+}
+
+// ─── Trips ───
+/**
+ * A boat's trips: its tracks chained while it keeps moving, split wherever it stops sending moving positions for more
+ * than `gapS` (tied up between trips). Tiny pieces (under 10 minutes and under 1 km) are dropped as harbor jitter.
+ * → newest first: { t0, t1, km, segs, sources: Set('noaa' | 'gfw' | …), exact (every vertex timed) }
+ */
+export function tripsOf(segs, gapS = 2 * 3600) {
+  const trips = []
+  let cur = null
+  for (const s of segs) {
+    if (!cur || s.t0 - cur.t1 > gapS) { cur = { t0: s.t0, t1: s.t1, segs: [], km: 0, sources: new Set(), exact: true }; trips.push(cur) }
+    cur.segs.push(s)
+    cur.t1 = Math.max(cur.t1, s.t1)
+    cur.sources.add(s.src)
+    cur.exact = cur.exact && s.exact
+    for (let i = 1; i < s.c.length; i++) cur.km += metres(s.c[i - 1], s.c[i]) / 1000
+  }
+  return trips.filter((t) => t.t1 - t.t0 >= 600 || t.km >= 1).reverse()
 }

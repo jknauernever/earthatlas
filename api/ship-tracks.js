@@ -85,13 +85,17 @@ class BlobRange {
 }
 const packs = new Map() // t → { src, n, dataStart, offsets }
 async function packFor(t, region) {
-  const key = `${region}:${t}`
+  // Live-AIS days: today's pack is rebuilt hourly under the same URL, so the cache key carries its build time.
+  const aisDay = region === 'ais' ? (await aisIndexNow()).days?.[t] : null
+  if (region === 'ais' && !aisDay?.pack) return null
+  const key = region === 'ais' ? `ais:${t}:${aisDay.built}` : `${region}:${t}`
   let p = packs.get(key)
   if (p && p.src.fresh && !p.src.fresh()) { p.src.close(); packs.delete(key); p = null }
   if (p && !p.src.fresh && region === 'salish' && existsSync(localPathFor(t, 'pack'))) { packs.delete(key); p = null } // drive plugged back in
   if (p) return p
   let src = null
   if (region === 'us') { const u = await usUrls(t); if (u) src = new BlobRange(u.pack, u.pack_bytes) }
+  else if (region === 'ais') src = new BlobRange(aisDay.pack, aisDay.pack_bytes)
   else if (region === 'gfw') {
     const local = gfwLocal(t, 'pack')
     if (local) src = new LocalFileSource(local)
@@ -136,7 +140,7 @@ export async function tracksForMmsi(t, mmsi, region) {
     if (!line || !line.startsWith(`{"mmsi":${mmsi},`)) continue
     const r = JSON.parse(line)
     out.push({ type: 'Feature', properties: { mmsi: r.mmsi, kind: r.kind, vtype: r.vtype, t0: r.t0, t1: r.t1, n: r.n, month: t,
-      ...(region === 'gfw' ? { src: 'gfw', ...(r.est ? { est: 1 } : {}) } : {}), ...(Array.isArray(r.ts) ? { ts: r.ts } : {}) },
+      ...(region === 'gfw' ? { src: 'gfw', ...(r.est ? { est: 1 } : {}) } : region === 'ais' ? { src: 'ais' } : {}), ...(Array.isArray(r.ts) ? { ts: r.ts } : {}) },
       geometry: { type: 'LineString', coordinates: r.c } })
   }
   return out
@@ -248,9 +252,17 @@ export async function allTracksForMmsi(mmsi, { from = null } = {}) {   // from '
   const gfwPer = await mapLimit(gfwM, 8, async (t) => {
     try { return (await tracksForMmsi(t, mmsi, 'gfw')) || [] } catch (err) { failed++; packs.delete(`gfw:${t}`); console.error('[ship-tracks] all gfw', t, err?.message); return [] }
   })
-  features.push(...gfwPer.flat())
-  for (const f of features) f.geometry.coordinates = simplify(f.geometry.coordinates)
-  return { features, months: new Set([...months, ...gfwM]).size, failed }
+  // Minute-by-minute live-AIS days (aisstream.io recorder) from 2026-10-18; where they cover a stretch, the boat's hourly GFW
+  // lines for the same hours are dropped (the same positions, coarser).
+  const aisD = Object.keys((await aisIndexNow().catch(() => ({ days: {} }))).days || {}).filter((d) => !from || d >= `${from}-01`)
+  const aisPer = await mapLimit(aisD, 8, async (d) => {
+    try { return (await tracksForMmsi(d, mmsi, 'ais')) || [] } catch (err) { failed++; console.error('[ship-tracks] all ais', d, err?.message); return [] }
+  })
+  const ais = aisPer.flat()
+  const gfw = gfwPer.flat().filter((f) => !ais.some((a) => a.properties.t0 <= f.properties.t1 && a.properties.t1 >= f.properties.t0))
+  features.push(...gfw, ...ais)
+  for (const f of features) if (f.properties.src !== 'ais') f.geometry.coordinates = simplify(f.geometry.coordinates)   // ais lines keep every minute (ts per vertex)
+  return { features, months: new Set([...months, ...gfwM]).size + aisD.length, failed }
 }
 
 // Detailed Salish months (NOAA per-minute AIS, scripts/ships/bake-ais/): the Blob index (trackSource.salishIndex) that the
@@ -291,6 +303,18 @@ async function usUrls(t, { fresh = false } = {}) {
 // index (Blob: trackSource.gfw.index). In dev a local bake (cache/out/gfw-v1/) wins over Blob.
 const gfwLocalDir = () => resolve(process.cwd(), `scripts/ships/bake-gfw/cache/out/${manifest.gfw?.rules || 'gfw-v1'}`)
 let gfwIndex = null, gfwIndexAt = 0
+// Minute-by-minute live-AIS tracks (Josh 2026-10-17): the aisstream.io recorder's daily packs (same SHTP layout as the
+// Salish packs, every line with per-vertex ts), listed in this index. No index yet (404) = no such days.
+const AIS_INDEX = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/aisstream-v1/index.json'
+let aisIndex = null, aisIndexAt = 0
+export async function aisIndexNow() {
+  if (!aisIndex || Date.now() - aisIndexAt > 60 * 1000) {
+    const r = await fetch(`${AIS_INDEX}?t=${Math.floor(Date.now() / 60000)}`).catch(() => null)
+    aisIndex = r?.ok ? await r.json().catch(() => ({ days: {} })) : { days: {} }
+    aisIndexAt = Date.now()
+  }
+  return aisIndex
+}
 export async function gfwIndexNow() {
   const local = resolve(gfwLocalDir(), 'index.json')
   if (process.env.VERCEL_ENV !== 'production' && existsSync(local)) {

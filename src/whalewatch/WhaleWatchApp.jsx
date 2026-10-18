@@ -38,7 +38,7 @@ import { addLocalAerials } from '../lib/localAerials.js'
 import shipsStyles from '../ships/ShipsApp.module.css'
 import own from './WhaleWatchApp.module.css'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
-import { buildTimeline, positionAt, latestPosition, trailAt, homePort } from './timeline.js'
+import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
 
 const styles = { ...shipsStyles, ...own }
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -47,22 +47,30 @@ const DEFAULT_CENTER = [-123.05, 48.5], DEFAULT_ZOOM = 9
 const MOBILE_BOUNDS = [[-123.75, 48.05], [-122.45, 49.35]]
 const FLEET_KEY = 'whalewatch'
 const MONTHS_SHOWN = 12
+// Minute-by-minute tracks from the live-AIS recorder (daily packs, from 2026-10-18); its build time keys the track cache.
+const AIS_TRACKS_INDEX = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/aisstream-v1/index.json'
 
-const FLEET_COLOR = '#34d399'   // the fleet
-const ADDED_COLOR = '#22d3ee'   // boats found with the Ships pill (= /ships' picked-ship cyan)
-const PICK_COLOR = '#ffffff'    // the boat whose card is open
-const LIVE_COLOR = '#fbbf24'    // LIVE: a boat drawn at its live AIS report (aisstream.io), not its days-old track position
+// Two kinds of boat only (Josh 2026-10-17: "the boats that have live data are most important"):
+const LIVE_COLOR = '#fbbf24'    // live: drawn at its live AIS report (aisstream.io), full size, named, with its trail
 const LIVE_TRAIL = '#fde68a'
+const FLEET_COLOR = '#c4b5fd'   // on record (pale violet: reads on water, forest and pale shallows alike): newest position we hold,
+                                // or in replay where it was at the hour shown; smaller, no name. Boats added with the search follow the same rule.
+const PICK_COLOR = '#ffffff'    // the boat whose card is open: the trip picked in its Trips tab
 const LINE_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 0.6, 10, 1.1, 14, 2]
 const PICK_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 1.6, 10, 2.4, 14, 3.5]
 const SRC = 'ww-tracks', CASING = 'ww-casing', LINE = 'ww-line', EST = 'ww-est', PICK = 'ww-pick'
 const LINE_OPACITY = 0.7
 const TRAIL_SRC = 'ww-trail', TRAIL = 'ww-trail-line', BOAT_SRC = 'ww-boats', BOAT = 'ww-boat', BOAT_LABEL = 'ww-boat-label'
-const TRAIL_H = 3          // hours of trail behind each boat
+const REPLAY_TRAIL_H = 1   // replay: the hour behind each moving boat
 const HOLD_S = 24 * 3600   // between tracks (tied up, or out of AIS range) a boat stays at its last fix this long
 const TICK_MS = 450        // playback: one step per tick
 const PORT_BOX = [-125.5, 46.8, -121.8, 50.6]   // ports considered for home ports (Salish Sea + approaches)
 const NO_PORT = 'Home port not found'
+// Each trip says where its positions come from (prime directive: the source beside the value).
+const SOURCE_WORDS = { noaa: 'minute by minute (NOAA)', gfw: 'hourly (Global Fishing Watch)', ais: 'minute by minute (live AIS, aisstream.io)' }
+const fmtTripDay = (s) => new Date(s * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' })
+const fmtTripTime = (s) => new Date(s * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver' })
+const fmtDur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` }
 const esc = (x) => String(x ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))
 const fmtWhen = (s) => new Date(s * 1000).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver', timeZoneName: 'short' })
@@ -107,7 +115,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   const list = (k) => (sp.get(k) || '').split(',').map((s) => s.trim()).filter(Boolean)
   return { lat: num('lat'), lng: num('lng'), z: num('z'), v: sp.get('v'), add: list('add').filter((s) => /^[0-9a-f-]{36}$/i.test(s)), hp: list('hp'), fl: sp.get('fl'),
-    tk: sp.get('tk'),
+    tk: sp.get('tk'), ct: sp.get('ct'), tr: /^\d{9,10}$/.test(sp.get('tr') || '') ? Number(sp.get('tr')) : null,
     t: /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(sp.get('t') || '') ? Date.parse(`${sp.get('t')}:00:00Z`) / 1000 : null }
 }
 function writeUrlQuery(qs) {
@@ -158,6 +166,8 @@ export default function WhaleWatchApp() {
   const [pending, setPending] = useState(0)
   const [added, setAdded] = useState(() => initial.add.map((id) => ({ id, name: null, periods: null })))
   const [sel, setSel] = useState(initial.v)         // open ship card
+  const [cardTab, setCardTab] = useState(initial.ct || 'overview')   // the ship card's tab (trips = this site's Trips tab)
+  const [tripT0, setTripT0] = useState(initial.tr)  // the picked boat's trip shown (its start, epoch s); null = its newest
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [kinds, setKinds] = useState([])
@@ -174,12 +184,14 @@ export default function WhaleWatchApp() {
       container: containerRef.current, style: STYLE,
       ...(mapView ? { center: [mapView.lng, mapView.lat], zoom: mapView.zoom }
         : isMobile ? { bounds: MOBILE_BOUNDS, fitBoundsOptions: { padding: 20 } } : { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }),
+      projection: 'globe',   // as /ships: same imagery and atmosphere (the flat map drew Mapbox's pale sun-glint haze around the islands)
     })
     mapRef.current = map
     if (import.meta.env.DEV) window.__whalewatchMap = map
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => {
+      map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
       addLocalAerials(map)   // local government aerials over Mapbox satellite when zoomed in, each credited in the map credits while in view (as /ships)
       setMapReady(true)
       setStyleVersion((n) => n + 1)
@@ -198,13 +210,15 @@ export default function WhaleWatchApp() {
     Promise.all([
       fetch('/api/ship-tracks?op=gfwindex').then((r) => r.json()).catch(() => ({ months: {} })),
       fetch('/api/ship-tracks?op=salishindex').then((r) => r.json()).catch(() => ({ months: {} })),
-    ]).then(([g, s]) => {
+      fetch(`${AIS_TRACKS_INDEX}?t=${Math.floor(Date.now() / 60000)}`).then((r) => (r.ok ? r.json() : { days: {} })).catch(() => ({ days: {} })),
+    ]).then(([g, s, a]) => {
       const all = [...Object.keys(g.months || {}), ...Object.keys(s.months || {})].sort()
       const newest = all[all.length - 1]
       if (!newest) return
       const from = monthAdd(newest, -(MONTHS_SHOWN - 1))
       // Changes whenever either bake adds or rebuilds a month, so a cached response is never stale.
-      const key = [from, g.months?.[newest]?.built || '', s.updated || '', trackSource.version, trackSource.us?.rules || ''].join('.')
+      const aisDays = Object.keys(a.days || {}).sort(), aisLast = aisDays[aisDays.length - 1]
+      const key = [from, g.months?.[newest]?.built || '', s.updated || '', aisLast ? a.days[aisLast].built : '', trackSource.version, trackSource.us?.rules || ''].join('.')
       setWin({ from, newest, through: g.fetched_through || null, key })
     })
   }, [])
@@ -309,10 +323,14 @@ export default function WhaleWatchApp() {
     ...added.filter((a) => !memberIds.has(a.id)).map((a) => a.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [fleetOn, members, hidden, added, memberIds, homes])
-  // The 12 months of tracks: every shown boat's when that's on, else only the boat whose card is open (drawn white).
-  const features = useMemo(() => (allTracks ? shownIds : sel ? [sel] : [])
-    .flatMap((id) => (tracks[id] || []).map((f) => (memberIds.has(id) ? f : { ...f, properties: { ...f.properties, added: 1 } }))),
-    [allTracks, shownIds, sel, tracks, memberIds])
+  // The picked boat's trips (Josh 2026-10-17: follow a boat through its history one trip at a time, not a year of white lines).
+  const trips = useMemo(() => (sel && segsByVid[sel] ? tripsOf(segsByVid[sel]) : []), [sel, segsByVid])
+  const shownTrip = trips.find((tr) => tr.t0 === tripT0) || trips[0] || null
+  // Lines: every shown boat's 12 months when that's on (muted), plus the picked boat's shown trip (white).
+  const features = useMemo(() => [
+    ...(allTracks ? shownIds.flatMap((id) => tracks[id] || []) : []),
+    ...(shownTrip ? shownTrip.segs.map((sg) => ({ ...sg.f, properties: { ...sg.f.properties, pick: 1 } })) : []),
+  ], [allTracks, shownIds, tracks, shownTrip])
 
   // ─── Time: the slider runs from the window's first hour to the newest fix on record (= LIVE) ───
   const startS = win ? Date.parse(`${win.from}-01T00:00:00Z`) / 1000 : null
@@ -344,7 +362,7 @@ export default function WhaleWatchApp() {
         points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: lv.lngLat },
           properties: { vid, heading: lv.heading ?? lv.cog ?? 0, kn: lv.sog ?? null, at: lv.at, exact: 1, added: isAddedBoat ? 1 : 0, moving: moving ? 1 : 0, live: 1, ageH: age / 3600,
             name: memberById.get(vid)?.name || added.find((x) => x.id === vid)?.name || '', company: memberById.get(vid)?.company || '' } })
-        const tr = moving ? liveSnap?.trails?.[lv.mmsi] : null
+        const tr = moving && (!sel || sel === vid) ? liveSnap?.trails?.[lv.mmsi] : null   // with a card open, only its own boat's trail
         if (tr?.length >= 2) trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { vid, added: isAddedBoat ? 1 : 0, live: 1 } })
         continue
       }
@@ -352,19 +370,21 @@ export default function WhaleWatchApp() {
       const p = t == null ? latest[vid] : positionAt(segs, t, HOLD_S)
       if (!p) continue
       const isAdded = !memberIds.has(vid)
-      const ageH = ((t ?? endS) - p.at) / 3600
+      const ageH = ((t ?? nowS) - p.at) / 3600   // LIVE: against now, so days-old travel draws no trail (Josh 2026-10-17)
       points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p.lngLat },
         properties: { vid, heading: p.heading, kn: p.kn ?? null, at: p.at, exact: p.exact ? 1 : 0, added: isAdded ? 1 : 0, moving: p.moving ? 1 : 0, ageH,
           name: memberById.get(vid)?.name || added.find((x) => x.id === vid)?.name || '', company: memberById.get(vid)?.company || '' } })
       // A trail only for a boat that moved in the hours before the time shown (Josh 2026-10-17: none for a boat that has sat for days).
-      if (ageH > TRAIL_H) continue
-      for (const c of trailAt(segs, p.moving ? (t ?? p.at) : p.at, TRAIL_H)) {
+      // Trails: in LIVE only live boats have one (above); in replay, a boat's last hour, only where it moved.
+      // While a boat's card is open its picked trip (white) is the only line; other boats are dots (Josh 2026-10-17).
+      if (t == null || !p.moving || sel) continue
+      for (const c of trailAt(segs, t, REPLAY_TRAIL_H)) {
         trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: c }, properties: { vid, added: isAdded ? 1 : 0 } })
       }
     }
     return { points, trails }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownIds, segsByVid, latest, t, endS, memberIds, memberById, added, liveByMmsi, liveSnap, nowS])
+  }, [shownIds, segsByVid, latest, t, endS, memberIds, memberById, added, liveByMmsi, liveSnap, nowS, sel])
 
   // ─── Layers ───
   useEffect(() => {
@@ -373,7 +393,7 @@ export default function WhaleWatchApp() {
     if (!map.getSource(SRC)) {
       const labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
       map.addSource(SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-      const color = ['case', ['==', ['get', 'added'], 1], ADDED_COLOR, FLEET_COLOR]
+      const color = FLEET_COLOR
       map.addLayer({ id: CASING, type: 'line', source: SRC, filter: OBSERVED, layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': '#0a0e17', 'line-width': ['+', LINE_WIDTH, 1], 'line-opacity': 0.35 } }, labelsId)
       map.addLayer({ id: LINE, type: 'line', source: SRC, filter: OBSERVED, layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -406,7 +426,7 @@ export default function WhaleWatchApp() {
     if (!map || !mapReady || !map.getSource(SRC)) return
     let cancelled = false
     const ensure = async () => {
-      for (const [id, fill] of [['ww-boat-fleet', FLEET_COLOR], ['ww-boat-added', ADDED_COLOR], ['ww-boat-live', LIVE_COLOR]]) {
+      for (const [id, fill] of [['ww-boat-fleet', FLEET_COLOR], ['ww-boat-live', LIVE_COLOR]]) {
         if (map.hasImage(id)) continue
         const img = new Image(36, 54)
         img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(fill))}`
@@ -418,14 +438,15 @@ export default function WhaleWatchApp() {
       if (!map.getSource(TRAIL_SRC)) {
         map.addSource(TRAIL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({ id: TRAIL, type: 'line', source: TRAIL_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': ['case', ['==', ['get', 'live'], 1], LIVE_TRAIL, ['==', ['get', 'added'], 1], ADDED_COLOR, '#a7f3d0'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 12, 3], 'line-opacity': 0.95 } })
+          paint: { 'line-color': ['case', ['==', ['get', 'live'], 1], LIVE_TRAIL, FLEET_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 12, 3], 'line-opacity': ['case', ['==', ['get', 'live'], 1], 0.95, 0.7] } })
         map.addSource(BOAT_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({ id: BOAT, type: 'symbol', source: BOAT_SRC, layout: {
-          'icon-image': ['case', ['==', ['get', 'live'], 1], 'ww-boat-live', ['==', ['get', 'added'], 1], 'ww-boat-added', 'ww-boat-fleet'],
+          'icon-image': ['case', ['==', ['get', 'live'], 1], 'ww-boat-live', 'ww-boat-fleet'],
           'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.75, 11, 1, 14, 1.3] },
-          paint: { 'icon-opacity': ['case', ['==', ['get', 'live'], 1], 1, ['==', ['get', 'moving'], 1], 1, 0.6] } })
-        map.addLayer({ id: BOAT_LABEL, type: 'symbol', source: BOAT_SRC, minzoom: 10.5, layout: {
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'live'], 1], 1.05, 0.8], 11, ['case', ['==', ['get', 'live'], 1], 1.3, 1], 14, ['case', ['==', ['get', 'live'], 1], 1.6, 1.2]],
+          'symbol-sort-key': ['case', ['==', ['get', 'live'], 1], 1, 0] },   // live boats draw on top
+          paint: { 'icon-opacity': ['case', ['==', ['get', 'live'], 1], 1, 0.85] } })
+        map.addLayer({ id: BOAT_LABEL, type: 'symbol', source: BOAT_SRC, minzoom: 10.5, filter: ['==', ['get', 'live'], 1], layout: {   // names on live boats only
           'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top', 'text-optional': true,
           'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
           paint: { 'text-color': '#f8fafc', 'text-halo-color': 'rgba(10,14,23,0.9)', 'text-halo-width': 1.4 } })
@@ -449,21 +470,29 @@ export default function WhaleWatchApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !map.getLayer(PICK)) return
-    map.setFilter(PICK, ['==', ['get', 'vid'], sel || ''])
-    for (const l of [CASING, LINE, EST]) map.setLayoutProperty(l, 'visibility', allTracks ? 'visible' : 'none')
+    map.setFilter(PICK, ['==', ['get', 'pick'], 1])
+    for (const l of [CASING, LINE, EST]) { map.setLayoutProperty(l, 'visibility', allTracks ? 'visible' : 'none'); map.setFilter(l, ['all', l === EST ? ESTIMATED : OBSERVED, ['!=', ['get', 'pick'], 1]]) }
     map.setPaintProperty(LINE, 'line-opacity', sel ? LINE_OPACITY * 0.5 : LINE_OPACITY)
     map.setPaintProperty(EST, 'line-opacity', (sel ? LINE_OPACITY * 0.5 : LINE_OPACITY) * 0.65)
   }, [sel, mapReady, styleVersion, allTracks])
-  // Fit to a boat picked from the search or the list, once its tracks are in.
+  // Fit to the shown trip when a boat or a trip is picked.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !fitRef.current || !sel || !tracks[sel]) return
+    if (!map || !fitRef.current || !sel || !segsByVid[sel]) return
     fitRef.current = false
-    if (!tracks[sel].length) return
+    if (!shownTrip) return
     const b = new mapboxgl.LngLatBounds()
-    for (const f of tracks[sel]) for (const c of f.geometry.coordinates) b.extend(c)
-    map.fitBounds(b, { padding: isMobile ? 30 : { top: 80, bottom: 60, left: 380, right: 420 }, maxZoom: 12, duration: 1000 })
-  }, [sel, tracks, isMobile])
+    for (const sg of shownTrip.segs) for (const c of sg.c) b.extend(c)
+    map.fitBounds(b, { padding: isMobile ? 30 : { top: 80, bottom: 110, left: 380, right: 420 }, maxZoom: 13, duration: 1000 })
+  }, [sel, segsByVid, shownTrip, isMobile])
+  // While the slider runs, the shown trip follows it: the trip under way at the hour shown.
+  useEffect(() => {
+    if (t == null || !trips.length) return
+    const on = trips.find((tr) => t >= tr.t0 - 1800 && t <= tr.t1 + 1800)
+    if (on && on.t0 !== shownTrip?.t0) setTripT0(on.t0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, trips])
+  const pickTrip = (tr) => { setPlaying(false); setTripT0(tr.t0); setT(tr.t0); fitRef.current = true }
 
   const nameOf = (vid) => {
     const m = memberById.get(vid)
@@ -497,6 +526,8 @@ export default function WhaleWatchApp() {
   useEffect(() => {
     const sp = new URLSearchParams()
     if (sel) sp.set('v', sel)
+    if (sel && tripT0 != null) sp.set('tr', String(tripT0))
+    if (sel && cardTab !== 'overview') sp.set('ct', cardTab)
     if (added.length) sp.set('add', added.map((a) => a.id).join(','))
     if (hidden.size) sp.set('hp', [...hidden].join(','))
     if (t != null) sp.set('t', new Date(t * 1000).toISOString().slice(0, 13))
@@ -506,7 +537,7 @@ export default function WhaleWatchApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel, added, hidden, fleetOn, allTracks, mapView, mapReady, playing ? null : t])
+  }, [sel, tripT0, cardTab, added, hidden, fleetOn, allTracks, mapView, mapReady, playing ? null : t])
 
   const pickShip = (r) => {
     setPickerOpen(false)
@@ -514,9 +545,30 @@ export default function WhaleWatchApp() {
     setSel(r.id)
     if (!memberIds.has(r.id) && !added.some((a) => a.id === r.id)) setAdded((list) => [...list, { id: r.id, name: r.latest?.name?.value || null, periods: null }])
   }
-  const pickBoat = (vid) => { fitRef.current = true; setSel(vid) }
+  const pickBoat = (vid) => { fitRef.current = true; setTripT0(null); setSel(vid) }
   const togglePort = (name) => setHidden((h) => { const n = new Set(h); if (n.has(name)) n.delete(name); else n.add(name); return n })
   const removeAdded = (id) => { setAdded((list) => list.filter((a) => a.id !== id)); if (sel === id) setSel(null) }
+
+  // The picked boat's trips, as a tab on its ship card (the card is where a ship's own detail lives, as on /ships).
+  const tripsTab = sel ? { id: 'trips', label: trips.length ? `Trips · ${trips.length}` : 'Trips', content: (
+    <div className={styles.wwTrips}>
+                {!segsByVid[sel] ? <div className={styles.wwMuted}>Loading its tracks…</div>
+                  : !trips.length ? <div className={styles.wwMuted}>No trips in these 12 months.</div>
+                  : (
+                    <ul className={styles.wwTripList}>
+                      {trips.map((tr) => (
+                        <li key={tr.t0}>
+                          <button type="button" className={`${styles.wwTrip} ${shownTrip?.t0 === tr.t0 ? styles.wwTripOn : ''}`} onClick={() => pickTrip(tr)}
+                            title="Show this trip and set the time slider to its start">
+                            <span className={styles.wwTripWhen}>{fmtTripDay(tr.t0)} · {fmtTripTime(tr.t0)} – {fmtTripTime(tr.t1)}</span>
+                            <span className={styles.wwTripMeta}>{fmtDur(tr.t1 - tr.t0)} · {tr.km < 10 ? tr.km.toFixed(1) : Math.round(tr.km)} km · {[...tr.sources].map((x) => SOURCE_WORDS[x] || x).join(' + ')}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+              </div>
+  ) } : null
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
@@ -562,7 +614,8 @@ export default function WhaleWatchApp() {
       <ShipPicker shipName={sel ? nameOf(sel)?.split(' · ')[0] : null} query={query} onQuery={setQuery} kinds={kinds} onKinds={setKinds}
         onPick={pickShip} open={pickerOpen} onOpen={setPickerOpen}>
         {sel && (
-          <VesselCard vesselId={sel} onClose={() => setSel(null)} onSelectVessel={(id) => setSel(id)} />
+          <VesselCard vesselId={sel} tab={cardTab} onTab={setCardTab} extraTabs={tripsTab ? [tripsTab] : []}
+            onClose={() => { setSel(null); setTripT0(null) }} onSelectVessel={(id) => { setTripT0(null); setSel(id) }} />
         )}
       </ShipPicker>
 
@@ -579,10 +632,10 @@ export default function WhaleWatchApp() {
           <span className={styles.dockTitle}>Whale-watching boats</span>
           {pending > 0 && <span className={styles.countChip}><LoadingInline kind="quick" size={11} /> {pending}</span>}
         </div>
-        <div className={styles.panelBody}>
+        <div className={`${styles.panelBody} ${styles.wwBody}`}>
           {win && (
             <div className={styles.wwWhen}>
-              Tracks {fmtMonth(win.from)} – {fmtMonth(win.newest)}{win.through ? <>, newest positions {fmtDay(win.through)}</> : null}
+              Tracks: {fmtMonth(win.from)} – {fmtMonth(win.newest)}{win.through ? <> (recorded positions through {fmtDay(win.through)})</> : null}
             </div>
           )}
           <div className={styles.wwWhen}>
@@ -598,62 +651,10 @@ export default function WhaleWatchApp() {
             hue={FLEET_COLOR} on={fleetOn} onToggle={() => setFleetOn((o) => !o)}
             status={fleetError ? <div className={styles.wwMuted}>Could not load the boat list ({fleetError}).</div> : null}
             legend={<>
-              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>A boat where it was at the time shown (faded: tied up or no signal, at its last position)</LegendSwatchRow>
-              <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: '#a7f3d0', height: 4 }} />}>Where it went in the {TRAIL_H} hours before (only if it moved)</LegendSwatchRow>
-              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>LIVE: a boat at its live AIS report (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>, received in the last 24 hours), with its last 30 minutes of trail; hover for how long ago. Green boats in LIVE are at their newest track position instead, which can be days old.</LegendSwatchRow>
-              <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: FLEET_COLOR }} />}>Whale-watching boats’ tracks, last 12 months</LegendSwatchRow>
-              <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: ADDED_COLOR }} />}>Boats you found with the Ships search</LegendSwatchRow>
-              <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: PICK_COLOR }} />}>The boat whose card is open</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Live: reported by AIS in the last 24 hours (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>), with its last 30 minutes of travel</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>On record: the newest position we hold, which can be days old (in replay: where it was at the hour shown, with its last hour of travel)</LegendSwatchRow>
+              <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: PICK_COLOR }} />}>The boat whose card is open: the trip picked in its Trips tab</LegendSwatchRow>
             </>}
-            controls={
-              <div className={styles.wwCompanies}>
-                <div className={styles.wwAllNone}>
-                  <button type="button" className={styles.inlineLink} onClick={() => setHidden(new Set())}>Show all</button>{' · '}
-                  <button type="button" className={styles.inlineLink} onClick={() => setHidden(new Set(groups.map((g) => g.name)))}>Hide all</button>
-                </div>
-                {groups.map((g) => {
-                  const on = !hidden.has(g.name)
-                  return (
-                    <div key={g.name} className={styles.wwCompany}>
-                      <div className={styles.wwCompanyRow}>
-                        <label className={styles.wwCheck}>
-                          <input type="checkbox" checked={on} onChange={() => togglePort(g.name)} />
-                          <span>{g.name}</span>
-                        </label>
-                        <button type="button" className={styles.wwCount} onClick={() => setOpenCo((o) => (o === g.name ? null : g.name))}
-                          aria-expanded={openCo === g.name} title="List the boats based here">
-                          {g.boats.length} boat{g.boats.length === 1 ? '' : 's'} <Chevron up={openCo === g.name} size={13} />
-                        </button>
-                      </div>
-                      {openCo === g.name && (
-                        <ul className={styles.wwBoats}>
-                          {g.portId != null && (
-                            <li className={styles.wwPlace}>Port name: <a href={`/ships?pc=${g.portId}`} target="_blank" rel="noopener noreferrer">EarthAtlas Ships port</a></li>
-                          )}
-                          {g.boats.map((b) => {
-                            const h = homes[b.vessel_id]
-                            return (
-                              <li key={b.vessel_id} className={`${styles.wwBoat} ${sel === b.vessel_id ? styles.wwBoatOn : ''}`}>
-                                <button type="button" className={styles.inlineLink} onClick={() => pickBoat(b.vessel_id)} title="Open this boat’s card">{b.name || `MMSI ${b.mmsi}`}</button>
-                                <span className={styles.wwMuted}> · {b.company}</span>
-                                <div className={styles.wwSrc}>
-                                  <a href={b.source_url} target="_blank" rel="noopener noreferrer" title={b.source_label}>{BASIS_WORDS[b.basis] || 'Source'}</a>
-                                  {b.note && <span> · {b.note}</span>}
-                                </div>
-                                <div className={styles.wwSrc}>
-                                  {tracks[b.vessel_id] && !tracks[b.vessel_id].length ? 'No tracks in these 12 months'
-                                    : h ? <>Home port from its AIS tracks: ended {h.nights} of its {h.days} days here{h.name ? '' : ` (no port we hold within 6 km of ${h.lngLat[1].toFixed(3)}, ${h.lngLat[0].toFixed(3)})`}</> : null}
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            }
             info={<>
               The boats of the <a href={PWWA} target="_blank" rel="noopener noreferrer">Pacific Whale Watch Association</a>’s member companies.
               Each boat is tied to its company by an official record, linked beside the boat: the company holding its{' '}
@@ -664,6 +665,60 @@ export default function WhaleWatchApp() {
               positions. Powered by Global Fishing Watch. {fleet && <>{boatsWithTracks} of {members.length} boats have tracks in these months.</>}
             </>} />
 
+          {/* The boats, always listed (Josh 2026-10-17: the list was hidden behind the row's ⌄), grouped by home port. */}
+          {fleetOn && (
+            <div className={styles.wwListing}>
+              <div className={styles.fieldLabel}>Boats by home port</div>
+              <div className={styles.wwCompanies}>
+                  <div className={styles.wwAllNone}>
+                    <button type="button" className={styles.inlineLink} onClick={() => setHidden(new Set())}>Show all</button>{' · '}
+                    <button type="button" className={styles.inlineLink} onClick={() => setHidden(new Set(groups.map((g) => g.name)))}>Hide all</button>
+                  </div>
+                  {groups.map((g) => {
+                    const on = !hidden.has(g.name)
+                    return (
+                      <div key={g.name} className={styles.wwCompany}>
+                        <div className={styles.wwCompanyRow}>
+                          <label className={styles.wwCheck}>
+                            <input type="checkbox" checked={on} onChange={() => togglePort(g.name)} />
+                            <span>{g.name}</span>
+                          </label>
+                          <button type="button" className={styles.wwCount} onClick={() => setOpenCo((o) => (o === g.name ? null : g.name))}
+                            aria-expanded={openCo === g.name} title="List the boats based here">
+                            {g.boats.length} boat{g.boats.length === 1 ? '' : 's'} <Chevron up={openCo === g.name} size={13} />
+                          </button>
+                        </div>
+                        {openCo === g.name && (
+                          <ul className={styles.wwBoats}>
+                            {g.portId != null && (
+                              <li className={styles.wwPlace}>Port name: <a href={`/ships?pc=${g.portId}`} target="_blank" rel="noopener noreferrer">EarthAtlas Ships port</a></li>
+                            )}
+                            {g.boats.map((b) => {
+                              const h = homes[b.vessel_id]
+                              return (
+                                <li key={b.vessel_id} className={`${styles.wwBoat} ${sel === b.vessel_id ? styles.wwBoatOn : ''}`}>
+                                  <button type="button" className={styles.inlineLink} onClick={() => pickBoat(b.vessel_id)} title="Open this boat’s card">{b.name || `MMSI ${b.mmsi}`}</button>
+                                  <span className={styles.wwMuted}> · {b.company}</span>
+                                  <div className={styles.wwSrc}>
+                                    <a href={b.source_url} target="_blank" rel="noopener noreferrer" title={b.source_label}>{BASIS_WORDS[b.basis] || 'Source'}</a>
+                                    {b.note && <span> · {b.note}</span>}
+                                  </div>
+                                  <div className={styles.wwSrc}>
+                                    {tracks[b.vessel_id] && !tracks[b.vessel_id].length ? 'No tracks in these 12 months'
+                                      : h ? <>Home port from its AIS tracks: ended {h.nights} of its {h.days} days here{h.name ? '' : ` (no port we hold within 6 km of ${h.lngLat[1].toFixed(3)}, ${h.lngLat[0].toFixed(3)})`}</> : null}
+                                  </div>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+            </div>
+          )}
+
           <div className={styles.wwAdded}>
             <div className={styles.fieldLabel}>Other boats</div>
             {added.length === 0
@@ -672,7 +727,7 @@ export default function WhaleWatchApp() {
                 <ul className={styles.wwBoats}>
                   {added.map((a) => (
                     <li key={a.id} className={`${styles.wwBoat} ${sel === a.id ? styles.wwBoatOn : ''}`}>
-                      <span className={styles.wwSwatch} style={{ background: memberIds.has(a.id) ? FLEET_COLOR : ADDED_COLOR }} />{' '}
+                      
                       <button type="button" className={styles.inlineLink} onClick={() => pickBoat(a.id)}>{a.name || 'Loading…'}</button>
                       {tracks[a.id] && !tracks[a.id].length && <span className={styles.wwMuted}> · no tracks in these months</span>}
                       <button type="button" className={styles.wwRemove} onClick={() => removeAdded(a.id)} aria-label={`Remove ${a.name || 'this boat'} from the map`}>×</button>

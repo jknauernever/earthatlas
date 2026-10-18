@@ -11,7 +11,7 @@ const fmtPacific = (s) => new Date(s * 1000).toLocaleString('en-US', { weekday: 
   hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver', timeZoneName: 'short' })
 const fmtUTC = (s) => { const d = new Date(s * 1000); return `${String(d.getUTCHours()).padStart(2, '0')}:00 UTC` }
 const fmtDay = (s) => new Date(s * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' })
-export const SPEEDS = [[1, '1 h'], [6, '6 h'], [24, '1 d']]   // hours per step while playing
+export const SPEEDS = [[1 / 6, '10 min'], [1, '1 h'], [6, '6 h'], [24, '1 d']]   // hours per step while playing (10 min: following a trip)
 
 export default function WhaleTimeBar({ start, end, t, onT, playing, onPlaying, speed, onSpeed, shifted, newestFix, liveStatus }) {
   const live = t == null
@@ -46,7 +46,7 @@ export default function WhaleTimeBar({ start, end, t, onT, playing, onPlaying, s
         <button type="button" className={styles.btn} onClick={() => step(1)} title="Forward one hour (→; shift: one day)" aria-label="Forward one hour">▶︎</button>
         <button type="button" className={`${styles.btn} ${live ? styles.btnLiveOn : ''}`} onClick={() => { onPlaying(false); onT(null) }}
           title="Each boat’s latest position on record" aria-label="Jump to live">Live ⏭</button>
-        <input className={styles.scrub} type="range" min={start} max={end} step={H} value={at}
+        <input className={styles.scrub} type="range" min={start} max={end} step={600} value={at}
           onChange={(e) => { onPlaying(false); const v = Number(e.target.value); onT(v >= end ? null : v) }}
           aria-label="Scrub through time, hour by hour" style={{ '--pct': `${pct}%` }} />
         <div className={styles.window} role="group" aria-label="Playback speed">

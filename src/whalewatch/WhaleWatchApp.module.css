@@ -21,3 +21,15 @@
 .wwRemove:hover { color: #f87171; }
 .wwAllNone { font-size: 11.5px; color: #94a3b8; margin-bottom: 4px; }
 .wwAllTracks { margin: 0 0 10px; }
+.wwListing { margin-top: 10px; }
+/* Plain links in the panel (aisstream.io, sources): readable on the dark glass, as the boat source links. */
+.wwBody a:not([class]) { color: #93c5fd; }
+.wwBody a:not([class]):hover { color: #bfdbfe; }
+/* The picked boat's trips */
+.wwTrips { padding: 8px 12px 12px; }
+.wwTripList { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.wwTrip { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #e5e7eb; }
+.wwTrip:hover { background: rgba(255, 255, 255, 0.09); }
+.wwTripOn { border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.1); }
+.wwTripWhen { font-size: 12px; font-weight: 600; }
+.wwTripMeta { font-size: 11px; color: #94a3b8; }

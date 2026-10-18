@@ -164,7 +164,8 @@ export function Ev({ c }) {
 }
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
-export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl }) {
+// extraTabs: a site's own tabs for this ship, [{ id, label, content }] (/whalewatch: Trips), shown after Overview.
+export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl, extraTabs = [] }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
   const [tabOwn, setTabOwn] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
@@ -354,6 +355,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {!folded && <>
           <div className={pick.tabs} role="tablist">
             {[['overview', 'Overview'],
+              ...extraTabs.map((x) => [x.id, x.label]),
               ...(hasGfw ? [['ports', 'Ports']] : []),
               ...(current.imo || current.mmsi ? [['emissions', 'Emissions']] : []),
               ...(vessel.incidents?.length ? [['incidents', `Incidents · ${vessel.incidents.length}`]] : []),
@@ -365,6 +367,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             ))}
           </div>
 
+          {extraTabs.find((x) => x.id === tab)?.content}
           {tab === 'overview' && <>
             <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} onFetched={() => setRev((n) => n + 1)} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />

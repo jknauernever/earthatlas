@@ -31,7 +31,7 @@ deviations, assumptions, open issues, and the proposed next phase. Then stop.
 | 2 | First AIS source (MarineCadastre, CC0), resolved by MMSI + timestamp; tracks on the map | authorized 2026-09-24; built; prod rollout 2026-09-25 |
 | 3 | Global context: GFW presence / dark-vessel (SAR) detections, ports (World Port Index), port visits | authorized 2026-09-25 (study first) |
 | 4 | Pollution: EU MRV CO₂, Climate TRACE voyages, SkyTruth Cerulean slicks | Climate TRACE voyages + port stays, IMO scrubbers: authorized and live (2026-09-27/29); EU MRV authorized 2026-09-29; Cerulean: SkyTruth gave permission 2026-10-14 (all data except vessel photos); slick layer + ship-card tab built (lib/ships/cerulean.js, api/cerulean.js) |
-| 5 | Live AIS (Digitraffic / Kystverket; needs an always-on worker, which is a new infrastructure decision) | not authorized |
+| 5 | Live AIS (needs an always-on worker, which is a new infrastructure decision) | aisstream.io for the Salish Sea box authorized by Josh 2026-10-17/18 and live: Fly.io recorder app `earthatlas-aisstream` (`scripts/ships/aisstream/`, docs/AISSTREAM_RECORDER_PLAN.md) → live snapshot on /whalewatch, daily track packs, and recorded months on the /ships map (tileset ais-v1); aisstream publishes no license and Josh chose to proceed (2026-10-18). Digitraffic / Kystverket and any other live source: not authorized |
 
 Each phase ends with something Josh can look at on localhost:5173. That is
 EarthAtlas's workflow: QA on localhost, then merge to main.

@@ -2,28 +2,44 @@
 
 Drafted 2026-10-18 for Josh.
 
-## Status (2026-10-18, 06:10 UTC)
+## Status (2026-10-18, 07:15 UTC): built and live
 - **Recording since 2026-10-18 04:48 UTC** on Fly.io: app `earthatlas-aisstream`, one `shared-cpu-1x` 256 MB
   machine in `sjc` (Fly has no Seattle region), 1 GB volume `aisdata` at `/data`, restart policy `always`.
   Secrets: `AISSTREAM_API_KEY`, `CRON_SECRET`. Code: `scripts/ships/aisstream/` (`recorder.mjs`, `compact.py`,
   `daypack.py`, `Dockerfile`, `fly.toml`). Deploy: `cd scripts/ships/aisstream && fly deploy --remote-only --ha=false`
   (a few seconds' gap; identities and latest positions are saved to the volume and survive restarts).
   Logs: `fly logs -a earthatlas-aisstream`. Files: `fly ssh console -a earthatlas-aisstream`.
-- **What it publishes to Blob** (uploads through `api/cron/ships-upload-token.js`, pushed in 4e27472, ef3831d, 1a9e87d):
+- **What it publishes to Blob** (uploads through `api/cron/ships-upload-token.js`; one-file tokens, the recorder never
+  holds the Blob write token):
   - `ships/live/salish-v6.json`, every 60 s: the latest position per ship (last 24 h) plus 30-minute trails for ships
     under way, about 55 KB gzipped. Read by /whalewatch's LIVE view (live boats drawn in amber).
   - `ships/tracks/aisstream-v1/index.json` + `YYYY-MM-DD/tracks-HHMM.pack` (hourly while the day is recorded) /
     `tracks.pack` (final, after 01:00 UTC the next day): /ships track packs (SHTP layout, 1024 shards, a time on every
-    point, the NOAA bake's split rules, no land mask). Read by api/ship-tracks.js for /whalewatch's minute-level trips.
+    point, the NOAA bake's split rules, no land mask). Read by `api/ship-tracks.js` (region `ais`) for one ship's
+    recorded tracks: /whalewatch trips, /ships picked-ship tracks.
   - `ships/bake-inputs/salish-v6/aisstream/points/YYYY-MM-DD.parquet` + `index.json` (after each UTC day): the NOAA
     MarineCadastre daily-points schema; `status.json` hourly.
+- **/ships map** (push 3a7931e): `.github/workflows/ships-aisstream-month.yml` (daily 02:23 UTC) fetches the month's
+  recorded days (`scripts/ships/bake-ais/fetch_aisstream_points.py`), bakes them with `build_tracks.py` as region
+  `ais-v1` (same box and OSM land masks as salish-v6) and publishes `ships/tracks/ais-v1/YYYY-MM/` + `index.json`
+  (`publish.mjs`, `SHIPS_TILESET=ais-v1`). `api/ship-tracks.js` serves it (`op=aisindex`, tiles `r=aism`,
+  `r=aism&mmsi=` from the day packs). /ships draws it in the Salish box from z5 for months NOAA hasn't published.
+  First run published 2026-10 from a hand-uploaded partial day (04:48–06:30 UTC); the recorder's full day replaces it.
+- **Alert:** `.github/workflows/data-watchdog.yml` (hourly) opens a `data-alert` issue assigned to Josh when the live
+  snapshot is 20+ minutes old and closes it when recording resumes. Failed month-bake runs are caught by its
+  failed-run check.
+- **Cleanup:** `api/cron/aisstream-cleanup.js` (Vercel cron, hourly) deletes superseded `tracks-HHMM.pack` copies
+  (not in the index, 3 h+ old); never `tracks.pack`; nothing if the index is unreadable.
 - **Changed from the plan below:** raw hourly files stay **private on the Fly volume** (30 days), and compaction and
-  packing run **on the recorder** (DuckDB). No GitHub Action is needed. MMSIs are kept when 9 digits long (as NOAA does).
+  packing run **on the recorder** (DuckDB); only the month bake runs in GitHub Actions. MMSIs are kept when 9 digits
+  long (as NOAA does).
 - **Local proof:** an 84-second test produced 431 rows from 406 vessels, a schema **identical to the NOAA cache
   files**, and zero duplicate vessel-minutes.
-- **Not yet done:** /ships months after NOAA's last don't read the recorded days yet (bake integration). No health
-  alert. Hourly packs leave older copies on Blob (about 2 GB a month; cleanup to add). A static egress IP ($3.60/mo)
-  only if aisstream's 3-per-IP limit bites.
+- **Known limits:** inside the Salish box, GFW hourly lines still draw alongside the recorded tracks for the days both
+  cover (GFW tiles carry no times to filter on). Terminal visits and anchorage stays for these months still come from
+  GFW estimates. aisstream publishes no license or terms (Josh chose to proceed, 2026-10-18); the source is not yet in
+  the `ships.sources` table. Not yet seen: the alert firing for real; a full day's disk use on the 1 GB volume.
+- **Only if needed:** a static egress IP ($3.60/mo) if aisstream's 3-connections-per-IP limit starts refusing us.
 
 **Goal:** record aisstream.io continuously and write one Parquet file per UTC day in **exactly
 the shape of the NOAA MarineCadastre daily points** that /ships already bakes

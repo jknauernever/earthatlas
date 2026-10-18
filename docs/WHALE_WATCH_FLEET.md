@@ -10,10 +10,11 @@ Not on this list: whale-watch companies outside the association, and boats run b
 
 ## Summary
 
-- **US:** 36 boats for 15 of 16 member companies. Not found: Anacortes Whale Watching Tours.
+- **US:** 38 boats for 14 of 16 member companies. San Juan Outfitters' boat is San Juan Safaris' SEA LION. Not found: Anacortes Whale Watching Tours.
+- **Friday Harbor check (2026-10-18):** the five Friday Harbor operators' boats were checked against their own websites and the FCC file of 2026-10-18. Added T2 (Maya's Legacy); moved SEA LION to San Juan Safaris. SEA HAWK and LARUS can't go on the map until our AIS has them.
 - **BC, named boats:** 17 boats for 6 of 12 member companies, all found in our AIS records.
 - **BC, unnamed small boats:** 19 more boats on Transport Canada's small-vessel register, which records no boat names, so they can't be matched to AIS. These are probably the operators' RHIBs and zodiacs.
-- **Not found in BC:** Orca Spirit Adventures, Sidney Whale Watching.
+- **Not found in BC:** Sidney Whale Watching (names no boats). Orca Spirit Adventures' five named boats were added 2026-10-18.
 
 ## United States (FCC ship radio licences)
 
@@ -31,6 +32,7 @@ Not on this list: whale-watch companies outside the association, and boats run b
 | **Island Adventures Whale Watching** (Anacortes) | ISLAND EXPLORER 5 | 369264000 | Island Adventures, Inc. | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3907929) | [2026-09-30](https://earthatlas.org/ships?v=173a0862-f1ae-4d57-a87f-4e230c2b8cde) |  |
 | **Maya's Legacy Whale Watching** (Friday Harbor) | J1 | 367742760 | Maya's Legacy Whale Watching, LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4033952) | [2026-09-30](https://earthatlas.org/ships?v=d9722b53-da0c-4f41-a61b-69f39e69b8d6) |  |
 |  | J2 | 368032220 | Maya's Legacy Whale Watching, LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4025980) | [2026-09-30](https://earthatlas.org/ships?v=82263412-8deb-4d89-be43-485439c050ec) |  |
+|  | T2 | 338470525 | No FCC licence found | — | [2026-09-26](https://earthatlas.org/ships?v=03929a87-1ffc-4ef3-a550-02572c875f33) | Named on the [operator's site](https://sanjuanislandwhalewatch.com/whale-watching/); matched by name and home dock (Snug Harbor). Added 2026-10-18. |
 | **Outer Island Excursions** (Orcas, Lopez, Anacortes) | BLACKFISH | 367679710 | Outer Island Expeditions | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3711921) | [2026-09-30](https://earthatlas.org/ships?v=a236ccf0-4a90-46f2-9289-ca5c51b45e27) |  |
 |  | BLACKFISH II | 367524220 | Outer Island Expeditions, LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3366136) | [2026-09-30](https://earthatlas.org/ships?v=31de0917-a1e8-4f83-914c-6ad694a48438) |  |
 |  | BLACKFISH III | 338000000 | Outer Island Expeditions | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3692832) | [2026-06-30](https://earthatlas.org/ships?v=7e33adc2-84eb-4780-8db7-971c2fb05671) | The licence gives 338000000 as the MMSI, a placeholder-style number; AIS under it has also carried other names. |
@@ -49,20 +51,22 @@ Not on this list: whale-watch companies outside the association, and boats run b
 | **San Juan Excursions** (Friday Harbor) | ODYSSEY | 367351090 | SAN JUAN EXCURSIONS INC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=1554592) | [2026-09-30](https://earthatlas.org/ships?v=fdd8f013-82d2-4a94-842d-7daad4cdb53e) |  |
 | **San Juan Safaris** (Friday Harbor) | OSPREY | 338576000 | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4451086) | [2026-09-29](https://earthatlas.org/ships?v=1c082e47-db72-40dd-83e0-0c0795379239) | Same MMSI was licensed to Island Adventures, Inc. as ISLAND EXPLORER 4 until 2021. |
 |  | KESTREL | 367014000 | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814788) | [2026-09-29](https://earthatlas.org/ships?v=a0dc8c84-6450-4a14-b52f-937133484cdf) |  |
-|  | SEA LION | 369105000 | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814794) | not in our AIS |  |
-|  | SEA HAWK | 367011000 | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814790) | not in our AIS |  |
-| **San Juan Outfitters** (Roche Harbor, Friday Harbor) | SEA LION | 338191000 | SAN JUAN CHARTERS | [expired 2024-06-24](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3608610) | [2026-09-30](https://earthatlas.org/ships?v=e2e743b2-0a20-421c-848f-cc9a01f92964) |  |
+|  | SEA LION | 338191000 (licence: 369105000) | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814794) | [2026-09-30](https://earthatlas.org/ships?v=e2e743b2-0a20-421c-848f-cc9a01f92964) | Same hull (USCG no. 1182875) as SAN JUAN CHARTERS' SEA LION; still broadcasts the old MMSI 338191000. Moved here 2026-10-18. |
+|  | SEA HAWK | 367011000 | San Juan Safaris LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814790) | not in our AIS | Licence renewed 2026-03-20; not on the operator's vessels page. Earlier MMSI 338799000 (same hull, USCG no. 294084) also not in our AIS. |
+|  | LARUS | — | No FCC licence found | — | not in our AIS | Named on the [operator's vessels page](https://www.sanjuansafaris.com/vessels) for transfers and charters, not whale watching. |
+| **San Juan Outfitters** (Roche Harbor, Friday Harbor) | — | — | — | — | — | Its M/V Sea Lion is San Juan Safaris' SEA LION (see below). |
 | **Spirit of Orca** (Anacortes, Port Townsend) | SPIRIT OF ORCA 3 | 368495480 | Olympic Tours, LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=5354845) | not in our AIS | Match by boat name only (site operator: Spirit of Orca, LLC). |
 |  | ELIA | 368476250 | Olympic Tours, LLC | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=5309339) | [2026-09-21](https://earthatlas.org/ships?v=b80f784b-d011-48b1-b77f-0fbd336c3f29) | Same licence holder as SPIRIT OF ORCA 3; not named by the operator. |
 | **Western Prince Whale Watching** (Friday Harbor) | WESTERN EXPLORER II | 368026630 | Western Prince Cruises, Inc. | [active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4009202) | [2026-09-30](https://earthatlas.org/ships?v=cdb52cd5-f690-4d66-a25b-bdd68ce93b71) |  |
-|  | WESTERN PRINCE II | 338562000 | Western Prince Cruises Inc. | [expired 2023-10-30](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3526437) | not in our AIS |  |
+|  | WESTERN PRINCE II | 338562000 | Western Prince Cruises Inc. | [expired 2023-10-30](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3526437) | — | Now Deer Harbor Charters' PELAGIC II: same hull (USCG no. 539994). Already on the list under that name. |
 
 **How the US companies were linked:**
-- **FRS Clipper:** the licence holder is Clipper Navigation Inc; EMERALD CLIPPER is named on the association's page. The association also names VICTORIA CLIPPER V, which flies the Bahamas flag and has no FCC licence. Our AIS sees it (MMSI 311001249), [last seen 2026-09-30](https://earthatlas.org/ships?v=8c771246-6c4d-4736-90f0-af3211371d49).
+- **FRS Clipper:** the licence holder is Clipper Navigation Inc; EMERALD CLIPPER is named on the association's page. The association also names VICTORIA CLIPPER V, but it is the Seattle–Victoria passenger ferry, not a whale-watching boat, so it is left off the list.
 - **San Juan Cruises:** [whales.com/about](https://www.whales.com/about) names VICTORIA STAR 2, SALISH EXPRESS and ROSARIO, all licensed to Pacific Cruises Northwest, Inc. A fourth boat it names, SALISH SEA, was not found in the FCC file.
-- **San Juan Outfitters:** its website footer names San Juan Safaris, Inc. ([sanjuanislandoutfitters.com](https://sanjuanislandoutfitters.com)). Its M/V SEA LION was last licensed to SAN JUAN CHARTERS (expired 2024). San Juan Safaris LLC holds an active licence for a different SEA LION (MMSI 369105000), which our AIS has not seen.
+- **San Juan Outfitters / San Juan Safaris:** the Outfitters' website footer names San Juan Safaris, Inc. ([sanjuanislandoutfitters.com](https://sanjuanislandoutfitters.com)). The SEA LION licences of SAN JUAN CHARTERS (expired 2024, MMSI 338191000) and San Juan Safaris LLC (active from 2026-03-20, MMSI 369105000) give the same USCG number, 1182875, so they are one boat. It still broadcasts 338191000 and is listed under San Juan Safaris. SEA HAWK and KITTIWAKE moved from San Juan Charters to San Juan Safaris the same way.
 - **Spirit of Orca:** the operator is Spirit of Orca, LLC and its site names SPIRIT OF ORCA II ([spiritoforca.com](https://spiritoforca.com)). FCC has no licence under that name. SPIRIT OF ORCA 3 is licensed to Olympic Tours, LLC of Port Townsend, so the link is by boat name only. Our AIS also has a SPIRIT OF ORCA (MMSI 338203383), [last seen 2025-07-29](https://earthatlas.org/ships?v=ef011de4-3ad7-44fe-bf30-612dbfa5c143).
-- **Western Prince:** WESTERN PRINCE II's own licence expired in 2023. Our AIS shows that name broadcast by MMSI 368355000, now licensed to Deer Harbor Charters as PELAGIC II.
+- **Western Prince:** WESTERN PRINCE II's own licence expired in 2023. Its USCG number, 539994, is on Deer Harbor Charters' PELAGIC II licence (MMSI 368355000), which has also broadcast the old name. The operator's site now names only WESTERN EXPLORER II.
+- **Maya's Legacy:** the [operator's boats section](https://sanjuanislandwhalewatch.com/whale-watching/) names J1, J2 and T2. T2 has no FCC licence under the company. Our AIS has a US passenger boat T2 (MMSI 338470525) that ends most trips at Snug Harbor Marina, one of Maya's two departure points ([425 Business](https://www.425business.com/news/usa-today-names-mayas-whale-watching-best-in-country/article_5af85d0b-6d50-5e84-adcc-11506bffd487.html)).
 
 ## British Columbia (Transport Canada register)
 
@@ -101,8 +105,78 @@ Not on this list: whale-watch companies outside the association, and boats run b
 - **Prince of Whales:** OCEAN MAGIC is registered to Prince of Whales Holdings Ltd. The four SALISH SEA catamarans (\*) are registered to four different "Salish Sea … Ltd." companies, all at 812 Wharf Street, Victoria, which is Prince of Whales' own address ([princeofwhales.com/contact-us](https://princeofwhales.com/contact-us/)).
 - **Springtide Charters:** MARAUDER IV is registered to Springtide Financial Ltd (Victoria); the small boat is registered to Springtide Charters Ltd.
 - **Sooke Whale Watching:** the small boats are registered to Sooke Coastal Explorations (2013) Ltd. The link to the association's "Sooke Whale Watching" is by town and business only, not confirmed.
-- **GOLD WING:** two MMSIs in our AIS carry this name. The table shows 316007107, active through Sept 2026; 316008468 was last seen 2025-05-03.
+- **GOLD WING:** MMSI 316007107. Another MMSI, 316008468, once broadcast this name but is Eagle Wing's SERENGETI (added 2026-10-18).
 - **EAGLE EYES:** our AIS has it under MMSI 316034894, last seen 2025-06-11 (CAN) and in June 2026 under a record that says US flag.
+
+## Boat-by-boat check (2026-10-18)
+
+Every boat that was on the live list (48), checked against its register (FCC file of 2026-10-18; Transport Canada register) and the company's own website or a public tourism page.
+
+| Company | Boat | Register | Named by | Result | Note |
+|---|---|---|---|---|---|
+| All Aboard Sailing | PENIEL | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4194933) | [allaboardsailing.com](https://www.allaboardsailing.com/) | Confirmed | Full-day sails with whales. |
+| Blue Kingdom Tours | SOUNDER | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4719365) | [Our boat](https://www.bluekingdomtours.com/our-boat/) | Confirmed | Runs the Whale and Wildlife Adventure. |
+| Blue Kingdom Tours | WAKE | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=5076037) | [Our boat](https://www.bluekingdomtours.com/our-boat/) | Confirmed |  |
+| Deception Pass Tours | ISLAND WHALER | FCC active | [Whale watching](https://deceptionpasstours.com/whale-watching/) | Confirmed |  |
+| Deer Harbor Charters | PELAGIC II | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4731922) | [Our boats](https://deerharborcharters.com/pages/our-boats-1) | Confirmed | "Primary boat for whale watching tours." Formerly WESTERN PRINCE II (same USCG no. 539994 on both FCC licences). |
+| Deer Harbor Charters | SQUITO | FCC active | [Our boats](https://deerharborcharters.com/pages/our-boats-1) | Named, mainly other use | The site lists it as the main boat for water taxis, shuttles and sunset cruises. Whale watching is not stated. |
+| FRS Clipper | EMERALD CLIPPER | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=5256389) | [Media release](https://stgwww.clippervacations.com/media-releases/emerald-clipper/) | Confirmed | New 2026 whale-watch boat from Pier 69, replacing SAN JUAN CLIPPER. |
+| FRS Clipper | SAN JUAN CLIPPER | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3698408) | [Media release](https://stgwww.clippervacations.com/media-releases/emerald-clipper/) | **Removed 2026-10-18** | The release calls it the whale-watch boat being replaced. Our AIS shows few trips in 2026. |
+| Island Adventures Whale Watching | ISLAND EXPLORER 5 | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3907929) | [Our vessels](https://www.island-adventures.com/our-vessels) | Confirmed |  |
+| Maya's Legacy Whale Watching | J1 | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4033952) | [Boats](https://sanjuanislandwhalewatch.com/whale-watching/) | Confirmed |  |
+| Maya's Legacy Whale Watching | J2 | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4025980) | [Boats](https://sanjuanislandwhalewatch.com/whale-watching/) | Confirmed |  |
+| Maya's Legacy Whale Watching | T2 | No FCC licence | [Boats](https://sanjuanislandwhalewatch.com/whale-watching/) | Confirmed by name and dock | AIS boat T2 ends most trips at Snug Harbor, a Maya's departure point. |
+| Outer Island Excursions | BLACKFISH | FCC active | [Our fleet](https://www.outerislandx.com/ourfleet) (no plain BLACKFISH) | Registered, not named on site | The fleet page names Blackfish II/III, IV, VI and Express. This boat (USCG no. 1175354) may be one of those under another name. It is busy around the islands in AIS. |
+| Outer Island Excursions | BLACKFISH II | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3366136) | [Our fleet](https://www.outerislandx.com/ourfleet) | Confirmed | "Custom built for whale watching." |
+| Outer Island Excursions | BLACKFISH IV | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3914144) | [Our fleet](https://www.outerislandx.com/ourfleet) | Confirmed |  |
+| Outer Island Excursions | BLACKFISH VI | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4921984) | [Our fleet](https://www.outerislandx.com/ourfleet) | Confirmed |  |
+| Outer Island Excursions | TRITON | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3711920) | [Our fleet](https://www.outerislandx.com/ourfleet) | Confirmed | Whale watching, fishing, island hopping. |
+| Outer Island Excursions | ORCAS EXPRESS | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4551114) | Not on the fleet page | Registered, not named on site | Licence moved from Orcas Island Eclipse Charters in 2022. AIS also has it in Ketchikan, Alaska in 2025. Last seen 2026-07-17. |
+| Puget Sound Express | SARATOGA | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4001968) | [Our vessels](https://www.pugetsoundexpress.com/our-vessels/) | Confirmed | Port Townsend. |
+| Puget Sound Express | RED HEAD | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4839414) | [Our vessels](https://www.pugetsoundexpress.com/our-vessels/) | Confirmed | Port Townsend; hydrophone. |
+| Puget Sound Express | CHILKAT EXPRESS | FCC active | [Our vessels](https://www.pugetsoundexpress.com/our-vessels/) | Confirmed (site + AIS) | The site names it without a tour. AIS: based at Port Townsend and Edmonds, with trips to the San Juans. |
+| Puget Sound Express | SWIFTSURE | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4608996) | [Our vessels](https://www.pugetsoundexpress.com/our-vessels/) | Confirmed | "Built as a whale watching vessel." Edmonds. |
+| Puget Sound Express | GLACIER SPIRIT | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3794583) | [Our vessels](https://www.pugetsoundexpress.com/our-vessels/) | Confirmed | Port Angeles. |
+| San Juan Cruises | SALISH EXPRESS | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4002051) | [About](https://whales.com/about) | Named, use not stated | Named as a "deluxe tour vessel". AIS: Bellingham–Friday Harbor runs. |
+| San Juan Cruises | ROSARIO | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4562458) | [About](https://whales.com/about) | **Removed 2026-10-18** | Named as a "deluxe tour vessel" only. AIS never goes west of San Juan Island; usually ends at La Conner. |
+| San Juan Cruises | VICTORIA STAR 2 | [FCC expired 2026-04-19](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=1488239) | [Lunch cruise](https://whales.com/?p=5) | Confirmed | Whale-watch lunch cruise from Bellingham. Still running in AIS in Oct 2026. |
+| San Juan Excursions | ODYSSEY | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=1554592) | [About our vessel](https://www.watchwhales.com/_about_our_vessel.html) | Confirmed |  |
+| San Juan Safaris | OSPREY | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4451086) | [Vessels](https://www.sanjuansafaris.com/vessels) | Confirmed |  |
+| San Juan Safaris | KESTREL | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814788) | [Adventure tour](https://www.sanjuansafaris.com/whale-watching-tours/adventure-tour-from-friday-harbor) | Confirmed |  |
+| San Juan Safaris | SEA LION | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814794) | [Vessels](https://www.sanjuansafaris.com/vessels) | Confirmed | "Built specifically for wildlife viewing." |
+| Western Prince Whale Watching | WESTERN EXPLORER II | [FCC active](https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4009202) | [Western Explorer](https://orcawhalewatch.com/our-tours/western-explorer/) | Confirmed |  |
+| Eagle Wing Tours | 4 EVER WILD | [TC: Eagle Wing Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/838199) | [Our boats](https://eaglewingtours.com/our-boats/) | Confirmed |  |
+| Eagle Wing Tours | GOLDWING | [TC: Eagle Wing Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/827860) | [Our boats](https://eaglewingtours.com/our-boats/) | Confirmed |  |
+| Eagle Wing Tours | WILD 4 WHALES | [TC: Eagle Wing Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/840774) | [eaglewingtours.com](https://www.eaglewingtours.com) | Confirmed |  |
+| Eagle Wing Tours | WILDCAT 4 | [TC: Eagle Wing Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/845524) | [M.V. Wildcat 4](https://eaglewingtours.com/our-boats/mv-wildcat-4/) | Confirmed |  |
+| Prince of Whales | OCEAN MAGIC | [TC: Prince of Whales Holdings Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/827612) | Not readable (site rate-limited) | Registered, not confirmed on site | AIS: based in Vancouver and Victoria, with trips into Haro Strait in 2026. |
+| Prince of Whales | SALISH SEA DREAM | [TC: Salish Sea Whale Watching Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/840616) | [Vancouver half-day](https://princeofwhales.com/tour/half-day-whale-watching-vancouver/) | Confirmed |  |
+| Prince of Whales | SALISH SEA ECLIPSE | [TC: Salish Sea Expeditions Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/842522) | [Tourism Victoria](https://www.tourismvictoria.com/tours/unique-tours/prince-of-whales-whale-marine-wildlife-adventures) | Confirmed |  |
+| Prince of Whales | SALISH SEA FREEDOM | [TC: Salish Sea Marine Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/843443) | [About us](https://princeofwhales.com/about-us/) | Confirmed |  |
+| Prince of Whales | SALISH SEA GLORY | [TC: Salish Sea Adventures Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/849475) | [Vancouver half-day](https://princeofwhales.com/tour/half-day-whale-watching-vancouver/) | Confirmed (thin) | Registered April 2026; named only on the Vancouver tour page. |
+| Seabreeze Adventures | CRAZY LEGS | [TC: Steveston Seabreeze Adventures Inc](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/828927) | [seabreezeadventures.ca](https://www.seabreezeadventures.ca) | Confirmed |  |
+| Seabreeze Adventures | TRIPLE 8 | [TC: Steveston Seabreeze Adventures Inc](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/825666) | Not on the site | **Removed 2026-10-18** | Not on the website. No AIS trips since 2024. |
+| Seabreeze Adventures | TRIPLE 8 II | [TC: Steveston Seabreeze Adventures Inc](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/825667) | [seabreezeadventures.ca](https://www.seabreezeadventures.ca) | Confirmed |  |
+| Springtide Charters | MARAUDER IV | [TC: Springtide Financial Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/809141) | [Tourism Victoria](https://www.tourismvictoria.com/things-to-do/attractions/springtide-whale-watching-eco-tours) | Confirmed | Daily whale watching April–October. |
+| Vancouver Whale Watch | EXPLORATHOR EXPRESS | [TC: Vancouver Whale Watch Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/818503) | "Two custom-built Explorathor vessels" | Confirmed (register + site) | The site names the Explorathor pair, not each boat. |
+| Vancouver Whale Watch | EXPLORATHOR II | [TC: Vancouver Whale Watch Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/834479) | "Two custom-built Explorathor vessels" | Confirmed (register + site) |  |
+| Wild Whales Vancouver | EAGLE EYES | [TC: Wild Whales Vancouver Eco Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/840739) | [Destination Vancouver](https://destinationvancouver.com/things-to-do/wild-whales-vancouver) | Confirmed |  |
+| Wild Whales Vancouver | JING YU | [TC: Wild Whales Vancouver Eco Tours Ltd](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/839993) | [Destination Vancouver](https://destinationvancouver.com/things-to-do/wild-whales-vancouver) | Confirmed |  |
+
+**Added 2026-10-18** (named by the operator, matched in our AIS, checked in the Transport Canada register):
+
+| Company | Boat | MMSI | Named by | Register | AIS home |
+|---|---|---|---|---|---|
+| Eagle Wing Tours | SERENGETI | 316008468 | [Serengeti tour](https://eaglewingtours.com/tours/serengeti-whale-and-wildlife-tour/) | Not on the named register; Eagle Wing owns one unnamed 11.58 m small boat ([C12122BC](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/C12122BC)), matching Serengeti's 38 ft | Victoria |
+| Seabreeze Adventures | SEABREEZE I | 316034303 | [seabreezeadventures.ca](https://www.seabreezeadventures.ca) | Not on the named register; Seabreeze owns one unnamed 9.30 m small boat ([C26666BC](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/C26666BC)) | Steveston |
+| Orca Spirit Adventures | CATALINA ADVENTURE | 316028008 | [About](https://orcaspirit.com/about/) | [837945](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/837945) Cuda Marine Adventures Inc. | Victoria |
+| Orca Spirit Adventures | ORCA SPIRIT II | 316018618 | [About](https://orcaspirit.com/about/) | [830742](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/830742) Cuda Marine Adventures Inc. | Victoria |
+| Orca Spirit Adventures | PACIFIC EXPLORER I | 316010956 | [About](https://orcaspirit.com/about/) | [345724](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/345724) Cuda Marine Adventures Inc. | Victoria |
+| Orca Spirit Adventures | HAISLA EXPLORER | 316006859 | [About](https://orcaspirit.com/about/) | [805658](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/805658) Cuda Marine Adventures Inc. | Victoria |
+| Orca Spirit Adventures | ORCA MIST | 316029172 | [About](https://orcaspirit.com/about/) | [383975](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/383975) Cuda Marine Adventures Inc. | Victoria |
+
+- **Orca Spirit Adventures:** every boat its site names is registered to Cuda Marine Adventures Inc. (Richmond), so the boats are matched by name on the operator's site. The Orca Spirit boats also end some trips in Burrard Inlet and Howe Sound; the company runs a sister water-transport business, Orca Spirit Marine Transport.
+- **Not added:** ORCA SPIRIT ([818624](https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/818624), same owner, MMSI 316005064) is not named on the operator's site. Outer Island's BLACKFISH III, BLACKFISH EXPRESS and GALIANO and Deer Harbor's SHADOW are on their fleet pages but not matched in AIS. Sidney Whale Watching names no boats.
 
 ## Sources
 

@@ -86,29 +86,6 @@
    "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=5256389"
   },
   {
-   "name": "SAN JUAN CLIPPER",
-   "mmsi": "366902890",
-   "at": "2026-09-15T00:00:00Z",
-   "company": "FRS Clipper",
-   "company_place": "Seattle, WA",
-   "country": "US",
-   "basis": "fcc_licensee",
-   "source_label": "FCC ship radio license (active): Clipper Navigation Inc",
-   "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3698408"
-  },
-  {
-   "name": "VICTORIA CLIPPER V",
-   "mmsi": "311001249",
-   "at": "2026-09-15T00:00:00Z",
-   "company": "FRS Clipper",
-   "company_place": "Seattle, WA",
-   "country": "US",
-   "basis": "operator_website",
-   "source_label": "Pacific Whale Watch Association members page names it for FRS Clipper",
-   "source_url": "https://pacificwhalewatchassociation.com/members",
-   "note": "Bahamas flag; no FCC licence."
-  },
-  {
    "name": "ISLAND EXPLORER 5",
    "mmsi": "369264000",
    "at": "2026-09-15T00:00:00Z",
@@ -140,6 +117,19 @@
    "basis": "fcc_licensee",
    "source_label": "FCC ship radio license (active): Maya's Legacy Whale Watching, LLC",
    "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4025980"
+  },
+  {
+   "name": "T2",
+   "mmsi": "338470525",
+   "vessel_id": "03929a87-1ffc-4ef3-a550-02572c875f33",
+   "at": "2026-09-15T00:00:00Z",
+   "company": "Maya's Legacy Whale Watching",
+   "company_place": "Friday Harbor, WA",
+   "country": "US",
+   "basis": "operator_website",
+   "source_label": "Maya's Legacy Whale Watching website names its boat T2",
+   "source_url": "https://sanjuanislandwhalewatch.com/whale-watching/",
+   "note": "No FCC license found under the company. Matched by name: this AIS boat T2 (US passenger vessel) ends most trips at Snug Harbor Marina, one of Maya's Legacy's two departure points."
   },
   {
    "name": "BLACKFISH",
@@ -275,18 +265,6 @@
    "note": "San Juan Cruises names this boat on whales.com/about."
   },
   {
-   "name": "ROSARIO",
-   "mmsi": "368643000",
-   "at": "2026-09-15T00:00:00Z",
-   "company": "San Juan Cruises",
-   "company_place": "Bellingham, WA",
-   "country": "US",
-   "basis": "fcc_licensee",
-   "source_label": "FCC ship radio license (active): Pacific Cruises Northwest, Inc.",
-   "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=4562458",
-   "note": "San Juan Cruises names this boat on whales.com/about."
-  },
-  {
    "name": "VICTORIA STAR 2",
    "mmsi": "367091440",
    "at": "2026-09-15T00:00:00Z",
@@ -336,13 +314,13 @@
    "name": "SEA LION",
    "mmsi": "338191000",
    "at": "2026-09-15T00:00:00Z",
-   "company": "San Juan Outfitters",
-   "company_place": "Roche Harbor, Friday Harbor, WA",
+   "company": "San Juan Safaris",
+   "company_place": "Friday Harbor, WA",
    "country": "US",
    "basis": "fcc_licensee",
-   "source_label": "FCC ship radio license (expired 2024-06-24): SAN JUAN CHARTERS",
-   "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3608610",
-   "note": "San Juan Outfitters names M/V Sea Lion on the Pacific Whale Watch Association members page."
+   "source_label": "FCC ship radio license (active): San Juan Safaris LLC",
+   "source_url": "https://wireless2.fcc.gov/UlsApp/UlsSearch/license.jsp?licKey=3814794",
+   "note": "Same hull (USCG no. 1182875) as the SEA LION once licensed to San Juan Charters under MMSI 338191000, which the boat still broadcasts; the new license gives MMSI 369105000. San Juan Outfitters also names M/V Sea Lion on the Pacific Whale Watch Association members page."
   },
   {
    "name": "WESTERN EXPLORER II",
@@ -470,17 +448,6 @@
    "source_url": "https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/828927"
   },
   {
-   "name": "TRIPLE 8",
-   "mmsi": "316007866",
-   "company": "Seabreeze Adventures",
-   "company_place": "Steveston, BC",
-   "country": "CA",
-   "basis": "tc_registered_owner",
-   "source_label": "Transport Canada register, official no. 825666: owner STEVESTON SEABREEZE ADVENTURES INC.",
-   "source_url": "https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/825666",
-   "vessel_id": "2da1ec07-014d-4fd4-a7dc-86ba90a87ad4"
-  },
-  {
    "name": "TRIPLE 8-II",
    "mmsi": "316004338",
    "company": "Seabreeze Adventures",
@@ -545,6 +512,97 @@
    "basis": "tc_registered_owner",
    "source_label": "Transport Canada register, official no. 839993: owner WILD WHALES VANCOUVER ECO TOURS LTD.",
    "source_url": "https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/839993"
+  },
+  {
+   "name": "SERENGETI",
+   "mmsi": "316008468",
+   "vessel_id": "86f2c04d-f5cc-4d1e-9a62-dcf988d7c080",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Eagle Wing Tours",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Eagle Wing Tours website: Serengeti Whale and Wildlife Tour aboard M.V. Serengeti",
+   "source_url": "https://eaglewingtours.com/tours/serengeti-whale-and-wildlife-tour/",
+   "note": "Not on the named Transport Canada register. Eagle Wing Tours Ltd. owns one unnamed 11.58 m small boat (C12122BC), matching Serengeti's stated 38 ft. Based at Victoria Inner Harbour in AIS. This MMSI was earlier taken for a second GOLD WING."
+  },
+  {
+   "name": "SEABREEZE I",
+   "mmsi": "316034303",
+   "vessel_id": "26ecea9b-dc43-42c3-8bd8-1d9a0a0515e2",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Seabreeze Adventures",
+   "company_place": "Steveston, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Seabreeze Adventures website names Seabreeze I (12-passenger zodiac)",
+   "source_url": "https://www.seabreezeadventures.ca",
+   "note": "Not on the named Transport Canada register. Steveston Seabreeze Adventures Inc. owns one unnamed 9.30 m small boat (C26666BC). Based at Steveston in AIS."
+  },
+  {
+   "name": "CATALINA ADVENTURE",
+   "mmsi": "316028008",
+   "vessel_id": "80547cde-178f-46f0-a568-a2233377060e",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Orca Spirit Adventures",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Orca Spirit Adventures website names CATALINA ADVENTURE in its fleet",
+   "source_url": "https://orcaspirit.com/about/",
+   "note": "Transport Canada register, official no. 837945 (https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/837945): owner CUDA MARINE ADVENTURES INC., Richmond, the registered owner of all the boats Orca Spirit names. Based at Victoria Inner Harbour in AIS."
+  },
+  {
+   "name": "ORCA SPIRIT II",
+   "mmsi": "316018618",
+   "vessel_id": "ea0478ec-4c78-48b2-9847-55849a872423",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Orca Spirit Adventures",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Orca Spirit Adventures website names ORCA SPIRIT II in its fleet",
+   "source_url": "https://orcaspirit.com/about/",
+   "note": "Transport Canada register, official no. 830742 (https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/830742): owner CUDA MARINE ADVENTURES INC., Richmond, the registered owner of all the boats Orca Spirit names. Based at Victoria Inner Harbour in AIS."
+  },
+  {
+   "name": "PACIFIC EXPLORER I",
+   "mmsi": "316010956",
+   "vessel_id": "24d75b0d-b248-45e1-9084-3f60ec30842d",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Orca Spirit Adventures",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Orca Spirit Adventures website names PACIFIC EXPLORER I in its fleet",
+   "source_url": "https://orcaspirit.com/about/",
+   "note": "Transport Canada register, official no. 345724 (https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/345724): owner CUDA MARINE ADVENTURES INC., Richmond, the registered owner of all the boats Orca Spirit names. Based at Victoria Inner Harbour in AIS."
+  },
+  {
+   "name": "HAISLA EXPLORER",
+   "mmsi": "316006859",
+   "vessel_id": "7d2b6940-d32c-400d-8c0c-6eee214e6b0c",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Orca Spirit Adventures",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Orca Spirit Adventures website names HAISLA EXPLORER in its fleet",
+   "source_url": "https://orcaspirit.com/about/",
+   "note": "Transport Canada register, official no. 805658 (https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/805658): owner CUDA MARINE ADVENTURES INC., Richmond, the registered owner of all the boats Orca Spirit names. Based at Victoria Inner Harbour in AIS."
+  },
+  {
+   "name": "ORCA MIST",
+   "mmsi": "316029172",
+   "vessel_id": "e7aa6436-d1df-4725-945b-9acca9b5cd78",
+   "at": "2026-10-01T00:00:00Z",
+   "company": "Orca Spirit Adventures",
+   "company_place": "Victoria, BC",
+   "country": "CA",
+   "basis": "operator_website",
+   "source_label": "Orca Spirit Adventures website names ORCA MIST in its fleet",
+   "source_url": "https://orcaspirit.com/about/",
+   "note": "Transport Canada register, official no. 383975 (https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/details/383975): owner CUDA MARINE ADVENTURES INC., Richmond, the registered owner of all the boats Orca Spirit names. Based at Victoria Inner Harbour in AIS."
   }
  ]
 }

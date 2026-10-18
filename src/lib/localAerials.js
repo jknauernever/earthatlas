@@ -95,7 +95,9 @@ export const LOCAL_AERIALS = [
   // Metro Vancouver (GVRD) 2018, 7.5 cm, the whole region incl. the Fraser delta. Its licence allows use "in publications,
   // reports, and the like provided that the GVRD is acknowledged as the source" (item info, linked in the credit); added on
   // Josh's decision 2026-10-10. Below the City of Vancouver's photos.
-  { key: 'metrovan', id: 'metrovan-aerials', name: 'Metro Vancouver', year: 2018, years: [2009, 2016, 2018],
+  // inBest false (Josh 2026-10-18): its 2018 photos look worse than Mapbox's Maxar imagery in Vancouver, so the default
+  // photos leave it out; it stays in the Photos menu to pick by hand.
+  { key: 'metrovan', id: 'metrovan-aerials', name: 'Metro Vancouver', year: 2018, years: [2009, 2016, 2018], inBest: false,
     sourceFor: (y) => {
       const [url, bounds] = METRO_VAN_YEARS[y]
       return { type: 'raster', tiles: [imageServer(url)], tileSize: 256, bounds, minzoom: 11, maxzoom: 21,
@@ -155,6 +157,7 @@ function photoSlot(map) {
 const layerIdFor = (a, year) => (year === a.year ? a.id : `${a.id}-${year}`)
 const yearFor = (a, choice) => {
   const y = choice?.[a.key]
+  if (y === undefined && a.inBest === false) return 'off'   // not part of the default photos unless picked
   return y === 'off' ? 'off' : a.years.includes(y) ? y : a.year
 }
 

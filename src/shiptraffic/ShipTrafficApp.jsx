@@ -32,8 +32,8 @@ import WhaleReports from '../components/WhaleReports.jsx'
 import { fetchWhales, whaleCredit, whaleName, whaleSourceLabel, whalePhoto, whaleLinkLabel, WHALE_SOURCES } from '../lib/whales.js'
 import { locationRadiusM, whalesIn, groupSightings, nearPoints, APPROX_M } from '../../lib/whales/precision.js'
 import {
-  OVERLAP_INDEX_URL, FIRST_MONTH, SHIP_COLOR, WHALE_COLOR, OVERLAP_COLOR, OVERLAP_HEATMAP_RAMP, KIND_LABELS,
-  fmtDay, dateSpan, aggregateOverlap, overlapPointsInView, overlapBand,
+  OVERLAP_INDEX_URL, WATER_CELLS_URL, FIRST_MONTH, SHIP_COLOR, WHALE_COLOR, OVERLAP_COLOR, RISK_WHALES, RISK_SHIPS, KIND_LABELS,
+  fmtDay, dateSpan, aggregateOverlap, riskShapesInView,
 } from './shiptrafficData.js'
 import styles from './ShipTrafficApp.module.css'
 
@@ -61,7 +61,9 @@ const WHALE_SRC = 'st-whales'
 const WHALE_LAYER = 'st-whales-pts'
 const WHALE_COUNT_LAYER = 'st-whales-count'
 const OVERLAP_SRC = 'st-overlap'
-const OVERLAP_LAYER = 'st-overlap-heat'
+const OVERLAP_LAYER = 'st-risk-fill'
+const OVERLAP_EDGE_SRC = 'st-risk-edges'
+const OVERLAP_EDGE_LAYER = 'st-risk-edge'
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
 const BASEMAPS = [
@@ -128,7 +130,7 @@ const SOURCES = [
   },
 ]
 const NOTES = [
-  { heading: 'Overlap', body: 'For each ~1 km square: the ships of the picked kinds that crossed it in the picked months (scaled to the busiest square), times the whales seen in it (scaled to the square with the most). Whales, not reports: several people reporting one group (same species, same day, within 2 km and 2 hours) count once, at the largest number anyone gave; every whale HappyWhale identified counts; a report placed only roughly (rounded to 0.1°) counts its whales across the whole ~10 km area it could be in, scored against the busiest such area, and very vague ones (over 10 km) are left out. A co-occurrence measure for exploring, not a ship-strike risk model.' },
+  { heading: 'Risk areas', body: `A ~1 km square is a risk area when, on average per month over the picked months, at least ${RISK_WHALES} whales were seen in it and at least ${RISK_SHIPS} ships of the picked kinds crossed it. Whales, not reports: several people reporting one group (same species, same day, within 2 km and 2 hours) count once, at the largest number anyone gave, in every square within 1 km of where it was reported; every whale HappyWhale identified counts; a report placed only roughly (rounded to 0.1°) counts across the whole ~10 km area it could be in, and very vague ones (over 10 km) are left out. Past these thresholds a ship is likely to meet whales; it is not a measured strike rate.` },
   { heading: 'Close passes', body: 'A ship counts as passing a whale report when it was within 1 km of the report within 3 hours of it (reports with only a date: the same day). Only where ships were actually reported counts: estimated paths never do, and where two reported positions are more than 2 km apart (Global Fishing Watch positions are hourly), only those positions count, not the line between them. Recomputed daily.' },
   { heading: 'Caveats', body: 'Whale reports follow where people look and listen. Ships without AIS, or with it switched off, are not here. NOAA covers US waters; Canadian waters come from Global Fishing Watch and are fuller in recent months.' },
   SITE_RUNS_NOTE,
@@ -233,17 +235,11 @@ export default function ShipTrafficApp() {
     map.on('style.load', () => {
       if (!map.getSource(OVERLAP_SRC)) {
         map.addSource(OVERLAP_SRC, { type: 'geojson', data: EMPTY_FC })
-        map.addLayer({ id: OVERLAP_LAYER, type: 'heatmap', source: OVERLAP_SRC, paint: {
-          // Squares' blurs overlap (~1.2 squares wide), so they add up into one connected surface: intensity drops as
-          // the overlap grows, and the weight curve lifts the middle so a shore strip reads as one patch, not one hot dot.
-          'heatmap-weight': ['interpolate', ['linear'], ['get', 'w'], 0, 0, 0.1, 0.3, 0.3, 0.6, 1, 1],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 6, 1.1, 10, 1.2, 12, 1.5, 18, 1.5],
-          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...OVERLAP_HEATMAP_RAMP],
-          // Past z11 the blur is ~1.2 squares wide and doubles per zoom, so neighboring ~1 km squares merge into one
-          // patch at every zoom (it stopped at 48 px: a polka-dot grid at z13, a small dot at z15).
-          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 6, 14, 9, 30, 11, 64, 12, 128, 13, 256, 18, 8192],
-          'heatmap-opacity': 0.85,
-        } })
+        // Risk areas at their true size: flat fill per ~1 km square, one crisp outline around each connected area.
+        map.addLayer({ id: OVERLAP_LAYER, type: 'fill', source: OVERLAP_SRC, paint: { 'fill-color': '#dc2626', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 0.45], 'fill-antialias': false } })
+        map.addSource(OVERLAP_EDGE_SRC, { type: 'geojson', data: EMPTY_FC })
+        map.addLayer({ id: OVERLAP_EDGE_LAYER, type: 'line', source: OVERLAP_EDGE_SRC, layout: { 'line-cap': 'square' },
+          paint: { 'line-color': OVERLAP_COLOR, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.8, 12, 1.6], 'line-opacity': 0.95 } })
       }
       if (!map.getSource(WHALE_SRC)) {
         map.addSource(WHALE_SRC, { type: 'geojson', data: EMPTY_FC })
@@ -404,15 +400,30 @@ export default function ShipTrafficApp() {
     return () => { dead = true }
   }, [overlapIdx, pickedMonths])
   const overlap = useMemo(() => (grids ? aggregateOverlap(grids, kindsActive) : null), [grids, kindsActive])
+  // Water part of each shoreline square (static, scripts/shiptraffic/water-cells.py), so risk areas never cover land.
+  const [waterCells, setWaterCells] = useState(null)
+  useEffect(() => {
+    if (!visible.overlap || waterCells) return
+    // Dev reads the local copy (public/dev-data, gitignored) first; it's static, so no ?ovl=local needed.
+    const urls = import.meta.env.DEV ? ['/dev-data/shiptraffic/overlap-v1/water-cells.json', WATER_CELLS_URL] : [WATER_CELLS_URL]
+    ;(async () => {
+      for (const u of urls) {
+        const d = await fetch(u).then((r) => (r.ok && /json/.test(r.headers.get('content-type') || '') ? r.json() : null)).catch(() => null)
+        if (d?.part) { setWaterCells(d); return }
+      }
+    })()
+  }, [visible.overlap, waterCells])
   const overlapMonths = grids?.length || 0
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
     overlapRef.current = overlap
     const b = map.getBounds()
-    map.getSource(OVERLAP_SRC)?.setData(overlap ? overlapPointsInView(overlap.cells, { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }) : EMPTY_FC)
-    if (map.getLayer(OVERLAP_LAYER)) map.setLayoutProperty(OVERLAP_LAYER, 'visibility', visible.overlap ? 'visible' : 'none')
-  }, [overlap, visible.overlap, mapReady, mapView])
+    const shapes = overlap ? riskShapesInView(overlap.cells, overlap.cell, { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }, waterCells) : null
+    map.getSource(OVERLAP_SRC)?.setData(shapes ? shapes.fill : EMPTY_FC)
+    map.getSource(OVERLAP_EDGE_SRC)?.setData(shapes ? shapes.edges : EMPTY_FC)
+    for (const id of [OVERLAP_LAYER, OVERLAP_EDGE_LAYER]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible.overlap ? 'visible' : 'none')
+  }, [overlap, visible.overlap, mapReady, mapView, waterCells])
 
   // ─── Clicks: a whale report (with its close passes), else an overlap square ─
   const closePassesFor = useCallback((w) => {
@@ -609,10 +620,10 @@ export default function ShipTrafficApp() {
                 info={<>Every whale, dolphin and porpoise report we know about, each shown once: Whale Alert (with Orca Network and other channels), SalishSea.io, Orcasound, HappyWhale, iNaturalist and OBIS, refreshed hourly. Click a report for its source and the ships that passed within 1 km. The ⌄ list shows every report in view.</>}
               />
 
-              <DatasetRow storageKey="shiptraffic.overlap" name="Overlap" sub={overlapMonths ? `${overlapMonths} month${overlapMonths === 1 ? '' : 's'}` : (overlapIdx ? 'not baked for these months yet' : 'loading…')}
+              <DatasetRow storageKey="shiptraffic.overlap" name="Risk areas" sub={overlapMonths ? `${overlapMonths} month${overlapMonths === 1 ? '' : 's'}` : (overlapIdx ? 'not baked for these months yet' : 'loading…')}
                 hue={OVERLAP_COLOR} icon={<OverlapIcon />} on={visible.overlap} onToggle={() => setVisible((v) => ({ ...v, overlap: !v.overlap }))}
-                legend={<LegendSwatchRow swatch={<span className={styles.overlapRamp} />}>Where ships{kinds.length ? ' of the picked kinds' : ''} and whales meet; brighter = more, relative to this view</LegendSwatchRow>}
-                info={<>For each ~1 km square: ships that crossed it in the picked months (scaled to the busiest square) × whales seen in it (scaled to the square with the most). It counts whales, not reports: one group reported by several people counts once, and whales placed only roughly count for the whole ~10 km area they could be in. Click a square for its numbers. A co-occurrence measure for exploring, not a ship-strike risk model. Recomputed daily.</>}
+                legend={<LegendSwatchRow swatch={<span className={styles.overlapRamp} />}>{RISK_WHALES}+ whales and {RISK_SHIPS}+ ships{kinds.length ? ' of the picked kinds' : ''} a month in the same ~1 km. Ships here are likely to meet whales: slow down or go around.</LegendSwatchRow>}
+                info={<>A ~1 km square is a risk area when, per month on average, at least {RISK_WHALES} whales were seen in it and at least {RISK_SHIPS} ships crossed it. Whales, not reports: one group reported by several people counts once, in every square within 1 km of where it was reported; whales placed only roughly count across the ~10 km area they could be in. Click anywhere on the water for that square's numbers. Recomputed daily.</>}
               />
 
               <SourcesFooter intro="Ship tracks, whale reports and where they overlap in the Salish Sea and beyond. Every value on the map links its own source; this is the full list." sections={SOURCES} notes={NOTES} />
@@ -695,7 +706,6 @@ function groupsCovering(grids, c) {
 const fmtWhales = (n) => (n >= 10 ? Math.round(n).toLocaleString() : n >= 1 ? (Math.round(n * 10) / 10).toString() : n > 0 ? '<1' : '0')
 
 function cellPopupHTML(c, months, groups = []) {
-  const band = overlapBand(c.nI)
   const kinds = Object.entries(c.byKind).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${escapeHtml(KIND_LABELS[k] || k)} ${n.toLocaleString()}`).join(' · ')
   const span = months.length === 1 ? fmtMonth(months[0]) : `${fmtMonth(months[0])} – ${fmtMonth(months[months.length - 1])}`
   // Whale breakdown: exact groups first (they sit in this square), then approximate ones (their whales are spread over
@@ -729,8 +739,10 @@ function cellPopupHTML(c, months, groups = []) {
     (c.a ? `<div class="${styles.popupRow}"><span class="${styles.popupDotW}" style="opacity:.5"></span><span class="${styles.popupK}">Whales seen in this ~10 km area</span><span class="${styles.popupV}">${fmtWhales(c.a)}</span></div>` : '') +
     whaleLines + (more > 0 ? `<div class="${styles.popupMuted}">and ${more} more group${more === 1 ? '' : 's'}</div>` : '') +
     `<div class="${styles.popupSrc}">Whales, not reports: one group seen by several people counts once, in every square within 1 km of where it was reported; whales placed only roughly count for their whole ~10 km area. From the EarthAtlas whale database.</div>` +
-    `<div class="${styles.popupIx} ${styles['popupIx_' + band.tone] || ''}">${escapeHtml(band.label)} · ${Math.round(c.nI * 100)}/100</div>` +
-    `<div class="${styles.popupFormula}">relative ship × whale overlap across the region</div>` +
+    (c.risk
+      ? `<div class="${styles.popupIx} ${styles.popupIx_crit}">Risk area: ships here are likely to meet whales</div>`
+      : `<div class="${styles.popupIx} ${styles.popupIx_none}">Not a risk area</div>`) +
+    `<div class="${styles.popupFormula}">${fmtWhales(c.wMonth)} whales and ${Math.round(c.vMonth).toLocaleString()} ships a month here · risk area = ${RISK_WHALES}+ whales and ${RISK_SHIPS}+ ships a month</div>` +
     `</div>`
   )
 }

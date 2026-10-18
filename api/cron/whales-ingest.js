@@ -6,6 +6,10 @@
  * OBIS is history only and never runs here unless asked (?feeds=obis).
  *
  * ?feeds=a,b   subset of feeds      ?days=N   window length (1–31, default 7)
+ * Also every 10 minutes (vercel.json): ?feeds=maplify,salishsea&days=2, the fast Salish Sea feeds, so /whalewatch's
+ * recent whale reports are minutes old, not up to an hour (Josh 2026-10-18). ~3 s a run.
+ * And daily: ?feeds=happywhale&days=31. HappyWhale photo uploads arrive days to weeks after the trip and its API filters
+ * by encounter date only (no upload date), so the hourly 7-day window missed them (88 in the month to 2026-10-18).
  * ?from=YYYY-MM-DD&to=YYYY-MM-DD    backfill an explicit window (≤ 31 days; mode 'backfill'),
  *                                   driven one month at a time by scripts/whales/backfill.mjs
  * Same contract as the other crons: CRON_SECRET guard; one feed failing never

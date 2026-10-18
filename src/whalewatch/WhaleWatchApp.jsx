@@ -39,6 +39,7 @@ import shipsStyles from '../ships/ShipsApp.module.css'
 import own from './WhaleWatchApp.module.css'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
 import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
+import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, WHALE_COLOR } from './recentWhales.js'
 
 const styles = { ...shipsStyles, ...own }
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -115,7 +116,7 @@ function readUrlState() {
   const sp = new URLSearchParams(window.location.search)
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   const list = (k) => (sp.get(k) || '').split(',').map((s) => s.trim()).filter(Boolean)
-  return { lat: num('lat'), lng: num('lng'), z: num('z'), v: sp.get('v'), add: list('add').filter((s) => /^[0-9a-f-]{36}$/i.test(s)), hp: list('hp'), fl: sp.get('fl'),
+  return { lat: num('lat'), lng: num('lng'), z: num('z'), v: sp.get('v'), add: list('add').filter((s) => /^[0-9a-f-]{36}$/i.test(s)), hp: list('hp'), fl: sp.get('fl'), wh: sp.get('wh'),
     tk: sp.get('tk'), ct: sp.get('ct'), tr: /^\d{9,10}$/.test(sp.get('tr') || '') ? Number(sp.get('tr')) : null,
     t: /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(sp.get('t') || '') ? Date.parse(`${sp.get('t')}:00:00Z`) / 1000 : null }
 }
@@ -156,6 +157,7 @@ export default function WhaleWatchApp() {
   const [fleet, setFleet] = useState(null)          // { name, members: [...] } from api/ships op=fleet
   const [fleetError, setFleetError] = useState(null)
   const [fleetOn, setFleetOn] = useState(initial.fl !== '0')
+  const [whalesOn, setWhalesOn] = useState(initial.wh !== '0')   // recent whale reports (LIVE only; recentWhales.js)
   const [hidden, setHidden] = useState(() => new Set(initial.hp))   // home ports switched off
   const [openCo, setOpenCo] = useState(null)        // home port whose boats are listed
   const [ports, setPorts] = useState(null)          // our ports near the Salish Sea (api/ships op=portsLayer)
@@ -175,6 +177,11 @@ export default function WhaleWatchApp() {
   const [kinds, setKinds] = useState([])
   const fitRef = useRef(false)                      // fit to the picked boat once its tracks are in
   const [liveSnap, setLiveSnap] = useState(null)    // aisstream recorder snapshot (LIVE_URL)
+  const recentWhales = useRecentWhales(whalesOn)
+  const whaleGroupsRef = useRef([])
+  const whalesOnRef = useRef(whalesOn); whalesOnRef.current = whalesOn
+  const tRef = useRef(t); tRef.current = t
+  whaleGroupsRef.current = recentWhales.groups
   const [nowS, setNowS] = useState(() => Math.floor(Date.now() / 1000))
 
   // ─── Map ───
@@ -457,7 +464,9 @@ export default function WhaleWatchApp() {
           const f = e.features[0]
           if (!f) return
           const pr = f.properties   // (GeoJSON properties come back as plain values; null survives as null)
-          hover.setLngLat(f.geometry.coordinates).setHTML(boatTipHTML({ ...pr, moving: pr.moving === 1, exact: pr.exact === 1, live: pr.live === 1, kn: pr.kn == null ? null : Number(pr.kn) })).addTo(map)
+          const [lng, lat] = f.geometry.coordinates
+          const near = pr.live === 1 && whalesOnRef.current && tRef.current == null ? nearestWhaleHTML(whaleGroupsRef.current, lng, lat) : ''
+          hover.setLngLat(f.geometry.coordinates).setHTML(boatTipHTML({ ...pr, moving: pr.moving === 1, exact: pr.exact === 1, live: pr.live === 1, kn: pr.kn == null ? null : Number(pr.kn) }) + near).addTo(map)
         })
         map.on('mouseleave', BOAT, () => { map.getCanvas().style.cursor = ''; hover.remove() })
         map.on('click', BOAT, (e) => { const vid = e.features[0]?.properties.vid; if (vid) { hover.remove(); setSel(vid); setPickerOpen(false) } })
@@ -468,6 +477,12 @@ export default function WhaleWatchApp() {
     ensure()
     return () => { cancelled = true }
   }, [mapReady, styleVersion, boatsNow, features])
+  // Recent whale reports (LIVE only): above the boats so a pod beside a boat stays visible.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    drawRecentWhales(map, recentWhales.groups, !whalesOn || t != null, styles.hoverTip)
+  }, [mapReady, styleVersion, recentWhales, whalesOn, t])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !map.getLayer(PICK)) return
@@ -533,13 +548,14 @@ export default function WhaleWatchApp() {
     if (hidden.size) sp.set('hp', [...hidden].join(','))
     if (t != null) sp.set('t', new Date(t * 1000).toISOString().slice(0, 13))
     if (!fleetOn) sp.set('fl', '0')
+    if (!whalesOn) sp.set('wh', '0')
     if (allTracks) sp.set('tk', '1')
     writePhoto(sp, photos.photo)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel, tripT0, cardTab, added, hidden, fleetOn, allTracks, photos.photo, mapView, mapReady, playing ? null : t])
+  }, [sel, tripT0, cardTab, added, hidden, fleetOn, whalesOn, allTracks, photos.photo, mapView, mapReady, playing ? null : t])
 
   const pickShip = (r) => {
     setPickerOpen(false)
@@ -667,6 +683,23 @@ export default function WhaleWatchApp() {
               Tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre AIS</a> (minute by minute) where
               NOAA has published the month, then <a href="https://globalfishingwatch.org/our-apis/" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a> hourly
               positions. Powered by Global Fishing Watch. {fleet && <>{boatsWithTracks} of {members.length} boats have tracks in these months.</>}
+            </>} />
+
+          <DatasetRow storageKey="whalewatch.whales" name="Whale reports" hue={WHALE_COLOR} on={whalesOn} onToggle={() => setWhalesOn((o) => !o)}
+            sub={t != null ? 'live only (move the slider to LIVE)' : recentWhales.fetchedAt ? `last ${RECENT_HOURS} hours · ${recentWhales.groups.reduce((a, g) => a + g.whales, 0)} whales, ${recentWhales.groups.length} group${recentWhales.groups.length === 1 ? '' : 's'}` : 'loading…'}
+            status={recentWhales.error ? <div className={styles.wwMuted}>Could not load whale reports ({recentWhales.error}).</div> : null}
+            legend={<>
+              <LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: WHALE_COLOR, border: '1.5px solid #fff' }} />}>Whales reported in the last {RECENT_HOURS} hours: size = whales seen, fainter = older. Click for each report and its source.</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Hover a live boat for its nearest whale report</LegendSwatchRow>
+            </>}
+            info={<>
+              Whale, dolphin and porpoise reports with an exact time from the last {RECENT_HOURS} hours, from the EarthAtlas whale database:{' '}
+              <a href="https://www.whalealert.org" target="_blank" rel="noopener noreferrer">Whale Alert</a> (with <a href="https://www.orcanetwork.org" target="_blank" rel="noopener noreferrer">Orca Network</a> and its other channels),{' '}
+              <a href="https://salishsea.io" target="_blank" rel="noopener noreferrer">SalishSea.io</a>, <a href="https://www.orcasound.net" target="_blank" rel="noopener noreferrer">Orcasound</a>,{' '}
+              <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">HappyWhale</a> and <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>.
+              The Salish Sea feeds are re-read every 10 minutes, and most reports reach the map within about half an hour of the sighting.
+              Reports of the same animals (same species, within 2 km and 2 hours) draw as one dot, counted once at the largest number given.
+              {recentWhales.fetchedAt && <> Checked {fmtClock(recentWhales.fetchedAt)}.</>}
             </>} />
 
           {/* The boats, always listed (Josh 2026-10-17: the list was hidden behind the row's ⌄), grouped by home port. */}

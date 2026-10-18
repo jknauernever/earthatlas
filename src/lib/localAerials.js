@@ -16,7 +16,7 @@ export const LOCAL_AERIALS_SHOW_FROM = 11
 const ORIGIN = typeof window !== 'undefined' ? window.location.origin : ''
 export const sjcAerialsSource = {
   type: 'raster',
-  tiles: [`${ORIGIN}/api/aerial-tiles?src=sjc&z={z}&x={x}&y={y}`],
+  tiles: [`${ORIGIN}/api/aerial-tiles?src=sjc&v=2&z={z}&x={x}&y={y}`],   // v=2: solid-fill rule (2026-10-17); a new address, so no speckled tile is served from cache
   tileSize: 256,
   bounds: [-123.25, 48.4, -122.7, 48.81],
   minzoom: SJC_AERIALS_MINZOOM,

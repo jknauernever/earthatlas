@@ -44,7 +44,7 @@ import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
-import { addLocalAerials } from '../lib/localAerials.js'
+import { addLocalAerials, setBaseImagery, localAerialsInView, photoLayers, isPhotoChoice, BASE_IMAGERY, LOCAL_AERIALS, YEAR_NOTES } from '../lib/localAerials.js'
 import { CERULEAN_APP } from '../../lib/ships/cerulean.js'
 import SlickCard, { NEAR_DISTS, NEAR_DEFAULT, NEAR_COLOR, distWords, beforeWords, topShip, rankedSources } from './SlickCard.jsx'
 
@@ -162,6 +162,7 @@ const DARK = {
   sourceName: 'Global Fishing Watch', sourceUrl: 'https://globalfishingwatch.org',
 }
 const gfwTileUrl = (l, from, to) => `${TILES_BASE}/api/gfw-tiles?l=${l}&from=${from}&to=${to}&z={z}&x={x}&y={y}`
+const NOAA_EDGE_SRC = 'noaa-edge', NOAA_EDGE_LINE = 'noaa-edge-line', NOAA_EDGE_LABEL = 'noaa-edge-label'
 // The Salish detail box as a polygon (US-wide lines entirely inside it are left to the detailed tiles).
 const SALISH_BOX = { type: 'Polygon', coordinates: [
   [[trackSource.bbox[0], trackSource.bbox[1]], [trackSource.bbox[0], trackSource.bbox[3]], [trackSource.bbox[2], trackSource.bbox[3]],
@@ -480,8 +481,9 @@ function readUrlState() {
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
     dk: sp.get('dk'), mp: sp.get('mp'), sl: sp.get('sl'), of: sp.get('of'), ofr: sp.get('ofr'), sk: sp.get('sk'), sd: sp.get('sd'), slk: sp.get('slk'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
-    tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'),
+    tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'), ts: sp.get('ts'), // ts = tracks of the ships that called at this terminal
     an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'),
+    ph: sp.get('ph'), // photos on the satellite map: best (default) | mapbox | usgs | s2-2024 | sjc-1932 …
     gh: sp.get('gh'), // DEV-ONLY prototype layer (GFW hourly lines), see GH_COLOR
     lat: num('lat'), lng: num('lng'), z: num('z'),
   }
@@ -538,6 +540,21 @@ export default function ShipsApp() {
   const initial = useMemo(() => readUrlState(), [])
   const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  // Photos on the satellite map (Josh 2026-10-18): ONE choice, and the map shows exactly that (lib/localAerials.js photoLayers).
+  const [photo, setPhoto] = useState(() => (isPhotoChoice(initial.ph) ? initial.ph : 'best'))
+  const { choice: aerialChoice, base: baseImagery } = useMemo(() => photoLayers(photo), [photo])
+  const [imageryTick, setImageryTick] = useState(0)
+  // The imagery line sits just above the map credits, which wrap to more lines as sources come into view.
+  const [creditsH, setCreditsH] = useState(24)
+  useEffect(() => {
+    const el = mapRef.current?.getContainer().querySelector('.mapboxgl-ctrl-bottom-right')
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setCreditsH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mapReady])
+  const imageryRef = useRef({ aerialChoice, baseImagery })
+  imageryRef.current = { aerialChoice, baseImagery }
   const basemapMenuRef = useRef(null)
   const [mapView, setMapView] = useState(initial.lat != null && initial.lng != null && initial.z != null ? { lat: initial.lat, lng: initial.lng, zoom: initial.z } : null)
   const captureShareImage = () => (mapRef.current ? captureMapImage(mapRef.current) : Promise.resolve(null))
@@ -640,7 +657,7 @@ export default function ShipsApp() {
       // Local government aerials (San Juan County, Metro Vancouver, Nanaimo, Vancouver) replace Mapbox satellite inside their
       // areas when zoomed in (Josh 2026-10-10: no sun-glint splotches; docks and piers stay visible), each credited while
       // in view. Satellite basemap only; Mapbox everywhere else.
-      addLocalAerials(map)
+      if (addLocalAerials(map, imageryRef.current.aerialChoice)) setBaseImagery(map, imageryRef.current.baseImagery)
       setMapReady(true)
       setStyleVersion((n) => n + 1)
     })
@@ -655,6 +672,17 @@ export default function ShipsApp() {
     appliedBasemapRef.current = basemap
     map.setStyle(basemapStyleFor(basemap))
   }, [basemap, mapReady])
+  // A new year, a source switched off, or other imagery underneath: re-lay the photos on the current style.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (addLocalAerials(map, aerialChoice)) setBaseImagery(map, baseImagery)
+    setImageryTick((n) => n + 1) // the layers changed after this render: recount what is shown
+  }, [aerialChoice, baseImagery, mapReady, styleVersion])
+  // What the picker offers (local sources in view) and the imagery line on the map: after each move.
+  const aerialsHere = useMemo(() => (mapReady && basemap === 'satellite' ? localAerialsInView(mapRef.current, aerialChoice) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mapView, aerialChoice, basemap, mapReady, styleVersion, imageryTick])
 
   useEffect(() => {
     if (!basemapMenuOpen) return
@@ -726,6 +754,9 @@ export default function ShipsApp() {
   // api op=scrubberMmsis, lib/ships/scrubberFilter.js). Combines with the kinds above (both must hold).
   const [scrubOnly, setScrubOnly] = useState(() => initial.sc === '1')
   const [scrubMmsis, setScrubMmsis] = useState(null) // { vessels, mmsis, vesselOf, by }
+  // "Show these ships' tracks" on a terminal card (Lovel 2026-10-15): only the ships whose calls the card counts, by MMSI.
+  // mmsis stays null until the card has loaded (a shared ?ts= link restores it once the card opens).
+  const [termShips, setTermShips] = useState(() => (initial.ts && initial.ts === initial.tl ? { key: initial.ts, name: null, mmsis: null } : null))
   // The chip's number is a filter preview (Josh 2026-09-30): the scrubber-fitted ships among the track lines on screen now,
   // counted as ships (vesselOf), so switching the filter on leaves exactly that many ships' lines. Loaded with the tracks.
   // In-view counts for every filter chip: { scrub, cls: { class: n }, selected } (ships, not lines), read from the
@@ -738,7 +769,7 @@ export default function ShipsApp() {
     return () => { dead = true }
   }, [scrubOnly, tracksOn, scrubMmsis])
   // Outside the Salish detail area the US tiles carry MMSIs only from z9 (lines merged per kind below that).
-  const zoomedOutForKinds = (trackClasses.length > 0 || scrubOnly) && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
+  const zoomedOutForKinds = (trackClasses.length > 0 || scrubOnly || !!termShips?.mmsis) && (mapView?.zoom ?? 0) < SALISH_Z && !(mapView && (mapView.zoom ?? 0) >= KIND_HANDOVER_Z
     && mapView.lng >= trackSource.bbox[0] && mapView.lng <= trackSource.bbox[2] && mapView.lat >= trackSource.bbox[1] && mapView.lat <= trackSource.bbox[3])
   useEffect(() => {
     fetch('/api/ships?op=classes').then((r) => (r.ok ? r.json() : null)).then((d) => d && setClassTally(d.classes)).catch(() => {})
@@ -838,7 +869,7 @@ export default function ShipsApp() {
     const byScrub = scrubOnly && scrubMmsis
     const scrubIn = byScrub ? ['in', ['get', 'mmsi'], ['literal', scrubMmsis.mmsis.length ? scrubMmsis.mmsis : [-1]]] : null
     // Scrubber-fitted: a line without an MMSI can't be checked, so it is hidden (unlike the kind fallback above).
-    const kindFilter = byScrub
+    const kindFilter0 = byScrub
       ? ['case', ['has', 'mmsi'], ['all', scrubIn, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true], false]
       : byClass
       // Zoomed-out GFW lines carry no MMSI but our class (bake-gfw, cls): filter them by it; one without a known class is
@@ -848,6 +879,10 @@ export default function ShipsApp() {
         ['any', ['==', ['get', 'src'], 'gfw'], ['has', 'cv']], ['in', ['coalesce', ['get', 'cls'], ''], ['literal', trackClasses]],
         groupFilter || true]
       : groupFilter
+    // A terminal's ships: lines without an MMSI can't be checked, so they are hidden (as with Scrubber-fitted).
+    const termIn = termShips?.mmsis ? ['in', ['get', 'mmsi'], ['literal', termShips.mmsis.length ? termShips.mmsis : [-1]]] : null
+    const withTerm = (f) => (termIn ? ['all', ['has', 'mmsi'], termIn, f || true] : f)
+    const kindFilter = withTerm(kindFilter0)
     // From z5 the detailed Salish tiles draw inside the box; US-wide lines lying ENTIRELY inside it are dropped. Lines
     // that cross the box edge still draw whole (a map filter can't cut a line), so they overlap inside the box until
     // the Salish rebake moves the edge out to sea (hiding them left a gap off Cape Flattery, 2026-09-28).
@@ -910,8 +945,9 @@ export default function ShipsApp() {
     }
     // Filter-chip count copies (GHOST_S / GHOST_C above); their filters mirror kindFilter's rules.
     const scrubAny = scrubMmsis ? ['in', ['get', 'mmsi'], ['literal', scrubMmsis.mmsis.length ? scrubMmsis.mmsis : [-1]]] : null
-    const ghostS = scrubAny && ['all', scrubAny, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true]
-    const ghostC = trackKinds.length ? ['all', ['has', 'mmsi'], byScrub ? scrubAny : true] : null
+    const ghostS0 = scrubAny && ['all', scrubAny, byClass ? ['in', ['get', 'mmsi'], ['literal', classMmsis.mmsis.length ? classMmsis.mmsis : [-1]]] : true, groupFilter || true]
+    const ghostC0 = trackKinds.length ? ['all', ['has', 'mmsi'], byScrub ? scrubAny : true] : null
+    const ghostS = ghostS0 && withTerm(ghostS0), ghostC = ghostC0 && withTerm(ghostC0)
     // Source, source-layer and zoom range from the style JSON (map.getLayer() is a runtime object without 'source-layer';
     // reading it there left the copies with none, and Mapbox refused them).
     const styleLayer = Object.fromEntries(map.getStyle().layers.map((l) => [l.id, l]))
@@ -954,7 +990,26 @@ export default function ShipsApp() {
     map.setPaintProperty(OWN_CASING, 'line-opacity', dim ? 0.5 : 0.85)
     // Keep the picked ship above month layers added later, and still under the labels.
     for (const l of [OWN_CASING, OWN_LINE, OWN_HI_CASING, OWN_HI]) if (map.getLayer(l)) map.moveLayer(l, labelsId)
-  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus, slickFocus])
+  }, [mapReady, styleVersion, trackMonths, trackKinds, trackClasses, classMmsis, scrubOnly, scrubMmsis, termShips, tracksOn, identityOn, vesselId, usMonths, gfwMonths, salishMonths, pickedTrack, stopFocus, slickFocus])
+
+  // Where NOAA's minute-by-minute positions stop (Lovel 2026-10-13): the Salish detail box's north and west edges, drawn
+  // with the tracks. Beyond them lines come from hourly positions (Global Fishing Watch); the panel note says so.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (!map.getSource(NOAA_EDGE_SRC)) {
+      const [w, s, e, n] = trackSource.bbox
+      map.addSource(NOAA_EDGE_SRC, { type: 'geojson', data: { type: 'Feature', properties: {},
+        geometry: { type: 'LineString', coordinates: [[w, s], [w, n], [e, n]] } } })
+      map.addLayer({ id: NOAA_EDGE_LINE, type: 'line', source: NOAA_EDGE_SRC, minzoom: 5,
+        paint: { 'line-color': '#e2e8f0', 'line-opacity': 0.7, 'line-width': 1.2, 'line-dasharray': [4, 3] } })
+      map.addLayer({ id: NOAA_EDGE_LABEL, type: 'symbol', source: NOAA_EDGE_SRC, minzoom: 6,
+        layout: { 'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': 'NOAA minute-by-minute positions end here',
+          'text-size': 11, 'text-offset': [0, -0.8], 'text-keep-upright': true, 'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
+        paint: { 'text-color': '#e2e8f0', 'text-halo-color': 'rgba(15,23,42,0.85)', 'text-halo-width': 1.4 } })
+    }
+    for (const l of [NOAA_EDGE_LINE, NOAA_EDGE_LABEL]) map.setLayoutProperty(l, 'visibility', tracksOn && !slickFocus ? 'visible' : 'none')
+  }, [mapReady, styleVersion, tracksOn, slickFocus])
 
   // The picked ship's own tracks, for every MMSI it held: all years in one request per MMSI (the server reads
   // every month; api/ship-tracks op=all), or every selected month.
@@ -2012,17 +2067,19 @@ export default function ShipsApp() {
     else if (trackKinds.join(',') !== DEFAULT_TRACK_KINDS.join(',')) sp.set('tk', trackKinds.join(','))
     if (trackClasses.length) sp.set('tc', trackClasses.join(','))
     if (scrubOnly) sp.set('sc', '1')
+    if (termShips) sp.set('ts', termShips.key)
     if (vesselId) sp.set('v', vesselId)
     if (vesselId && cardTab !== 'overview') sp.set('ct', cardTab)
     if (vesselId && cardFolded) sp.set('cf', '1')
     if (query.trim()) sp.set('q', query.trim())
     if (kinds.length) sp.set('k', kinds.join(','))
     if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (photo !== 'best') sp.set('ph', photo)
     if (mapView) { sp.set('lat', mapView.lat.toFixed(3)); sp.set('lng', mapView.lng.toFixed(3)); sp.set('z', mapView.zoom.toFixed(1)) }
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -2145,6 +2202,8 @@ export default function ShipsApp() {
       {terminalKey && !portId && !vesselId && trackMonths.length > 0 && (
         <div className={styles.portWrap}>
           <TerminalCard terminalKey={terminalKey} months={trackMonths} month={terminalMonth} onMonth={setTerminalMonth}
+            shipsShown={termShips?.key === terminalKey}
+            onShowShips={(sel) => { setTermShips(sel); if (sel) setTracksOn(true) }}
             autoLocate={terminalKey === initial.tl && initial.lat == null}
             folded={terminalFolded} onFold={setTerminalFolded} tab={terminalTab} onTab={setTerminalTab}
             onLocate={(pts) => {
@@ -2218,9 +2277,63 @@ export default function ShipsApp() {
                 {b.id === basemap && <span className={styles.basemapMenuCheck}>✓</span>}
               </button>
             ))}
+            {basemap === 'satellite' && (() => {
+              // One list, one pick: what is picked is what the map shows (Josh 2026-10-18).
+              const item = (id, label, sub) => (
+                <button key={id} type="button" className={photo === id ? styles.basemapMenuItemActive : styles.basemapMenuItem} onClick={() => setPhoto(id)}>
+                  <span className={styles.basemapMenuItemLabel}>{label}{sub && <span className={styles.photoSub}>{sub}</span>}</span>
+                  {photo === id && <span className={styles.basemapMenuCheck}>✓</span>}
+                </button>)
+              const yearChips = (prefix, years) => (
+                <div className={styles.yearChips}>
+                  {years.map((y) => {
+                    const id = `${prefix}-${y}`
+                    return <button key={y} type="button" className={photo === id ? styles.yearChipOn : styles.yearChip} onClick={() => setPhoto(id)}
+                      title={YEAR_NOTES[id] ? `${y}: ${YEAR_NOTES[id]}` : undefined}>{y}{YEAR_NOTES[id] ? '*' : ''}</button>
+                  })}
+                </div>)
+              // Local sources: those in view, plus the picked one wherever the map is.
+              const here = new Set(aerialsHere.map((a) => a.key))
+              const pickedKey = photo.split('-')[0]
+              const locals = LOCAL_AERIALS.filter((a) => here.has(a.key) || (a.key === pickedKey && /^\w+-\d{4}$/.test(photo)))
+              const note = YEAR_NOTES[photo]
+              return <>
+                <div className={styles.basemapMenuTitle}>Photos</div>
+                {item('best', 'Best available', 'newest local photos where we have them, Mapbox elsewhere')}
+                {locals.map((a) => (
+                  <div key={a.key} className={styles.photoGroup}>
+                    <div className={styles.photoGroupName}>{a.name}</div>
+                    {yearChips(a.key, [...a.years].reverse())}
+                  </div>
+                ))}
+                {!locals.length && <div className={styles.basemapHint}>Zoom in on the San Juan Islands, Greater Vancouver or Nanaimo to pick local photos by year.</div>}
+                {note && <div className={styles.basemapHint}>* {photo.split('-')[1]}: {note}</div>}
+                {item('mapbox', 'Mapbox satellite')}
+                {item('usgs', 'USGS aerial photos', 'US only')}
+                <div className={styles.photoGroup}>
+                  <div className={styles.photoGroupName}>Sentinel-2 cloudless</div>
+                  {yearChips('s2', BASE_IMAGERY.filter((b) => b.id.startsWith('s2-')).map((b) => b.year))}
+                </div>
+              </>
+            })()}
           </div>
         )}
       </div>
+
+      {basemap === 'satellite' && mapReady && (() => {
+        // Which photos are on screen, each linked to where they come from (Josh 2026-10-16: the year shows on the map too).
+        const b = BASE_IMAGERY.find((x) => x.id === baseImagery) || BASE_IMAGERY[0]
+        const bHref = b.href || (b.source?.attribution.match(/href="([^"]+)"/) || [])[1]
+        const shown = aerialsHere.filter((a) => a.shown)
+        return (
+          <div className={styles.imageryLine} style={{ bottom: creditsH + 6 }}>
+            Photos:{' '}
+            {shown.map((a, i) => <span key={a.key}>{i > 0 && ', '}<a href={a.href} target="_blank" rel="noopener noreferrer">{a.name} {a.year}</a></span>)}
+            {shown.length > 0 && ' over '}
+            <a href={bHref} target="_blank" rel="noopener noreferrer">{b.id === 'mapbox' ? 'Mapbox satellite (dates vary)' : b.label}</a>
+          </div>
+        )
+      })()}
 
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
@@ -2330,6 +2443,13 @@ export default function ShipsApp() {
                           <>{inView?.selected != null ? `${inView.selected.toLocaleString()} ${inView.selected === 1 ? 'ship' : 'ships'} with tracks in view` : inView?.uncountable ? 'Zoom in to count the ships in view' : '…'}{classesZoomedOut && ' (whole group outside the Salish Sea until you zoom in, for months before 2024)'}.{' '}
                                 <button type="button" className={styles.inlineLink} onClick={() => setTrackClasses([])}>Clear</button></>
                         </div>)}
+                        {termShips && (
+                          <div className={styles.legendNoteText} style={{ marginTop: 8 }}>
+                            Only ships that called at <b>{termShips.name || 'this terminal'}</b> in these months
+                            {termShips.mmsis ? ` (${termShips.mmsis.length.toLocaleString()} ${termShips.mmsis.length === 1 ? 'MMSI' : 'MMSIs'})` : ''}
+                            {zoomedOutForKinds && ' (zoom in outside the Salish Sea)'}.{' '}
+                            <button type="button" className={styles.inlineLink} onClick={() => setTermShips(null)}>Show all ships</button>
+                          </div>)}
                         <div className={styles.chipRow} style={{ marginTop: 8 }}>
                           <button type="button" className={scrubOnly ? styles.chipTrack : styles.chip} onClick={() => setScrubOnly((v) => !v)}
                             title="Only ships with an exhaust scrubber: notified to IMO by their flag (IMO GISIS), or on the MEP Alliance scrubber lists. Combines with the kinds above.">
@@ -2364,7 +2484,9 @@ export default function ShipsApp() {
                       {gfwMonths.length > 0 && <>
                         Salish Sea: NOAA per-minute tracks to {fmtMonth(salishMonths[salishMonths.length - 1])}, then hourly positions
                         (<a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a>) until
-                        NOAA publishes each month. BC and Alaska: hourly positions from Global Fishing Watch
+                        NOAA publishes each month. The white dashed line on the map is where NOAA’s per-minute positions stop
+                        (just north of Howe Sound, and off western Vancouver Island); beyond it, tracks and terminal visits come from
+                        hourly positions only. BC and Alaska: hourly positions from Global Fishing Watch
                         ({fmtMonth(gfwMonths[0])}{gfwMonths.length > 1 ? ` – ${fmtMonth(gfwMonths[gfwMonths.length - 1])}` : ''}); dashed stretches are
                         EarthAtlas’s estimate of the path along the water between two hourly positions.{' '}
                       </>}

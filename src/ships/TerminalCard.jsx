@@ -151,7 +151,8 @@ function CallShip({ s, onSelectVessel, rule }) {
   )
 }
 
-export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, onLocate, folded, onFold, tab: tabProp, onTab, autoLocate = false }) {
+export default function TerminalCard({ terminalKey, months, month, onMonth, onClose, onSelectVessel, onLocate, folded, onFold, tab: tabProp, onTab, autoLocate = false,
+  shipsShown = false, onShowShips }) {
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [slow, setSlow] = useState(false)
@@ -169,6 +170,15 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
     return () => { ctl.abort(); clearTimeout(t) }
   }, [url])
   const winMonths = data?.window?.months || months
+  // The MMSIs behind this card's counted calls: NOAA calls by fitting ships + credited hourly estimates ("Show these ships' tracks").
+  const callMmsis = useMemo(() => (data?.terminal?.key === terminalKey
+    ? [...new Set([...(data.ships || []).map((x) => x.mmsi), ...(data.estimated?.mmsis || [])].filter(Boolean).map(Number))].sort((a, b) => a - b) : null),
+  [data, terminalKey])
+  // While shown, keep the map's filter in step with the card (other months picked, or a shared ?ts= link opening the card).
+  useEffect(() => {
+    if (shipsShown && callMmsis && onShowShips) onShowShips({ key: terminalKey, name: data.terminal.name, mmsis: callMmsis })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipsShown, callMmsis])
   const emShips = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=ships`)
   const emRef = usePortEmissions(terminalKey, winMonths, `/api/ships?op=terminalEmissions&key=${encodeURIComponent(terminalKey)}&part=refinery`)
   const emStays = useTerminalStays(terminalKey, winMonths)
@@ -308,6 +318,15 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
                 <a className={`${styles.sourceLink} ${styles.srcLink}`} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
                   title="Counted by EarthAtlas from MarineCadastre AIS positions (CC0) with the rule under “About this data”; each ship below links the same bake record">MarineCadastre AIS</a>
               </div>}
+              {onShowShips && callMmsis?.length > 0 && (
+                <div className={styles.reportLine}>
+                  {shipsShown
+                    ? <><span>Map shows only these ships’ tracks</span>
+                      <button type="button" className={styles.locateLink} onClick={() => onShowShips(null)}>Show all ships</button></>
+                    : <button type="button" className={styles.locateLink} onClick={() => onShowShips({ key: terminalKey, name: t.name, mmsis: callMmsis })}
+                      title="Narrow the ship tracks to the ships counted here, for the picked months (by the MMSI each ship broadcast)">Show these ships’ tracks on the map</button>}
+                </div>
+              )}
               {scrub?.counted && (
                 <div className={styles.reportLine}>
                   <span>Scrubber-fitted ships: <strong>{plural(scrub.calls, 'call')}</strong>{scrub.calls > 0 && <> by {plural(scrub.ships, 'ship')}</>}, {monthName(scrub.from)} – {monthName(scrub.to)}</span>

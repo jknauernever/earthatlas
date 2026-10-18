@@ -12,8 +12,9 @@ import { kindWords } from './terminalIcons.js'
 import c from './ScrubberReport.module.css'
 
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
+import { inSalishSea } from '../../lib/ships/salishSea.js'
 // Lovel's own words for what the report covers (port-authority docks, private terminals, refinery docks), and what is counted: calls.
-const AREA_WORDS = { WA: 'Washington', BC: 'British Columbia', ALL: 'Washington and British Columbia' }
+const AREA_WORDS = { WA: 'Washington', BC: 'British Columbia', SALISH: 'Salish Sea' }
 const reportTitle = (geo) => `Scrubber-fitted ship calls at ${AREA_WORDS[geo] || AREA_WORDS.WA} ports, terminals and refineries`
 const DEFAULT = { from: SCRUBBER_REPORT.from, to: SCRUBBER_REPORT.to, geo: 'WA' }
 const OWN = [
@@ -63,7 +64,9 @@ const operatorOf = (a) => a.info?.operator?.name || null
 const TYPE_SINGULAR = { ports: 'Port', terminals: 'Terminal', refineries: 'Refinery' }
 const TYPE_COLOR = Object.fromEntries(TYPES.map(([k, , col]) => [k, col]))
 const OWN_LABEL = Object.fromEntries(OWN.map(([k, l]) => [k, l]))
-const GEOS = [['WA', 'Washington'], ['BC', 'British Columbia'], ['ALL', 'All terminals']]
+const GEOS = [['WA', 'Washington'], ['BC', 'British Columbia'], ['SALISH', 'Salish Sea']]
+// Washington and British Columbia terminals inside the Salish Sea (not the Washington coast or the Columbia River).
+const inGeoOf = (geo) => (t) => (geo === 'SALISH' ? inSalishSea(t) : geo === 'BC' ? t.state_code === 'BC' : t.state_code === 'WA')
 const STATE_NAME = { WA: 'Washington', OR: 'Oregon', BC: 'British Columbia' }
 const SRC = {
   noaa: { name: 'NOAA / BOEM MarineCadastre AIS', href: 'https://hub.marinecadastre.gov/pages/vesseltraffic' },
@@ -93,7 +96,7 @@ function readUrl() {
   return {
     from: ok(sp.get('from')) ? sp.get('from') : DEFAULT.from,
     to: ok(sp.get('to')) ? sp.get('to') : DEFAULT.to,
-    geo: GEOS.some(([g]) => g === sp.get('geo')) ? sp.get('geo') : DEFAULT.geo,
+    geo: sp.get('geo') === 'ALL' ? 'SALISH' : GEOS.some(([g]) => g === sp.get('geo')) ? sp.get('geo') : DEFAULT.geo,   // ALL = the old "All terminals"
     open: (sp.get('open') || '').split(',').filter(Boolean),
     m: ok(sp.get('m')) ? sp.get('m') : null,
     op: sp.get('op') || null,
@@ -342,7 +345,7 @@ function focusWords(focus, terms, areaName) {
 }
 /** The focus choices for this area: only what the report has data for. */
 function focusOptions(data, geo) {
-  const inGeo = (t) => geo === 'ALL' || (geo === 'WA' ? t.state_code === 'WA' : t.state_code === 'BC')
+  const inGeo = inGeoOf(geo)
   const estKeys = new Set((data.estimated?.cells || []).map((r) => r.terminal_key))
   const ts = data.terminals.filter(inGeo).filter((t) => t.counted || estKeys.has(t.key) || (t.estimatedOnly && (data.estimated?.allMonths || []).length > 0))
   const uniq = (xs) => [...new Map(xs.map((x) => [x[0], x])).values()].sort((a, b) => a[1].localeCompare(b[1]))
@@ -356,7 +359,7 @@ function focusOptions(data, geo) {
 }
 
 function build(data, geo, focus = null) {
-  const inGeo = (t) => geo === 'ALL' || (geo === 'WA' ? t.state_code === 'WA' : t.state_code === 'BC')
+  const inGeo = inGeoOf(geo)
   const est = data.estimated
   const estKeys = new Set((est?.cells || []).map((r) => r.terminal_key))
   // Only facilities we have numbers for: counted from NOAA's AIS, or estimated from hourly positions.
@@ -576,7 +579,7 @@ function Matrix({ view, months, covered }) {
 const longDay = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 function ReportFacts({ data, geo, ed, edition, areaLine, query = '' }) {
   const { from, to } = data.period
-  const area = areaLine || (geo === 'WA' ? 'Washington State' : geo === 'BC' ? 'British Columbia' : 'Washington State and British Columbia')
+  const area = areaLine || (geo === 'WA' ? 'Washington State' : geo === 'BC' ? 'British Columbia' : 'Salish Sea (Washington State and British Columbia)')
   const url = `earthatlas.org/ships/reports/scrubbers${edition ? `/${edition}` : ''}${query}`
   return (
     <dl className={c.facts}>
@@ -711,7 +714,7 @@ function WorldPorts({ world, geo }) {
   const [all, setAll] = useState(false)
   if (!world) return null
   const cov = world.coverage || {}
-  const who = geo === 'WA' ? 'the scrubber-fitted ships that called in Washington' : geo === 'BC' ? 'the scrubber-fitted ships that called in British Columbia' : 'the scrubber-fitted ships in this report'
+  const who = geo === 'WA' ? 'the scrubber-fitted ships that called in Washington' : geo === 'BC' ? 'the scrubber-fitted ships that called in British Columbia' : 'the scrubber-fitted ships that called in the Salish Sea'
   const maxC = Math.max(1, ...world.countries.map((x) => x.visits))
   const ports = all ? world.ports : world.ports.slice(0, 25)
   return (
@@ -1041,6 +1044,11 @@ function Method({ data, world }) {
           docks), <b>Refineries</b> (refinery docks) and <b>Terminals</b> (every other dock).</dd>
         <dt>Places</dt>
         <dd>County and city or town from the <Src k="census" /> at each terminal's position. "Unincorporated" means outside any city or town.</dd>
+        <dt>Area</dt>
+        <dd><b>Salish Sea</b> means the Washington and British Columbia terminals on Puget Sound, the Strait of Juan de Fuca, the San Juan
+          and Gulf Islands and the Strait of Georgia; Washington’s outer coast (Grays Harbor) and the Columbia River are counted under
+          Washington only. NOAA’s minute-by-minute positions reach just north of Howe Sound; terminals farther north (Squamish, Woodfibre,
+          Texada Island) are counted from hourly positions (≈).</dd>
         <dt>NOAA data</dt>
         <dd>{data.coverage.months.length ? `${monthName(data.coverage.months[0], 'long')} – ${monthName(data.coverage.months.at(-1), 'long')}` : 'None in this period'}.
           NOAA publishes its minute-by-minute positions about three months after the fact.</dd>
@@ -1048,7 +1056,7 @@ function Method({ data, world }) {
           <dt>Estimates (≈)</dt>
           <dd>From hourly ship positions (<Src k="gfw" />), for months NOAA has not published and for terminals beyond the reach of NOAA’s
             receivers (Howe Sound and Texada Island). A stop counts at a terminal only when that terminal is the one nearby that fits the kind of
-            ship; a stop that fits two neighbouring terminals is not counted at either.</dd>
+            ship; a stop that fits two neighboring terminals is not counted at either.</dd>
         </>}
         {world?.coverage?.ships > 0 && <>
           <dt>Port visits</dt>

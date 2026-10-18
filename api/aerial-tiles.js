@@ -2,22 +2,49 @@
  * Local aerial photo tiles that need cleaning before the map can lay them over Mapbox satellite (Josh 2026-10-10).
  *
  *   GET /api/aerial-tiles?src=sjc&z={z}&x={x}&y={y}  → 256 px WebP with transparency
+ *   GET /api/aerial-tiles?src=sjc&yr=2013&z=…           → an earlier year (Josh 2026-10-16: the /ships year picker)
  *
  * San Juan County's 2025 aerials (src/lib/localAerials.js) paint a flat blue-grey (#3f6073) wherever the photos end, and
  * the county server ignores transparent=true, so on /ships its coverage box showed as a big light-blue rectangle over the
  * water. This fetches the county's lossless PNG for the tile, turns that fill colour transparent where it forms solid areas
  * (clearSolidFill: so only the photos remain, with their natural edges, and water of the same colour inside them stays) and caches the result at the CDN for 30 days, so each tile is processed once.
+ * Some earlier years paint near-white (#fdfdfd) instead, or both (1932); white is only cleared where it touches the tile's
+ * edge (flood fill), so white roofs and surf inside the photos stay.
  * Node runtime (sharp).
  */
 import sharp from 'sharp'
 
+// The county's published years (Basemaps/Aerials_<year>); fills sampled 2026-10-16 over Haro Strait for every year.
+const SJC_YEARS = [1932, 1990, 1998, 2004, 2006, 2008, 2013, 2016, 2019, 2022, 2023, 2025]
 const SOURCES = {
   sjc: {
-    url: 'https://gis.sanjuancountywa.gov/arcgis/rest/services/Basemaps/Aerials_2025/MapServer/export',
+    url: (yr) => `https://gis.sanjuancountywa.gov/arcgis/rest/services/Basemaps/Aerials_${yr}/MapServer/export`,
+    years: SJC_YEARS, defaultYear: 2025,
     fill: [63, 96, 115],      // the county mosaic's own background colour (sampled; exact in its PNG output)
     tol: 2,                   // PNG is lossless: the fill is exact, so a near-zero tolerance never eats photo pixels
+    edgeFill: [253, 253, 253], // earlier years' white background: cleared only where connected to the tile edge
     bounds: [-123.25, 48.4, -122.7, 48.81],
   },
+}
+
+/** Flood-fill transparency from the tile's edge through pixels of exactly `rgb` (and through already-cleared pixels). */
+function clearEdgeFill(data, w, h, [r, g, b]) {
+  const is = (p) => data[p * 4 + 3] === 0 || (data[p * 4] === r && data[p * 4 + 1] === g && data[p * 4 + 2] === b)
+  const seen = new Uint8Array(w * h)
+  const stack = []
+  for (let i = 0; i < w; i++) stack.push(i, (h - 1) * w + i)
+  for (let j = 0; j < h; j++) stack.push(j * w, j * w + w - 1)
+  while (stack.length) {
+    const p = stack.pop()
+    if (seen[p] || !is(p)) continue
+    seen[p] = 1
+    data[p * 4 + 3] = 0
+    const px = p % w, py = (p - px) / w
+    if (px > 0) stack.push(p - 1)
+    if (px < w - 1) stack.push(p + 1)
+    if (py > 0) stack.push(p - w)
+    if (py < h - 1) stack.push(p + w)
+  }
 }
 
 /**
@@ -62,21 +89,33 @@ export default async function handler(req, res) {
   const q = new URL(req.url, 'http://x').searchParams
   const src = SOURCES[q.get('src')]
   const [z, x, y] = ['z', 'x', 'y'].map((k) => Number(q.get(k)))
-  if (!src || ![z, x, y].every(Number.isInteger) || z < 0 || z > 22) { res.statusCode = 400; return res.end('bad request') }
+  const yr = q.has('yr') ? Number(q.get('yr')) : src?.defaultYear
+  if (!src || ![z, x, y].every(Number.isInteger) || z < 0 || z > 22 || !src.years.includes(yr)) { res.statusCode = 400; return res.end('bad request') }
   const bbox = tileBbox(z, x, y)
   const params = new URLSearchParams({ bbox: bbox.join(','), bboxSR: '3857', imageSR: '3857', size: '256,256', format: 'png24', transparent: 'false', f: 'image' })
   let png
   try {
-    const r = await fetch(`${src.url}?${params}`)
-    if (!r.ok) throw new Error(`upstream ${r.status}`)
-    png = Buffer.from(await r.arrayBuffer())
+    // The county server renders each tile on request and now and then fails or stalls under a burst of map requests;
+    // the map never asks for a failed tile again (it stays a hole), so try up to 3 times (8 s each) before giving up.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const r = await fetch(`${src.url(yr)}?${params}`, { signal: AbortSignal.timeout(8000) })
+        if (!r.ok) throw new Error(`upstream ${r.status}`)
+        png = Buffer.from(await r.arrayBuffer())
+        break
+      } catch (e) {
+        if (attempt >= 3) throw e
+        await new Promise((ok) => setTimeout(ok, 300 * attempt))
+      }
+    }
   } catch (e) {
-    console.error('[aerial-tiles]', q.get('src'), z, x, y, e?.message)
+    console.error('[aerial-tiles]', q.get('src'), yr, z, x, y, e?.message)
     res.statusCode = 502; res.setHeader('Cache-Control', 'no-store'); return res.end('upstream failed')
   }
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   const [fr, fg, fb] = src.fill
   clearSolidFill(data, info.width, info.height, [fr, fg, fb], src.tol)
+  if (src.edgeFill && yr !== src.defaultYear) clearEdgeFill(data, info.width, info.height, src.edgeFill)
   let kept = 0
   for (let i = 3; i < data.length; i += 4) if (data[i]) kept++
   res.setHeader('Access-Control-Allow-Origin', '*')

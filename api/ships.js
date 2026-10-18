@@ -306,7 +306,7 @@ export default async function handler(req, res) {
       const geo = p.get('geo')
       const states = geo === 'WA' ? ['WA'] : geo === 'BC' ? ['BC'] : null
       const terminals = (p.get('terminals') || '').split(',').filter((k) => /^(wa|bc)-[a-z0-9-]{1,60}$/.test(k)).slice(0, 200)
-      return send(res, 200, await scrubberWorldPorts(q, S, { from, to, states, terminals: terminals.length ? terminals : null }), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+      return send(res, 200, await scrubberWorldPorts(q, S, { from, to, states, salish: geo === 'SALISH', terminals: terminals.length ? terminals : null }), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
     //   /api/ships?op=scrubberTerminal&key=…&from=YYYY-MM&to=YYYY-MM → { counted, calls, ships, from, to, state } (terminal card → report)
     if (op === 'scrubberTerminal') {

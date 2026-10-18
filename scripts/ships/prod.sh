@@ -36,6 +36,7 @@
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
 #   zsh scripts/ships/prod.sh counts             READ ONLY: the /ships changelog's data-card numbers (args pass through, e.g. --limit 2)
+#   zsh scripts/ships/prod.sh port-names B D   back up, then for box B (w,s,e,n): place names, GeoNames marinas, re-match, WPI positions (GeoNames files in D)
 #   zsh scripts/ships/prod.sh fleet              back up, then a fleet's boats (migration 034): --file lib/ships/data/fleets/whalewatch.json, or --add / --remove one boat (scripts/ships/import-fleet.mjs)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
@@ -277,12 +278,23 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     prod_node scripts/ships/changelog-counts.mjs "${@:2}"
     ;;
+  port-names)
+    # Place names, GeoNames marinas and better WPI positions for one area (lib/ships/placeNames.js, Josh 2026-10-18):
+    #   zsh scripts/ships/prod.sh port-names <w,s,e,n> <GeoNames dir with US.txt + CA.txt>
+    need SHIPS_PROD_DATABASE_URL
+    [[ "${2:-}" =~ '^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$' && -f "${3:-}/US.txt" && -f "${3:-}/CA.txt" ]] || { echo "usage: prod.sh port-names <w,s,e,n> <dir with US.txt CA.txt>" >&2; exit 2 }
+    backup port-names
+    for step in places geonames-ports match positions; do
+      echo "== $step"
+      prod_node scripts/ships/import-ports.mjs $step --box "$2" --geonames-dir "$3" $([[ $step == places ]] && echo --cgndb) || exit 1
+    done
+    ;;
   fleet)
     need SHIPS_PROD_DATABASE_URL
     backup fleet
     prod_node scripts/ships/import-fleet.mjs --by prod.sh "${@:2}"
     ;;
   *)
-    sed -n '2,39p' "$0"; exit 2
+    sed -n '2,40p' "$0"; exit 2
     ;;
 esac

@@ -15,6 +15,17 @@ import Chevron from './Chevron.jsx'
 import { Loading, LoadingInline } from '../components/panel'
 import PortEmissions, { usePortEmissions, shortTonnes } from './PortEmissions.jsx'
 
+// Ports named after a nearby place (lib/ships/placeNames.js, 2026-10-18): which list the name came from, and the kind of place.
+const PLACE_NAME_SOURCES = {
+  'geonames-places': { short: 'GeoNames', long: 'GeoNames (geonames.org, CC BY 4.0)' },
+  'nrcan-cgndb': { short: 'CGNDB', long: 'the Canadian Geographical Names Database (Natural Resources Canada, Open Government Licence – Canada)' },
+}
+const PLACE_KIND_WORDS = {
+  'geonames-places': { MAR: 'marina', HBR: 'harbor', ANCH: 'anchorage', PRT: 'port', DCK: 'dock', PIER: 'pier', WHRF: 'wharf', FY: 'ferry terminal',
+    LDNG: 'landing', ISL: 'island', ISLS: 'islands', BAY: 'bay', COVE: 'cove', CHN: 'channel', CAPE: 'point', PT: 'point', PPL: 'town', PPLX: 'neighborhood' },
+  'nrcan-cgndb': { MAR: 'marine feature', BAY: 'bay', CAPE: 'cape', CHAN: 'channel', ISL: 'island', UNP: 'place', CITY: 'city', TOWN: 'town', VILG: 'village', HAM: 'hamlet' },
+}
+
 export const PORT_HUE = '#fb923c'
 const IMPORT_HUE = '#3b82f6' // validated pair on the dark card (dataviz validator, 2026-09-27)
 const EXPORT_HUE = '#d97706'
@@ -240,14 +251,25 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
               title={p.origin === 'wpi' ? `World Port Index port ${p.wpi_number} (NGA Pub 150, public domain) — click for the WPI record`
                 : p.origin === 'climate_trace' ? 'Not in the World Port Index: a port Climate TRACE estimates ship emissions for (no World Port Index or GFW port within 10 km) — click for the Climate TRACE record'
                 : p.origin === 'dfo_sch' ? 'Not in the World Port Index: a Fisheries and Oceans Canada small craft harbour (no World Port Index, GFW or Climate TRACE port within 4 km; Open Government Licence – Canada) — click for the DFO record'
+                : p.origin === 'geonames' ? `Not in the World Port Index: a ${PLACE_KIND_WORDS['geonames-places'][String(p.detail?.code || '').split('.').pop()] || 'harbor'} listed in GeoNames (geonames.org, CC BY 4.0), with no other port of ours within 0.5 km — click for the GeoNames record`
+                : PLACE_NAME_SOURCES[p.name_source_id]
+                  ? `No World Port Index port here: Global Fishing Watch port ${data.labels.map((l) => l.label).join(', ')}, named after the nearest ${p.detail?.place?.code ? `${PLACE_KIND_WORDS[p.name_source_id]?.[p.detail.place.code.split('.').pop()] || 'place'} ` : ''}in ${PLACE_NAME_SOURCES[p.name_source_id].long}${p.detail?.place?.distance_km != null ? `, ${Math.round(p.detail.place.distance_km * 1000)} m away` : ''} — click for the record`
                 : `No World Port Index port here; name from ${p.name_source_id === 'gfw-anchorage-overrides' ? 'Global Fishing Watch’s reviewed anchorage-name list (Apache-2.0)' : 'Global Fishing Watch’s port-visit events'} for GFW port ${data.labels.map((l) => l.label).join(', ')} — click for the record`}>
-              {p.origin === 'wpi' ? 'WPI' : p.origin === 'climate_trace' ? 'Climate TRACE' : p.origin === 'dfo_sch' ? 'DFO' : p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW'}</a>
+              {p.origin === 'wpi' ? 'WPI' : p.origin === 'climate_trace' ? 'Climate TRACE' : p.origin === 'dfo_sch' ? 'DFO' : p.origin === 'geonames' ? 'GeoNames' : PLACE_NAME_SOURCES[p.name_source_id]?.short || (p.name_source_id === 'gfw-anchorage-overrides' ? 'GFW anchorages' : 'GFW')}</a>
           </div>
           {data.official && <OfficialLine o={data.official} />}
+          {p.origin === 'wpi' && p.detail?.position && (() => {
+            // Where the dot is drawn (lib/ships/placeNames.js): the World Port Index gives positions only to the nearest minute.
+            const pos = p.detail.position
+            const dm = (v, h) => `${Math.floor(Math.abs(v))}°${String(Math.round((Math.abs(v) % 1) * 60)).padStart(2, '0')}′${v >= 0 ? h[0] : h[1]}`
+            const what = pos.method === 'gfw_busiest_anchorage' ? <>the busiest anchorage of Global Fishing Watch port {pos.name}</>
+              : <><a className={styles.inlineLink} href={rec(pos.record_id)} target="_blank" rel="noopener noreferrer">{pos.name}</a> in GeoNames (CC BY 4.0)</>
+            return <div className={styles.vesselSub}>Shown at {what}, {Math.round(pos.distance_km * 1000)} m from the World Port Index position ({dm(Number(p.lat), 'NS')} {dm(Number(p.lon), 'EW')}, given to the nearest minute).</div>
+          })()}
           <div className={styles.vesselSub}>
             {p.country_name
               ? <a className={styles.pcPlainLink} href={p.country_record_id ? rec(p.country_record_id) : 'https://www.geonames.org'} target="_blank" rel="noopener noreferrer"
-                  title={`Country code ${p.iso2 || p.iso3} from ${p.origin === 'wpi' ? 'the World Port Index' : p.origin === 'dfo_sch' ? 'Fisheries and Oceans Canada’s harbour list (a Canadian federal list)' : 'Global Fishing Watch'}; English name from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{p.country_name}</a>
+                  title={`Country code ${p.iso2 || p.iso3} from ${p.origin === 'wpi' ? 'the World Port Index' : p.origin === 'dfo_sch' ? 'Fisheries and Oceans Canada’s harbour list (a Canadian federal list)' : p.origin === 'geonames' ? 'GeoNames' : 'Global Fishing Watch'}; English name from GeoNames (CC BY 4.0) — click for the GeoNames row`}>{p.country_name}</a>
               : (p.iso2 || p.iso3)}
             {p.harbor_size && <> · <a className={styles.pcPlainLink} href={rec(p.name_source_record_id)} target="_blank" rel="noopener noreferrer"
               title="World Port Index harbour size (NGA: based on area, facilities and wharf space, not any single factor) and type — click for the WPI record">

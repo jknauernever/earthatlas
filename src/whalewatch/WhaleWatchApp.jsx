@@ -212,7 +212,7 @@ export default function WhaleWatchApp() {
   useEffect(() => {
     fetch(`/api/ships?op=fleet&key=${FLEET_KEY}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`fleet ${r.status}`))))
       .then(setFleet).catch((e) => setFleetError(e.message))
-    fetch('/api/ships?op=portsLayer').then((r) => r.json()).then((d) => setPorts((d.features || []).filter((f) => {
+    fetch('/api/ships?op=portsLayer&v=2026-10-18').then((r) => r.json()).then((d) => setPorts((d.features || []).filter((f) => {
       const [x, y] = f.geometry.coordinates; return f.properties.n && x >= PORT_BOX[0] && x <= PORT_BOX[2] && y >= PORT_BOX[1] && y <= PORT_BOX[3]
     }))).catch(() => setPorts([]))
     Promise.all([

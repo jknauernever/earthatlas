@@ -1767,7 +1767,8 @@ export default function ShipsApp() {
   const [terminalsData, setTerminalsData] = useState(null)
   useEffect(() => {
     if (!portsOn || portsData) return
-    fetch('/api/ships?op=portsLayer').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
+    // v: bumped when port names or positions change, so no day-old cached copy is served.
+    fetch('/api/ships?op=portsLayer&v=2026-10-18').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
   }, [portsOn, portsData])
   useEffect(() => {
     if (!portsOn || terminalsData) return

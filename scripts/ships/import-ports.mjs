@@ -9,6 +9,10 @@
  *                                                  # (Function position 1) + every code WPI references; --all = every row
  *   npm run ships:import-anchorages -- [--fetch]   # GFW pipe-anchorages anchorage_overrides.csv (Apache-2.0)
  *   npm run ships:match-ports                      # GFW port labels in port_visits → our ports; fills port_visits.port_id
+ *                                                  #   --labels a,b  only these GFW port labels
+ *   node … import-ports.mjs places --labels a,b --geonames-dir D [--cgndb]
+ *                                                  # GeoNames (US.txt, CA.txt in D) + CGNDB names near those ports (lib/ships/placeNames.js);
+ *                                                  #   run match afterwards. --cgndb: one CGNDB request per Canadian port point
  * Common: --schema <name> (default "ships"), --file <path>, --resume (skip keys already stored).
  * Order on a fresh database: countries → wpi → locode → anchorages → match. Every step is idempotent.
  *
@@ -33,6 +37,16 @@ const UA = 'EarthAtlas-ships/0.1 (+https://earthatlas.org)'
 const [what, ...args] = process.argv.slice(2)
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const flag = (n) => args.includes(`--${n}`)
+// --box w,s,e,n: the GFW port labels with an anchorage point inside it (places / match), or the WPI ports inside it (positions).
+const boxOpt = () => { const b = (opt('box') || '').split(',').map(Number); return b.length === 4 && b.every(Number.isFinite) ? b : null }
+async function labelsInBox(pool, schema, [w, s, e, n]) {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT x.port_label FROM ${schema}.port_visits pv
+       CROSS JOIN LATERAL (VALUES (pv.start_port_label, pv.start_lat, pv.start_lon), (pv.int_port_label, pv.int_lat, pv.int_lon),
+                                  (pv.end_port_label, pv.end_lat, pv.end_lon)) AS x(port_label, lat, lon)
+      WHERE pv.status = 'active' AND x.port_label IS NOT NULL AND x.lat BETWEEN $2 AND $4 AND x.lon BETWEEN $1 AND $3`, [w, s, e, n])
+  return rows.map((r) => r.port_label)
+}
 const schema = opt('schema') || DEFAULT_SCHEMA
 const CHUNK = 2000
 
@@ -80,17 +94,81 @@ async function skipStored(pool, sourceId, kind, items) {
 const pool = shipsPool()
 let runId = null, stats = {}
 try {
-  if (!['countries', 'wpi', 'locode', 'anchorages', 'match'].includes(what)) throw new Error('usage: import-ports.mjs countries|wpi|locode|anchorages|match [--fetch] …')
+  if (!['countries', 'wpi', 'locode', 'anchorages', 'match', 'places', 'positions', 'geonames-ports'].includes(what)) throw new Error('usage: import-ports.mjs countries|wpi|locode|anchorages|match|places [--fetch] …')
   console.log(`ports ${what} → schema "${schema}" on ${new URL(process.env.SHIPS_DATABASE_URL).host}`)
   await ensurePortSources(pool, schema)
   if (what === 'match') {
     const { rows: [pvs] } = await pool.query(`SELECT count(*)::int AS n FROM ${schema}.sources WHERE id = 'gfw-port-visits'`)
     if (!pvs.n) throw new Error('no port visits stored yet (source gfw-port-visits missing)')
-    const r = await withRetry(() => withTx(pool, (c) => matchPortLabels(c, schema)))
+    const labels = opt('labels') ? opt('labels').split(',').map((x) => x.trim()).filter(Boolean) : boxOpt() ? await labelsInBox(pool, schema, boxOpt()) : null
+    if (labels) console.log(`  ${labels.length} labels`)
+    const r = await withRetry(() => withTx(pool, (c) => matchPortLabels(c, schema, { labels })))
     stats = { labels: r.labels, byMethod: r.byMethod, visitsUpdated: r.visitsUpdated }
     for (const d of r.decisions.sort((a, b) => a.label.localeCompare(b.label))) {
       console.log(`  ${d.label.padEnd(30)} ${d.method.padEnd(24)} ${String(d.name ?? '—').padEnd(28)} ${d.distance_km != null ? `${d.distance_km} km` : ''}${d.candidates.length ? `  candidates: ${d.candidates.map((x) => `${x.name}${x.distance_km != null ? ` ${x.distance_km} km` : ''} (${x.reason ?? x.kind})`).join('; ')}` : ''}${d.notes.length ? `  [${d.notes.join('; ')}]` : ''}`)
     }
+  } else if (what === 'geonames-ports') {
+    // GeoNames marinas / harbors no port of ours covers (lib/ships/placeNames.js importGeonamesPorts): --box w,s,e,n --geonames-dir D
+    const bx = (opt('box') || '').split(',').map(Number)
+    const dir = opt('geonames-dir')
+    if (bx.length !== 4 || bx.some((x) => !Number.isFinite(x)) || !dir) throw new Error('geonames-ports needs --box w,s,e,n and --geonames-dir D')
+    const pn = await import('../../lib/ships/placeNames.js')
+    const { portsLayer } = await import('../../lib/ships/portCard.js')
+    const q = async (t, p) => (await pool.query(t, p)).rows
+    const drawn = (await portsLayer(q, schema)).features.map((f) => ({ id: f.properties.i, name: f.properties.n, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }))
+    const { rows: geo } = await pool.query(`SELECT id FROM ${schema}.ports WHERE origin = 'geonames'`)
+    const geoIds = new Set(geo.map((r) => Number(r.id)))
+    const r = await withTx(pool, async (c) => {
+      await pn.ensurePlaceSources(c, schema)
+      return pn.importGeonamesPorts(c, schema, ['US.txt', 'CA.txt'].map((f) => path.join(dir, f)), bx,
+        drawn.map((d) => ({ ...d, origin: geoIds.has(Number(d.id)) ? 'geonames' : 'other' })))
+    })
+    for (const d of r.decisions) console.log(`  ${d.port_id ? 'added  ' : 'skipped'} ${d.name}${d.skipped ? ` (port "${d.skipped}" ${d.km} km)` : ''}`)
+    stats = { listed: r.listed, added: r.added, skipped: r.skipped }
+  } else if (what === 'positions') {
+    // Better drawing positions for WPI ports (lib/ships/placeNames.js positionWpiPorts): --ids 1725,2895 --geonames-dir D
+    let ids = (opt('ids') || '').split(',').map(Number).filter(Boolean)
+    if (!ids.length && boxOpt()) {
+      const [w, s, e, n] = boxOpt()
+      ids = (await pool.query(`SELECT id FROM ${schema}.ports WHERE origin = 'wpi' AND lat BETWEEN $2 AND $4 AND lon BETWEEN $1 AND $3`, [w, s, e, n])).rows.map((r) => Number(r.id))
+    }
+    const dir = opt('geonames-dir')
+    if (!ids.length || !dir) throw new Error('positions needs --ids a,b or --box w,s,e,n (WPI ports) and --geonames-dir D')
+    const pn = await import('../../lib/ships/placeNames.js')
+    const { rows: pts } = await pool.query(`SELECT lat::float8 AS lat, lon::float8 AS lon FROM ${schema}.ports WHERE origin = 'wpi' AND id = ANY($1::bigint[])`, [ids])
+    const decisions = await withTx(pool, async (c) => {
+      await pn.ensurePlaceSources(c, schema)
+      await pn.ingestGeonamesNear(c, schema, ['US.txt', 'CA.txt'].map((f) => path.join(dir, f)), pts)
+      return pn.positionWpiPorts(c, schema, ids)
+    })
+    for (const d of decisions) console.log(`  ${d.name.padEnd(16)} WPI ${d.wpi.map((x) => x.toFixed(4)).join(',')}  → ${d.position ? `${d.position.lat.toFixed(4)},${d.position.lon.toFixed(4)} ${d.position.method} "${d.position.name}" ${d.position.distance_km} km` : 'WPI position kept'}`)
+    stats = { ports: decisions.length, moved: decisions.filter((d) => d.position).length }
+  } else if (what === 'places') {
+    const labels = boxOpt() && !opt('labels') ? await labelsInBox(pool, schema, boxOpt()) : (opt('labels') || '').split(',').map((x) => x.trim()).filter(Boolean)
+    if (!labels.length) throw new Error('places needs --labels a,b or --box w,s,e,n (the GFW port labels to name)')
+    const dir = opt('geonames-dir')
+    if (!dir) throw new Error('places needs --geonames-dir D (GeoNames US.txt / CA.txt from https://download.geonames.org/export/dump/)')
+    const { rows: pts } = await pool.query(
+      `SELECT x.port_label, avg(x.lat)::float8 AS lat, avg(x.lon)::float8 AS lon, max(x.iso3) AS iso3
+         FROM ${schema}.port_visits pv
+         CROSS JOIN LATERAL (VALUES (pv.start_port_label, pv.start_anchorage_id, pv.start_iso3, pv.start_lat, pv.start_lon),
+                                    (pv.int_port_label, pv.int_anchorage_id, pv.int_iso3, pv.int_lat, pv.int_lon),
+                                    (pv.end_port_label, pv.end_anchorage_id, pv.end_iso3, pv.end_lat, pv.end_lon)) AS x(port_label, anchorage_id, iso3, lat, lon)
+        WHERE pv.status = 'active' AND x.port_label = ANY($1) AND x.lat IS NOT NULL
+        GROUP BY x.port_label, x.anchorage_id`, [labels])
+    console.log(`  ${pts.length} anchorage points for ${new Set(pts.map((p) => p.port_label)).size} of ${labels.length} labels`)
+    const pn = await import('../../lib/ships/placeNames.js')
+    const files = ['US.txt', 'CA.txt'].map((f) => path.join(dir, f))
+    stats = await withTx(pool, async (c) => {
+      await pn.ensurePlaceSources(c, schema)
+      const g = await pn.ingestGeonamesNear(c, schema, files, pts)
+      const ca = pts.filter((p) => p.iso3 === 'CAN')
+      const cg = flag('cgndb') && ca.length
+        ? await pn.ingestCgndbNear(c, schema, ca, { fetchText: async (u) => { const r = await fetch(u, { headers: { 'User-Agent': UA } }); if (!r.ok) throw new Error(`CGNDB ${r.status}`); return r.text() } })
+        : { requests: 0, kept: 0, created: 0 }
+      return { geonames: g, cgndb: cg }
+    })
+    console.log(stats)
   } else {
     const spec = FILES[what]
     const { file, meta } = await download(spec)

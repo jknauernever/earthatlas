@@ -6,7 +6,7 @@ NOAA MarineCadastre's daily points as cached by scripts/ships/bake-ais/fetch_poi
 
 Reads raw/DAY/*.ndjson.gz plus the NEXT day's first file (rows are filed by receive time, so a row stamped 23:59:59
 can land there), keeps rows whose base_date_time falls on DAY, drops duplicate (mmsi, base_date_time), sorts by
-(mmsi, base_date_time) like fetch_points.py, and writes zstd Parquet. Then records the day's coverage
+(mmsi, base_date_time) within each of NB MMSI groups (memory), and writes zstd Parquet. Then records the day's coverage
 (minutes in which messages arrived, from the HH.coverage.json files) in points/index.json.
 
 Run:  python3 compact.py DATA_DIR YYYY-MM-DD
@@ -35,20 +35,30 @@ con = duckdb.connect()
 tmp = os.path.join(data, "tmp"); os.makedirs(tmp, exist_ok=True)
 # temp_directory: the sort / dedupe spill to disk instead of failing as a full day grows (2026-10-18).
 con.execute(f"SET memory_limit='96MB'; SET threads=1; SET preserve_insertion_order=false; SET temp_directory='{tmp}'")
+NB = 8   # ships in MMSI groups: a whole day's dedupe + sort at once ran out of DuckDB's 96 MB on the Fly machine (2026-10-19)
 if files + nfiles:
     src = "[" + ",".join(f"'{f}'" for f in files + nfiles) + "]"
     cols = "{" + ",".join(f"'{k}':'{v}'" for k, v in COLS.items()) + "}"
     # Rows recorded before the multi-source recorder (2026-10-18) carry no source: they are all aisstream.
     sel = ", ".join("coalesce(source, 'aisstream')::VARCHAR AS source" if k == "source" else f"{k}::{v} AS {k}" for k, v in COLS.items())
-    con.execute(f"""
-      COPY (
-        SELECT {sel} FROM (
-          SELECT *, row_number() OVER (PARTITION BY mmsi, base_date_time ORDER BY base_date_time) AS rn
-          FROM read_ndjson({src}, columns={cols}, compression='gzip')
-          WHERE base_date_time >= '{day} 00:00:00' AND base_date_time < '{nxt} 00:00:00'
-        ) WHERE rn = 1
-        ORDER BY mmsi, base_date_time
-      ) TO '{out}.tmp' (FORMAT parquet, COMPRESSION zstd)""")
+    parts = []
+    for bk in range(NB):
+        part = f"{out}.part{bk}"
+        con.execute(f"""
+          COPY (
+            SELECT {sel} FROM (
+              SELECT *, row_number() OVER (PARTITION BY mmsi, base_date_time ORDER BY base_date_time) AS rn
+              FROM read_ndjson({src}, columns={cols}, compression='gzip')
+              WHERE base_date_time >= '{day} 00:00:00' AND base_date_time < '{nxt} 00:00:00' AND mmsi % {NB} = {bk}
+            ) WHERE rn = 1
+            ORDER BY mmsi, base_date_time
+          ) TO '{part}' (FORMAT parquet, COMPRESSION zstd)""")
+        parts.append(part)
+    # Concatenate the groups (no sort: each group is already ordered by ship and time).
+    plist = "[" + ",".join(f"'{q}'" for q in parts) + "]"
+    con.execute(f"COPY (SELECT * FROM read_parquet({plist})) TO '{out}.tmp' (FORMAT parquet, COMPRESSION zstd)")
+    for q in parts:
+        os.remove(q)
 else:
     con.execute(f"COPY (SELECT " + ", ".join(f"NULL::{v} AS {k}" for k, v in COLS.items()) + f" WHERE false) TO '{out}.tmp' (FORMAT parquet, COMPRESSION zstd)")
 os.replace(out + ".tmp", out)

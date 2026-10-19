@@ -234,6 +234,17 @@ function nearPopupHTML({ loading, error, total, ships, tol, months, ids }) {
     `<div class="${s.popupNote}">Tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">MarineCadastre AIS (NOAA / BOEM / USCG)</a>, public domain. ` +
     `Names: EarthAtlas ship records and <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0).</div></div>`
 }
+// What's here: everything of the layers that are on under one click, to pick from (Josh 2026-10-19).
+function herePopupHTML(items) {
+  const s = styles
+  const rows = items.map((it, i) => `<button type="button" class="${s.popupShip}" data-pick="${i}">` +
+    `<span class="${s.popupShipKind}"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:baseline;background:${it.color};border:1px solid rgba(0,0,0,0.25)"></span>${escapeHtml(it.label)}</span>` +
+    `<span class="${s.popupShipMeta}" style="padding-left:15px">${escapeHtml(it.kind)}</span></button>`).join('')
+  return `<div class="${s.popup}"><div class="${s.popupHead}">What’s here</div>` +
+    `<div class="${s.popupTitle}">${items.length} things at this spot</div>` +
+    `<div class="${s.popupMeta}">From the layers that are on. Pick one to see it.</div>` +
+    `<div class="${s.popupList}">${rows}</div></div>`
+}
 function darkPopupHTML({ count, months, period, pct, detail }) {
   const s = styles
   const perMonth = count / Math.max(1, months)
@@ -312,6 +323,49 @@ function mpaPopupHTML(p) {
       `</div>` : '') +
     `<div class="${s.popupNote}">Not for navigation and not a legal boundary: check the Code of Federal Regulations or state code for official rules.</div>` +
     `<div class="${s.popupNote}">Data: <a href="${MPA.sourceUrl}" target="_blank" rel="noopener noreferrer">${MPA.sourceName}</a> (site ${escapeHtml(p.Site_ID || '?')}, data as of ${fmtIsoDay(trackSource.mpa.version)}), public domain.</div>` +
+    `</div>`
+  )
+}
+// ─── Orca critical habitat (NOAA Fisheries; Josh 2026-10-19) ─────────────────
+// Southern Resident killer whale critical habitat under the Endangered Species Act: the 2006 designation (inland
+// Washington) and the 2021 revision (coastal Washington to Point Sur). Baked by scripts/ships/bake-srkw/ into one
+// PMTiles file, served by /api/ship-tracks?r=srkw. Bright green at 35% opacity, on top with the protected areas (Josh 2026-10-19).
+const SRKW_ICON = '<path d="M4 18c3-1 5-3 6-7 .6-2.4.8-4.8 1-7 1.4 3.4 2.6 6.6 3 10 2 .8 4 2.2 6 4"/><path d="M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/>'
+const SRKW = {
+  id: 'srkw', name: 'Orca critical habitat', sub: 'Southern Resident killer whales, NOAA Fisheries', hue: '#39ff14', iconSvg: SRKW_ICON,
+  sourceName: 'NOAA Fisheries West Coast Region', sourceUrl: 'https://www.fisheries.noaa.gov/west-coast/endangered-species-conservation/critical-habitat-southern-resident-killer-whales',
+  dataUrl: 'https://www.arcgis.com/home/item.html?id=fe1e0f42587f437b93e6168929f03593',
+  cfrUrl: 'https://www.ecfr.gov/current/title-50/chapter-II/subchapter-C/part-226/section-226.206',
+}
+// The two rules, as NOAA's data describes them (each polygon's PUBDATE says which one designated it).
+const SRKW_RULES = { 2006: ['71 FR 69054', 'https://www.govinfo.gov/link/fr/71/69054'], 2021: ['86 FR 41668', 'https://www.govinfo.gov/link/fr/86/41668'] }
+const srkwTileUrl = `${TILES_BASE}/api/ship-tracks?r=srkw&v=${trackSource.srkw.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
+const SRKW_LAYERS = ['srkw-fill', 'srkw-line']
+// Critical habitat, then protected areas, on top of every other layer (Josh 2026-10-19), in this order.
+const TOP_LAYERS = [...SRKW_LAYERS, 'mpa-fill', 'mpa-line']
+function raiseTopLayers(map) {
+  const ids = (map.getStyle()?.layers || []).map((l) => l.id)
+  const want = TOP_LAYERS.filter((id) => ids.includes(id))
+  if (want.every((id, i) => ids[ids.length - want.length + i] === id)) return
+  for (const id of want) map.moveLayer(id)
+}
+function srkwPopupHTML(p) {
+  const s = styles
+  const row = (k, v) => (v == null || v === '' ? '' : `<div class="${s.popupRow}"><span class="${s.popupK}">${k}</span><span class="${s.popupV}">${escapeHtml(v)}</span></div>`)
+  const year = String(p.PUBDATE || '').slice(-4)
+  const rule = SRKW_RULES[year]
+  const day = (d) => { const [m, dd, y] = String(d || '').split('/'); return y ? new Date(Date.UTC(+y, +m - 1, +dd)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : null }
+  return (
+    `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}">Critical habitat (Endangered Species Act)</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(p.UNIT || 'Critical habitat area')}</div>` +
+    `<div class="${s.popupMeta}">Southern Resident killer whales · ${escapeHtml(p.LISTSTATUS || '')}${p.CHSTATUS ? ` · ${escapeHtml(p.CHSTATUS.toLowerCase())} designation` : ''}</div>` +
+    (rule || p.PUBDATE ? `<div class="${s.popupRow}"><span class="${s.popupK}">Designated</span><span class="${s.popupV}">${escapeHtml(day(p.PUBDATE) || '')}${rule ? `, <a href="${rule[1]}" target="_blank" rel="noopener noreferrer">${rule[0]}</a>` : ''}</span></div>` : '') +
+    row('In effect', day(p.EFFECTDATE)) +
+    row('Area', p.AREASqKm != null ? `${fmtN(Math.round(p.AREASqKm))} km²` : null) +
+    row('Depths', p.NOTES) +
+    `<div class="${s.popupMeta}"><a href="${SRKW.sourceUrl}" target="_blank" rel="noopener noreferrer">About this critical habitat</a> · <a href="${SRKW.cfrUrl}" target="_blank" rel="noopener noreferrer">Legal description (50 CFR 226.206)</a></div>` +
+    `<div class="${s.popupNote}">Data: <a href="${SRKW.dataUrl}" target="_blank" rel="noopener noreferrer">${SRKW.sourceName}</a> (record ${escapeHtml(String(p.ID ?? '?'))}, data as of ${fmtIsoDay(trackSource.srkw.version)}), US government work.</div>` +
     `</div>`
   )
 }
@@ -394,7 +448,7 @@ function offshorePopupHTML(p) {
 // from further out. GFW-only ports (no WPI entry) are hollow rings. Click → the port card (PortCard.jsx).
 const PORT_ICON = '<path d="M12 4v16"/><circle cx="12" cy="5" r="2"/><path d="M5 12H3a9 9 0 0 0 18 0h-2"/><path d="M8 9h8"/>'
 const PORTS = {
-  id: 'ports', name: 'Ports & terminals', sub: 'harbours, anchorages, refineries and their ships', hue: PORT_HUE, iconSvg: PORT_ICON,
+  id: 'ports', name: 'Ports & terminals', sub: 'harbors, anchorages, refineries and their ships', hue: PORT_HUE, iconSvg: PORT_ICON,
   sourceName: 'World Port Index (NGA Pub 150)', sourceUrl: 'https://msi.nga.mil/Publications/WPI',
 }
 // [WPI size, min zoom, radius px]. 'X' = ports outside the World Port Index (GFW clusters, GeoNames marinas, DFO harbours,
@@ -497,7 +551,7 @@ function readUrlState() {
   const num = (k) => { const v = sp.get(k); const n = v == null || v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : null }
   return {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
-    dk: sp.get('dk'), mp: sp.get('mp'), sl: sp.get('sl'), of: sp.get('of'), ofr: sp.get('ofr'), sk: sp.get('sk'), sd: sp.get('sd'), slk: sp.get('slk'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
+    dk: sp.get('dk'), mp: sp.get('mp'), ch: sp.get('ch'), sl: sp.get('sl'), of: sp.get('of'), ofr: sp.get('ofr'), sk: sp.get('sk'), sd: sp.get('sd'), slk: sp.get('slk'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'), ts: sp.get('ts'), // ts = tracks of the ships that called at this terminal
     an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'),
     ph: sp.get('ph'), // photos on the satellite map: best (default) | mapbox | usgs | s2-2024 | sjc-1932 …
@@ -571,6 +625,7 @@ export default function ShipsApp() {
   const [tracksOn, setTracksOn] = useState(initial.tr != null ? initial.tr !== '0' : !LIVE_MODE)   // the live view opens without past tracks
   const [darkOn, setDarkOn] = useState(initial.dk === '1') // default off (Josh, 2026-09-27); dk=1 on, dk=0 off
   const [mpaOn, setMpaOn] = useState(initial.mp === '1')
+  const [srkwOn, setSrkwOn] = useState(initial.ch === '1')
   const [slicksOn, setSlicksOn] = useState(initial.sl === '1')
   const [offshoreOn, setOffshoreOn] = useState(initial.of === '1')
   const [offRemoved, setOffRemoved] = useState(initial.ofr === '1') // removed / decommissioned facilities (5.8k in the Gulf alone) are off by default
@@ -590,6 +645,53 @@ export default function ShipsApp() {
   const fossilCanvasRef = useRef(null)
   // A click on a drawn facility is the facility's; the other click handlers step aside.
   const facilityAt = (pt) => (fossilRef.current?.visible ? fossilRef.current.nearest(pt.x, pt.y, 14) : null)
+  // What's here (Josh 2026-10-19): every clickable layer that is on registers a picker, (click) → the things of it under
+  // the click, [{ label, kind, color, layer, ship?, open }]. One click handler (below) asks them all: one thing opens
+  // straight away, two or more give a list to pick from. Only layers that are on register, so only they are listed.
+  const pickersRef = useRef(new Map())
+  const registerPicker = useCallback((key, fn) => {
+    pickersRef.current.set(key, fn)
+    return () => { if (pickersRef.current.get(key) === fn) pickersRef.current.delete(key) }
+  }, [])
+  const herePopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const onClick = (e) => {
+      let items = []
+      for (const fn of pickersRef.current.values()) { try { items.push(...(fn(e) || [])) } catch { /* one layer's hit test failing never blocks the rest */ } }
+      // In the order the map draws them, topmost first (Josh 2026-10-19). layer null = the oil & gas canvas, drawn over the
+      // map. Within one layer, the picker's own order. The same ship as a live arrow and as a track: listed once, the upper.
+      const order = new Map((map.getStyle()?.layers || []).map((l, i) => [l.id, i]))
+      const z = (it) => (it.layer == null ? Infinity : order.get(it.layer) ?? -1)
+      items = items.map((it, i) => ({ it, i })).sort((a, b) => z(b.it) - z(a.it) || a.i - b.i).map((x) => x.it)
+      const ships = new Set()
+      items = items.filter((it) => { if (it.ship == null) return true; if (ships.has(it.ship)) return false; ships.add(it.ship); return true })
+      herePopupRef.current?.remove()
+      if (!items.length) return
+      if (items.length === 1) { items[0].open(); return }
+      const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(herePopupHTML(items)).addTo(map))
+      herePopupRef.current = popup
+      const wire = () => popup.getElement()?.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+        popup.remove(); items[Number(b.dataset.pick)].open()
+      }))
+      wire()
+      // Ship tracks named only by MMSI: our records' names (and Global Fishing Watch's), as the ships-near list does.
+      const ask = items.filter((it) => it.lookup)
+      if (!ask.length) return
+      fetch(`/api/ships?op=lookup&items=${ask.map((it) => it.lookup).join(',')}`).then((r) => (r.ok ? r.json() : null)).then((d) => {
+        if (!d?.ships || herePopupRef.current !== popup) return
+        const byMmsi = Object.fromEntries(d.ships.map((x) => [String(x.mmsi), x]))
+        for (const it of ask) {
+          const x = byMmsi[String(it.ship)]
+          if (x && (x.status === 'db' || x.status === 'gfw') && x.name) it.label = titleCase(x.name)
+        }
+        popup.setHTML(herePopupHTML(items)); wire()
+      }).catch(() => {})
+    }
+    map.on('click', onClick)
+    return () => { map.off('click', onClick); herePopupRef.current?.remove() }
+  }, [mapReady])
   // A picked ship's own tracks: every year we have (default, Josh 2026-09-27) or just the selected months.
   const [ownAllYears, setOwnAllYears] = useState(initial.oy !== 'm')
   const [ownLoading, setOwnLoading] = useState(false)
@@ -1242,13 +1344,23 @@ export default function ShipsApp() {
       } catch { setTrackNote('Could not look up this track’s ship.') }
     }
     openShipRef.current = openShip
-    const onClick = async (e) => {
-      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
-      if (portHit(map, e.point).length) return // a port marker on a lane opens the port, not the lane
+    // One row per ship under the click; zoomed out (merged lines, no MMSI), one row that lists the ships that passed.
+    const pick = (e) => {
       const hits = hit(e.point)
-      if (!hits.length) return
-      const f = hits.find((h) => h.properties.mmsi != null)
-      if (f) { nearPopupRef.current?.remove(); return openShip(f.properties.mmsi, f.properties.t0, f.properties.month, f.properties) }
+      if (!hits.length) return []
+      const seen = new Set(), items = []
+      for (const h of hits) {
+        const q = h.properties, m = q.mmsi
+        if (m == null || seen.has(String(m))) continue
+        seen.add(String(m))
+        items.push({ layer: h.layer.id, ship: Number(m), label: q.name ? titleCase(String(q.name)) : `MMSI ${m}`, kind: `Ship track${q.month ? `, ${fmtMonth(q.month)}` : ''}`,
+          color: TRACKS.hue, lookup: q.t0 && q.month ? `${m}:${q.month}:${q.t0}` : null,
+          open: () => { nearPopupRef.current?.remove(); openShip(m, q.t0, q.month, q) } })
+      }
+      if (!items.length) items.push({ layer: hits[0].layer.id, label: 'Ships that passed here', kind: 'Ship tracks', color: TRACKS.hue, open: () => nearList(e) })
+      return items
+    }
+    const nearList = async (e) => {
       // Zoomed out: ~6 px around the click, in metres (512 px tiles).
       const mpp = (40075016.686 * Math.cos((e.lngLat.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom())
       const tol = Math.round(Math.min(25000, Math.max(200, 6 * mpp)))
@@ -1284,8 +1396,8 @@ export default function ShipsApp() {
       } catch { /* names are a bonus; the list still works by MMSI */ }
     }
     map.on('mousemove', onMove)
-    map.on('click', onClick)
-    return () => { map.off('mousemove', onMove); map.off('click', onClick); nearPopupRef.current?.remove() }
+    const unpick = registerPicker('tracks', pick)
+    return () => { map.off('mousemove', onMove); unpick(); nearPopupRef.current?.remove() }
   }, [mapReady, trackMonths, gfwMonths, aisMonths])
 
   // ─── Dark-vessel cell popup: regional context for one grid cell ───────────
@@ -1295,13 +1407,11 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !darkOn || !gfwRange) return
-    const trackLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk')).map((l) => l.id)
-    const onClick = async (e) => {
-      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
-      if (!map.getLayer('gfw-dark-fill') || portHit(map, e.point).length) return
-      if (map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: trackLayers() }).length) return
-      const f = map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] })[0]
-      if (!f) return
+    const pick = (e) => {
+      const f = map.getLayer('gfw-dark-fill') && map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] })[0]
+      return f ? [{ layer: 'gfw-dark-fill', label: `${fmtN(f.properties.count)} radar detection${f.properties.count === 1 ? '' : 's'} with no AIS`, kind: 'Dark vessels', color: DARK.hue, open: () => openCell(e, f) }] : []
+    }
+    const openCell = async (e, f) => {
       const [z, x, y, cell] = String(f.properties.id).split('/').map(Number)
       const count = f.properties.count
       // Rank among the dark cells currently drawn (real counts, same period).
@@ -1326,9 +1436,9 @@ export default function ShipsApp() {
       if (!map.getLayer('gfw-dark-fill') || map.getCanvas().style.cursor === 'pointer') return
       if (map.queryRenderedFeatures(e.point, { layers: ['gfw-dark-fill'] }).length) map.getCanvas().style.cursor = 'pointer'
     }
-    map.on('click', onClick)
+    const unpick = registerPicker('dark', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); darkPopupRef.current?.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); darkPopupRef.current?.remove() }
   }, [mapReady, darkOn, gfwRange, trackMonths])
 
   // ─── Oil & gas facilities: /inmotion's Climate TRACE overlay, fossil-fuel operations only ───
@@ -1354,10 +1464,11 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    const onClick = (e) => {
-      if (portHit(map, e.point).length) return // a port marker wins
+    const pick = (e) => {
       const ev = facilityAt(e.point)
-      if (!ev) return
+      return ev ? [{ layer: null, label: ev.name || 'Oil & gas site', kind: 'Oil & gas facility (Climate TRACE)', color: FOSSIL.hue, open: () => openFacility(e, ev) }] : []
+    }
+    const openFacility = (e, ev) => {
       fossilPopupRef.current?.remove()
       const bodyId = `ships-trace-${ev.id}-${Date.now()}`
       const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 10, maxWidth: 'min(460px, calc(100vw - 24px))', focusAfterOpen: false })
@@ -1374,16 +1485,16 @@ export default function ShipsApp() {
       }).catch(() => { const el = document.getElementById(bodyId); if (el) el.innerHTML = '' })
     }
     const onMove = (e) => { if (facilityAt(e.point)) map.getCanvas().style.cursor = 'pointer' }
-    map.on('click', onClick)
+    const unpick = registerPicker('fossil', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); fossilPopupRef.current?.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); fossilPopupRef.current?.remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady])
 
   // ─── Marine protected areas ────────────────────────────────────────────────────
-  // Fill under everything (dark cells, tracks); outline over the track lines so a boundary still
-  // reads through busy lanes, but under the picked ship's cyan tracks and the labels. Tracks are
-  // (re)added under the labels whenever the months change, so the outline is re-seated after them.
+  // Protected areas on top of every other layer (Josh 2026-10-19), fill then outline. Other layers are added later and at
+  // different times (tracks when the months change, ports, terminals, live ships…), so they are moved back to the top
+  // whenever the style changes and they are no longer last.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
@@ -1402,9 +1513,11 @@ export default function ShipsApp() {
       map.addLayer({ id: 'mpa-line', type: 'line', source: 'mpa', 'source-layer': trackSource.mpa.sourceLayer, layout: { 'line-join': 'round' },
         paint: { 'line-color': MPA_FILL_COLOR, 'line-opacity': MPA_LINE_OPACITY, 'line-width': MPA_LINE_WIDTH } }, below)
     }
-    const top = map.getLayer(OWN_CASING) ? OWN_CASING : layers.find((l) => l.type === 'symbol')?.id
-    if (top) map.moveLayer('mpa-line', top)
+    const toTop = () => raiseTopLayers(map)
+    toTop()
     for (const id of ['mpa-fill', 'mpa-line']) map.setLayoutProperty(id, 'visibility', mpaOn ? 'visible' : 'none')
+    map.on('styledata', toTop)
+    return () => { map.off('styledata', toTop) }
   }, [mapReady, styleVersion, mpaOn, trackMonths])
 
   // Click inside a protected area → its rules. Tracks and dark-vessel cells take the click first.
@@ -1412,28 +1525,71 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !mpaOn) return
-    const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
-    const onClick = (e) => {
-      if (facilityAt(e.point) || slickAt(e.point)) return // a facility or an oil slick under the click has its own popup
-      if (!map.getLayer('mpa-fill') || portHit(map, e.point).length) return
-      if (map.getLayer(ANCHORAGE_FILL) && map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] }).length) return // the anchorage's popup
-      const others = otherLayers()
-      if (others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
-      const hits = map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] })
-      if (!hits.length) return
-      // Overlapping sites (a reserve inside a sanctuary): show the smallest, the most specific one.
-      const f = hits.reduce((a, b) => ((b.properties.AreaKm ?? Infinity) < (a.properties.AreaKm ?? Infinity) ? b : a))
-      mpaPopupRef.current?.remove()
-      mpaPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(mpaPopupHTML(f.properties)).addTo(map))
+    // Each site under the click (a reserve inside a sanctuary: both), smallest (most specific) first.
+    const pick = (e) => {
+      if (!map.getLayer('mpa-fill')) return []
+      const seen = new Set()
+      return map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] })
+        .filter((f) => { const k = f.properties.Site_ID || f.properties.Site_Name; if (seen.has(k)) return false; seen.add(k); return true })
+        .sort((a, b) => (a.properties.AreaKm ?? Infinity) - (b.properties.AreaKm ?? Infinity))
+        .map((f) => ({ layer: f.layer.id, label: f.properties.Site_Name || 'Protected area', kind: 'Protected area', color: MPA.hue, open: () => {
+          mpaPopupRef.current?.remove()
+          mpaPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(mpaPopupHTML(f.properties)).addTo(map))
+        } }))
     }
     const onMove = (e) => {
       if (!map.getLayer('mpa-fill') || map.getCanvas().style.cursor === 'pointer') return
       if (map.queryRenderedFeatures(e.point, { layers: ['mpa-fill'] }).length) map.getCanvas().style.cursor = 'pointer'
     }
-    map.on('click', onClick)
+    const unpick = registerPicker('mpa', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); mpaPopupRef.current?.remove() }
   }, [mapReady, mpaOn])
+
+  // Orca critical habitat: added on first use, kept on top with the protected areas (raiseTopLayers).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (!map.style?._loaded) {
+      const t = setTimeout(() => setStyleVersion((n) => n + 1), 200)
+      return () => clearTimeout(t)
+    }
+    if (!srkwOn && !map.getSource('srkw')) return
+    if (!map.getSource('srkw')) {
+      map.addSource('srkw', { type: 'vector', tiles: [srkwTileUrl], minzoom: 0, maxzoom: trackSource.srkw.maxzoom,
+        attribution: `<a href="${SRKW.dataUrl}" target="_blank" rel="noopener">NOAA Fisheries critical habitat</a>` })
+      map.addLayer({ id: 'srkw-fill', type: 'fill', source: 'srkw', 'source-layer': trackSource.srkw.sourceLayer,
+        paint: { 'fill-color': SRKW.hue, 'fill-opacity': 0.35 } })
+      map.addLayer({ id: 'srkw-line', type: 'line', source: 'srkw', 'source-layer': trackSource.srkw.sourceLayer, layout: { 'line-join': 'round' },
+        paint: { 'line-color': SRKW.hue, 'line-opacity': 1, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.3, 12, 1.8] } })
+    }
+    const toTop = () => raiseTopLayers(map)
+    toTop()
+    for (const id of SRKW_LAYERS) map.setLayoutProperty(id, 'visibility', srkwOn ? 'visible' : 'none')
+    map.on('styledata', toTop)
+    return () => { map.off('styledata', toTop) }
+  }, [mapReady, styleVersion, srkwOn, trackMonths])
+
+  // Click inside the critical habitat → its unit (listed with everything else under the click: What's here).
+  const srkwPopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !srkwOn) return
+    const pick = (e) => {
+      const f = map.getLayer('srkw-fill') && map.queryRenderedFeatures(e.point, { layers: ['srkw-fill'] })[0]
+      return f ? [{ layer: f.layer.id, label: f.properties.UNIT || 'Critical habitat', kind: 'Orca critical habitat', color: SRKW.hue, open: () => {
+        srkwPopupRef.current?.remove()
+        srkwPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(srkwPopupHTML(f.properties)).addTo(map))
+      } }] : []
+    }
+    const onMove = (e) => {
+      if (!map.getLayer('srkw-fill') || map.getCanvas().style.cursor === 'pointer') return
+      if (map.queryRenderedFeatures(e.point, { layers: ['srkw-fill'] }).length) map.getCanvas().style.cursor = 'pointer'
+    }
+    const unpick = registerPicker('srkw', pick)
+    map.on('mousemove', onMove)
+    return () => { unpick(); map.off('mousemove', onMove); srkwPopupRef.current?.remove() }
+  }, [mapReady, srkwOn])
 
   // ─── Offshore facilities layer + click popup ───
   useEffect(() => {
@@ -1472,17 +1628,20 @@ export default function ShipsApp() {
       const live = OFFSHORE_LAYERS.filter((l) => map.getLayer(l))
       return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live })[0] : null
     }
-    const onClick = (e) => {
-      if (facilityAt(e.point) || portHit(map, e.point).length || slickAt(e.point)) return
+    const pick = (e) => {
       const f = hitAt(e.point)
-      if (!f) return
-      offshorePopupRef.current?.remove()
-      offshorePopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(offshorePopupHTML(f.properties)).addTo(map))
+      if (!f) return []
+      const q = f.properties
+      return [{ layer: f.layer.id, label: q.name || (q.k === 'platform' ? 'Oil and gas platform' : q.k === 'turbine' ? 'Offshore wind turbine' : 'Offshore wind farm'),
+        kind: q.k === 'platform' ? 'Offshore platform' : 'Offshore wind', color: OFFSHORE.hue, open: () => {
+          offshorePopupRef.current?.remove()
+          offshorePopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(offshorePopupHTML(q)).addTo(map))
+        } }]
     }
     const onMove = (e) => { if (map.getCanvas().style.cursor !== 'pointer' && hitAt(e.point)) map.getCanvas().style.cursor = 'pointer' }
-    map.on('click', onClick)
+    const unpick = registerPicker('offshore', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); offshorePopupRef.current?.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); offshorePopupRef.current?.remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, offshoreOn])
 
@@ -1558,10 +1717,13 @@ export default function ShipsApp() {
     // Hover: a one-line hint, so a slick reads as clickable before anyone clicks it.
     const tip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, maxWidth: '260px' })
     let tipFor = null
-    const onClick = (e) => {
-      if (facilityAt(e.point) || portHit(map, e.point).length) return
+    const pick = (e) => {
       const f = slickAt(e.point)
-      if (f?.properties?.id != null) { tip.remove(); tipFor = null; openSlickCard(f.properties.id) }
+      if (f?.properties?.id == null) return []
+      const t = f.properties.slick_timestamp ? new Date(`${String(f.properties.slick_timestamp).replace(' ', 'T')}Z`) : null
+      const day = t && !Number.isNaN(t.getTime()) ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : null
+      return [{ layer: f.layer.id, label: `Oil slick${day ? `, ${day} (UTC)` : ''}`, kind: 'Oil slick (SkyTruth Cerulean)', color: SLICKS.hue,
+        open: () => { tip.remove(); tipFor = null; openSlickCard(f.properties.id) } }]
     }
     const onMove = (e) => {
       const f = slickAt(e.point)
@@ -1579,10 +1741,10 @@ export default function ShipsApp() {
       const pe = tip.getElement(); if (pe) pe.style.pointerEvents = 'none'
     }
     const onOut = () => { tip.remove(); tipFor = null }
-    map.on('click', onClick)
+    const unpick = registerPicker('slicks', pick)
     map.on('mousemove', onMove)
     map.on('mouseout', onOut)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); map.off('mouseout', onOut); tip.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); map.off('mouseout', onOut); tip.remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, slicksOn])
 
@@ -1858,19 +2020,20 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !portsOn) return
-    const onClick = (e) => {
-      const hits = portHit(map, e.point)
-      if (hits.some((h) => h.layer.id === TERMINAL_LAYER || h.layer.id === ANCHORAGE_LABEL)) return // the terminal's / anchorage's own handler opens its popup
-      const f = hits.find((h) => h.properties.i != null)
-      if (!f) return
-      setTerminalKey(null)
-      setPortId(String(f.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null); setAnchorageKey(null)
-      setVesselId(null); setPickerOpen(false)
+    const pick = (e) => {
+      const seen = new Set()
+      return portHit(map, e.point).filter((h) => h.layer.id !== TERMINAL_LAYER && h.layer.id !== ANCHORAGE_LABEL && h.properties.i != null)
+        .filter((h) => { if (seen.has(h.properties.i)) return false; seen.add(h.properties.i); return true })
+        .map((h) => ({ layer: h.layer.id, label: h.properties.n || 'Port', kind: 'Port', color: PORT_HUE, open: () => {
+          setTerminalKey(null)
+          setPortId(String(h.properties.i)); setPortMonth(null); setPortFolded(false); setBackToPort(null); setAnchorageKey(null)
+          setVesselId(null); setPickerOpen(false)
+        } }))
     }
     const onMove = (e) => { if (portHit(map, e.point).length) map.getCanvas().style.cursor = 'pointer' }
-    map.on('click', onClick)
+    const unpick = registerPicker('ports', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove) }
+    return () => { unpick(); map.off('mousemove', onMove) }
   }, [mapReady, portsOn])
 
   // Click a terminal pin → a small popup (shared popup frame + keepPopupOnMap) with its headline; "Open card" opens the card.
@@ -1878,9 +2041,12 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !portsOn) return
-    const onClick = async (e) => {
-      const f = terminalHit(map, e.point)[0]
-      if (!f) return
+    const pick = (e) => {
+      const seen = new Set()
+      return terminalHit(map, e.point).filter((f) => { if (seen.has(f.properties.k)) return false; seen.add(f.properties.k); return true })
+        .map((f) => ({ layer: f.layer.id, label: f.properties.n || 'Terminal', kind: 'Terminal', color: PORT_HUE, open: () => openTerminal(f) }))
+    }
+    const openTerminal = async (f) => {
       const p = f.properties
       const months = trackMonths
       terminalPopupRef.current?.remove()
@@ -1901,8 +2067,8 @@ export default function ShipsApp() {
       popup.setHTML(terminalPopupHTML(p, { months, summary: d, error }))
       wire()
     }
-    map.on('click', onClick)
-    return () => { map.off('click', onClick); terminalPopupRef.current?.remove() }
+    const unpick = registerPicker('terminals', pick)
+    return () => { unpick(); terminalPopupRef.current?.remove() }
   }, [mapReady, portsOn, trackMonths])
 
   // ─── Anchorage areas (Josh 2026-09-30; src/ships/anchoragePopup.js, lib/ships/anchorageCard.js) ─────────────
@@ -1950,33 +2116,32 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady || !portsOn) return
-    const otherLayers = () => map.getStyle().layers.filter((l) => l.id.startsWith('shiptrk') || l.id === 'gfw-dark-fill').map((l) => l.id)
-    const onClick = async (e) => {
-      if (!map.getLayer(ANCHORAGE_FILL) || facilityAt(e.point)) return
-      // The anchorage's name wins over everything under it; elsewhere inside the area, ports, tracks and dark cells come first.
-      const ph = portHit(map, e.point)
-      const label = ph.find((h) => h.layer.id === ANCHORAGE_LABEL)
-      if (!label && ph.length) return
-      const others = otherLayers()
-      if (!label && others.length && map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: others }).length) return
-      const hits = label ? [label] : map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] })
-      if (!hits.length) return
-      // Overlapping areas: an anchorage over a no-anchoring area, then the smallest one on screen.
-      const size = (f) => { const b = f.geometry.coordinates.flat(2); let a = Infinity, c = -Infinity, d = Infinity, g = -Infinity
+    // Each anchorage under the click (its name or its area): anchorages before no-anchoring areas, then smallest first.
+    const pick = (e) => {
+      if (!map.getLayer(ANCHORAGE_FILL)) return []
+      const label = portHit(map, e.point).filter((h) => h.layer.id === ANCHORAGE_LABEL)
+      const hits = [...label, ...map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] })]
+      const size = (f) => { if (f.geometry.type === 'Point') return 0
+        const b = f.geometry.coordinates.flat(2); let a = Infinity, c = -Infinity, d = Infinity, g = -Infinity
         for (let k = 0; k < b.length; k += 2) { a = Math.min(a, b[k]); c = Math.max(c, b[k]); d = Math.min(d, b[k + 1]); g = Math.max(g, b[k + 1]) } return (c - a) * (g - d) }
-      const f = [...hits].sort((x, y) => (x.properties.x ? 1 : 0) - (y.properties.x ? 1 : 0) || size(x) - size(y))[0]
-      // Opens the anchorage card (Josh 2026-10-07: the dark side card terminals and ports have, not a white popup).
-      anchoragePopupRef.current?.remove()
-      setPortId(null); setTerminalKey(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
-      setAnchorageKey(f.properties.k); setAnchorageFolded(false); setAnchorageTab('ships')
+      const seen = new Set()
+      return hits.filter((f) => { if (seen.has(f.properties.k)) return false; seen.add(f.properties.k); return true })
+        .sort((x, y) => (x.properties.x ? 1 : 0) - (y.properties.x ? 1 : 0) || size(x) - size(y))
+        .map((f) => ({ layer: f.layer.id, label: f.properties.n || 'Anchorage',
+          kind: f.properties.x ? 'No-anchoring area' : 'Anchorage', color: ANCHORAGE_COLOR, open: () => {
+            // Opens the anchorage card (Josh 2026-10-07: the dark side card terminals and ports have, not a white popup).
+            anchoragePopupRef.current?.remove()
+            setPortId(null); setTerminalKey(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+            setAnchorageKey(f.properties.k); setAnchorageFolded(false); setAnchorageTab('ships')
+          } }))
     }
     const onMove = (e) => {
       if (!map.getLayer(ANCHORAGE_FILL) || map.getCanvas().style.cursor === 'pointer') return
       if (map.queryRenderedFeatures(e.point, { layers: [ANCHORAGE_FILL] }).length) map.getCanvas().style.cursor = 'pointer'
     }
-    map.on('click', onClick)
+    const unpick = registerPicker('anchorages', pick)
     map.on('mousemove', onMove)
-    return () => { map.off('click', onClick); map.off('mousemove', onMove); anchoragePopupRef.current?.remove() }
+    return () => { unpick(); map.off('mousemove', onMove); anchoragePopupRef.current?.remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, portsOn, trackMonths])
 
@@ -2061,6 +2226,7 @@ export default function ShipsApp() {
     if (LIVE_MODE) sp.set('live', '1')
     if (darkOn) sp.set('dk', '1')
     if (mpaOn) sp.set('mp', '1')
+    if (srkwOn) sp.set('ch', '1')
     if (slicksOn) sp.set('sl', '1')
     if (offshoreOn) sp.set('of', '1')
     if (offshoreOn && offRemoved) sp.set('ofr', '1')
@@ -2093,7 +2259,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos.photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [photos.photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, srkwOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -2104,13 +2270,13 @@ export default function ShipsApp() {
 
   if (!MAPBOX_TOKEN) return <div className={styles.tokenError}>Missing <code>VITE_MAPBOX_TOKEN</code>.</div>
 
-  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0) + (slicksOn ? 1 : 0) + (offshoreOn ? 1 : 0) + (portsOn ? 1 : 0)
+  const activeCount = (identityOn ? 1 : 0) + (tracksOn && allTrackMonths.length ? 1 : 0) + (darkOn ? 1 : 0) + (mpaOn ? 1 : 0) + (srkwOn ? 1 : 0) + (slicksOn ? 1 : 0) + (offshoreOn ? 1 : 0) + (portsOn ? 1 : 0)
   return (
     <div className={styles.container}>
       <div className={styles.mapWrap} ref={containerRef} />
       <canvas className={styles.fossilCanvas} ref={fossilCanvasRef} aria-hidden="true" />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
-      {LIVE_MODE && mapReady && <LiveShips map={mapRef.current} mapReady={mapReady} styleVersion={styleVersion} openShipRef={openShipRef} tipClass={styles.hoverTip} />}
+      {LIVE_MODE && mapReady && <LiveShips map={mapRef.current} mapReady={mapReady} styleVersion={styleVersion} openShipRef={openShipRef} tipClass={styles.hoverTip} registerPicker={registerPicker} />}
       {ghProto && (
         <div style={{ position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 5, maxWidth: 'min(640px, calc(100vw - 32px))',
           background: 'rgba(10,14,23,0.88)', color: '#e5e7eb', border: `1px solid ${GH_COLOR}`, borderRadius: 8, padding: '6px 10px', font: '12px/1.4 system-ui, sans-serif' }}>
@@ -2183,6 +2349,7 @@ export default function ShipsApp() {
               )}
               onShowPlace={showStop}
               onShowSlick={showSlick}
+              getMap={() => mapRef.current}
               onLoaded={(v) => {
                 setVesselName(currentIdentity(v).name?.value_raw || 'Unnamed vessel')
                 const len = v.assertions.filter((a) => a.attribute === 'length_m' && Number(a.value_norm) > 0)
@@ -2298,6 +2465,7 @@ export default function ShipsApp() {
                 allTrackMonths.length > 0 && [TRACKS, tracksOn, () => setTracksOn((o) => !o)],
                 [PORTS, portsOn, () => setPortsOn((o) => !o)],
                 [MPA, mpaOn, () => setMpaOn((o) => !o)],
+                [SRKW, srkwOn, () => setSrkwOn((o) => !o)],
                 [IDENTITY, identityOn, toggleIdentity],
                 [DARK, darkOn, () => setDarkOn((o) => !o)],
                 [SLICKS, slicksOn, () => setSlicksOn((o) => !o)],
@@ -2452,7 +2620,7 @@ export default function ShipsApp() {
                   legend={<>
                     <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>{PORT_TIERS.slice(0, 3).map(([t, , r]) => (
                       <span key={t} style={{ width: r * 1.6, height: r * 1.6, borderRadius: '50%', background: PORT_HUE, border: '1px solid #0a0e17' }} />))}</span>}>
-                      Harbour (bigger dot = bigger)
+                      Harbor (bigger dot = bigger)
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
                       Port not in the World Port Index (shown from zoom 11.5)
@@ -2473,7 +2641,7 @@ export default function ShipsApp() {
                     </LegendTurndown>
                   </>}
                   info={<>
-                    Every port in the World Port Index (smaller harbours appear as you zoom in), plus hollow rings for ports only Global Fishing
+                    Every port in the World Port Index (smaller harbors appear as you zoom in), plus hollow rings for ports only Global Fishing
                     Watch or Climate TRACE knows. Click one for the ships that called there in the months picked above, its ship emissions and,
                     for big cargo ports, trade trends. Pink discs are Climate TRACE’s refineries, oil &amp; gas sites and coal mines, sized by what
                     they emitted; click one for its card. Round badges are EarthAtlas’s hand-checked Salish Sea terminals (oil, fuel, gas, chemicals,
@@ -2503,6 +2671,20 @@ export default function ShipsApp() {
                     boundaries. Data:{' '}
                     <a href={MPA.sourceUrl} target="_blank" rel="noopener noreferrer">{MPA.sourceName}</a>,
                     as of {fmtIsoDay(trackSource.mpa.version)}, public domain.
+                  </>} />
+                <DatasetRow storageKey="ships.srkw" name={SRKW.name} sub={SRKW.sub} hue={SRKW.hue}
+                  icon={<Icon svg={SRKW.iconSvg} size={16} />} on={srkwOn} onToggle={() => setSrkwOn((o) => !o)}
+                  legend={<LegendSwatchRow swatch={<span style={{ width: 22, height: 10, borderRadius: 2, background: SRKW.hue, opacity: 0.35 }} />}>
+                    Critical habitat under the Endangered Species Act
+                  </LegendSwatchRow>}
+                  info={<>
+                    Critical habitat NOAA Fisheries designated for the endangered Southern Resident killer whales: in 2006 the inland
+                    waters of Washington (the Haro Strait and San Juan Islands summer core area, Puget Sound and the Strait of Juan de
+                    Fuca), and in 2021 the coastal waters from the Canadian border to Point Sur, California. Federal agencies must consult
+                    NOAA Fisheries on anything they carry out, fund or permit here. Click an area for its rule, dates and depths. Military
+                    areas the rules exclude are inside the inland shapes (NOAA did not clip them out). Not the legal boundary:{' '}
+                    <a href={SRKW.cfrUrl} target="_blank" rel="noopener noreferrer">50 CFR 226.206</a> is. Data:{' '}
+                    <a href={SRKW.dataUrl} target="_blank" rel="noopener noreferrer">{SRKW.sourceName}</a>, as of {fmtIsoDay(trackSource.srkw.version)}, US government work.
                   </>} />
                 <DatasetRow storageKey="ships.identity" name={IDENTITY.name} sub={IDENTITY.sub} hue={IDENTITY.hue}
                   icon={<Icon svg={IDENTITY.iconSvg} size={16} />} on={identityOn} onToggle={toggleIdentity}

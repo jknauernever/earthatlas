@@ -201,6 +201,14 @@ export const SHIPS_SOURCES = [
         method: 'Every US marine protected area meeting the IUCN definition, with its protection level and fishing, vessel and anchoring rules. Not for navigation and not a legal boundary.' },
     ],
   },
+  {
+    heading: 'Orca critical habitat',
+    sources: [
+      { name: 'Critical habitat for Southern Resident killer whales (2006 designation, 2021 revision)', href: 'https://www.arcgis.com/home/item.html?id=fe1e0f42587f437b93e6168929f03593',
+        publisher: 'NOAA Fisheries West Coast Region', licence: 'U.S. Government work, public domain', licenceHref: USC105,
+        method: 'The areas designated under the Endangered Species Act (71 FR 69054, 2006; 86 FR 41668, 2021), as NOAA Fisheries maps them. Not the legal definition: that is 50 CFR 226.206.' },
+    ],
+  },
 ]
 
 export const SHIPS_SOURCES_NOTES = [

@@ -52,3 +52,5 @@ scripts/whales/cache/
 
 # /shiptraffic overlap bake local outputs (scripts/shiptraffic/overlap-bake.mjs) — never commit
 scripts/shiptraffic/cache/
+# /ship-intake review reports (scripts/ships/intake.mjs)
+scripts/ships/intake/cache/

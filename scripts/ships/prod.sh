@@ -38,6 +38,7 @@
 #   zsh scripts/ships/prod.sh counts             READ ONLY: the /ships changelog's data-card numbers (args pass through, e.g. --limit 2)
 #   zsh scripts/ships/prod.sh port-names B D   back up, then for box B (w,s,e,n): place names, GeoNames marinas, re-match, WPI positions (GeoNames files in D)
 #   zsh scripts/ships/prod.sh fleet              back up, then a fleet's boats (migration 034): --file lib/ships/data/fleets/whalewatch.json, or --add / --remove one boat (scripts/ships/import-fleet.mjs)
+#   zsh scripts/ships/prod.sh intake             back up, then one reviewed /ship-intake file (migration 037): apply --file lib/ships/data/intake/<name>.json (scripts/ships/intake.mjs; review is read-only)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
 #   SHIPS_PROD_DATABASE_URL  prod ships DB, direct (unpooled) connection
@@ -302,6 +303,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup fleet
     prod_node scripts/ships/import-fleet.mjs --by prod.sh "${@:2}"
+    ;;
+  intake)
+    need SHIPS_PROD_DATABASE_URL
+    [ "${2:-}" = "review" ] || backup intake
+    prod_node scripts/ships/intake.mjs "${@:2}"
     ;;
   *)
     sed -n '2,40p' "$0"; exit 2

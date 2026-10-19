@@ -105,7 +105,25 @@ function arrowImage() {
   return g.getImageData(0, 0, s, s)
 }
 
-export default function LiveShips({ map, mapReady, styleVersion, openShipRef, tipClass }) {
+export default function LiveShips({ map, mapReady, styleVersion, openShipRef, tipClass, registerPicker }) {
+  const tipRef = useRef(null)
+  // Clicks go through /ships' What's here list (registerPicker): each live ship under the click, one row per ship.
+  useEffect(() => {
+    if (!map || !mapReady || !registerPicker) return
+    return registerPicker('live', (e) => {
+      const layers = [ARROW, DOT].filter((l) => map.getLayer(l))
+      if (!layers.length) return []
+      const seen = new Set()
+      return map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers })
+        .filter((f) => { if (seen.has(f.properties.mmsi)) return false; seen.add(f.properties.mmsi); return true })
+        .map((f) => {
+          const p = f.properties
+          return { layer: f.layer.id, ship: Number(p.mmsi), label: p.name || `MMSI ${p.mmsi}`, color: p.color,
+            kind: `Live${p.isFerry === 1 ? `, ${FERRY_LABEL}` : p.kind && KIND_LABEL[p.kind] ? `, ${KIND_LABEL[p.kind].toLowerCase()}` : ''}, reported ${fmtAgo(p.ageS)}`,
+            open: () => { tipRef.current?.remove(); openShipRef?.current?.(p.mmsi, p.t, new Date(p.t * 1000).toISOString().slice(0, 7)) } }
+        })
+    })
+  }, [map, mapReady, registerPicker, openShipRef])
   const [snap, setSnap] = useState(null)
   // Our records for the ships on screen (lib/ships/liveBriefs.js), fetched once per MMSI per page view, 500 at a time.
   const [briefs, setBriefs] = useState({ briefs: {}, sources: {} })
@@ -204,13 +222,8 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
           if (f) tip.setLngLat(f.geometry.coordinates).setHTML(tipHTML(f.properties, briefsRef.current)).addTo(map)
         })
         map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; tip.remove() })
-        map.on('click', id, (e) => {
-          const p = e.features[0]?.properties
-          if (!p) return
-          tip.remove()
-          openShipRef?.current?.(p.mmsi, p.t, new Date(p.t * 1000).toISOString().slice(0, 7))
-        })
       }
+      tipRef.current = tip
     }
     map.getSource(TRAILS).setData({ type: 'FeatureCollection', features: data.trails })
     map.getSource(TRAIL_PTS).setData({ type: 'FeatureCollection', features: data.trailPts })

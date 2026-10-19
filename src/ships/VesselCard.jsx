@@ -11,6 +11,7 @@ import styles from './ShipsApp.module.css'
 import pick from './ShipPicker.module.css'
 import Chevron from './Chevron.jsx'
 import ShipEmissions from './ShipEmissions.jsx'
+import LivePosition from './LivePosition.jsx'
 import { Loading, LoadingInline } from '../components/panel'
 import { CERULEAN_APP, matchWords, slickUrl, sourceUrl, slicksForPeriods } from '../../lib/ships/cerulean.js'
 
@@ -24,6 +25,7 @@ export const EVIDENCE = {
   derived_identity: { label: 'Matched', cls: 'evInf', title: 'Identity match made by a third party' },
   community_curated: { label: 'Community', cls: 'evCom', title: 'Openly edited, community-curated (Wikidata or Wikimedia Commons), not an official registry' },
   unverified: { label: 'Unverified', cls: 'evInf', title: 'Unverified third-party information' },
+  operator_published: { label: 'Operator', cls: 'evInf', title: 'What the boat\'s own operator says on its website. Not a registry or AIS record, and not independently checked' },
 }
 
 const IDENTITY_ROWS = [
@@ -37,6 +39,7 @@ const ROLE_ROWS = [
 ]
 const CHAR_ROWS = [['vessel_type', 'What each source calls it'], ['vessel_class', 'Ship class'], ['length_m', 'Length'], ['width_m', 'Width'],
   ['draft_m', 'Draft'], ['tonnage_gt', 'Gross tonnage'], ['max_capacity', 'Capacity (people)'], ['builder', 'Builder'],
+  ['year_built', 'Year built'], ['hull_material', 'Hull'], ['propulsion', 'Engines'], ['speed_kn', 'Cruising speed'],
   ['service_entry', 'Entered service'], ['service_retirement', 'Retired'], ['port_of_registry', 'Port of registry'],
   ['gear_type', 'Fishing gear'], ['transceiver', 'AIS transponder'], ['authorization', 'Public authorizations']]
 // GFW's documented fishing-gear vocabulary (docs/GFW_VESSELS_API.md reference data).
@@ -47,6 +50,8 @@ const FISHING_GEARS = new Set(['TUNA_PURSE_SEINES', 'DRIFTNETS', 'TROLLERS', 'SE
   'OTHER_SEINES', 'SQUID_JIGGER', 'POLE_AND_LINE', 'DRIFTING_LONGLINES'])
 // Short name for each source's inline link.
 const SRC_LABEL = { 'gfw-vessel-identity': 'GFW', 'marinecadastre-ais': 'NOAA', wikidata: 'Wikidata', 'wikimedia-commons': 'Commons' }
+// An operator's own website (lib/ships/operatorSite.js) is credited by the operator's name.
+const srcLabel = (id, sourcesById) => SRC_LABEL[id] || (String(id).startsWith('operator-site-') && sourcesById[id]?.attribution_text) || 'source'
 // How a Wikidata item was tied to this ship (lib/ships/resolve.js v1.3). Name-only is the weakest.
 const LINK_NOTE = {
   IMO_AIS_NAME: { text: 'matched by name', title: 'Wikidata entry tied to this ship by its IMO number (as broadcast over AIS) plus a matching name only. A weaker match than a registry IMO, MMSI or call sign.' },
@@ -57,11 +62,13 @@ const LINK_NOTE = {
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : null)
 function fmtValue(attr, v) {
-  if (attr === 'length_m' || attr === 'width_m' || attr === 'draft_m') return String(v).endsWith(' m') ? v : `${v} m`
+  // Registries and operators that publish feet keep their own unit ("40.00 ft"); bare numbers are meters.
+  if (attr === 'length_m' || attr === 'width_m' || attr === 'draft_m') return /\s(m|ft)$/.test(String(v)) ? v : `${v} m`
   if (attr === 'transceiver') return v === 'A' ? 'Class A (commercial ships)' : v === 'B' ? 'Class B (small craft)' : v
   // A registry value can carry its measurement note after the number (PSIX: '29447 (Convention (Subpart B), "Long Ton")').
   if (attr === 'tonnage_gt') { const n = parseFloat(String(v)); return Number.isFinite(n) ? `${n.toLocaleString()} GT` : v }
   if (attr === 'max_capacity') return Number(v).toLocaleString()
+  if (attr === 'speed_kn') return `${v} knots`
   // Wikidata values carry their item id, e.g. "Holland America Line (Q1624735)": show the name.
   v = String(v).replace(/ \(Q\d+\)$/, '')
   // MarineCadastre types arrive as "37 · Pleasure craft / sailing": show the group, keep the code.
@@ -165,7 +172,7 @@ export function Ev({ c }) {
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
 // extraTabs: a site's own tabs for this ship, [{ id, label, content }] (/whalewatch: Trips), shown after Overview.
-export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl, extraTabs = [] }) {
+export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, getMap, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl, extraTabs = [] }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
   const [tabOwn, setTabOwn] = useState('overview')  // overview (what the ship is) · history (identity over time) · matches
@@ -211,7 +218,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
     const note = a.source_id === 'wikidata' ? LINK_NOTE[a.link_method] : null
     return (<>
       <a className={`${styles.sourceLink} ${styles.srcLink}`} href={`/ships/source/${a.last_source_record_id}`} target="_blank" rel="noopener noreferrer"
-        title={`${sourceTitle(a, sourcesById)}${note ? ` · ${note.title}` : ''}`}>{SRC_LABEL[a.source_id] || 'source'}</a>
+        title={`${sourceTitle(a, sourcesById)}${note ? ` · ${note.title}` : ''}`}>{srcLabel(a.source_id, sourcesById)}</a>
       {note?.text && <span className={styles.weakMatch} title={note.title}>{note.text}</span>}
     </>)
   }
@@ -225,15 +232,18 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
       const cur = byEv.get(k)
       // Commons files a ship under several type categories: show the most specific (names a sub-type, not "… of <place>").
       const specific = (x) => (x.detail?.type_class ? 2 : 0) + (/ of /.test(x.value_raw || '') ? 0 : 1)
+      // An operator's website: what it says about this boat beats how it describes its business (lib/ships/operatorSite.js).
+      const boatWords = (x) => x.detail?.stated === 'boat'
       if (!cur || String(a.to || '9999') > String(cur.to || '9999')
-        || (a.source_id === 'wikimedia-commons' && specific(a) > specific(cur))) byEv.set(k, a)
+        || (a.source_id === 'wikimedia-commons' && specific(a) > specific(cur))
+        || (String(a.to || '9999') === String(cur.to || '9999') && boatWords(a) && !boatWords(cur))) byEv.set(k, a)
     }
-    const order = ['ais_published', 'ais_self_reported', 'registry', 'community_curated', 'inferred', 'derived_identity', 'unverified']
+    const order = ['ais_published', 'ais_self_reported', 'registry', 'community_curated', 'operator_published', 'inferred', 'derived_identity', 'unverified']
     return [...byEv.values()].sort((x, y) => order.indexOf(x.evidence_class) - order.indexOf(y.evidence_class))
   }
   // Each evidence type once, then every source that says it: "AIS  GFW, NOAA".
   const Sources = ({ list, withDates }) => {
-    const order = ['ais_published', 'ais_self_reported', 'registry', 'community_curated', 'inferred', 'derived_identity', 'unverified']
+    const order = ['ais_published', 'ais_self_reported', 'registry', 'community_curated', 'operator_published', 'inferred', 'derived_identity', 'unverified']
     const byEv = new Map()
     for (const a of list) {
       const k = EVIDENCE[a.evidence_class]?.label || a.evidence_class
@@ -250,7 +260,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
                 title={sourceTitle(g[0], sourcesById)}><Ev c={g[0].evidence_class} />{LINK_NOTE[g[0].link_method]?.text && <span className={styles.weakMatch} title={LINK_NOTE[g[0].link_method].title}>{LINK_NOTE[g[0].link_method].text}</span>}</a>
             : <span key={g[0].id} className={styles.srcPair}>
             <Ev c={g[0].evidence_class} />
-            <span>{g.map((a, i) => <span key={a.id} title={withDates ? `${SRC_LABEL[a.source_id] || a.source_id}: ${fmtPeriod(a)}` : undefined}>{i > 0 && ', '}<Src a={a} /></span>)}</span>
+            <span>{g.map((a, i) => <span key={a.id} title={withDates ? `${srcLabel(a.source_id, sourcesById)}: ${fmtPeriod(a)}` : undefined}>{i > 0 && ', '}<Src a={a} /></span>)}</span>
           </span>
         ))}
       </span>
@@ -350,6 +360,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               EarthAtlas vessel {vessel.vessel.id.slice(0, 8)}
             </div>
             {tracksControl}
+            <LivePosition vessel={vessel} getMap={getMap} />
           </div>
 
           {!folded && <>
@@ -370,6 +381,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {extraTabs.find((x) => x.id === tab)?.content}
           {tab === 'overview' && <>
             <Photos key={vessel.vessel.id} images={images} vesselId={vessel.vessel.id} hasImo={!!current.imo} onFetched={() => setRev((n) => n + 1)} />
+            <OperatorAbout assertions={vessel.assertions} Src={Src} />
             <TypeLine c={vessel.classification} typeClaims={latestPerSource('vessel_type')} Src={Src} />
             <ScrubberBlock assertions={vessel.assertions} />
             {renderOverview(CHAR_ROWS, null)}
@@ -568,7 +580,9 @@ function ScrubberBlock({ assertions }) {
  */
 function orderImages(assertions) {
   const seen = new Set()
-  const key = (a) => (a.detail?.via === 'commons_imo_category' ? 2 + (a.detail.photo_order ?? 0) : a.detail?.rank === 'preferred' ? 0 : 1)
+  // Operator-site photos (lib/ships/operatorSite.js) come after every openly licensed photo.
+  const key = (a) => (a.detail?.via === 'operator_site' ? 1e6 + (a.detail.photo_order ?? 0)
+    : a.detail?.via === 'commons_imo_category' ? 2 + (a.detail.photo_order ?? 0) : a.detail?.rank === 'preferred' ? 0 : 1)
   return assertions.filter((a) => a.attribute === 'image' && a.detail?.thumb_url)
     .sort((x, y) => key(x) - key(y))
     .filter((a) => !seen.has(a.value_norm) && seen.add(a.value_norm))
@@ -599,6 +613,21 @@ function Photos({ images: own, vesselId, hasImo, onFetched }) {
   const images = own.length ? own : fetched || []
   if (!images.length) return null
   const img = images[i % images.length], d = img.detail
+  const next = images.length > 1 && <button type="button" className={styles.inlineLink} onClick={() => setI((n) => n + 1)}
+    title="Next photo">{` · ${(i % images.length) + 1}/${images.length} ›`}</button>
+  // The operator's own photo, loaded from its website with a credit linking to the page it is on (Josh 2026-10-19).
+  if (d.via === 'operator_site') return (
+    <figure className={styles.photo}>
+      <a href={d.page_url} target="_blank" rel="noopener noreferrer" title={`Open ${d.credit}'s page about this boat`}>
+        <img src={d.thumb_url} alt={d.caption || `Photo by ${d.credit}`} loading="lazy" referrerPolicy="no-referrer"
+          onError={(e) => { e.currentTarget.closest('figure').style.display = 'none' }} />
+      </a>
+      <figcaption>
+        Photo: <a className={styles.sourceLink} href={d.page_url} target="_blank" rel="noopener noreferrer"
+          title={`© ${d.credit} · shown from the operator's website`}>{d.credit}</a> (operator's website){next}
+      </figcaption>
+    </figure>
+  )
   const artist = d.artist || d.credit || 'unknown author'
   return (
     <figure className={styles.photo}>
@@ -613,10 +642,28 @@ function Photos({ images: own, vesselId, hasImo, onFetched }) {
           title={d.usage_terms || d.license_short_name}>{d.license_short_name}</a>
         {' ('}<a className={styles.sourceLink} href={d.file_page_url} target="_blank" rel="noopener noreferrer"
           title={d.via === 'commons_imo_category' ? `Filed on Wikimedia Commons under ${d.imo_category}, this ship's IMO number` : 'Chosen as this ship\'s image on Wikidata'}>Wikimedia Commons</a>{')'}
-        {images.length > 1 && <button type="button" className={styles.inlineLink} onClick={() => setI((n) => n + 1)}
-          title="Next photo">{` · ${(i % images.length) + 1}/${images.length} ›`}</button>}
+        {next}
       </figcaption>
     </figure>
+  )
+}
+
+/**
+ * The operator's own description of the boat, as published on its website (lib/ships/operatorSite.js), credited inline.
+ * Three lines, then "more".
+ */
+function OperatorAbout({ assertions, Src }) {
+  const [open, setOpen] = useState(false)
+  const list = assertions.filter((a) => a.attribute === 'description' && a.evidence_class === 'operator_published')
+    .sort((x, y) => String(y.to || '').localeCompare(String(x.to || '')))
+  if (!list.length) return null
+  const a = list[0]
+  return (
+    <div className={styles.operatorAbout}>
+      <div className={styles.legendNoteText}>From the operator, <Src a={a} /></div>
+      <p className={open ? undefined : styles.operatorAboutClamp}>{a.value_raw}</p>
+      <button type="button" className={styles.inlineLink} onClick={() => setOpen((o) => !o)}>{open ? 'less' : 'more'}</button>
+    </div>
   )
 }
 
@@ -637,7 +684,8 @@ function TypeLine({ c, typeClaims, Src }) {
       <div className={styles.attrLabel}>Kind of ship</div>
       <div className={styles.typeHead} title="EarthAtlas's reading of the sources below (AIS, registries, Wikidata and Wikimedia Commons decide; Global Fishing Watch's model counts only when they're silent)">{label}</div>
       {c.conflict && c.group && <div className={styles.typeNote}>Sources name different sub-groups: {c.classes.join(', ').replaceAll('_', ' ')}.</div>}
-      {c.refinedBy?.length > 0 && <div className={styles.typeNote}>Sub-type from the registry record below.</div>}
+      {c.refinedBy?.length > 0 && <div className={styles.typeNote}>
+        {c.refinedBy.every((id) => String(id).startsWith('operator-site-')) ? 'Sub-type from the operator\'s own website, below.' : 'Sub-type from the registry record below.'}</div>}
       {c.dissent?.length > 0 && <div className={styles.typeNote}>
         Global Fishing Watch's model says {[...new Set(c.dissent.map((d) => (d.class || d.group).replaceAll('_', ' ')))].join(' / ')} (ranked lower than what the ship and registries report).
       </div>}

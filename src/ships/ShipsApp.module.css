@@ -445,6 +445,9 @@
 .photo { margin: 10px 0 0; }
 .photo img { display: block; width: 100%; height: auto; max-height: 190px; object-fit: cover; border-radius: 8px; background: rgba(255, 255, 255, 0.05); }
 .photo figcaption { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); margin-top: 4px; line-height: 1.4; }
+.operatorAbout { margin: 10px 0 0; }
+.operatorAbout p { margin: 3px 0 0; font-size: 11.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.85); }
+.operatorAboutClamp { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .typeLine { margin-top: 12px; }
 .vesselRoles { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 5px; font-size: 12.5px; color: rgba(255, 255, 255, 0.85); }
 .vesselRoles b { color: #fff; font-weight: 600; }
@@ -521,6 +524,16 @@ a.portCountry:hover { color: rgba(160, 220, 255, 1); text-decoration: underline;
 .mpaSwatch { width: 14px; height: 10px; border-radius: 2px; border: 1px solid #4ade80; flex: none; }
 /* Stop marker (Ports tab "map" link). */
 .stopMarker { width: 16px; height: 16px; border-radius: 50%; background: #22d3ee; border: 3px solid #0a0e17; box-shadow: 0 0 0 2px #22d3ee, 0 2px 8px rgba(0, 0, 0, 0.5); cursor: pointer; }
+/* Ship card "Show live position" (LivePosition.jsx): amber like the live boats on /whalewatch, with a slow pulse. */
+.liveLine { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: rgba(255, 255, 255, 0.65); }
+.liveBtn { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.12); color: #fcd34d; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.liveBtn::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); animation: livePulse 1.8s infinite; }
+.liveBtn:hover { background: rgba(251, 191, 36, 0.22); }
+.liveMeta { white-space: nowrap; }
+.liveMarker { width: 16px; height: 16px; border-radius: 50%; background: #fbbf24; border: 3px solid #0a0e17; cursor: pointer;
+  box-shadow: 0 0 0 2px #fbbf24, 0 2px 8px rgba(0, 0, 0, 0.5); animation: livePulse 1.8s infinite; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 2px #fbbf24, 0 0 0 0 rgba(251, 191, 36, 0.6); } 100% { box-shadow: 0 0 0 2px #fbbf24, 0 0 0 12px rgba(251, 191, 36, 0); } }
 .popupShipHead { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.2; }
 
 /* ─── Ports layer + port card (Phase 3 step 3; PortCard.jsx). Card shell = ShipPicker.module.css .card ─── */

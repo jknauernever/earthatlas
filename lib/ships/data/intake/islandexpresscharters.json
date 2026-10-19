@@ -1,0 +1,142 @@
+{
+  "page": {
+    "url": "https://islandexpresscharters.com/vessels/",
+    "title": "Vessels | Island Express Charters",
+    "retrieved_at": "2026-10-19T15:51:00.043Z",
+    "text": "ISLAND EXPRESS\n\nIsland Express is the largest boat in our fleet at 40 feet in length. Made by Munson Boats right here in western Washington, Island Express is a landing craft style boat made of lightweight, durable aluminum. Munson is renowned for building the highest quality work boats, capable of handling nearly any weather condition. This boat has been specially designed for beach and rocky shoreline landings. The drop down bow makes this boat the most versatile for any shoreline, combined with the exceptional ease for loading and unloading. Certified by the United States Coast Guard for 33 passengers. With the ability to transport up to 2,000 pounds of freight in its 150 square feet of deck space, Island Express has the  capability to handle most of your hauling needs. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Island Express is powered by twin 380hp diesel engines (Cummins 6.7L QSB), giving it a cruising speed of 18-21 knots to get you to your destination quickly and comfortably.\n\nISLAND EXPRESS II\n\nIsland Express II is the most agile boat in our fleet with a shallow draft and top cruising speed of 25 knots. At 35 feet in length, Island Express II is fast and nimble. Built by Latitude Marine Services in our neighboring waterfront community, La Conner, Island Express II shares a similar landing craft design to our larger vessel, Island Express. This aluminum work boat is tough, landing on any shoreline with its drop down bow, allowing for trouble-free loading and unloading. Certified by the United States Coast Guard for 20 passengers, it has indoor seating for 18 passengers and outdoor seating for 2. Island Express II can haul up to 1,000 pounds of freight in its 70 square feet of deck space. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Island Express II is powered by twin 315 hp diesel engines (Yanmar 6YLP).\n\nLEEWAY\n\nLeeway is the newest boat to our fleet, coming to us all the way from Prudhoe Bay, Alaska, where she previously served offshore oil rigs. Leeway is a 38 foot aluminum landing craft catamaran built by Armstrong Marine, now know as BRIX Marine, in Port Angeles, Washington. BRIX is acclaimed for being the “first in cats” and producing high-performance work boats. With the catamaran hull design, Leeway handles any rough seas with the utmost of comfort. Similar in design to Island Express and Island Express II, Leeway’s drop down bow provides landing versatility on any shoreline and exceptional ease during loading and unloading. Certified by the United States Coast Guard for 16 passengers, it has indoor seating for 12 passengers and outdoor seating for 4. Leeway is our freight hauling workhorse, with the ability to haul up to 2,000 pounds of freight in its nearly 185 square feet of deck space. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Leeway is powered by twin 300 hp outboard engines (Yamaha), giving it a cruising speed of 17-22 knots.\n\nSILVER EXPRESS\n\nSilver Express came to us all the way from Fishers Island, New York, where she previously served as a foot passenger ferry. Silver Express has the same hull as Leeway. She is a 38 foot aluminum landing craft catamaran built by Armstrong Marine, now know as BRIX Marine, in Port Angeles, Washington. BRIX is acclaimed for being the “first in cats” and producing high-performance work boats. With the catamaran hull design, Silver Express handles any rough seas with the utmost of comfort. Similar in design to Leeway with a drop down bow, Silver Express has a larger cabin. She is certified by the United States Coast Guard for 18 passengers. Ample deck space allows her to haul a variety of freight and gear. The heated cabin, plush cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Silver Express is powered by twin 300 hp outboard engines (Yamaha), giving it a cruising speed of 17-22 knots.\n\nPARACLETE\n\nParaclete is the newest boat to our fleet and has been serving the San Juan Islands for years. She is certified by the United States Coast Guard for 32 passengers with room for 24 passengers inside and 8 outside on the aft deck. The heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans."
+  },
+  "operator": {
+    "name": "Island Express Charters",
+    "url": "https://islandexpresscharters.com/",
+    "place": "Anacortes, WA",
+    "country": "US",
+    "service": "San Juan Islands Transportation",
+    "service_url": "https://islandexpresscharters.com/"
+  },
+  "boats": [
+    {
+      "name": "Island Express",
+      "facts": {
+        "length_ft": 40,
+        "builder": "Munson Boats",
+        "build_place": "western Washington",
+        "hull_material": "aluminum",
+        "max_capacity": 33,
+        "capacity_basis": "USCG-certified passengers",
+        "propulsion": "twin 380 hp diesel engines (Cummins 6.7L QSB)",
+        "speed_kn": "18-21",
+        "vessel_type": "landing craft"
+      },
+      "description": "Island Express is the largest boat in our fleet at 40 feet in length. Made by Munson Boats right here in western Washington, Island Express is a landing craft style boat made of lightweight, durable aluminum. Munson is renowned for building the highest quality work boats, capable of handling nearly any weather condition. This boat has been specially designed for beach and rocky shoreline landings. The drop down bow makes this boat the most versatile for any shoreline, combined with the exceptional ease for loading and unloading. Certified by the United States Coast Guard for 33 passengers. With the ability to transport up to 2,000 pounds of freight in its 150 square feet of deck space, Island Express has the  capability to handle most of your hauling needs. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Island Express is powered by twin 380hp diesel engines (Cummins 6.7L QSB), giving it a cruising speed of 18-21 knots to get you to your destination quickly and comfortably.",
+      "photos": [
+        {
+          "url": "https://islandexpresscharters.com/wp-content/uploads/Boat-IE.jpg"
+        }
+      ],
+      "match": {
+        "vessel_id": "41ed6044-0464-4379-b6dd-fe234a6e8e65",
+        "basis": "Same name; FCC licence WDK6086 (MMSI 368162000) held by Skyline Charters LLC, Anacortes WA, which also licenses three other boats on this page; USCG length 40 ft agrees; on Salish Sea AIS",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 on localhost"
+      }
+    },
+    {
+      "name": "Island Express II",
+      "facts": {
+        "length_ft": 35,
+        "builder": "Latitude Marine Services",
+        "build_place": "La Conner, Washington",
+        "hull_material": "aluminum",
+        "max_capacity": 20,
+        "capacity_basis": "USCG-certified passengers",
+        "propulsion": "twin 315 hp diesel engines (Yanmar 6YLP)",
+        "speed_kn": "25",
+        "speed_basis": "top cruising",
+        "vessel_type": "landing craft"
+      },
+      "description": "Island Express II is the most agile boat in our fleet with a shallow draft and top cruising speed of 25 knots. At 35 feet in length, Island Express II is fast and nimble. Built by Latitude Marine Services in our neighboring waterfront community, La Conner, Island Express II shares a similar landing craft design to our larger vessel, Island Express. This aluminum work boat is tough, landing on any shoreline with its drop down bow, allowing for trouble-free loading and unloading. Certified by the United States Coast Guard for 20 passengers, it has indoor seating for 18 passengers and outdoor seating for 2. Island Express II can haul up to 1,000 pounds of freight in its 70 square feet of deck space. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Island Express II is powered by twin 315 hp diesel engines (Yanmar 6YLP).",
+      "photos": [
+        {
+          "url": "https://islandexpresscharters.com/wp-content/uploads/Boat-IEII.jpg"
+        }
+      ],
+      "match": {
+        "vessel_id": "ab39ef05-49ae-4ef2-822c-5f85ad329274",
+        "basis": "Same name; licensee Skyline Charters LLC (as the other boats on this page); USCG 1155840, length 35 ft agrees; on Salish Sea AIS",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 on localhost"
+      }
+    },
+    {
+      "name": "Leeway",
+      "facts": {
+        "length_ft": 38,
+        "builder": "Armstrong Marine (now BRIX Marine)",
+        "build_place": "Port Angeles, Washington",
+        "hull_material": "aluminum",
+        "max_capacity": 16,
+        "capacity_basis": "USCG-certified passengers",
+        "propulsion": "twin 300 hp outboard engines (Yamaha)",
+        "speed_kn": "17-22",
+        "vessel_type": "landing craft"
+      },
+      "description": "Leeway is the newest boat to our fleet, coming to us all the way from Prudhoe Bay, Alaska, where she previously served offshore oil rigs. Leeway is a 38 foot aluminum landing craft catamaran built by Armstrong Marine, now know as BRIX Marine, in Port Angeles, Washington. BRIX is acclaimed for being the “first in cats” and producing high-performance work boats. With the catamaran hull design, Leeway handles any rough seas with the utmost of comfort. Similar in design to Island Express and Island Express II, Leeway’s drop down bow provides landing versatility on any shoreline and exceptional ease during loading and unloading. Certified by the United States Coast Guard for 16 passengers, it has indoor seating for 12 passengers and outdoor seating for 4. Leeway is our freight hauling workhorse, with the ability to haul up to 2,000 pounds of freight in its nearly 185 square feet of deck space. It’s heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Leeway is powered by twin 300 hp outboard engines (Yamaha), giving it a cruising speed of 17-22 knots.",
+      "photos": [
+        {
+          "url": "https://islandexpresscharters.com/wp-content/uploads/Boat-LW.jpg"
+        }
+      ],
+      "match": {
+        "vessel_id": "8c50bc6f-fdba-4a52-8cc7-4a53699734b6",
+        "basis": "Same name; MMSI 338234000 now on FCC licence WDN7189 held by Skyline Charters LLC, Anacortes WA; previous licence WDI2627 held in Seward, Alaska (page: came from Prudhoe Bay); length agrees; on Salish Sea AIS",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 on localhost"
+      }
+    },
+    {
+      "name": "Silver Express",
+      "facts": {
+        "length_ft": 38,
+        "builder": "Armstrong Marine (now BRIX Marine)",
+        "build_place": "Port Angeles, Washington",
+        "hull_material": "aluminum",
+        "max_capacity": 18,
+        "capacity_basis": "USCG-certified passengers",
+        "propulsion": "twin 300 hp outboard engines (Yamaha)",
+        "speed_kn": "17-22",
+        "vessel_type": "landing craft"
+      },
+      "description": "Silver Express came to us all the way from Fishers Island, New York, where she previously served as a foot passenger ferry. Silver Express has the same hull as Leeway. She is a 38 foot aluminum landing craft catamaran built by Armstrong Marine, now know as BRIX Marine, in Port Angeles, Washington. BRIX is acclaimed for being the “first in cats” and producing high-performance work boats. With the catamaran hull design, Silver Express handles any rough seas with the utmost of comfort. Similar in design to Leeway with a drop down bow, Silver Express has a larger cabin. She is certified by the United States Coast Guard for 18 passengers. Ample deck space allows her to haul a variety of freight and gear. The heated cabin, plush cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans. Silver Express is powered by twin 300 hp outboard engines (Yamaha), giving it a cruising speed of 17-22 knots.",
+      "photos": [
+        {
+          "url": "https://islandexpresscharters.com/wp-content/uploads/SE.png"
+        }
+      ],
+      "match": {
+        "vessel_id": "084ef094-b268-4763-a92d-df63ddfb6cf9",
+        "basis": "Same name; FCC licence WDP9164 held by Skyline Charters LLC; previous licensee Fishers Island Ferry District (page: came from Fishers Island, NY as a passenger ferry); USCG 1277004, length 38 ft agrees",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 on localhost"
+      }
+    },
+    {
+      "name": "Paraclete",
+      "facts": {
+        "max_capacity": 32,
+        "capacity_basis": "USCG-certified passengers"
+      },
+      "description": "Paraclete is the newest boat to our fleet and has been serving the San Juan Islands for years. She is certified by the United States Coast Guard for 32 passengers with room for 24 passengers inside and 8 outside on the aft deck. The heated cabin, cushioned seats, onboard restroom, and ample windows allow passengers to travel in comfort while taking in the sights of the San Juans.",
+      "photos": [
+        {
+          "url": "https://islandexpresscharters.com/wp-content/uploads/paraclete-guitar.jpg"
+        }
+      ],
+      "match": {
+        "vessel_id": "69981223-5277-4d21-9003-c95367316102",
+        "basis": "Same name; USCG-inspected passenger vessel (page: certified for 32 passengers) licensed to Rok & Roll, Anacortes WA (operator home port); on Salish Sea AIS. The other PARACLETE (MMSI 368154120) is a recreational licence from Port Orchard, since renamed VENTURE",
+        "confidence": "medium",
+        "decided": "confirmed by Josh 2026-10-19 on localhost"
+      }
+    }
+  ]
+}

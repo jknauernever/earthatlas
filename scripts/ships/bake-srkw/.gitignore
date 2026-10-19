@@ -1,0 +1,3 @@
+# Raw NOAA download + baked tiles: never commit (tiles go to Vercel Blob).
+raw/
+build/

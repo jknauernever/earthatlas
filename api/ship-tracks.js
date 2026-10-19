@@ -13,6 +13,8 @@
 //                                                      scripts/ships/bake-ct-voyages; ship card Emissions tab)
 //   /api/ship-tracks?r=mpa&z=<z>&x=<x>&y=<y>           NOAA Marine Protected Areas (MVT; one bake,
 //                                                      scripts/ships/bake-mpa/, trackSource.mpa)
+//   /api/ship-tracks?r=srkw&z=<z>&x=<x>&y=<y>          NOAA Fisheries Southern Resident killer whale critical habitat
+//                                                      (MVT; scripts/ships/bake-srkw/, trackSource.srkw)
 //   /api/ship-tracks?r=gfw&t=<YYYY-MM>&z=&x=&y= | &mmsi=   GFW hourly-position lines (scripts/ships/bake-gfw/, index
 //                                                      trackSource.gfw.index; months/places NOAA doesn't cover)
 //   /api/ship-tracks?op=gfwindex                       the GFW months (local bake in dev, else the Blob index)
@@ -377,6 +379,17 @@ async function pmtilesFor(t, region) {
     }
     return p
   }
+  if (region === 'srkw') {
+    let p = cache.get('srkw')
+    if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete('srkw'); p = null }
+    if (!p) {
+      const localPath = resolve(process.cwd(), `scripts/ships/bake-srkw/build/srkw-${manifest.srkw.version}.pmtiles`)
+      if (existsSync(localPath)) { const local = new LocalFileSource(localPath); p = new PMTiles(local); p.local = local }
+      else p = new PMTiles(new BlobRange(manifest.srkw.tiles))
+      cache.set('srkw', p)
+    }
+    return p
+  }
   if (region === 'mpa') {
     let p = cache.get('mpa')
     if (p?.local && !p.local.fresh()) { p.local.close(); cache.delete('mpa'); p = null }
@@ -600,8 +613,8 @@ export default async function handler(req, res) {
   // DEV-ONLY PROTOTYPE (2026-09-29): GFW hourly positions → lines for BC + Alaska, read from a local bake
   // (scripts/ships/bake-ais/gfw/build_gfw_tracks.py). Never served in production; 404 when the file is absent.
   if (region === 'gfwproto') return gfwProtoTile(searchParams, res)
-  if (!['salish', 'us', 'mpa', 'gfw', 'offshore', 'aism'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
-  const single = region === 'mpa' || region === 'offshore' // one-file layers: no months
+  if (!['salish', 'us', 'mpa', 'srkw', 'gfw', 'offshore', 'aism'].includes(region)) { res.statusCode = 400; return res.end('bad region') }
+  const single = region === 'mpa' || region === 'srkw' || region === 'offshore' // one-file layers: no months
   const t = single ? region : searchParams.get('t')
   const z = Number(searchParams.get('z')), x = Number(searchParams.get('x')), y = Number(searchParams.get('y'))
   if (!single && !isTileset(t || '')) { res.statusCode = 400; return res.end('bad tileset') }

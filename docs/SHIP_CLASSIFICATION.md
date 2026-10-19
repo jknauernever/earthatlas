@@ -321,6 +321,18 @@ Raw claim: `vessel_type`, `value_norm = TC_<normalized descriptor>`, evidence `r
 | OFFSHORE CONSTRUCTION VESSEL (3) | offshore / offshore_construction |
 | NON-COMMERCIAL (43), AIR CUSHION VEHICLE (3) | — (abstain) |
 
+### 3g. Operator websites (`lib/ships/operatorSite.js`, /ship-intake) — added 2026-10-19, **low rank**
+
+Josh 2026-10-19: "use the URL for the source to infer the type". Each boat added through /ship-intake carries the
+operator's own words as `vessel_type` claims (evidence `operator_published`): what the boat's own text calls it, and how
+the operator's site describes its business (home page title/description, verbatim). `fromOperatorType` keyword rules:
+whale / orca → passenger · whale_watching (new class "Whale watching boat", Josh 2026-10-19); wildlife / safari /
+sightseeing / excursion / tour → passenger · excursion; ferry → passenger · ferry;
+water taxi / passenger / transportation / shuttle / charter → passenger (no class); fishing → fishing. Anything else
+abstains. When the boat's own words map, the business words abstain (a water taxi run by a whale-watching company is a
+water taxi). Every vote is low rank: like a registry refinement (§4 rule 4b) it names the class inside the group the
+ranked sources settled, after registry votes, and never changes the group.
+
 ## 4. Combining sources (decided 2026-09-25 — `combine()` / `classifyClaims()`)
 
 For a vessel, from its active `vessel_type` claims (for a time window; "now" keeps

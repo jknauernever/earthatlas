@@ -94,21 +94,27 @@ export default async function handler(req, res) {
   const bbox = tileBbox(z, x, y)
   const params = new URLSearchParams({ bbox: bbox.join(','), bboxSR: '3857', imageSR: '3857', size: '256,256', format: 'png24', transparent: 'false', f: 'image' })
   let png
+  // The map cancels tiles it no longer needs (panning, zooming past); stop asking the county for those too.
+  const gone = new AbortController()
+  res.on('close', () => { if (!res.writableFinished) gone.abort() })
   try {
     // The county server renders each tile on request and now and then fails or stalls under a burst of map requests;
-    // the map never asks for a failed tile again (it stays a hole), so try up to 3 times (8 s each) before giving up.
+    // the map never asks for a failed tile again (it stays a hole), so a quick failure is tried up to 3 times. A stall
+    // (8 s timeout) is not retried: on 2026-10-19 one visitor at zoom 17 sent ~650 tiles in 5 minutes, the county server
+    // stalled, and retrying each stalled tile 3 times only added load (205 tiles failed in 12 seconds).
     for (let attempt = 1; ; attempt++) {
       try {
-        const r = await fetch(`${src.url(yr)}?${params}`, { signal: AbortSignal.timeout(8000) })
+        const r = await fetch(`${src.url(yr)}?${params}`, { signal: AbortSignal.any([AbortSignal.timeout(8000), gone.signal]) })
         if (!r.ok) throw new Error(`upstream ${r.status}`)
         png = Buffer.from(await r.arrayBuffer())
         break
       } catch (e) {
-        if (attempt >= 3) throw e
+        if (attempt >= 3 || e?.name === 'TimeoutError' || gone.signal.aborted) throw e
         await new Promise((ok) => setTimeout(ok, 300 * attempt))
       }
     }
   } catch (e) {
+    if (gone.signal.aborted) return   // the map cancelled this tile: nobody is waiting for an answer
     console.error('[aerial-tiles]', q.get('src'), yr, z, x, y, e?.message)
     res.statusCode = 502; res.setHeader('Cache-Control', 'no-store'); return res.end('upstream failed')
   }

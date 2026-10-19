@@ -1,0 +1,115 @@
+{
+  "page": {
+    "url": "https://www.sanjuansafaris.com/vessels",
+    "title": "Vessels | San Juan Island Whale Watching Tours",
+    "retrieved_at": "2026-10-19T17:29:58.303Z",
+    "text": "Osprey (https://www.sanjuansafaris.com/vessels/osprey)\n\nOsprey is our largest vessel, and the largest whale watching boat docked on San Juan Island!\n\nOsprey is the largest vessel in our fleet. Coast Guard approved for 126 passengers and crew, this boat is ready to host your group event, party, or private charter! Osprey runs our Classic Whale Watch and Wildlife Safari daily in June through August.\n\nCapacity: 126 Coast Guard approved for passengers and crew\n\nSea Lion (https://www.sanjuansafaris.com/vessels/sea-lion)\n\nOur flagship vessel built specifically for wildlife viewing in the Pacific Northwest.\n\nSea Lion was built specifically for whale & wildlife viewing in the Pacific Northwest. This vessel is a staff favorite, as it provides an intimate experience while allowing for larger groups.\n\nCapacity: 44 passengers\n\nKestrel (https://www.sanjuansafaris.com/vessels/kestrel)\n\nSmall boat, big adventure! Our fastest boat operating our Adventure tours.\n\nKestrel is our dedicated Adventure Tour vessel! This boat is perfect for intimate nature viewing and exciting boat experiences.\n\nCapacity: 20 passengers\n\nLarus (https://www.sanjuansafaris.com/larus)\n\nOur newest boat perfect for inter-island transfers, water taxis, and small group charters.\n\nThe newest boat in our fleet of vessels, Larus is small but mighty! This boat is fast, making it perfect for water taxi services between the San Juan Islands.\n\nCapacity: 6 passengers"
+  },
+  "operator": {
+    "name": "San Juan Safaris",
+    "url": "https://www.sanjuansafaris.com/",
+    "place": "Friday Harbor, WA",
+    "country": "US",
+    "service": "Whale Watching in San Juan Islands | San Juan Island Whale Watching Tours",
+    "service_url": "https://www.sanjuansafaris.com/"
+  },
+  "boats": [
+    {
+      "name": "Osprey",
+      "page_url": "https://www.sanjuansafaris.com/vessels/osprey",
+      "facts": {
+        "max_capacity": 126,
+        "capacity_basis": "Coast Guard approved for passengers and crew",
+        "vessel_type": "whale watching boat"
+      },
+      "description": "Osprey is our largest vessel, and the largest whale watching boat docked on San Juan Island!\n\nOsprey is the largest vessel in our fleet. Coast Guard approved for 126 passengers and crew, this boat is ready to host your group event, party, or private charter! Osprey runs our Classic Whale Watch and Wildlife Safari daily in June through August.",
+      "photos": [
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/large/public/2026-06/Vessesl%20-%20Osprey.png?itok=7ERywdIK"
+        },
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/homepage_hero/public/2025-10/Osprey-starboard-side.png.webp?h=9b984781&itok=Br08IfM5"
+        },
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/text_media/public/2022-11/mv_osprey.jpg.webp?h=d08f423e&itok=o1Y_ZIVj"
+        }
+      ],
+      "match": {
+        "vessel_id": "1c082e47-db72-40dd-83e0-0c0795379239",
+        "basis": "MMSI 338576000 on FCC licence WDM3791 held by San Juan Safaris LLC, Friday Harbor WA (also licenses Kestrel); formerly ISLAND EXPLORER 4 of Island Adventures; on Salish Sea AIS",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 (chat review)"
+      }
+    },
+    {
+      "name": "Sea Lion",
+      "page_url": "https://www.sanjuansafaris.com/vessels/sea-lion",
+      "facts": {
+        "max_capacity": 44,
+        "capacity_basis": "passengers",
+        "vessel_type": "built specifically for whale & wildlife viewing"
+      },
+      "description": "Our flagship vessel built specifically for wildlife viewing in the Pacific Northwest.\n\nSea Lion was built specifically for whale & wildlife viewing in the Pacific Northwest. This vessel is a staff favorite, as it provides an intimate experience while allowing for larger groups.",
+      "photos": [
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/large/public/2026-06/Vessels%20-%20Sea%20Lion%20by%20Chase.png?itok=NQxXVF7U"
+        },
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/homepage_hero/public/2025-11/2025-Sea-Lion-Starboard-Bow.jpg.webp?h=98e92744&itok=6TvMakEo"
+        }
+      ],
+      "match": {
+        "vessel_id": "e2e743b2-0a20-421c-848f-cc9a01f92964",
+        "basis": "USCG 1182875 SEA LION, 55 ft passenger vessel, earlier FCC licence WDH5547 held by SAN JUAN CHARTERS, Friday Harbor WA; broadcasting MMSI 338191000 on AIS through Sept 2026. San Juan Safaris LLC took a new licence for SEA LION (WDI8144, 2026-03-20) with MMSI 369105000, not yet seen on our AIS",
+        "confidence": "medium",
+        "decided": "confirmed by Josh 2026-10-19 (chat review)"
+      }
+    },
+    {
+      "name": "Kestrel",
+      "page_url": "https://www.sanjuansafaris.com/vessels/kestrel",
+      "facts": {
+        "max_capacity": 20,
+        "capacity_basis": "passengers",
+        "vessel_type": "Adventure Whale Watch & Wildlife Tour"
+      },
+      "description": "Small boat, big adventure! Our fastest boat operating our Adventure tours.\n\nKestrel is our dedicated Adventure Tour vessel! This boat is perfect for intimate nature viewing and exciting boat experiences.",
+      "photos": [
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/large/public/2026-06/Vessels%20-%20Kestrel.png?itok=Kz3PBP-Q"
+        },
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/text_media/public/2022-12/kestrel.jpg.webp?h=c9f93661&itok=MilxWGRs"
+        }
+      ],
+      "match": {
+        "vessel_id": "a0dc8c84-6450-4a14-b52f-937133484cdf",
+        "basis": "MMSI 367014000 on FCC licence WDI8141 held by San Juan Safaris LLC, Friday Harbor WA (also licenses Osprey); USCG 1258479; on Salish Sea AIS",
+        "confidence": "high",
+        "decided": "confirmed by Josh 2026-10-19 (chat review)"
+      }
+    },
+    {
+      "name": "Larus",
+      "page_url": "https://www.sanjuansafaris.com/larus",
+      "facts": {
+        "max_capacity": 6,
+        "capacity_basis": "passengers",
+        "vessel_type": "water taxi"
+      },
+      "description": "Our newest boat perfect for inter-island transfers, water taxis, and small group charters.\n\nThe newest boat in our fleet of vessels, Larus is small but mighty! This boat is fast, making it perfect for water taxi services between the San Juan Islands.",
+      "photos": [
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/large/public/2026-06/Vessels%20-%20Larus.png?itok=YU55BSs8"
+        },
+        {
+          "url": "https://www.sanjuansafaris.com/sites/default/files/styles/homepage_hero/public/2026-06/Larus%20%289%29.JPG.webp?h=1426add3&itok=AWJ7NFiL"
+        }
+      ],
+      "match": {
+        "none": "No AIS record under this name in our data; the only current FCC licence named LARUS is recreational (MMSI 368068860, never seen on our AIS) and not tied to San Juan Safaris; USCG PSIX LARUS records are an Alaska boat and a Panama freighter",
+        "decided": "confirmed by Josh 2026-10-19 (chat review)"
+      }
+    }
+  ]
+}

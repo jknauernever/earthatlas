@@ -41,6 +41,8 @@
     "ships:import-terminals": "node --env-file=.env.local scripts/ships/import-terminals.mjs",
     "ships:import-fleet": "node --env-file=.env.local scripts/ships/import-fleet.mjs",
     "ships:intake": "node --env-file=.env.local scripts/ships/intake.mjs",
+    "ships:import-fcc-lookup": "node --env-file=.env.local scripts/ships/import-fcc-lookup.mjs",
+    "ships:merge-splits": "node --env-file=.env.local scripts/ships/merge-splits.mjs",
     "ships:import-facilities": "node --env-file=.env.local scripts/ships/import-facilities.mjs",
     "ships:import-bc-permits": "node --env-file=.env.local scripts/ships/import-bc-permits.mjs",
     "ships:import-cer": "node --env-file=.env.local scripts/ships/import-cer.mjs",

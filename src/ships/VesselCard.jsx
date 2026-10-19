@@ -351,9 +351,13 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             })()}
             {vessel.vessel.needs_review && (
               <div className={styles.review} title="EarthAtlas found evidence that conflicts with this identity. It did not merge anything automatically.">
+                {/* Say what is actually open (Josh 2026-10-19): most of these are another record with the same MMSI. */}
                 {candidates.length
-                  ? <>Identity needs review: see the <button type="button" className={styles.inlineLink} onClick={() => setTab('matches')}>Matches</button> tab.</>
-                  : 'Identity needs review: some sources disagree about this ship. EarthAtlas kept them separate rather than guess.'}
+                  ? <>{candidates.every((c) => c.method === 'MMSI_TEMPORAL')
+                      ? `${candidates.length === 1 ? 'Another record shares' : `${candidates.length} other records share`} this ship’s MMSI and may be the same ship. `
+                      : `${candidates.length === 1 ? 'Another record' : `${candidates.length} other records`} may be this same ship. `}
+                    EarthAtlas keeps them separate until the evidence is clear: see <button type="button" className={styles.inlineLink} onClick={() => setTab('matches')}>Matches</button>.</>
+                  : 'Some sources disagree about this ship. EarthAtlas kept them separate rather than guess.'}
               </div>
             )}
             <div className={styles.idNote} title="EarthAtlas's own id for this vessel. IMO and MMSI can change or be wrong; this id doesn't.">
@@ -618,13 +622,14 @@ function Photos({ images: own, vesselId, hasImo, onFetched }) {
   // The operator's own photo, loaded from its website with a credit linking to the page it is on (Josh 2026-10-19).
   if (d.via === 'operator_site') return (
     <figure className={styles.photo}>
-      <a href={d.page_url} target="_blank" rel="noopener noreferrer" title={`Open ${d.credit}'s page about this boat`}>
+      <a href={d.file_page_url || d.page_url} target="_blank" rel="noopener noreferrer" title={`Open the page this photo is from`}>
         <img src={d.thumb_url} alt={d.caption || `Photo by ${d.credit}`} loading="lazy" referrerPolicy="no-referrer"
           onError={(e) => { e.currentTarget.closest('figure').style.display = 'none' }} />
       </a>
       <figcaption>
-        Photo: <a className={styles.sourceLink} href={d.page_url} target="_blank" rel="noopener noreferrer"
-          title={`© ${d.credit} · shown from the operator's website`}>{d.credit}</a> (operator's website){next}
+        Photo: {d.file_page_url
+          ? <a className={styles.sourceLink} href={d.file_page_url} target="_blank" rel="noopener noreferrer" title={`© ${d.credit}`}>{d.credit}</a>
+          : d.credit}{d.rights === 'all rights reserved (operator)' ? ' (operator\'s website)' : ''}{next}
       </figcaption>
     </figure>
   )
@@ -686,7 +691,11 @@ function TypeLine({ c, typeClaims, Src }) {
       {c.conflict && c.group && <div className={styles.typeNote}>Sources name different sub-groups: {c.classes.join(', ').replaceAll('_', ' ')}.</div>}
       {c.refinedBy?.length > 0 && <div className={styles.typeNote}>
         {c.refinedBy.every((id) => String(id).startsWith('operator-site-')) ? 'Sub-type from the operator\'s own website, below.' : 'Sub-type from the registry record below.'}</div>}
-      {c.dissent?.length > 0 && <div className={styles.typeNote}>
+      {/* A kind picked on review from EarthAtlas's list (intake page, Josh 2026-10-19) decides; other sources are listed below it. */}
+      {c.basis === 'reviewed' && <div className={styles.typeNote}>
+        Set when this boat was reviewed from its operator’s website{c.dissent?.length > 0 ? `; other sources say ${[...new Set(c.dissent.map((d) => (d.class || d.group).replaceAll('_', ' ')))].join(' / ')} (below)` : ''}.
+      </div>}
+      {c.basis !== 'reviewed' && c.dissent?.length > 0 && <div className={styles.typeNote}>
         Global Fishing Watch's model says {[...new Set(c.dissent.map((d) => (d.class || d.group).replaceAll('_', ' ')))].join(' / ')} (ranked lower than what the ship and registries report).
       </div>}
       {c.hazardous_cargo?.length > 0 && <div className={styles.hazard}>

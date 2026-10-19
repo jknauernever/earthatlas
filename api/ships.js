@@ -80,6 +80,8 @@ import { timingSafeEqual } from 'node:crypto'
 import { gzipSync, gunzipSync } from 'node:zlib'
 
 const S = DEFAULT_SCHEMA
+// The web intake page reads an operator's site and asks Claude about it (lib/ships/intakeApi.js): allow up to 2 minutes.
+export const maxDuration = 120
 
 function send(res, status, body, cache = 'public, max-age=60, s-maxage=300, stale-while-revalidate=600') {
   res.statusCode = status
@@ -131,6 +133,8 @@ export default async function handler(req, res) {
   } catch {
     return send(res, 503, { error: 'ships database not configured' })
   }
+  // The web intake page (earthatlas.org/ships/intake): admin-only ops in their own module (lib/ships/intakeApi.js).
+  if (String(op || '').startsWith('intake')) return (await import('../lib/ships/intakeApi.js')).default(req, res, { op, p, q, S })
   try {
     if (op === 'search') {
       const text = (p.get('q') || '').slice(0, 80)

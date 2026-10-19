@@ -39,6 +39,8 @@
 #   zsh scripts/ships/prod.sh port-names B D   back up, then for box B (w,s,e,n): place names, GeoNames marinas, re-match, WPI positions (GeoNames files in D)
 #   zsh scripts/ships/prod.sh fleet              back up, then a fleet's boats (migration 034): --file lib/ships/data/fleets/whalewatch.json, or --add / --remove one boat (scripts/ships/import-fleet.mjs)
 #   zsh scripts/ships/prod.sh intake             back up, then one reviewed /ship-intake file (migration 037): apply --file lib/ships/data/intake/<name>.json (scripts/ships/intake.mjs; review is read-only)
+#   zsh scripts/ships/prod.sh fcc-lookup         back up, then refill the FCC ship-licence name lookup for the web intake page (migration 038; scripts/ships/import-fcc-lookup.mjs, args pass through, e.g. --fetch)
+#   zsh scripts/ships/prod.sh merge-splits       back up, then merge vessel records split only by a placeholder call sign (resolver v1.10; scripts/ships/merge-splits.mjs, args pass through, e.g. --dry-run)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
 #   SHIPS_PROD_DATABASE_URL  prod ships DB, direct (unpooled) connection
@@ -308,6 +310,16 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     [ "${2:-}" = "review" ] || backup intake
     prod_node scripts/ships/intake.mjs "${@:2}"
+    ;;
+  fcc-lookup)
+    need SHIPS_PROD_DATABASE_URL
+    backup fcc-lookup
+    prod_node scripts/ships/import-fcc-lookup.mjs "${@:2}"
+    ;;
+  merge-splits)
+    need SHIPS_PROD_DATABASE_URL
+    [[ " ${*:2} " == *" --dry-run "* ]] || backup merge-splits
+    prod_node scripts/ships/merge-splits.mjs "${@:2}"
     ;;
   *)
     sed -n '2,40p' "$0"; exit 2

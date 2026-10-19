@@ -52,6 +52,7 @@ import ShipsApp from './ships/ShipsApp.jsx'
 import SourceRecordPage from './ships/SourceRecordPage.jsx'
 import PermitPage from './ships/PermitPage.jsx'
 import ShipsChangelogPage from './ships/ChangelogPage.jsx'
+import ShipsIntakePage from './ships/IntakePage.jsx'
 import ScrubberReport from './ships/ScrubberReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
@@ -176,6 +177,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/source/:id" element={<SourceRecordPage />} />
           <Route path="/ships/permit/:id" element={<PermitPage />} />
           <Route path="/ships/changelog" element={<ShipsChangelogPage />} />
+          <Route path="/ships/intake" element={<ShipsIntakePage />} />
           <Route path="/ships/reports/scrubbers" element={<ScrubberReport />} />
           <Route path="/ships/reports/scrubbers/:edition" element={<ScrubberReport />} />
           <Route path="/inmotion" element={<SystemsApp />} />

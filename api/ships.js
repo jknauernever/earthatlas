@@ -8,7 +8,7 @@
 //   /api/ships?op=fleet&key=whalewatch                     → { key, name, members: [{ vessel_id, name, company, basis, source_url, mmsiPeriods }] }
 //   /api/ships?op=vessel&id=<uuid>                         → { vessel, assertions, links, outgoing, sources }
 //   /api/ships?op=record&id=<source record id>             → the raw source payload (traceability)
-//   /api/ships?op=mmsi&mmsi=<9 digits>&at=<ISO time>       → { status, vesselIds }
+//   /api/ships?op=mmsi&mmsi=<9 digits>&at=<ISO time>[&recent=1] → { status, vesselIds }  (recent: last holder within 120 days)
 //   /api/ships?op=ports&id=<uuid>[&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=] → the ship's port visits, newest first
 //        each visit carries our port's name (World Port Index first, then GFW; lib/ships/ports.js), its source record,
 //        and the country name (GeoNames); the official anchorage area its position lies in / is near (lib/ships/anchorages.js);
@@ -54,7 +54,7 @@ import { lookupShips, saveMmsis } from '../lib/ships/lookup.js'
 import { slickCandidateShips } from '../lib/ships/ceruleanClient.js'
 import { gfwClient } from '../scripts/ships/gfwClient.js'
 import { tracksForMmsi } from './ship-tracks.js'
-import { searchVesselsFull, vesselKinds, getVessel, getRecord, getRecordView, getIncidentRecord, vesselsForMmsiAt } from '../lib/ships/queries.js'
+import { searchVesselsFull, vesselKinds, getVessel, getRecord, getRecordView, getIncidentRecord, vesselsForMmsiAt, vesselsForMmsiRecent } from '../lib/ships/queries.js'
 import { parseWindow, portVisitPlan, ensurePortVisits, vesselPortVisits, PORT_VISITS_SOURCE } from '../lib/ships/portVisits.js'
 import { nameVisits, NAME_SOURCE_IDS } from '../lib/ships/ports.js'
 import { ANCHORAGE_SOURCE_IDS } from '../lib/ships/anchorages.js'
@@ -369,7 +369,8 @@ export default async function handler(req, res) {
       if (Number.isNaN(at.getTime())) return send(res, 400, { error: 'at must be an ISO timestamp' })
       // An "unresolved" answer is never cached: the page saves GFW's identity right after it and asks again (2026-10-06:
       // the cached "unresolved" hid THEA KNUTSEN's just-saved record).
-      const r = await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString())
+      // recent=1 (a live report or a track under 30 days old): fall back to the ship that last held the MMSI (vesselsForMmsiRecent).
+      const r = p.get('recent') === '1' ? await vesselsForMmsiRecent(q, S, p.get('mmsi') || '', at.toISOString()) : await vesselsForMmsiAt(q, S, p.get('mmsi') || '', at.toISOString())
       return send(res, 200, r, r.status === 'unresolved' ? 'no-store' : undefined)
     }
     //   /api/ships?op=slickShips&slick=<Cerulean slick id> → { at, ships: { <mmsi>: lookup } } for the slick's likely ship

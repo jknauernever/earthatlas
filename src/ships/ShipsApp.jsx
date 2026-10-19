@@ -1207,7 +1207,9 @@ export default function ShipsApp() {
       setStopFocus(null); stopMarkerRef.current?.remove()
       const when = new Date(t0 * 1000).toISOString()
       // fresh: the re-ask after a save bypasses the browser and edge caches, which may still hold the first "unresolved".
-      const resolve = async (fresh = false) => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}${fresh ? `&fresh=${Date.now()}` : ''}`,
+      // A position under 30 days old (a live report) may be newer than our identity data: ask for the ship that last held the MMSI.
+      const recent = Date.now() - Date.parse(when) < 30 * 86400000 ? '&recent=1' : ''
+      const resolve = async (fresh = false) => (await fetch(`/api/ships?op=mmsi&mmsi=${mmsi}&at=${encodeURIComponent(when)}${recent}${fresh ? `&fresh=${Date.now()}` : ''}`,
         fresh ? { cache: 'no-store' } : undefined)).json()
       try {
         let d = await resolve()

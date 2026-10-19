@@ -397,7 +397,10 @@ const PORTS = {
   id: 'ports', name: 'Ports & terminals', sub: 'harbours, anchorages, refineries and their ships', hue: PORT_HUE, iconSvg: PORT_ICON,
   sourceName: 'World Port Index (NGA Pub 150)', sourceUrl: 'https://msi.nga.mil/Publications/WPI',
 }
-const PORT_TIERS = [['L', 0, 5.5], ['M', 3, 4.2], ['S', 5, 3.2], ['V', 7, 2.4]] // [WPI size, min zoom, radius px]
+// [WPI size, min zoom, radius px]. 'X' = ports outside the World Port Index (GFW clusters, GeoNames marinas, DFO harbours,
+// Climate TRACE-only): hollow rings from z11.5 only (Josh 2026-10-19: "way too many small ports showing at all zoom levels").
+const PORT_TIERS = [['L', 0, 5.5], ['M', 3, 4.2], ['S', 5, 3.2], ['V', 7, 2.4], ['X', 11.5, 2.4]]
+const SMALL_PORT_MINZOOM = 11.5
 // Oil & gas facilities (Josh 2026-09-27): Climate TRACE's fossil-fuel-operations sources (refineries, oil & gas
 // production and transport basins, coal mines), drawn by /inmotion's own facility overlay and card.
 const FOSSIL = {
@@ -414,10 +417,11 @@ const portLayerId = (t) => `ports-${t}`
 const TERMINAL_LAYER = 'terminals-icon'
 const TERMINAL_SEL = 'terminals-sel'
 const TERMINAL_LABEL = 'terminals-label'
-const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL, ANCHORAGE_LABEL] // an anchorage's name opens its popup
+const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', 'ports-label-small', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL, ANCHORAGE_LABEL] // an anchorage's name opens its popup
 // Ports and terminals: a marker under the click wins over tracks, dark cells, protected areas and facilities.
 const portHit = (map, pt) => {
-  const live = PORT_LAYERS.filter((l) => l !== 'ports-label' && l !== TERMINAL_LABEL && l !== TERMINAL_SEL && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
+  // A port's name opens its card too (Josh 2026-10-19: clicking "Richardson" did nothing).
+  const live = PORT_LAYERS.filter((l) => l !== TERMINAL_LABEL && l !== TERMINAL_SEL && map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
   return live.length ? map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: live }) : []
 }
 const terminalHit = (map, pt) => portHit(map, pt).filter((f) => f.layer.id === TERMINAL_LAYER)
@@ -1770,7 +1774,7 @@ export default function ShipsApp() {
   useEffect(() => {
     if (!portsOn || portsData) return
     // v: bumped when port names or positions change, so no day-old cached copy is served.
-    fetch('/api/ships?op=portsLayer&v=2026-10-18').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
+    fetch('/api/ships?op=portsLayer&v=2026-10-19').then((r) => (r.ok ? r.json() : null)).then((d) => d && setPortsData(d)).catch(() => {})
   }, [portsOn, portsData])
   useEffect(() => {
     if (!portsOn || terminalsData) return
@@ -1821,7 +1825,8 @@ export default function ShipsApp() {
         attribution: '<a href="https://msi.nga.mil/Publications/WPI" target="_blank" rel="noopener">World Port Index (NGA)</a>' })
       const gfw = ['==', ['get', 'g'], 1]
       for (const [t, minzoom, r] of PORT_TIERS) {
-        const filter = t === 'V' ? ['any', ['==', ['get', 's'], 'V'], ['!', ['has', 's']], ['==', ['get', 's'], null]] : ['==', ['get', 's'], t]
+        const filter = t === 'X' ? gfw
+          : ['all', ['!', gfw], t === 'V' ? ['any', ['==', ['get', 's'], 'V'], ['!', ['has', 's']], ['==', ['get', 's'], null]] : ['==', ['get', 's'], t]]
         map.addLayer({ id: portLayerId(t), type: 'circle', source: 'ports', minzoom, filter,
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, r, 10, r * 1.6],
@@ -1832,10 +1837,11 @@ export default function ShipsApp() {
           } }, labelsId)
       }
       // Same size as the terminal labels (Josh 2026-09-29), a touch smaller while zoomed out where harbours crowd.
-      map.addLayer({ id: 'ports-label', type: 'symbol', source: 'ports', minzoom: 8,
-        layout: { 'text-field': ['get', 'n'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 11, 14, 14, 16], 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true,
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
-        paint: { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.6 } })
+      const labelLayout = { 'text-field': ['get', 'n'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 11, 14, 14, 16], 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true,
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] }
+      const labelPaint = { 'text-color': '#fed7aa', 'text-halo-color': '#0a0e17', 'text-halo-width': 1.6 }
+      map.addLayer({ id: 'ports-label', type: 'symbol', source: 'ports', minzoom: 8, filter: ['!', gfw], layout: labelLayout, paint: labelPaint })
+      map.addLayer({ id: 'ports-label-small', type: 'symbol', source: 'ports', minzoom: SMALL_PORT_MINZOOM, filter: gfw, layout: labelLayout, paint: labelPaint })
     }
     for (const l of PORT_TIERS.map(([t]) => portLayerId(t))) if (map.getLayer(l)) map.moveLayer(l, labelsId)
     for (const l of PORT_LAYERS) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', portsOn ? 'visible' : 'none')
@@ -2449,7 +2455,7 @@ export default function ShipsApp() {
                       Harbour (bigger dot = bigger)
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.6px solid ${PORT_HUE}` }} />}>
-                      Port not in the World Port Index
+                      Port not in the World Port Index (shown from zoom 11.5)
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(244,63,94,0.55)', border: '1px solid #f43f5e' }} />}>
                       Refinery or oil &amp; gas site

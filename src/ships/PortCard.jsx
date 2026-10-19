@@ -263,6 +263,8 @@ export default function PortCard({ portId, months, month, onMonth, onClose, onSe
             const pos = p.detail.position
             const dm = (v, h) => `${Math.floor(Math.abs(v))}°${String(Math.round((Math.abs(v) % 1) * 60)).padStart(2, '0')}′${v >= 0 ? h[0] : h[1]}`
             const what = pos.method === 'gfw_busiest_anchorage' ? <>the busiest anchorage of Global Fishing Watch port {pos.name}</>
+              : pos.method === 'geonames_bay_by_same_name_place'
+                ? <><a className={styles.inlineLink} href={rec(pos.record_id)} target="_blank" rel="noopener noreferrer">{pos.name}</a>, the bay nearest the town of <a className={styles.inlineLink} href={rec(pos.town?.record_id)} target="_blank" rel="noopener noreferrer">{pos.town?.name}</a> in GeoNames (CC BY 4.0)</>
               : <><a className={styles.inlineLink} href={rec(pos.record_id)} target="_blank" rel="noopener noreferrer">{pos.name}</a> in GeoNames (CC BY 4.0)</>
             return <div className={styles.vesselSub}>Shown at {what}, {Math.round(pos.distance_km * 1000)} m from the World Port Index position ({dm(Number(p.lat), 'NS')} {dm(Number(p.lon), 'EW')}, given to the nearest minute).</div>
           })()}

@@ -102,7 +102,24 @@ try {
     if (!pvs.n) throw new Error('no port visits stored yet (source gfw-port-visits missing)')
     const labels = opt('labels') ? opt('labels').split(',').map((x) => x.trim()).filter(Boolean) : boxOpt() ? await labelsInBox(pool, schema, boxOpt()) : null
     if (labels) console.log(`  ${labels.length} labels`)
-    const r = await withRetry(() => withTx(pool, (c) => matchPortLabels(c, schema, { labels })))
+    // --dry-run: the same match inside a transaction that is rolled back; prints only the names that would change.
+    const dry = args.includes('--dry-run')
+    const r = dry ? await (async () => {
+      const c = await pool.connect()
+      try {
+        await c.query('BEGIN')
+        const before = new Map((await c.query(`SELECT a.key AS label, p.name FROM ${schema}.port_aliases a JOIN ${schema}.ports p ON p.id = a.port_id WHERE a.key_kind = 'gfw_port_label'`)).rows.map((x) => [x.label, x.name]))
+        const out = await matchPortLabels(c, schema, { labels })
+        for (const d of out.decisions) d.before = before.get(d.label)
+        return out
+      } finally { await c.query('ROLLBACK').catch(() => {}); c.release() }
+    })() : await withRetry(() => withTx(pool, (c) => matchPortLabels(c, schema, { labels })))
+    if (dry) {
+      const changed = r.decisions.filter((d) => d.before !== d.name).sort((a, b) => a.label.localeCompare(b.label))
+      console.log(`  dry run (rolled back): ${changed.length} of ${r.decisions.length} names would change`)
+      for (const d of changed) console.log(`  ${d.label.padEnd(30)} ${String(d.before ?? '—').padEnd(30)} → ${d.name}  [${d.method}${d.place ? `, ${d.place.code} ${Math.round(d.place.distance_km * 1000)} m` : ''}]`)
+      process.exit(0)
+    }
     stats = { labels: r.labels, byMethod: r.byMethod, visitsUpdated: r.visitsUpdated }
     for (const d of r.decisions.sort((a, b) => a.label.localeCompare(b.label))) {
       console.log(`  ${d.label.padEnd(30)} ${d.method.padEnd(24)} ${String(d.name ?? '—').padEnd(28)} ${d.distance_km != null ? `${d.distance_km} km` : ''}${d.candidates.length ? `  candidates: ${d.candidates.map((x) => `${x.name}${x.distance_km != null ? ` ${x.distance_km} km` : ''} (${x.reason ?? x.kind})`).join('; ')}` : ''}${d.notes.length ? `  [${d.notes.join('; ')}]` : ''}`)
@@ -136,11 +153,25 @@ try {
     if (!ids.length || !dir) throw new Error('positions needs --ids a,b or --box w,s,e,n (WPI ports) and --geonames-dir D')
     const pn = await import('../../lib/ships/placeNames.js')
     const { rows: pts } = await pool.query(`SELECT lat::float8 AS lat, lon::float8 AS lon FROM ${schema}.ports WHERE origin = 'wpi' AND id = ANY($1::bigint[])`, [ids])
-    const decisions = await withTx(pool, async (c) => {
+    const work = async (c) => {
       await pn.ensurePlaceSources(c, schema)
       await pn.ingestGeonamesNear(c, schema, ['US.txt', 'CA.txt'].map((f) => path.join(dir, f)), pts)
       return pn.positionWpiPorts(c, schema, ids)
-    })
+    }
+    // --dry-run: inside a transaction that is rolled back; prints only the ports whose drawn position would move.
+    if (args.includes('--dry-run')) {
+      const c = await pool.connect()
+      try {
+        await c.query('BEGIN')
+        const before = new Map((await c.query(`SELECT id, detail->'position' AS pos FROM ${schema}.ports WHERE id = ANY($1::bigint[])`, [ids])).rows.map((r) => [String(r.id), r.pos]))
+        const ds = await work(c)
+        const moved = ds.filter((d) => { const b = before.get(String(d.id)); return (b?.lat ?? null) !== (d.position?.lat ?? null) || (b?.lon ?? null) !== (d.position?.lon ?? null) })
+        console.log(`  dry run (rolled back): ${moved.length} of ${ds.length} WPI ports would move`)
+        for (const d of moved) { const b = before.get(String(d.id)); console.log(`  ${d.name.padEnd(18)} ${b ? `${b.method} "${b.name}"` : 'WPI point'} → ${d.position ? `${d.position.method} "${d.position.name}" (${d.position.lat.toFixed(5)}, ${d.position.lon.toFixed(5)})${d.position.town ? `, ${Math.round(d.position.town.distance_km * 1000)} m from the town` : ''}` : 'WPI point'}`) }
+      } finally { await c.query('ROLLBACK').catch(() => {}); c.release() }
+      process.exit(0)
+    }
+    const decisions = await withTx(pool, work)
     for (const d of decisions) console.log(`  ${d.name.padEnd(16)} WPI ${d.wpi.map((x) => x.toFixed(4)).join(',')}  → ${d.position ? `${d.position.lat.toFixed(4)},${d.position.lon.toFixed(4)} ${d.position.method} "${d.position.name}" ${d.position.distance_km} km` : 'WPI position kept'}`)
     stats = { ports: decisions.length, moved: decisions.filter((d) => d.position).length }
   } else if (what === 'places') {

@@ -289,6 +289,15 @@ case "${1:-}" in
       prod_node scripts/ships/import-ports.mjs $step --box "$2" --geonames-dir "$3" $([[ $step == places ]] && echo --cgndb) || exit 1
     done
     ;;
+  port-step)
+    # One import-ports step on named ports only (Josh reviews the dry run first), e.g.
+    #   zsh scripts/ships/prod.sh port-step match --labels usa-shawisland,usa-kingston
+    #   zsh scripts/ships/prod.sh port-step positions --ids 177,2899 --geonames-dir <dir>
+    need SHIPS_PROD_DATABASE_URL
+    [[ "${2:-}" == (match|positions) ]] || { echo "usage: prod.sh port-step match|positions …" >&2; exit 2 }
+    backup port-step
+    prod_node scripts/ships/import-ports.mjs "${@:2}"
+    ;;
   fleet)
     need SHIPS_PROD_DATABASE_URL
     backup fleet

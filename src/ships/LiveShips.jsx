@@ -6,12 +6,13 @@
  * 60 s; one row per MMSI from every live source it records — aisstream.io AIS and Washington State Ferries' own positions —
  * the newest position winning, from the last 24 h, with 30-minute trails for ships under way; ferries carry route,
  * terminals and ETA). Polled every minute
- * while the tab is visible. Shown: ships reported in the last SHOW_H hours, colored by the AIS ship type they broadcast
- * (the same kinds as the track filter), arrows for ships under way (pointing along heading, or course when no heading),
- * dots for the rest, fainter the older the report. Hover: name, kind, speed, heading, how long ago, source. Click: the
+ * while the tab is visible. Shown: ships reported in the last SHOW_H hours, colored by their kind in our ships database
+ * (lib/ships/liveBriefs.js, Josh 2026-10-19), else by the AIS ship type they broadcast (the same kinds as the track filter), arrows for ships under way (pointing along heading, or course when no heading),
+ * dots for the rest, fainter the older the report. Hover: name, kind, flag, IMO, owner / operator from our records (each with
+ * its source), speed, heading, how long ago, source. Click: the
  * ship's card (openShipRef, the track click's opener). Localhost falls back to public/dev-data/aisstream-live.json.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { TRACK_KINDS } from './TrackControls.jsx'
 
@@ -57,13 +58,41 @@ function ferryLine(x) {
   const bits = [leg, x.eta ? `ETA ${fmtT(x.eta)}` : null, late != null ? (late > 0 ? `left ${late} min late` : 'left on time') : null].filter(Boolean)
   return bits.length ? `<br>${bits.join(' · ')}` : ''
 }
-function tipHTML(p) {
-  const kind = p.isFerry === 1 ? FERRY_LABEL : KIND_LABEL[p.kind] || 'Not reported'
+// Our records' sources, short enough for a hover (the ship's card has each in full, with links).
+const SHORT_SOURCE = { 'fcc-uls-ship': 'FCC', 'gfw-vessel-identity': 'Global Fishing Watch', 'gfw-4wings-ais': 'Global Fishing Watch', 'marinecadastre-ais': 'NOAA AIS', wikidata: 'Wikidata',
+  'tc-vessel-registry': 'Transport Canada', 'uscg-psix': 'USCG', 'wikimedia-commons': 'Wikimedia Commons', 'emsa-thetis-mrv': 'EU MRV' }
+const srcName = (id, names) => SHORT_SOURCE[id] || names?.[id] || id
+const role = (x) => String(x.v).replace(/\s*\(Q\d+\)$/, '')
+// What our ships database says about this ship (liveBriefs): its kind, flag, IMO and owner / operator, each with its source.
+function recordHTML(b, names) {
+  if (!b) return ''
+  const f = b.f || {}
+  const muted = (t) => `<span style="color:#4b5563">${t}</span>`
+  const kind = b.c === 'other_unspecified' ? null : b.cl || b.gl
+  const line1 = [kind && `<b>${esc(kind)}</b> ${muted(`(${esc([...new Set(b.ts.map((s) => srcName(s, names)))].join(', '))})`)}`,
+    f.flag && `${esc(f.flag.v)} flag ${muted(`(${esc(srcName(f.flag.s, names))})`)}`,
+    f.imo && `IMO ${esc(f.imo.v)} ${muted(`(${esc(srcName(f.imo.s, names))})`)}`].filter(Boolean)
+  const owner = f.registered_owner || f.registry_owner || f.owner
+  const people = [owner && `Owner ${esc(role(owner))} ${muted(`(${esc(srcName(owner.s, names))})`)}`,
+    f.operator && `Operator ${esc(role(f.operator))} ${muted(`(${esc(srcName(f.operator.s, names))})`)}`,
+    !owner && !f.operator && f.radio_licensee && `Radio licensee ${esc(role(f.radio_licensee))} ${muted(`(${esc(srcName(f.radio_licensee.s, names))})`)}`].filter(Boolean)
+  return [line1.join(' · '), ...people].filter(Boolean).join('<br>') + '<br>'
+}
+// Our records' kind wins (Min Zidell: AIS type 57 "Other", our records: Tug / tow), except a bare "Other, type not known"
+// over a more specific broadcast type (Emery Zidell: AIS 80 Tanker; our only kind is GFW's "Other").
+const vague = (b) => !b?.k || b.c === 'other_unspecified'
+function liveKind(b, vtype) {
+  const ais = kindOf(vtype)
+  return vague(b) && (ais !== 'unknown' || !b?.k) ? ais : b.k
+}
+function tipHTML(p, briefs) {
+  const b = briefs?.briefs?.[p.mmsi]
+  const kind = p.isFerry === 1 ? FERRY_LABEL : KIND_LABEL[kindOf(p.vtype)] || 'Not reported'
   const x = p.ferry ? JSON.parse(p.ferry) : null
   const motion = p.moving ? `${Number(p.sog).toFixed(1)} kn · heading ${pad3(p.dir)}°`
     : `<span style="color:#4b5563">${p.sog != null ? `${Number(p.sog).toFixed(1)} kn` : 'Speed not reported'} (not under way)</span>`
   return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">`
-    + `<b>${esc(p.name || 'Name not broadcast')}</b><br><span style="color:#4b5563">${esc(kind)} (AIS type${p.vtype ? ` ${p.vtype}` : ' not reported'}) · MMSI ${p.mmsi}</span><br>`
+    + `<b>${esc(p.name || 'Name not broadcast')}</b><br>${recordHTML(b, briefs?.sources)}<span style="color:#4b5563">${b ? 'Broadcasts ' : ''}${esc(kind)} (AIS type${p.vtype ? ` ${p.vtype}` : ' not reported'}) · MMSI ${p.mmsi}</span><br>`
     + `<b style="color:#047857">Live</b>, reported ${fmtAgo(p.ageS)} (${fmtClock(p.t * 1000)})${ferryLine(x)}<br>${motion}<br>`
     + `<span style="color:#4b5563">Source: ${SOURCE_NAME[p.src] || SOURCE_NAME.aisstream} · click for the ship’s card</span></div>`
 }
@@ -78,6 +107,22 @@ function arrowImage() {
 
 export default function LiveShips({ map, mapReady, styleVersion, openShipRef, tipClass }) {
   const [snap, setSnap] = useState(null)
+  // Our records for the ships on screen (lib/ships/liveBriefs.js), fetched once per MMSI per page view, 500 at a time.
+  const [briefs, setBriefs] = useState({ briefs: {}, sources: {} })
+  const asked = useRef(new Set())
+  const briefsRef = useRef(briefs)
+  briefsRef.current = briefs
+  useEffect(() => {
+    const want = (snap?.ships || []).map((r) => String(r[0])).filter((m) => !asked.current.has(m))
+    if (!want.length) return
+    for (const m of want) asked.current.add(m)
+    for (let i = 0; i < want.length; i += 500) {
+      fetch(`${import.meta.env.DEV ? '/__prodread' : ''}/api/ships?op=liveBriefs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mmsis: want.slice(i, i + 500) }) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => { if (r?.briefs) setBriefs((b) => ({ briefs: { ...b.briefs, ...r.briefs }, sources: { ...b.sources, ...r.sources } })) })
+        .catch(() => {})
+    }
+  }, [snap])
   const [nowS, setNowS] = useState(() => Math.floor(Date.now() / 1000))
   useEffect(() => {
     let stop = false
@@ -102,7 +147,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
     for (const [mmsi, t, lon, lat, sog, cog, heading, , , name, vtype, , src] of snap?.ships || []) {
       const ageS = nowS - t
       if (ageS > SHOW_H * 3600) continue
-      const kind = kindOf(vtype)
+      const kind = liveKind(briefs.briefs[String(mmsi)], vtype)
       const moving = (sog ?? 0) >= MOVING_KN
       const ferry = src === 'wsf' || wsfFleet.has(mmsi)
       const color = ferry ? FERRY_COLOR : LIVE_KIND_COLOR[kind]
@@ -118,7 +163,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
       }
     }
     return { points, trails, trailPts, byKind }
-  }, [snap, nowS])
+  }, [snap, nowS, briefs])
 
   // Layers (re-added after a basemap swap: styleVersion).
   useEffect(() => {
@@ -156,7 +201,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
         map.on('mousemove', id, (e) => {
           map.getCanvas().style.cursor = 'pointer'
           const f = e.features[0]
-          if (f) tip.setLngLat(f.geometry.coordinates).setHTML(tipHTML(f.properties)).addTo(map)
+          if (f) tip.setLngLat(f.geometry.coordinates).setHTML(tipHTML(f.properties, briefsRef.current)).addTo(map)
         })
         map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; tip.remove() })
         map.on('click', id, (e) => {

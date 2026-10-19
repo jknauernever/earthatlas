@@ -67,6 +67,7 @@ import { storeCtStays, pruneCtStays, CT_VOYAGES_SOURCE } from '../lib/ships/ctSt
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
 import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
+import { liveBriefs } from '../lib/ships/liveBriefs.js'
 import { importBatch } from '../lib/ships/gfwAis.js'
 import { normalizeStops, storeActivityEstimates } from '../lib/ships/activityEstimates.js'
 import { storeTerminalCalls, BAKE_VERSION as CALLS_VERSION, TERMINAL_CALLS_SOURCE } from '../lib/ships/terminalCalls.js'
@@ -363,6 +364,19 @@ export default async function handler(req, res) {
     if (op === 'incident') {
       const r = await getIncidentRecord(q, S, p.get('id') || '')
       return r ? send(res, 200, r, 'public, max-age=3600, s-maxage=86400') : send(res, 404, { error: 'incident not found' })
+    }
+    //   POST /api/ships?op=liveBriefs { mmsis: [≤500] } → { briefs: { mmsi: { v, k, g, c, gl, cl, ts, f } }, sources }  (the live view's
+    //        kinds and hover facts from our own records, lib/ships/liveBriefs.js)
+    if (op === 'liveBriefs') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'POST only' })
+      let body = req.body
+      if (!body || typeof body !== 'object') {
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { body = {} }
+      }
+      if (!Array.isArray(body.mmsis)) return send(res, 400, { error: 'mmsis must be a list' })
+      return send(res, 200, await liveBriefs(q, S, body.mmsis), 'no-store')
     }
     if (op === 'mmsi') {
       const at = new Date(p.get('at') || '')

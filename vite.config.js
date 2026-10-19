@@ -671,6 +671,19 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
         const sp = new URL(req.url, 'http://localhost').searchParams
         const op = sp.get('op')
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        // The live view's ship records (POST, read-only): /ships?live=1 shows production's live feed, so on localhost its kinds
+        // and hover facts come from production's ships database too (lib/ships/liveBriefs.js).
+        if (shipsProdUrl && req.method === 'POST' && op === 'liveBriefs') {
+          try {
+            const chunks = []
+            for await (const c of req) chunks.push(c)
+            const body = JSON.parse(Buffer.concat(chunks).toString() || '{}')
+            const { neon } = await import('@neondatabase/serverless')
+            const sql = neon(shipsProdUrl)
+            const L = await server.ssrLoadModule('/lib/ships/liveBriefs.js')
+            return res.end(JSON.stringify(await L.liveBriefs((t, a) => sql.query(t, a), 'ships', Array.isArray(body.mmsis) ? body.mmsis : [])))
+          } catch (err) { res.statusCode = 500; return res.end(JSON.stringify({ error: String(err.message || err).slice(0, 300) })) }
+        }
         if (!shipsProdUrl || req.method !== 'GET' || !PROD_READ_OPS.has(op)) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'read-only report ops only' })) }
         try {
           const { neon } = await import('@neondatabase/serverless')

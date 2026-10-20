@@ -7,6 +7,7 @@
 import { writeFile } from 'node:fs/promises'
 import { shipsPool, DEFAULT_SCHEMA as S } from '../../../lib/ships/db.js'
 import { realCallsignSql } from '../../../lib/ships/normalize.js'
+import { DOC_SCHEMES } from '../../../lib/ships/matchRules.js'
 
 const args = process.argv.slice(2)
 const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : null
@@ -22,14 +23,14 @@ const pairs = await q(`
    ORDER BY 1, 2 ${limit ? `LIMIT ${limit}` : ''}`)
 const ids = [...new Set(pairs.flatMap((p) => [p.a, p.b]))]
 const rows = await q(`
-  SELECT vessel_id::text v, attribute, source_id, evidence_class, value_norm, value_raw,
+  SELECT vessel_id::text v, attribute, source_id, evidence_class, value_norm, value_raw, detail->>'scheme' AS scheme,
          to_char(lower(period), 'YYYY-MM-DD') f, to_char(upper(period), 'YYYY-MM-DD') t
     FROM ${S}.vessel_assertions
    WHERE vessel_id = ANY($1::uuid[]) AND evidence_class <> 'community_curated'
      AND attribute IN ('name', 'mmsi', 'callsign', 'imo', 'length_m', 'width_m', 'vessel_type', 'flag', 'official_number', 'radio_licensee', 'registry_owner')
      AND NOT (attribute = 'callsign' AND NOT ${realCallsignSql('value_norm')})`, [ids])
 const rec = Object.fromEntries(ids.map((id) => [id, { claims: 0, sources: new Set(), names: new Set(), callsigns: new Set(), imos: new Set(), lengths: [], widths: [], types: new Set(),
-  flags: new Set(), official: new Set(), parties: new Set(), mmsi: [] }]))
+  flags: new Set(), official: new Set(), docs: new Set(), parties: new Set(), mmsi: [] }]))
 const toM = (r) => { const n = parseFloat(r); return Number.isFinite(n) && n > 0 ? (/ft/i.test(r) ? n * 0.3048 : n) : null }
 for (const r of rows) {
   const x = rec[r.v]; x.claims++; x.sources.add(r.source_id)
@@ -41,6 +42,7 @@ for (const r of rows) {
   if (r.attribute === 'vessel_type') x.types.add(`${r.source_id}:${r.value_norm}`)
   if (r.attribute === 'flag') x.flags.add(String(r.value_norm).slice(0, 3))
   if (r.attribute === 'official_number') x.official.add(r.value_norm)
+  if (r.attribute === 'official_number' && r.evidence_class === 'registry' && DOC_SCHEMES.includes(r.scheme)) x.docs.add(`${r.scheme}:${r.value_norm}`)
   if (['radio_licensee', 'registry_owner'].includes(r.attribute) && r.value_norm !== 'WITHHELD') x.parties.add(r.value_norm)
   if (r.attribute === 'mmsi') x.mmsi.push({ mmsi: r.value_norm, f: r.f, t: r.t, src: r.source_id })
 }

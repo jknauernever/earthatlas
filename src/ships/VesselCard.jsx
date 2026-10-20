@@ -599,8 +599,9 @@ function ScrubberBlock({ assertions }) {
  */
 function orderImages(assertions) {
   const seen = new Set()
-  // Operator-site photos (lib/ships/operatorSite.js) come after every openly licensed photo.
-  const key = (a) => (a.detail?.via === 'operator_site' ? 1e6 + (a.detail.photo_order ?? 0)
+  // Operator-site photos (lib/ships/operatorSite.js) come after every openly licensed photo, except one picked on the
+  // intake page as the ship's main photo (`featured`), which comes first.
+  const key = (a) => (a.detail?.featured ? -1 : a.detail?.via === 'operator_site' ? 1e6 + (a.detail.photo_order ?? 0)
     : a.detail?.via === 'commons_imo_category' ? 2 + (a.detail.photo_order ?? 0) : a.detail?.rank === 'preferred' ? 0 : 1)
   return assertions.filter((a) => a.attribute === 'image' && a.detail?.thumb_url)
     .sort((x, y) => key(x) - key(y))

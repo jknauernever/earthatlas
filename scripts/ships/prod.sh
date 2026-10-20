@@ -40,8 +40,10 @@
 #   zsh scripts/ships/prod.sh fleet              back up, then a fleet's boats (migration 034): --file lib/ships/data/fleets/whalewatch.json, or --add / --remove one boat (scripts/ships/import-fleet.mjs)
 #   zsh scripts/ships/prod.sh intake             back up, then one reviewed /ship-intake file (migration 037): apply --file lib/ships/data/intake/<name>.json (scripts/ships/intake.mjs; review is read-only)
 #   zsh scripts/ships/prod.sh fcc-lookup         back up, then refill the FCC ship-licence name lookup for the web intake page (migration 038; scripts/ships/import-fcc-lookup.mjs, args pass through, e.g. --fetch)
+#   zsh scripts/ships/prod.sh fcc-weekly         the weekly FCC lookup refresh (scripts/ships/fcc-weekly.sh): backs up only fcc_ship_lookup, then fcc-lookup's import (args pass through, e.g. --fetch --dir)
 #   zsh scripts/ships/prod.sh merge-splits       back up, then merge vessel records split only by a placeholder call sign (resolver v1.10; scripts/ships/merge-splits.mjs, args pass through, e.g. --dry-run)
-#   zsh scripts/ships/prod.sh match-export       READ ONLY: same-MMSI pairs + position check for the match rules (scripts/ships/match/export-pairs.mjs + profile.py)
+#   zsh scripts/ships/prod.sh split-lumped       back up, then split records lumping boats whose numbers broadcast on different MMSIs (B2; lib/ships/splitLumped.js; scripts/ships/split-lumped.mjs, args pass through, e.g. --dry-run, --vessel <id>)
+#   zsh scripts/ships/prod.sh match-export      READ ONLY: same-MMSI pairs + position check for the match rules (scripts/ships/match/export-pairs.mjs + profile.py)
 #   zsh scripts/ships/prod.sh match-apply        back up, then apply the same-MMSI match rules (lib/ships/matchRules.js; scripts/ships/match/apply.mjs, args pass through, e.g. --dry-run, --per-rule 2)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
@@ -59,6 +61,13 @@ backup() {
   mkdir -p $BACKUPS
   local f=$BACKUPS/ships-prod-$(date +%Y%m%d-%H%M%S)-before-$1.dump
   $PG/pg_dump "$(envval SHIPS_PROD_DATABASE_URL)" -n ships -Fc --no-owner --no-privileges -f "$f"
+  echo "backup: $f ($(du -h "$f" | cut -f1))"
+}
+# One table only (a rebuildable lookup refreshed weekly; a whole-schema dump each week is ~186 MB for nothing).
+backup_table() {
+  mkdir -p $BACKUPS
+  local f=$BACKUPS/ships-prod-$(date +%Y%m%d-%H%M%S)-before-$1.dump
+  $PG/pg_dump "$(envval SHIPS_PROD_DATABASE_URL)" -t "ships.$2" -Fc --no-owner --no-privileges -f "$f"
   echo "backup: $f ($(du -h "$f" | cut -f1))"
 }
 # A ships script against PRODUCTION: the explicit SHIPS_DATABASE_URL wins over .env.local's dev value.
@@ -318,10 +327,20 @@ case "${1:-}" in
     backup fcc-lookup
     prod_node scripts/ships/import-fcc-lookup.mjs "${@:2}"
     ;;
+  fcc-weekly)
+    need SHIPS_PROD_DATABASE_URL
+    backup_table fcc-weekly fcc_ship_lookup
+    prod_node scripts/ships/import-fcc-lookup.mjs "${@:2}"
+    ;;
   merge-splits)
     need SHIPS_PROD_DATABASE_URL
     [[ " ${*:2} " == *" --dry-run "* ]] || backup merge-splits
     prod_node scripts/ships/merge-splits.mjs "${@:2}"
+    ;;
+  split-lumped)
+    need SHIPS_PROD_DATABASE_URL
+    [[ " ${*:2} " == *" --dry-run "* ]] || backup split-lumped
+    prod_node scripts/ships/split-lumped.mjs "${@:2}"
     ;;
   match-export)
     need SHIPS_PROD_DATABASE_URL

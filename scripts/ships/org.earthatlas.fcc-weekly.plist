@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Weekly FCC licence lookup refresh (scripts/ships/fcc-weekly.sh). Install (only with Josh's go-ahead):
+     cp scripts/ships/org.earthatlas.fcc-weekly.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/org.earthatlas.fcc-weekly.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.earthatlas.fcc-weekly</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/zsh</string><string>/Users/jknauer/Projects/earthatlas/scripts/ships/fcc-weekly.sh</string></array>
+  <key>StartInterval</key><integer>3600</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/jknauer/Projects/earthatlas/scripts/ships/facilities/cache/fcc-weekly/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>/Users/jknauer/Projects/earthatlas/scripts/ships/facilities/cache/fcc-weekly/launchd.err.log</string>
+</dict>
+</plist>

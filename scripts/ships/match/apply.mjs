@@ -48,16 +48,19 @@ try {
     tally[j.verdict] = (tally[j.verdict] || 0) + 0
     if (['open', 'lumped'].includes(j.verdict) || (only && !only.has(j.verdict))) { tally[j.verdict]++; continue }
     if (perRule && done.filter((d) => d.verdict === j.verdict).length >= perRule) continue
-    if (used.has(p.a) || used.has(p.b)) continue // one step per record per run
+    // One MERGE per record per run (a merge changes the records; chains settle over runs). Retiring a blank-MMSI link or
+    // marking two ships changes no record, so those are not limited.
+    const merging = j.verdict.startsWith('merge_')
+    if (merging && (used.has(p.a) || used.has(p.b))) continue
     // Re-check now: both records still active, and the same-MMSI candidate link between them still open.
     const live = await q(`SELECT l.id FROM ${S}.entity_links l JOIN ${S}.entity_links a ON a.source_entity_id = l.source_entity_id AND a.status = 'accepted'
                            JOIN ${S}.vessels va ON va.id = a.vessel_id AND va.status = 'active' JOIN ${S}.vessels vb ON vb.id = l.vessel_id AND vb.status = 'active'
-                          WHERE l.status = 'candidate' AND l.method = 'MMSI_TEMPORAL'
+                          WHERE l.status = 'candidate' AND l.method = 'MMSI_TEMPORAL' AND coalesce(l.evidence->>'verdict', '') <> 'two_ships'
                             AND ((a.vessel_id = $1 AND l.vessel_id = $2) OR (a.vessel_id = $2 AND l.vessel_id = $1))`, [p.a, p.b])
     if (!live.length) { tally.skipped_changed = (tally.skipped_changed || 0) + 1; continue }
     tally[j.verdict]++
     done.push({ verdict: j.verdict, a: p.a, b: p.b, mmsi: p.mmsi, why: j.why, ...(j.keep ? { keep: p[j.keep], merge: p[j.merge] } : {}) })
-    used.add(p.a); used.add(p.b)
+    if (merging) { used.add(p.a); used.add(p.b) }
     if (dry) continue
     await withTx(pool, async (c) => {
       if (j.verdict.startsWith('merge_')) {

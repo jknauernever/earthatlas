@@ -179,12 +179,17 @@ function BoatCard({ anchorId, boat, review, dig, onChange, onDig, digging, appli
       {!boat._skip && <>
         {boat.photos?.length > 0 && (
           <div className={c.photos}>
-            {boat.photos.map((p) => (
-              <figure key={p.url} className={c.photo}>
+            {/* The first photo is the ship card's main photo (operatorSite.js boatClaims: photo_order 0, best). */}
+            {boat.photos.map((p, i) => (
+              <figure key={p.url} className={`${c.photo} ${i === 0 && boat.photos.length > 1 ? c.mainPhoto : ''}`}>
                 {/* A photo that won't load (moved, removed, or a bad address from an older read) says so instead of a blank space. */}
                 <img src={p.url} alt="" loading="lazy" referrerPolicy="no-referrer"
                   onError={(e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: c.photoBroken, textContent: 'Photo didn’t load' })) }} />
                 <button type="button" className={c.x} title="Don't use this photo" onClick={() => set({ photos: boat.photos.filter((x) => x.url !== p.url) })}>×</button>
+                {boat.photos.length > 1 && (i === 0
+                  ? <span className={c.mainTag}>Main photo</span>
+                  : <button type="button" className={c.makeMain} title="Show this photo first on the ship card"
+                      onClick={() => set({ photos: [{ ...p, featured: true }, ...boat.photos.filter((x) => x.url !== p.url).map(({ featured, ...x }) => x)] })}>Make main photo</button>)}
                 {p.added && <figcaption>Added · {p.credit}</figcaption>}
               </figure>
             ))}

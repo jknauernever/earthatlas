@@ -54,3 +54,5 @@ scripts/whales/cache/
 scripts/shiptraffic/cache/
 # /ship-intake review reports (scripts/ships/intake.mjs)
 scripts/ships/intake/cache/
+# B match-score work files (scripts/ships/match)
+scripts/ships/match/cache/

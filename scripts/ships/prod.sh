@@ -41,6 +41,8 @@
 #   zsh scripts/ships/prod.sh intake             back up, then one reviewed /ship-intake file (migration 037): apply --file lib/ships/data/intake/<name>.json (scripts/ships/intake.mjs; review is read-only)
 #   zsh scripts/ships/prod.sh fcc-lookup         back up, then refill the FCC ship-licence name lookup for the web intake page (migration 038; scripts/ships/import-fcc-lookup.mjs, args pass through, e.g. --fetch)
 #   zsh scripts/ships/prod.sh merge-splits       back up, then merge vessel records split only by a placeholder call sign (resolver v1.10; scripts/ships/merge-splits.mjs, args pass through, e.g. --dry-run)
+#   zsh scripts/ships/prod.sh match-export       READ ONLY: same-MMSI pairs + position check for the match rules (scripts/ships/match/export-pairs.mjs + profile.py)
+#   zsh scripts/ships/prod.sh match-apply        back up, then apply the same-MMSI match rules (lib/ships/matchRules.js; scripts/ships/match/apply.mjs, args pass through, e.g. --dry-run, --per-rule 2)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
 #   SHIPS_PROD_DATABASE_URL  prod ships DB, direct (unpooled) connection
@@ -320,6 +322,16 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     [[ " ${*:2} " == *" --dry-run "* ]] || backup merge-splits
     prod_node scripts/ships/merge-splits.mjs "${@:2}"
+    ;;
+  match-export)
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/match/export-pairs.mjs "${@:2}"
+    python3 scripts/ships/match/profile.py
+    ;;
+  match-apply)
+    need SHIPS_PROD_DATABASE_URL
+    [[ " ${*:2} " == *" --dry-run "* ]] || backup match-apply
+    prod_node scripts/ships/match/apply.mjs "${@:2}"
     ;;
   *)
     sed -n '2,40p' "$0"; exit 2

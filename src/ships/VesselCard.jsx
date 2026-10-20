@@ -172,6 +172,15 @@ export function Ev({ c }) {
 
 // Tab and fold are controlled by the page when it passes them (so the URL can carry them).
 // extraTabs: a site's own tabs for this ship, [{ id, label, content }] (/whalewatch: Trips), shown after Overview.
+// One lookup shared by every card opened within 15 s (cheap, and a burst of card opens costs one request).
+let versionCache = null
+function cardVersion() {
+  if (versionCache && Date.now() - versionCache.at < 15_000) return versionCache.p
+  const p = fetch('/api/ships?op=cardVersion', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => j?.v || null).catch(() => null)
+  versionCache = { at: Date.now(), p }
+  return p
+}
+
 export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded, onShowPlace, onShowSlick, getMap, tab: tabProp, onTab, folded: foldedProp, onFold, tracksControl, extraTabs = [] }) {
   const [vessel, setVessel] = useState(null)
   const [foldedOwn, setFoldedOwn] = useState(false) // header only, so the map underneath shows
@@ -188,7 +197,9 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
   useEffect(() => {
     const ctl = new AbortController()
     if (!rev) { setVessel(null); setError(null) }
-    fetch(`/api/ships?op=vessel&id=${encodeURIComponent(vesselId)}`, { signal: ctl.signal })
+    // The card data's version (api/ships.js op=cardVersion): changes when boats are added or edited through the intake page,
+    // so the card skips a cached copy made before that. If the lookup fails, the card loads as before.
+    cardVersion().then((k) => fetch(`/api/ships?op=vessel&id=${encodeURIComponent(vesselId)}${k ? `&k=${k}` : ''}`, { signal: ctl.signal }))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? 'Vessel not found' : `Load failed (${r.status})`))))
       .then((v) => { setVessel(v); onLoaded?.(v) })
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message) })
@@ -209,6 +220,8 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         .filter((c) => c.other_vessel && c.other_vessel !== vessel.vessel.id)
         .filter((c, i, all) => all.findIndex((x) => x.other_vessel === c.other_vessel && x.method === c.method) === i)
     : []
+  // Candidates still open ("may be the same ship"); ones judged two different ships are only listed on Matches.
+  const openCands = candidates.filter((c) => c.evidence?.verdict !== 'two_ships')
   // Ports of call come from GFW's port-visit events, so only ships with a GFW identity get the tab.
   const hasGfw = !!vessel?.assertions.some((a) => a.source_id === 'gfw-vessel-identity' && a.evidence_class === 'ais_self_reported')
   const tab = (tabWanted === 'matches' && !candidates.length) || (tabWanted === 'ports' && !hasGfw)
@@ -352,10 +365,10 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             {vessel.vessel.needs_review && (
               <div className={styles.review} title="EarthAtlas found evidence that conflicts with this identity. It did not merge anything automatically.">
                 {/* Say what is actually open (Josh 2026-10-19): most of these are another record with the same MMSI. */}
-                {candidates.length
-                  ? <>{candidates.every((c) => c.method === 'MMSI_TEMPORAL')
-                      ? `${candidates.length === 1 ? 'Another record shares' : `${candidates.length} other records share`} this ship’s MMSI and may be the same ship. `
-                      : `${candidates.length === 1 ? 'Another record' : `${candidates.length} other records`} may be this same ship. `}
+                {openCands.length
+                  ? <>{openCands.every((c) => c.method === 'MMSI_TEMPORAL')
+                      ? `${openCands.length === 1 ? 'Another record shares' : `${openCands.length} other records share`} this ship’s MMSI and may be the same ship. `
+                      : `${openCands.length === 1 ? 'Another record' : `${openCands.length} other records`} may be this same ship. `}
                     EarthAtlas keeps them separate until the evidence is clear: see <button type="button" className={styles.inlineLink} onClick={() => setTab('matches')}>Matches</button>.</>
                   : 'Some sources disagree about this ship. EarthAtlas kept them separate rather than guess.'}
               </div>
@@ -417,10 +430,12 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               <div className={styles.sectionHead}>Possible matches, not merged</div>
               {candidates.map((c, i) => (
                 <div key={i} className={styles.candRow}>
-                  {c.method === 'MMSI_TEMPORAL' ? `Shares MMSI ${c.evidence?.mmsi} during overlapping dates`
+                  {/* Judged two different ships (lib/ships/matchRules.js): say so, with the reason. */}
+                  {c.evidence?.verdict === 'two_ships' ? `A different ship has also used MMSI ${c.evidence?.mmsi} (${c.evidence?.why || 'its records conflict'}): see`
+                    : c.method === 'MMSI_TEMPORAL' ? `Shares MMSI ${c.evidence?.mmsi} during overlapping dates`
                     : c.source_id === 'wikidata' ? `A Wikidata entry (IMO ${c.evidence?.imo ?? '?'}, not confirmed by a second identifier) may also match`
                     : `Shares IMO ${c.evidence?.imo} (${c.evidence?.basis === 'registry' ? 'registry' : 'AIS-reported'})`}
-                  {' '}with <button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>another vessel ({c.other_vessel.slice(0, 8)})</button>
+                  {c.evidence?.verdict === 'two_ships' ? ' ' : ' with '}<button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>{c.evidence?.verdict === 'two_ships' ? 'the other ship' : 'another vessel'} ({c.other_vessel.slice(0, 8)})</button>
                 </div>
               ))}
               <div className={styles.legendNoteText}>EarthAtlas keeps these separate until the evidence is strong enough. MMSIs get reused and mistyped, so a shared MMSI alone never merges two ships.</div>

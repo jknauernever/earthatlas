@@ -349,6 +349,14 @@ export default async function handler(req, res) {
       if (!cls.length) return send(res, 400, { error: 'classes required' })
       return send(res, 200, await mmsisOfClasses(q, S, cls), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
+    // The ship cards' data version (Josh 2026-10-19): the time of the latest change made through the boat intake (web page or
+    // prod.sh intake). The card puts it in its op=vessel request, so a change shows on the next card open instead of after
+    // the cache expires. Tiny and cached for only 10 s at the edge.
+    if (op === 'cardVersion') {
+      const [r] = await q(`SELECT to_char(max(last_seen_at), 'YYYYMMDDHH24MISS') AS v FROM ${S}.source_entities
+                            WHERE source_id >= 'operator-site-' AND source_id < 'operator-site.'`)
+      return send(res, 200, { v: r?.v || '0' }, 'public, max-age=0, s-maxage=10')
+    }
     if (op === 'vessel') {
       const v = await getVessel(q, S, p.get('id') || '')
       return v ? send(res, 200, v) : send(res, 404, { error: 'vessel not found' })

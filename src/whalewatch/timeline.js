@@ -64,14 +64,14 @@ export function positionAt(segs, T, holdS = 24 * 3600) {
     const k = span > 0 ? Math.min(1, Math.max(0, (T - ts[i - 1]) / span)) : 1
     // Speed over this leg (exact hourly fixes) or the line's average pace (times spread by distance): knots.
     const kn = span > 0 ? metres(c[i - 1], c[i]) / span / 0.514444 : null
-    return { lngLat: lerp(c[i - 1], c[i], k), heading: bearing(c[i - 1], c[i]), kn, at: T, moving: true, exact: s.exact }
+    return { lngLat: lerp(c[i - 1], c[i], k), heading: bearing(c[i - 1], c[i]), kn, at: T, moving: true, exact: s.exact, src: s.src }
   }
   // After the segment: tied up / no signal since its end.
   let last = s
   for (let i = lo; i >= Math.max(0, lo - 3); i--) if (segs[i].t1 > last.t1 && segs[i].t1 <= T) last = segs[i]
   if (T - last.t1 > holdS) return null
   const n = last.c.length
-  return { lngLat: last.c[n - 1], heading: bearing(last.c[n - 2], last.c[n - 1]), at: last.t1, moving: false, exact: last.exact }
+  return { lngLat: last.c[n - 1], heading: bearing(last.c[n - 2], last.c[n - 1]), at: last.t1, moving: false, exact: last.exact, src: last.src }
 }
 
 /** The boat's latest position on record. */
@@ -80,7 +80,7 @@ export function latestPosition(segs) {
   let last = segs[0]
   for (const s of segs) if (s.t1 > last.t1) last = s
   const n = last.c.length
-  return { lngLat: last.c[n - 1], heading: bearing(last.c[n - 2], last.c[n - 1]), at: last.t1, moving: false, exact: last.exact }
+  return { lngLat: last.c[n - 1], heading: bearing(last.c[n - 2], last.c[n - 1]), at: last.t1, moving: false, exact: last.exact, src: last.src }
 }
 
 /** The path over (T - hours, T]: one coordinate list per segment touched, ending at the position at T. */

@@ -37,6 +37,7 @@ import { SHIPS_SOURCES, SHIPS_SOURCES_NOTES } from '../ships/shipsSources.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import shipsStyles from '../ships/ShipsApp.module.css'
 import own from './WhaleWatchApp.module.css'
+import { keepPopupOnMap } from '../lib/popupFit.js'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
 import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
 import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, WHALE_COLOR } from './recentWhales.js'
@@ -62,14 +63,14 @@ const CASING_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 1.6, 10, 2.1, 14, 
 const PICK_WIDTH = ['interpolate', ['linear'], ['zoom'], 7, 1.6, 10, 2.4, 14, 3.5]
 const SRC = 'ww-tracks', CASING = 'ww-casing', LINE = 'ww-line', EST = 'ww-est', PICK = 'ww-pick'
 const LINE_OPACITY = 0.7
-const TRAIL_SRC = 'ww-trail', TRAIL = 'ww-trail-line', BOAT_SRC = 'ww-boats', BOAT = 'ww-boat', BOAT_LABEL = 'ww-boat-label'
+const TRAIL_SRC = 'ww-trail', TRAIL = 'ww-trail-line', BOAT_SRC = 'ww-boats', BOAT = 'ww-boat', BOAT_LABEL = 'ww-boat-label', BOAT_GROUP = 'ww-boat-group'
 const REPLAY_TRAIL_H = 1   // replay: the hour behind each moving boat
 const HOLD_S = 24 * 3600   // between tracks (tied up, or out of AIS range) a boat stays at its last fix this long
 const TICK_MS = 450        // playback: one step per tick
 const PORT_BOX = [-125.5, 46.8, -121.8, 50.6]   // ports considered for home ports (Salish Sea + approaches)
 const NO_PORT = 'Home port not found'
 // Each trip says where its positions come from (prime directive: the source beside the value).
-const SOURCE_WORDS = { noaa: 'minute by minute (NOAA)', gfw: 'hourly (Global Fishing Watch)', ais: 'minute by minute (live AIS, aisstream.io)' }
+const SOURCE_WORDS = { noaa: 'minute by minute (NOAA)', gfw: 'hourly, positions to about 1 km (Global Fishing Watch)', ais: 'minute by minute (live AIS, aisstream.io)' }
 const fmtTripDay = (s) => new Date(s * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' })
 const fmtTripTime = (s) => new Date(s * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver' })
 const fmtDur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` }
@@ -90,7 +91,10 @@ function boatTipHTML(p) {
   const motion = p.moving
     ? `${p.kn != null ? `${p.exact ? '' : 'avg '}${p.kn.toFixed(1)} kn · ` : ''}heading ${String(Math.round(p.heading) % 360).padStart(3, '0')}°`
     : `<span style="color:#4b5563">Last position on record (tied up, or out of AIS range); heading ${String(Math.round(p.heading) % 360).padStart(3, '0')}° on arrival</span>`
-  return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">${head}<br>${when}<br>${motion}</div>`
+  // Global Fishing Watch's hourly positions are given to the nearest 0.01° (about 1 km here): said so, not drawn as exact.
+  const approx = p.approx === 1 || p.src === 'gfw'
+    ? '<br><span style="color:#4b5563">Position to about 1 km: Global Fishing Watch hourly data</span>' : ''
+  return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">${head}<br>${when}<br>${motion}${approx}</div>`
 }
 // A small boat seen from above, pointing north (the icon rotates to the heading), in the fleet / found-boat colours.
 const boatSvg = (fill) => `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="54" viewBox="0 0 40 60"><path d="M20 3 C27 12 29 21 29 30 L29 52 Q29 57 20 57 Q11 57 11 52 L11 30 C11 21 13 12 20 3 Z" fill="${fill}" stroke="#0a0e17" stroke-width="3" stroke-linejoin="round"/><rect x="15.5" y="26" width="9" height="12" rx="2" fill="#0a0e17" opacity="0.55"/></svg>`
@@ -343,6 +347,8 @@ export default function WhaleWatchApp() {
   // ─── Time: the slider runs from the window's first hour to the newest fix on record (= LIVE) ───
   const startS = win ? Date.parse(`${win.from}-01T00:00:00Z`) / 1000 : null
   const latest = useMemo(() => Object.fromEntries(Object.entries(segsByVid).map(([vid, segs]) => [vid, latestPosition(segs)])), [segsByVid])
+  // Each boat's newest position recorded by aisstream.io (minute by minute, since Oct 18, 2026): what LIVE draws.
+  const latestAis = useMemo(() => Object.fromEntries(Object.entries(segsByVid).map(([vid, segs]) => [vid, latestPosition(segs.filter((sg) => sg.src === 'ais'))])), [segsByVid])
   const endS = useMemo(() => {
     let m = 0
     for (const p of Object.values(latest)) if (p && p.at > m) m = p.at
@@ -364,7 +370,7 @@ export default function WhaleWatchApp() {
       const isAddedBoat = !memberIds.has(vid)
       // LIVE: the boat's live AIS report, when it is newer than its tracks.
       const lv = t == null ? liveOf(vid) : null
-      if (lv && (!latest[vid] || lv.at > latest[vid].at)) {
+      if (lv && (!latestAis[vid] || lv.at > latestAis[vid].at)) {
         const age = nowS - lv.at
         const moving = (lv.sog ?? 0) >= 1 && age <= LIVE_MOVING_S
         points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: lv.lngLat },
@@ -375,12 +381,14 @@ export default function WhaleWatchApp() {
         continue
       }
       if (!segs?.length) continue
-      const p = t == null ? latest[vid] : positionAt(segs, t, HOLD_S)
+      // LIVE draws only what aisstream.io recorded (Josh 2026-10-19): a boat not live now shows at its newest recorded live-AIS
+      // position, or not at all; Global Fishing Watch's ~1 km hourly positions are for replay only.
+      const p = t == null ? latestAis[vid] : positionAt(segs, t, HOLD_S)
       if (!p) continue
       const isAdded = !memberIds.has(vid)
       const ageH = ((t ?? nowS) - p.at) / 3600   // LIVE: against now, so days-old travel draws no trail (Josh 2026-10-17)
       points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p.lngLat },
-        properties: { vid, heading: p.heading, kn: p.kn ?? null, at: p.at, exact: p.exact ? 1 : 0, added: isAdded ? 1 : 0, moving: p.moving ? 1 : 0, ageH,
+        properties: { vid, heading: p.heading, kn: p.kn ?? null, at: p.at, exact: p.exact ? 1 : 0, approx: p.src === 'gfw' ? 1 : 0, added: isAdded ? 1 : 0, moving: p.moving ? 1 : 0, ageH,
           name: memberById.get(vid)?.name || added.find((x) => x.id === vid)?.name || '', company: memberById.get(vid)?.company || '' } })
       // A trail only for a boat that moved in the hours before the time shown (Josh 2026-10-17: none for a boat that has sat for days).
       // Trails: in LIVE only live boats have one (above); in replay, a boat's last hour, only where it moved.
@@ -392,7 +400,7 @@ export default function WhaleWatchApp() {
     }
     return { points, trails }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownIds, segsByVid, latest, t, endS, memberIds, memberById, added, liveByMmsi, liveSnap, nowS, sel])
+  }, [shownIds, segsByVid, latest, latestAis, t, endS, memberIds, memberById, added, liveByMmsi, liveSnap, nowS, sel])
 
   // ─── Layers ───
   useEffect(() => {
@@ -447,14 +455,23 @@ export default function WhaleWatchApp() {
         map.addSource(TRAIL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
         map.addLayer({ id: TRAIL, type: 'line', source: TRAIL_SRC, layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: { 'line-color': ['case', ['==', ['get', 'live'], 1], LIVE_TRAIL, FLEET_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 12, 3], 'line-opacity': ['case', ['==', ['get', 'live'], 1], 0.95, 0.7] } })
-        map.addSource(BOAT_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-        map.addLayer({ id: BOAT, type: 'symbol', source: BOAT_SRC, layout: {
+        // Boats drawn on top of each other (several tied up in one marina, or sharing one Global Fishing Watch position): one
+        // boat with a count instead; a click lists them (Josh 2026-10-19). Amber when any of them is live.
+        map.addSource(BOAT_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] },
+          cluster: true, clusterRadius: 12, clusterMaxZoom: 23, maxzoom: 24, clusterProperties: { live: ['max', ['get', 'live']] } })
+        map.addLayer({ id: BOAT, type: 'symbol', source: BOAT_SRC, filter: ['!', ['has', 'point_count']], layout: {
           'icon-image': ['case', ['==', ['get', 'live'], 1], 'ww-boat-live', 'ww-boat-fleet'],
           'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
           'icon-size': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'live'], 1], 1.05, 0.8], 11, ['case', ['==', ['get', 'live'], 1], 1.3, 1], 14, ['case', ['==', ['get', 'live'], 1], 1.6, 1.2]],
           'symbol-sort-key': ['case', ['==', ['get', 'live'], 1], 1, 0] },   // live boats draw on top
           paint: { 'icon-opacity': ['case', ['==', ['get', 'live'], 1], 1, 0.85] } })
-        map.addLayer({ id: BOAT_LABEL, type: 'symbol', source: BOAT_SRC, minzoom: 10.5, filter: ['==', ['get', 'live'], 1], layout: {   // names on live boats only
+        map.addLayer({ id: BOAT_GROUP, type: 'symbol', source: BOAT_SRC, filter: ['has', 'point_count'], layout: {
+          'icon-image': ['case', ['==', ['get', 'live'], 1], 'ww-boat-live', 'ww-boat-fleet'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 1.05, 11, 1.3, 14, 1.6],
+          'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12, 'text-offset': [1.1, -1.1], 'text-allow-overlap': true, 'text-ignore-placement': true,
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'] },
+          paint: { 'text-color': '#f8fafc', 'text-halo-color': 'rgba(10,14,23,0.95)', 'text-halo-width': 2.2 } })
+        map.addLayer({ id: BOAT_LABEL, type: 'symbol', source: BOAT_SRC, minzoom: 10.5, filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'live'], 1]], layout: {   // names on live boats only
           'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top', 'text-optional': true,
           'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'] },
           paint: { 'text-color': '#f8fafc', 'text-halo-color': 'rgba(10,14,23,0.9)', 'text-halo-width': 1.4 } })
@@ -470,6 +487,34 @@ export default function WhaleWatchApp() {
         })
         map.on('mouseleave', BOAT, () => { map.getCanvas().style.cursor = ''; hover.remove() })
         map.on('click', BOAT, (e) => { const vid = e.features[0]?.properties.vid; if (vid) { hover.remove(); setSel(vid); setPickerOpen(false) } })
+        map.on('mousemove', BOAT_GROUP, (e) => {
+          map.getCanvas().style.cursor = 'pointer'
+          const f = e.features[0]
+          if (f) hover.setLngLat(f.geometry.coordinates).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45"><b>${f.properties.point_count} boats here</b><br><span style="color:#4b5563">Click to pick one</span></div>`).addTo(map)
+        })
+        map.on('mouseleave', BOAT_GROUP, () => { map.getCanvas().style.cursor = ''; hover.remove() })
+        let groupPopup = null
+        map.on('click', BOAT_GROUP, (e) => {
+          const f = e.features[0]
+          if (!f) return
+          hover.remove()
+          map.getSource(BOAT_SRC).getClusterLeaves(f.properties.cluster_id, 100, 0, (err, leaves) => {
+            if (err || !leaves?.length) return
+            const boats = [...leaves].sort((a, b) => (b.properties.live - a.properties.live) || (b.properties.at - a.properties.at))
+            const s = shipsStyles
+            const rows = boats.map((b, i) => {
+              const q = b.properties
+              const when = q.live === 1 ? `Live, reported ${fmtAgo(Math.max(0, Date.now() / 1000 - q.at))}` : `On record ${q.exact ? '' : '≈ '}${fmtWhen(q.at)}`
+              return `<button type="button" class="${s.popupShip}" data-pick="${i}"><span class="${s.popupShipKind}"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${q.live === 1 ? LIVE_COLOR : FLEET_COLOR};border:1px solid rgba(0,0,0,0.3)"></span>${esc(q.name || 'Unnamed boat')}</span><span class="${s.popupShipMeta}" style="padding-left:15px">${esc(when)}</span></button>`
+            }).join('')
+            groupPopup?.remove()
+            groupPopup = keepPopupOnMap(new mapboxgl.Popup({ offset: 14, maxWidth: '280px' }).setLngLat(f.geometry.coordinates)
+              .setHTML(`<div class="${s.popup}"><div class="${s.popupTitle}">${boats.length} boats at this spot</div><div class="${s.popupMeta}">Pick one to see it.</div><div class="${s.popupList}">${rows}</div></div>`).addTo(map))
+            groupPopup.getElement()?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => {
+              groupPopup.remove(); setSel(boats[Number(el.dataset.pick)].properties.vid); setPickerOpen(false)
+            }))
+          })
+        })
       }
       map.getSource(TRAIL_SRC).setData({ type: 'FeatureCollection', features: boatsNow.trails })
       map.getSource(BOAT_SRC).setData({ type: 'FeatureCollection', features: boatsNow.points })
@@ -661,7 +706,7 @@ export default function WhaleWatchApp() {
           <div className={styles.wwWhen}>
             {liveSnap
               ? <>Live now: {liveNow} of {members.length} boats reported by AIS in the last hour · <a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a> live AIS, updated {fmtClock(liveSnap.generated)}</>
-              : <>Live AIS not available right now; LIVE shows each boat’s newest position on record.</>}
+              : <>Live AIS not available right now; LIVE shows each boat’s newest position recorded by live AIS.</>}
           </div>
           <label className={`${styles.wwCheck} ${styles.wwAllTracks}`}>
             <input type="checkbox" checked={allTracks} onChange={() => setAllTracks((o) => !o)} />
@@ -672,7 +717,7 @@ export default function WhaleWatchApp() {
             status={fleetError ? <div className={styles.wwMuted}>Could not load the boat list ({fleetError}).</div> : null}
             legend={<>
               <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Live: reported by AIS in the last 24 hours (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>), with its last 30 minutes of travel</LegendSwatchRow>
-              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>On record: the newest position we hold, which can be days old (in replay: where it was at the hour shown, with its last hour of travel)</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>Not live now: its newest position recorded by live AIS since Oct 18, 2026 (in replay: where it was at the hour shown, with its last hour of travel). Boats not heard live since then are listed but not drawn.</LegendSwatchRow>
               <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: PICK_COLOR }} />}>The boat whose card is open: the trip picked in its Trips tab</LegendSwatchRow>
             </>}
             info={<>
@@ -682,7 +727,8 @@ export default function WhaleWatchApp() {
               registered owner at <a href="https://wwwapps.tc.gc.ca/Saf-Sec-Sur/4/vrqs-srib/eng/vessel-registrations/advanced-search" target="_blank" rel="noopener noreferrer">Transport Canada</a>.
               Tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre AIS</a> (minute by minute) where
               NOAA has published the month, then <a href="https://globalfishingwatch.org/our-apis/" target="_blank" rel="noopener noreferrer">Global Fishing Watch</a> hourly
-              positions. Powered by Global Fishing Watch. {fleet && <>{boatsWithTracks} of {members.length} boats have tracks in these months.</>}
+              positions (given to about 1 km, so shown in replay only), and from Oct 18, 2026 minute-by-minute live AIS recorded by EarthAtlas from{' '}
+              <a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>. Powered by Global Fishing Watch. {fleet && <>{boatsWithTracks} of {members.length} boats have tracks in these months.</>}
             </>} />
 
           <DatasetRow storageKey="whalewatch.whales" name="Whale reports" hue={WHALE_COLOR} on={whalesOn} onToggle={() => setWhalesOn((o) => !o)}
@@ -740,6 +786,9 @@ export default function WhaleWatchApp() {
                                     <a href={b.source_url} target="_blank" rel="noopener noreferrer" title={b.source_label}>{BASIS_WORDS[b.basis] || 'Source'}</a>
                                     {b.note && <span> · {b.note}</span>}
                                   </div>
+                                  {t == null && tracks[b.vessel_id] && !liveOf(b.vessel_id) && (
+                                    <div className={styles.wwSrc}>{latestAis[b.vessel_id] ? `Last heard live ${fmtTripDay(latestAis[b.vessel_id].at)}` : 'Not heard live since Oct 18, 2026'}</div>
+                                  )}
                                   <div className={styles.wwSrc}>
                                     {tracks[b.vessel_id] && !tracks[b.vessel_id].length ? 'No tracks in these 12 months'
                                       : h ? <>Home port from its AIS tracks: ended {h.nights} of its {h.days} days here{h.name ? '' : ` (no port we hold within 6 km of ${h.lngLat[1].toFixed(3)}, ${h.lngLat[0].toFixed(3)})`}</> : null}

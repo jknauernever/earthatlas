@@ -1,0 +1,3179 @@
+{
+  "jurisdiction": "US-WA",
+  "authority": "US federal (Endangered Species Act)",
+  "compiled": "2026-10-20",
+  "sources": {
+    "ecos_export": "https://ecos.fws.gov/ecp/pullreports/catalog/species/report/species/export",
+    "usfws_washington": "https://ecos.fws.gov/ecp/report/species-listings-by-state?stateAbbrev=WA&stateName=Washington&statusCategory=Listed",
+    "noaa_west_coast": "https://www.fisheries.noaa.gov/west-coast/endangered-species-conservation"
+  },
+  "notes": [
+    "USFWS-led entries: ECOS entities whose range includes WA. NOAA-led entries: chosen by ECOS id (ECOS gives them no state range); see scripts/species-of-concern/build-wa-federal.mjs.",
+    "\"Species of Concern\" is an informal USFWS label with no ESA protection, kept as its own category. NOAA's Species of Concern list is not in ECOS and is not used.",
+    "Left out: delisted taxa, similarity-of-appearance listings (Dolly Varden, WA), and ECOS's WA \"Species of Concern\" entry for coyote (no other source supports it).",
+    "Sunflower sea star is from NOAA Fisheries (proposed 2023-03-16); not yet in ECOS."
+  ],
+  "species": [
+    {
+      "common_name": "Blue whale",
+      "scientific_name": "Balaenoptera musculus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 3199,
+          "source_url": "https://ecos.fws.gov/ecp/species/2192"
+        }
+      ],
+      "inat_taxon_id": 41553,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440735,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Bocaccio",
+      "scientific_name": "Sebastes paucispinis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Puget Sound-Georgia Basin DPS (Endangered).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Puget Sound-Georgia Basin DPS",
+          "listing_date": "04-13-2011",
+          "ecos_id": 10142,
+          "source_url": "https://ecos.fws.gov/ecp/species/9156"
+        }
+      ],
+      "inat_taxon_id": 112421,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2335466,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Chinook salmon",
+      "scientific_name": "Oncorhynchus tshawytscha",
+      "synonyms": [
+        "Salmo tshawytscha"
+      ],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Upper Columbia River spring-run ESU (Endangered); Lower Columbia River ESU (Threatened); Snake River spring/summer-run ESU (Threatened); Snake River fall-run ESU (Threatened); Puget Sound ESU (Threatened).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Upper Columbia River spring-run ESU",
+          "listing_date": "08-02-1999",
+          "ecos_id": 7590,
+          "source_url": "https://ecos.fws.gov/ecp/species/8091"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Lower Columbia River ESU",
+          "listing_date": "08-02-1999",
+          "ecos_id": 7834,
+          "source_url": "https://ecos.fws.gov/ecp/species/8091"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Snake River spring/summer-run ESU",
+          "listing_date": "04-22-1992",
+          "ecos_id": 3398,
+          "source_url": "https://ecos.fws.gov/ecp/species/8091"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Snake River fall-run ESU",
+          "listing_date": "04-22-1992",
+          "ecos_id": 4300,
+          "source_url": "https://ecos.fws.gov/ecp/species/8091"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Puget Sound ESU",
+          "listing_date": "08-02-1999",
+          "ecos_id": 4799,
+          "source_url": "https://ecos.fws.gov/ecp/species/8091"
+        }
+      ],
+      "inat_taxon_id": 54191,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204024,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Finback whale",
+      "scientific_name": "Balaenoptera physalus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 3096,
+          "source_url": "https://ecos.fws.gov/ecp/species/2875"
+        }
+      ],
+      "inat_taxon_id": 41562,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440718,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Gray whale",
+      "scientific_name": "Eschrichtius robustus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Western North Pacific DPS (Endangered).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Western North Pacific DPS",
+          "listing_date": "06-02-1970",
+          "ecos_id": 6235,
+          "source_url": "https://ecos.fws.gov/ecp/species/1477"
+        }
+      ],
+      "inat_taxon_id": 41478,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440704,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Gray wolf",
+      "scientific_name": "Canis lupus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: western Washington only (west of US 97, SR 17 and US 395); wolves east of that line are delisted (Endangered).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "western Washington only (west of US 97, SR 17 and US 395); wolves east of that line are delisted",
+          "listing_date": "03-09-1978",
+          "ecos_id": 11,
+          "source_url": "https://ecos.fws.gov/ecp/species/4488"
+        }
+      ],
+      "inat_taxon_id": 42048,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5219173,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Hawaiian petrel",
+      "scientific_name": "Pterodroma sandwichensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "03-11-1967",
+          "ecos_id": 82,
+          "source_url": "https://ecos.fws.gov/ecp/species/6746"
+        }
+      ],
+      "inat_taxon_id": 4061,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481449,
+      "gbif_species_key": null,
+      "ebird_species_code": "hawpet1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Humpback whale",
+      "scientific_name": "Megaptera novaeangliae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Central America DPS (Endangered); Mexico DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Central America DPS",
+          "listing_date": "06-02-1970",
+          "ecos_id": 11356,
+          "source_url": "https://ecos.fws.gov/ecp/species/7720"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Mexico DPS",
+          "listing_date": "06-02-1970",
+          "ecos_id": 11355,
+          "source_url": "https://ecos.fws.gov/ecp/species/7720"
+        }
+      ],
+      "inat_taxon_id": 41566,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5220086,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Island marble Butterfly",
+      "scientific_name": "Euchloe ausonides insulanus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Euchloe ausonides insulanus.",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-04-2020",
+          "ecos_id": 5610,
+          "source_url": "https://ecos.fws.gov/ecp/species/3285"
+        }
+      ],
+      "inat_taxon_id": 235937,
+      "inat_species_taxon_id": 59120,
+      "gbif_taxon_key": 4300656,
+      "gbif_species_key": 1919327,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Killer whale",
+      "scientific_name": "Orcinus orca",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Southern Resident DPS (Endangered).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Southern Resident DPS",
+          "listing_date": "02-16-2006",
+          "ecos_id": 9126,
+          "source_url": "https://ecos.fws.gov/ecp/species/3380"
+        }
+      ],
+      "inat_taxon_id": 41521,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440483,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Leatherback sea turtle",
+      "scientific_name": "Dermochelys coriacea",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS and NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 154,
+          "source_url": "https://ecos.fws.gov/ecp/species/1493"
+        }
+      ],
+      "inat_taxon_id": 39677,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9789983,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Loggerhead sea turtle",
+      "scientific_name": "Caretta caretta",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS and NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: North Pacific Ocean DPS (Endangered).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "North Pacific Ocean DPS",
+          "listing_date": "07-23-1978",
+          "ecos_id": 9941,
+          "source_url": "https://ecos.fws.gov/ecp/species/1110"
+        }
+      ],
+      "inat_taxon_id": 39665,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8894817,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "North Pacific Right Whale",
+      "scientific_name": "Eubalaena japonica",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 10145,
+          "source_url": "https://ecos.fws.gov/ecp/species/9159"
+        }
+      ],
+      "inat_taxon_id": 41569,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9747921,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Pygmy Rabbit",
+      "scientific_name": "Brachylagus idahoensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Columbia Basin DPS (Douglas, Grant, Lincoln, Adams and Benton counties)",
+          "listing_date": "11-30-2001",
+          "ecos_id": 1240,
+          "source_url": "https://ecos.fws.gov/ecp/species/1126"
+        }
+      ],
+      "inat_taxon_id": 1398530,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2436688,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Sei whale",
+      "scientific_name": "Balaenoptera borealis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 1769,
+          "source_url": "https://ecos.fws.gov/ecp/species/4753"
+        }
+      ],
+      "inat_taxon_id": 41559,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440709,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Short-tailed albatross",
+      "scientific_name": "Phoebastria albatrus",
+      "synonyms": [
+        "Diomedea albatrus"
+      ],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 88,
+          "source_url": "https://ecos.fws.gov/ecp/species/433"
+        }
+      ],
+      "inat_taxon_id": 4142,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481385,
+      "gbif_species_key": null,
+      "ebird_species_code": "shtalb",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Showy stickseed",
+      "scientific_name": "Hackelia venusta",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "02-06-2002",
+          "ecos_id": 556,
+          "source_url": "https://ecos.fws.gov/ecp/species/5210"
+        }
+      ],
+      "inat_taxon_id": 163500,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2925947,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Sockeye salmon",
+      "scientific_name": "Oncorhynchus nerka",
+      "synonyms": [
+        "Salmo nerka"
+      ],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Snake River ESU (Endangered); Ozette Lake ESU (Threatened).",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Snake River ESU",
+          "listing_date": "01-03-1992",
+          "ecos_id": 8278,
+          "source_url": "https://ecos.fws.gov/ecp/species/5888"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Ozette Lake ESU",
+          "listing_date": "03-25-1999",
+          "ecos_id": 6843,
+          "source_url": "https://ecos.fws.gov/ecp/species/5888"
+        }
+      ],
+      "inat_taxon_id": 69922,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204039,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Southern Mountain Caribou DPS",
+      "scientific_name": "Rangifer tarandus caribou",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "U.S.A. (wherever found), Canada (southeastern British Columbia)",
+          "listing_date": "01-14-1983",
+          "ecos_id": 33,
+          "source_url": "https://ecos.fws.gov/ecp/species/4618"
+        }
+      ],
+      "inat_taxon_id": 238266,
+      "inat_species_taxon_id": 42199,
+      "gbif_taxon_key": 5220115,
+      "gbif_species_key": 5220114,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Sperm whale",
+      "scientific_name": "Physeter macrocephalus",
+      "synonyms": [
+        "Physeter catodon"
+      ],
+      "rank": "species",
+      "status": "Endangered",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-02-1970",
+          "ecos_id": 4719,
+          "source_url": "https://ecos.fws.gov/ecp/species/8363"
+        }
+      ],
+      "inat_taxon_id": 74890,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8123917,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Taylor's (=whulge) Checkerspot",
+      "scientific_name": "Euphydryas editha taylori",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Euphydryas editha taylori.",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "11-04-2013",
+          "ecos_id": 7495,
+          "source_url": "https://ecos.fws.gov/ecp/species/5907"
+        }
+      ],
+      "inat_taxon_id": 236017,
+      "inat_species_taxon_id": 59182,
+      "gbif_taxon_key": 6233651,
+      "gbif_species_key": 1908011,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Wenatchee Mountains checkermallow",
+      "scientific_name": "Sidalcea oregana calva",
+      "synonyms": [],
+      "rank": "variety",
+      "status": "Endangered",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the variety Sidalcea oregana calva.",
+      "entities": [
+        {
+          "status": "Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": "12-22-1999",
+          "ecos_id": 611,
+          "source_url": "https://ecos.fws.gov/ecp/species/7222"
+        }
+      ],
+      "inat_taxon_id": 242876,
+      "inat_species_taxon_id": 68635,
+      "gbif_taxon_key": 3940162,
+      "gbif_species_key": 8428499,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Bull Trout",
+      "scientific_name": "Salvelinus confluentus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "U.S.A., coterminous, (lower 48 states)",
+          "listing_date": "06-10-1998",
+          "ecos_id": 301,
+          "source_url": "https://ecos.fws.gov/ecp/species/8212"
+        }
+      ],
+      "inat_taxon_id": 111978,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2351244,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Canada Lynx",
+      "scientific_name": "Lynx canadensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever Found in Contiguous U.S.",
+          "listing_date": "03-24-2000",
+          "ecos_id": 24,
+          "source_url": "https://ecos.fws.gov/ecp/species/3652"
+        }
+      ],
+      "inat_taxon_id": 41974,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2435263,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Chum salmon",
+      "scientific_name": "Oncorhynchus keta",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Hood Canal summer-run ESU (Threatened); Columbia River ESU (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Hood Canal summer-run ESU",
+          "listing_date": "08-02-1999",
+          "ecos_id": 1509,
+          "source_url": "https://ecos.fws.gov/ecp/species/8494"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Columbia River ESU",
+          "listing_date": "08-02-1999",
+          "ecos_id": 5180,
+          "source_url": "https://ecos.fws.gov/ecp/species/8494"
+        }
+      ],
+      "inat_taxon_id": 107572,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204014,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Coho salmon",
+      "scientific_name": "Oncorhynchus kisutch",
+      "synonyms": [
+        "Salmo kisutch"
+      ],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Lower Columbia River ESU (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Lower Columbia River ESU",
+          "listing_date": "06-28-2005",
+          "ecos_id": 9021,
+          "source_url": "https://ecos.fws.gov/ecp/species/8564"
+        }
+      ],
+      "inat_taxon_id": 53692,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204034,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbian white-tailed deer",
+      "scientific_name": "Odocoileus virginianus leucurus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Columbia River DPS (Clark, Cowlitz, Pacific, Skamania and Wahkiakum counties) (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Columbia River DPS (Clark, Cowlitz, Pacific, Skamania and Wahkiakum counties)",
+          "listing_date": "03-11-1967",
+          "ecos_id": 3,
+          "source_url": "https://ecos.fws.gov/ecp/species/154"
+        }
+      ],
+      "inat_taxon_id": 237466,
+      "inat_species_taxon_id": 42223,
+      "gbif_taxon_key": 6165150,
+      "gbif_species_key": 2440965,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Eulachon",
+      "scientific_name": "Thaleichthys pacificus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Southern DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Southern DPS",
+          "listing_date": "04-13-2011",
+          "ecos_id": 10150,
+          "source_url": "https://ecos.fws.gov/ecp/species/9165"
+        }
+      ],
+      "inat_taxon_id": 113994,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2410903,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Green sea turtle",
+      "scientific_name": "Chelonia mydas",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS and NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: East Pacific DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "East Pacific DPS",
+          "listing_date": "05-06-2016",
+          "ecos_id": 11191,
+          "source_url": "https://ecos.fws.gov/ecp/species/6199"
+        }
+      ],
+      "inat_taxon_id": 39659,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2442225,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "green sturgeon",
+      "scientific_name": "Acipenser medirostris",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Southern DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Southern DPS",
+          "listing_date": "06-06-2006",
+          "ecos_id": 4093,
+          "source_url": "https://ecos.fws.gov/ecp/species/2329"
+        }
+      ],
+      "inat_taxon_id": 93183,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2402118,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Grizzly bear",
+      "scientific_name": "Ursus arctos horribilis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "U.S.A., conterminous (lower 48) States, except where listed as an experimental population",
+          "listing_date": "07-28-1975",
+          "ecos_id": 2,
+          "source_url": "https://ecos.fws.gov/ecp/species/7642"
+        }
+      ],
+      "inat_taxon_id": 125461,
+      "inat_species_taxon_id": 41641,
+      "gbif_taxon_key": 6163845,
+      "gbif_species_key": 2433433,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Guadalupe fur seal",
+      "scientific_name": "Arctocephalus townsendi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "03-11-1967",
+          "ecos_id": 3318,
+          "source_url": "https://ecos.fws.gov/ecp/species/6991"
+        }
+      ],
+      "inat_taxon_id": 41746,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 6486561,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Kincaid's Lupine",
+      "scientific_name": "Lupinus oreganus",
+      "synonyms": [
+        "Lupinus sulphureus kincaidii",
+        "Lupinus oreganus kincaidii"
+      ],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "01-25-2000",
+          "ecos_id": 1126,
+          "source_url": "https://ecos.fws.gov/ecp/species/3747"
+        }
+      ],
+      "inat_taxon_id": 164915,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2963785,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Marbled Murrelet",
+      "scientific_name": "Brachyramphus marmoratus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "U.S.A. (CA, OR, WA)",
+          "listing_date": "10-01-1992",
+          "ecos_id": 143,
+          "source_url": "https://ecos.fws.gov/ecp/species/4467"
+        }
+      ],
+      "inat_taxon_id": 4531,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5229281,
+      "gbif_species_key": null,
+      "ebird_species_code": "marmur",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Mt. Rainier white-tailed ptarmigan",
+      "scientific_name": "Lagopus leucura rainierensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "08-02-2024",
+          "ecos_id": 10220,
+          "source_url": "https://ecos.fws.gov/ecp/species/9234"
+        }
+      ],
+      "inat_taxon_id": 566898,
+      "inat_species_taxon_id": 974,
+      "gbif_taxon_key": 5227723,
+      "gbif_species_key": 5227717,
+      "ebird_species_code": "whtpta1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "North American wolverine",
+      "scientific_name": "Gulo gulo luscus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "01-02-2024",
+          "ecos_id": 4016,
+          "source_url": "https://ecos.fws.gov/ecp/species/5123"
+        }
+      ],
+      "inat_taxon_id": 236285,
+      "inat_species_taxon_id": 41852,
+      "gbif_taxon_key": 5219079,
+      "gbif_species_key": 5219073,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Northern spotted owl",
+      "scientific_name": "Strix occidentalis caurina",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "06-26-1990",
+          "ecos_id": 142,
+          "source_url": "https://ecos.fws.gov/ecp/species/1123"
+        }
+      ],
+      "inat_taxon_id": 117760,
+      "inat_species_taxon_id": 19959,
+      "gbif_taxon_key": 6176043,
+      "gbif_species_key": 2497487,
+      "ebird_species_code": "spoowl",
+      "ebird_issf_code": "spoowl2"
+    },
+    {
+      "common_name": "Olive ridley sea turtle",
+      "scientific_name": "Lepidochelys olivacea",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS and NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "all populations except the Mexican Pacific breeding colonies",
+          "listing_date": "07-28-1978",
+          "ecos_id": 160,
+          "source_url": "https://ecos.fws.gov/ecp/species/1513"
+        }
+      ],
+      "inat_taxon_id": 39670,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2442153,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Olympia pocket gopher",
+      "scientific_name": "Thomomys mazama pugetensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Thomomys mazama pugetensis.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-09-2014",
+          "ecos_id": 8683,
+          "source_url": "https://ecos.fws.gov/ecp/species/6713"
+        }
+      ],
+      "inat_taxon_id": 238853,
+      "inat_species_taxon_id": 44064,
+      "gbif_taxon_key": 4264518,
+      "gbif_species_key": 2439389,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon spotted frog",
+      "scientific_name": "Rana pretiosa",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "09-29-2014",
+          "ecos_id": 4090,
+          "source_url": "https://ecos.fws.gov/ecp/species/6633"
+        }
+      ],
+      "inat_taxon_id": 25542,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2426776,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Roy Prairie pocket gopher",
+      "scientific_name": "Thomomys mazama glacialis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Thomomys mazama glacialis.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-09-2014",
+          "ecos_id": 3194,
+          "source_url": "https://ecos.fws.gov/ecp/species/7821"
+        }
+      ],
+      "inat_taxon_id": 238847,
+      "inat_species_taxon_id": 44064,
+      "gbif_taxon_key": 4264548,
+      "gbif_species_key": 2439389,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Spalding's Catchfly",
+      "scientific_name": "Silene spaldingii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "10-10-2001",
+          "ecos_id": 613,
+          "source_url": "https://ecos.fws.gov/ecp/species/3681"
+        }
+      ],
+      "inat_taxon_id": 168981,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5384775,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Steelhead (Rainbow Trout)",
+      "scientific_name": "Oncorhynchus mykiss",
+      "synonyms": [
+        "Salmo mykiss"
+      ],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Snake River Basin DPS (Threatened); Lower Columbia River DPS (Threatened); Puget Sound DPS (Threatened); Middle Columbia River DPS (Threatened); Upper Columbia River DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Snake River Basin DPS",
+          "listing_date": "06-17-1998",
+          "ecos_id": 7989,
+          "source_url": "https://ecos.fws.gov/ecp/species/1007"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Lower Columbia River DPS",
+          "listing_date": "06-17-1998",
+          "ecos_id": 6220,
+          "source_url": "https://ecos.fws.gov/ecp/species/1007"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Puget Sound DPS",
+          "listing_date": "05-07-2007",
+          "ecos_id": 9432,
+          "source_url": "https://ecos.fws.gov/ecp/species/1007"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Middle Columbia River DPS",
+          "listing_date": "08-02-1999",
+          "ecos_id": 5815,
+          "source_url": "https://ecos.fws.gov/ecp/species/1007"
+        },
+        {
+          "status": "Threatened",
+          "listed_entity": "Upper Columbia River DPS",
+          "listing_date": "06-17-1998",
+          "ecos_id": 2528,
+          "source_url": "https://ecos.fws.gov/ecp/species/1007"
+        }
+      ],
+      "inat_taxon_id": 47516,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204019,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Streaked Horned lark",
+      "scientific_name": "Eremophila alpestris strigata",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Eremophila alpestris strigata.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "11-04-2013",
+          "ecos_id": 4296,
+          "source_url": "https://ecos.fws.gov/ecp/species/7268"
+        }
+      ],
+      "inat_taxon_id": 236997,
+      "inat_species_taxon_id": 7294,
+      "gbif_taxon_key": 5230965,
+      "gbif_species_key": 9415596,
+      "ebird_species_code": "horlar",
+      "ebird_issf_code": "horlar1"
+    },
+    {
+      "common_name": "Tenino pocket gopher",
+      "scientific_name": "Thomomys mazama tumuli",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Thomomys mazama tumuli.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-09-2014",
+          "ecos_id": 8684,
+          "source_url": "https://ecos.fws.gov/ecp/species/6290"
+        }
+      ],
+      "inat_taxon_id": 238855,
+      "inat_species_taxon_id": 44064,
+      "gbif_taxon_key": 4264495,
+      "gbif_species_key": 2439389,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Umtanum desert buckwheat",
+      "scientific_name": "Eriogonum codium",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-23-2013",
+          "ecos_id": 6490,
+          "source_url": "https://ecos.fws.gov/ecp/species/3627"
+        }
+      ],
+      "inat_taxon_id": 162592,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2889668,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Ute ladies'-tresses",
+      "scientific_name": "Spiranthes diluvialis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "01-17-1992",
+          "ecos_id": 1073,
+          "source_url": "https://ecos.fws.gov/ecp/species/2159"
+        }
+      ],
+      "inat_taxon_id": 131217,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2805372,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western snowy plover",
+      "scientific_name": "Charadrius nivosus nivosus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Pacific Coast population DPS-U.S.A. (CA, OR, WA), Mexico (within 50 miles of Pacific coast)",
+          "listing_date": "03-05-1993",
+          "ecos_id": 132,
+          "source_url": "https://ecos.fws.gov/ecp/species/8035"
+        }
+      ],
+      "inat_taxon_id": 1506451,
+      "inat_species_taxon_id": 1505663,
+      "gbif_taxon_key": 6065880,
+      "gbif_species_key": 6065879,
+      "ebird_species_code": "snoplo5",
+      "ebird_issf_code": "snoplo3"
+    },
+    {
+      "common_name": "White Bluffs bladderpod",
+      "scientific_name": "Physaria douglasii tuplashensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Physaria douglasii tuplashensis.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-23-2013",
+          "ecos_id": 4565,
+          "source_url": "https://ecos.fws.gov/ecp/species/5390"
+        }
+      ],
+      "inat_taxon_id": 359670,
+      "inat_species_taxon_id": 166824,
+      "gbif_taxon_key": 3048926,
+      "gbif_species_key": 7973911,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Whitebark pine",
+      "scientific_name": "Pinus albicaulis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "01-17-2023",
+          "ecos_id": 1935,
+          "source_url": "https://ecos.fws.gov/ecp/species/1748"
+        }
+      ],
+      "inat_taxon_id": 68083,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5285183,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Yellow-billed Cuckoo",
+      "scientific_name": "Coccyzus americanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Western DPS (includes all of Washington)",
+          "listing_date": "11-03-2014",
+          "ecos_id": 6901,
+          "source_url": "https://ecos.fws.gov/ecp/species/3911"
+        }
+      ],
+      "inat_taxon_id": 1965,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2496287,
+      "gbif_species_key": null,
+      "ebird_species_code": "yebcuc",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "yelloweye rockfish",
+      "scientific_name": "Sebastes ruberrimus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status applies only to: Puget Sound - Georgia Basin DPS (Threatened).",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Puget Sound - Georgia Basin DPS",
+          "listing_date": "04-13-2011",
+          "ecos_id": 10153,
+          "source_url": "https://ecos.fws.gov/ecp/species/9168"
+        }
+      ],
+      "inat_taxon_id": 63695,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2335415,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Yelm pocket gopher",
+      "scientific_name": "Thomomys mazama yelmensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Threatened",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Thomomys mazama yelmensis.",
+      "entities": [
+        {
+          "status": "Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": "05-09-2014",
+          "ecos_id": 8685,
+          "source_url": "https://ecos.fws.gov/ecp/species/7257"
+        }
+      ],
+      "inat_taxon_id": 238856,
+      "inat_species_taxon_id": 44064,
+      "gbif_taxon_key": 4264484,
+      "gbif_species_key": 2439389,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Suckley's cuckoo bumble bee",
+      "scientific_name": "Bombus suckleyi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Proposed Endangered",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Proposed Endangered",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 11651,
+          "source_url": "https://ecos.fws.gov/ecp/species/10885"
+        }
+      ],
+      "inat_taxon_id": 452445,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1340283,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Monarch butterfly",
+      "scientific_name": "Danaus plexippus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Proposed Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Proposed Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 10710,
+          "source_url": "https://ecos.fws.gov/ecp/species/9743"
+        }
+      ],
+      "inat_taxon_id": 48662,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5133088,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Northwestern Pond Turtle",
+      "scientific_name": "Actinemys marmorata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Proposed Threatened",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Proposed Threatened",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1686,
+          "source_url": "https://ecos.fws.gov/ecp/species/1111"
+        }
+      ],
+      "inat_taxon_id": 73592,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2442896,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sunflower sea star",
+      "scientific_name": "Pycnopodia helianthoides",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Proposed Threatened",
+      "lead_agency": "NMFS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Proposed Threatened",
+          "listed_entity": "Throughout its range",
+          "listing_date": null,
+          "ecos_id": null,
+          "source_url": "https://www.fisheries.noaa.gov/species/sunflower-sea-star"
+        }
+      ],
+      "inat_taxon_id": 47673,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2274565,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "California condor",
+      "scientific_name": "Gymnogyps californianus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Experimental Population, Non-Essential",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Experimental Population, Non-Essential",
+          "listed_entity": "experimental population (Oregon, northern California, northwest Nevada)",
+          "listing_date": "05-05-2019",
+          "ecos_id": 11570,
+          "source_url": "https://ecos.fws.gov/ecp/species/8193"
+        }
+      ],
+      "inat_taxon_id": 4778,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481920,
+      "gbif_species_key": null,
+      "ebird_species_code": "calcon",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cascade red fox",
+      "scientific_name": "Vulpes vulpes cascadensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Vulpes vulpes cascadensis.",
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 12391,
+          "source_url": "https://ecos.fws.gov/ecp/species/12029"
+        }
+      ],
+      "inat_taxon_id": 239011,
+      "inat_species_taxon_id": 42069,
+      "gbif_taxon_key": 6164274,
+      "gbif_species_key": 5219243,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "gray cat's-eye",
+      "scientific_name": "Oreocarya leucophaea",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 12373,
+          "source_url": "https://ecos.fws.gov/ecp/species/12003"
+        }
+      ],
+      "inat_taxon_id": 770864,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2926302,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "large marble butterfly",
+      "scientific_name": "Euchloe ausonides",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 12281,
+          "source_url": "https://ecos.fws.gov/ecp/species/11857"
+        }
+      ],
+      "inat_taxon_id": 59120,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1919327,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Little brown bat",
+      "scientific_name": "Myotis lucifugus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 10049,
+          "source_url": "https://ecos.fws.gov/ecp/species/9051"
+        }
+      ],
+      "inat_taxon_id": 40346,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2432406,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Morrison bumblebee",
+      "scientific_name": "Bombus morrisoni",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 12305,
+          "source_url": "https://ecos.fws.gov/ecp/species/11883"
+        }
+      ],
+      "inat_taxon_id": 324278,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1340475,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Olympic marmot",
+      "scientific_name": "Marmota olympus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 12374,
+          "source_url": "https://ecos.fws.gov/ecp/species/12005"
+        }
+      ],
+      "inat_taxon_id": 46093,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2437374,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon Vesper Sparrow",
+      "scientific_name": "Pooecetes gramineus affinis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Pooecetes gramineus affinis.",
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 9307,
+          "source_url": "https://ecos.fws.gov/ecp/species/5141"
+        }
+      ],
+      "inat_taxon_id": 238114,
+      "inat_species_taxon_id": 10168,
+      "gbif_taxon_key": 6173849,
+      "gbif_species_key": 2491728,
+      "ebird_species_code": "vesspa",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Western Bumble bee",
+      "scientific_name": "Bombus occidentalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Under Review",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Under Review",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 11254,
+          "source_url": "https://ecos.fws.gov/ecp/species/10401"
+        }
+      ],
+      "inat_taxon_id": 82371,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1340429,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": null,
+      "scientific_name": "Astragalus diaphanus diurnus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Astragalus diaphanus diurnus.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 8125,
+          "source_url": "https://ecos.fws.gov/ecp/species/8172"
+        }
+      ],
+      "inat_taxon_id": null,
+      "inat_species_taxon_id": 158879,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 5345158,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Barrett's Beardtongue",
+      "scientific_name": "Penstemon barrettiae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5313,
+          "source_url": "https://ecos.fws.gov/ecp/species/1254"
+        }
+      ],
+      "inat_taxon_id": 166329,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3171511,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Beller's ground beetle",
+      "scientific_name": "Agonum belleri",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7311,
+          "source_url": "https://ecos.fws.gov/ecp/species/5643"
+        }
+      ],
+      "inat_taxon_id": 212752,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 4988494,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Black Tern",
+      "scientific_name": "Chlidonias niger surinamensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 4734,
+          "source_url": "https://ecos.fws.gov/ecp/species/3093"
+        }
+      ],
+      "inat_taxon_id": 525580,
+      "inat_species_taxon_id": 4512,
+      "gbif_taxon_key": 6065806,
+      "gbif_species_key": 2481119,
+      "ebird_species_code": "blkter",
+      "ebird_issf_code": "blkter2"
+    },
+    {
+      "common_name": "Blue Mountain onion",
+      "scientific_name": "Allium dictuon",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5598,
+          "source_url": "https://ecos.fws.gov/ecp/species/3153"
+        }
+      ],
+      "inat_taxon_id": 158174,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2857396,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "broadfruit mariposa lily",
+      "scientific_name": "Calochortus nitidus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6035,
+          "source_url": "https://ecos.fws.gov/ecp/species/3701"
+        }
+      ],
+      "inat_taxon_id": 159695,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2750707,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Chelan rockmat",
+      "scientific_name": "Petrophytum cinerascens",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2410,
+          "source_url": "https://ecos.fws.gov/ecp/species/8390"
+        }
+      ],
+      "inat_taxon_id": 193849,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3030186,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Clackamas Corydalis",
+      "scientific_name": "Corydalis caseana aquae-gelidae",
+      "synonyms": [
+        "Corydalis aquae-gelidae"
+      ],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Corydalis caseana aquae-gelidae.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3574,
+          "source_url": "https://ecos.fws.gov/ecp/species/2482"
+        }
+      ],
+      "inat_taxon_id": 235438,
+      "inat_species_taxon_id": 76452,
+      "gbif_taxon_key": 7993073,
+      "gbif_species_key": 5334203,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Clustered lady's-slipper",
+      "scientific_name": "Cypripedium fasciculatum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7282,
+          "source_url": "https://ecos.fws.gov/ecp/species/5978"
+        }
+      ],
+      "inat_taxon_id": 50711,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2820361,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbia milk-vetch",
+      "scientific_name": "Astragalus columbianus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7896,
+          "source_url": "https://ecos.fws.gov/ecp/species/3301"
+        }
+      ],
+      "inat_taxon_id": 158862,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5344243,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbian whitetop aster",
+      "scientific_name": "Sericocarpus rigidus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 9344,
+          "source_url": "https://ecos.fws.gov/ecp/species/4611"
+        }
+      ],
+      "inat_taxon_id": 168858,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3088831,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cotton's milk-vetch",
+      "scientific_name": "Astragalus cottonii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3646,
+          "source_url": "https://ecos.fws.gov/ecp/species/4539"
+        }
+      ],
+      "inat_taxon_id": 158868,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5343748,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cusick's lupine",
+      "scientific_name": "Lupinus cusickii",
+      "synonyms": [
+        "Lupinus lepidus cusickii"
+      ],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1418,
+          "source_url": "https://ecos.fws.gov/ecp/species/3588"
+        }
+      ],
+      "inat_name": "Lupinus lepidus cusickii",
+      "inat_taxon_id": 921250,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2964544,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Dalles Mountain Buttercup",
+      "scientific_name": "Ranunculus triternatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7165,
+          "source_url": "https://ecos.fws.gov/ecp/species/5287"
+        }
+      ],
+      "inat_taxon_id": 505604,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3033451,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "dark raspberry",
+      "scientific_name": "Rubus nigerrimus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3579,
+          "source_url": "https://ecos.fws.gov/ecp/species/4720"
+        }
+      ],
+      "inat_taxon_id": 63961,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2999588,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Destruction Island shrew",
+      "scientific_name": "Sorex trowbridgii destructioni",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Sorex trowbridgii destructioni.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6130,
+          "source_url": "https://ecos.fws.gov/ecp/species/2879"
+        }
+      ],
+      "inat_taxon_id": 238606,
+      "inat_species_taxon_id": 46503,
+      "gbif_taxon_key": 6163388,
+      "gbif_species_key": 2435936,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Fender's soliperlan stonefly",
+      "scientific_name": "Soliperla fenderi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2536,
+          "source_url": "https://ecos.fws.gov/ecp/species/8574"
+        }
+      ],
+      "inat_taxon_id": 231128,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2001366,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Gorge fleabane",
+      "scientific_name": "Erigeron oreganus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3696,
+          "source_url": "https://ecos.fws.gov/ecp/species/234"
+        }
+      ],
+      "inat_taxon_id": 162510,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3147163,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Hatch's click beetle",
+      "scientific_name": "Eanus hatchi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7052,
+          "source_url": "https://ecos.fws.gov/ecp/species/7883"
+        }
+      ],
+      "inat_taxon_id": 218859,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": null,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Hoover's desert-parsley",
+      "scientific_name": "Lomatium tuberosum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7194,
+          "source_url": "https://ecos.fws.gov/ecp/species/6431"
+        }
+      ],
+      "inat_taxon_id": 164756,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3034350,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Hoover's tauschia",
+      "scientific_name": "Lomatium lithosolamans",
+      "synonyms": [
+        "Tauschia hooveri"
+      ],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5903,
+          "source_url": "https://ecos.fws.gov/ecp/species/7695"
+        }
+      ],
+      "inat_taxon_id": 1235247,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9780673,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Howell's fleabane",
+      "scientific_name": "Erigeron howellii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6994,
+          "source_url": "https://ecos.fws.gov/ecp/species/693"
+        }
+      ],
+      "inat_taxon_id": 162484,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3147389,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Howell's montia",
+      "scientific_name": "Montia howellii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 4618,
+          "source_url": "https://ecos.fws.gov/ecp/species/2290"
+        }
+      ],
+      "inat_taxon_id": 78121,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5384301,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Jessica's aster",
+      "scientific_name": "Symphyotrichum jessicae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2439,
+          "source_url": "https://ecos.fws.gov/ecp/species/5464"
+        }
+      ],
+      "inat_taxon_id": 169468,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3151517,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Larkspur",
+      "scientific_name": "Delphinium leucophaeum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7431,
+          "source_url": "https://ecos.fws.gov/ecp/species/2137"
+        }
+      ],
+      "inat_taxon_id": 466065,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3930366,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Little willow flycatcher",
+      "scientific_name": "Empidonax traillii brewsteri",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Empidonax traillii brewsteri.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 4970,
+          "source_url": "https://ecos.fws.gov/ecp/species/3094"
+        }
+      ],
+      "inat_taxon_id": 236993,
+      "inat_species_taxon_id": 16611,
+      "gbif_taxon_key": 6174855,
+      "gbif_species_key": 2482786,
+      "ebird_species_code": "wilfly",
+      "ebird_issf_code": "wilfly2"
+    },
+    {
+      "common_name": "Liverwort Monkey-Flower",
+      "scientific_name": "Mimulus jungermannioides",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 8362,
+          "source_url": "https://ecos.fws.gov/ecp/species/3668"
+        }
+      ],
+      "inat_taxon_id": 505349,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8072358,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Long-eared myotis",
+      "scientific_name": "Myotis evotis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3399,
+          "source_url": "https://ecos.fws.gov/ecp/species/6598"
+        }
+      ],
+      "inat_taxon_id": 40354,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2432413,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Long-haired star-tulip",
+      "scientific_name": "Calochortus longebarbatus longebarbatus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Calochortus longebarbatus longebarbatus.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1814,
+          "source_url": "https://ecos.fws.gov/ecp/species/502"
+        }
+      ],
+      "inat_taxon_id": 80501,
+      "inat_species_taxon_id": 64438,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 6396655,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Lynn's clubtail",
+      "scientific_name": "Gomphus lynnae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5786,
+          "source_url": "https://ecos.fws.gov/ecp/species/1793"
+        }
+      ],
+      "inat_taxon_id": 520976,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1425578,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Margined sculpin",
+      "scientific_name": "Cottus marginatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6246,
+          "source_url": "https://ecos.fws.gov/ecp/species/2547"
+        }
+      ],
+      "inat_taxon_id": 98576,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2334146,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Newcomb's littorine snail",
+      "scientific_name": "Algamorda newcombiana",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1797,
+          "source_url": "https://ecos.fws.gov/ecp/species/3768"
+        }
+      ],
+      "inat_taxon_id": 224030,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2301197,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Northern red-legged frog",
+      "scientific_name": "Rana aurora aurora",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6615,
+          "source_url": "https://ecos.fws.gov/ecp/species/5959"
+        }
+      ],
+      "inat_taxon_id": null,
+      "inat_species_taxon_id": 25545,
+      "gbif_taxon_key": 6170060,
+      "gbif_species_key": 2426808,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Northern sagebrush lizard",
+      "scientific_name": "Sceloporus graciosus graciosus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5150,
+          "source_url": "https://ecos.fws.gov/ecp/species/1129"
+        }
+      ],
+      "inat_taxon_id": 51165,
+      "inat_species_taxon_id": 55960,
+      "gbif_taxon_key": 11206377,
+      "gbif_species_key": 2451223,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Obscure Indian paintbrush",
+      "scientific_name": "Castilleja cryptantha",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5642,
+          "source_url": "https://ecos.fws.gov/ecp/species/5190"
+        }
+      ],
+      "inat_taxon_id": 160187,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3170606,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon Sullivantia",
+      "scientific_name": "Sullivantia oregana",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3975,
+          "source_url": "https://ecos.fws.gov/ecp/species/192"
+        }
+      ],
+      "inat_taxon_id": 169440,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3032911,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Pacific Townsend's big-eared bat",
+      "scientific_name": "Plecotus townsendii townsendii",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Plecotus townsendii townsendii.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2895,
+          "source_url": "https://ecos.fws.gov/ecp/species/3246"
+        }
+      ],
+      "inat_taxon_id": 235453,
+      "inat_species_taxon_id": 74205,
+      "gbif_taxon_key": 6163667,
+      "gbif_species_key": 2432479,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Palouse Goldenweed",
+      "scientific_name": "Pyrrocoma liatriformis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7999,
+          "source_url": "https://ecos.fws.gov/ecp/species/2730"
+        }
+      ],
+      "inat_taxon_id": 167628,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3134375,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Potholes meadow vole",
+      "scientific_name": "Microtus pennsylvanicus kincaidi",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Microtus pennsylvanicus kincaidi.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7075,
+          "source_url": "https://ecos.fws.gov/ecp/species/4759"
+        }
+      ],
+      "inat_taxon_id": 1626159,
+      "inat_species_taxon_id": 1431621,
+      "gbif_taxon_key": 8913270,
+      "gbif_species_key": 2438655,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Preble's shrew",
+      "scientific_name": "Sorex preblei",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3853,
+          "source_url": "https://ecos.fws.gov/ecp/species/6047"
+        }
+      ],
+      "inat_taxon_id": 46365,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2435996,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Queen-of-the-forest",
+      "scientific_name": "Filipendula occidentalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 6017,
+          "source_url": "https://ecos.fws.gov/ecp/species/7334"
+        }
+      ],
+      "inat_taxon_id": 162976,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2988042,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Rose-purple sand-verbena",
+      "scientific_name": "Abronia umbellata acutalata",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Abronia umbellata acutalata.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1445,
+          "source_url": "https://ecos.fws.gov/ecp/species/2176"
+        }
+      ],
+      "inat_taxon_id": null,
+      "inat_species_taxon_id": 53801,
+      "gbif_taxon_key": 7768849,
+      "gbif_species_key": 5384870,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Seely's silene",
+      "scientific_name": "Silene seelyi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2953,
+          "source_url": "https://ecos.fws.gov/ecp/species/2646"
+        }
+      ],
+      "inat_taxon_id": 143682,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5384786,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Stalk-leaved monkey-flower",
+      "scientific_name": "Mimulus patulus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1299,
+          "source_url": "https://ecos.fws.gov/ecp/species/7351"
+        }
+      ],
+      "inat_taxon_id": 505350,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8028556,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Sticky phacelia",
+      "scientific_name": "Phacelia lenta",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2939,
+          "source_url": "https://ecos.fws.gov/ecp/species/979"
+        }
+      ],
+      "inat_taxon_id": 166589,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2928248,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Suksdorf's desert-parsley",
+      "scientific_name": "Lomatium suksdorfii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 4320,
+          "source_url": "https://ecos.fws.gov/ecp/species/2847"
+        }
+      ],
+      "inat_taxon_id": 164753,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3034324,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "suksdorf's milkvetch",
+      "scientific_name": "Astragalus pulsiferae suksdorfii",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Astragalus pulsiferae suksdorfii.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 3228,
+          "source_url": "https://ecos.fws.gov/ecp/species/139"
+        }
+      ],
+      "inat_taxon_id": 80433,
+      "inat_species_taxon_id": 75678,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 5343450,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Tailed frog",
+      "scientific_name": "Ascaphus truei",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7941,
+          "source_url": "https://ecos.fws.gov/ecp/species/4121"
+        }
+      ],
+      "inat_taxon_id": 24543,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2429804,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Tall bugbane",
+      "scientific_name": "Cimicifuga elata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 1731,
+          "source_url": "https://ecos.fws.gov/ecp/species/8171"
+        }
+      ],
+      "inat_taxon_id": 158002,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 6376174,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Thompson's clover",
+      "scientific_name": "Trifolium thompsonii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7235,
+          "source_url": "https://ecos.fws.gov/ecp/species/6465"
+        }
+      ],
+      "inat_taxon_id": 169977,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5359335,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Thurber's reedgrass",
+      "scientific_name": "Calamagrostis crassiglumis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "iNaturalist and GBIF now include Calamagrostis crassiglumis in northern reedgrass (Calamagrostis inexpansa). Northern reedgrass records are not confirmed records of Thurber's reedgrass.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 7509,
+          "source_url": "https://ecos.fws.gov/ecp/species/8081"
+        }
+      ],
+      "inat_taxon_id": null,
+      "inat_species_taxon_id": 140213,
+      "gbif_taxon_key": 4121322,
+      "gbif_species_key": 4108416,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "locked": true
+    },
+    {
+      "common_name": "Tundra shootingstar",
+      "scientific_name": "Dodecatheon austrofrigidum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2276,
+          "source_url": "https://ecos.fws.gov/ecp/species/4888"
+        }
+      ],
+      "inat_taxon_id": 549938,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 3169258,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Wanapum crazyweed",
+      "scientific_name": "Oxytropis campestris wanapum",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Oxytropis campestris wanapum.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 2708,
+          "source_url": "https://ecos.fws.gov/ecp/species/2763"
+        }
+      ],
+      "inat_taxon_id": 241916,
+      "inat_species_taxon_id": 154238,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 5361536,
+      "ebird_species_code": null,
+      "ebird_issf_code": null,
+      "common_name_source": "iNaturalist"
+    },
+    {
+      "common_name": "Washington monkey-flower",
+      "scientific_name": "Mimulus washingtonensis washingtonensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "subspecies_or_population",
+      "note": "Federal status covers only the subspecies Mimulus washingtonensis washingtonensis.",
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 5943,
+          "source_url": "https://ecos.fws.gov/ecp/species/1855"
+        }
+      ],
+      "inat_taxon_id": null,
+      "inat_species_taxon_id": 1358886,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 10974166,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "White fairypoppy",
+      "scientific_name": "Meconella oregana",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 8117,
+          "source_url": "https://ecos.fws.gov/ecp/species/3219"
+        }
+      ],
+      "inat_taxon_id": 77970,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8027614,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Whited milk-vetch",
+      "scientific_name": "Astragalus sinuatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Species of Concern",
+      "lead_agency": "FWS",
+      "match_level": "species",
+      "note": null,
+      "entities": [
+        {
+          "status": "Species of Concern",
+          "listed_entity": "Wherever found",
+          "listing_date": null,
+          "ecos_id": 4273,
+          "source_url": "https://ecos.fws.gov/ecp/species/3571"
+        }
+      ],
+      "inat_taxon_id": 139558,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5343982,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    }
+  ]
+}

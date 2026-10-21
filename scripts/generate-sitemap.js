@@ -65,6 +65,8 @@ addUrl('/sanjuan-docks')
 addUrl('/permits')
 addUrl('/permits/dashboard')
 addUrl('/permits/glossary')
+// Species of Concern (listed species near a point)
+addUrl('/species-of-concern')
 
 // Carbon
 addUrl('/carbon')

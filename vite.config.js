@@ -749,6 +749,27 @@ function whalesApiPlugin(whalesDbUrl, whalesSchema) {
   }
 }
 
+// Dev middleware for /api/species-of-concern: runs the Node handler (lib/speciesOfConcern/lookup.js). Reads eBird with
+// the server-side key and the whales database (WHALES_DATABASE_URL, set by whalesApiPlugin).
+function speciesOfConcernApiPlugin(ebirdKey) {
+  return {
+    name: 'species-of-concern-api',
+    configureServer(server) {
+      if (ebirdKey && !process.env.EBIRD_API_KEY) process.env.EBIRD_API_KEY = ebirdKey
+      server.middlewares.use('/api/species-of-concern', async (req, res) => {
+        try {
+          const { default: handler } = await server.ssrLoadModule('/api/species-of-concern.js')
+          req.url = `/api/species-of-concern${req.url === '/' ? '' : req.url}`
+          await handler(req, res)
+        } catch (err) {
+          res.statusCode = 502
+          res.end(String(err).slice(0, 200))
+        }
+      })
+    },
+  }
+}
+
 // Dev middleware: serve /api/inciweb by mirroring the production Edge function.
 function inciwebProxyPlugin() {
   return {
@@ -1027,6 +1048,7 @@ export default defineConfig(({ mode }) => {
     dockReviewPlugin(),
     shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || '', env.SHIPS_PROD_DATABASE_URL || ''),
     whalesApiPlugin(env.WHALES_DATABASE_URL || process.env.WHALES_DATABASE_URL || '', env.WHALES_SCHEMA || ''),
+    speciesOfConcernApiPlugin(ebirdKey),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev
     // and when SENTRY_AUTH_TOKEN isn't set, so safe by default. The token is

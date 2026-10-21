@@ -235,6 +235,9 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
    loads on every page, whichever loaded last won. Keep popup CHROME here only; content styles stay per site.
    Above persistent map chrome (replay bars z 6, Explain buttons): a card the user just asked for wins. */
 .mapboxgl-popup { z-index: 14; }
+/* Hover readouts (src/lib/mapHoverTip.js): same frame, never catches the pointer, never a bottom sheet. */
+.mapboxgl-popup.ea-hover-tip { pointer-events: none; z-index: 13; }
+.mapboxgl-popup.ea-hover-tip .mapboxgl-popup-content { padding: 7px 10px; font-size: 12px; line-height: 1.4; color: #1f2937; }
 .mapboxgl-popup .mapboxgl-popup-content {
   background: #fff;
   padding: 0;

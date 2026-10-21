@@ -1,0 +1,44 @@
+# /species-of-concern monthly critical habitat bake: re-downloads Washington's federal critical habitat (NOAA Fisheries
+# and USFWS map services) into 0.25° tiles and publishes a new dated directory on Blob plus the wa-latest.json pointer
+# (scripts/species-of-concern/bake-critical-habitat.mjs). The lookup re-reads the pointer every 6 hours, so no commit or
+# Vercel build is needed. Uploads use one-file tokens from api/cron/permits-upload-token.js (CRON_SECRET).
+# Monthly because designations change only by Federal Register rule (a handful a year nationally).
+name: soc-critical-habitat-bake
+
+on:
+  schedule:
+    - cron: '23 14 3 * *'   # the 3rd of each month, 14:23 UTC; GitHub may start it late
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Bake only; upload nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: soc-critical-habitat-bake
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PERMITS_TOKEN_URL: https://earthatlas.org/api/cron/permits-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Bake
+        if: ${{ inputs.dry_run }}
+        run: node scripts/species-of-concern/bake-critical-habitat.mjs --out bake-out
+      - name: Bake and publish
+        if: ${{ !inputs.dry_run }}
+        run: node scripts/species-of-concern/bake-critical-habitat.mjs --out bake-out --upload

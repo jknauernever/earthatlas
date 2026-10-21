@@ -15,6 +15,7 @@
     "lint": "eslint src --ext .js,.jsx",
     "test:ships": "node --env-file-if-exists=.env.local --test lib/ships/test/*.test.js",
     "test:whales": "node --env-file-if-exists=.env.local --test lib/whales/test/*.test.js",
+    "test:species-of-concern": "node --test lib/speciesOfConcern/test/*.test.js",
     "ships:migrate": "node --env-file=.env.local scripts/ships/migrate.mjs",
     "ships:import-gfw": "node --env-file=.env.local scripts/ships/import-gfw.mjs",
     "ships:import-mc": "node --env-file=.env.local scripts/ships/import-mc.mjs",

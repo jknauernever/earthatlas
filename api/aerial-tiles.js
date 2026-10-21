@@ -14,6 +14,9 @@
  */
 import sharp from 'sharp'
 
+let emptyWebp = null
+const emptyTile = async () => (emptyWebp ??= await sharp({ create: { width: 256, height: 256, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).webp({ lossless: true }).toBuffer())
+
 // The county's published years (Basemaps/Aerials_<year>); fills sampled 2026-10-16 over Haro Strait for every year.
 const SJC_YEARS = [1932, 1990, 1998, 2004, 2006, 2008, 2013, 2016, 2019, 2022, 2023, 2025]
 const SOURCES = {
@@ -126,7 +129,9 @@ export default async function handler(req, res) {
   for (let i = 3; i < data.length; i += 4) if (data[i]) kept++
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, stale-while-revalidate=604800')
-  if (!kept) { res.statusCode = 204; return res.end() }   // nothing but fill: no tile (Mapbox shows its own imagery)
+  // Nothing but fill: a fully transparent tile, so Mapbox shows its own imagery. (Not 204: Mapbox tries to decode the
+  // empty body as an image and logs "could not be decoded" for every such tile.)
+  if (!kept) { res.statusCode = 200; res.setHeader('Content-Type', 'image/webp'); return res.end(await emptyTile()) }
   const out = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).webp({ quality: 82, alphaQuality: 100 }).toBuffer()
   res.statusCode = 200
   res.setHeader('Content-Type', 'image/webp')

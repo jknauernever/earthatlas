@@ -77,6 +77,17 @@ const ROUTES = [
       'Clean Water Act permits, Section 404, Section 401 water quality certification, NPDES, San Juan County, San Juan Islands, Army Corps permits, Ecology, shoreline permits, 303(d), shellfish',
   },
   {
+    out: 'species-of-concern.html',
+    url: 'https://earthatlas.org/species-of-concern',
+    title: 'Species of Concern — listed species near any spot · EarthAtlas',
+    description:
+      'Click any spot in Washington to see the endangered, threatened, sensitive and candidate species recorded nearby — state and federal lists, with every record linked to iNaturalist, GBIF, eBird or the whale-sighting network that reported it. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas map listing the species of concern recorded near a point in Washington State',
+    keywords:
+      'species of concern, endangered species, threatened species, Washington State, WDFW, ESA, priority habitats and species, rare plants, iNaturalist, eBird, GBIF',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

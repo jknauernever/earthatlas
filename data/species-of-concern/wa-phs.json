@@ -1,0 +1,2702 @@
+{
+  "jurisdiction": "US-WA",
+  "authority": "Washington State (WDFW Priority Habitats and Species)",
+  "compiled": "2026-10-20",
+  "sources": {
+    "excel": "https://wdfw.wa.gov/sites/default/files/publications/00165/2026_distribution_by_county.xlsx",
+    "page": "https://wdfw.wa.gov/publications/00165"
+  },
+  "notes": [
+    "Priority species from the 2026 PHS list (Statewide sheet). Priority habitats and the vulnerable concentration areas (e.g. heron colonies, ungulate winter range) are places, not species, and are not included.",
+    "phs_criteria gives the reason each species is on the list. Three non-native game birds are listed only for recreational importance (non_native: true)."
+  ],
+  "species": [
+    {
+      "common_name": "Columbia River tiger beetle",
+      "scientific_name": "Cicindela columbica",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Beetles",
+      "inat_taxon_id": 97812,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1034886,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "great arctic",
+      "scientific_name": "Oeneis nevadensis gigas",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 237496,
+      "inat_species_taxon_id": 122373,
+      "gbif_taxon_key": 5714482,
+      "gbif_species_key": 5128380,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "black-backed woodpecker",
+      "scientific_name": "Picoides arcticus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Woodpeckers",
+      "inat_taxon_id": 17694,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2477774,
+      "gbif_species_key": null,
+      "ebird_species_code": "bkbwoo",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "blue-gray taildropper",
+      "scientific_name": "Prophysaon coeruleum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 210656,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2294060,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "ashy pebblesnail",
+      "scientific_name": "Fluminicola fuscus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 220140,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5192431,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbia oregonian",
+      "scientific_name": "Cryptomastix hendersoni",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 217820,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2295941,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Dalles sideband",
+      "scientific_name": "Monadenia fidelis minor",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 150856,
+      "inat_species_taxon_id": 62803,
+      "gbif_taxon_key": 5783509,
+      "gbif_species_key": 5191176,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "shortface lanx",
+      "scientific_name": "Fisherola nuttallii",
+      "synonyms": [
+        "Fisherola nuttalli"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 1323872,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2291238,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "poplar oregonian",
+      "scientific_name": "Cryptomastix populi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 217822,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 10618517,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "California floater",
+      "scientific_name": "Anodonta californiensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mollusks/Clams, mussels, and oysters",
+      "inat_taxon_id": 738202,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2287936,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Beller's ground beetle",
+      "scientific_name": "Agonum belleri",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Beetles",
+      "inat_taxon_id": 212752,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 4988494,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Hatch's click beetle",
+      "scientific_name": "Eanus hatchi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Beetles",
+      "inat_taxon_id": 218859,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": null,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Mann's mollusk-eating ground beetle",
+      "scientific_name": "Scaphinotus mannii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Beetles",
+      "inat_taxon_id": 230461,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 7711425,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbia clubtail",
+      "scientific_name": "Gomphurus lynnae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Dragonflies",
+      "inat_taxon_id": 520976,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1425578,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Pacific clubtail",
+      "scientific_name": "Phanogomphus kurilis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Dragonflies",
+      "inat_taxon_id": 520944,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 10738166,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western bumble bee",
+      "scientific_name": "Bombus occidentalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Bees",
+      "inat_taxon_id": 82371,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1340429,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "golden hairstreak",
+      "scientific_name": "Habrodais grunus herri",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 236289,
+      "inat_species_taxon_id": 69824,
+      "gbif_taxon_key": 4300261,
+      "gbif_species_key": 1922676,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Johnson's hairstreak",
+      "scientific_name": "Callophrys johnsoni",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 122385,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1930481,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "juniper hairstreak",
+      "scientific_name": "Callophrys gryneus nelsoni",
+      "synonyms": [
+        "Callophrys nelsoni"
+      ],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 346976,
+      "inat_species_taxon_id": 84239,
+      "gbif_taxon_key": 4300348,
+      "gbif_species_key": 1922038,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Makah copper",
+      "scientific_name": "Tharsalea mariposa makah",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 1611652,
+      "inat_species_taxon_id": 1360303,
+      "gbif_taxon_key": null,
+      "gbif_species_key": 12265590,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "monarch",
+      "scientific_name": "Danaus plexippus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 48662,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5133088,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Puget blue",
+      "scientific_name": "Icaricia icarioides blackmorei",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 520663,
+      "inat_species_taxon_id": 520457,
+      "gbif_taxon_key": 6241007,
+      "gbif_species_key": 1932056,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sand-verbena moth",
+      "scientific_name": "Copablepharon fuscum",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 217554,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 1775016,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "silver-bordered fritillary",
+      "scientific_name": "Boloria myrina",
+      "synonyms": [
+        "Boloria selene myrina"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 1456428,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": null,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "valley silverspot",
+      "scientific_name": "Speyeria zerene bremnerii",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 1456657,
+      "inat_species_taxon_id": 1456595,
+      "gbif_taxon_key": 4299408,
+      "gbif_species_key": 1905281,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Yuma skipper",
+      "scientific_name": "Ochlodes yuma",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 122372,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 6203697,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western river lamprey - western brook lamprey",
+      "scientific_name": "Occidentis ayresii",
+      "synonyms": [
+        "Lampetra ayresii"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Lamprey",
+      "inat_taxon_id": 1599978,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5216497,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "lake chub",
+      "scientific_name": "Couesius plumbeus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Minnow",
+      "inat_taxon_id": 98595,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2360898,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "leopard dace",
+      "scientific_name": "Rhinichthys falcatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Minnow",
+      "inat_taxon_id": 111658,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2359819,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Umatilla dace",
+      "scientific_name": "Rhinichthys umatilla",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Minnow",
+      "inat_taxon_id": 111660,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2359789,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "mountain sucker",
+      "scientific_name": "Catostomus platyrhynchus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Sucker",
+      "inat_taxon_id": 1316291,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2359047,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "bull trout",
+      "scientific_name": "Salvelinus confluentus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 111978,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2351244,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Dolly Varden",
+      "scientific_name": "Salvelinus malma",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 68077,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 4284020,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "rainbow trout, steelhead, inland redband trout",
+      "scientific_name": "Oncorhynchus mykiss",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 47516,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204019,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cascade torrent salamander",
+      "scientific_name": "Rhyacotriton cascadae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Salamanders",
+      "inat_taxon_id": 27699,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2431178,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Dunn's salamander",
+      "scientific_name": "Plethodon dunni",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Salamanders",
+      "inat_taxon_id": 27182,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2431542,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Van Dyke's salamander",
+      "scientific_name": "Plethodon vandykei",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Salamanders",
+      "inat_taxon_id": 27204,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2431526,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbia spotted frog",
+      "scientific_name": "Rana luteiventris",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Frogs and toads",
+      "inat_taxon_id": 25588,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2426785,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Rocky Mountain tailed frog",
+      "scientific_name": "Ascaphus montanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Frogs and toads",
+      "inat_taxon_id": 24544,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2429805,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western toad",
+      "scientific_name": "Anaxyrus boreas",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Frogs and toads",
+      "inat_taxon_id": 64970,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2422924,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "California mountain kingsnake",
+      "scientific_name": "Lampropeltis zonata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Reptiles/Snakes and lizards",
+      "inat_taxon_id": 371962,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5224449,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "common sagebrush lizard",
+      "scientific_name": "Sceloporus graciosus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Reptiles/Snakes and lizards",
+      "inat_taxon_id": 55960,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2451223,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "common sharp-tailed snake",
+      "scientific_name": "Contia tenuis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Reptiles/Snakes and lizards",
+      "inat_taxon_id": 26916,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2455975,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Desert striped whipsnake",
+      "scientific_name": "Coluber taeniatus taeniatus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Reptiles/Snakes and lizards",
+      "inat_taxon_id": 115536,
+      "inat_species_taxon_id": 29416,
+      "gbif_taxon_key": 8908253,
+      "gbif_species_key": 8367811,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cassin's auklet",
+      "scientific_name": "Ptychoramphus aleuticus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4547,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481302,
+      "gbif_species_key": null,
+      "ebird_species_code": "casauk",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Clark's grebe",
+      "scientific_name": "Aechmophorus clarkii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4234,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2482032,
+      "gbif_species_key": null,
+      "ebird_species_code": "clagre",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western grebe",
+      "scientific_name": "Aechmophorus occidentalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4235,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2482033,
+      "gbif_species_key": null,
+      "ebird_species_code": "wesgre",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "American goshawk",
+      "scientific_name": "Astur atricapillus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Hawks, falcons, and eagles",
+      "inat_taxon_id": 1579016,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 10542232,
+      "gbif_species_key": null,
+      "ebird_species_code": "norgos",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "golden eagle",
+      "scientific_name": "Aquila chrysaetos",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Hawks, falcons, and eagles",
+      "inat_taxon_id": 5074,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2480506,
+      "gbif_species_key": null,
+      "ebird_species_code": "goleag",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "burrowing owl",
+      "scientific_name": "Athene cunicularia",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Owls",
+      "inat_taxon_id": 19975,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2497240,
+      "gbif_species_key": null,
+      "ebird_species_code": "burowl",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "flammulated owl",
+      "scientific_name": "Psiloscops flammeolus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Owls",
+      "inat_taxon_id": 339605,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 7807178,
+      "gbif_species_key": null,
+      "ebird_species_code": "flaowl",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "white-headed woodpecker",
+      "scientific_name": "Dryobates albolarvatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Woodpeckers",
+      "inat_taxon_id": 1651488,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9128444,
+      "gbif_species_key": null,
+      "ebird_species_code": "whhwoo",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "loggerhead shrike",
+      "scientific_name": "Lanius ludovicianus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 12024,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2492870,
+      "gbif_species_key": null,
+      "ebird_species_code": "logshr",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sagebrush sparrow",
+      "scientific_name": "Artemisiospiza nevadensis",
+      "synonyms": [
+        "Amphispiza nevadensis"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 338752,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8276794,
+      "gbif_species_key": null,
+      "ebird_species_code": "sagspa1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sage thrasher",
+      "scientific_name": "Oreoscoptes montanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 15045,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2494973,
+      "gbif_species_key": null,
+      "ebird_species_code": "sagthr",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "slender-billed white-breasted nuthatch",
+      "scientific_name": "Sitta carolinensis aculeata",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 238575,
+      "inat_species_taxon_id": 14801,
+      "gbif_taxon_key": 9525656,
+      "gbif_species_key": 2484892,
+      "ebird_species_code": "whbnut",
+      "ebird_issf_code": "whbnut4"
+    },
+    {
+      "common_name": "Townsend's big-eared bat",
+      "scientific_name": "Corynorhinus townsendii",
+      "synonyms": [
+        "Corynorhinus townsendi"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mammals/Bats",
+      "inat_taxon_id": 74205,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2432479,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "black-tailed jackrabbit",
+      "scientific_name": "Lepus californicus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mammals/Rabbits",
+      "inat_taxon_id": 43130,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2436801,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "white-tailed jackrabbit",
+      "scientific_name": "Lepus townsendii",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mammals/Rabbits",
+      "inat_taxon_id": 43145,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2436705,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Olympic marmot",
+      "scientific_name": "Marmota olympus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Rodents",
+      "inat_taxon_id": 46093,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2437374,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Townsend's ground squirrel",
+      "scientific_name": "Urocitellus townsendii townsendii",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mammals/Rodents",
+      "inat_taxon_id": 1037797,
+      "inat_species_taxon_id": 180003,
+      "gbif_taxon_key": 9186093,
+      "gbif_species_key": 8028887,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Washington ground squirrel",
+      "scientific_name": "Urocitellus washingtoni",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mammals/Rodents",
+      "inat_taxon_id": 180005,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8055765,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "wolverine",
+      "scientific_name": "Gulo gulo",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 41852,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5219073,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "pinto abalone",
+      "scientific_name": "Haliotis kamtschatkana",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mollusks/Snails and slugs",
+      "inat_taxon_id": 56654,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2293082,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "island marble",
+      "scientific_name": "Euchloe ausonides insulanus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 235937,
+      "inat_species_taxon_id": 59120,
+      "gbif_taxon_key": 4300656,
+      "gbif_species_key": 1919327,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "mardon skipper",
+      "scientific_name": "Polites mardon",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 210826,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 6202064,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Taylor's checkerspot",
+      "scientific_name": "Euphydryas editha taylori",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Arthropods/Butterflies",
+      "inat_taxon_id": 236017,
+      "inat_species_taxon_id": 59182,
+      "gbif_taxon_key": 6233651,
+      "gbif_species_key": 1908011,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "northern leopard frog",
+      "scientific_name": "Lithobates pipiens",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Frogs and toads",
+      "inat_taxon_id": 66003,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2427185,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon spotted frog",
+      "scientific_name": "Rana pretiosa",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Frogs and toads",
+      "inat_taxon_id": 25542,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2426776,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "northwestern pond turtle",
+      "scientific_name": "Actinemys marmorata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Reptiles/Turtles",
+      "inat_taxon_id": 73592,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2442896,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "marbled murrelet",
+      "scientific_name": "Brachyramphus marmoratus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4531,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5229281,
+      "gbif_species_key": null,
+      "ebird_species_code": "marmur",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "tufted puffin",
+      "scientific_name": "Fratercula cirrhata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4509,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481357,
+      "gbif_species_key": null,
+      "ebird_species_code": "tufpuf",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "ferruginous hawk",
+      "scientific_name": "Buteo regalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Hawks, falcons, and eagles",
+      "inat_taxon_id": 5181,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2480566,
+      "gbif_species_key": null,
+      "ebird_species_code": "ferhaw",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "greater sage-grouse",
+      "scientific_name": "Centrocercus urophasianus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Upland game birds",
+      "inat_taxon_id": 1264,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5959240,
+      "gbif_species_key": null,
+      "ebird_species_code": "saggro",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbian sharp-tailed grouse",
+      "scientific_name": "Tympanuchus phasianellus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Upland game birds",
+      "inat_taxon_id": 1070,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2473514,
+      "gbif_species_key": null,
+      "ebird_species_code": "shtgro",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sandhill crane",
+      "scientific_name": "Antigone canadensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Cranes",
+      "inat_taxon_id": 508048,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2474953,
+      "gbif_species_key": null,
+      "ebird_species_code": "sancra",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "snowy plover",
+      "scientific_name": "Charadrius nivosus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Shorebirds",
+      "inat_taxon_id": 1505663,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 6065879,
+      "gbif_species_key": null,
+      "ebird_species_code": "snoplo5",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "yellow-billed cuckoo",
+      "scientific_name": "Coccyzus americanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Cuckoos",
+      "inat_taxon_id": 1965,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2496287,
+      "gbif_species_key": null,
+      "ebird_species_code": "yebcuc",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "northern spotted owl",
+      "scientific_name": "Strix occidentalis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Owls",
+      "inat_taxon_id": 19959,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2497487,
+      "gbif_species_key": null,
+      "ebird_species_code": "spoowl",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon vesper sparrow",
+      "scientific_name": "Pooecetes gramineus affinis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 238114,
+      "inat_species_taxon_id": 10168,
+      "gbif_taxon_key": 6173849,
+      "gbif_species_key": 2491728,
+      "ebird_species_code": "vesspa",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "streaked horned lark",
+      "scientific_name": "Eremophila alpestris strigata",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Birds/Perching birds",
+      "inat_taxon_id": 236997,
+      "inat_species_taxon_id": 7294,
+      "gbif_taxon_key": 5230965,
+      "gbif_species_key": 9415596,
+      "ebird_species_code": "horlar",
+      "ebird_issf_code": "horlar1"
+    },
+    {
+      "common_name": "pygmy rabbit",
+      "scientific_name": "Brachylagus idahoensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Rabbits",
+      "inat_taxon_id": 1398530,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2436688,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "western gray squirrel",
+      "scientific_name": "Sciurus griseus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Rodents",
+      "inat_taxon_id": 46023,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5219672,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Cascade red fox",
+      "scientific_name": "Vulpes vulpes cascadensis",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": "PHS list prints the scientific name as \"Vulpes vulpes cascadens\"; corrected to Vulpes vulpes cascadensis.",
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "source_name": "Vulpes vulpes cascadens",
+      "inat_taxon_id": 239011,
+      "inat_species_taxon_id": 42069,
+      "gbif_taxon_key": 6164274,
+      "gbif_species_key": 5219243,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "fisher",
+      "scientific_name": "Pekania pennanti",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 453109,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8631083,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "gray wolf",
+      "scientific_name": "Canis lupus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 42048,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5219173,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "grizzly bear",
+      "scientific_name": "Ursus arctos",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 41641,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2433433,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "lynx",
+      "scientific_name": "Lynx canadensis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 41974,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2435263,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "blue whale",
+      "scientific_name": "Balaenoptera musculus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 41553,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440735,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "humpback whale",
+      "scientific_name": "Megaptera novaeangliae",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 41566,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5220086,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "killer (orca) whale",
+      "scientific_name": "Orcinus orca",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 41521,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440483,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sperm whale",
+      "scientific_name": "Physeter macrocephalus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 74890,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 8123917,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Oregon silverspot",
+      "scientific_name": "Speyeria zerene hippolyta",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Extirpated priority species",
+      "extirpated_in_wa": true,
+      "inat_taxon_id": 1456665,
+      "inat_species_taxon_id": 1456595,
+      "gbif_taxon_key": 4299418,
+      "gbif_species_key": 1905281,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "upland sandpiper",
+      "scientific_name": "Bartramia longicauda",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Extirpated priority species",
+      "extirpated_in_wa": true,
+      "inat_taxon_id": 3962,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481705,
+      "gbif_species_key": null,
+      "ebird_species_code": "uplsan",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "woodland caribou",
+      "scientific_name": "Rangifer tarandus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Extirpated priority species",
+      "extirpated_in_wa": true,
+      "inat_taxon_id": 42199,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5220114,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Olympic mudminnow",
+      "scientific_name": "Novumbra hubbsi",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Mudminnow",
+      "inat_taxon_id": 107303,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2346616,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "pygmy whitefish",
+      "scientific_name": "Prosopium coulterii",
+      "synonyms": [
+        "Prosopium coulteri"
+      ],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 110660,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2351517,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "margined sculpin",
+      "scientific_name": "Cottus marginatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Fish/Sculpins",
+      "inat_taxon_id": 98576,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2334146,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Larch Mountain salamander",
+      "scientific_name": "Plethodon larselli",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Amphibians/Salamanders",
+      "inat_taxon_id": 27201,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2431508,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "American white pelican",
+      "scientific_name": "Pelecanus erythrorhynchos",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4334,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5229155,
+      "gbif_species_key": null,
+      "ebird_species_code": "amwpel",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "common loon",
+      "scientific_name": "Gavia immer",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Birds/Marine birds",
+      "inat_taxon_id": 4626,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481962,
+      "gbif_species_key": null,
+      "ebird_species_code": "comloo",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "gray whale",
+      "scientific_name": "Eschrichtius robustus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 41478,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2440704,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Mazama (western) pocket gopher",
+      "scientific_name": "Thomomys mazama",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Rodents",
+      "inat_taxon_id": 44064,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2439389,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "northern sea otter",
+      "scientific_name": "Enhydra lutris",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species",
+        "Vulnerable aggregations"
+      ],
+      "phs_group": "Mammals/Marine mammals",
+      "inat_taxon_id": 41860,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2433670,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Columbian white-tailed deer",
+      "scientific_name": "Odocoileus virginianus leucurus",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": null,
+      "phs_criteria": [
+        "State listed or candidate species"
+      ],
+      "phs_group": "Mammals/Large ungulates",
+      "inat_taxon_id": 237466,
+      "inat_species_taxon_id": 42223,
+      "gbif_taxon_key": 6165150,
+      "gbif_species_key": 2440965,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Olympia oyster",
+      "scientific_name": "Ostrea lurida",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mollusks/Clams, mussels, and oysters",
+      "inat_taxon_id": 69182,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2286067,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Pacific lamprey",
+      "scientific_name": "Entosphenus tridentatus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Lamprey",
+      "inat_taxon_id": 219216,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2421422,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "green sturgeon",
+      "scientific_name": "Acipenser medirostris",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Sturgeon",
+      "inat_taxon_id": 93183,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2402118,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "white sturgeon",
+      "scientific_name": "Acipenser transmontanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": "PHS list prints the scientific name as \"Acipenser medirostris\"; corrected to Acipenser transmontanus.",
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Sturgeon",
+      "source_name": "Acipenser medirostris",
+      "inat_taxon_id": 93194,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2402122,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "eulachon",
+      "scientific_name": "Thaleichthys pacificus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Smelt",
+      "inat_taxon_id": 113994,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2410903,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Chinook salmon",
+      "scientific_name": "Oncorhynchus tshawytscha",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 54191,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204024,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "chum salmon",
+      "scientific_name": "Oncorhynchus keta",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 107572,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204014,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "coastal resident - searun cutthroat",
+      "scientific_name": "Oncorhynchus clarkii clarkii",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": "PHS list prints the scientific name as \"Oncorhynchus clarki clarki\"; corrected to Oncorhynchus clarkii clarkii.",
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "source_name": "Oncorhynchus clarki clarki",
+      "inat_name": "Oncorhynchus clarkii",
+      "inat_taxon_id": 68075,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5722958,
+      "gbif_species_key": 5711980,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "coho salmon",
+      "scientific_name": "Oncorhynchus kisutch",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 53692,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204034,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sockeye salmon - kokanee",
+      "scientific_name": "Oncorhynchus nerka",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 69922,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204039,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "westslope cutthroat trout",
+      "scientific_name": "Oncorhynchus clarkii lewisi",
+      "synonyms": [],
+      "rank": "subspecies",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "subspecies_or_population",
+      "note": "PHS list prints the scientific name as \"Oncorhynchus clarki lewisi\"; corrected to Oncorhynchus clarkii lewisi.",
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "source_name": "Oncorhynchus clarki lewisi",
+      "inat_name": "Oncorhynchus lewisi",
+      "inat_taxon_id": 1316403,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5711983,
+      "gbif_species_key": 5711980,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "bocaccio rockfish",
+      "scientific_name": "Sebastes paucispinis",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Rockfish",
+      "inat_taxon_id": 112421,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2335466,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "yelloweye rockfish",
+      "scientific_name": "Sebastes ruberrimus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Rockfish",
+      "inat_taxon_id": 63695,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2335415,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "harlequin duck",
+      "scientific_name": "Histrionicus histrionicus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Waterfowl",
+      "inat_taxon_id": 7111,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2498224,
+      "gbif_species_key": null,
+      "ebird_species_code": "harduc",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "brant",
+      "scientific_name": "Branta bernicla",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Waterfowl",
+      "inat_taxon_id": 7087,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5232446,
+      "gbif_species_key": null,
+      "ebird_species_code": "brant",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "prairie falcon",
+      "scientific_name": "Falco mexicanus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Hawks, falcons, and eagles",
+      "inat_taxon_id": 4644,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2481000,
+      "gbif_species_key": null,
+      "ebird_species_code": "prafal",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "mountain quail",
+      "scientific_name": "Oreortyx pictus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Upland game birds",
+      "inat_taxon_id": 1399,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2474320,
+      "gbif_species_key": null,
+      "ebird_species_code": "mouqua",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "band-tailed pigeon",
+      "scientific_name": "Columba fasciata",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Pigeons",
+      "inat_taxon_id": 3108,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2495266,
+      "gbif_species_key": null,
+      "ebird_species_code": "batpig1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "Pacific marten",
+      "scientific_name": "Martes caurina",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Mammals/Terrestrial carnivores",
+      "inat_taxon_id": 453111,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5847373,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "pink salmon",
+      "scientific_name": "Oncorhynchus gorbuscha",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Vulnerable aggregations",
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Fish/Trout, salmon, whitefish",
+      "inat_taxon_id": 107570,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 5204037,
+      "gbif_species_key": null,
+      "ebird_species_code": null,
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "trumpeter swan",
+      "scientific_name": "Cygnus buccinator",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Waterfowl",
+      "inat_taxon_id": 6915,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2498345,
+      "gbif_species_key": null,
+      "ebird_species_code": "truswa",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "dusky grouse",
+      "scientific_name": "Dendragapus obscurus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Upland game birds",
+      "inat_taxon_id": 1241,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9428437,
+      "gbif_species_key": null,
+      "ebird_species_code": "dusgro",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "sooty grouse",
+      "scientific_name": "Dendragapus fuliginosus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Birds/Upland game birds",
+      "inat_taxon_id": 72797,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 7340146,
+      "gbif_species_key": null,
+      "ebird_species_code": "soogro1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "chukar",
+      "scientific_name": "Alectoris chukar",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Non-native species",
+      "non_native": true,
+      "inat_taxon_id": 846,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 2474029,
+      "gbif_species_key": null,
+      "ebird_species_code": "chukar",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "ring-necked pheasant",
+      "scientific_name": "Phasianus colchicus",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Non-native species",
+      "non_native": true,
+      "inat_taxon_id": 981,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9752149,
+      "gbif_species_key": null,
+      "ebird_species_code": "rinphe1",
+      "ebird_issf_code": null
+    },
+    {
+      "common_name": "wild turkey",
+      "scientific_name": "Meleagris gallopavo",
+      "synonyms": [],
+      "rank": "species",
+      "status": "Priority species",
+      "status_source": "WDFW Priority Habitats and Species List, 2026",
+      "match_level": "species",
+      "note": null,
+      "phs_criteria": [
+        "Species of recreational, commercial or tribal importance"
+      ],
+      "phs_group": "Non-native species",
+      "non_native": true,
+      "inat_taxon_id": 906,
+      "inat_species_taxon_id": null,
+      "gbif_taxon_key": 9606290,
+      "gbif_species_key": null,
+      "ebird_species_code": "wiltur",
+      "ebird_issf_code": null
+    }
+  ]
+}

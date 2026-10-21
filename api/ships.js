@@ -65,6 +65,8 @@ import { portOfficial, OFFICIAL_SOURCE_IDS } from '../lib/ships/officialPorts.js
 import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions, terminalCtStays, allBerths } from '../lib/ships/terminalCard.js'
 import { storeCtStays, pruneCtStays, CT_VOYAGES_SOURCE } from '../lib/ships/ctStays.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
+import { bunkeringAnchorages } from '../lib/ships/bunkerEvents.js'
+import { readBunkerReport, readCountedFuelings } from '../lib/ships/bunkerMatch.js'
 import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
 import { liveBriefs } from '../lib/ships/liveBriefs.js'
@@ -570,6 +572,29 @@ export default async function handler(req, res) {
       return send(res, 200, { ...card, fetch }, partial || summaryOnly ? 'no-store' : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
     if (op === 'anchoragesLayer') return send(res, 200, await anchoragesLayer(q, S), 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    // /api/ships?op=bunkerAnchorages&from=YYYY-MM&to=YYYY-MM → { anchorages: [{ k: source_id|source_key, n }], months } — anchorages with
+    //      likely bunkering in the picked months (lib/ships/bunkerEvents.js), for the map's bunkering badge.
+    // /api/ships?op=bunkerReport&from=YYYY-MM&to=YYYY-MM[&anchorage=<source_id|source_key>] → the "Planned vs. observed bunkering"
+    //      report (lib/ships/bunkerMatch.js): Ecology ANT operations at Washington anchorages matched to AIS fuelings.
+    if (op === 'bunkerReport') {
+      const ym = (v) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(v || '') ? v : null)
+      const an = p.get('anchorage')
+      const r = await readBunkerReport(q, S, { from: ym(p.get('from')), to: ym(p.get('to')), anchorage: an && /^[a-z0-9-]{2,60}\|[A-Za-z0-9()._ -]{1,80}$/.test(an) ? an : null })
+      return send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
+    if (op === 'bunkerAnchorages') {
+      const win = parseCardWindow(p.get('from'), p.get('to'))
+      if (win.error) return send(res, 400, { error: win.error })
+      // The shared rule's counts when the bunkering report is stored (migration 040), else every tug alongside (older path).
+      const shared = await readCountedFuelings(q, S).catch(() => null)
+      if (shared) {
+        const n = new Map()
+        for (const x of shared.list) if (win.months.includes(x.month)) n.set(x.anchorageKey, (n.get(x.anchorageKey) || 0) + 1)
+        return send(res, 200, { anchorages: [...n].map(([k, v]) => ({ k, n: v })), months: win.months.filter((m) => shared.months.includes(m)) },
+          'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+      }
+      return send(res, 200, await bunkeringAnchorages(q, S, win), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
+    }
     if (op === 'anchorage') {
       const id = p.get('key') || p.get('id') || ''   // key = "source_id|source_key" (stable), id = row id
       if (!/^\d{1,12}$/.test(id) && !/^[a-z0-9-]{2,60}\|[A-Za-z0-9()._ -]{1,80}$/.test(id)) return send(res, 400, { error: 'id must be an anchorage id or key' })

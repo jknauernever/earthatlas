@@ -666,7 +666,7 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
       // Dev only: the scrubber report's READ queries, run by this checkout's code against the production ships database
       // (SHIPS_PROD_DATABASE_URL), so a localhost change can be checked on production's data before it is pushed
       // (/ships/reports/scrubbers?data=prod). Only these GET ops; nothing writes.
-      const PROD_READ_OPS = new Set(['scrubberReport', 'scrubberReportDays', 'scrubberWorldPorts', 'scrubberEdition', 'scrubberEditions'])
+      const PROD_READ_OPS = new Set(['scrubberReport', 'scrubberReportDays', 'scrubberWorldPorts', 'scrubberEdition', 'scrubberEditions', 'bunkerReport'])
       server.middlewares.use('/__prodread/api/ships', async (req, res) => {
         const sp = new URL(req.url, 'http://localhost').searchParams
         const op = sp.get('op')
@@ -695,7 +695,14 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
           const out = op === 'scrubberReport' ? await R.scrubberReport(q, S, { from: sp.get('from'), to: sp.get('to') })
             : op === 'scrubberReportDays' ? { days: await R.scrubberReportDays(q, S, { month: sp.get('month'), terminal: sp.get('terminal') || null }) }
             : op === 'scrubberWorldPorts' ? await P.scrubberWorldPorts(q, S, { from: sp.get('from'), to: sp.get('to'), states: geo === 'WA' ? ['WA'] : geo === 'BC' ? ['BC'] : null,
-              terminals: (sp.get('terminals') || '').split(',').filter(Boolean).slice(0, 200) || null })
+              salish: geo === 'SALISH', terminals: (sp.get('terminals') || '').split(',').filter(Boolean).slice(0, 200) || null })
+            : op === 'bunkerReport' ? await (async () => {
+              // Same shape as api/ships op=bunkerReport (lib/ships/bunkerMatch.js), read from production.
+              const B = await server.ssrLoadModule('/lib/ships/bunkerMatch.js')
+              const ym = (v) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(v || '') ? v : null)
+              const r = await B.readBunkerReport(q, S, { from: ym(sp.get('from')), to: ym(sp.get('to')) })
+              return r
+            })()
             : op === 'scrubberEdition' ? await R.readScrubberEdition(q, S, sp.get('id'))
             : { editions: await R.listScrubberEditions(q, S) }
           res.end(JSON.stringify(out))

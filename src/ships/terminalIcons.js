@@ -99,6 +99,13 @@ export async function addTerminalImages(map) {
   await Promise.all(jobs)
 }
 
+/** One extra badge image (e.g. the anchorage bunkering badge: the fuel glyph in the anchorage hue). */
+export async function addBadgeImage(map, name, glyph, ring) {
+  if (map.hasImage(name)) return
+  const { data, ratio } = await badgeImage(glyph, ring)
+  if (!map.hasImage(name)) map.addImage(name, data, { pixelRatio: ratio })
+}
+
 /** Mapbox expression: the icon for a feature (properties t = kind, s = status). */
 export function iconExpression() {
   const fam = ['match', ['get', 't'], ...Object.entries(TERMINAL_KIND).flatMap(([k, [f]]) => [k, f]), 'bulk']

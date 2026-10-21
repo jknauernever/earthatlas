@@ -86,7 +86,7 @@
 
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.table th { text-align: right; font-size: 11.5px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.table th { text-align: left; font-size: 11.5px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
 .table th.thPlace { text-align: left; }
 .thSpark { width: 132px; }
 .table td { padding: 8px 10px; border-bottom: 1px solid #f1f2f4; vertical-align: middle; }
@@ -102,6 +102,8 @@
 .own { display: inline-flex; align-items: center; gap: 4px; }
 .own::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--own); }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* A header lines up with its column: text columns left, number columns right (Josh 2026-10-20). */
+.table th.num, .ships th.num { text-align: right; }
 .notCounted { font-size: 12.5px; color: #92400e; font-style: italic; text-align: left; }
 .sparkBox { width: 120px; margin-left: auto; }
 .spark { width: 100%; height: 26px; display: block; }

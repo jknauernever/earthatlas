@@ -8,6 +8,7 @@
  *   search  looking something up as you type
  *   more    loading the next page of a list (short: it sits in a button)
  *   report  building a report from many records (a few seconds)
+ *   bunkering  the /ships bunkering report: Ecology's transfer notices matched to AIS
  */
 export const LOADING_MESSAGES = {
   quick: [
@@ -43,6 +44,15 @@ export const LOADING_MESSAGES = {
     'Tallying ports, terminals and refineries…',
     'Adding up the months…',
     'Lining up the numbers…',
+  ],
+  // the /ships planned vs. observed bunkering report (BunkeringReport.jsx)
+  bunkering: [
+    'Reading Ecology’s transfer notices…',
+    'Finding tugs alongside anchored ships…',
+    'Matching each notice to what AIS saw…',
+    'Adding up the gallons by fuel…',
+    'Sorting anchorages, ships and companies…',
+    'Lining up the months…',
   ],
 }
 

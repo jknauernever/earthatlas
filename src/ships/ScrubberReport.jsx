@@ -642,7 +642,7 @@ function Operators({ view, onPick }) {
         <div className={c.note}>The companies operating these ships, as the <Src k="mep" /> name them. <span className={c.noPrint}>Select one to list its ships.</span></div>
       </div>
       <table className={c.table}>
-        <thead><tr><th className={c.thPlace}>Operator</th><th>Ships</th><th>Scrubber-ship calls</th><th>By open-loop ships</th><th className={c.thPlace}>Most calls at</th></tr></thead>
+        <thead><tr><th className={c.thPlace}>Operator</th><th className={c.num}>Ships</th><th className={c.num}>Scrubber-ship calls</th><th className={c.num}>By open-loop ships</th><th className={c.thPlace}>Most calls at</th></tr></thead>
         <tbody>
           {list.map((e) => (
             <tr key={e.name} className={c.opRow} onClick={() => onPick(e.name)}>
@@ -686,7 +686,7 @@ function Ships({ view, months, op, setOp }) {
         <table className={c.table}>
           <thead><tr>
             <th className={c.thPlace}>Ship</th><th className={c.thPlace}>Flag</th><th className={c.thPlace}>Operator</th><th className={c.thPlace}>Scrubber</th>
-            <th>Calls</th><th className={c.thPlace}>Where</th><th className={c.thSpark}>Calls by month</th>
+            <th className={c.num}>Calls</th><th className={c.thPlace}>Where</th><th className={c.thSpark}>Calls by month</th>
           </tr></thead>
           <tbody>{list.map((a) => (
             <tr key={a.id}>
@@ -939,7 +939,7 @@ function PlaceTable({ view, open, setOpen, months }) {
     <div className={c.tableWrap}>
       <table className={c.table}>
         <thead><tr>
-          <th className={c.thPlace}>Place</th><th>Scrubber-ship calls</th><th>Scrubber ships</th><th>Large-ship calls</th><th>Share</th><th className={c.thSpark}>Calls by month</th>
+          <th className={c.thPlace}>Place</th><th className={c.num}>Scrubber-ship calls</th><th className={c.num}>Scrubber ships</th><th className={c.num}>Large-ship calls</th><th className={c.num}>Share</th><th className={c.thSpark}>Calls by month</th>
         </tr></thead>
         <tbody>{rows}</tbody>
       </table>
@@ -991,7 +991,7 @@ function TerminalRow({ level, t, view, months, open, onToggle }) {
         <tr className={c.shipsRow}><td colSpan={6}>
           {ships.length === 0 ? <div className={c.none}>No scrubber-fitted ship called here in this period.</div> : (
             <table className={c.ships}>
-              <thead><tr><th>Ship</th><th>Flag</th><th>Operator</th><th>Scrubber</th><th>Calls</th><th className={c.thSpark}>Calls by month</th></tr></thead>
+              <thead><tr><th>Ship</th><th>Flag</th><th>Operator</th><th>Scrubber</th><th className={c.num}>Calls</th><th className={c.thSpark}>Calls by month</th></tr></thead>
               <tbody>{ships.map((s) => {
                 const inf = view.info[s.vessel_id]
                 return (

@@ -1,0 +1,166 @@
+{
+ "about": "Major projects that would add ocean-going vessel traffic in the Salish Sea, as listed by Friends of the San Juans in its 2026 Salish Sea Vessel Traffic Projections report (project information as of August 2026; Josh 2026-10-20, Lovel's request). Transits = Friends' projected increase in annual ocean-going vessel transits. Summaries are EarthAtlas's short wording of the facts in the report. Positions: the EarthAtlas terminal the project is at (terminalKey), or as stated in 'position'. Roberts Bank Terminal 2's outline is traced by EarthAtlas from Figure 2 (Project Components, NAD83 / UTM 10N grid) of the project's draft certified project description; it is approximate.",
+ "source": {
+  "name": "Friends of the San Juans, 2026 Salish Sea Vessel Traffic Projections Report",
+  "url": "https://sanjuans.org/wp-content/uploads/2026/09/Friends-of-the-San-Juans-Salish-Sea-Vessel-Traffic-Projections-2026-report.pdf",
+  "handout": "https://sanjuans.org/wp-content/uploads/2026/09/2026-Salish-Sea-Vessel-Traffic-Projections-Handout-11-x-17.pdf",
+  "page": "https://sanjuans.org/ssvtp/",
+  "logo": "/hpa/friends-logo.png"
+ },
+ "outlineSource": {
+  "name": "Roberts Bank Terminal 2, draft certified project description, Figure 2: Project Components (2023)",
+  "url": "https://sanjuans.org/wp-content/uploads/2023/06/RBT2_Draft-CPD.pdf",
+  "statedAreas": "marine terminal up to about 119.7 ha; widened causeway up to about 45.3 ha (designated project description, 2021)"
+ },
+ "projects": [
+  {
+   "n": 1,
+   "id": "rbt2",
+   "name": "Roberts Bank Terminal 2",
+   "port": "Port of Vancouver, BC",
+   "transits": 520,
+   "cargo": "Container",
+   "summary": "A new three-berth container terminal: a 267-acre over-water terminal in the Fraser River estuary, less than a mile from the US–Canada border, for container ships carrying up to 24,000 TEU. Construction is expected to begin in 2028 and finish in the mid-2030s; it would raise the Port of Vancouver’s container capacity by more than 50%.",
+   "position": {
+    "basis": "outline",
+    "note": "Outline traced from the project's Figure 2"
+   },
+   "nearTerminals": [
+    "bc-gct-deltaport",
+    "bc-westshore"
+   ]
+  },
+  {
+   "n": 2,
+   "id": "roberts-bank-pipeline",
+   "name": "Canada’s proposed crude oil pipeline to Roberts Bank",
+   "port": "Port of Vancouver, BC",
+   "transits": 365,
+   "cargo": "Crude oil",
+   "summary": "Canada’s proposed one-million-barrel-per-day crude oil pipeline, its route announced July 2, 2026, would end at a new export terminal at Roberts Bank with two berths for very large crude carriers and 15 storage tanks (6.5 million barrels), covering about 260 hectares. About one very large crude carrier every other day.",
+   "position": {
+    "basis": "place",
+    "lon": -123.1594,
+    "lat": 49.0218,
+    "note": "Roberts Bank (no terminal site published); shown at the Roberts Bank Superport"
+   },
+   "nearTerminals": [
+    "bc-westshore",
+    "bc-gct-deltaport"
+   ]
+  },
+  {
+   "n": 3,
+   "id": "trans-mountain",
+   "name": "Trans Mountain, Westridge Marine Terminal",
+   "port": "Port of Vancouver, BC",
+   "transits": 226,
+   "cargo": "Oil",
+   "summary": "The pipeline expansion completed in May 2024 raised capacity from about 300,000 to 890,000 barrels per day; 305 tankers were loaded in 2025, and 113 more a year are projected at full capacity. A further expansion to 1.19 million barrels per day, with dredging in Burrard Inlet, is proposed.",
+   "terminalKey": "bc-westridge"
+  },
+  {
+   "n": 4,
+   "id": "bellingham-modernization",
+   "name": "Port of Bellingham Shipping Terminal Modernization",
+   "port": "Port of Bellingham, WA",
+   "transits": 192,
+   "cargo": "TBD",
+   "summary": "Several projects expected to be complete in 2029, including dock replacement, dredging to deepen the navigation channel and reconnecting the terminal to rail.",
+   "terminalKey": "wa-pob-shipping-terminal"
+  },
+  {
+   "n": 5,
+   "id": "tilbury-phase-2",
+   "name": "Tilbury LNG Phase 2 expansion",
+   "port": "Port of Vancouver, BC",
+   "transits": 136,
+   "cargo": "LNG",
+   "summary": "FortisBC’s expansion of its Delta, BC LNG plant: a new large storage tank and more liquefaction. The federal Decision Statement allows up to 365 LNG vessel calls a year at the Tilbury jetty, no more than 68 by large export carriers (136 transits); LNG bunker vessels loading there are not under that limit.",
+   "terminalKey": "bc-fortis-tilbury-lng"
+  },
+  {
+   "n": 6,
+   "id": "nxtclean",
+   "name": "NXTClean Fuels",
+   "port": "Port Westward, OR",
+   "transits": 112,
+   "cargo": "Renewable fuel",
+   "summary": "A proposed renewable diesel and aviation fuel plant (50,000 barrels a day) on the Columbia River. It would unload up to 115 vessels a year and load up to 56 ocean-going vessels a year, which could take on fuel in the Salish Sea.",
+   "position": {
+    "basis": "outside",
+    "note": "Port Westward, Oregon, on the Columbia River, outside this map’s Salish Sea area"
+   }
+  },
+  {
+   "n": 7,
+   "id": "canada-place",
+   "name": "Canada Place Cruise Terminal",
+   "port": "Port of Vancouver, BC",
+   "transits": 109,
+   "cargo": "Passenger",
+   "summary": "Nearly 360 cruise calls scheduled for the 2026 season, up from about 300 in 2025 (cruises calling at both Vancouver and Seattle counted once).",
+   "terminalKey": "bc-canada-place"
+  },
+  {
+   "n": 8,
+   "id": "fraser-surrey-canola",
+   "name": "DP World Fraser Surrey canola oil terminal",
+   "port": "Port of Vancouver, BC",
+   "transits": 104,
+   "cargo": "Oil (grain)",
+   "summary": "A canola oil export terminal, permitted in 2023 and fully operating since September 2025.",
+   "terminalKey": "bc-fraser-surrey-docks"
+  },
+  {
+   "n": 9,
+   "id": "woodfibre-lng",
+   "name": "Woodfibre LNG",
+   "port": "Squamish, BC",
+   "transits": 80,
+   "cargo": "LNG",
+   "summary": "An LNG export plant in Howe Sound, over 65% built as of mid-2026 and targeted to start in 2027: 2.1 million tonnes a year, about one LNG carrier every 10 days.",
+   "terminalKey": "bc-woodfibre-lng"
+  },
+  {
+   "n": 10,
+   "id": "seattle-cruise",
+   "name": "Seattle cruise terminals",
+   "port": "Port of Seattle, WA",
+   "transits": 64,
+   "cargo": "Passenger",
+   "summary": "About 330 cruise calls and over 2 million passengers in the 2026 season, up from 298 calls and about 1.9 million passengers in 2025 (cruises calling at both Seattle and Vancouver counted once).",
+   "terminalKey": "wa-pos-t91-smith-cove",
+   "alsoTerminals": [
+    "wa-pos-pier66-bell-street"
+   ]
+  },
+  {
+   "n": 11,
+   "id": "westshore-potash",
+   "name": "Westshore Terminals potash expansion",
+   "port": "Port of Vancouver, BC",
+   "transits": 40,
+   "cargo": "Potash",
+   "summary": "An expansion of the existing coal export terminal for about 4.5 million tonnes a year of potash on bulk carriers; construction is expected to be complete in 2026.",
+   "terminalKey": "bc-westshore"
+  },
+  {
+   "n": 12,
+   "id": "altagas-ferndale",
+   "name": "AltaGas ALA Energy Ferndale Terminal",
+   "port": "Ferndale, WA",
+   "transits": 32,
+   "cargo": "LPG",
+   "summary": "32 very large gas carriers (64 transits) exported LPG in 2025. A permit application to Whatcom County (September 2024) covers 2 new and 31 earlier projects; depending on court rulings and permitting, exports could fall, or rise to 96 transits a year.",
+   "terminalKey": "wa-intalco-wharf"
+  }
+ ],
+ "totals": {
+  "increase": 1980,
+  "base2025": 11944,
+  "with": 13924,
+  "note": "16.6% above 2025 ocean-going vessel traffic",
+  "pct": 16.6
+ }
+}

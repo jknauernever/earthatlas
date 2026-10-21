@@ -1,0 +1,77 @@
+/* /ships/reports/bunkering (BunkeringReport.jsx): the topline + breakdown pieces; the page frame comes from ScrubberReport.module.css. */
+.tileBtn { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; text-align: left; font: inherit; cursor: pointer; padding: 16px 16px 14px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb;
+  transition: border-color 0.1s ease, box-shadow 0.1s ease; color: inherit; }
+.tileBtn:hover { border-color: #0e7490; box-shadow: 0 1px 4px rgba(14, 116, 144, 0.12); }
+.tileOn { border-color: #0e7490; box-shadow: inset 0 0 0 1px #0e7490; background: #f0fdff; }
+.tileHint { font-size: 11.5px; color: #0e7490; margin-top: 8px; }
+.tileValue { font-size: 32px; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.05;
+  display: flex; align-items: center; gap: 8px; }
+.tileLabel { font-size: 13.5px; font-weight: 600; color: #1f2937; margin-top: 6px; }
+.tileSub { font-size: 12.5px; color: #4b5563; margin-top: 3px; line-height: 1.4; }
+.tileSrc { font-size: 11.5px; color: #6b7280; margin-top: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+
+/* month chart: stacked columns, click a month */
+.months { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; align-items: end; height: 180px; padding-top: 8px; }
+.monthCol { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.monthCol:hover .monthStack { opacity: 0.8; }
+.monthStack { display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; }
+.monthSeg { display: block; }
+.monthN { font-size: 11px; color: #374151; text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 3px; }
+.monthLbl { font-size: 11px; color: #6b7280; text-align: center; margin-top: 5px; white-space: nowrap; }
+.monthOn .monthLbl { color: #0e7490; font-weight: 700; }
+.monthDim { opacity: 0.35; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: #374151; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* breakdowns */
+.facets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+@media (max-width: 760px) { .facets { grid-template-columns: 1fr; } }
+.facet { padding: 16px 14px 10px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb; }
+.facetHead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 4px 8px; }
+.facetTitle { font-size: 14.5px; font-weight: 650; color: #0f172a; margin: 0; }
+.facetSub { font-size: 11.5px; color: #6b7280; }
+.rows { display: grid; gap: 1px; }
+.row, .rowOn { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 6px 6px;
+  border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; color: #1f2937; text-align: left; cursor: pointer; }
+.row:hover { background: #f1f5f9; }
+.rowOn { background: #ecfeff; box-shadow: inset 0 0 0 1px #0e7490; }
+.rowLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { height: 10px; background: #f1f5f9; border-radius: 4px; overflow: hidden; display: flex; }
+.fill { display: block; height: 100%; }
+.rowNum { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.rowNum small { color: #6b7280; margin-left: 6px; }
+.more { border: 0; background: transparent; color: #0369a1; font: inherit; font-size: 12.5px; padding: 6px; cursor: pointer; text-align: left; }
+
+/* active filters */
+.filterBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 16px; padding: 10px 12px; border-radius: 10px; background: #fff;
+  border: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 4; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 4px 4px 10px; border-radius: 999px; background: #ecfeff;
+  border: 1px solid #0e7490; color: #0f172a; }
+.chip b { font-weight: 600; color: #0e7490; }
+.chipX { border: 0; background: transparent; cursor: pointer; font-size: 15px; line-height: 1; color: #0e7490; padding: 0 5px; }
+.clear { border: 0; background: transparent; color: #0369a1; font: inherit; font-size: 12.5px; cursor: pointer; }
+.search { font: inherit; font-size: 13px; padding: 5px 9px; border: 1px solid #d1d5db; border-radius: 7px; min-width: 190px; }
+.filterHint { font-size: 12.5px; color: #6b7280; }
+.filterBar select { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 7px; background: #fff; color: #111827; }
+
+/* the operations list (only when asked for) */
+.showBtn { font: inherit; font-size: 13.5px; padding: 9px 16px; border-radius: 9px; border: 1px solid #0e7490; color: #0e7490; background: #fff; cursor: pointer; }
+.showBtn:hover { background: #ecfeff; }
+.list { width: 100%; border-collapse: collapse; font-size: 13px; }
+.list th { text-align: left; font-size: 11.5px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.list td { padding: 9px 10px; border-bottom: 1px solid #f1f2f4; vertical-align: top; line-height: 1.4; text-align: left; }
+.list td.n, .list th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sub { font-size: 12px; color: #6b7280; }
+.listWrap { overflow-x: auto; }
+
+/* filters on the list itself (Josh 2026-10-20: show what they are, reset or change them there) */
+.listFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 10px; }
+.change { margin: 0 0 14px; }
+.change summary { cursor: pointer; font-size: 13px; color: #0369a1; width: max-content; }
+.editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; margin-top: 10px; padding: 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e5e7eb; }
+.editor label { display: grid; gap: 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+.editor select, .editor input { font: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 7px; background: #fff; color: #111827; min-width: 0; width: 100%; }

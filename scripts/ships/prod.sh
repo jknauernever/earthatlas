@@ -29,6 +29,9 @@
 #   zsh scripts/ships/prod.sh import-wa-leases   back up, then WA DNR aquatic land leases + port management areas + county shoreline permits at the docks (lib/ships/data/wa-leases-sites.json; reuses the cache, 0 requests when cached; needs migration 030)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-anchorage-stays back up, then anchorage stays counted from our AIS (cache/anchorage-stays/hits.csv; needs migration 020)
+#   zsh scripts/ships/prod.sh import-ecology-ant back up, then a Washington Ecology Advance Notice of Transfer release (cache/ecology-ant/ant-rows.json from ant_export.py; --release ant-YYYY-MM-DD; needs migration 039)
+#   zsh scripts/ships/prod.sh import-bunker-events back up, then likely bunkering at anchorages from our AIS (cache/bunker-events/events.json from bunker_events.py; needs migration 036)
+#   zsh scripts/ships/prod.sh bunker-snapshot    rebuild the stored bunkering report (migration 040); the two imports above also do it
 #   zsh scripts/ships/prod.sh import-anchorage-aliases back up, then "also known as" names for anchorages (GFW names already stored + the USCG VTS manual p. 3-6 record; needs migration 020)
 #   zsh scripts/ships/prod.sh import-mc-v6       back up, then MarineCadastre AIS identities from the salish-v6 bake (build/v6)
 #   zsh scripts/ships/prod.sh upload-salish      upload the baked Salish track tiles to Vercel Blob
@@ -166,6 +169,20 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-anchorage-stays
     prod_node scripts/ships/anchorage-stays.mjs import "${@:2}"
+    ;;
+  import-ecology-ant)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-ecology-ant
+    prod_node scripts/ships/import-ecology-ant.mjs "${@:2}"
+    ;;
+  import-bunker-events)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-bunker-events
+    prod_node scripts/ships/bunker-events.mjs import "${@:2}"
+    ;;
+  bunker-snapshot)
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/bunker-snapshot.mjs "${@:2}"
     ;;
   import-anchorage-aliases)
     need SHIPS_PROD_DATABASE_URL

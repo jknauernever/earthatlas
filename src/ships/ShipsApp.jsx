@@ -24,6 +24,8 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import { keepPopupOnMap } from '../lib/popupFit.js'
+import PROJECTS from '../../lib/ships/data/salish-projects.json'
+import RBT2_OUTLINE from '../../lib/ships/data/rbt2-outline.json'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import ShipPicker from './ShipPicker.jsx'
@@ -40,7 +42,7 @@ import VesselCard, { Ev, currentIdentity } from './VesselCard.jsx'
 import PortCard, { PORT_HUE } from './PortCard.jsx'
 import TerminalCard from './TerminalCard.jsx'
 import AnchorageCard from './AnchorageCard.jsx'
-import { addTerminalImages, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
+import { addTerminalImages, addBadgeImage, GLYPH, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
 import { ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
 import trackSource from './trackSource.json'
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
@@ -429,6 +431,25 @@ export const OFFSHORE_SOURCES = {
   boem: { name: 'BOEM / BSEE platform structures', href: 'https://www.data.boem.gov/', licence: 'Public domain', credit: 'Bureau of Ocean Energy Management' },
 }
 const OFF_STATUS = { operating: 'Operating', construction: 'Under construction', planned: 'Planned or approved', removed: 'Removed or decommissioned', other: 'Other' }
+// ─── Projects that would add vessel traffic (Friends of the San Juans' 2026 projections; Josh 2026-10-20, Lovel's request) ─────
+// Numbered points at the terminal each project is at; Roberts Bank Terminal 2 also as an approximate outline traced from its
+// Figure 2. Friends' data, so the Friends logo is on the popup and the legend line.
+const PROJECT_HUE = '#a3e635'
+const PROJECT_NUDGE = [13, -13] // up and right of the terminal badge it belongs to, so both stay clickable
+function projectPopupHTML(pj, terminalName) {
+  const s = styles
+  const src = PROJECTS.source, out = PROJECTS.outlineSource
+  return `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}" style="display:flex;align-items:center;gap:8px"><img src="${src.logo}" alt="Friends of the San Juans" style="height:20px;width:auto">Project ${pj.n} of ${PROJECTS.projects.length} that would add traffic</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(pj.name)}</div>` +
+    `<div class="${s.popupMeta}">${escapeHtml([pj.port, pj.cargo].filter(Boolean).join(' · '))}</div>` +
+    `<div class="${s.popupRow}"><span class="${s.popupK}">Projected</span><span class="${s.popupV}">+${pj.transits.toLocaleString('en-US')} ocean-going transits a year</span></div>` +
+    `<div class="${s.popupNote}">${escapeHtml(pj.summary)}</div>` +
+    (pj.position?.basis === 'outline' ? `<div class="${s.popupNote}">Outline: approximate, traced from <a href="${out.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(out.name)}</a>; ${escapeHtml(out.statedAreas)}.</div>`
+      : pj.position?.note ? `<div class="${s.popupNote}">Shown at: ${escapeHtml(pj.position.note)}.</div>` : '') +
+    (pj.terminalKey ? `<div class="${s.popupNote}"><button type="button" data-terminal class="${s.inlineLink}" style="color:#2563eb">Open the ${escapeHtml(terminalName || 'terminal')} card →</button></div>` : '') +
+    `<div class="${s.popupNote}">Data: <a href="${src.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(src.name)}</a>.</div></div>`
+}
 function offshorePopupHTML(p) {
   const s = styles
   const src = OFFSHORE_SOURCES[p.src] || {}
@@ -470,6 +491,7 @@ const portLayerId = (t) => `ports-${t}`
 // Terminal pins (Josh 2026-09-28, UI "A + C"): inside the Ports & terminals row, one badge per kind (src/ships/terminalIcons.js).
 const TERMINAL_LAYER = 'terminals-icon'
 const TERMINAL_SEL = 'terminals-sel'
+const BUNKER_SRC = 'anchorage-bunker', BUNKER_LAYER = 'anchorage-bunker'
 const TERMINAL_LABEL = 'terminals-label'
 const PORT_LAYERS = [...PORT_TIERS.map(([t]) => portLayerId(t)), 'ports-label', 'ports-label-small', TERMINAL_LAYER, TERMINAL_SEL, TERMINAL_LABEL, ANCHORAGE_LABEL] // an anchorage's name opens its popup
 // Ports and terminals: a marker under the click wins over tracks, dark cells, protected areas and facilities.
@@ -553,7 +575,7 @@ function readUrlState() {
     v: sp.get('v'), q: sp.get('q'), k: sp.get('k'), id: sp.get('id'), tr: sp.get('tr'), tm: sp.get('tm'), tk: sp.get('tk'), bm: sp.get('bm'),
     dk: sp.get('dk'), mp: sp.get('mp'), ch: sp.get('ch'), sl: sp.get('sl'), of: sp.get('of'), ofr: sp.get('ofr'), sk: sp.get('sk'), sd: sp.get('sd'), slk: sp.get('slk'), tc: sp.get('tc'), sc: sp.get('sc'), oy: sp.get('oy'), ct: sp.get('ct'), cf: sp.get('cf'), pt: sp.get('pt'), pc: sp.get('pc'), pm: sp.get('pm'), pf: sp.get('pf'), pk: sp.get('pk'),
     tl: sp.get('tl'), tf: sp.get('tf'), tb: sp.get('tb'), ts: sp.get('ts'), // ts = tracks of the ships that called at this terminal
-    an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'),
+    an: sp.get('an'), af: sp.get('af'), ab: sp.get('ab'), pj: sp.get('pj'), // pj '1' = projects that would add traffic
     ph: sp.get('ph'), // photos on the satellite map: best (default) | mapbox | usgs | s2-2024 | sjc-1932 …
     gh: sp.get('gh'), // DEV-ONLY prototype layer (GFW hourly lines), see GH_COLOR
     lat: num('lat'), lng: num('lng'), z: num('z'),
@@ -628,6 +650,7 @@ export default function ShipsApp() {
   const [srkwOn, setSrkwOn] = useState(initial.ch === '1')
   const [slicksOn, setSlicksOn] = useState(initial.sl === '1')
   const [offshoreOn, setOffshoreOn] = useState(initial.of === '1')
+  const [projectsOn, setProjectsOn] = useState(initial.pj === '1')
   const [offRemoved, setOffRemoved] = useState(initial.ofr === '1') // removed / decommissioned facilities (5.8k in the Gulf alone) are off by default
   const [slickDist, setSlickDist] = useState(() => (NEAR_DISTS.includes(Number(initial.sd)) ? Number(initial.sd) : NEAR_DEFAULT))
   // Slick focus (Josh 2026-10-14): while a slick's popup is open, the map shows only the oil and the track Cerulean has
@@ -710,7 +733,7 @@ export default function ShipsApp() {
   // Anchorage card (Josh 2026-10-07, replaces the map popup): an = the anchorage's stable key "source_id|source_key".
   const [anchorageKey, setAnchorageKey] = useState(/^[a-z0-9-]{2,60}\|.{1,80}$/.test(initial.an || '') ? initial.an : null)
   const [anchorageFolded, setAnchorageFolded] = useState(initial.af === '1')
-  const [anchorageTab, setAnchorageTab] = useState(initial.ab === 'about' ? 'about' : 'ships')
+  const [anchorageTab, setAnchorageTab] = useState(['about', 'bunkering'].includes(initial.ab) ? initial.ab : 'ships')
   const [styleVersion, setStyleVersion] = useState(0) // bumps on every style.load so layers re-add after a basemap swap
   const [mmsiPeriods, setMmsiPeriods] = useState([])  // the picked ship's MMSIs with their observed windows (epoch s)
   const [trackNote, setTrackNote] = useState(null)    // transient message after a track click
@@ -2071,6 +2094,66 @@ export default function ShipsApp() {
     return () => { unpick(); terminalPopupRef.current?.remove() }
   }, [mapReady, portsOn, trackMonths])
 
+  // ─── Projects that would add vessel traffic (Friends' 2026 projections) ─────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !map.style?._loaded) return
+    const on = projectsOn && portsOn
+    if (!on && !map.getLayer('projects-pt')) return
+    if (on && !terminalsData) return
+    const at = new Map((terminalsData?.features || []).map((f) => [f.properties.k, f.geometry.coordinates]))
+    const ring = RBT2_OUTLINE.features[0].geometry.coordinates[0]
+    const where = (pj) => (pj.terminalKey ? at.get(pj.terminalKey)
+      : pj.position?.basis === 'place' ? [pj.position.lon, pj.position.lat]
+      : pj.position?.basis === 'outline' ? [ring.reduce((a, q) => a + q[0], 0) / ring.length, ring.reduce((a, q) => a + q[1], 0) / ring.length] : null)
+    const pts = { type: 'FeatureCollection', features: PROJECTS.projects.map((pj) => {
+      const c = where(pj)
+      return c ? { type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { id: pj.id, n: pj.n } } : null
+    }).filter(Boolean) }
+    if (!map.getSource('projects')) {
+      map.addSource('projects-outline', { type: 'geojson', data: RBT2_OUTLINE })
+      map.addLayer({ id: 'projects-fill', type: 'fill', source: 'projects-outline', paint: { 'fill-color': PROJECT_HUE, 'fill-opacity': 0.2 } })
+      map.addLayer({ id: 'projects-line', type: 'line', source: 'projects-outline', paint: { 'line-color': PROJECT_HUE, 'line-width': 1.6, 'line-dasharray': [3, 2] } })
+      map.addSource('projects', { type: 'geojson', data: pts })
+      map.addLayer({ id: 'projects-pt', type: 'circle', source: 'projects', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 8, 11, 11],
+        'circle-color': PROJECT_HUE, 'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 1.5,
+        'circle-translate': PROJECT_NUDGE } })
+      map.addLayer({ id: 'projects-n', type: 'symbol', source: 'projects', layout: { 'text-field': ['to-string', ['get', 'n']],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 11, 12], 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'], 'text-allow-overlap': true },
+        paint: { 'text-color': '#0a0e17', 'text-translate': PROJECT_NUDGE } })
+    } else map.getSource('projects').setData(pts)
+    for (const id of ['projects-fill', 'projects-line', 'projects-pt', 'projects-n']) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
+  }, [mapReady, styleVersion, projectsOn, portsOn, terminalsData])
+  const projectPopupRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !projectsOn || !portsOn) return
+    const hitAt = (pt) => {
+      const live = ['projects-pt', 'projects-fill'].filter((l) => map.getLayer(l))
+      return live.length ? map.queryRenderedFeatures([[pt.x - 6, pt.y - 6], [pt.x + 6, pt.y + 6]], { layers: live })[0] : null
+    }
+    const pick = (e) => {
+      const f = hitAt(e.point)
+      const pj = f && PROJECTS.projects.find((x) => x.id === (f.properties.id || 'rbt2'))
+      if (!pj) return []
+      return [{ layer: f.layer.id, label: pj.name, kind: 'Project that would add traffic', color: PROJECT_HUE, open: () => {
+        projectPopupRef.current?.remove()
+        const tName = (terminalsData?.features || []).find((t) => t.properties.k === pj.terminalKey)?.properties.n
+        const popup = keepPopupOnMap(new mapboxgl.Popup({ offset: 10, maxWidth: '320px' }).setLngLat(e.lngLat).setHTML(projectPopupHTML(pj, tName)).addTo(map))
+        popup.getElement()?.querySelector('[data-terminal]')?.addEventListener('click', () => {
+          popup.remove(); setPortId(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+          setTerminalKey(pj.terminalKey); setTerminalFolded(false); setTerminalTab('ships'); setTerminalMonth(null); setAnchorageKey(null)
+        })
+        projectPopupRef.current = popup
+      } }]
+    }
+    const onMove = (e) => { if (hitAt(e.point)) map.getCanvas().style.cursor = 'pointer' }
+    const unpick = registerPicker('projects', pick)
+    map.on('mousemove', onMove)
+    return () => { unpick?.(); map.off('mousemove', onMove); projectPopupRef.current?.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, projectsOn, portsOn, terminalsData])
+
   // ─── Anchorage areas (Josh 2026-09-30; src/ships/anchoragePopup.js, lib/ships/anchorageCard.js) ─────────────
   // Inside the Ports & terminals row: outlines from zoom 8 (loaded once, the first time the map is that close), a click inside
   // one opens its popup: also-known-as names and the stays EarthAtlas counted from MarineCadastre AIS. Tracks, dark cells,
@@ -2144,6 +2227,52 @@ export default function ShipsApp() {
     return () => { unpick(); map.off('mousemove', onMove); anchoragePopupRef.current?.remove() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, portsOn, trackMonths])
+
+  // ─── Likely bunkering at anchorages (Josh 2026-10-18; lib/ships/bunkerEvents.js) ─────
+  // A fuel badge in the anchorage hue at each anchorage with likely fuelings in the picked months; click → its Bunkering tab.
+  const [bunkerAnch, setBunkerAnch] = useState(null)
+  useEffect(() => {
+    if (!portsOn || !trackMonths.length) return
+    let dead = false
+    fetch(`/api/ships?op=bunkerAnchorages&from=${trackMonths[0]}&to=${trackMonths[trackMonths.length - 1]}`)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!dead && d) setBunkerAnch(d) }).catch(() => {})
+    return () => { dead = true }
+  }, [portsOn, trackMonths])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !anchoragesData || !bunkerAnch) return
+    if (!map.style?._loaded) return
+    const n = new Map(bunkerAnch.anchorages.map((x) => [x.k, x.n]))
+    const pts = { type: 'FeatureCollection', features: anchoragesData.features.filter((f) => n.has(f.properties.k)).map((f) => {
+      const c = f.geometry.coordinates.flat(Infinity)
+      let w = Infinity, e = -Infinity, so = Infinity, no = -Infinity
+      for (let i = 0; i < c.length; i += 2) { w = Math.min(w, c[i]); e = Math.max(e, c[i]); so = Math.min(so, c[i + 1]); no = Math.max(no, c[i + 1]) }
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: [(w + e) / 2, (so + no) / 2] }, properties: { k: f.properties.k, n: n.get(f.properties.k), name: f.properties.n } }
+    }) }
+    let dead = false
+    addBadgeImage(map, 'anchorage-fuel', GLYPH.fuel, ANCHORAGE_COLOR).then(() => {
+      if (dead || !map.style?._loaded) return
+      if (map.getSource(BUNKER_SRC)) map.getSource(BUNKER_SRC).setData(pts)
+      else {
+        map.addSource(BUNKER_SRC, { type: 'geojson', data: pts })
+        map.addLayer({ id: BUNKER_LAYER, type: 'symbol', source: BUNKER_SRC, minzoom: ANCHORAGE_MINZOOM,
+          layout: { 'icon-image': 'anchorage-fuel', 'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.75, 12, 1], 'icon-allow-overlap': true } })
+      }
+      map.setLayoutProperty(BUNKER_LAYER, 'visibility', portsOn ? 'visible' : 'none')
+    })
+    const pick = (e) => {
+      const f = map.getLayer(BUNKER_LAYER) && map.queryRenderedFeatures(e.point, { layers: [BUNKER_LAYER] })[0]
+      return f ? [{ layer: f.layer.id, label: f.properties.name || 'Anchorage', kind: 'Likely bunkering', color: ANCHORAGE_COLOR, open: () => {
+        setPortId(null); setTerminalKey(null); setVesselId(null); setPickerOpen(false); setBackToPort(null)
+        setAnchorageKey(f.properties.k); setAnchorageFolded(false); setAnchorageTab('bunkering')
+      } }] : []
+    }
+    const onMove = (e) => { if (map.getLayer(BUNKER_LAYER) && map.queryRenderedFeatures(e.point, { layers: [BUNKER_LAYER] }).length) map.getCanvas().style.cursor = 'pointer' }
+    const unpick = registerPicker('bunkering', pick)
+    map.on('mousemove', onMove)
+    return () => { dead = true; unpick(); map.off('mousemove', onMove) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, styleVersion, anchoragesData, bunkerAnch, portsOn])
 
   // ─── A stop from the Ports tab on the map (Josh, 2026-09-27) ────────────────
   // Marker on GFW's stop point (the anchorage cell, not the exact berth), the ship's own track arriving
@@ -2248,6 +2377,7 @@ export default function ShipsApp() {
     if (trackClasses.length) sp.set('tc', trackClasses.join(','))
     if (scrubOnly) sp.set('sc', '1')
     if (termShips) sp.set('ts', termShips.key)
+    if (projectsOn && portsOn) sp.set('pj', '1')
     if (vesselId) sp.set('v', vesselId)
     if (vesselId && cardTab !== 'overview') sp.set('ct', cardTab)
     if (vesselId && cardFolded) sp.set('cf', '1')
@@ -2259,7 +2389,7 @@ export default function ShipsApp() {
     writeUrlQuery(sp.toString())
     if (mapReady) scheduleViewCard(captureShareImage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos.photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, srkwOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
+  }, [projectsOn, photos.photo, termShips?.key, identityOn, tracksOn, darkOn, mpaOn, srkwOn, slicksOn, offshoreOn, offRemoved, slickKinds, slickDist, slickId, ownAllYears, portsOn, portId, portMonth, portFolded, portTab, terminalKey, terminalFolded, terminalTab, anchorageKey, anchorageFolded, anchorageTab, trackSel, trackKinds, trackClasses, scrubOnly, vesselId, cardTab, cardFolded, query, kinds, basemap, mapView, mapReady])
 
   const toggleIdentity = () => {
     const next = !identityOn
@@ -2630,6 +2760,16 @@ export default function ShipsApp() {
                     </LegendSwatchRow>
                     <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', width: 20, height: 20, borderRadius: '50%', background: '#0a0e17', border: `2px solid ${PORT_HUE}`, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
                       <Icon svg={TERMINAL_FAMILIES[0][1]} size={12} /></span>}>Terminal (badge = kind)</LegendSwatchRow>
+                    {bunkerAnch?.anchorages?.length > 0 && <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', width: 20, height: 20, borderRadius: '50%', background: '#0a0e17', border: `2px solid ${ANCHORAGE_COLOR}`, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                      <Icon svg={GLYPH.fuel} size={12} /></span>}>Anchorage with likely bunkering</LegendSwatchRow>}
+                    {projectsOn && <LegendSwatchRow swatch={<span style={{ display: 'inline-flex', width: 16, height: 16, borderRadius: '50%', background: PROJECT_HUE, border: '1.5px solid #0a0e17', color: '#0a0e17', fontSize: 9, fontWeight: 700, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>1</span>}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Project that would add traffic (Friends’ projections)
+                        <a href={PROJECTS.source.url} target="_blank" rel="noopener noreferrer" title={PROJECTS.source.name}><img src={PROJECTS.source.logo} alt="Friends of the San Juans" style={{ height: 14, width: 'auto', verticalAlign: 'middle' }} /></a></span>
+                    </LegendSwatchRow>}
+                    <div className={styles.chipRow} style={{ marginTop: 4 }}>
+                      <button type="button" aria-pressed={projectsOn} className={projectsOn ? styles.chipTrack : styles.chip} onClick={() => setProjectsOn((v) => !v)}
+                        title={`The ${PROJECTS.projects.length} projects Friends of the San Juans projects would add ${PROJECTS.totals.increase.toLocaleString('en-US')} ocean-going transits a year`}>Projects that would add traffic</button>
+                    </div>
                     {/* The kinds fold away (Josh 2026-09-28: the panel must fit without scrolling). */}
                     <LegendTurndown storageKey="ships.ports.terminalKinds" label={`Terminal kinds (${TERMINAL_FAMILIES.length})`}>
                       {TERMINAL_FAMILIES.map(([id, svg, label]) => (
@@ -2645,10 +2785,18 @@ export default function ShipsApp() {
                     Watch or Climate TRACE knows. Click one for the ships that called there in the months picked above, its ship emissions and,
                     for big cargo ports, trade trends. Pink discs are Climate TRACE’s refineries, oil &amp; gas sites and coal mines, sized by what
                     they emitted; click one for its card. Round badges are EarthAtlas’s hand-checked Salish Sea terminals (oil, fuel, gas, chemicals,
-                    coal, grain and other bulk); click one for the ships of a fitting kind that stopped there, its emissions and every source. Data:{' '}
+                    coal, grain and other bulk); click one for the ships of a fitting kind that stopped there, its emissions and every source. A fuel badge on an anchorage marks likely
+                    bunkering there in the months picked: a tug (a bunker barge has no AIS of its own) alongside an anchored ship for an hour or more,
+                    found by EarthAtlas in MarineCadastre AIS; click it for each fueling. Washington anchorages are compared with what Washington
+                    Ecology was notified of in the <a href="/ships/reports/bunkering" target="_blank" rel="noopener noreferrer">bunkering report</a>. Data:{' '}
                     <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
                     port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0);{' '}
                     <a href={FOSSIL.sourceUrl} target="_blank" rel="noopener noreferrer">Climate TRACE</a> (CC BY 4.0).
+                    {' '}<strong>Projects that would add traffic</strong>: the {PROJECTS.projects.length} projects in{' '}
+                    <a href={PROJECTS.source.url} target="_blank" rel="noopener noreferrer">{PROJECTS.source.name}</a>, numbered by their
+                    projected increase (+{PROJECTS.totals.increase.toLocaleString('en-US')} ocean-going transits a year in all, {PROJECTS.totals.pct}% above the {PROJECTS.totals.base2025.toLocaleString('en-US')} of 2025),
+                    each at its terminal; Roberts Bank Terminal 2 is an approximate outline traced from Figure 2 of its{' '}
+                    <a href={PROJECTS.outlineSource.url} target="_blank" rel="noopener noreferrer">draft project description</a>. NXTClean Fuels is on the Columbia River, outside this map’s area.
                   </>} />
                 <DatasetRow storageKey="ships.mpa" name={MPA.name} sub={MPA.sub} hue={MPA.hue}
                   icon={<Icon svg={MPA.iconSvg} size={16} />} on={mpaOn} onToggle={() => setMpaOn((o) => !o)}
@@ -2767,7 +2915,7 @@ export default function ShipsApp() {
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
                 changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}
-                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }]} />
+                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }, { href: '/ships/reports/bunkering', label: 'Planned vs. observed bunkering at Washington anchorages' }]} />
             </div>
           )}
         </MapSheet>

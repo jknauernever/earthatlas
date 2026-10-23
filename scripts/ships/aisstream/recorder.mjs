@@ -17,7 +17,7 @@
  *                                               (a new name each time, so no cached copy is ever read against a newer index),
  *                                               the finished day once as tracks.pack; index in DATA_DIR/tracks/index.json, uploaded
  *                                               with the packs to TRACKS_PREFIX for api/ship-tracks.js
- *   DATA_DIR/live.json                          every 60 s: each ship's latest position (last 24 h) + a 30-min trail for
+ *   DATA_DIR/live.json                          every 60 s: each ship's latest position (last 24 h) + a 60-min trail for
  *                                               ships reported in the last 30 min; uploaded to LIVE_PATH for /whalewatch's LIVE
  *
  * Rules (NOAA-like): at most one row per MMSI per UTC minute (the first); 9-digit MMSIs only; valid, non-0,0 positions
@@ -49,7 +49,7 @@ const RAW_KEEP_DAYS = Number(process.env.RAW_KEEP_DAYS || 30)
 const PYTHON = process.env.PYTHON || 'python3'
 const TRACKS_PREFIX = process.env.TRACKS_PREFIX || 'ships/tracks/aisstream-v1'
 const LIVE_PATH = process.env.LIVE_PATH || 'ships/live/salish-v6.json'
-const LIVE_EVERY_MS = 60_000, LIVE_KEEP_S = 24 * 3600, TRAIL_S = 30 * 60
+const LIVE_EVERY_MS = 60_000, LIVE_KEEP_S = 24 * 3600, TRAIL_S = 60 * 60   // 60 min (Josh 2026-10-23): boats aisstream.io hears only every 10–20 min still get a line
 // salish-v6 (scripts/ships/bake-ais/region.py): W -126.2 S 47.0 E -122.05 N 49.6. aisstream corners are [lat, lon].
 const BOX = { w: -126.2, s: 47.0, e: -122.05, n: 49.6 }
 const FLUSH_MS = 5_000

@@ -10,7 +10,7 @@
  *   /ships card rule), so a reassigned MMSI never pulls in another boat.
  * - LIVE (no replay hour): a boat with a live AIS report newer than its tracks is drawn from the aisstream.io recorder's
  *   snapshot (scripts/ships/aisstream/recorder.mjs → Blob ships/live/salish-v6.json, rewritten every 60 s): its latest
- *   position (last 24 h) and, if it was reported in the last 30 min, its trail. Hover gives how long ago.
+ *   position (last 24 h) and, if it was reported in the last 30 min, its trail (its last hour). Hover gives how long ago.
  * - The Ships pill searches every boat in /ships; a found boat's tracks join the map in the /ships "picked ship" color.
  *   That only changes this view (and its link), never the fleet list.
  *
@@ -142,10 +142,9 @@ const periodsOf = (v) => {
     .map((a) => ({ mmsi: Number(a.value_norm), from: secs(a.from), to: secs(a.to) }))
 }
 
-// Run `fn` over `items`, at most `n` at a time.
+// Run `fn` over `items`, at most `n` at a time, taking each from the front of `items` (so items can be pulled out meanwhile).
 async function eachLimit(items, n, fn) {
-  let i = 0
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]) }))
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (items.length) await fn(items.shift()) }))
 }
 
 export default function WhaleWatchApp() {
@@ -175,7 +174,7 @@ export default function WhaleWatchApp() {
   const [added, setAdded] = useState(() => initial.add.map((id) => ({ id, name: null, periods: null })))
   const [sel, setSel] = useState(initial.v)         // open ship card
   const [cardTab, setCardTab] = useState(initial.ct || 'overview')   // the ship card's tab (trips = this site's Trips tab)
-  const [tripT0, setTripT0] = useState(initial.tr)  // the picked boat's trip shown (its start, epoch s); null = its newest
+  const [tripT0, setTripT0] = useState(initial.tr)  // the picked boat's trip shown (its start, epoch s); null = none until one is clicked
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [kinds, setKinds] = useState([])
@@ -270,15 +269,28 @@ export default function WhaleWatchApp() {
     for (const f of feats) f.properties.vid = vid
     setTracks((t) => ({ ...t, [vid]: feats }))
   }
+  // The open card's boat goes first (Josh 2026-10-23: its Trips tab waited behind the other 44): queued boats sit in
+  // queueRef, and opening a card pulls its boat out of the queue and loads it at once.
+  const queueRef = useRef([])
+  const loadQueued = (m) => loadBoat(m.vessel_id, m.mmsiPeriods).finally(() => setPending((n) => n - 1))
   useEffect(() => {
     if (!win || !fleet) return
     const todo = fleet.members.filter((m) => !loadedRef.current.has(m.vessel_id))
     if (!todo.length) return
     for (const m of todo) loadedRef.current.add(m.vessel_id)
     setPending((n) => n + todo.length)
-    eachLimit(todo, 6, async (m) => { await loadBoat(m.vessel_id, m.mmsiPeriods); setPending((n) => n - 1) })
+    const q = queueRef.current, idle = !q.length   // workers already running drain whatever is added
+    q.push(...todo.filter((m) => m.vessel_id !== sel))
+    const first = todo.find((m) => m.vessel_id === sel)
+    if (first) loadQueued(first)
+    if (idle) eachLimit(q, 6, loadQueued)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [win, fleet])
+  useEffect(() => {
+    const q = queueRef.current, i = q.findIndex((m) => m.vessel_id === sel)
+    if (i >= 0) loadQueued(q.splice(i, 1)[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel])
   // Found boats: their identity (name, MMSI periods) from the ship record, then their tracks.
   useEffect(() => {
     if (!win) return
@@ -337,7 +349,8 @@ export default function WhaleWatchApp() {
   ], [fleetOn, members, hidden, added, memberIds, homes])
   // The picked boat's trips (Josh 2026-10-17: follow a boat through its history one trip at a time, not a year of white lines).
   const trips = useMemo(() => (sel && segsByVid[sel] ? tripsOf(segsByVid[sel]) : []), [sel, segsByVid])
-  const shownTrip = trips.find((tr) => tr.t0 === tripT0) || trips[0] || null
+  // No trip line until one is clicked in the Trips tab (Josh 2026-10-23: a white line on opening the card confused things).
+  const shownTrip = trips.find((tr) => tr.t0 === tripT0) || null
   // Lines: every shown boat's 12 months when that's on (muted), plus the picked boat's shown trip (white).
   const features = useMemo(() => [
     ...(allTracks ? shownIds.flatMap((id) => tracks[id] || []) : []),
@@ -546,9 +559,9 @@ export default function WhaleWatchApp() {
     for (const sg of shownTrip.segs) for (const c of sg.c) b.extend(c)
     map.fitBounds(b, { padding: isMobile ? 30 : { top: 80, bottom: 110, left: 380, right: 420 }, maxZoom: 13, duration: 1000 })
   }, [sel, segsByVid, shownTrip, isMobile])
-  // While the slider runs, the shown trip follows it: the trip under way at the hour shown.
+  // While the slider runs, a clicked trip follows it: the trip under way at the hour shown.
   useEffect(() => {
-    if (t == null || !trips.length) return
+    if (t == null || !trips.length || tripT0 == null) return
     const on = trips.find((tr) => t >= tr.t0 - 1800 && t <= tr.t1 + 1800)
     if (on && on.t0 !== shownTrip?.t0) setTripT0(on.t0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -716,7 +729,7 @@ export default function WhaleWatchApp() {
             hue={FLEET_COLOR} on={fleetOn} onToggle={() => setFleetOn((o) => !o)}
             status={fleetError ? <div className={styles.wwMuted}>Could not load the boat list ({fleetError}).</div> : null}
             legend={<>
-              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Live: reported by AIS in the last 24 hours (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>), with its last 30 minutes of travel</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Live: reported by AIS in the last 24 hours (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>), with its last hour of travel</LegendSwatchRow>
               <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>Not live now: its newest position recorded by live AIS since Oct 18, 2026 (in replay: where it was at the hour shown, with its last hour of travel). Boats not heard live since then are listed but not drawn.</LegendSwatchRow>
               <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: PICK_COLOR }} />}>The boat whose card is open: the trip picked in its Trips tab</LegendSwatchRow>
             </>}

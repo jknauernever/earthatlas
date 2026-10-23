@@ -4,7 +4,7 @@
  *
  * Data: the recorder's snapshot (scripts/ships/aisstream/recorder.mjs → Blob ships/live/salish-v6.json, rewritten every
  * 60 s; one row per MMSI from every live source it records — aisstream.io AIS and Washington State Ferries' own positions —
- * the newest position winning, from the last 24 h, with 30-minute trails for ships under way; ferries carry route,
+ * the newest position winning, from the last 24 h, with 60-minute trails for ships under way; ferries carry route,
  * terminals and ETA). Polled every minute
  * while the tab is visible. Shown: ships reported in the last SHOW_H hours, colored by their kind in our ships database
  * (lib/ships/liveBriefs.js, Josh 2026-10-19), else by the AIS ship type they broadcast (the same kinds as the track filter), arrows for ships under way (pointing along heading, or course when no heading),

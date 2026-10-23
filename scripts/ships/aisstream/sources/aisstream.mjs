@@ -7,10 +7,12 @@
 import WebSocket from 'ws'
 
 const STALE_MS = 120_000
+const CONNECT_MS = 30_000        // a handshake still pending after this is dead
+const RESTART_MS = 10 * 60_000   // no data at all for this long → exit and let Fly restart the machine
 const POSITION = new Set(['PositionReport', 'StandardClassBPositionReport', 'ExtendedClassBPositionReport'])
 const parseTime = (s) => { const [d, t] = s.split(' '); return new Date(`${d}T${t.slice(0, 12)}Z`) }   // "2026-10-17 23:55:51.313911604 +0000 UTC"
 
-let ws = null, attempt = 0, connectedAt = 0, stopping = false, staleTimer = null
+let ws = null, attempt = 0, attemptAt = 0, connectedAt = 0, stopping = false, staleTimer = null
 
 export function start(ctx) {
   const KEY = process.env.AISSTREAM_API_KEY
@@ -45,10 +47,12 @@ export function start(ctx) {
     if (stopping) return
     log('aisstream: connecting', attempt ? `(attempt ${attempt + 1})` : '')
     const sock = new WebSocket('wss://stream.aisstream.io/v0/stream', { perMessageDeflate: true })
-    ws = sock
+    ws = sock; attemptAt = Date.now()
     sock.on('open', () => { connectedAt = Date.now(); h.connected = true; h.lastMessageAt = new Date().toISOString(); sock.send(JSON.stringify(SUBSCRIPTION)) })
     sock.on('message', onMessage)
-    sock.on('unexpected-response', (_req, res) => log('aisstream: http', res.statusCode))
+    // Listening for this stops ws from aborting the handshake itself, so no 'close' (and no reconnect) follows unless we
+    // terminate — a 503 here stalled recording for 87 min on 2026-10-23.
+    sock.on('unexpected-response', (_req, res) => { log('aisstream: http', res.statusCode); sock.terminate() })
     sock.on('error', (e) => log('aisstream: socket error', e.message))
     sock.on('close', (code, reason) => {
       if (ws !== sock) return
@@ -62,11 +66,19 @@ export function start(ctx) {
       setTimeout(connect, wait)
     })
   }
+  const startedAt = Date.now()
   staleTimer = setInterval(() => {
-    const last = h.lastMessageAt ? Date.parse(h.lastMessageAt) : 0
+    const last = h.lastMessageAt ? Date.parse(h.lastMessageAt) : startedAt
     if (ws && ws.readyState === WebSocket.OPEN && Date.now() - last > STALE_MS) {
       log(`aisstream: no data for ${Math.round((Date.now() - last) / 1000)} s; reconnecting`)
       ws.terminate()
+    } else if (ws && ws.readyState === WebSocket.CONNECTING && Date.now() - attemptAt > CONNECT_MS) {
+      log('aisstream: handshake hung; reconnecting')
+      ws.terminate()
+    } else if (Date.now() - last > RESTART_MS) {
+      // Last resort for any stuck state this loop doesn't foresee: graceful shutdown, Fly's restart policy starts us fresh.
+      log(`aisstream: no data for ${Math.round((Date.now() - last) / 60_000)} min; restarting process`)
+      process.kill(process.pid, 'SIGTERM')
     }
   }, 15_000)
   connect()

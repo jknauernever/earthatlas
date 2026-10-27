@@ -1,0 +1,500 @@
+{
+ "note": "Pairs Josh reviewed on the ship cards (docs/SHIP_MATCH_SCORE.md). Vessel ids are DEV ids; scripts/ships/match/merge-reviewed.mjs matches them on prod by MMSI + names.",
+ "pairs": [
+  {
+   "mmsi": "368352290",
+   "a": "01275cbb-afe4-4afb-b27d-055a9b099e04",
+   "b": "0ec4a943-0e93-45de-bf45-cb9420e795de",
+   "names": [
+    [
+     "AHOLDFAST"
+    ],
+    [
+     "HOLDFAST"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDP4203"
+    ],
+    [
+     "WDP4203"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name typo of HOLDFAST, same call sign",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368417460",
+   "a": "0e26c73c-b3f7-4b43-9c28-713ad8fbe5b5",
+   "b": "c5f63539-8be5-40bd-b879-0130b6e8187d",
+   "names": [
+    [
+     "AMPRO"
+    ],
+    [
+     "AMPARO"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDQ3507"
+    ],
+    [
+     "WDQ3507"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name typo of AMPARO, same call sign",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368331890",
+   "a": "1fb98568-5796-419e-9b6a-5c4ebe6524a7",
+   "b": "58329615-8e83-4994-9250-cbb5ff2701c5",
+   "names": [
+    [
+     "LABELLAVITA"
+    ],
+    [
+     "LABELLLAVITA"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDN9964"
+    ],
+    [
+     "WDN9964"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name typo of LABELLAVITA, same call sign",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368168840",
+   "a": "2599e82d-d5e1-4abb-a33a-c7f520fdb8c3",
+   "b": "5b2ce9e9-3492-474d-9e2c-9fed0cdf3514",
+   "names": [
+    [
+     "GOODOMEM"
+    ],
+    [
+     "GOODOMEN"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDL8369"
+    ],
+    [
+     "WDL8369"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name typo of GOODOMEN, same call sign",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368346810",
+   "a": "25ee86fc-c875-42d8-887d-76b0e0b0df88",
+   "b": "a2a404cb-eb56-4309-8c81-278999d6a443",
+   "names": [
+    [
+     "CORORANT"
+    ],
+    [
+     "CORMORANT"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDP3586"
+    ],
+    [
+     "WDP3586"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name typo of CORMORANT, same call sign",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "316057486",
+   "a": "01173bb0-6ba9-47fc-bb69-f0b6ab0ea9af",
+   "b": "8df0779d-e438-44dc-a110-07a0ded58e11",
+   "names": [
+    [
+     "SOUTHPAWX"
+    ],
+    [
+     "SOUTHPAW"
+    ]
+   ],
+   "callsigns": [
+    [],
+    [
+     "PCQM"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SOUTHPAWX / SOUTHPAW); review list item 6",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "316032752",
+   "a": "0e6cfebb-2f13-4f28-b74a-a8caae1da6ed",
+   "b": "5c7ea0ec-f7ea-4804-bd4b-c384feb432ca",
+   "names": [
+    [
+     "HARMATTAN"
+    ],
+    [
+     "HARMATTANA"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (HARMATTAN / HARMATTANA); review list item 7",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "338301475",
+   "a": "127dcdf4-3a7e-4afa-b788-acd178916922",
+   "b": "17733038-9505-49b4-a02c-0192293ba679",
+   "names": [
+    [
+     "SUNSEAKER"
+    ],
+    [
+     "SIEMPREFIEL",
+     "SUNSEEKER"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SUNSEAKER / SIEMPREFIEL); review list item 8",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "338398492",
+   "a": "13793428-9230-4bee-87c4-b9b7fc66b1aa",
+   "b": "3f4dad36-1e8c-41b6-aa26-266e0ca7d857",
+   "names": [
+    [
+     "SERENA"
+    ],
+    [
+     "SERYNA"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SERENA / SERYNA); review list item 9",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "316029221",
+   "a": "17fcc6a7-9989-42e4-80c2-4ccd4efa506d",
+   "b": "21887f49-a1bd-495e-b171-ca3886dc2a86",
+   "names": [
+    [
+     "BALLADEER",
+     "BALLADEER1"
+    ],
+    [
+     "BALLADEERI"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (BALLADEER / BALLADEERI); review list item 10",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "235035779",
+   "a": "3e7c1bbb-6018-46f3-a15d-f4d202b05ea4",
+   "b": "78e6d286-6591-44f1-8078-a3299bab7821",
+   "names": [
+    [
+     "SWIFTOFSOUTHAMPTON"
+    ],
+    [
+     "SWIFTOFSOUTHAMPTO"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SWIFTOFSOUTHAMPTON / SWIFTOFSOUTHAMPTO); review list item 11",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "367495180",
+   "a": "45be0222-226a-4f89-9171-9a7d4ca32ba8",
+   "b": "6bb14c52-c667-43ea-8211-d4c7464c9216",
+   "names": [
+    [
+     "SAILONFONIB",
+     "CRUISEON"
+    ],
+    [
+     "SAILONFONB"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDF8469",
+     "WDH9557"
+    ],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SAILONFONIB / SAILONFONB); review list item 12",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "338107037",
+   "a": "4bf88aa9-b2b5-4bc1-8a57-db07f2f27a76",
+   "b": "d0a3c957-c753-4882-9bd7-a22e5ad3b7b2",
+   "names": [
+    [
+     "WESTONMERRITT"
+    ],
+    [
+     "WESTONMERRIT"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (WESTONMERRITT / WESTONMERRIT); review list item 14",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "316036627",
+   "a": "5b597a28-393a-4944-98e4-0825a108594c",
+   "b": "ece06941-fbcd-4bcf-a82f-57c533ed3f73",
+   "names": [
+    [
+     "RCMSAR35B"
+    ],
+    [
+     "RCMSAR35"
+    ]
+   ],
+   "callsigns": [
+    [
+     "35BRAVO"
+    ],
+    [
+     "SAR35"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name difference (RCMSAR35B / RCMSAR35); review list item 15",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "367561560",
+   "a": "5ea30e75-a0da-4ba8-9b4f-ac34b273a826",
+   "b": "77c90bdb-f743-4abf-b034-9c00d04df171",
+   "names": [
+    [
+     "EPDMARINE1",
+     "MARINE1"
+    ],
+    [
+     "EPDMDRINE1"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDG6872"
+    ],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (EPDMARINE1 / EPDMDRINE1); review list item 16",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "369970850",
+   "a": "63bf4cdd-a486-481a-9b56-a7163fb22728",
+   "b": "710998c3-9b95-48b1-9f9b-dd7fa350d702",
+   "names": [
+    [
+     "WARSHIP25"
+    ],
+    [
+     "USGOVVESSEL",
+     "USWARSHIP25",
+     "USSSOMERSETLPD25",
+     "USWARSHIP",
+     "NAVYUNIT34",
+     "USNAVYWARSHIP25",
+     "WAPSHIP25",
+     "USSWARSHIP25"
+    ]
+   ],
+   "callsigns": [
+    [],
+    [
+     "NSOM"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name difference (WARSHIP25 / USGOVVESSEL); review list item 17",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "338108664",
+   "a": "696cb6c9-825f-4216-b308-a44b292421a7",
+   "b": "b892ad48-cfae-4654-a321-ef246278749b",
+   "names": [
+    [
+     "BRAVISSIMO"
+    ],
+    [
+     "BRAVISSIMOH"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (BRAVISSIMO / BRAVISSIMOH); review list item 19",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368317090",
+   "a": "70ff517b-a082-4c6d-82d1-81cb5fc09f3b",
+   "b": "e4b21eac-bfba-4444-9a52-e76a98b32c67",
+   "names": [
+    [
+     "CHASINGPAR"
+    ],
+    [
+     "CHASINPAR"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDN8383"
+    ],
+    [
+     "177980"
+    ]
+   ],
+   "label": "same",
+   "why": "one-letter name difference (CHASINGPAR / CHASINPAR); review list item 20",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "338182798",
+   "a": "97f5a9b9-48a1-45fc-aada-291c43b8addf",
+   "b": "e7a1a044-1759-4621-bad3-177ae1fa5101",
+   "names": [
+    [
+     "SUMMERUN"
+    ],
+    [
+     "SUMMERRUN"
+    ]
+   ],
+   "callsigns": [
+    [
+     "SUMERUN"
+    ],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SUMMERUN / SUMMERRUN); review list item 21",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "368436910",
+   "a": "986a4b6c-5102-4e7d-8eb8-4f1bb4e5ff0e",
+   "b": "eda79823-d87d-4647-ab7b-9d205803477e",
+   "names": [
+    [
+     "SCENICROUTE"
+    ],
+    [
+     "SCERNICROUTE"
+    ]
+   ],
+   "callsigns": [
+    [],
+    []
+   ],
+   "label": "same",
+   "why": "one-letter name difference (SCENICROUTE / SCERNICROUTE); review list item 22",
+   "by": "Josh",
+   "at": "2026-10-21"
+  },
+  {
+   "mmsi": "367742760",
+   "a": "d9722b53-da0c-4f41-a61b-69f39e69b8d6",
+   "b": "de0b17a6-48e6-4424-b921-41ab0f66598f",
+   "names": [
+    [
+     "J1"
+    ],
+    [
+     "MAYASLEGACYJ1"
+    ]
+   ],
+   "callsigns": [
+    [
+     "WDK2119",
+     "J1",
+     "WDI8851"
+    ],
+    []
+   ],
+   "label": "same",
+   "why": "renamed: broadcast as MAYA`S LEGACY J1 for two weeks in Oct 2021, then J1 (Maya's Legacy Whale Watching) on the same MMSI",
+   "by": "Josh",
+   "at": "2026-10-26"
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "model": "b-score-v1",
+ "db": "ep-frosty-feather-autlwmb7-pooler",
+ "fitted_at": "2026-10-21T02:30:34.396Z",
+ "trained_on": "95 hand-labeled pairs",
+ "lambda": 0.6957732382780368,
+ "weights": {
+  "name": {
+   "exact": 1.18,
+   "typo": 1.92,
+   "prefix": -0.08,
+   "different": -0.44,
+   "one_missing": 0,
+   "both_missing": 0
+  },
+  "callsign": {
+   "agree": 1.74,
+   "conflict": -1.12,
+   "missing": 0
+  },
+  "length": {
+   "agree": 0.06,
+   "conflict": -0.09,
+   "missing": 0
+  },
+  "type": {
+   "agree": 0.03,
+   "conflict": -0.29,
+   "missing": 0
+  },
+  "flag": {
+   "agree": 0.07,
+   "conflict": -1.77,
+   "missing": 0
+  },
+  "window": {
+   "nested": 0.01,
+   "out_le180d": 0.75,
+   "out_gt180d": -0.17,
+   "disjoint": -1.42,
+   "missing": 0
+  },
+  "fragment": {
+   "small": -0.04,
+   "larger": 0.1
+  },
+  "crowd": {
+   "2": 1.44,
+   "3-5": -0.75
+  },
+  "ports": {
+   "together": 1.98,
+   "impossible": -3.15,
+   "apart": -1.08,
+   "missing": 0
+  }
+ },
+ "bands": {
+  "probably": 0.8,
+  "separate": 0.3
+ },
+ "precision": {
+  "merge": {
+   "right": 1,
+   "checked": 1
+  },
+  "probably": {
+   "right": 15,
+   "checked": 16
+  },
+  "separate": {
+   "right": 7,
+   "checked": 7
+  }
+ }
+}

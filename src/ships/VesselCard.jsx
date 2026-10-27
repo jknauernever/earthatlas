@@ -14,6 +14,7 @@ import ShipEmissions from './ShipEmissions.jsx'
 import LivePosition from './LivePosition.jsx'
 import { Loading, LoadingInline } from '../components/panel'
 import { CERULEAN_APP, matchWords, slickUrl, sourceUrl, slicksForPeriods } from '../../lib/ships/cerulean.js'
+import { pickDisplayName } from '../../lib/ships/displayName.js'
 
 // How each evidence class is labelled, so "AIS reported this" never reads as "a registry confirms this".
 export const EVIDENCE = {
@@ -53,6 +54,14 @@ const SRC_LABEL = { 'gfw-vessel-identity': 'GFW', 'marinecadastre-ais': 'NOAA', 
 // An operator's own website (lib/ships/operatorSite.js) is credited by the operator's name.
 const srcLabel = (id, sourcesById) => SRC_LABEL[id] || (String(id).startsWith('operator-site-') && sourcesById[id]?.attribution_text) || 'source'
 // How a Wikidata item was tied to this ship (lib/ships/resolve.js v1.3). Name-only is the weakest.
+// Match score wording (lib/ships/matchScore.js reasons): "(same call sign, dates fit inside the other record’s; but different flags)".
+const matchWhy = (m) => {
+  const pro = (m.reasons || []).filter((r) => r.for).map((r) => r.text), con = (m.reasons || []).filter((r) => !r.for).map((r) => r.text)
+  return pro.length || con.length ? ` (${[pro.join(', '), con.length ? `${pro.length ? 'but ' : ''}${con.join(', ')}` : ''].filter(Boolean).join('; ')})` : ''
+}
+// How often this kind of call held up when checked by hand: "7 of 8 checked like this were." (plain words, no bare percentages).
+const checkedNote = (m) => (m.checked?.checked ? ` ${m.checked.right} of ${m.checked.checked} pairs like this checked by hand were ${m.band === 'separate' ? 'two ships' : 'the same ship'}.` : '')
+
 const LINK_NOTE = {
   IMO_AIS_NAME: { text: 'matched by name', title: 'Wikidata entry tied to this ship by its IMO number (as broadcast over AIS) plus a matching name only. A weaker match than a registry IMO, MMSI or call sign.' },
   IMO_AIS_CALLSIGN: { text: null, title: 'Tied by IMO number (as broadcast over AIS) and call sign' },
@@ -220,8 +229,12 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
         .filter((c) => c.other_vessel && c.other_vessel !== vessel.vessel.id)
         .filter((c, i, all) => all.findIndex((x) => x.other_vessel === c.other_vessel && x.method === c.method) === i)
     : []
-  // Candidates still open ("may be the same ship"); ones judged two different ships are only listed on Matches.
-  const openCands = candidates.filter((c) => c.evidence?.verdict !== 'two_ships')
+  // Candidates still open ("may be the same ship"); ones judged two different ships, or on an MMSI shared by many records
+  // (lib/ships/matchRules.js shared_mmsi), are only listed on Matches.
+  const openCands = candidates.filter((c) => !['two_ships', 'shared_mmsi'].includes(c.evidence?.verdict))
+  const sharedCands = candidates.filter((c) => c.evidence?.verdict === 'shared_mmsi')
+  // The banner speaks only of records that may still be this ship (the score's "probably a different ship" ones are on Matches).
+  const maybeCands = openCands.filter((c) => c.evidence?.match?.band !== 'separate')
   // Ports of call come from GFW's port-visit events, so only ships with a GFW identity get the tab.
   const hasGfw = !!vessel?.assertions.some((a) => a.source_id === 'gfw-vessel-identity' && a.evidence_class === 'ais_self_reported')
   const tab = (tabWanted === 'matches' && !candidates.length) || (tabWanted === 'ports' && !hasGfw)
@@ -424,23 +437,40 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
             <div className={styles.section}>
               <div className={styles.sectionHead}>Possible matches, not merged</div>
               {/* Say what is actually open (Josh 2026-10-19): most of these are another record with the same MMSI. */}
-              {openCands.length > 0 && (
+              {maybeCands.length > 0 && (
                 <div className={styles.candRow}>
-                  {openCands.every((c) => c.method === 'MMSI_TEMPORAL')
-                    ? `${openCands.length === 1 ? 'Another record shares' : `${openCands.length} other records share`} this ship’s MMSI and may be the same ship.`
-                    : `${openCands.length === 1 ? 'Another record' : `${openCands.length} other records`} may be this same ship.`}
+                  {maybeCands.some((c) => ['probably', 'merge'].includes(c.evidence?.match?.band))
+                    ? (() => { const n = maybeCands.filter((c) => ['probably', 'merge'].includes(c.evidence?.match?.band)).length; return `${n === 1 ? 'Another record is' : `${n} other records are`} probably this same ship (they share its MMSI and their details fit).` })()
+                    : maybeCands.every((c) => c.method === 'MMSI_TEMPORAL')
+                    ? `${maybeCands.length === 1 ? 'Another record shares' : `${maybeCands.length} other records share`} this ship’s MMSI and may be the same ship.`
+                    : `${maybeCands.length === 1 ? 'Another record' : `${maybeCands.length} other records`} may be this same ship.`}
                 </div>
               )}
-              {candidates.map((c, i) => (
-                <div key={i} className={styles.candRow}>
-                  {/* Judged two different ships (lib/ships/matchRules.js): say so, with the reason. */}
-                  {c.evidence?.verdict === 'two_ships' ? `A different ship has also used MMSI ${c.evidence?.mmsi} (${c.evidence?.why || 'its records conflict'}): see`
-                    : c.method === 'MMSI_TEMPORAL' ? `Shares MMSI ${c.evidence?.mmsi} during overlapping dates`
-                    : c.source_id === 'wikidata' ? `A Wikidata entry (IMO ${c.evidence?.imo ?? '?'}, not confirmed by a second identifier) may also match`
-                    : `Shares IMO ${c.evidence?.imo} (${c.evidence?.basis === 'registry' ? 'registry' : 'AIS-reported'})`}
-                  {c.evidence?.verdict === 'two_ships' ? ' ' : ' with '}<button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>{c.evidence?.verdict === 'two_ships' ? 'the other ship' : 'another vessel'} ({c.other_vessel.slice(0, 8)})</button>
+              {/* One row for an MMSI many records share (net buoys, lifeboats, a default number): it can't tell which are the same ship. */}
+              {sharedCands.length > 0 && (
+                <div className={styles.candRow}>
+                  {sharedCands[0].evidence?.rule === 'gear'
+                    ? `These records on MMSI ${sharedCands[0].evidence?.mmsi} are AIS-equipped fishing gear (net buoys whose names carry a battery level), not ships, so the MMSI says nothing about which are the same: `
+                    : `MMSI ${sharedCands[0].evidence?.mmsi} is shared by ${Math.max(sharedCands[0].evidence?.records_on_mmsi ?? 0, sharedCands.length + 1)} records (often numbered net buoys, lifeboats or a default number), so it says nothing about which are the same ship: `}
+                  {sharedCands.map((c, i) => <span key={c.other_vessel}>{i ? ', ' : ''}<button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>{c.other_vessel.slice(0, 8)}</button></span>)}
                 </div>
-              ))}
+              )}
+              {candidates.filter((c) => c.evidence?.verdict !== 'shared_mmsi').map((c, i) => {
+                // Match score (lib/ships/matchScore.js): a judgement, never a merge; it says why and how often it held when checked by hand.
+                const band = c.evidence?.match?.band, other = c.evidence?.verdict === 'two_ships' || band === 'separate', same = band === 'probably' || band === 'merge'
+                return (
+                  <div key={i} className={styles.candRow}>
+                    {/* Judged two different ships (lib/ships/matchRules.js): say so, with the reason. */}
+                    {c.evidence?.verdict === 'two_ships' ? `A different ship has also used MMSI ${c.evidence?.mmsi} (${c.evidence?.why || 'its records conflict'}): see`
+                      : same ? `Probably the same ship: shares MMSI ${c.evidence?.mmsi}${matchWhy(c.evidence.match)}. Not merged.${checkedNote(c.evidence.match)} See`
+                      : band === 'separate' ? `Probably a different ship has also used MMSI ${c.evidence?.mmsi}${matchWhy(c.evidence.match)}.${checkedNote(c.evidence.match)} See`
+                      : c.method === 'MMSI_TEMPORAL' ? `Shares MMSI ${c.evidence?.mmsi} during overlapping dates`
+                      : c.source_id === 'wikidata' ? `A Wikidata entry (IMO ${c.evidence?.imo ?? '?'}, not confirmed by a second identifier) may also match`
+                      : `Shares IMO ${c.evidence?.imo} (${c.evidence?.basis === 'registry' ? 'registry' : 'AIS-reported'})`}
+                    {other || same ? ' ' : ' with '}<button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>{other ? 'the other ship' : same ? 'the other record' : 'another vessel'} ({c.other_vessel.slice(0, 8)})</button>
+                  </div>
+                )
+              })}
               <div className={styles.legendNoteText}>EarthAtlas keeps these separate until the evidence is strong enough. MMSIs get reused and mistyped, so a shared MMSI alone never merges two ships.</div>
             </div>
           )}
@@ -1204,8 +1234,9 @@ export function currentIdentity(vessel) {
   // Registry first (same rule as the search summaries in lib/ships/queries.js), then the latest from any source.
   const latest = (attr) => rowsFor(vessel.assertions, attr).sort((x, y) =>
     (y.evidence_class === 'registry') - (x.evidence_class === 'registry') || String(y.to || '9999').localeCompare(String(x.to || '9999')))[0]
-  const name = latest('name')
-  const spellings = name ? rowsFor(vessel.assertions, 'name').filter((a) => nameKey(a.value_raw) === nameKey(name.value_raw)) : []
-  return { name: name && { ...name, value_raw: mostReadable([name, ...spellings]).value_raw }, flag: latest('flag'), mmsi: latest('mmsi'),
+  // The title: lib/ships/displayName.js (AIS padding cut, generic "US GOV VESSEL" labels after real names, one-letter typos
+  // resolved), the same rule as search results.
+  const name = pickDisplayName(rowsFor(vessel.assertions, 'name'))
+  return { name, flag: latest('flag'), mmsi: latest('mmsi'),
     imo: rowsFor(vessel.assertions, 'imo').find((a) => a.evidence_class === 'registry') || latest('imo') }
 }

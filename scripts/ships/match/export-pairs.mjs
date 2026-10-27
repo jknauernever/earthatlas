@@ -7,7 +7,7 @@
 import { writeFile } from 'node:fs/promises'
 import { shipsPool, DEFAULT_SCHEMA as S } from '../../../lib/ships/db.js'
 import { realCallsignSql } from '../../../lib/ships/normalize.js'
-import { DOC_SCHEMES } from '../../../lib/ships/matchRules.js'
+import { DOC_SCHEMES, isGearName } from '../../../lib/ships/matchRules.js'
 
 const args = process.argv.slice(2)
 const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : null
@@ -34,7 +34,7 @@ const rec = Object.fromEntries(ids.map((id) => [id, { claims: 0, sources: new Se
 const toM = (r) => { const n = parseFloat(r); return Number.isFinite(n) && n > 0 ? (/ft/i.test(r) ? n * 0.3048 : n) : null }
 for (const r of rows) {
   const x = rec[r.v]; x.claims++; x.sources.add(r.source_id)
-  if (r.attribute === 'name') x.names.add(r.value_norm)
+  if (r.attribute === 'name') { x.names.add(r.value_norm); if (isGearName(r.value_raw)) x.gear = true }
   if (r.attribute === 'callsign') x.callsigns.add(r.value_norm)
   if (r.attribute === 'imo' && r.evidence_class === 'registry') x.imos.add(r.value_norm)
   if (r.attribute === 'length_m') { const m = toM(r.value_raw); if (m) x.lengths.push(+m.toFixed(1)) }

@@ -90,8 +90,12 @@ A wrong merge is worse than an unresolved record.
    window overlaps another vessel's produces an `MMSI_TEMPORAL` candidate only.
 5. No match → new vessel via `NEW_FROM_SOURCE_ENTITY`, accepting the source's
    own grouping as `derived_identity` evidence.
-6. There is no universal confidence score. Methods are recorded, and scoring can
-   come later from the preserved evidence.
+6. Methods are recorded. Same-MMSI pairs the rules leave open get a match score
+   (Josh 2026-10-20; lib/ships/matchScore.js, docs/SHIP_MATCH_SCORE.md): weights
+   fit from HAND-labeled pairs, bands "probably the same ship" / "probably two
+   ships" / unknown, each with its hand-checked precision. A score never merges:
+   its merge band is only listed for Josh. Scores live in `match_pair_scores` and on
+   the candidate link's evidence; no claim, raw record or link status changes.
 
 ### Relationships
 Roles are distinct and are never inferred from one another:

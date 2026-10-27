@@ -48,6 +48,8 @@
 #   zsh scripts/ships/prod.sh split-lumped       back up, then split records lumping boats whose numbers broadcast on different MMSIs (B2; lib/ships/splitLumped.js; scripts/ships/split-lumped.mjs, args pass through, e.g. --dry-run, --vessel <id>)
 #   zsh scripts/ships/prod.sh match-export      READ ONLY: same-MMSI pairs + position check for the match rules (scripts/ships/match/export-pairs.mjs + profile.py)
 #   zsh scripts/ships/prod.sh match-apply        back up, then apply the same-MMSI match rules (lib/ships/matchRules.js; scripts/ships/match/apply.mjs, args pass through, e.g. --dry-run, --per-rule 2)
+#   zsh scripts/ships/prod.sh match-reviewed     back up, then apply Josh's reviewed same-MMSI pairs (lib/ships/data/matchReviewed.json; scripts/ships/match/merge-reviewed.mjs, args pass through, e.g. --dry-run)
+#   zsh scripts/ships/prod.sh match-score        back up, then store the match score for the open pairs (needs migration 041 + a fresh match-export; scripts/ships/match/store-scores.mjs, args pass through, e.g. --dry-run)
 #
 # Secrets come from .env.local (gitignored, excluded by .vercelignore) and are never printed:
 #   SHIPS_PROD_DATABASE_URL  prod ships DB, direct (unpooled) connection
@@ -368,6 +370,16 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     [[ " ${*:2} " == *" --dry-run "* ]] || backup match-apply
     prod_node scripts/ships/match/apply.mjs "${@:2}"
+    ;;
+  match-reviewed)
+    need SHIPS_PROD_DATABASE_URL
+    [[ " ${*:2} " == *" --dry-run "* ]] || backup match-reviewed
+    prod_node scripts/ships/match/merge-reviewed.mjs "${@:2}"
+    ;;
+  match-score)
+    need SHIPS_PROD_DATABASE_URL
+    [[ " ${*:2} " == *" --dry-run "* ]] || backup match-score
+    prod_node scripts/ships/match/store-scores.mjs "${@:2}"
     ;;
   *)
     sed -n '2,40p' "$0"; exit 2

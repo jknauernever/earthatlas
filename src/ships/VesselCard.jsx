@@ -362,15 +362,10 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
                 </div>
               )
             })()}
-            {vessel.vessel.needs_review && (
+            {/* An open match is told on the Matches tab, not up here (Josh 2026-10-26: too loud on the card's face). */}
+            {vessel.vessel.needs_review && !candidates.length && (
               <div className={styles.review} title="EarthAtlas found evidence that conflicts with this identity. It did not merge anything automatically.">
-                {/* Say what is actually open (Josh 2026-10-19): most of these are another record with the same MMSI. */}
-                {openCands.length
-                  ? <>{openCands.every((c) => c.method === 'MMSI_TEMPORAL')
-                      ? `${openCands.length === 1 ? 'Another record shares' : `${openCands.length} other records share`} this ship’s MMSI and may be the same ship. `
-                      : `${openCands.length === 1 ? 'Another record' : `${openCands.length} other records`} may be this same ship. `}
-                    EarthAtlas keeps them separate until the evidence is clear: see <button type="button" className={styles.inlineLink} onClick={() => setTab('matches')}>Matches</button>.</>
-                  : 'Some sources disagree about this ship. EarthAtlas kept them separate rather than guess.'}
+                Some sources disagree about this ship. EarthAtlas kept them separate rather than guess.
               </div>
             )}
             <div className={styles.idNote} title="EarthAtlas's own id for this vessel. IMO and MMSI can change or be wrong; this id doesn't.">
@@ -428,6 +423,14 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
           {tab === 'matches' && candidates.length > 0 && (
             <div className={styles.section}>
               <div className={styles.sectionHead}>Possible matches, not merged</div>
+              {/* Say what is actually open (Josh 2026-10-19): most of these are another record with the same MMSI. */}
+              {openCands.length > 0 && (
+                <div className={styles.candRow}>
+                  {openCands.every((c) => c.method === 'MMSI_TEMPORAL')
+                    ? `${openCands.length === 1 ? 'Another record shares' : `${openCands.length} other records share`} this ship’s MMSI and may be the same ship.`
+                    : `${openCands.length === 1 ? 'Another record' : `${openCands.length} other records`} may be this same ship.`}
+                </div>
+              )}
               {candidates.map((c, i) => (
                 <div key={i} className={styles.candRow}>
                   {/* Judged two different ships (lib/ships/matchRules.js): say so, with the reason. */}

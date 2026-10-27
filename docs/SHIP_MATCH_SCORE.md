@@ -12,6 +12,7 @@ or shared numbers). A wrong merge is worse than an unresolved record. Code: `lib
 | `blank_mmsi` | default/invalid MMSI | links retired |
 | `lumped` | a record holds 2+ lifelong registry numbers | nothing (B2 splits them) |
 | `merge_r1/r2/r3` | same registry id / exact name, nothing conflicting / nameless stub inside the named record's dates | merged (reversible) |
+| `gear` (prod 2026-10-27) | either record's AIS name ends in a battery level or voltage ("HSD-NET-85%", "BM11 12.1V"): fishing gear, not a ship; checked before any merge rule | marked `shared_mmsi` (rule gear); card: "Other records on MMSI … are AIS-equipped fishing gear" |
 | `numbered_fleet` (C) | names differ only by their number: SANDEMARINE68/95, BLACKFISH II/III, MISTY K II/III | marked `two_ships` (rule kept) |
 | `shared_mmsi` (C) | 6+ records on the MMSI AND 3+ numbered-fleet names or a 98x number | marked; card: "MMSI … is shared by N records" |
 | `open` | none of the above | scored (below) |
@@ -61,3 +62,11 @@ VESSEL" pairs (MMSIs 369970850, 368926095) and SANTA SUSANNA / SANTA SUZANNA.
 the model's weights and precision). The band and reasons are copied onto the pair's candidate links
 (`evidence.match`); the card reads them there. No claim, raw record or link status changes; refreshReview is unchanged
 by scores (shared_mmsi links stop counting toward "needs review").
+
+## Production run (2026-10-27)
+
+Migration 041; C rules: 1,619 gear records (2,804 pairs), 269 shared-MMSI pairs, 22 numbered-fleet pairs, 3 R3 merges;
+21 reviewed pairs (20 merged, SOUTHPAW already one record; includes J1 / MAYA'S LEGACY J1 added 2026-10-26); scores:
+probably 1,146, separate 17, unknown 2,430, merge band 1 (SAIL ON FONB, a third record of a reviewed boat; listed only).
+The "numbers" in SANDEMARINE68 / 95 and HSDNET99 / 94 turned out to be battery levels: the gear rule replaced the
+numbered-fleet verdict for them before anything was written.

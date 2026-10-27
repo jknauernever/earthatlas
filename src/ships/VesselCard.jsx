@@ -450,7 +450,7 @@ export default function VesselCard({ vesselId, onClose, onSelectVessel, onLoaded
               {sharedCands.length > 0 && (
                 <div className={styles.candRow}>
                   {sharedCands[0].evidence?.rule === 'gear'
-                    ? `These records on MMSI ${sharedCands[0].evidence?.mmsi} are AIS-equipped fishing gear (net buoys whose names carry a battery level), not ships, so the MMSI says nothing about which are the same: `
+                    ? `Other records on MMSI ${sharedCands[0].evidence?.mmsi} are AIS-equipped fishing gear (net buoys whose names carry a battery level, often a boat’s own nets), not ships: `
                     : `MMSI ${sharedCands[0].evidence?.mmsi} is shared by ${Math.max(sharedCands[0].evidence?.records_on_mmsi ?? 0, sharedCands.length + 1)} records (often numbered net buoys, lifeboats or a default number), so it says nothing about which are the same ship: `}
                   {sharedCands.map((c, i) => <span key={c.other_vessel}>{i ? ', ' : ''}<button className={styles.inlineLink} onClick={() => onSelectVessel(c.other_vessel)}>{c.other_vessel.slice(0, 8)}</button></span>)}
                 </div>

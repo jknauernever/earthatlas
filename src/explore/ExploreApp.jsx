@@ -29,6 +29,7 @@ import { reverseGeocode, fmtDate } from './utils'
 import { inBounds } from './wildQuery'
 import { SITE_RUNS_NOTE, SITE_RUNS_SHORT } from '../components/panel/siteRunsNote.js'
 import { fetchWhales, whaleIndex, isWhaleDuplicate, WHALE_SOURCES } from '../lib/whales.js'
+import { chainSightings } from '../../lib/whales/paths.js'
 
 const SOURCE_URLS = {
   GBIF: 'https://www.gbif.org',
@@ -408,6 +409,14 @@ export default function ExploreApp({ config }) {
     () => filteredSightings.map(s => ({ ...s, color: speciesColorMap[s.speciesKey] || SPECIES_OVERFLOW_COLOR })),
     [filteredSightings, speciesColorMap]
   )
+  // Whale paths (whale-database subsites only): reports of the same animals in the shown time and species, joined in
+  // time order (lib/whales/paths.js), colored like their species' dots.
+  const whalePaths = useMemo(() => {
+    if (!config.whaleDb) return null
+    const colorOf = new Map(coloredSightings.filter((s) => s.whale).map((s) => [s.whale.id, s.color]))
+    return chainSightings(coloredSightings.filter((s) => s.whale).map((s) => s.whale))
+      .map((path) => ({ path, color: colorOf.get(path.members[path.members.length - 1].id) || SPECIES_OVERFLOW_COLOR }))
+  }, [coloredSightings, config.whaleDb])
   const coloredSpecies = useMemo(
     () => filteredSpecies.map(sp => ({ ...sp, color: speciesColorMap[sp.speciesKey] })),
     [filteredSpecies, speciesColorMap]
@@ -681,6 +690,7 @@ export default function ExploreApp({ config }) {
                 activeSpecies={activeSpecies}
                 onCenterChange={handleMapCenterChange}
                 mapApiRef={mapApiRef}
+                whalePaths={whalePaths}
                 initialView={qp.z != null ? { zoom: qp.z } : null}
                 config={{
                   fallbackColor: config.fallback.color,

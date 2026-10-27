@@ -32,6 +32,8 @@ import trackSource from '../ships/trackSource.json'
 import WhaleReports from '../components/WhaleReports.jsx'
 import { fetchWhales, whaleCredit, whaleName, whaleSourceLabel, whalePhoto, whaleLinkLabel, WHALE_SOURCES } from '../lib/whales.js'
 import { locationRadiusM, whalesIn, groupSightings, nearPoints, APPROX_M } from '../../lib/whales/precision.js'
+import { chainSightings } from '../../lib/whales/paths.js'
+import { drawWhalePaths } from '../lib/whalePathsLayer.js'
 import {
   OVERLAP_INDEX_URL, WATER_CELLS_URL, FIRST_MONTH, SHIP_COLOR, WHALE_COLOR, OVERLAP_COLOR, RISK_WHALES, RISK_SHIPS, KIND_LABELS,
   fmtDay, dateSpan, aggregateOverlap, riskShapesInView,
@@ -132,6 +134,7 @@ const SOURCES = [
 ]
 const NOTES = [
   { heading: 'Risk areas', body: `A ~1 km square is a risk area when, on average per month over the picked months, at least ${RISK_WHALES} whales were seen in it and at least ${RISK_SHIPS} ships of the picked kinds crossed it. Whales, not reports: several people reporting one group (same species, same day, within 2 km and 2 hours) count once, at the largest number anyone gave, in every square within 1 km of where it was reported; every whale HappyWhale identified counts; a report placed only roughly (rounded to 0.1°) counts across the whole ~10 km area it could be in, and very vague ones (over 10 km) are left out. Past these thresholds a ship is likely to meet whales; it is not a measured strike rate.` },
+  { heading: 'Whale paths', body: 'Reports of the same animals are joined by a line in time order: same species, an exact time, each report a plausible swim from the one before (up to about 8 km an hour, at most 2 hours apart), and never two reports that name different animals (J27, T37A, BCY0324). Reports naming the same animals join across up to 4 hours. Click a line for every report on it and its source.' },
   { heading: 'Close passes', body: 'A ship counts as passing a whale report when it was within 1 km of the report within 3 hours of it (reports with only a date: the same day). Only where ships were actually reported counts: estimated paths never do, and where two reported positions are more than 2 km apart (Global Fishing Watch positions are hourly), only those positions count, not the line between them. Recomputed daily.' },
   { heading: 'Caveats', body: 'Whale reports follow where people look and listen. Ships without AIS, or with it switched off, are not here. NOAA covers US waters; Canadian waters come from Global Fishing Watch and are fuller in recent months.' },
   SITE_RUNS_NOTE,
@@ -381,6 +384,9 @@ export default function ShipTrafficApp() {
         geometry: { type: 'Point', coordinates: [st.at.lng, st.at.lat] } })),
     })
     for (const l of [WHALE_LAYER, WHALE_COUNT_LAYER]) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', visible.whales ? 'visible' : 'none')
+    // Reports of the same animals joined in time order (lib/whales/paths.js, Josh 2026-10-26), under the dots: the dots
+    // stay the place to click for a group; a click on a line lists the path's reports.
+    drawWhalePaths(map, visible.whales ? chainSightings(list) : [], { prefix: 'st', color: WHALE_COLOR, points: false, labelMinZoom: 11, beforeId: WHALE_LAYER })
   }, [whales, visible.whales, mapReady])
 
   // ─── Overlap: the picked months' baked grids ───────────────────────────────
@@ -595,6 +601,7 @@ export default function ShipTrafficApp() {
                   <LegendSwatchRow swatch={<span className={styles.dotSeen} />}>Seen{reportSources.length ? ` · ${reportSources.slice(0, 3).join(', ')}${reportSources.length > 3 ? '…' : ''}` : ''}</LegendSwatchRow>
                   <LegendSwatchRow swatch={<span className={styles.dotBig}>12</span>}>Dot size and number = whales seen there</LegendSwatchRow>
                   <LegendSwatchRow swatch={<span className={styles.dotHeard} />}>Heard on a hydrophone (Orcasound)</LegendSwatchRow>
+                  <LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 18, height: 2, background: WHALE_COLOR }} />}>Line = the same animals followed through the day</LegendSwatchRow>
                 </>}
                 info={<>Every whale, dolphin and porpoise report we know about, each shown once: Whale Alert (with Orca Network and other channels), SalishSea.io, Orcasound, HappyWhale, iNaturalist and OBIS, refreshed hourly. Click a report for its source and the ships that passed within 1 km. The ⌄ list shows every report in view.</>}
               />

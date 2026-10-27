@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../../utils/webglSupport'
 import { keepPopupOnMap } from '../../lib/popupFit.js'
 import { addJourneyPathLayers, addJourneyStopLayers, setJourneyOnMap, fitJourney } from '../../happywhale/whaleJourney.jsx'
+import { drawWhalePaths } from '../../lib/whalePathsLayer.js'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -306,7 +307,7 @@ function applyHighlight(map, activeSpecies) {
  * record, colored by species, newest sorted on top (circle-sort-key), with
  * click-to-popup. Patterns mode swaps in GBIF adhoc hex-bin density tiles.
  */
-export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, radiusKm = null, searchId = 0, initialView = null, config = {}, journey = null, journeyLegs = null, onShowJourney = null, mapApiRef = null }) {
+export default function ExploreMap({ sightings = [], center, activeSpecies, onCenterChange, onZoomChange, radiusKm = null, searchId = 0, initialView = null, config = {}, journey = null, journeyLegs = null, onShowJourney = null, mapApiRef = null, whalePaths = null }) {
   const {
     fallbackColor = '#1a5276',
     fallbackEmoji = '',
@@ -786,6 +787,15 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
       return () => map.off('style.load', onStyle)
     }
   }, [sightings])
+
+  // ─── Whale paths (/whales: lib/whales/paths.js, Josh 2026-10-26): the same animals' reports joined in time order,
+  // under the dots, in each path's species color. `whalePaths` = [{ path, color }] or null (other subsites).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !whalePaths || !map.getLayer('sighting-id-ring')) return
+    const colorOf = new Map(whalePaths.map((x) => [x.path, x.color]))
+    drawWhalePaths(map, whalePaths.map((x) => x.path), { prefix: 'ex', color: (p) => colorOf.get(p), points: false, labelMinZoom: 11, beforeId: 'sighting-id-ring' })
+  }, [whalePaths, layersReady])
 
   // ─── Active species highlighting ─────────────────────────────────────────
   const activeSpeciesRef2 = useRef(activeSpecies)

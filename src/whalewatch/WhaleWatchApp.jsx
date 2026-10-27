@@ -40,7 +40,7 @@ import own from './WhaleWatchApp.module.css'
 import { keepPopupOnMap } from '../lib/popupFit.js'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
 import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
-import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, WHALE_COLOR } from './recentWhales.js'
+import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, PATH_HOURS, WHALE_COLOR } from './recentWhales.js'
 
 const styles = { ...shipsStyles, ...own }
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -87,7 +87,8 @@ function boatTipHTML(p) {
       : `<span style="color:#4b5563">${p.kn != null && p.kn >= 1 ? `${p.kn.toFixed(1)} kn when last reported` : 'Not under way when last reported'}</span>`
     return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">${head}<br><b style="color:#047857">Live AIS</b>, reported ${ago} (${fmtWhen(p.at)})<br>${motion}<br><span style="color:#4b5563">Source: aisstream.io live AIS</span></div>`
   }
-  const when = `${p.exact ? '' : '≈ '}${fmtWhen(p.at)}`
+  // LIVE, not heard now: how long since it was last heard (Josh 2026-10-26), above the time itself.
+  const when = `${p.heardH != null ? `<b>Last heard ${fmtAgo(p.heardH * 3600)}</b><br>` : ''}${p.exact ? '' : '≈ '}${fmtWhen(p.at)}`
   const motion = p.moving
     ? `${p.kn != null ? `${p.exact ? '' : 'avg '}${p.kn.toFixed(1)} kn · ` : ''}heading ${String(Math.round(p.heading) % 360).padStart(3, '0')}°`
     : `<span style="color:#4b5563">Last position on record (tied up, or out of AIS range); heading ${String(Math.round(p.heading) % 360).padStart(3, '0')}° on arrival</span>`
@@ -160,7 +161,7 @@ export default function WhaleWatchApp() {
   const [fleet, setFleet] = useState(null)          // { name, members: [...] } from api/ships op=fleet
   const [fleetError, setFleetError] = useState(null)
   const [fleetOn, setFleetOn] = useState(initial.fl !== '0')
-  const [whalesOn, setWhalesOn] = useState(initial.wh !== '0')   // recent whale reports (LIVE only; recentWhales.js)
+  const [whalesOn, setWhalesOn] = useState(initial.wh !== '0')   // whale paths and recent reports, live and in replay (recentWhales.js)
   const [hidden, setHidden] = useState(() => new Set(initial.hp))   // home ports switched off
   const [openCo, setOpenCo] = useState(null)        // home port whose boats are listed
   const [ports, setPorts] = useState(null)          // our ports near the Salish Sea (api/ships op=portsLayer)
@@ -180,11 +181,13 @@ export default function WhaleWatchApp() {
   const [kinds, setKinds] = useState([])
   const fitRef = useRef(false)                      // fit to the picked boat once its tracks are in
   const [liveSnap, setLiveSnap] = useState(null)    // aisstream recorder snapshot (LIVE_URL)
-  const recentWhales = useRecentWhales(whalesOn)
+  const recentWhales = useRecentWhales(whalesOn, t)
   const whaleGroupsRef = useRef([])
   const whalesOnRef = useRef(whalesOn); whalesOnRef.current = whalesOn
   const tRef = useRef(t); tRef.current = t
   whaleGroupsRef.current = recentWhales.groups
+  const whalePathsRef = useRef([])
+  whalePathsRef.current = recentWhales.paths
   const [nowS, setNowS] = useState(() => Math.floor(Date.now() / 1000))
 
   // ─── Map ───
@@ -402,6 +405,7 @@ export default function WhaleWatchApp() {
       const ageH = ((t ?? nowS) - p.at) / 3600   // LIVE: against now, so days-old travel draws no trail (Josh 2026-10-17)
       points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: p.lngLat },
         properties: { vid, heading: p.heading, kn: p.kn ?? null, at: p.at, exact: p.exact ? 1 : 0, approx: p.src === 'gfw' ? 1 : 0, added: isAdded ? 1 : 0, moving: p.moving ? 1 : 0, ageH,
+          ...(t == null ? { heardH: ageH } : {}),   // LIVE: fades with time since last heard (BOAT icon-opacity) and the hover says so
           name: memberById.get(vid)?.name || added.find((x) => x.id === vid)?.name || '', company: memberById.get(vid)?.company || '' } })
       // A trail only for a boat that moved in the hours before the time shown (Josh 2026-10-17: none for a boat that has sat for days).
       // Trails: in LIVE only live boats have one (above); in replay, a boat's last hour, only where it moved.
@@ -477,7 +481,9 @@ export default function WhaleWatchApp() {
           'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
           'icon-size': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'live'], 1], 1.05, 0.8], 11, ['case', ['==', ['get', 'live'], 1], 1.3, 1], 14, ['case', ['==', ['get', 'live'], 1], 1.6, 1.2]],
           'symbol-sort-key': ['case', ['==', ['get', 'live'], 1], 1, 0] },   // live boats draw on top
-          paint: { 'icon-opacity': ['case', ['==', ['get', 'live'], 1], 1, 0.85] } })
+          // Not heard now (LIVE): fainter the longer since it was last heard (Josh 2026-10-26), so days-old positions read as old.
+          paint: { 'icon-opacity': ['case', ['==', ['get', 'live'], 1], 1, ['has', 'heardH'],
+            ['interpolate', ['linear'], ['get', 'heardH'], 1, 0.85, 24, 0.6, 72, 0.4, 168, 0.25], 0.85] } })
         map.addLayer({ id: BOAT_GROUP, type: 'symbol', source: BOAT_SRC, filter: ['has', 'point_count'], layout: {
           'icon-image': ['case', ['==', ['get', 'live'], 1], 'ww-boat-live', 'ww-boat-fleet'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
           'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 1.05, 11, 1.3, 14, 1.6],
@@ -495,7 +501,7 @@ export default function WhaleWatchApp() {
           if (!f) return
           const pr = f.properties   // (GeoJSON properties come back as plain values; null survives as null)
           const [lng, lat] = f.geometry.coordinates
-          const near = pr.live === 1 && whalesOnRef.current && tRef.current == null ? nearestWhaleHTML(whaleGroupsRef.current, lng, lat) : ''
+          const near = pr.live === 1 && whalesOnRef.current && tRef.current == null ? nearestWhaleHTML(whaleGroupsRef.current, lng, lat, RECENT_HOURS, whalePathsRef.current) : ''
           hover.setLngLat(f.geometry.coordinates).setHTML(boatTipHTML({ ...pr, moving: pr.moving === 1, exact: pr.exact === 1, live: pr.live === 1, kn: pr.kn == null ? null : Number(pr.kn) }) + near).addTo(map)
         })
         map.on('mouseleave', BOAT, () => { map.getCanvas().style.cursor = ''; hover.remove() })
@@ -539,7 +545,7 @@ export default function WhaleWatchApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    drawRecentWhales(map, recentWhales.groups, !whalesOn || t != null, styles.hoverTip)
+    drawRecentWhales(map, recentWhales.groups, !whalesOn, styles.hoverTip, recentWhales.paths, recentWhales.endMs ?? Date.now(), t == null)
   }, [mapReady, styleVersion, recentWhales, whalesOn, t])
   useEffect(() => {
     const map = mapRef.current
@@ -730,7 +736,7 @@ export default function WhaleWatchApp() {
             status={fleetError ? <div className={styles.wwMuted}>Could not load the boat list ({fleetError}).</div> : null}
             legend={<>
               <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Live: reported by AIS in the last 24 hours (<a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a>), with its last hour of travel</LegendSwatchRow>
-              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>Not live now: its newest position recorded by live AIS since Oct 18, 2026 (in replay: where it was at the hour shown, with its last hour of travel). Boats not heard live since then are listed but not drawn.</LegendSwatchRow>
+              <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(FLEET_COLOR))}`} />}>Not live now: its newest position recorded by live AIS since Oct 18, 2026, fainter the longer since it was last heard (in replay: where it was at the hour shown, with its last hour of travel). Boats not heard live since then are listed but not drawn.</LegendSwatchRow>
               <LegendSwatchRow swatch={<span className={styles.wwSwatch} style={{ background: PICK_COLOR }} />}>The boat whose card is open: the trip picked in its Trips tab</LegendSwatchRow>
             </>}
             info={<>
@@ -745,19 +751,20 @@ export default function WhaleWatchApp() {
             </>} />
 
           <DatasetRow storageKey="whalewatch.whales" name="Whale reports" hue={WHALE_COLOR} on={whalesOn} onToggle={() => setWhalesOn((o) => !o)}
-            sub={t != null ? 'live only (move the slider to LIVE)' : recentWhales.fetchedAt ? `last ${RECENT_HOURS} hours · ${recentWhales.groups.reduce((a, g) => a + g.whales, 0)} whales, ${recentWhales.groups.length} group${recentWhales.groups.length === 1 ? '' : 's'}` : 'loading…'}
+            sub={recentWhales.endMs != null ? `${t != null ? 'before the hour shown' : `last ${PATH_HOURS} hours`} · ${recentWhales.paths.length} path${recentWhales.paths.length === 1 ? '' : 's'}, ${recentWhales.groups.length} other report${recentWhales.groups.length === 1 ? '' : 's'}` : 'loading…'}
             status={recentWhales.error ? <div className={styles.wwMuted}>Could not load whale reports ({recentWhales.error}).</div> : null}
             legend={<>
-              <LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: WHALE_COLOR, border: '1.5px solid #fff' }} />}>Whales reported in the last {RECENT_HOURS} hours: size = whales seen, fainter = older. Click for each report and its source.</LegendSwatchRow>
+              <LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 14, height: 3, borderRadius: 2, background: WHALE_COLOR, verticalAlign: 'middle' }} />}>Paths: reports of the same animals over the last {PATH_HOURS} hours joined in time order, a large dot at the newest. Fainter = older. Click for every report and its source.</LegendSwatchRow>
+              <LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: WHALE_COLOR, border: '1.5px solid #fff' }} />}>Other whales reported in the last {RECENT_HOURS} hours: size = whales seen, fainter = older.</LegendSwatchRow>
               <LegendSwatchRow swatch={<img alt="" width="12" height="18" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(boatSvg(LIVE_COLOR))}`} />}>Hover a live boat for its nearest whale report</LegendSwatchRow>
             </>}
             info={<>
-              Whale, dolphin and porpoise reports with an exact time from the last {RECENT_HOURS} hours, from the EarthAtlas whale database:{' '}
+              Whale, dolphin and porpoise reports with an exact time before the time shown, from the EarthAtlas whale database:{' '}
               <a href="https://www.whalealert.org" target="_blank" rel="noopener noreferrer">Whale Alert</a> (with <a href="https://www.orcanetwork.org" target="_blank" rel="noopener noreferrer">Orca Network</a> and its other channels),{' '}
               <a href="https://salishsea.io" target="_blank" rel="noopener noreferrer">SalishSea.io</a>, <a href="https://www.orcasound.net" target="_blank" rel="noopener noreferrer">Orcasound</a>,{' '}
               <a href="https://happywhale.com" target="_blank" rel="noopener noreferrer">HappyWhale</a> and <a href="https://www.inaturalist.org" target="_blank" rel="noopener noreferrer">iNaturalist</a>.
               The Salish Sea feeds are re-read every 10 minutes, and most reports reach the map within about half an hour of the sighting.
-              Reports of the same animals (same species, within 2 km and 2 hours) draw as one dot, counted once at the largest number given.
+              Reports of the same animals are joined into a path: same species, each report a plausible swim from the one before (up to about 8 km an hour, 2 hours apart), and never two reports that name different animals (J27, T37A, BCY0324); reports naming the same animals join across up to 4 hours. Other reports of the same animals (same species, within 2 km and 2 hours) draw as one dot, counted once at the largest number given.
               {recentWhales.fetchedAt && <> Checked {fmtClock(recentWhales.fetchedAt)}.</>}
             </>} />
 

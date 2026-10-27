@@ -22,9 +22,9 @@ import zlib from 'node:zlib'
 
 const GFW = 'https://gateway.api.globalfishingwatch.org/v3/4wings/tile/heatmap'
 const LAYERS = {
-  // Pinned to v4.0 (2026-10-02): GFW makes v5 the 'latest' on 2026-10-21; switch deliberately after comparing.
-  presence: { dataset: 'public-global-presence:v4.0' },
-  dark: { dataset: 'public-global-sar-presence:v4.0', filter: "matched='false'" },
+  // v5.0 since 2026-10-27: v4.0 stopped updating 2026-10-19/20 (GFW catalogue); docs/GFW_V5.md has the comparison.
+  presence: { dataset: 'public-global-presence:v5.0' },
+  dark: { dataset: 'public-global-sar-presence:v5.0', filter: "matched='false'" },
 }
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 

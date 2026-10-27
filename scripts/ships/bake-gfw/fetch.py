@@ -6,7 +6,7 @@ Fetch GFW 4Wings hourly per-vessel presence for named area tiles (areas.py), cac
                    [--raw DIR] [--budget 2000] [--refetch-after 2026-08-25]
 
 Request (docs/SHIP_TRACK_SOURCES.md, "GFW hourly lines"):
-  POST /v3/4wings/report?datasets[0]=public-global-presence:v4.0&temporal-resolution=HOURLY
+  POST /v3/4wings/report?datasets[0]=public-global-presence:v5.0&temporal-resolution=HOURLY
        &spatial-resolution=HIGH&spatial-aggregation=false&group-by=VESSEL_ID&format=JSON&date-range=a,b
   body {"geojson": <bbox polygon>}
 
@@ -58,7 +58,9 @@ def _call(req):
 # revisions keep v4); from 2026-11 every month is v5.0 from its first day. docs/GFW_V5.md has the comparison.
 # Moved to 2026-11 (Josh 2026-10-10): v5.0 went empty on GFW's side from 2026-10-09 (catalogue: no end date, every query
 # returns null, even days it served on 10-08) ahead of GFW's 2026-10-21 switch; v4.0 is current and keeps updating until then.
-V5_FROM_MONTH = '2026-11'
+# Moved back to 2026-10 (Josh 2026-10-27): v4.0 stopped at 2026-10-19 and v5.0 serves again, so October is re-fetched whole
+# in v5.0 (backfill, months=2026-10; never the daily run, which would keep the cached v4 days).
+V5_FROM_MONTH = '2026-10'
 DATASET = 'public-global-presence:v4.0'   # set per run in main(); --dataset overrides
 
 
@@ -68,7 +70,7 @@ def dataset_for(month):
 
 def report(tok, box, day, span, stats):
     d1 = (dt.date.fromisoformat(day) + dt.timedelta(days=span)).isoformat()
-    # The version is per month (dataset_for): v4.0 through 2026-10, v5.0 from 2026-11. Never 'latest'.
+    # The version is per month (dataset_for): v4.0 through 2026-09, v5.0 from 2026-10. Never 'latest'.
     qs = urllib.parse.urlencode({'datasets[0]': DATASET, 'temporal-resolution': 'HOURLY',
                                  'spatial-resolution': 'HIGH', 'spatial-aggregation': 'false', 'group-by': 'VESSEL_ID',
                                  'format': 'JSON', 'date-range': f'{day},{d1}'})
@@ -165,7 +167,7 @@ def main():
     ap.add_argument('--span', type=int, default=7)
     ap.add_argument('--raw', default=os.path.join(HERE, 'cache', 'raw'))
     ap.add_argument('--budget', type=int, default=5000)
-    ap.add_argument('--dataset', help='4Wings presence dataset id (default public-global-presence:v4.0)')
+    ap.add_argument('--dataset', help='4Wings presence dataset id (default: v4.0 before V5_FROM_MONTH, v5.0 from it)')
     ap.add_argument('--refetch-after', help='YYYY-MM-DD: re-fetch files starting on/after this day')
     ap.add_argument('--drop-overlapping', help='YYYY-MM-DD: delete kept pieces (and split markers) that reach into this day '
                     'or later, so the incremental run re-fetches that window once with GFW\'s revised data and nothing overlaps')

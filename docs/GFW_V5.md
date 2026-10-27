@@ -1,5 +1,14 @@
 # GFW Data Pipeline v5 (switch on 2026-10-21): impact on EarthAtlas /ships
 
+**2026-10-27: everything on v5.0.** GFW's catalogue: v4.0 data ends 2026-10-19 (presence, port visits) / 2026-10-20
+(identity); v5.0 serves through 2026-10-23..25. All pins flipped to `:v5.0` (`api/gfw-tiles.js`, `scripts/ships/gfwClient.js`,
+`lib/ships/portCard.js`); `fetch.py` `V5_FROM_MONTH` back to **2026-10**, so October is re-fetched WHOLE in v5.0 (Actions:
+ships-gfw-tracks-bake, mode=backfill, from=2026-10, months=2026-10), never by the daily run (it keeps cached v4 days).
+`lib/ships/taxonomy.js` maps v5's OTHER_NON_FISHING (→ other), INSUFFICIENT_DATA and INACTIVE (→ unknown).
+MEASURED on dev (3 calls, salish area): 2026-10-15 v4 58,400 vessel-hours / 2,890 vessels vs v5 58,515 / 2,895;
+2026-10-22 (no v4 data) v5 57,080 / 2,774; every v5 type label is in bake-gfw/lines.py KIND. Tiles route (presence + dark,
+Oct 20–24) and identity search (SALISH SEA GLORY, same vessel id) answered on v5.0.
+
 **2026-10-10 change:** our switch moved from 2026-10 to **2026-11** (`fetch.py` `V5_FROM_MONTH`, Josh's decision): from 2026-10-09 GFW's `public-global-presence:v5.0` returned `null` for every query (catalogue: no end date), so October could not update; v4.0 (data through 2026-10-06) covers all of October. November must start on v5.0 (v4.0 gets no updates after 2026-10-21).
 
 GFW notice (2026-10-02): `latest` returns v5 from 2026-10-21; v4 stays available as `:v4.0` but gets no more updates; v3 deprecated.

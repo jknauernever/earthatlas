@@ -56,3 +56,7 @@ scripts/shiptraffic/cache/
 scripts/ships/intake/cache/
 # B match-score work files (scripts/ships/match)
 scripts/ships/match/cache/
+
+# /risks raw ArcGIS downloads + PMTiles bake outputs (scripts/bake-risks) — re-fetchable, never commit; upload PMTiles to Blob
+scripts/bake-risks/raw/
+scripts/bake-risks/build/

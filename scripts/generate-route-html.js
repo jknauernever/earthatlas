@@ -88,6 +88,17 @@ const ROUTES = [
       'species of concern, endangered species, threatened species, Washington State, WDFW, ESA, priority habitats and species, rare plants, iNaturalist, eBird, GBIF',
   },
   {
+    out: 'risks.html',
+    url: 'https://earthatlas.org/risks',
+    title: 'Sea-Level Rise Risks — San Juan County flooding scenarios · EarthAtlas',
+    description:
+      'Coastal flooding and erosion risk in San Juan County, WA: the four flood extents from the County’s 2024 sea-level-rise assessment (2 or 5 feet of sea-level rise with the 1-year or 100-year storm), the roads at risk of flooding and the places most at risk of erosion. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas map of sea-level rise flood scenarios in San Juan County, Washington',
+    keywords:
+      'sea-level rise, coastal flooding, San Juan County, San Juan Islands, flood map, 100-year storm, erosion, climate change, Environmental Science Associates, vulnerability assessment',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

@@ -1,0 +1,132 @@
+{
+ "radius": 700,
+ "nameSource": "Mapbox Streets labels / reverse geocoding",
+ "spots": [
+  {
+   "name": "Eastsound",
+   "nameType": "place",
+   "island": "Orcas",
+   "center": [
+    -122.91435,
+    48.71259
+   ],
+   "bbox": [
+    -122.92402,
+    48.7097,
+    -122.90557,
+    48.71376
+   ],
+   "counts": [
+    15,
+    38,
+    55,
+    72
+   ]
+  },
+  {
+   "name": "Fish Creek",
+   "nameType": "bay",
+   "island": "San Juan",
+   "center": [
+    -122.96526,
+    48.46218
+   ],
+   "bbox": [
+    -122.97053,
+    48.45889,
+    -122.95998,
+    48.46823
+   ],
+   "counts": [
+    18,
+    45,
+    50,
+    69
+   ]
+  },
+  {
+   "name": "Friday Harbor",
+   "nameType": "place",
+   "island": "San Juan",
+   "center": [
+    -122.99891,
+    48.53028
+   ],
+   "bbox": [
+    -123.00493,
+    48.52537,
+    -122.9912,
+    48.53509
+   ],
+   "counts": [
+    27,
+    35,
+    39,
+    53
+   ]
+  },
+  {
+   "name": "Cottonwood Cove",
+   "nameType": "bay",
+   "island": "Stuart",
+   "center": [
+    -123.16973,
+    48.67387
+   ],
+   "bbox": [
+    -123.17415,
+    48.66754,
+    -123.16331,
+    48.67654
+   ],
+   "counts": [
+    25,
+    35,
+    36,
+    49
+   ]
+  },
+  {
+   "name": "Lopez Village",
+   "nameType": "settlement",
+   "island": "Lopez",
+   "center": [
+    -122.91835,
+    48.52001
+   ],
+   "bbox": [
+    -122.92596,
+    48.5151,
+    -122.91172,
+    48.52503
+   ],
+   "counts": [
+    14,
+    36,
+    36,
+    47
+   ]
+  },
+  {
+   "name": "Barlow Bay",
+   "nameType": "bay",
+   "island": "Lopez",
+   "center": [
+    -122.86334,
+    48.43643
+   ],
+   "bbox": [
+    -122.87188,
+    48.42899,
+    -122.85929,
+    48.44031
+   ],
+   "counts": [
+    29,
+    36,
+    38,
+    47
+   ]
+  }
+ ]
+}

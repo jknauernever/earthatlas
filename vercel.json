@@ -43,6 +43,10 @@
       "destination": "/species-of-concern.html"
     },
     {
+      "source": "/risks",
+      "destination": "/risks.html"
+    },
+    {
       "source": "/permits/source/:key",
       "destination": "/permits.html"
     },

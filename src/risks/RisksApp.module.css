@@ -1,0 +1,43 @@
+/* /risks bits not in the shared chrome (QuakesApp.module.css) or panel (SpeciesOfConcernApp.module.css). */
+
+.fact { margin-top: 8px; color: #fff; font-size: 12px; }
+.factDim { margin-top: 4px; color: rgba(229, 231, 235, 0.7); font-size: 11.5px; }
+.legendLine { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; }
+.notice { margin-top: 12px; color: rgba(229, 231, 235, 0.55); font-size: 10.5px; line-height: 1.4; }
+
+/* Hover readout and click popup (shared white frames from index.css) */
+.card { max-width: 280px; font-size: 12px; color: #374151; line-height: 1.45; }
+.cardTitle { display: flex; align-items: center; font-weight: 600; color: #111827; font-size: 13px; margin: 0 16px 2px 0; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; flex: none; }
+.dim { color: #6b7280; font-size: 11px; margin-top: 2px; }
+.tipHint { color: #6b7280; font-size: 11px; margin-top: 3px; }
+.popupSrc { display: inline-block; margin-top: 6px; color: #0369a1; text-decoration: none; font-weight: 500; }
+.popupSrc:hover { text-decoration: underline; }
+
+.slider { display: flex; align-items: center; gap: 8px; color: #e5e7eb; font-size: 12px; }
+.slider input { flex: 1; accent-color: #ef4444; }
+.sliderVal { width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: rgba(229, 231, 235, 0.75); }
+.ramp { display: inline-flex; gap: 1px; }
+.ramp > span { display: inline-block; width: 6px; height: 11px; border-radius: 1px; }
+
+/* The scenario's headline number (report Table 6-1), then the places with the most flooded buildings */
+.bigNum { margin-top: 8px; font-size: 28px; line-height: 1; font-weight: 700; color: #facc15; font-variant-numeric: tabular-nums; }
+.bigNum a { color: inherit; text-decoration: none; }
+.bigNum a:hover { text-decoration: underline; }
+.bigLabel { margin-top: 3px; color: #fff; font-size: 12px; }
+.hotLine { margin-top: 8px; color: rgba(229, 231, 235, 0.75); font-size: 11.5px; line-height: 1.5; }
+.hot { padding: 0; background: none; border: 0; color: #fff; font: inherit; cursor: pointer; }
+.hot:hover { text-decoration: underline; }
+.hotN { color: #facc15; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* The one main choice: 2 ft or 5 ft of rise */
+.lead { margin-top: 2px; color: #fff; font-size: 14px; font-weight: 600; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 6px; }
+.segBtn, .segOn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px; border-radius: 10px; cursor: pointer;
+  font: inherit; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.04); color: #e5e7eb; }
+.segBtn b, .segOn b { font-size: 20px; line-height: 1.1; }
+.segBtn span, .segOn span { font-size: 11px; color: rgba(229, 231, 235, 0.7); }
+.segBtn:hover { border-color: rgba(255, 255, 255, 0.4); }
+.segOn { border-color: #ef4444; background: rgba(239, 68, 68, 0.2); color: #fff; }
+.segOn span { color: #fecaca; }
+.ctlLabel { color: rgba(229, 231, 235, 0.6); font-size: 11px; margin-bottom: 4px; }

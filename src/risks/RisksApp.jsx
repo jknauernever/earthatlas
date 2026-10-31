@@ -31,7 +31,7 @@ import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../component
 import { DatasetRow, LegendSwatchRow, SourcesFooter } from '../components/panel/index.js'
 import {
   SCENARIOS, SLR_LEVELS, STORMS, SCENARIO_COLORS, scenarioOf, TILES_VERSION,
-  SLR_SERVICE_URL, VA_SERVICE_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL,
+  SLR_SERVICE_URL, VA_SERVICE_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL, ROAD_CENTERLINES_URL,
 } from './risksLayers.js'
 import { RISKS_SOURCES, RISKS_SOURCES_INTRO, RISKS_SOURCES_NOTES, reportPage } from './risksSources.js'
 import q from '../quakes/QuakesApp.module.css'
@@ -62,8 +62,8 @@ const LOTS_TILES = () => `${typeof window !== 'undefined' ? window.location.orig
 const rankOf = (id) => SCENARIOS.findIndex((s) => s.id === id) + 1
 const floodLayerId = (id) => `risks-flood-${id}`
 const floodLineId = (id) => `risks-flood-line-${id}`
-const ASSESSMENT_LAYERS = ['risks-roads', 'risks-erosion']
-const BUILDING_LAYERS = ['risks-buildings-hit', 'risks-hits']
+const ASSESSMENT_LAYERS = ['risks-roadwet', 'risks-roads', 'risks-erosion']
+const BUILDING_LAYERS = ['risks-buildings-hit', 'risks-hits', 'risks-buildings-eroding', 'risks-eroding-hits']
 // ESA's projected erosion zones; the report pairs 2060 with the moderate (2 ft) and 2100 with the high (5 ft) rise.
 // Like the flood layers they are rings that don't overlap (2060: shoreline to the 2060 line; 2100: on from there), so
 // "by 2100" is both rings.
@@ -99,6 +99,7 @@ const stormOf = (id) => STORMS.find((s) => s.id === id)
 const scenarioWords = (sc) => `${slrOf(sc.slr).words} + ${stormOf(sc.storm).words}`
 const scenarioShort = (sc) => `${slrOf(sc.slr).label} + ${stormOf(sc.storm).label}`
 const fmt = (n) => n.toLocaleString('en-US')
+const money = (n) => (n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)}M` : n >= 1e3 ? `$${Math.round(n / 1e3)}k` : `$${Math.round(n)}`)
 const tilesUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/risks-tiles?v=${TILES_VERSION}&z={z}&x={x}&y={y}`
 
 // The card for one assessment item (hover readout and click popup share it; `link` adds the source line).
@@ -112,8 +113,15 @@ function itemHtml(f, link) {
     const lid = String(pr.lids || '').split(',')[0]
     return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${COLORS.roads}"></span>${esc(pr.name || 'Road')}</div>
       <div>${esc(pr.island || '')} Island${pr.miles != null ? ` · this segment ${pr.miles} mi` : ''}</div>
-      <div class="${styles.dim}">Road at risk of flooding with sea-level rise · county ${which}</div>
+      <div class="${styles.dim}">The whole segment on the county’s ${which}; the bold stretch is what this scenario floods</div>
       ${src(`${VA_SERVICE_URL}/${lid}`, 'San Juan County / ESA 2024 →')}</div>`
+  }
+  if (pr.kind === 'roadwet') {
+    const sc = SCENARIOS[pr.rank - 1]
+    return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${COLORS.roads}"></span>${esc(pr.name || 'Road')}</div>
+      <div>${fmt(pr.ft)} ft under water${pr.island ? ` · ${esc(pr.island)} Island` : ''}${pr.own ? ` · ${esc(pr.own.toLowerCase())} road` : ''}</div>
+      <div class="${styles.dim}">${esc(scenarioShort(sc))}: the County road centerline inside the flood extent</div>
+      ${src(ROAD_CENTERLINES_URL, 'San Juan County road centerlines →')}</div>`
   }
   if (pr.kind === 'erosion') {
     return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${COLORS.erosion}"></span>${esc(pr.name)}</div>
@@ -143,6 +151,7 @@ export default function RisksApp() {
   const [opacity, setOpacity] = useState(() => (initial.op >= 10 && initial.op <= 100 ? Math.round(initial.op) : DEFAULT_OPACITY))
   const [assessment, setAssessment] = useState(null)
   const [hotspots, setHotspots] = useState(null)
+  const [inview, setInview] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)
   const shownRank = all ? SCENARIOS.length : rankOf(scenarioId)
@@ -157,6 +166,10 @@ export default function RisksApp() {
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })
       .then((j) => setHotspots(j.spots))
       .catch(() => {})   // the jump list just doesn't show
+    fetch('/risks-data/inview.json', { signal: ac.signal })
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(setInview)
+      .catch(() => {})   // the in-view totals just don't show
     return () => ac.abort()
   }, [])
 
@@ -199,8 +212,13 @@ export default function RisksApp() {
     const bld = feats.find((f) => BUILDING_LAYERS.includes(f.layer.id))
     if (bld) {
       const b = bld.properties
-      return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${COLORS.buildings}"></span>Building in the flood extent</div>
-        ${firstFloodsLine(b.first)}
+      const flooded = b.first > 0 && b.first <= shownRank
+      const ey = all ? 2100 : EROSION_YEARS[scenario.slr], ed = layersOff.has('erosion') ? null : b[`e${ey}`]
+      const erosionLine = ed == null ? '' : `<div><span class="${styles.sw}" style="background:${COLORS.erosion}"></span>${ed === 0
+        ? `ESA’s projected ${ey} erosion line crosses this building`
+        : `ESA’s projected ${ey} erosion line: <b>${fmt(Math.max(1, Math.round(ed / 0.3048)))} ft</b> from this building`}</div>`
+      return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${flooded ? COLORS.buildings : COLORS.erosion}"></span>${flooded ? 'Building in the flood extent' : 'Building near the projected erosion line'}</div>
+        ${flooded ? firstFloodsLine(b.first) : ''}${erosionLine}
         <div class="${styles.dim}">${b.sqft ? `${fmt(b.sqft)} sq ft footprint · ` : ''}${b.island ? `${esc(b.island)} · ` : ''}parcel ${esc(b.pin || '—')}</div></div>`
     }
     const zone = feats.find((f) => EROSION_ZONE_LAYERS.includes(f.layer.id))
@@ -248,10 +266,19 @@ export default function RisksApp() {
       paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 1.4], 'line-opacity': 0.6 } })
     map.addLayer({ id: 'risks-buildings', type: 'line', source: 'risks-slr', 'source-layer': 'buildings', minzoom: 13,
       paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 17, 1.6], 'line-opacity': 0.85 } })
+    // Buildings within 100 ft of the projected erosion line (filter set in sync): purple fill under the flooded yellow,
+    // and a purple outline over it, so a building both flooded and near the line reads as both.
+    map.addLayer({ id: 'risks-buildings-eroding', type: 'fill', source: 'risks-slr', 'source-layer': 'buildings', filter: ['==', ['get', 'first'], -1],
+      paint: { 'fill-color': COLORS.erosion, 'fill-opacity': 0.9 } })
     map.addLayer({ id: 'risks-buildings-hit', type: 'fill', source: 'risks-slr', 'source-layer': 'buildings', filter: ['==', ['get', 'first'], -1],
       paint: { 'fill-color': COLORS.buildings, 'fill-opacity': 0.95, 'fill-outline-color': '#0a0e17' } })
+    map.addLayer({ id: 'risks-buildings-eroding-line', type: 'line', source: 'risks-slr', 'source-layer': 'buildings', filter: ['==', ['get', 'first'], -1],
+      paint: { 'line-color': COLORS.erosion, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1.5, 17, 3.5] } })
     // Flooded buildings as glowing dots where a footprint is only a few pixels; they fade out as the footprints take over
     const fade = (v) => ['interpolate', ['linear'], ['zoom'], 13, v, 14.5, 0]
+    map.addLayer({ id: 'risks-eroding-hits', type: 'circle', source: 'risks-slr', 'source-layer': 'hits', filter: ['==', ['get', 'first'], -1],
+      paint: { 'circle-color': COLORS.erosion, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 1.8, 13, 4],
+        'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 0.5, 'circle-opacity': fade(1), 'circle-stroke-opacity': fade(1) } })
     map.addLayer({ id: 'risks-hits-glow', type: 'circle', source: 'risks-slr', 'source-layer': 'hits', filter: ['==', ['get', 'first'], -1],
       paint: { 'circle-color': COLORS.buildings, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 5, 13, 12], 'circle-blur': 1, 'circle-opacity': fade(0.5) } })
     map.addLayer({ id: 'risks-hits', type: 'circle', source: 'risks-slr', 'source-layer': 'hits', filter: ['==', ['get', 'first'], -1],
@@ -259,9 +286,12 @@ export default function RisksApp() {
         'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 0.5, 'circle-opacity': fade(1), 'circle-stroke-opacity': fade(1) } })
     map.addSource('risks-assessment', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     const kind = (k) => ['==', ['get', 'kind'], k]
-    map.addLayer({ id: 'risks-roads-casing', type: 'line', source: 'risks-assessment', filter: kind('road'),
-      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0a0e17', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 9], 'line-opacity': 0.6 } })
+    // The county's listed segments, thin and faint; over them, bold, the stretch of every County road this scenario floods
     map.addLayer({ id: 'risks-roads', type: 'line', source: 'risks-assessment', filter: kind('road'),
+      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': COLORS.roads, 'line-opacity': 0.45, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1, 15, 2] } })
+    map.addLayer({ id: 'risks-roadwet-casing', type: 'line', source: 'risks-assessment', filter: kind('roadwet'),
+      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0a0e17', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 9], 'line-opacity': 0.6 } })
+    map.addLayer({ id: 'risks-roadwet', type: 'line', source: 'risks-assessment', filter: kind('roadwet'),
       layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': COLORS.roads, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2, 15, 5] } })
     map.addLayer({ id: 'risks-erosion', type: 'circle', source: 'risks-assessment', filter: kind('erosion'),
       paint: { 'circle-color': COLORS.erosion, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 6, 14, 9], 'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 2 } })
@@ -294,10 +324,17 @@ export default function RisksApp() {
       map.setLayoutProperty(id, 'visibility', bOn ? 'visible' : 'none')
       map.setFilter(id, hit)
     }
+    // Buildings near the projected erosion line: part of the Erosion layer, for the year it shows
+    const ey = all ? 2100 : EROSION_YEARS[scenario.slr], eOn = !layersOff.has('erosion')
+    for (const id of ['risks-buildings-eroding', 'risks-buildings-eroding-line', 'risks-eroding-hits']) {
+      map.setLayoutProperty(id, 'visibility', eOn ? 'visible' : 'none')
+      map.setFilter(id, ['has', `e${ey}`])
+    }
+    for (const id of ['risks-roadwet-casing', 'risks-roadwet']) map.setFilter(id, ['all', ['==', ['get', 'kind'], 'roadwet'], ['==', ['get', 'rank'], shownRank]])
     map.setLayoutProperty('risks-lots', 'visibility', layersOff.has('lots') ? 'none' : 'visible')
     if (assessment) {
       map.getSource('risks-assessment').setData({ type: 'FeatureCollection',
-        features: assessment.features.filter((f) => !layersOff.has(f.properties.kind === 'road' ? 'roads' : 'erosion')) })
+        features: assessment.features.filter((f) => !layersOff.has(f.properties.kind === 'erosion' ? 'erosion' : 'roads')) })
     }
   }
   const syncRef = useRef(null)
@@ -342,10 +379,40 @@ export default function RisksApp() {
   const counts = assessment ? {
     roads: new Set(assessment.features.filter((f) => f.properties.kind === 'road').map((f) => `${f.properties.name}|${f.properties.island}`)).size,
     erosion: assessment.features.filter((f) => f.properties.kind === 'erosion').length,
+    roadMiles: assessment.features.filter((f) => f.properties.kind === 'roadwet' && f.properties.rank === shownRank).reduce((a, f) => a + f.properties.ft, 0) / 5280,
   } : null
   // Hotspots ranked by this scenario's count (the worst scenario's with All four)
+  // In this view: flooded buildings, lots the flood reaches (centroid in view; ≥10 m² and 1% of the lot) and their property value
+  // in the flood's path: land value × share of the lot flooded + building value × share of the lot's footprint area flooded
+  // (scripts/bake-risks/economics.mjs → inview.json; the same counting as the land-value report).
+  const inViewTotals = useMemo(() => {
+    const map = mapRef.current
+    if (!inview || !map || !mapReady) return null
+    const bb = map.getBounds(), w = bb.getWest(), e = bb.getEast(), s = bb.getSouth(), n = bb.getNorth()
+    const inB = (x, y) => x >= w && x <= e && y >= s && y <= n
+    const k = shownRank - 1
+    let buildings = 0, lots = 0, value = 0, roadFt = 0
+    // Flooded road stretches (assessment.geojson "roadwet"), each counted when its middle vertex is in view
+    for (const f of assessment?.features || []) {
+      if (f.properties.kind !== 'roadwet' || f.properties.rank !== shownRank) continue
+      const line = f.geometry.type === 'MultiLineString' ? f.geometry.coordinates[0] : f.geometry.coordinates, mid = line[line.length >> 1]
+      if (inB(mid[0], mid[1])) roadFt += f.properties.ft
+    }
+    for (const b of inview.buildings) if (b[2] <= shownRank && inB(b[0], b[1])) buildings++
+    for (const q of inview.parcels) {
+      if (!inB(q[0], q[1])) continue
+      let a = 0
+      for (let j = 0; j <= k; j++) a += q[5 + j]
+      const share = Math.min(1, a / (q[4] || 1))
+      if (a < 10 || share < 0.01) continue
+      lots++; value += q[2] * share + (q[3] * q[9 + k]) / 100
+    }
+    return { buildings, lots, value, roadMiles: roadFt / 5280 }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inview, assessment, mapView, mapReady, shownRank])
+  const reportHref = `/risks/reports/land-value?s=${all ? '5ft' : scenario.slr}&st=${all ? '100yr' : scenario.storm}`
   const hotRank = shownRank - 1
-  const hot = hotspots ? [...hotspots].filter((h) => h.counts[hotRank] > 0).sort((a, b) => b.counts[hotRank] - a.counts[hotRank]).slice(0, 5) : []
+  const hot = hotspots ? [...hotspots].filter((h) => h.counts[hotRank] > 0).sort((a, b) => b.counts[hotRank] - a.counts[hotRank]).slice(0, 4) : []   // 4: the panel fits without scrolling, "All four" legend open
   const flyTo = (h) => mapRef.current?.flyTo({ center: h.center, zoom: 15.6, duration: 2500, essential: true })
   const sub = (n, word) => (loadError ? '' : n == null ? '…' : `${n} ${word}`)
   const ext = (href, text) => <a className={p.src} href={href} target="_blank" rel="noopener noreferrer">{text}</a>
@@ -387,19 +454,17 @@ export default function RisksApp() {
                 </button>
               ))}
             </div>
-            {all ? (
-              <div className={styles.fact}>Each area colored by the mildest scenario that floods it. {ext(reportPage(29), 'Buildings and roads per scenario (report, Table 6-1)')}</div>
-            ) : (
-              <div>
-                <div className={styles.lead}>…then {stormOf(scenario.storm).lead}</div>
-                <div className={styles.bigNum}>{ext(reportPage(29), fmt(scenario.buildings))}</div>
-                <div className={styles.bigLabel}>buildings and {ext(reportPage(29), `${scenario.roadMiles} miles of road`)}</div>
-                <div className={styles.factDim}>
-                  {slrOf(scenario.slr).label} of rise: {slrOf(scenario.slr).when} {ext(reportPage(22), '(p. 17)')}
-                  {' · '}{stormOf(scenario.storm).plain}: {stormOf(scenario.storm).label}, {stormOf(scenario.storm).what} {ext(reportPage(scenario.storm === '1yr' ? 30 : 9), scenario.storm === '1yr' ? '(p. 25)' : '(p. 4)')}
-                </div>
+            {/* All four: the Flood extent legend says how the colors read; the totals are for the worst case */}
+            <div className={styles.lead}>…then {all ? 'the worst case would flood' : stormOf(scenario.storm).lead}</div>
+            {inViewTotals && (
+              <div className={styles.stats}>
+                <div><b>{ext(`${SLR_SERVICE_URL}/0`, fmt(inViewTotals.buildings))}</b><span>buildings</span></div>
+                <div><b>{ext('https://www.sanjuanco.com/167/Assessor', fmt(inViewTotals.lots))}</b><span>lots</span></div>
+                <div><b>{ext(`${reportHref}#how`, money(inViewTotals.value))}</b><span>land + buildings</span></div>
+                <div><b>{ext(ROAD_CENTERLINES_URL, inViewTotals.roadMiles.toFixed(1))}</b><span>road miles</span></div>
               </div>
             )}
+            {inViewTotals && <div className={styles.factDim}>In this map view · Assessor values · <a className={p.src} href={reportHref}>Land-value report →</a></div>}
             {hot.length > 0 && (
               <div className={styles.hotLine}>
                 Most flooded on this map{all ? ' (5 ft + 100-year)' : ''}:{' '}
@@ -445,14 +510,14 @@ export default function RisksApp() {
               info={<>Tax parcel boundaries from the {ext('https://www.sanjuanco.com/167/Assessor', 'San Juan County Assessor')}.</>} />
 
             <DatasetRow storageKey="risks.roads" name="Roads at risk of flooding" hue={COLORS.roads}
-              sub={sub(counts?.roads, 'roads')} on={!layersOff.has('roads')} onToggle={() => toggleLayer('roads')}
-              legend={<LegendSwatchRow swatch={<span className={styles.legendLine} style={{ background: COLORS.roads }} />}>Road on the assessment’s flooding lists</LegendSwatchRow>}
-              info={<>Roads the assessment lists as at risk of flooding with sea-level rise, from the County’s Coastal Roads Flooding (by island) and Other Roads Flooding layers. {ext(VA_SERVICE_URL, 'County map service')} · {ext(reportPage(30), 'report, p. 25')}</>} />
+              sub={loadError ? '' : counts ? `${counts.roadMiles.toFixed(1)} mi` : '…'} on={!layersOff.has('roads')} onToggle={() => toggleLayer('roads')}
+              legend={<LegendSwatchRow swatch={<span className={styles.legendLine} style={{ background: COLORS.roads }} />}>Under water · <span className={styles.legendLine} style={{ background: COLORS.roads, opacity: 0.45, height: 2 }} /> rest of a listed segment</LegendSwatchRow>}
+              info={<>Bold: the stretch of every County road, public and private, inside this scenario’s flood extent, as the report counts road miles ({ext(reportPage(29), 'Table 6-1, p. 24')}). Faint: the whole segments the County lists in its Coastal Roads Flooding (by island) and Other Roads Flooding layers. {ext(ROAD_CENTERLINES_URL, 'County road centerlines')} · {ext(VA_SERVICE_URL, 'County map service')}</>} />
 
             <DatasetRow storageKey="risks.erosion" name="Erosion" hue={COLORS.erosion}
               sub={<>by {all ? '2060 and 2100' : EROSION_YEARS[scenario.slr]}</>} on={!layersOff.has('erosion')} onToggle={() => toggleLayer('erosion')}
-              legend={<LegendSwatchRow swatch={<span className={p.legendSq} style={{ background: COLORS.erosion }} />}>Projected to erode by {all ? '2060 and 2100' : EROSION_YEARS[scenario.slr]}; dots: higher risk</LegendSwatchRow>}
-              info={<>ESA’s projected erosion zones: the band inland of today’s shoreline that erosion is projected to take by 2060 and by 2100, from each stretch’s shore type (feeder bluff, transport zone, accretion, pocket beach) and its historic erosion rate, increased for sea-level rise. The report pairs 2060 with the moderate and 2100 with the high sea-level rise scenario. Dots: the six places the report names as at higher risk (the south ends of San Juan and Lopez islands, Waldron’s northeast coast, Blakely’s east point, Decatur’s southeast side). {ext(EROSION_ZONES_URL, 'County map service')} · {ext(EROSION_SERVICE_URL, 'higher-risk places')} · {ext(reportPage(30), 'report, p. 25')}</>} />
+              legend={<LegendSwatchRow swatch={<span className={p.legendSq} style={{ background: COLORS.erosion }} />}>Erodes by {all ? '2060 / 2100' : EROSION_YEARS[scenario.slr]} · <span className={p.legendSq} style={{ display: 'inline-block', verticalAlign: '-1px', background: 'transparent', boxShadow: `inset 0 0 0 2px ${COLORS.erosion}` }} /> buildings within 100 ft</LegendSwatchRow>}
+              info={<>ESA’s projected erosion zones: the band inland of today’s shoreline that erosion is projected to take by 2060 and by 2100, from each stretch’s shore type (feeder bluff, transport zone, accretion, pocket beach) and its historic erosion rate, increased for sea-level rise. The report pairs 2060 with the moderate and 2100 with the high sea-level rise scenario. Buildings within 100 ft of the projected line are outlined in purple (filled where the flood doesn’t reach them); hover one for its distance, measured by EarthAtlas from the county’s footprint to ESA’s line. Dots: the six places the report names as at higher risk (the south ends of San Juan and Lopez islands, Waldron’s northeast coast, Blakely’s east point, Decatur’s southeast side). {ext(EROSION_ZONES_URL, 'County map service')} · {ext(EROSION_SERVICE_URL, 'higher-risk places')} · {ext(reportPage(30), 'report, p. 25')}</>} />
             {loadError && <div className={p.error}>{loadError}</div>}
           </div>
 

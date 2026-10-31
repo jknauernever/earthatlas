@@ -9,13 +9,13 @@
 //    it to Blob for production. Bump the version in FILE (and src/risks/risksLayers.js) on every re-bake so the
 //    CDN never serves old tiles under the new name.
 // 2. The small layers (flood-prone roads, erosion points) are trimmed to the fields the map
-//    shows and written to public/risks-data/assessment.geojson (committed; ~80 KB).
+//    shows (plus every County road's stretch inside each scenario's flood) and written to public/risks-data/assessment.geojson (committed; ~80 KB).
 
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SCENARIOS, PMTILES_FILE } from '../../src/risks/risksLayers.js'
+import { SCENARIOS, PMTILES_FILE, EROSION_NEAR_M } from '../../src/risks/risksLayers.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '../..')
@@ -147,23 +147,40 @@ function bakeBuildings() {
     '-lco', 'GEOMETRY_NAME=geom', '-dialect', 'SQLite', '-sql', `SELECT ${i + 1} AS rank, geometry FROM "${s.id}"`]))
   ogr(['-update', gpkg, gpkg, '-nln', 'pieces', '-nlt', 'POLYGON', '-explodecollections', '-lco', 'GEOMETRY_NAME=geom',
     '-dialect', 'SQLite', '-sql', 'SELECT rank, ST_Subdivide(geom, 256) AS geom FROM bands'])
+  // Erosion: ESA's two rings, cut the same way; a footprint's distance to the 2060 line is to the 2060 ring, to the 2100
+  // line to either ring (the rings don't overlap: 2100 is only the ground beyond 2060).
+  for (const y of [2060, 2100]) {
+    ogr(['-append', gpkg, resolve(BUILD, `erosion${y}.geojsonl`), '-nln', 'epieces', '-nlt', 'POLYGON', '-makevalid', '-explodecollections',
+      '-lco', 'GEOMETRY_NAME=geom', '-dialect', 'SQLite', '-sql', `SELECT ${y} AS year, ST_Subdivide(geometry, 256) AS geometry FROM "erosion${y}"`])
+  }
   const out = resolve(BUILD, 'buildings.geojsonl')
   rmSync(out, { force: true })
-  const sql = `SELECT b.geom, b.PIN AS pin, b.Island AS island, CAST(ROUND(b.Sq_Ft) AS INTEGER) AS sqft,
+  // e2060 / e2100: metres from the footprint to that year's projected erosion line (0 = the line crosses it), only up to
+  // EROSION_NEAR_M (100 ft); null beyond. Measured in UTM 10N. R-tree box padded ~40 m.
+  const near = (years) => `(SELECT ROUND(MIN(ST_Distance(ST_Transform(b.geom, 32610), ST_Transform(e.geom, 32610))), 1) FROM epieces e
+      WHERE e.year IN (${years}) AND e.fid IN (SELECT id FROM rtree_epieces_geom r WHERE r.minx <= ST_MaxX(b.geom) + 0.0006
+        AND r.maxx >= ST_MinX(b.geom) - 0.0006 AND r.miny <= ST_MaxY(b.geom) + 0.0004 AND r.maxy >= ST_MinY(b.geom) - 0.0004))`
+  const sql = `SELECT geom, pin, island, sqft, first,
+      CASE WHEN e60 <= ${EROSION_NEAR_M} THEN e60 END AS e2060, CASE WHEN e100 <= ${EROSION_NEAR_M} THEN e100 END AS e2100 FROM (
+    SELECT b.geom, b.PIN AS pin, b.Island AS island, CAST(ROUND(b.Sq_Ft) AS INTEGER) AS sqft,
       COALESCE((SELECT MIN(f.rank) FROM pieces f WHERE f.fid IN (SELECT id FROM rtree_pieces_geom r
         WHERE r.minx <= ST_MaxX(b.geom) AND r.maxx >= ST_MinX(b.geom) AND r.miny <= ST_MaxY(b.geom) AND r.maxy >= ST_MinY(b.geom))
-        AND ST_Intersects(b.geom, f.geom)), 0) AS first
-    FROM buildings b`
+        AND ST_Intersects(b.geom, f.geom)), 0) AS first,
+      ${near('2060')} AS e60, ${near('2060, 2100')} AS e100
+    FROM buildings b)`
   execFileSync('ogr2ogr', ['-f', 'GeoJSONSeq', '-overwrite', out, gpkg, '-dialect', 'SQLite', '-sql', sql], { stdio: 'inherit' })
-  // Flooded buildings show from z10 (they are the point); the other ~29,000 only from z13
+  // Flooded buildings and those near an erosion line show from z10 (they are the point); the other ~29,000 only from z13
   const lines = readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
-  writeFileSync(out, lines.map((f) => JSON.stringify({ ...f, tippecanoe: { minzoom: f.properties.first ? 10 : 13 } })).join('\n') + '\n')
+  for (const f of lines) for (const k of ['e2060', 'e2100']) if (f.properties[k] == null) delete f.properties[k]
+  const marked = (p) => p.first || p.e2100 != null
+  writeFileSync(out, lines.map((f) => JSON.stringify({ ...f, tippecanoe: { minzoom: marked(f.properties) ? 10 : 13 } })).join('\n') + '\n')
+  console.log(`buildings near the erosion line (≤ ${EROSION_NEAR_M} m): 2060 ${lines.filter((f) => f.properties.e2060 != null).length}, 2100 ${lines.filter((f) => f.properties.e2100 != null).length}`)
   const by = SCENARIOS.map((s, i) => lines.filter((f) => f.properties.first && f.properties.first <= i + 1).length)
   console.log(`buildings: ${lines.length}; flooded by scenario (cumulative) ${SCENARIOS.map((s, i) => `${s.id} ${by[i]}`).join(', ')}`)
   // "hits": one point per flooded building, so the map can show where the losses are from the county view (a footprint
   // is a few pixels wide there). Point = mean of the footprint's outer-ring vertices; same properties as the footprint.
   const hits = resolve(BUILD, 'hits.geojsonl')
-  writeFileSync(hits, lines.filter((f) => f.properties.first).map((f) => JSON.stringify({ type: 'Feature', properties: f.properties,
+  writeFileSync(hits, lines.filter((f) => marked(f.properties)).map((f) => JSON.stringify({ type: 'Feature', properties: f.properties,
     geometry: { type: 'Point', coordinates: ringMean(outerRing(f.geometry)) } })).join('\n') + '\n')
   return { buildings: out, hits }
 }
@@ -182,7 +199,7 @@ const HOT_COUNT = 6
 async function bakeHotspots() {
   const token = process.env.VITE_MAPBOX_TOKEN
   if (!token) throw new Error('hotspots: VITE_MAPBOX_TOKEN not set (run with --env-file=.env.local)')
-  const pts = readFileSync(need(resolve(BUILD, 'hits.geojsonl')), 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+  const pts = readFileSync(need(resolve(BUILD, 'hits.geojsonl')), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((f) => f.properties.first)
     .map((f) => ({ x: f.geometry.coordinates[0], y: f.geometry.coordinates[1], first: f.properties.first, island: f.properties.island }))
   const kx = 111320 * Math.cos((48.55 * Math.PI) / 180), ky = 110540
   const near = (a, b) => Math.hypot((a.x - b.x) * kx, (a.y - b.y) * ky) <= HOT_RADIUS
@@ -243,6 +260,7 @@ function bakeAssessment() {
   }
   // lists/lids: which county layers carry the segment (Vulnerability_Assessment_Map layer ids, for the source links)
   for (const f of roads.values()) features.push({ ...f, properties: { ...f.properties, lists: f.properties.lists.join(','), lids: f.properties.lids.join(',') } })
+  features.push(...roadStretches())
 
   for (const f of read('erosion-points')) {
     features.push({ type: 'Feature', geometry: geom(f.geometry), properties: { kind: 'erosion', name: clean(f.properties.Name) } })
@@ -252,6 +270,30 @@ function bakeAssessment() {
   writeFileSync(out, JSON.stringify({ type: 'FeatureCollection', features }))
   const n = (k) => features.filter((f) => f.properties.kind === k).length
   console.log(`assessment.geojson: ${n('road')} road segments, ${n('erosion')} erosion points, ${(statSync(out).size / 1e3).toFixed(0)} KB`)
+}
+
+// The county's lists carry whole road segments; the flood covers only part of each, and floods roads the lists leave out.
+// So, as ESA counted road miles (Table 6-1): every County road centerline, public and private, clipped to each scenario's
+// flood extent (and every milder one's, as for buildings). kind "roadwet", rank = the scenario (1–4, SCENARIOS order),
+// own = Public/Private, ft = the stretch's length (UTM 10N). Uses the flood pieces bakeBuildings put in join.gpkg.
+function roadStretches() {
+  const gpkg = need(resolve(BUILD, 'join.gpkg')), out = resolve(BUILD, 'roadwet.geojsonl')
+  execFileSync('ogr2ogr', ['-f', 'GPKG', '-update', '-overwrite', gpkg, need(resolve(RAW, 'road-centerlines.geojson')), '-nln', 'centerlines',
+    '-nlt', 'MULTILINESTRING', '-lco', 'GEOMETRY_NAME=geom'], { stdio: 'inherit' })
+  const sql = SCENARIOS.map((s, i) => `SELECT name, island, own, rank, geom, CAST(ROUND(ST_Length(ST_Transform(geom, 32610)) / 0.3048) AS INTEGER) AS ft FROM (
+      SELECT r.Road_Name AS name, r.Island AS island, r.Ownrship AS own, ${i + 1} AS rank,
+        ST_LineMerge(CollectionExtract(ST_Union(ST_Intersection(r.geom, p.geom)), 2)) AS geom
+      FROM centerlines r JOIN pieces p ON p.rank <= ${i + 1} AND p.fid IN (SELECT id FROM rtree_pieces_geom q WHERE q.minx <= ST_MaxX(r.geom)
+        AND q.maxx >= ST_MinX(r.geom) AND q.miny <= ST_MaxY(r.geom) AND q.maxy >= ST_MinY(r.geom))
+      WHERE ST_Intersects(r.geom, p.geom) GROUP BY r.fid) WHERE geom IS NOT NULL`).join(' UNION ALL ')
+  rmSync(out, { force: true })
+  execFileSync('ogr2ogr', ['-f', 'GeoJSONSeq', out, gpkg, '-dialect', 'SQLite', '-sql', sql], { stdio: 'inherit' })
+  const wet = readFileSync(out, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l))
+    .filter((f) => f.properties.ft > 0).map((f) => ({ type: 'Feature', geometry: geom(f.geometry), properties: { kind: 'roadwet',
+      name: clean(f.properties.name), island: clean(f.properties.island), own: clean(f.properties.own), rank: f.properties.rank, ft: f.properties.ft } }))
+  const miles = SCENARIOS.map((s, i) => (wet.filter((f) => f.properties.rank === i + 1).reduce((a, f) => a + f.properties.ft, 0) / 5280).toFixed(1))
+  console.log(`road miles under water, by scenario: ${SCENARIOS.map((s, i) => `${s.id} ${miles[i]} (report ${s.roadMiles})`).join(', ')}`)
+  return wet
 }
 
 const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7)

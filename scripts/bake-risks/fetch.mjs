@@ -1,6 +1,6 @@
 // /risks: download San Juan County's ESA 2024 sea-level-rise layers (public ArcGIS feature services, no auth) into
 // scripts/bake-risks/raw/ as GeoJSON in EPSG:4326. Idempotent: a file already on disk is skipped (pass --force to
-// re-fetch). Every layer fits one query (each scenario layer is ONE multipolygon). Building footprints come from
+// re-fetch). Each scenario layer is ONE multipolygon; bigger layers are paged. Building footprints come from
 // Salish Sea Explorer's copy (see bake.mjs), not from here.
 //
 //   node scripts/bake-risks/fetch.mjs [--force] [--only=<name>,…]
@@ -29,6 +29,9 @@ export const LAYERS = [
   { name: 'roads-shaw', svc: 'Vulnerability_Assessment_Map', id: 218 },
   { name: 'roads-orcas', svc: 'Vulnerability_Assessment_Map', id: 219 },
   { name: 'roads-other', svc: 'Vulnerability_Assessment_Map', id: 220 },
+  // The County's road centerlines (public and private, 2,183 segments) from ESA's roads map: the bake clips them to each
+  // flood scenario, which reproduces the report's road miles (Table 6-1)
+  { name: 'road-centerlines', svc: 'ESA_SLR_Vulnerability_Assessment_Roads_Map_WFL1', id: 1 },
   // ESA projected erosion zones, 2060 and 2100 (one multipolygon each): bands inland of the shoreline
   { name: 'erosion-zones', svc: 'ESA_SLR_Road_Erosion_Boundaries', id: 0 },
   // Erosion vulnerability points (6)
@@ -47,14 +50,19 @@ async function main() {
     if (only.length && !only.includes(l.name)) continue
     const out = resolve(RAW, `${l.name}.geojson`)
     if (existsSync(out) && !force) { console.log(`skip ${l.name} (on disk)`); continue }
-    const url = `${layerUrl(l)}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`
     const t0 = Date.now()
-    const r = await fetch(url)
-    if (!r.ok) throw new Error(`${l.name}: HTTP ${r.status}`)
-    const text = await r.text()
-    const j = JSON.parse(text)
-    if (j.error) throw new Error(`${l.name}: ${JSON.stringify(j.error)}`)
-    if (j.properties?.exceededTransferLimit || j.exceededTransferLimit) throw new Error(`${l.name}: exceeded transfer limit; add paging`)
+    let j = null
+    for (let offset = 0; ; ) {
+      const r = await fetch(`${layerUrl(l)}/query?where=1%3D1&outFields=*&outSR=4326&resultOffset=${offset}&f=geojson`)
+      if (!r.ok) throw new Error(`${l.name}: HTTP ${r.status}`)
+      const page = await r.json()
+      if (page.error) throw new Error(`${l.name}: ${JSON.stringify(page.error)}`)
+      if (j) j.features.push(...page.features); else j = page
+      if (!(page.properties?.exceededTransferLimit || page.exceededTransferLimit)) break
+      offset += page.features.length
+    }
+    delete j.properties
+    const text = JSON.stringify(j)
     writeFileSync(out, text)
     console.log(`${l.name}: ${j.features.length} features, ${(statSync(out).size / 1e6).toFixed(1)} MB, ${((Date.now() - t0) / 1000).toFixed(1)} s`)
   }

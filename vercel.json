@@ -47,6 +47,10 @@
       "destination": "/risks.html"
     },
     {
+      "source": "/risks/reports/:path*",
+      "destination": "/risks.html"
+    },
+    {
       "source": "/permits/source/:key",
       "destination": "/permits.html"
     },

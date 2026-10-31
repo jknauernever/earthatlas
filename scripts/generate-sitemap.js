@@ -70,6 +70,7 @@ addUrl('/species-of-concern')
 
 // Sea-level rise risks (San Juan County)
 addUrl('/risks')
+addUrl('/risks/reports/land-value')
 
 // Carbon
 addUrl('/carbon')

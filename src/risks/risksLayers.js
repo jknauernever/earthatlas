@@ -7,6 +7,8 @@ export const STORYMAP_URL = 'https://storymaps.arcgis.com/stories/0d1db5ad2d6347
 export const SERVICES_BASE = 'https://services.arcgis.com/PNkCg7xWnaf90qde/arcgis/rest/services'
 export const SLR_SERVICE_URL = `${SERVICES_BASE}/Sea_Level_Rise_WFL1/FeatureServer`
 export const VA_SERVICE_URL = `${SERVICES_BASE}/Vulnerability_Assessment_Map/FeatureServer`
+// The County's road centerlines (public and private) on ESA's roads map: clipped to each flood, they give the report's road miles
+export const ROAD_CENTERLINES_URL = `${SERVICES_BASE}/ESA_SLR_Vulnerability_Assessment_Roads_Map_WFL1/FeatureServer/1`
 export const EROSION_SERVICE_URL = `${SERVICES_BASE}/Erosion_Vulnerability_Points/FeatureServer/8`
 export const EROSION_ZONES_URL = `${SERVICES_BASE}/ESA_SLR_Road_Erosion_Boundaries/FeatureServer/0`
 export const ATTRIBUTION = 'San Juan County / Environmental Science Associates, Sea-Level Rise Risk & Vulnerability Assessment, 2024.'
@@ -19,8 +21,11 @@ export const COUNTY_NOTICE = 'San Juan County does not warrant the accuracy, rel
 // v4: land trim redone (GDAL's county-wide clip had dropped most of the 1-year band's land, beaches included).
 // v5: "hits" layer, one point per flooded building (glowing dots at county zoom).
 // v6: ESA projected erosion zones (2060, 2100) added as layers erosion2060 / erosion2100.
-export const PMTILES_FILE = 'risks-slr-esa2024-v6.pmtiles'
-export const TILES_VERSION = 'v6'
+// v7: each building's distance to the 2060 and 2100 projected erosion lines (e2060 / e2100, metres, up to 100 ft).
+export const PMTILES_FILE = 'risks-slr-esa2024-v7.pmtiles'
+export const TILES_VERSION = 'v7'
+/** "Near the erosion line": within 100 ft (in metres), the farthest distance the building tiles carry. */
+export const EROSION_NEAR_M = 30.48
 
 // Report §4.3 (p. 17): 2 ft = the County's short-term scenario, "not expected to occur sooner than 2050"; 5 ft = the
 // long-term one, "not expected to occur sooner than 2100" (RCP 8.5). "For each sea-level rise scenario, the County

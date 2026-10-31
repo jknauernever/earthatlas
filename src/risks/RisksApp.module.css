@@ -24,6 +24,11 @@
 .bigNum { margin-top: 8px; font-size: 28px; line-height: 1; font-weight: 700; color: #facc15; font-variant-numeric: tabular-nums; }
 .bigNum a { color: inherit; text-decoration: none; }
 .bigNum a:hover { text-decoration: underline; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1.3fr 0.9fr; gap: 6px; margin-top: 8px; }
+.stats b { display: block; font-size: 20px; line-height: 1; font-weight: 700; color: #facc15; font-variant-numeric: tabular-nums; }
+.stats b a { color: inherit; text-decoration: none; border: 0; }
+.stats b a:hover { text-decoration: underline; }
+.stats span { display: block; margin-top: 3px; color: #fff; font-size: 12px; }
 .bigLabel { margin-top: 3px; color: #fff; font-size: 12px; }
 .hotLine { margin-top: 8px; color: rgba(229, 231, 235, 0.75); font-size: 11.5px; line-height: 1.5; }
 .hot { padding: 0; background: none; border: 0; color: #fff; font: inherit; cursor: pointer; }

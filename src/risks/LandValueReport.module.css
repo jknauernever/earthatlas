@@ -1,0 +1,50 @@
+/* /risks/reports/land-value (LandValueReport.jsx): the pieces beyond the shared report frame (ScrubberReport / BunkeringReport css). */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 960px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+.step { min-width: 0; }
+.stepTitle { font-size: 13.5px; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
+.stepBars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; height: 190px; margin-bottom: 6px; }
+.stepCol { display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; border: 0; background: transparent; padding: 0;
+  font: inherit; color: inherit; cursor: pointer; border-radius: 6px; }
+.stepCol:hover .stepBar { filter: brightness(0.94); }
+.stepBar { display: block; border-radius: 4px 4px 0 0; min-height: 2px; }
+.stepN { font-size: 12px; color: #374151; text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 3px; white-space: nowrap; }
+.stepLbl { font-size: 11px; color: #6b7280; text-align: center; margin-top: 5px; line-height: 1.25; height: 42px; }
+.stepOn .stepLbl { color: #0f172a; font-weight: 700; }
+.stepOn .stepN { font-weight: 700; color: #0f172a; }
+
+.shares { display: grid; gap: 6px; }
+.shareRow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 210px; align-items: center; gap: 12px; font-size: 13px; }
+.shareLbl { color: #1f2937; }
+.shareN { font-variant-numeric: tabular-nums; }
+.shareN small { color: #6b7280; margin-left: 8px; font-size: 12px; }
+.bar { display: block; height: 12px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+
+.bd th { white-space: normal; vertical-align: bottom; }
+.bd td { white-space: nowrap; }
+.barTh { width: 14%; }
+.barTd { width: 14%; min-width: 60px; }
+.of { display: block; color: #9ca3af; font-size: 11px; }
+.click { cursor: pointer; }
+.click:hover td { background: #f8fafc; }
+.rowOn td { background: #fef2f2 !important; font-weight: 600; }
+
+.erosion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.erCard { padding: 14px 16px; border-radius: 10px; background: #faf5ff; border: 1px solid #e9d5ff; }
+.erYear { font-size: 13px; font-weight: 600; color: #581c87; }
+.erYear span { font-weight: 400; color: #6b7280; font-size: 12px; }
+.erVal { font-size: 28px; font-weight: 700; color: #6b21a8; font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+.h3 { font-size: 14.5px; font-weight: 650; color: #0f172a; margin: 18px 0 6px; }
+.how { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.55; color: #374151; }
+
+@media (max-width: 640px) {
+  .shareRow { grid-template-columns: 1fr; gap: 3px; }
+  .erosion { grid-template-columns: 1fr; }
+}
+@media print {
+  .stepBars { height: 140px; }
+  .steps, .shares, .erosion { break-inside: avoid; }
+}

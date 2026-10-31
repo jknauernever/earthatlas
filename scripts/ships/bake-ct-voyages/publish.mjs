@@ -148,7 +148,12 @@ async function publish(dir, tableFile) {
     startDates: m.startDates, rows: m.rows, ships: { mmsi: m.packs.mmsi.ships, imo: m.packs.imo.ships }, stays: m.stays,
     matched: summary.matched, staysVersion: `ct-stays-${version}`, table, previous: prev.version }
   await put(POINTER, JSON.stringify(pointer, null, 1), { access: 'public', token: await tokenFor(POINTER), contentType: 'application/json' })
-  const check = await livePointer()
+  // Blob reads can lag a fresh overwrite (2026-10-29: old version read back, right one a minute later): re-read for up to 2 min.
+  let check = await livePointer()
+  for (let i = 0; i < 12 && check?.version !== version; i++) {
+    await new Promise((r) => setTimeout(r, 10_000))
+    check = await livePointer()
+  }
   if (check?.version !== version) throw new Error(`pointer reads ${check?.version}, expected ${version}`)
   console.log(`live: ${version} (start dates ${m.startDates.from} – ${m.startDates.to})`)
 

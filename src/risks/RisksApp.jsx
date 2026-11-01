@@ -31,7 +31,7 @@ import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../component
 import { DatasetRow, LegendSwatchRow, SourcesFooter } from '../components/panel/index.js'
 import {
   SCENARIOS, SLR_LEVELS, STORMS, SCENARIO_COLORS, scenarioOf, TILES_VERSION,
-  SLR_SERVICE_URL, VA_SERVICE_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL, ROAD_CENTERLINES_URL,
+  SLR_SERVICE_URL, VA_SERVICE_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL, ROAD_CENTERLINES_URL, REGIONS, COSMOS_RISE, STRUCTURES_URL, WA_PARCELS_URL,
 } from './risksLayers.js'
 import { RISKS_SOURCES, RISKS_SOURCES_INTRO, RISKS_SOURCES_NOTES, reportPage } from './risksSources.js'
 import q from '../quakes/QuakesApp.module.css'
@@ -71,7 +71,16 @@ const BUILDING_LAYERS = ['risks-buildings-hit', 'risks-hits', 'risks-buildings-e
 const EROSION_YEARS = { '2ft': 2060, '5ft': 2100 }
 const erosionLayerId = (y) => `risks-erosion-zone-${y}`
 const EROSION_ZONE_LAYERS = [2060, 2100].map(erosionLayerId)
-const HOVER_LAYERS = [...ASSESSMENT_LAYERS, ...BUILDING_LAYERS, ...EROSION_ZONE_LAYERS, ...SCENARIOS.map((s) => floodLayerId(s.id))]
+// Beyond San Juan County (REGIONS, USGS CoSMoS): each region's tiles carry the same flood bands, buildings and hits, drawn
+// by a twin of each of these layers ("<id>~<region>") that sync() keeps in step with the San Juan one.
+const TWINNED = [...SCENARIOS.flatMap((s) => [floodLayerId(s.id), floodLineId(s.id)]), 'risks-buildings-hit', 'risks-hits-glow', 'risks-hits', 'risks-lots']
+const twinId = (id, r) => `${id}~${r.id}`
+const baseId = (id) => id.split('~')[0]
+const regionOf = (id) => REGIONS.find((r) => id.endsWith(`~${r.id}`))
+// v = the region's file name (it carries the bake version), so a re-bake never meets cached tiles
+const regionTilesUrl = (r) => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/risks-tiles?r=${r.id}&v=${r.file.replace(/\.pmtiles$/, '')}&z={z}&x={x}&y={y}`
+const HOVER_BASE = [...ASSESSMENT_LAYERS, ...BUILDING_LAYERS, ...EROSION_ZONE_LAYERS, ...SCENARIOS.map((s) => floodLayerId(s.id))]
+const HOVER_LAYERS = [...HOVER_BASE, ...REGIONS.flatMap((r) => HOVER_BASE.filter((id) => TWINNED.includes(id)).map((id) => twinId(id, r)))]
 
 // ─── Shareable URL state ────────────────────────────────────────────────────
 //   bm, ph       basemap, photos           lat,lng,z   camera
@@ -100,6 +109,7 @@ const stormOf = (id) => STORMS.find((s) => s.id === id)
 const scenarioWords = (sc) => `${slrOf(sc.slr).words} + ${stormOf(sc.storm).words}`
 const scenarioShort = (sc) => `${slrOf(sc.slr).label} + ${stormOf(sc.storm).label}`
 const fmt = (n) => n.toLocaleString('en-US')
+const titleCase = (s) => String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
 const money = (n) => (n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `$${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)}M` : n >= 1e3 ? `$${Math.round(n / 1e3)}k` : `$${Math.round(n)}`)
 const tilesUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/risks-tiles?v=${TILES_VERSION}&z={z}&x={x}&y={y}`
 
@@ -153,6 +163,7 @@ export default function RisksApp() {
   const [assessment, setAssessment] = useState(null)
   const [hotspots, setHotspots] = useState(null)
   const [inview, setInview] = useState(null)
+  const [regionPts, setRegionPts] = useState({})   // REGIONS id → public/risks-data/cosmos-<id>.json
   const [loadError, setLoadError] = useState(null)
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)
   const shownRank = all ? SCENARIOS.length : rankOf(scenarioId)
@@ -171,6 +182,12 @@ export default function RisksApp() {
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })
       .then(setInview)
       .catch(() => {})   // the in-view totals just don't show
+    for (const r of REGIONS) {
+      fetch(`/risks-data/cosmos-${r.id}.json`, { signal: ac.signal })
+        .then((res) => { if (!res.ok) throw new Error(res.status); return res.json() })
+        .then((j) => setRegionPts((o) => ({ ...o, [r.id]: j })))
+        .catch(() => {})
+    }
     return () => ac.abort()
   }, [])
 
@@ -201,16 +218,29 @@ export default function RisksApp() {
   }, [])
 
   // Hover: an assessment item wins, then a building; otherwise say from which scenario on the spot floods.
-  const firstFloodsLine = (rank) => {
+  // In a CoSMoS region the rise is CoSMoS's nearest level (COSMOS_RISE), said exactly
+  const firstFloodsLine = (rank, region) => {
     const sc = SCENARIOS[rank - 1]
+    if (region) {
+      return `<div>First floods with <b>${esc(COSMOS_RISE[sc.slr])} of sea-level rise + ${esc(stormOf(sc.storm).words)}</b></div>`
+    }
     const worse = SCENARIOS.slice(rank).map(scenarioShort)
     return `<div>First floods with <b>${esc(scenarioWords(sc))}</b></div>
       <div class="${styles.dim}">${worse.length ? `Also floods with ${esc(worse.join(', '))}` : 'Floods only in the worst scenario mapped'}</div>`
   }
-  hoverRef.current = (feats) => {
+  hoverRef.current = (feats0) => {
+    // Region twins answer like their San Juan layer; "region" says which source the feature came from
+    const feats = feats0.map((f) => ({ properties: f.properties, layer: { id: baseId(f.layer.id) }, region: regionOf(f.layer.id) }))
     const item = feats.find((f) => ASSESSMENT_LAYERS.includes(f.layer.id))
     if (item) return `${itemHtml(item, false)}<div class="${styles.tipHint}">Click for its source</div>`
     const bld = feats.find((f) => BUILDING_LAYERS.includes(f.layer.id))
+    if (bld?.region) {
+      const b = bld.properties
+      return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${COLORS.buildings}"></span>${esc(b.addr ? titleCase(b.addr) : 'Building in the flood extent')}</div>
+        ${firstFloodsLine(b.first, bld.region)}
+        <div class="${styles.dim}">${[b.use || b.occ, b.sqft && `${fmt(b.sqft)} sq ft`, b.city && titleCase(b.city)].filter(Boolean).map(esc).join(' · ')}</div>
+        <div class="${styles.dim}">Flooding: USGS CoSMoS · building: FEMA / ORNL USA Structures</div></div>`
+    }
     if (bld) {
       const b = bld.properties
       const flooded = b.first > 0 && b.first <= shownRank
@@ -228,10 +258,11 @@ export default function RisksApp() {
         <div>${zone.properties.year === 2060 ? 'Shoreline ESA projects erosion to take by 2060' : 'Shoreline ESA projects erosion to take between 2060 and 2100'}</div>
         <div class="${styles.dim}">ESA 2023, from shore type and increased historic erosion rates</div></div>`
     }
-    const band = SCENARIOS.find((s) => feats.some((f) => f.layer.id === floodLayerId(s.id)))
-    if (!band) return null
+    const bandF = feats.find((f) => SCENARIOS.some((s) => f.layer.id === floodLayerId(s.id)))
+    if (!bandF) return null
+    const band = SCENARIOS.find((s) => bandF.layer.id === floodLayerId(s.id))
     return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${all ? SCENARIO_COLORS[band.id] : COLORS.flood}"></span>Flood extent</div>
-      ${firstFloodsLine(rankOf(band.id))}<div class="${styles.dim}">ESA 2024 modelled flooding</div></div>`
+      ${firstFloodsLine(rankOf(band.id), bandF.region)}<div class="${styles.dim}">${bandF.region ? `USGS CoSMoS, ${esc(bandF.region.name)} (2025)` : 'ESA 2024 modelled flooding'}</div></div>`
   }
 
   clickRef.current = (e) => {
@@ -296,12 +327,30 @@ export default function RisksApp() {
       layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': COLORS.roads, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2, 15, 5] } })
     map.addLayer({ id: 'risks-erosion', type: 'circle', source: 'risks-assessment', filter: kind('erosion'),
       paint: { 'circle-color': COLORS.erosion, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 6, 14, 9], 'circle-stroke-color': '#0a0e17', 'circle-stroke-width': 2 } })
+    // Each region: its own source, and a twin of every TWINNED layer placed just above the San Juan one
+    const style = map.getStyle().layers
+    for (const r of REGIONS) {
+      map.addSource(`risks-${r.id}`, { type: 'vector', tiles: [regionTilesUrl(r)], minzoom: 6, maxzoom: 14, bounds: r.bounds, attribution: 'USGS CoSMoS · FEMA/ORNL USA Structures' })
+      for (const id of TWINNED) {
+        const { id: _, source: __, ...def } = style.find((l) => l.id === id)
+        const above = style[style.findIndex((l) => l.id === id) + 1]?.id
+        map.addLayer({ ...def, id: twinId(id, r), source: `risks-${r.id}` }, above)
+      }
+    }
     syncRef.current?.()
   }
 
   const sync = () => {
-    const map = mapRef.current
-    if (!map || !map.getSource('risks-slr')) return
+    const map0 = mapRef.current
+    if (!map0 || !map0.getSource('risks-slr')) return
+    // Every setting on a TWINNED layer goes to its region twins too
+    const each = (id, fn) => [id, ...(TWINNED.includes(id) ? REGIONS.map((r) => twinId(id, r)) : [])].forEach((t) => map0.getLayer(t) && fn(t))
+    const map = {
+      setLayoutProperty: (id, k, v) => each(id, (t) => map0.setLayoutProperty(t, k, v)),
+      setPaintProperty: (id, k, v) => each(id, (t) => map0.setPaintProperty(t, k, v)),
+      setFilter: (id, f) => each(id, (t) => map0.setFilter(t, f)),
+      getSource: (id) => map0.getSource(id),
+    }
     SCENARIOS.forEach(({ id }, i) => {
       const on = !layersOff.has('flood') && i + 1 <= shownRank
       const color = all ? SCENARIO_COLORS[id] : COLORS.flood
@@ -386,21 +435,26 @@ export default function RisksApp() {
   // In this view: flooded buildings, lots the flood reaches (centroid in view; ≥10 m² and 1% of the lot) and their property value
   // in the flood's path: land value × share of the lot flooded + building value × share of the lot's footprint area flooded
   // (scripts/bake-risks/economics.mjs → inview.json; the same counting as the land-value report).
+  // The region the map is centred on (REGIONS, USGS CoSMoS); none = San Juan County
+  const regionHere = mapView ? REGIONS.find((r) => mapView.lng >= r.bounds[0] && mapView.lng <= r.bounds[2] && mapView.lat >= r.bounds[1] && mapView.lat <= r.bounds[3]) : null
   const inViewTotals = useMemo(() => {
     const map = mapRef.current
-    if (!inview || !map || !mapReady) return null
+    if (!map || !mapReady) return null
     const bb = map.getBounds(), w = bb.getWest(), e = bb.getEast(), s = bb.getSouth(), n = bb.getNorth()
     const inB = (x, y) => x >= w && x <= e && y >= s && y <= n
+    // In a CoSMoS region: its own file, same layout as inview.json (scripts/bake-risks/cosmos.mjs); no road data there
+    const src = regionHere ? regionPts[regionHere.id] : inview
+    if (!src) return null
     const k = shownRank - 1
     let buildings = 0, lots = 0, value = 0, roadFt = 0
     // Flooded road stretches (assessment.geojson "roadwet"), each counted when its middle vertex is in view
-    for (const f of assessment?.features || []) {
+    for (const f of regionHere ? [] : assessment?.features || []) {
       if (f.properties.kind !== 'roadwet' || f.properties.rank !== shownRank) continue
       const line = f.geometry.type === 'MultiLineString' ? f.geometry.coordinates[0] : f.geometry.coordinates, mid = line[line.length >> 1]
       if (inB(mid[0], mid[1])) roadFt += f.properties.ft
     }
-    for (const b of inview.buildings) if (b[2] <= shownRank && inB(b[0], b[1])) buildings++
-    for (const q of inview.parcels) {
+    for (const b of src.buildings) if (b[2] <= shownRank && inB(b[0], b[1])) buildings++
+    for (const q of src.parcels || []) {
       if (!inB(q[0], q[1])) continue
       let a = 0
       for (let j = 0; j <= k; j++) a += q[5 + j]
@@ -408,9 +462,9 @@ export default function RisksApp() {
       if (a < 10 || share < 0.01) continue
       lots++; value += q[2] * share + (q[3] * q[9 + k]) / 100
     }
-    return { buildings, lots, value, roadMiles: roadFt / 5280 }
+    return { region: regionHere, buildings, lots, value, roadMiles: roadFt / 5280 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inview, assessment, mapView, mapReady, shownRank])
+  }, [inview, assessment, mapView, mapReady, shownRank, regionPts, regionHere])
   const reportHref = `/risks/reports/land-value?s=${all ? '5ft' : scenario.slr}&st=${all ? '100yr' : scenario.storm}`
   const hotRank = shownRank - 1
   const hot = hotspots ? [...hotspots].filter((h) => h.counts[hotRank] > 0).sort((a, b) => b.counts[hotRank] - a.counts[hotRank]).slice(0, 4) : []   // 4: the panel fits without scrolling, "All four" legend open
@@ -430,7 +484,7 @@ export default function RisksApp() {
 
       <MapSearch className={q.searchBox}>
         <GeoSearch
-          placeholder="Search a place in San Juan County…"
+          placeholder={regionHere ? `Search a place in ${regionHere.name}…` : "Search a place in San Juan County…"}
           proximity={() => { const c = mapRef.current?.getCenter(); return c ? { lng: c.lng, lat: c.lat } : undefined }}
           onSelect={(r) => flyToSearchResult(mapRef.current, r)}
         />
@@ -441,7 +495,7 @@ export default function RisksApp() {
 
       <MapSheet title="Sea-level rise" summary={all ? 'All four scenarios' : scenarioShort(scenario)} className={p.panel}>
         <div className={p.panelBody}>
-          <div className={p.title}>Sea-level rise, San Juan County</div>
+          <div className={p.title}>Sea-level rise, {regionHere ? regionHere.name : 'San Juan County'}</div>
 
           {/* The question the page answers, one choice: how far the sea rises. A major (100-year) storm is the default; the
               yearly storm and the four-scenario comparison sit in the Flood extent row's options. */}
@@ -456,7 +510,17 @@ export default function RisksApp() {
             </div>
             {/* All four: the Flood extent legend says how the colors read; the totals are for the worst case */}
             <div className={styles.lead}>…then {all ? 'the worst case would flood' : stormOf(scenario.storm).lead}</div>
-            {inViewTotals && (
+            {inViewTotals?.region && (
+              <>
+                <div className={`${styles.stats} ${styles.statsThree}`}>
+                  <div><b>{ext(STRUCTURES_URL, fmt(inViewTotals.buildings))}</b><span>buildings</span></div>
+                  <div><b>{ext(WA_PARCELS_URL, fmt(inViewTotals.lots))}</b><span>lots</span></div>
+                  <div><b>{ext(WA_PARCELS_URL, money(inViewTotals.value))}</b><span>land + buildings</span></div>
+                </div>
+                <div className={styles.factDim}>In this map view · {ext(inViewTotals.region.doi, `USGS CoSMoS: ${all ? COSMOS_RISE['5ft'] : COSMOS_RISE[scenario.slr]} of rise`)} · {ext(WA_PARCELS_URL, 'Assessor values')}</div>
+              </>
+            )}
+            {inViewTotals && !inViewTotals.region && (
               <div className={styles.stats}>
                 <div><b>{ext(`${SLR_SERVICE_URL}/0`, fmt(inViewTotals.buildings))}</b><span>buildings</span></div>
                 <div><b>{ext('https://www.sanjuanco.com/167/Assessor', fmt(inViewTotals.lots))}</b><span>lots</span></div>
@@ -464,8 +528,8 @@ export default function RisksApp() {
                 <div><b>{ext(ROAD_CENTERLINES_URL, inViewTotals.roadMiles.toFixed(1))}</b><span>road miles</span></div>
               </div>
             )}
-            {inViewTotals && <div className={styles.factDim}>In this map view · Assessor values · <a className={p.src} href={reportHref}>Land-value report →</a></div>}
-            {hot.length > 0 && (
+            {inViewTotals && !inViewTotals.region && <div className={styles.factDim}>In this map view · Assessor values · <a className={p.src} href={reportHref}>Land-value report →</a></div>}
+            {hot.length > 0 && !regionHere && (
               <div className={styles.hotLine}>
                 Most flooded on this map{all ? ' (5 ft + 100-year)' : ''}:{' '}
                 {hot.map((h, i) => (
@@ -507,8 +571,12 @@ export default function RisksApp() {
 
             <DatasetRow storageKey="risks.lots" name="Property lines" hue="#e5e7eb"
               sub="from zoom 13" on={!layersOff.has('lots')} onToggle={() => toggleLayer('lots')}
-              info={<>Tax parcel boundaries from the {ext('https://www.sanjuanco.com/167/Assessor', 'San Juan County Assessor')}.</>} />
+              info={regionHere
+                ? <>Lots the flood reaches in {regionHere.name}, from the {ext(WA_PARCELS_URL, 'Washington State Parcels Project')} (county Assessor data).</>
+                : <>Tax parcel boundaries from the {ext('https://www.sanjuanco.com/167/Assessor', 'San Juan County Assessor')}.</>} />
 
+            {/* Roads and erosion: San Juan County (ESA) only, so shown there only */}
+            {!regionHere && <>
             <DatasetRow storageKey="risks.roads" name="Roads at risk of flooding" hue={COLORS.roads}
               sub={loadError ? '' : counts ? `${counts.roadMiles.toFixed(1)} mi` : '…'} on={!layersOff.has('roads')} onToggle={() => toggleLayer('roads')}
               legend={<LegendSwatchRow swatch={<span className={styles.legendLine} style={{ background: COLORS.roads }} />}>Under water · <span className={styles.legendLine} style={{ background: COLORS.roads, opacity: 0.45, height: 2 }} /> rest of a listed segment</LegendSwatchRow>}
@@ -518,10 +586,11 @@ export default function RisksApp() {
               sub={<>by {all ? '2060 and 2100' : EROSION_YEARS[scenario.slr]}</>} on={!layersOff.has('erosion')} onToggle={() => toggleLayer('erosion')}
               legend={<LegendSwatchRow swatch={<span className={p.legendSq} style={{ background: COLORS.erosion }} />}>Erodes by {all ? '2060 / 2100' : EROSION_YEARS[scenario.slr]} · <span className={p.legendSq} style={{ display: 'inline-block', verticalAlign: '-1px', background: 'transparent', boxShadow: `inset 0 0 0 2px ${COLORS.erosion}` }} /> buildings within 100 ft</LegendSwatchRow>}
               info={<>ESA’s projected erosion zones: the band inland of today’s shoreline that erosion is projected to take by 2060 and by 2100, from each stretch’s shore type (feeder bluff, transport zone, accretion, pocket beach) and its historic erosion rate, increased for sea-level rise. The report pairs 2060 with the moderate and 2100 with the high sea-level rise scenario. Buildings within 100 ft of the projected line are outlined in purple (filled where the flood doesn’t reach them); hover one for its distance, measured by EarthAtlas from the county’s footprint to ESA’s line. Dots: the six places the report names as at higher risk (the south ends of San Juan and Lopez islands, Waldron’s northeast coast, Blakely’s east point, Decatur’s southeast side). {ext(EROSION_ZONES_URL, 'County map service')} · {ext(EROSION_SERVICE_URL, 'higher-risk places')} · {ext(reportPage(30), 'report, p. 25')}</>} />
+            </>}
             {loadError && <div className={p.error}>{loadError}</div>}
           </div>
 
-          <div className={styles.notice}>County data: educational use only, no warranty (see sources).</div>
+          <div className={styles.notice}>{regionHere ? 'USGS, FEMA and county data: no warranty (see sources).' : 'County data: educational use only, no warranty (see sources).'}</div>
           <SourcesFooter intro={RISKS_SOURCES_INTRO} sections={RISKS_SOURCES} notes={RISKS_SOURCES_NOTES} />
         </div>
       </MapSheet>

@@ -1,6 +1,6 @@
 // /risks "How this is sourced" rollup (SourcesFooter). Every value on the page also carries its own inline link.
 import { createElement as h } from 'react'
-import { ATTRIBUTION, COUNTY_NOTICE, REPORT_URL, STORYMAP_URL, SLR_SERVICE_URL, VA_SERVICE_URL, ROAD_CENTERLINES_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL } from './risksLayers.js'
+import { REGIONS, COSMOS_RISE, STRUCTURES_URL, WA_PARCELS_URL, ATTRIBUTION, COUNTY_NOTICE, REPORT_URL, STORYMAP_URL, SLR_SERVICE_URL, VA_SERVICE_URL, ROAD_CENTERLINES_URL, EROSION_SERVICE_URL, EROSION_ZONES_URL } from './risksLayers.js'
 
 export const reportPage = (page) => `${REPORT_URL}#page=${page}`
 const a = (href, text) => h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text)
@@ -47,6 +47,22 @@ export const RISKS_SOURCES = [
     ],
   },
 ]
+
+// Beyond San Juan County: one entry per USGS CoSMoS county, plus the national building footprints
+RISKS_SOURCES.push({
+  heading: 'Beyond San Juan County',
+  sources: [
+    ...REGIONS.map((r) => ({ name: `CoSMoS flood projections, ${r.name}`, href: r.doi, publisher: 'U.S. Geological Survey', licence: 'Public domain (CC0 1.0)',
+      method: `USGS’s Coastal Storm Modeling System: tides, waves, storm surge and river flow together. CoSMoS maps sea-level rise in meters, so the 2 ft choice shows ${COSMOS_RISE['2ft']} and 5 ft shows ${COSMOS_RISE['5ft']}, each with the same storm (1-year or 100-year). EarthAtlas cuts open water out of the flood extents (Puget Sound, rivers and lakes, from the county’s open-water layer) so they show land that floods, and tiles them like the County’s: a scenario shows its own extent plus every milder one’s.`,
+      citation: r.citation })),
+    ...REGIONS.filter((r) => r.water).map((r) => ({ name: `Open water, ${r.name}`, href: r.water.href, publisher: `${r.name} GIS`, licence: `${r.name} open data (credit required)`,
+      method: 'Puget Sound, rivers and lakes, cut out of the CoSMoS flood extents. Data provided by permission of King County.' })),
+    { name: 'USA Structures', href: STRUCTURES_URL, publisher: 'Oak Ridge National Laboratory / FEMA', licence: 'CC BY 4.0',
+      method: 'Building footprints (over 450 sq ft) with their address and use. EarthAtlas marks each with the first scenario whose CoSMoS flood extent touches it.' },
+    { name: 'Washington State Parcels Project', href: WA_PARCELS_URL, publisher: 'WaTech / Washington State Geoportal, from county Assessors', licence: 'Washington State public data (no warranty)',
+      method: 'Tax parcels with the county Assessor’s market land and building values. The map counts the lots a scenario’s flood reaches (at least 10 m² and 1% of the lot) and their land + buildings: land value × the share of the lot flooded, plus building value × the share of the lot’s building footprint area flooded, as for San Juan County.' },
+  ],
+})
 
 export const RISKS_SOURCES_NOTES = [
   { heading: 'When and how often', body: h('span', null, '2 ft of rise is not expected sooner than 2050 and 5 ft not sooner than 2100 (', a(reportPage(22), 'report, p. 17'), '). The 1-year storm floods about once a year (', a(reportPage(30), 'p. 25'), '); the 100-year storm has a 1% chance in any year (', a(reportPage(9), 'p. 4'), ').') },

@@ -29,6 +29,7 @@
 .stats b a { color: inherit; text-decoration: none; border: 0; }
 .stats b a:hover { text-decoration: underline; }
 .stats span { display: block; margin-top: 3px; color: #fff; font-size: 12px; }
+.statsThree { grid-template-columns: 1fr 1fr 1.3fr; }
 .bigLabel { margin-top: 3px; color: #fff; font-size: 12px; }
 .hotLine { margin-top: 8px; color: rgba(229, 231, 235, 0.75); font-size: 11.5px; line-height: 1.5; }
 .hot { padding: 0; background: none; border: 0; color: #fff; font: inherit; cursor: pointer; }

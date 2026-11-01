@@ -48,3 +48,25 @@ export const SCENARIOS = [
 export const scenarioOf = (slr, storm) => SCENARIOS.find((s) => s.slr === slr && s.storm === storm)
 // "All four" view: when ground first floods, deep → faint red (deep = floods soonest).
 export const SCENARIO_COLORS = { slr2_1: '#b91c1c', slr2_100: '#ef4444', slr5_1: '#f87171', slr5_100: '#fecaca' }
+
+// Beyond San Juan County: USGS CoSMoS flood projections, one county per release (scripts/bake-risks/cosmos.mjs). Each of
+// SCENARIOS takes CoSMoS's nearest sea-level rise (it maps metres: 0.5 m ≈ 1.6 ft, 1.5 m ≈ 4.9 ft) with the same storm.
+// Same tile layers as the San Juan archive; a region's file name carries its bake version (bump on every re-bake).
+// King v2: open water cut out of the flood extents.
+const COSMOS_SCENARIOS = { slr2_1: 'slr050_rp001', slr2_100: 'slr050_rp100', slr5_1: 'slr150_rp001', slr5_100: 'slr150_rp100' }
+export const COSMOS_RISE = { '2ft': '0.5 m (1.6 ft)', '5ft': '1.5 m (4.9 ft)' }
+export const STRUCTURES_URL = 'https://gis-fema.hub.arcgis.com/pages/usa-structures'
+// Tax parcels with the county Assessor's land and building values, every Washington county (WaTech, Washington State Geoportal)
+export const WA_PARCELS_URL = 'https://geo.wa.gov/datasets/wa-geoservices::current-parcels'
+export const REGIONS = [
+  {
+    id: 'king', name: 'King County', prefix: 'King', fips: '033', file: 'risks-cosmos-king-v2.pmtiles', scenarios: COSMOS_SCENARIOS,
+    doi: 'https://doi.org/10.5066/P13HYXKY',
+    zip: 'https://cmgds.marine.usgs.gov/data-releases/media/2025/10.5066-P13HYXKY/c1214c8e98394438a70b3893b4cc261a/Flood_extent_and_uncertainty_projections_King.zip',
+    citation: 'Parker, K., Nederhoff, K., Erikson, L.H., Hayden, M.K., Engelstad, A.C., Barnard, P.L., Grossman, E.E., 2025, CoSMoS (Coastal Storm Modeling System) modeled flood hazards for King County, Washington: U.S. Geological Survey data release.',
+    bounds: [-122.53, 47.30, -122.19, 47.78],
+    // Open water to cut out of the flood extents (King County GIS, "Open Water for King County and Portions of Adjacent Counties")
+    water: { url: 'https://services.arcgis.com/Ej0PsM5Aw677QF1W/arcgis/rest/services/WTRBDY_AREA_485/FeatureServer/0/query', where: 'WATER_CD = 1',
+      href: 'https://gis-kingcounty.opendata.arcgis.com/datasets/kingcounty::open-water-for-king-county-and-portions-of-adjacent-counties-wtrbdy-area' },
+  },
+]

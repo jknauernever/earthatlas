@@ -34,6 +34,7 @@ import { SpeciesCard, AgencyCard } from './SocCard.jsx'
 import { colorOf, DOT_LEGEND, REG_COLORS, shortStatus, SOURCE_NAMES, fmtDate, fmtKm, esc } from './socShared.js'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './SpeciesOfConcernApp.module.css'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
@@ -425,10 +426,9 @@ export default function SpeciesOfConcernApp() {
       {mapReady && <ZoomIndicator map={mapRef.current} />}
       {mapReady && <ShareControl capture={captureShareImage} className={q.shareCtl} />}
 
-      <div className={q.branding}>
-        <a className={q.brandingLink} href="/" aria-label="EarthAtlas home"><span className={q.wordmark}>Earth<em>Atlas</em></span></a>
+      <SiteBrand styles={q}>
         <span className={q.subBadge}>Species of Concern</span>
-      </div>
+      </SiteBrand>
 
       <MapSearch className={q.searchBox}>
         <GeoSearch

@@ -26,6 +26,7 @@ import { SourcesFooter, SITE_RUNS_NOTE } from '../components/panel'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './HpaDocksApp.module.css'
 import { sjcAerialsSource } from '../lib/localAerials.js'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
@@ -757,12 +758,9 @@ export default function HpaDocksApp() {
       {mapReady && <ZoomIndicator map={mapRef.current} />}
       {mapReady && <ShareControl capture={captureShareImage} className={q.shareCtl} />}
 
-      <div className={q.branding}>
-        <a className={q.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={q.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={q}>
         <span className={`${q.subBadge} ${styles.subBadge}`}>Dock permits</span>
-      </div>
+      </SiteBrand>
 
       <MapSearch className={q.searchBox}>
         <GeoSearch

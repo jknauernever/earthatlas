@@ -67,6 +67,8 @@ import useDockColumns from '../components/panel/useDockColumns.js'
 import DatasetRow from '../components/panel/DatasetRow.jsx'
 import styles from './SystemsApp.module.css'
 import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
+import PoweredBy from '../components/PoweredBy.jsx'
 
 const AI_NOTE = aiExperimentNote('“Explain this view” and the short notes in map popups are')
 
@@ -3047,12 +3049,9 @@ export default function SystemsApp() {
       {mapReady && <ZoomIndicator map={mapRef.current} />}
 
       {/* Branding */}
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>In Motion</span>
-      </div>
+      </SiteBrand>
 
       {/* Search — full box on desktop, magnifier icon top-right on phones */}
       <MapSearch className={styles.searchBox}>
@@ -3408,6 +3407,7 @@ export default function SystemsApp() {
             </button>
 
             <div className={styles.builtBy}>
+              <PoweredBy />
               EarthAtlas is built by{' '}
               <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
                 KnauerNever.com

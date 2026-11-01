@@ -41,6 +41,7 @@ import {
 } from './quakesService.js'
 import styles from './QuakesApp.module.css'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -566,12 +567,9 @@ export default function QuakesApp() {
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding */}
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>Quakes</span>
-      </div>
+      </SiteBrand>
 
       {/* Search — full box on desktop, magnifier icon top-right on phones */}
       <MapSearch className={styles.searchBox}>

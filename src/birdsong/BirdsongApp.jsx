@@ -44,6 +44,7 @@ import styles from './BirdsongApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 import { LegendTurndown } from '../components/panel'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -526,12 +527,9 @@ export default function BirdsongApp() {
       <audio ref={audioRef} preload="none" />
 
       {/* Branding */}
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>Birdsong</span>
-      </div>
+      </SiteBrand>
 
       {/* Search */}
       <div className={styles.searchBox}>

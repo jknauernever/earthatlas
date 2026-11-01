@@ -6,6 +6,7 @@ import { fetchAllRecent } from './liveService'
 import { useQueryParams } from '../hooks/useQueryParams'
 import styles from './LiveGlobe.module.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 // URL-shareable filters for /live. Source, basemap, and labels-on/off are
 // persisted so a specific view can be copy-pasted as a link.
@@ -974,15 +975,12 @@ export default function LiveGlobe() {
       ))}
 
       {/* Branding */}
-      <a href="/" className={styles.branding}>
-        <span className={styles.wordmark}>
-          Earth<em>Atlas</em>
-        </span>
+      <SiteBrand styles={styles} wholeLink>
         <span className={styles.liveBadge}>
           <span className={styles.liveDot} />
           LIVE
         </span>
-      </a>
+      </SiteBrand>
 
       {/* Stats */}
       <div className={styles.stats}>

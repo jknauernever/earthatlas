@@ -15,6 +15,8 @@ import { installPopupSheet } from '../lib/popupSheet.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import styles from './ForestMonitor.module.css'
 import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
+import PoweredBy from '../components/PoweredBy.jsx'
 
 const AI_NOTE = aiExperimentNote('“Explain this spot in plain language” summaries are')
 
@@ -1240,14 +1242,11 @@ export default function ForestMonitor() {
       {/* Branding lockup: two independent links so "Forest Monitor" reliably
           re-opens this view (clears query state, closes modal, etc.) while
           "EarthAtlas" still goes home. */}
-      <div className={styles.branding}>
-        <a href="/" className={styles.brandingLink}>
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <a href="/forestmonitor" className={styles.brandingLink}>
           <span className={styles.subBadge}>Forest Monitor</span>
         </a>
-      </div>
+      </SiteBrand>
 
       <MapSearch className={styles.searchBox}>
         <GeoSearch
@@ -1550,6 +1549,7 @@ export default function ForestMonitor() {
         </button>
 
         <div className={styles.legendFooter}>
+          <PoweredBy />
           EarthAtlas is built by{' '}
           <a
             href="https://knauernever.com"

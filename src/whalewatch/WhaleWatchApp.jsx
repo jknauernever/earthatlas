@@ -41,6 +41,7 @@ import { keepPopupOnMap } from '../lib/popupFit.js'
 import WhaleTimeBar from './WhaleTimeBar.jsx'
 import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
 import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, PATH_HOURS, WHALE_COLOR } from './recentWhales.js'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const styles = { ...shipsStyles, ...own }
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -682,10 +683,9 @@ export default function WhaleWatchApp() {
       <div className={styles.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
 
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home"><span className={styles.wordmark}>Earth<em>Atlas</em></span></a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>Whale Watch</span>
-      </div>
+      </SiteBrand>
 
       <MapSearch className={styles.searchBox}>
         <GeoSearch placeholder="Fly to a place…"

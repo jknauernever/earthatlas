@@ -52,6 +52,7 @@ import styles from './ShipsApp.module.css'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { CERULEAN_APP } from '../../lib/ships/cerulean.js'
 import SlickCard, { NEAR_DISTS, NEAR_DEFAULT, NEAR_COLOR, distWords, beforeWords, topShip, rankedSources } from './SlickCard.jsx'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
@@ -2420,12 +2421,9 @@ export default function ShipsApp() {
         </div>
       )}
 
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>Ships</span>
-      </div>
+      </SiteBrand>
 
       {/* Search — the universal place search, as on every EarthAtlas map */}
       <MapSearch className={styles.searchBox}>

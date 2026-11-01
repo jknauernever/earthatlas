@@ -1,5 +1,6 @@
 import panel from './panel/Panel.module.css'
 import s from './BuiltByCredit.module.css'
+import PoweredBy from './PoweredBy.jsx'
 import { SITE_RUNS_NOTE, SITE_RUNS_SHORT } from './panel/siteRunsNote.js'
 
 /**
@@ -16,6 +17,7 @@ export default function BuiltByCredit({ variant = 'panel', className = '', aiNot
   const link = variant === 'panel' ? panel.builtByLink : s.link
   return (
     <div className={`${cls} ${className}`}>
+      <PoweredBy onLight={variant === 'light'} />
       EarthAtlas is built by{' '}
       <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={link}>KnauerNever.com</a>
       {aiNote && <> · <span title={SITE_RUNS_NOTE.body}>{SITE_RUNS_SHORT}</span></>}

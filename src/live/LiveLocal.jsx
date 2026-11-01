@@ -7,6 +7,7 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import styles from './LiveGlobe.module.css'
 import localStyles from './LiveLocal.module.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
@@ -584,13 +585,12 @@ export default function LiveLocal() {
       {!place && <PlaceSearch onSelect={setPlace} />}
 
       {/* Branding (always visible, same as /live) */}
-      <a href="/" className={styles.branding}>
-        <span className={styles.wordmark}>Earth<em>Atlas</em></span>
+      <SiteBrand styles={styles} wholeLink>
         <span className={styles.liveBadge}>
           <span className={styles.liveDot} />
           {place ? 'LIVE LOCAL' : 'LIVE'}
         </span>
-      </a>
+      </SiteBrand>
 
       {/* Stats (top-right) */}
       {place && (

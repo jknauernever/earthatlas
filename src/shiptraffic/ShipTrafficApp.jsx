@@ -39,6 +39,7 @@ import {
   fmtDay, dateSpan, aggregateOverlap, riskShapesInView,
 } from './shiptrafficData.js'
 import styles from './ShipTrafficApp.module.css'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const DEFAULT_VIEW = { center: [-123.45, 48.1], zoom: 7.7 }
@@ -550,10 +551,9 @@ export default function ShipTrafficApp() {
       {mapReady && <ZoomIndicator map={mapRef.current} />}
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home"><span className={styles.wordmark}>Earth<em>Atlas</em></span></a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>Ship Traffic × Whales</span>
-      </div>
+      </SiteBrand>
 
       <div className={styles.searchBox}>
         <GeoSearch

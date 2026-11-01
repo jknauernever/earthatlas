@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import s from './Panel.module.css'
+import PoweredBy from '../PoweredBy.jsx'
 
 /**
  * Bottom of every EarthAtlas left panel: "ⓘ How this is sourced" (opens the site's sources rollup) and the
@@ -32,6 +33,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
         <a key={r.href} href={r.href} className={`${s.sourcesBtn} ${s.reportLink}`}><ReportIcon /> Report: {r.label}</a>
       ))}
       <div className={s.builtBy}>
+        <PoweredBy />
         EarthAtlas is built by{' '}
         <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a>
       </div>

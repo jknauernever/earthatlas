@@ -39,6 +39,7 @@ import { buildFriendsHabitatPopup, installPopupFrameHandlers, preloadFriendsCont
 import '../friends/ssx.css'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './PermitsApp.module.css'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
@@ -622,10 +623,9 @@ export default function PermitsApp() {
       {mapReady && <ZoomIndicator map={mapRef.current} />}
       {mapReady && <ShareControl capture={captureShareImage} className={q.shareCtl} />}
 
-      <div className={q.branding}>
-        <a className={q.brandingLink} href="/" aria-label="EarthAtlas home"><span className={q.wordmark}>Earth<em>Atlas</em></span></a>
+      <SiteBrand styles={q}>
         <span className={`${q.subBadge} ${styles.subBadge}`}>PermitTracker</span>
-      </div>
+      </SiteBrand>
 
       <MapSearch className={q.searchBox}>
         <GeoSearch

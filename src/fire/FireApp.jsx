@@ -47,6 +47,8 @@ import { fetchFireNews, renderNewsCard, newsLocation } from './fireNews.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import styles from './FireApp.module.css'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
+import PoweredBy from '../components/PoweredBy.jsx'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -1902,12 +1904,9 @@ export default function FireApp() {
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding */}
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>FireApp</span>
-      </div>
+      </SiteBrand>
 
       {/* Search (same proxy + fly-to behavior as /forestmonitor) —
           full box on desktop, magnifier icon top-right on phones */}
@@ -2168,6 +2167,7 @@ export default function FireApp() {
         </button>
 
         <div className={styles.builtBy}>
+          <PoweredBy />
           EarthAtlas is built by{' '}
           <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
             KnauerNever.com

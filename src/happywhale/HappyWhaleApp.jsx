@@ -34,6 +34,7 @@ import {
 import styles from './HappyWhaleApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -634,12 +635,9 @@ export default function HappyWhaleApp() {
       {mapReady && <ShareControl capture={captureShareImage} className={styles.shareCtl} />}
 
       {/* Branding */}
-      <div className={styles.branding}>
-        <a className={styles.brandingLink} href="/" aria-label="EarthAtlas home">
-          <span className={styles.wordmark}>Earth<em>Atlas</em></span>
-        </a>
+      <SiteBrand styles={styles}>
         <span className={styles.subBadge}>HappyWhale</span>
-      </div>
+      </SiteBrand>
 
       {/* Search */}
       <div className={styles.searchBox}>

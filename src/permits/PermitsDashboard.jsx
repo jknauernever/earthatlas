@@ -16,6 +16,7 @@ import { FACTOR_BY_ID, FRIENDS_LOGO, FRIENDS_PAGE, distanceWords } from './habit
 import { TIERS, GAPS } from './review.js'
 import { statusShown, stageOf } from './process.js'
 import c from './PermitsDashboard.module.css'
+import DocBrand from '../components/DocBrand.jsx'
 
 const DEFAULT_Q = 'review'
 const VIEW = { center: [-122.98, 48.6], zoom: 9.4 }
@@ -78,7 +79,7 @@ export default function PermitsDashboard() {
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a className={c.brand} href="/permits">EarthAtlas<span>PermitTracker</span></a>
+        <DocBrand tool="PermitTracker" href="/permits"><a className={c.brand} href="/permits">EarthAtlas<span>PermitTracker</span></a></DocBrand>
         <nav className={c.nav}><span className={c.navOn}>Dashboard</span><a href="/permits">Map</a><a href="/permits/glossary">Terms</a></nav>
       </header>
       <main className={c.main}>

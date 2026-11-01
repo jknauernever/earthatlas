@@ -13,6 +13,7 @@ import { Loading } from '../components/panel'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import styles from './PermitPage.module.css'
 import { STATUS_WORDS, statusKey, statusSource, nrcedResult, oncePhrase, sepaTypeShort, sepaTypeTitle, sepaIndicator } from './permitStatus.js'
+import DocBrand from '../components/DocBrand.jsx'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const day = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null)
@@ -300,7 +301,7 @@ export default function PermitPage() {
   return (
     <div className={styles.page}>
       <header className={styles.top}>
-        <a href="/ships" className={styles.brand}>EarthAtlas <span>Ships</span></a>
+        <DocBrand tool="Ships" href="/ships" dark><a href="/ships" className={styles.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
       </header>
       {error && <p className={`${styles.note} ${styles.pad}`}>{error}</p>}
       {!data && !error && <div className={styles.pad}><Loading kind="quick" /></div>}

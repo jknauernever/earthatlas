@@ -13,6 +13,7 @@ import c from './ScrubberReport.module.css'
 
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { inSalishSea } from '../../lib/ships/salishSea.js'
+import DocBrand from '../components/DocBrand.jsx'
 // Lovel's own words for what the report covers (port-authority docks, private terminals, refinery docks), and what is counted: calls.
 const AREA_WORDS = { WA: 'Washington', BC: 'British Columbia', SALISH: 'Salish Sea' }
 const reportTitle = (geo) => `Scrubber-fitted ship calls at ${AREA_WORDS[geo] || AREA_WORDS.WA} ports, terminals and refineries`
@@ -189,7 +190,7 @@ export default function ScrubberReport() {
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a>
+        <DocBrand tool="Ships" href="/ships"><a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
         <button className={c.print} onClick={() => window.print()} disabled={!view}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9V3h12v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M6 14h12v7H6z" />

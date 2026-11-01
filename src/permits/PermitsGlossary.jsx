@@ -6,13 +6,14 @@ import { Fragment, useEffect } from 'react'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import { TERMS } from './glossary.js'
 import c from './PermitsReport.module.css'
+import DocBrand from '../components/DocBrand.jsx'
 
 export default function PermitsGlossary() {
   useEffect(() => { const prev = document.title; document.title = 'Permit terms · PermitTracker · EarthAtlas'; return () => { document.title = prev } }, [])
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a href="/permits" className={c.brand}>EarthAtlas <span>PermitTracker</span></a>
+        <DocBrand tool="PermitTracker" href="/permits"><a href="/permits" className={c.brand}>EarthAtlas <span>PermitTracker</span></a></DocBrand>
         <div className={c.actions}><a className={c.src} href="/permits/dashboard">Dashboard</a><a className={c.src} href="/permits">Map</a></div>
       </header>
       <main className={c.main}>

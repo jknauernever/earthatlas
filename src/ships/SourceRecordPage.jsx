@@ -9,6 +9,8 @@ import { useParams } from 'react-router-dom'
 import { Ev } from './VesselCard.jsx'
 import { Loading } from '../components/panel'
 import styles from './SourceRecordPage.module.css'
+import DocBrand from '../components/DocBrand.jsx'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 // Plain names for the attributes a record can give (the card's row labels).
 const ATTR = {
@@ -47,7 +49,7 @@ export default function SourceRecordPage() {
   return (
     <div className={styles.page}>
       <header className={styles.top}>
-        <a href="/ships" className={styles.brand}>EarthAtlas <span>Ships</span></a>
+        <DocBrand tool="Ships" href="/ships" dark><a href="/ships" className={styles.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
       </header>
       <main className={styles.main}>
         {error && <p className={styles.note}>{error}</p>}
@@ -135,6 +137,7 @@ export default function SourceRecordPage() {
             </>}
           </section>
         </>}
+        <BuiltByCredit variant="panel" />
       </main>
     </div>
   )

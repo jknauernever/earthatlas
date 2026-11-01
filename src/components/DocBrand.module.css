@@ -1,0 +1,29 @@
+/* White-label top line on document pages (DocBrand.jsx); type matches SiteBrand's chip. */
+.row { display: inline-flex; align-items: center; gap: 12px; color: #111827; }
+.dark { color: #fff; }
+
+.logoLink { display: block; flex: none; transition: opacity 0.15s ease; }
+.logoLink:hover { opacity: 0.85; }
+.logo { display: block; height: 30px; width: auto; }
+
+.stack {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  padding-left: 12px; border-left: 1px solid rgba(0, 0, 0, 0.15);
+  color: inherit !important; text-decoration: none;
+}
+.dark .stack { border-left-color: rgba(255, 255, 255, 0.18); }
+.stack:hover { opacity: 0.85; }
+.title { font: 700 18px/1 Georgia, 'Times New Roman', serif; letter-spacing: -0.01em; white-space: nowrap; }
+.tool { font-size: 11px; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-accent, #0e7490); white-space: nowrap; }
+.dark .tool { color: #67e8f9; }
+
+@media (max-width: 768px) {
+  .row { gap: 9px; }
+  .logo { height: 26px; }
+  .stack { padding-left: 9px; gap: 3px; }
+  .title { font-size: 15px; }
+}
+@media print {
+  .logo { height: 26px; }
+  .stack:hover, .logoLink:hover { opacity: 1; }
+}

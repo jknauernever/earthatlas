@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react'
 import { COUNTS_FALLBACK, COUNTS_URL, buildCounts, validCounts, COVERAGE_NOTE, ENTRIES } from './shipsChangelog.js'
 import c from './ChangelogPage.module.css'
+import DocBrand from '../components/DocBrand.jsx'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 const fmtDay = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 
@@ -32,7 +34,7 @@ export default function ChangelogPage() {
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a>
+        <DocBrand tool="Ships" href="/ships"><a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
       </header>
       <main className={c.main}>
         <div className={c.kicker}>Changelog</div>
@@ -67,6 +69,7 @@ export default function ChangelogPage() {
             </div>
           ))}
         </section>
+        <BuiltByCredit variant="light" />
       </main>
     </div>
   )

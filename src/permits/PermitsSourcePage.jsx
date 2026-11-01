@@ -9,6 +9,8 @@ import { useParams } from 'react-router-dom'
 import { Loading } from '../components/panel'
 import styles from '../ships/SourceRecordPage.module.css'
 import { fetchPermitsJson, permitsBase } from './permitsData.js'
+import DocBrand from '../components/DocBrand.jsx'
+import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
 const day = (x) => (x ? String(x).slice(0, 10) : null)
 
@@ -34,7 +36,7 @@ export default function PermitsSourcePage() {
   return (
     <div className={styles.page}>
       <header className={styles.top}>
-        <a href="/permits" className={styles.brand}>EarthAtlas <span>PermitTracker</span></a>
+        <DocBrand tool="PermitTracker" href="/permits" dark><a href="/permits" className={styles.brand}>EarthAtlas <span>PermitTracker</span></a></DocBrand>
       </header>
       <main className={styles.main}>
         {error && <p className={styles.note}>{error}</p>}
@@ -99,6 +101,7 @@ export default function PermitsSourcePage() {
             </>}
           </section>
         </>}
+        <BuiltByCredit variant="panel" />
       </main>
     </div>
   )

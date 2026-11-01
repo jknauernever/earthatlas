@@ -18,6 +18,7 @@ import { FACTOR_BY_ID, distanceWords, FRIENDS_LOGO, FRIENDS_PAGE } from './habit
 import { termsIn } from './glossary.js'
 import { official } from './official.js'
 import c from './PermitsReport.module.css'
+import DocBrand from '../components/DocBrand.jsx'
 
 const SITE = 'https://earthatlas.org'
 const abs = (u) => (u && u.startsWith('/') ? `${SITE}${u}` : u)
@@ -135,7 +136,7 @@ export default function PermitsReport() {
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a href="/permits" className={c.brand}>EarthAtlas <span>PermitTracker</span></a>
+        <DocBrand tool="PermitTracker" href="/permits"><a href="/permits" className={c.brand}>EarthAtlas <span>PermitTracker</span></a></DocBrand>
         <div className={c.actions}>
           <a className={c.src} href="/permits/glossary">Terms</a>
           <label className={c.toggle}><input type="checkbox" checked={appendix} onChange={(e) => setAppendix(e.target.checked)} /> Include each database record in full</label>

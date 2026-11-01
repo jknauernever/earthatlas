@@ -15,6 +15,7 @@ import b from '../ships/BunkeringReport.module.css'
 import r from './LandValueReport.module.css'
 import { SCENARIOS, SLR_LEVELS, STORMS, SLR_SERVICE_URL, EROSION_ZONES_URL, REPORT_URL, STORYMAP_URL, scenarioOf } from './risksLayers.js'
 import { reportPage } from './risksSources.js'
+import DocBrand from '../components/DocBrand.jsx'
 
 const ASSESSOR_URL = 'https://www.sanjuanco.com/167/Assessor'
 const M2_PER_ACRE = 4046.856
@@ -188,7 +189,7 @@ export default function LandValueReport() {
   return (
     <div className={c.page}>
       <header className={c.top}>
-        <a href="/risks" className={c.brand}>EarthAtlas <span>Sea-level risks</span></a>
+        <DocBrand tool="Sea-level risks" href="/risks"><a href="/risks" className={c.brand}>EarthAtlas <span>Sea-level risks</span></a></DocBrand>
         <button className={c.print} onClick={() => window.print()} disabled={!view}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9V3h12v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M6 14h12v7H6z" />

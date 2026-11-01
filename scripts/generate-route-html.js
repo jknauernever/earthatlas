@@ -88,6 +88,17 @@ const ROUTES = [
       'species of concern, endangered species, threatened species, Washington State, WDFW, ESA, priority habitats and species, rare plants, iNaturalist, eBird, GBIF',
   },
   {
+    out: 'spills.html',
+    url: 'https://earthatlas.org/spills',
+    title: 'Lake Michigan oil spill exposure — NRC reports on NOAA ESI · EarthAtlas',
+    description:
+      'Oil and petroleum releases reported to the National Response Center around Lake Michigan, 2015–2024, mapped on NOAA’s Environmental Sensitivity Index: shoreline sensitivity and listed species near each report. Exposure from unverified initial reports, not measured impact. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas map of oil spill reports around Lake Michigan on NOAA shoreline sensitivity',
+    keywords:
+      'Lake Michigan, oil spill, National Response Center, NRC, Environmental Sensitivity Index, ESI, NOAA, endangered species, Great Lakes',
+  },
+  {
     out: 'risks.html',
     url: 'https://earthatlas.org/risks',
     title: 'Sea-Level Rise Risks — San Juan County flooding scenarios · EarthAtlas',

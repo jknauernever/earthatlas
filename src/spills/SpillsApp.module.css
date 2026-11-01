@@ -1,0 +1,136 @@
+/* /spills panel and card. Map chrome (branding, search, basemap, share) comes from QuakesApp.module.css, as on /permits
+   and /species-of-concern. Panel frame matches SpeciesOfConcernApp.module.css. */
+
+.panel {
+  position: absolute;
+  left: 16px; top: 72px; bottom: 28px;
+  width: 360px; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column;
+  background: rgba(10, 14, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  z-index: 11;
+  overflow: hidden;
+  color: #e5e7eb;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.panelBody { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; }
+
+.title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+.exposure {
+  padding: 6px 9px; margin-bottom: 7px; border-radius: 6px;
+  background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.45); color: #fde68a; font-size: 12px;
+}
+.meta { color: rgba(229, 231, 235, 0.8); }
+.error { color: #fca5a5; margin: 4px 0; }
+.dim { color: rgba(229, 231, 235, 0.6); }
+.src { color: #7dd3fc; text-decoration: none; white-space: nowrap; }
+.src:hover { text-decoration: underline; }
+.section { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.sectionTitle { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(229, 231, 235, 0.6); margin-bottom: 5px; }
+
+.years { display: flex; align-items: center; gap: 7px; }
+.years select {
+  font: inherit; font-size: 12px; padding: 3px 6px; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.06); color: #fff;
+}
+.years option { color: #111827; }
+.linkBtn { font: inherit; font-size: 12px; background: none; border: 0; color: #7dd3fc; cursor: pointer; padding: 0; margin-left: auto; }
+
+.toggle { display: flex; align-items: center; gap: 8px; color: #fff; cursor: pointer; padding: 2px 0; }
+.toggle input { margin: 0; accent-color: #38bdf8; }
+.count { margin-left: auto; padding-left: 6px; color: rgba(229, 231, 235, 0.6); font-variant-numeric: tabular-nums; }
+
+/* Legend swatches (same marks as the map) */
+.lgExact, .lgNear, .lgCity { display: inline-block; border-radius: 50%; box-sizing: border-box; }
+.lgExact { width: 11px; height: 11px; background: #ff1f3d; border: 1.6px solid #fff; box-shadow: 0 0 6px 2px rgba(255, 31, 61, 0.6); }
+.lgNear { width: 9px; height: 9px; background: rgba(255, 31, 61, 0.85); border: 0.8px solid #fff; margin: 0 1px; box-shadow: 0 0 5px 1px rgba(255, 31, 61, 0.5); }
+.lgCity { width: 12px; height: 12px; border: 2.4px solid #ff1f3d; box-shadow: 0 0 5px 1px rgba(255, 31, 61, 0.4); }
+.lgEsiRamp { display: inline-block; width: 26px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, #620dde, #9e8fff, #0059d9, #2ebaff, #00e6a8, #008c78, #bfbf00, #ffd430, #fc9403, #ff0000); }
+.lgDash { display: inline-block; width: 22px; border-top: 2px dashed #7dd3fc; }
+.legendSq { display: inline-block; width: 14px; height: 4px; border-radius: 1px; }
+
+/* Most-reported places */
+.places { list-style: none; margin: 0; padding: 0; }
+.places button {
+  display: grid; grid-template-columns: 1fr auto; width: 100%; padding: 4px 6px; margin: 0 -6px; text-align: left; cursor: pointer;
+  font: inherit; color: #fff; background: none; border: 0; border-radius: 6px;
+}
+.places button:hover, .places .placeOn { background: rgba(255, 31, 61, 0.14); }
+.placeName { font-weight: 600; }
+.placeN { color: #ff6b7f; font-weight: 700; font-variant-numeric: tabular-nums; }
+.placeSub { grid-column: 1 / -1; font-size: 11.5px; color: rgba(229, 231, 235, 0.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.placeFacts { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; }
+.placeFacts b { color: #ff6b7f; }
+
+/* Card (top right, frame as /ships ShipPicker card) */
+.cardWrap { position: absolute; top: 12px; right: 54px; z-index: 12; }
+.card {
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  background: rgba(10, 14, 23, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f3f7ee; font-size: 13px; line-height: 1.42;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  position: relative;
+}
+.close {
+  position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: rgba(243, 247, 238, 0.6); font-size: 17px; cursor: pointer;
+}
+.close:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.back { font: inherit; font-size: 12px; background: none; border: 0; color: #7dd3fc; cursor: pointer; padding: 0 0 4px; }
+.cardTitle { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; color: #fff; margin-right: 28px; }
+.cardMeta { color: rgba(229, 231, 235, 0.75); font-size: 12px; margin-top: 2px; }
+.cardSub { margin-top: 11px; padding-top: 7px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(229, 231, 235, 0.65); }
+.cardSubBtn { composes: cardSub; display: block; width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-bottom: 0; cursor: pointer; font-family: inherit; }
+.cardText { margin-top: 4px; font-size: 12.5px; }
+.note { margin: 8px 0 4px; padding: 5px 8px; border-radius: 6px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.4); color: #fde68a; font-size: 11.5px; }
+.dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 8px 0 0; font-size: 12.5px; }
+.dl dt { color: rgba(229, 231, 235, 0.6); }
+.dl dd { margin: 0; overflow-wrap: anywhere; }
+.desc { margin-top: 8px; font-size: 12px; color: rgba(243, 247, 238, 0.9); overflow-wrap: anywhere; }
+.precBadge { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; background: rgba(255, 255, 255, 0.12); }
+.esiSwatch { display: inline-block; width: 16px; height: 5px; border-radius: 1px; margin-right: 6px; vertical-align: middle; }
+.spList { list-style: none; margin: 4px 0 0; padding: 0; }
+.spList li { padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12.5px; }
+.spStatus { font-size: 11.5px; color: #fca5a5; }
+.reportList { list-style: none; margin: 4px 0 0; padding: 0; }
+.reportList button {
+  display: flex; align-items: center; gap: 7px; width: 100%; padding: 4px 0; text-align: left;
+  font: inherit; font-size: 12.5px; color: #f3f7ee; background: none; border: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer;
+}
+.reportList button:hover { background: rgba(255, 255, 255, 0.05); }
+.rlDate { flex: none; width: 88px; color: rgba(229, 231, 235, 0.75); font-variant-numeric: tabular-nums; }
+.rlText { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.precDot { flex: none; width: 9px; height: 9px; border-radius: 50%; box-sizing: border-box; background: #ff1f3d; border: 1px solid #fff; }
+.precDot[data-g='near'] { background: rgba(255, 31, 61, 0.8); }
+.precDot[data-g='city'] { background: transparent; border: 1.8px solid #ff1f3d; }
+
+/* "What could be harmed" (top of the report card) */
+.atRisk { margin: 8px 0 2px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 31, 61, 0.1); border: 1px solid rgba(255, 31, 61, 0.45); }
+.atRiskTitle { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: #ff8a9a; font-weight: 700; margin-bottom: 4px; }
+.atRiskLine { font-size: 12.5px; margin: 2px 0; }
+.atRiskList { list-style: none; margin: 3px 0; padding: 0; font-size: 12.5px; }
+.atRiskList li { padding: 1px 0; }
+.spStatusInline { font-size: 11px; color: #fca5a5; }
+
+/* Hover readouts (src/lib/mapHoverTip.js; frame from index.css) */
+.tip { max-width: 280px; }
+.tipTitle { font-weight: 600; color: #111827; font-size: 12.5px; }
+.tipDim { color: #6b7280; font-size: 11px; }
+.tipHarm { margin: 4px 0; padding: 4px 6px; border-left: 3px solid #ff1f3d; background: rgba(255, 31, 61, 0.07); }
+.tipHarmHead { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #b91c1c; }
+.tipStatus { font-size: 11px; color: #b91c1c; }
+.tipSq { display: inline-block; width: 12px; height: 5px; border-radius: 1px; margin-right: 5px; vertical-align: middle; }
+
+@media (max-width: 768px) {
+  .cardWrap { top: auto; bottom: 12px; right: 12px; left: 12px; }
+  .card { width: auto; max-height: 55vh; }
+}

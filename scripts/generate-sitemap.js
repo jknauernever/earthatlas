@@ -67,6 +67,7 @@ addUrl('/permits/dashboard')
 addUrl('/permits/glossary')
 // Species of Concern (listed species near a point)
 addUrl('/species-of-concern')
+addUrl('/spills')
 
 // Sea-level rise risks (San Juan County)
 addUrl('/risks')

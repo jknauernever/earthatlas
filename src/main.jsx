@@ -46,6 +46,7 @@ import PermitsDashboard from './permits/PermitsDashboard.jsx'
 import PermitsGlossary from './permits/PermitsGlossary.jsx'
 import CarbonApp from './carbon/CarbonApp.jsx'
 import SpeciesOfConcernApp from './speciesOfConcern/SpeciesOfConcernApp.jsx'
+import SpillsApp from './spills/SpillsApp.jsx'
 import RisksApp from './risks/RisksApp.jsx'
 import LandValueReport from './risks/LandValueReport.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
@@ -178,6 +179,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/permits/glossary" element={<PermitsGlossary />} />
           <Route path="/carbon" element={<CarbonApp />} />
           <Route path="/species-of-concern" element={<SpeciesOfConcernApp />} />
+          <Route path="/spills" element={<SpillsApp />} />
           <Route path="/risks" element={<RisksApp />} />
           <Route path="/risks/reports/land-value" element={<LandValueReport />} />
           <Route path="/birdsong" element={<BirdsongApp />} />

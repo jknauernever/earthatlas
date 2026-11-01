@@ -60,3 +60,6 @@ scripts/ships/match/cache/
 # /risks raw ArcGIS downloads + PMTiles bake outputs (scripts/bake-risks) — re-fetchable, never commit; upload PMTiles to Blob
 scripts/bake-risks/raw/
 scripts/bake-risks/build/
+
+# /spills raw inputs (NRC FOIA spreadsheets, NOAA ESI GDB, gazetteer, work files) — ~600 MB, never commit; bake outputs go to public/spills-data
+data/spills/

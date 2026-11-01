@@ -13,6 +13,8 @@ import io
 import json
 import os
 import re
+import time
+import urllib.error
 import urllib.request
 
 import numpy as np
@@ -172,8 +174,20 @@ def publish(files, script_dir, prune=None):
             ingest, data=json.dumps(body).encode(), method="POST",
             headers={"content-type": "application/json",
                      "authorization": f"Bearer {secret}"})
-        with urllib.request.urlopen(req, timeout=300) as r:
-            print("ingest:", r.read().decode()[:300])
+        # Retry only failures before the request reached us (runner DNS blips,
+        # 2026-11-01); an HTTP error means the endpoint answered, so it stands.
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=300) as r:
+                    print("ingest:", r.read().decode()[:300])
+                break
+            except urllib.error.HTTPError:
+                raise
+            except urllib.error.URLError as e:
+                if attempt == 3:
+                    raise
+                print(f"ingest unreachable ({e.reason}); retrying in {10 * (attempt + 1)} s")
+                time.sleep(10 * (attempt + 1))
     else:
         out = os.path.join(script_dir, "..", "public", "dev-data", "systems")
         for f in files:

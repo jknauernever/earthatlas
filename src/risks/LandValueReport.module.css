@@ -5,12 +5,16 @@
 .step { min-width: 0; }
 .stepTitle { font-size: 13.5px; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
 .stepBars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; height: 190px; margin-bottom: 6px; }
-.stepCol { display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; border: 0; background: transparent; padding: 0;
+/* Each column: a plot area (number + bar, bottom-aligned, same height in every column) above a fixed-height label,
+   so every bar starts on the same baseline however the numbers or labels wrap. */
+.stepCol { display: flex; flex-direction: column; align-items: stretch; height: 100%; min-height: 0; border: 0; background: transparent; padding: 0;
   font: inherit; color: inherit; cursor: pointer; border-radius: 6px; }
+.stepPlot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 18px; }
+.stepPlot > * { flex-shrink: 0; }
 .stepCol:hover .stepBar { filter: brightness(0.94); }
 .stepBar { display: block; border-radius: 4px 4px 0 0; min-height: 2px; }
 .stepN { font-size: 12px; color: #374151; text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 3px; white-space: nowrap; }
-.stepLbl { font-size: 11px; color: #6b7280; text-align: center; margin-top: 5px; line-height: 1.25; height: 42px; }
+.stepLbl { flex-shrink: 0; overflow: hidden; font-size: 11px; color: #6b7280; text-align: center; margin-top: 5px; line-height: 1.25; height: 42px; }
 .stepOn .stepLbl { color: #0f172a; font-weight: 700; }
 .stepOn .stepN { font-weight: 700; color: #0f172a; }
 

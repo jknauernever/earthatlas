@@ -80,8 +80,10 @@ function StepChart({ title, values, label, k, pick, src }) {
       <div className={r.stepBars}>
         {SCENARIOS.map((s, j) => (
           <button key={s.id} type="button" className={`${r.stepCol} ${j === k ? r.stepOn : ''}`} onClick={() => pick(s)} title={`${scenName(s)}: ${label(values[j])}`}>
-            <span className={r.stepN}>{label(values[j])}</span>
-            <span className={r.stepBar} style={{ height: `${Math.max(2, (values[j] / max) * 100)}%`, background: SCEN_COLOR[j] }} />
+            <span className={r.stepPlot}>
+              <span className={r.stepN}>{label(values[j])}</span>
+              <span className={r.stepBar} style={{ height: `${Math.max(2, (values[j] / max) * 100)}%`, background: SCEN_COLOR[j] }} />
+            </span>
             <span className={r.stepLbl}>{SLR_LEVELS.find((l) => l.id === s.slr).label}<br />{STORMS.find((t) => t.id === s.storm).plain.toLowerCase()}</span>
           </button>
         ))}

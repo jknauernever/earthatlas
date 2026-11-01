@@ -18,6 +18,8 @@
  *                           the tool's static SEO html.
  */
 
+import { BRANDS, brandTitle } from './src/lib/brand.js'
+
 export const config = {
   matcher: [
     '/news/:path*',
@@ -30,6 +32,7 @@ export const config = {
     '/carbon',
     '/species-of-concern',
     '/risks',
+    '/sanjuan-docks',
     '/birdsong',
     '/happywhale',
     '/shiptraffic',
@@ -113,6 +116,18 @@ export default async function middleware(req) {
   if (!BOT_RE.test(ua)) return
 
   const url = new URL(req.url)
+  const brand = BRANDS.find((b) => b.hosts.includes(url.hostname))
+  if (!brand) return route(req, url)
+  // White-label host (src/lib/brand.js): the same preview html, titled with the partner's site name.
+  try {
+    const res = (await route(req, url)) || await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } })
+    return await brandPreview(res, brand, url)
+  } catch {
+    return
+  }
+}
+
+async function route(req, url) {
   const path = url.pathname
 
   try {
@@ -133,6 +148,30 @@ export default async function middleware(req) {
     // On any failure, fall through to the SPA shell.
     return
   }
+}
+
+// ─── White-label link previews ───────────────────────────────────────────────
+// Partner title in <title>, og/twitter titles and og:site_name; og:url stays on the partner's host so a
+// pasted link opens there. canonical keeps pointing at earthatlas.org (the original, for search engines).
+async function brandPreview(res, brand, url) {
+  if (!(res.headers.get('content-type') || '').includes('text/html')) return res
+  // s is already escaped html; only the partner title needs escaping.
+  const title = (s) => brandTitle(s, { title: escapeAttr(brand.title) })
+  const html = (await res.text())
+    .replace(/<title>([^<]*)<\/title>/, (_, s) => `<title>${title(s)}</title>`)
+    .replace(/(<meta (?:property|name)="(?:og|twitter):title" content=")([^"]*)/g, (_, a, s) => a + title(s))
+    .replace(/(<meta property="og:site_name" content=")[^"]*/, (_, a) => a + escapeAttr(brand.title))
+    .replace(/(<meta property="og:url" content=")[^"]*/, (_, a) => a + escapeAttr(url.href))
+    // The default picture carries the EarthAtlas logo; tool heroes and per-view snapshots stay as they are.
+    .replace(/(<meta (?:property|name)="(?:og|twitter):image" content=")([^"]*)/g, (m, a, src) =>
+      brand.shareImage && src === DEFAULT_IMAGE ? a + escapeAttr(`${url.origin}${brand.shareImage}`) : m)
+  return new Response(html, {
+    status: res.status,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': res.headers.get('cache-control') || 'public, max-age=0, s-maxage=3600',
+    },
+  })
 }
 
 // ─── /news/:species/:slug ────────────────────────────────────────────────────

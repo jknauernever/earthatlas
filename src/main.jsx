@@ -12,6 +12,7 @@ function RedirectKeepingQuery({ to }) {
   return <Navigate to={`${to}${search}${hash}`} replace />
 }
 import App from './App.jsx'
+import { onBrandHost } from './lib/brand.js'
 import ExploreApp from './explore/ExploreApp.jsx'
 import whalesConfig from './explore/configs/whales.js'
 import sharksConfig from './explore/configs/sharks.js'
@@ -137,6 +138,9 @@ if (phKey) {
     autocapture: true,
   })
 }
+
+// Partner hosts (lib/brand.js) have no home page of their own yet: "/" goes to earthatlas.org.
+if (onBrandHost && window.location.pathname === '/') window.location.replace('https://earthatlas.org/')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

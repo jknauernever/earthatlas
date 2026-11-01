@@ -13,6 +13,7 @@
  *   logoAlt   organization name, for the logo's alt text
  *   href      the organization's own website (the logo links there)
  *   accent    tool-name color on the light chip (tool badge colors are tuned for the dark chip)
+ *   shareImage  link-preview picture (1200×630) used in place of the EarthAtlas-logo default one
  * }
  *
  * On localhost, ?brand=<id> previews a brand (kept for the tab via sessionStorage); ?brand= clears it.
@@ -27,6 +28,7 @@ export const BRANDS = [
     logoAlt: 'Friends of the San Juans',
     href: 'https://sanjuans.org',
     accent: '#0e7490',
+    shareImage: '/brands/friends/share.jpg',
   },
 ]
 
@@ -51,3 +53,17 @@ function resolve() {
 
 /** The brand for this page load, or null on EarthAtlas's own hosts. */
 export const brand = resolve()
+
+/** True on a partner's real hostname (not a ?brand= preview on localhost). */
+export const onBrandHost = typeof window !== 'undefined' && BRANDS.some((b) => b.hosts.includes(window.location.hostname))
+
+/** "… · EarthAtlas" → "… · <partner title>" — for tab titles and link previews. */
+export const brandTitle = (title, b) => String(title).replace(/EarthAtlas/g, b.title)
+
+// Tab titles: every site sets document.title with "EarthAtlas" in it; on a brand host swap in the partner's
+// title, including titles a site sets later. Rewritten titles contain no "EarthAtlas", so this settles at once.
+if (brand && typeof document !== 'undefined') {
+  const fix = () => { if (document.title.includes('EarthAtlas')) document.title = brandTitle(document.title, brand) }
+  fix()
+  new MutationObserver(fix).observe(document.head, { subtree: true, childList: true, characterData: true })
+}

@@ -16,6 +16,7 @@
  * state, never stale or made-up values.
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -75,7 +76,7 @@ const AI_NOTE = aiExperimentNote('“Explain this view” and the short notes in
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const WATER_MASK_LAYER = 'systems-water-mask'
 
 // Opens on the Atlantic so both hemispheres' circulation belts are in view.

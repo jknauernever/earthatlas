@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -5,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { getTaxonMeta } from '../utils/taxon'
 import styles from './MapView.module.css'
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+mapboxgl.accessToken = mapboxToken
 
 // Generate a GeoJSON polygon approximating a circle
 function createCircleGeoJSON(center, radiusKm, points = 64) {

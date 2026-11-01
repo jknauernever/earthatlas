@@ -1,3 +1,4 @@
+import { mapboxToken } from '../../lib/mapboxToken.js'
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../../utils/webglSupport'
@@ -6,7 +7,7 @@ import { addJourneyPathLayers, addJourneyStopLayers, setJourneyOnMap, fitJourney
 import { drawWhalePaths } from '../../lib/whalePathsLayer.js'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 // IUCN status labels for popup banners
 const IUCN_LABEL = {

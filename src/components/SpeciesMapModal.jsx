@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -7,7 +8,7 @@ import { getTaxonMeta, formatDate } from '../utils/taxon'
 import { keepPopupOnMap } from '../lib/popupFit.js'
 import styles from './SpeciesMapModal.module.css'
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+mapboxgl.accessToken = mapboxToken
 
 // Saturate and brighten a hex color for map visibility
 function vibrateHex(hex) {

@@ -13,6 +13,7 @@
  * Individual journeys come from /individual/info/{id}.
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { keepPopupOnMap } from '../lib/popupFit.js'
@@ -36,7 +37,7 @@ import MapSheet from '../components/MapSheet.jsx'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 const DEFAULT_VIEW = { center: [-130, 25], zoom: 2.1 }
 const RADIUS_OPTIONS = [25, 50, 100, 250, 500, 1000] // miles, same chips as /quakes

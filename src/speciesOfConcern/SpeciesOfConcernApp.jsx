@@ -11,6 +11,7 @@
  * layers off, picked item), satellite default, shared zoom badge / share / place search / basemap menu, style.load
  * readiness, MapSheet on phones. Every status links to the list that sets it, every record to where it was reported.
  */
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -38,7 +39,7 @@ import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const DEFAULT_VIEW = { center: [-120.6, 47.35], zoom: 6.2 }   // Washington State: the lists are Washington's
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },

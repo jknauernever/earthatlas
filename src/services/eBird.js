@@ -3,6 +3,7 @@
  * Docs: https://documenter.getpostman.com/view/664302/S1ENwy59
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { cached } from '../utils/cache'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
@@ -12,7 +13,7 @@ import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 // now that eBird caps keys at 10,000 req/day + 1 req/sec burst. See api/ebird.js.
 const EBIRD_PROXY = '/api/ebird'
 const INAT_API = 'https://api.inaturalist.org/v1'
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 // ─── 1 req/sec dispatch gate ──────────────────────────────────────────────────
 // eBird enforces a 1 req/sec burst limit. The edge cache absorbs most repeat

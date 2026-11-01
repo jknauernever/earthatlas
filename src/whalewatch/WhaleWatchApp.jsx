@@ -17,6 +17,7 @@
  * Shell, panel, card and search are /ships' (ShipsApp.module.css, ShipPicker, VesselCard, components/panel), so the two
  * sites feel the same (docs/MAP_TOOL_CONVENTIONS.md: URL state, satellite default, ZoomIndicator, style.load readiness).
  */
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -44,7 +45,7 @@ import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, PATH
 import SiteBrand from '../components/SiteBrand.jsx'
 
 const styles = { ...shipsStyles, ...own }
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const STYLE = 'mapbox://styles/mapbox/satellite-streets-v12'
 const DEFAULT_CENTER = [-123.05, 48.5], DEFAULT_ZOOM = 9
 const MOBILE_BOUNDS = [[-123.75, 48.05], [-122.45, 49.35]]

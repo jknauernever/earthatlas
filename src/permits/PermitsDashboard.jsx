@@ -5,6 +5,7 @@
  * the record on the map (/permits?r=) or its printable report, and "See all on the map" opens /permits?q=<question>.
  * Light document page like the permit report (PermitsReport.module.css look). URL state: ?q=<question id>.
  */
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -51,8 +52,8 @@ export default function PermitsDashboard() {
 
   // Overview map: the chosen question's records; click a dot to open it on the full map.
   useEffect(() => {
-    if (!mapEl.current || mapRef.current || !import.meta.env.VITE_MAPBOX_TOKEN) return
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+    if (!mapEl.current || mapRef.current || !mapboxToken) return
+    mapboxgl.accessToken = mapboxToken
     const map = new mapboxgl.Map({ container: mapEl.current, style: 'mapbox://styles/mapbox/satellite-streets-v12', ...VIEW, cooperativeGestures: true })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('style.load', () => {

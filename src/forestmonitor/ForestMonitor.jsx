@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { keepPopupOnMap } from '../lib/popupFit.js'
@@ -23,7 +24,7 @@ const AI_NOTE = aiExperimentNote('“Explain this spot in plain language” summ
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 // Cloud function endpoint. Configurable via VITE_FOREST_TILES_API_BASE in
 // .env.local / Vercel, with a hardcoded default to the global earthatlas
@@ -3169,7 +3170,7 @@ function renderExtrasPending(items) {
 // nearest containing/closest feature at each level, so deep-forest clicks
 // still get a region/country line; populated clicks add town + county.
 async function reverseGeocode(lat, lng) {
-  const token = import.meta.env.VITE_MAPBOX_TOKEN
+  const token = mapboxToken
   if (!token) return null
   const url = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${lng}&latitude=${lat}` +
     `&types=country,region,district,place&access_token=${token}`
@@ -3211,7 +3212,7 @@ async function findNaturalFeatures(lat, lng) {
 // parks, forests, wilderness, monuments — all class=national_park) at a point.
 // Returns up to 2 unique names ordered as Mapbox stores them in the tileset.
 async function findProtectedAreas(lat, lng) {
-  const token = import.meta.env.VITE_MAPBOX_TOKEN
+  const token = mapboxToken
   if (!token) return []
   const url = `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${lng},${lat}.json` +
     `?radius=500&limit=10&layers=landuse_overlay&access_token=${token}`

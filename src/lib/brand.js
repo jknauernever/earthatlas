@@ -13,6 +13,8 @@
  *   logoAlt   organization name, for the logo's alt text
  *   href      the organization's own website (the logo links there)
  *   accent    tool-name color on the light chip (tool badge colors are tuned for the dark chip)
+ *   mapboxToken  public Mapbox token for this brand's hosts, so its map loads can be billed to the partner
+ *             (lib/mapboxToken.js); made by scripts/brand/new-partner.mjs. null → EarthAtlas's own token
  *   shareImage  link-preview picture (1200×630) used in place of the EarthAtlas-logo default one
  * }
  *
@@ -28,6 +30,7 @@ export const BRANDS = [
     logoAlt: 'Friends of the San Juans',
     href: 'https://sanjuans.org',
     accent: '#0e7490',
+    mapboxToken: null,
     shareImage: '/brands/friends/share.jpg',
   },
 ]

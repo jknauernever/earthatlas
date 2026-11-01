@@ -14,6 +14,7 @@
  * GraphQL endpoint via our cached edge proxy (/api/birdweather).
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -46,7 +47,7 @@ import { LegendTurndown } from '../components/panel'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 const DEFAULT_VIEW = { center: [-98, 39.5], zoom: 3.2 }
 const MY_STATION_KEY = 'earthatlas.birdsong.myStation'

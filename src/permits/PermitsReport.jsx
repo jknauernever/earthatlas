@@ -4,6 +4,7 @@
  * full URLs printed, each agency's own terms kept beside the plain words, when each source was read, formal
  * citations for the laws. Nothing is stated that its source doesn't state. "Print or save as PDF" is the browser's own.
  */
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
@@ -87,8 +88,8 @@ export default function PermitsReport() {
 
   // The place on the map (satellite with labels), kept in the printed copy.
   useEffect(() => {
-    if (!r || !mapEl.current || !import.meta.env.VITE_MAPBOX_TOKEN) return
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+    if (!r || !mapEl.current || !mapboxToken) return
+    mapboxgl.accessToken = mapboxToken
     const map = new mapboxgl.Map({ container: mapEl.current, style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [r.lon, r.lat], zoom: 15,
       interactive: false, attributionControl: true, preserveDrawingBuffer: true })
     new mapboxgl.Marker({ color: '#dc2626' }).setLngLat([r.lon, r.lat]).addTo(map)

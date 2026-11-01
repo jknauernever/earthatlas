@@ -10,6 +10,7 @@
  * data-service records. "How this is sourced" is the rollup (src/permits/permitsSources.js).
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -43,7 +44,7 @@ import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const DEFAULT_VIEW = { center: [-122.98, 48.6], zoom: 10 }
 
 // Same basemaps as /sanjuan-docks: the county's 2025 aerials by default (no sun-glint on the water).

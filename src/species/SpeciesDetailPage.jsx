@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
@@ -28,7 +29,7 @@ import {
 import styles from './SpeciesDetailPage.module.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 const IUCN_LABEL = {
   CR: 'Critically Endangered', EN: 'Endangered', VU: 'Vulnerable',

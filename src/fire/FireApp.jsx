@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -53,7 +54,7 @@ import PoweredBy from '../components/PoweredBy.jsx'
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 // EarthAtlas cloud function (Earth Engine backend) — same one /forestmonitor
 // uses. Serves the Sentinel-2 NDVI tile (?layer=ndvi) and point NDVI

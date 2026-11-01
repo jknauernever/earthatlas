@@ -13,6 +13,7 @@
  * Map conventions (docs/MAP_TOOL_CONVENTIONS.md): shareable URL state,
  * satellite default, ZoomIndicator, mapReady from style.load, globe carve-out.
  */
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -54,7 +55,7 @@ import { CERULEAN_APP } from '../../lib/ships/cerulean.js'
 import SlickCard, { NEAR_DISTS, NEAR_DEFAULT, NEAR_COLOR, distWords, beforeWords, topShip, rankedSources } from './SlickCard.jsx'
 import SiteBrand from '../components/SiteBrand.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 // Opens on the Salish Sea (Josh 2026-09-27): Olympia to Desolation Sound, Juan de Fuca's mouth to the Cascades foothills.
 // A shared link's lat/lng/z still wins.
 const DEFAULT_BOUNDS = [[-125.0, 46.95], [-121.9, 50.25]]

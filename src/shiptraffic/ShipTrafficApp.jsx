@@ -13,6 +13,7 @@
  * Everything a reader sees carries its own source inline; the "How this is sourced" rollup lists them all.
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { keepPopupOnMap } from '../lib/popupFit.js'
@@ -41,7 +42,7 @@ import {
 import styles from './ShipTrafficApp.module.css'
 import SiteBrand from '../components/SiteBrand.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const DEFAULT_VIEW = { center: [-123.45, 48.1], zoom: 7.7 }
 const MONTH_CAP = 12 // each month is its own tile source (same cap as /ships)
 const TILES_BASE = typeof window !== 'undefined' ? window.location.origin : ''

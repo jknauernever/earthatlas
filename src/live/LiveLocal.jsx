@@ -1,3 +1,4 @@
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -9,7 +10,7 @@ import localStyles from './LiveLocal.module.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import SiteBrand from '../components/SiteBrand.jsx'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const STADIA_KEY = import.meta.env.VITE_STADIA_KEY || ''
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || ''
 const THUNDERFOREST_KEY = import.meta.env.VITE_THUNDERFOREST_KEY || ''

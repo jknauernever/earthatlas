@@ -16,6 +16,7 @@
  *   • Land cover — ESA WorldCover · Vegetation — Sentinel-2 NDVI
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
@@ -39,7 +40,7 @@ import SiteBrand from '../components/SiteBrand.jsx'
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 const DEFAULT_VIEW = { center: [-98.5, 39.5], zoom: 3.4 }
 

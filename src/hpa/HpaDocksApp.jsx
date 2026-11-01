@@ -9,6 +9,7 @@
  * basemap, selected dock), shared zoom badge / share / popup fitting.
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -30,7 +31,7 @@ import SiteBrand from '../components/SiteBrand.jsx'
 
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const DATA_URL = '/hpa/san-juan-docks.geojson'
 const DOCKS_URL = '/hpa/dock-locations.geojson' // scripts/sanjuan-docks/bake-dock-locations.py
 const FRIENDS_BADGE = '/hpa/friends-logo.png' // Friends' black-on-white wordmark (from Josh, 2026-10-06)

@@ -15,6 +15,7 @@
  * read from that single filtered set.
  */
 
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { keepPopupOnMap } from '../lib/popupFit.js'
@@ -46,7 +47,7 @@ import SiteBrand from '../components/SiteBrand.jsx'
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 
 const DEFAULT_VIEW = { center: [-101.672, 31.245], zoom: 2.4 }
 const RADIUS_OPTIONS = [25, 50, 100, 250, 500, 1000]

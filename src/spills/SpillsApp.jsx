@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { ensureWebGLSupport } from '../utils/webglSupport'
+import { mapboxToken } from '../lib/mapboxToken.js'
 import { installHoverTip } from '../lib/mapHoverTip.js'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
@@ -35,7 +36,7 @@ import {
 import q from '../quakes/QuakesApp.module.css'
 import styles from './SpillsApp.module.css'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = mapboxToken
 const DEFAULT_VIEW = { center: [-86.9, 43.9], zoom: 5.9 }
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },

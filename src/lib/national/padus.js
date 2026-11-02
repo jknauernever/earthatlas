@@ -57,15 +57,43 @@ export function padusLayers(sourceId, prefix = 'padus') {
 /** A clicked `padus` tile feature in the plain-language shape cards use (same keys as the /spills bake's areas). */
 export function padusArea(props) {
   const p = props || {}
-  // BLM and some state lands carry the managing office as the area's name ("Lakeview Office"): name it for the agency's
-  // land instead, and keep the office as who manages it.
-  const unit = (p.Unit_Nm || '').trim()
-  const office = /\b(field|district|regional|area|forestry)?\s*office$/i.test(unit) ? unit : ''
-  const agency = AGENCY[p.Mang_Name] || ''
   return {
-    id: p.id, n: office ? `${agency || MANAGER[p.Mang_Type] || 'Public'} land` : unit || 'Unnamed protected area', office,
-    agency, fc: p.FeatClass || '', mt: p.Mang_Type || 'UNK', mn: p.Mang_Name || '', lm: (p.Loc_Mang || '').trim(),
-    d: DESIGNATION[p.Des_Tp] || p.Des_Tp || '', ld: (p.Loc_Ds || '').trim(), gap: p.GAP_Sts, acc: p.Pub_Access || 'UK',
-    ac: Number(p.GIS_Acres) || 0, st: p.State_Nm || '',
+    id: p.id, n: (p.Unit_Nm || '').trim(), agency: AGENCY[p.Mang_Name] || '', fc: p.FeatClass || '', mt: p.Mang_Type || 'UNK',
+    mn: p.Mang_Name || '', lm: (p.Loc_Mang || '').trim(), d: DESIGNATION[p.Des_Tp] || p.Des_Tp || '', ld: (p.Loc_Ds || '').trim(),
+    gap: p.GAP_Sts, acc: p.Pub_Access || 'UK', ac: Number(p.GIS_Acres) || 0, st: p.State_Nm || '',
   }
+}
+
+// Names PAD-US uses when a record has none (measured on PAD-US 4.1: "Unknown", "Unknown or Unnamed", "Data not
+// available", "Na", "Easement #0"…), and record codes from old contributor files ("Pcon3", "Loth230", "04-63-0222").
+const PLACEHOLDER = /^(unknown\b.*|unnamed\b.*|data not available|n\/?a|none|null|tbd|no name|easement #?\d+)$/i
+const CODE = /^[\w#-]*\d[\w#-]*$/
+// Program acronyms PAD-US gives as the whole name.
+const PROGRAM = { PDR: 'Purchase of development rights easement', TDR: 'Transfer of development rights easement',
+  WRP: 'Wetlands Reserve Program easement', FRPP: 'Farm and Ranch Lands Protection Program easement' }
+const OFFICE = /\b(field|district|regional|area|forestry)?\s*office$/i
+const SMALL = new Set(['of', 'and', 'the', 'for', 'at', 'in', 'on'])
+const tidy = (v) => (v === v.toUpperCase() ? v.toLowerCase().replace(/\b[a-z]+/g, (w, k) => (k && SMALL.has(w) ? w : w[0].toUpperCase() + w.slice(1))) : v)
+const holderOf = (v) => (v && !/^unknown$/i.test(v) && !CODE.test(v) && !/^[A-Z]{2,6}$/.test(v) ? tidy(v) : '')
+
+/** The area's kind without PAD-US's "Unknown" prefix: "Unknown Easement" → "Easement", "Unknown" → "". */
+export const padusKind = (a) => (/^unknown$/i.test(a.d || '') ? '' : (a.d || '').replace(/^unknown\s+/i, ''))
+
+/**
+ * What to call an area (a padusArea, or a /spills bake area). PAD-US's own name, except:
+ *  - a managing office as the name ("Lakeview Office") → "<agency> land", with the office kept as who manages it
+ *  - no name or a record code → "<holder> <kind>" from the local manager ("San Juan Preservation Trust easement"),
+ *    or "Unnamed <kind>" when there is no holder either
+ *  - a program acronym ("Pdr") → the program's name
+ * Returns { name, office }.
+ */
+export function padusLabel(a) {
+  const unit = (a.n || '').trim()
+  if (OFFICE.test(unit)) return { name: `${AGENCY[a.mn] || MANAGER[a.mt] || 'Public'} land`, office: unit }
+  if (PROGRAM[unit.toUpperCase()]) return { name: PROGRAM[unit.toUpperCase()], office: '' }
+  if (unit && !PLACEHOLDER.test(unit) && !CODE.test(unit)) return { name: unit, office: '' }
+  let kind = padusKind(a).toLowerCase()
+  kind = !kind || /other or unknown$/.test(kind) ? 'land' : /(easement|park|area|refuge|preserve|reserve|forest|land|space|monument|trail|sanctuary)$/.test(kind) ? kind : `${kind} land`
+  const holder = holderOf(a.lm) || AGENCY[a.mn] || ''
+  return { name: holder ? `${holder} ${kind}` : `Unnamed ${kind}`, office: '' }
 }

@@ -34,7 +34,7 @@ import {
   nearbyHighlights, statusShort, esiColor, esiNumber, esiShort, esiSentence, esiLevel, isListed, fmtInt, fmtDate, esc, titleCase,
 } from './spillsShared.js'
 import q from '../quakes/QuakesApp.module.css'
-import { padusSource, padusArea, PADUS_FILTER, PADUS_FILL_OPACITY, PADUS_LINE_OPACITY } from '../lib/national/padus.js'
+import { padusSource, padusArea, padusLabel, padusKind, PADUS_FILTER, PADUS_FILL_OPACITY, PADUS_LINE_OPACITY } from '../lib/national/padus.js'
 import styles from './SpillsApp.module.css'
 
 const MAPBOX_TOKEN = mapboxToken
@@ -49,6 +49,13 @@ const BASEMAPS = [
 const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
 
 const LAYERS = ['reports', 'pipe', 'gas', 'esi', 'pa']
+// Protected-area layers a pointer can hit: the national tiles, and the areas drawn around a picked report (sp-pa-near).
+const PA_HIT = ['sp-pa-fill', 'sp-pa-near-fill']
+// Overlapping areas (a wilderness study area on BLM land, parks inside a county-wide preserve): the smallest one under
+// the pointer is the most specific. Tile features carry GIS_Acres; near-ring and Lake Michigan features index `areas`.
+const smallestArea = (feats, areas) => feats.filter((f) => PA_HIT.includes(f.layer.id))
+  .map((f) => [f, f.properties.i != null ? areas?.[f.properties.i]?.ac : Number(f.properties.GIS_Acres)])
+  .sort((x, y) => (x[1] || Infinity) - (y[1] || Infinity))[0]?.[0]
 const LAYERS_OFF_DEFAULT = ['gas', 'pa']   // protected areas: drawn around a picked report instead (Josh 2026-11-02)
 const MATCHES = [
   { id: 'named', label: 'Names a Lake Michigan water' },
@@ -275,7 +282,7 @@ export default function SpillsApp() {
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => { addLayers(map); setMapReady(true) })
     map.on('click', (e) => clickRef.current?.(e))
-    const offHover = installHoverTip(map, { layers: ['sp-pts', 'sp-pipe', 'sp-gas', 'sp-esi', 'sp-pa-fill'], html: (feats) => hoverRef.current?.(feats) || null })
+    const offHover = installHoverTip(map, { layers: ['sp-pts', 'sp-pipe', 'sp-gas', 'sp-esi', ...PA_HIT], html: (feats) => hoverRef.current?.(feats) || null })
     return () => { offHover(); map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -443,7 +450,7 @@ export default function SpillsApp() {
   // segment opens its ESI class. Anywhere else closes the card.
   clickRef.current = (e) => {
     const map = mapRef.current
-    const hits = map.queryRenderedFeatures(e.point, { layers: ['sp-pts', 'sp-pipe', 'sp-gas', 'sp-esi', 'sp-pa-fill'].filter((l) => map.getLayer(l)) })
+    const hits = map.queryRenderedFeatures(e.point, { layers: ['sp-pts', 'sp-pipe', 'sp-gas', 'sp-esi', ...PA_HIT].filter((l) => map.getLayer(l)) })
     const pt = hits.find((f) => f.layer.id === 'sp-pts')
     if (pt) {
       const { seq, spot, n } = pt.properties
@@ -457,8 +464,8 @@ export default function SpillsApp() {
     const line = hits.find((f) => f.layer.id === 'sp-esi')
     if (line) return pick(`e:${line.properties.c}|${line.properties.esi}`)
     // overlapping areas (a wilderness study area on BLM land): the smallest one under the click is the most specific
-    const area = hits.filter((f) => f.layer.id === 'sp-pa-fill').sort((a, b) => (Number(a.properties.GIS_Acres) || Infinity) - (Number(b.properties.GIS_Acres) || Infinity))[0]
-    if (area && map.getSource('sp-pa')?.type === 'vector') {
+    const area = smallestArea(hits, data?.areas)
+    if (area && area.properties.i == null) {
       const a = padusArea(area.properties)
       tileAreaRef.current.set(String(a.id), a)
       return pick(`A:${a.id}`)
@@ -526,11 +533,11 @@ export default function SpillsApp() {
         <div>${esc(esiLevel(c))} by oil (${esiNumber(c)} of 10). ${esc(esiSentence(c))}</div>
         <div class="${styles.tipDim}">NOAA ESI ${esc(line.properties.esi)} · click for more</div></div>`
     }
-    const area = feats.find((f) => f.layer.id === 'sp-pa-fill')
-    const a = area && (area.properties.id != null && area.properties.i == null ? padusArea(area.properties) : data?.areas?.[area.properties.i])
+    const area = smallestArea(feats, data?.areas)
+    const a = area && (area.properties.i == null ? padusArea(area.properties) : data?.areas?.[area.properties.i])
     if (a) {
-      return `<div class="${styles.tip}"><div class="${styles.tipTitle}"><span class="${styles.tipSq}" style="background:${PA_COLOR}"></span>${esc(a.n)}</div>
-        <div>${esc(a.d)} · ${esc(MANAGER[a.mt] || a.mt)}</div><div>${esc(gapOf(a).label)}</div>
+      return `<div class="${styles.tip}"><div class="${styles.tipTitle}"><span class="${styles.tipSq}" style="background:${PA_COLOR}"></span>${esc(padusLabel(a).name)}</div>
+        <div>${esc(padusKind(a) || 'Protected area')} · ${esc(MANAGER[a.mt] || a.mt)}</div><div>${esc(gapOf(a).label)}</div>
         <div class="${styles.tipDim}">USGS PAD-US · click for more</div></div>`
     }
     return null
@@ -585,7 +592,7 @@ export default function SpillsApp() {
 
   let card = null
   if (picked?.kind === 'report') {
-    card = <ReportCard p={picked.p} species={data.species} areas={data.areas || []} esiNames={data.esi_names} onClose={() => pick(null)} onBack={back ? () => pick(back) : null} onArea={(i) => pick(`a:${i}`, sel)}
+    card = <ReportCard key={picked.p.seq} p={picked.p} species={data.species} areas={data.areas || []} esiNames={data.esi_names} onClose={() => pick(null)} onBack={back ? () => pick(back) : null} onArea={(i) => pick(`a:${i}`, sel)}
       pipe={picked.p.ph ? pipeById.get(picked.p.ph) : null} onPipe={(id) => pick(`x:${id}`, sel)} chSpecies={data.ch_species || []} />
   } else if (picked?.kind === 'place') {
     const pl = picked.pl

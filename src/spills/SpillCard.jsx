@@ -8,18 +8,18 @@ import {
   NRC_HOME, ESI_HOME, WBD, PRECISION_BY_ID, esiShort, esiSentence, esiLevel, esiColor, esiNumber, isListed, locationSource, fmtDate, fmtInt, titleCase, nearbyHighlights, statusShort, statusFull, speciesHref, critNear, chStatus, gapOf, PA_COLOR, MANAGER, ACCESS, PADUS_HOME, PADUS_DATA,
   PHMSA_HOME, PIPE_COLOR, COMMODITY_PLAIN, bblText, pipeDetailUrl, gasDetailUrl, mcfText, GAS_SYSTEM,
 } from './spillsShared.js'
+import { padusLabel, padusKind } from '../lib/national/padus.js'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' }
 const Src = ({ href, title, children }) => <a className={s.src} href={href} title={title} {...ext}>{children} ↗</a>
 
-// PAD-US calls an unnamed area "Unknown": say what it is instead ("Unnamed conservation easement").
-export const areaName = (a) => (/^(unknown|unnamed)/i.test(a.n || '') ? `Unnamed ${(a.d || 'protected area').replace(/^unknown\s+/i, '').toLowerCase()}` : a.n)
+// What to call a protected area: PAD-US's name, or what it is when that name is a placeholder or code (padusLabel).
+export const areaName = (a) => padusLabel(a).name
 
-// The card's tabs: the last one a person chose is kept for the next card (this browser only).
+// The card's tabs: every card opens on its first tab (the report); a tab chosen stays while that card is open.
 function useCardTab(ids) {
-  const [tab, setTab] = useState(() => { try { return localStorage.getItem('spills.cardTab') } catch { return null } })
-  const choose = (t) => { setTab(t); try { localStorage.setItem('spills.cardTab', t) } catch { /* private window */ } }
-  return [ids.includes(tab) ? tab : ids[0], choose]
+  const [tab, setTab] = useState(ids[0])
+  return [ids.includes(tab) ? tab : ids[0], setTab]
 }
 function Tabs({ tabs, tab, onTab }) {
   return (
@@ -125,7 +125,7 @@ function AtRisk({ p, species, areas, onArea, chSpecies = [] }) {
               <li key={i}>
                 <span className={s.paSwatch} style={{ background: PA_COLOR }} />
                 <button type="button" className={s.paLink} onClick={() => onArea(i)}>{areaName(a)}</button>{' '}
-                <span className={s.dim}>{a.d}{d === 0 ? ', report is inside' : `, ${d < 1000 ? `${d} m` : `${(d / 1000).toFixed(1)} km`} away`}</span>
+                <span className={s.dim}>{padusKind(a) || 'Protected area'}{d === 0 ? ', report is inside' : `, ${d < 1000 ? `${d} m` : `${(d / 1000).toFixed(1)} km`} away`}</span>
               </li>
             )
           }} />
@@ -143,7 +143,7 @@ export function ReportCard({ p, species, areas, esiNames, onClose, onBack, onAre
   const listedN = new Set((p.sp || []).filter((i) => species[i] && isListed(species[i])).map((i) => species[i].n)).size
   const harmN = listedN + crit.length + (p.pa || []).length
   const hasNext = !!pipe || p.dups?.length > 0
-  const [tab, setTab] = useCardTab(['harm', 'report', ...(hasNext ? ['next'] : [])])
+  const [tab, setTab] = useCardTab(['report', ...(hasNext ? ['next'] : []), 'harm'])
   const amount = p.g != null ? `${fmtInt(Math.round(p.g * 10) / 10)} gallon${p.g === 1 ? '' : 's'}` : 'not given'
   return (
     <div className={s.card}>
@@ -152,7 +152,7 @@ export function ReportCard({ p, species, areas, esiNames, onClose, onBack, onAre
       <div className={s.cardTitle}>NRC report {p.seq}</div>
       <div className={s.cardMeta}>{fmtDate(p.d)}{p.city ? ` · ${p.city}, ${p.st}` : ''} · {nrc}</div>
       <div className={s.cardSummary}>{p.m.length ? titleCase(p.m[0]) : 'Material not given'} · {p.g != null ? amount : 'amount not given'}{p.w ? ` · ${titleCase(p.w)}` : ''}</div>
-      <Tabs tab={tab} onTab={setTab} tabs={[['harm', `What could be harmed${harmN ? ` · ${harmN}` : ''}`], ['report', 'The report'], ...(hasNext ? [['next', 'What happened next']] : [])]} />
+      <Tabs tab={tab} onTab={setTab} tabs={[['report', 'The report'], ...(hasNext ? [['next', 'What happened next']] : []), ['harm', `What could be harmed${harmN ? ` · ${harmN}` : ''}`]]} />
 
       {tab === 'harm' && (p.loc ? <>
         <AtRisk p={p} species={species} areas={areas} onArea={onArea} chSpecies={chSpecies} />
@@ -247,14 +247,15 @@ export function AreaCard({ a, onClose, onBack }) {
   const g = gapOf(a)
   // PAD-US gives the manager as an agency name or a short code ("CNTY"); the local manager name is clearer when there is one
   const known = (v) => (v && !/^unknown$/i.test(v) && !/^[A-Z]{2,6}$/.test(v) ? v : '')
-  const manager = [known(a.lm) || a.agency || known(a.mn), a.office].filter(Boolean).join(', ')
+  const { office } = padusLabel(a)
+  const manager = [known(a.lm) || a.agency || known(a.mn), office].filter(Boolean).join(', ')
   const localDes = a.ld && /\s/.test(a.ld) && a.ld !== a.d ? a.ld : ''
   return (
     <div className={s.card}>
       <button type="button" className={s.close} onClick={onClose} aria-label="Close">×</button>
       {onBack && <button type="button" className={s.back} onClick={onBack}>← Back</button>}
       <div className={s.cardTitle}><span className={s.paSwatch} style={{ background: PA_COLOR }} />{areaName(a)}</div>
-      <div className={s.cardMeta}>{a.d}{localDes ? ` (${localDes})` : ''} · <Src href={PADUS_HOME} title="USGS Protected Areas Database of the United States (PAD-US) 4.1">USGS PAD-US</Src></div>
+      <div className={s.cardMeta}>{padusKind(a) || 'Protected area'}{localDes ? ` (${localDes})` : ''} · <Src href={PADUS_HOME} title="USGS Protected Areas Database of the United States (PAD-US) 4.1">USGS PAD-US</Src></div>
       <dl className={s.dl}>
         <dt>Protection</dt><dd>{g.label}</dd>
         <dt>Managed by</dt><dd>{MANAGER[a.mt] || a.mt}{manager ? `: ${manager}` : ''}</dd>
@@ -300,7 +301,6 @@ export function PipeCard({ a, exposure, species, areas, nrcOnMap, onClose, onBac
         {a.rec != null && <div className={s.atRiskLine}>{bblText(a.rec)} recovered</div>}
         {harms.length > 0 && <div className={s.atRiskLine}>The operator reports it {harms.join(', ')}.</div>}
       </div>
-      {exposure && <AtRisk p={{ ...exposure, st: a.st }} species={species} areas={areas} onArea={onArea} />}
       <div className={s.cardSub}>The operator’s report</div>
       <dl className={s.dl}>
         <Row label="Material">{COMMODITY_PLAIN[a.c]}{a.sub ? ` · ${a.sub}` : ''}{d?.cdet ? ` · ${d.cdet}` : ''}</Row>
@@ -317,6 +317,7 @@ export function PipeCard({ a, exposure, species, areas, nrcOnMap, onClose, onBac
       </dl>
       {d === null && <div className={s.dim}>Loading the full report…</div>}
       {d?.narr && <div className={s.desc}>“{d.narr}” <span className={s.dim}>(operator’s description)</span> {src}</div>}
+      {exposure && <AtRisk p={{ ...exposure, st: a.st }} species={species} areas={areas} onArea={onArea} />}
     </div>
   )
 }

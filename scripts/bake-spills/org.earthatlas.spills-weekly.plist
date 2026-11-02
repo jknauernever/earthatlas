@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The weekly /spills refresh (scripts/bake-spills/weekly.sh). Install:
+       cp scripts/bake-spills/org.earthatlas.spills-weekly.plist ~/Library/LaunchAgents/ &&
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.earthatlas.spills-weekly.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.earthatlas.spills-weekly</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/zsh</string><string>/Users/jknauer/Projects/earthatlas/scripts/bake-spills/weekly.sh</string></array>
+  <key>StartInterval</key><integer>3600</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/jknauer/Projects/earthatlas/data/spills/weekly/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>/Users/jknauer/Projects/earthatlas/data/spills/weekly/launchd.err.log</string>
+</dict>
+</plist>

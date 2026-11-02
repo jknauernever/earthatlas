@@ -2,12 +2,13 @@
 /spills step 3: Lake Michigan oil-spill exposure from NRC initial reports.
 
   data/spills/venv/bin/python scripts/bake-spills/analyze.py --years 24     # one year (test)
-  data/spills/venv/bin/python scripts/bake-spills/analyze.py                # every work/nrc_cand_*.csv
+  data/spills/venv/bin/python scripts/bake-spills/analyze.py                # every year
 
-Reads data/spills/work/nrc_cand_<yy>.csv (extract.py), work/census_geocode.csv (geocode.py), the NOAA Lake Michigan
-ESI 2025 GDB exports in data/spills/geo/, the Census 2024 place gazetteer and the USGS WBD HU4 basin polygons.
-Writes public/spills-data/lm-spills-v1.json (reports, species, hotspot cells, summary), public/spills-data/esi-shoreline-v1.geojson
-and public/spills-data/lm-scope-v1.geojson.
+Reads data/national/nrc/work/nrc_cand_<yy>.csv and census_geocode.csv (scripts/national/nrc), the NOAA Lake Michigan
+ESI 2025 GDB exports in data/spills/geo/, the Census 2024 place gazetteer, the USGS WBD HU4 basin polygons, PAD-US
+protected areas (padus.py) and iNaturalist taxon ids (inat.py).
+Writes public/spills-data/lm-spills-<VERSION>.json (reports, species, protected areas, hotspot cells, summary),
+esi-shoreline-<VERSION>.geojson and protected-<VERSION>.geojson.
 
 Steps
   1. oil: a petroleum material (common.OIL) on the report
@@ -36,10 +37,10 @@ from shapely.validation import make_valid
 from pyproj import Transformer
 
 sys.path.insert(0, os.path.dirname(__file__))
-from common import ROOT, OIL, LM_TEXT, OTHER_GL, STATES, report_text, in_box, report_coords
+from common import ROOT, OIL, LM_TEXT, OTHER_GL, STATES, report_text, in_box, report_coords, sci_name, ds
 
 OUT = os.path.normpath(os.path.join(ROOT, '..', '..', 'public', 'spills-data'))
-VERSION = 'v1'
+VERSION = os.environ.get('SPILLS_VERSION', 'v2')   # the weekly job (weekly.sh) passes a date stamp
 T = Transformer.from_crs(4326, 3175, always_xy=True).transform
 TI = Transformer.from_crs(3175, 4326, always_xy=True).transform
 RADIUS = {'coords': 1000, 'text': 1000, 'address': 2000, 'place': 2000, 'offset': 3000, 'city': 5000}
@@ -63,7 +64,7 @@ def norm_place(s):
 
 
 gaz = {}
-for f in glob.glob(os.path.join(ROOT, '*Gaz_place*.txt')):
+for f in glob.glob(ds('census', 'raw', '*Gaz_place*.txt')):
     for r in csv.DictReader(open(f, encoding='latin-1'), delimiter='\t'):
         r = {k.strip(): v for k, v in r.items()}
         if r['USPS'] not in STATES:
@@ -188,7 +189,7 @@ def km_between(a, b):
 
 
 census = {}
-cpath = os.path.join(ROOT, 'work', 'census_geocode.csv')
+cpath = ds('nrc', 'work', 'census_geocode.csv')
 if os.path.exists(cpath):
     for r in csv.DictReader(open(cpath)):
         if r['match'] == 'Match' and r['lat']:
@@ -265,7 +266,7 @@ def gallons(amt, unit):
 
 
 inc = {}
-files = sorted(glob.glob(os.path.join(ROOT, 'work', 'nrc_cand_*.csv')))
+files = sorted(glob.glob(ds('nrc', 'work', 'nrc_cand_*.csv')))
 if years:
     files = [f for f in files if re.search(r'_(\d+)\.csv$', f).group(1) in years]
 for f in files:
@@ -356,19 +357,62 @@ for layer, el in (('BIRDS', 'bird'), ('BIRDSPT', 'bird'), ('FISH', 'fish'), ('FI
             continue
         p = f['properties']
         nm = (p.get('NAME') or '').strip()
-        if not nm:
-            continue
+        if not nm or MASKED.match(nm):
+            continue   # the ESI withholds which species this is ("Endangered plant"), so there is nothing to verify
         key = (nm, el)
         if key not in sp_index:
             sp_index[key] = len(species)
-            species.append(dict(n=nm, g=el, masked=bool(MASKED.match(nm)), fed=None, st={}))
+            species.append(dict(n=nm, g=el, fed=None, st={}))
         sp = species[sp_index[key]]
+        if p.get('GEN_SPEC') and p['GEN_SPEC'].strip() and 'sci' not in sp:
+            sp['sci'] = sci_name(p['GEN_SPEC'])
         if p.get('F'):
             sp['fed'] = p['F'] if sp['fed'] in (None, 'T') or p['F'] == 'E' else sp['fed']
         if p.get('S') and p.get('STATE'):
             sp['st'][p['STATE']] = p['S']
         bio.append((transform(T, make_valid(shape(f['geometry'])).buffer(0)), sp_index[key]))
 btree = STRtree([b[0] for b in bio])
+# iNaturalist taxon ids (inat.py) → each species links to its EarthAtlas page
+INAT = os.path.join(ROOT, 'work', 'inat_taxa.csv')
+inat = {r['query']: r for r in csv.DictReader(open(INAT))} if os.path.exists(INAT) else {}
+for sp in species:
+    t = inat.get(sp.get('sci', ''))
+    if t and t['id']:
+        sp['tx'] = int(t['id'])
+        sp['txn'] = t['name']
+    sp.pop('sci', None)
+
+# ─── Protected areas (USGS PAD-US 4.1, padus.py) ──────────────────────────────
+# One area per name + manager + designation (PAD-US splits a park into its parcels and repeats it as fee land and as a
+# designation); its parts are merged. Kept for the map: every area near a report, and every area within 1 km of the ESI
+# shoreline.
+PAD = os.path.join(ROOT, 'work', 'padus')
+DES = {r['Code']: r['Dom'] for r in csv.DictReader(open(os.path.join(PAD, 'designations.csv')))}
+GAP_RANK = {'1': 1, '2': 2, '3': 3, '4': 4}
+groups = {}
+for st in sorted(STATES):
+    for f in json.load(open(os.path.join(PAD, f'{st}.geojson')))['features']:
+        p = f['properties']
+        if not f['geometry']:
+            continue
+        nm = ' '.join((p.get('Unit_Nm') or '').split()) or 'Unnamed protected area'
+        key = (nm.upper(), p.get('Mang_Name') or '', p.get('Des_Tp') or '')
+        a = groups.get(key)
+        if a is None:
+            a = groups[key] = dict(n=nm, mt=p.get('Mang_Type') or 'UNK', mn=p.get('Mang_Name') or '', lm=(p.get('Loc_Mang') or '').strip(),
+                                   d=DES.get(p.get('Des_Tp') or '', p.get('Des_Tp') or ''), ld=(p.get('Loc_Ds') or '').strip(),
+                                   gap=p.get('GAP_Sts'), acc=p.get('Pub_Access') or 'UK', ac=0, fc=p.get('FeatClass'),
+                                   src=(p.get('Agg_Src') or '').strip(), sd=(p.get('Src_Date') or '').strip(), st=st, parts=[])
+        a['ac'] += p.get('GIS_Acres') or 0
+        if GAP_RANK.get(p.get('GAP_Sts'), 9) < GAP_RANK.get(a['gap'], 9):
+            a['gap'] = p.get('GAP_Sts')
+        a['parts'].append(transform(T, make_valid(shape(f['geometry']))))
+areas = list(groups.values())
+for a in areas:
+    parts = a.pop('parts')
+    a['geom'] = unary_union([g.buffer(0) for g in parts]) if len(parts) > 1 else parts[0]
+atree = STRtree([a['geom'] for a in areas])
+print(f'protected areas {len(areas)}', flush=True)
 
 for i in located:
     lon, lat, loc, how = i['loc']
@@ -393,6 +437,47 @@ for i in located:
         if g.distance(pt) <= R:
             found.add(si)
     i['species'] = sorted(found)
+    near = []
+    for k in atree.query(pt, predicate='dwithin', distance=R):
+        near.append((round(areas[k]['geom'].distance(pt) / 100) * 100, k))
+    i['areas'] = sorted(near)
+
+# ─── Pipeline accidents (PHMSA, phmsa.py) in the Lake Michigan scope ─────────
+# Operators give coordinates, so the 1 km radius of reported coordinates applies. Each also gets the NRC report(s) it
+# names, which links the NRC point on the map to its measured volumes.
+PH = ds('phmsa', 'work', 'phmsa.json')
+pipes = {}
+for a in (json.load(open(PH)) if os.path.exists(PH) else []):
+    if not in_box(a['lat'], a['lon']):
+        continue
+    pt = Point(T(a['lon'], a['lat']))
+    if not scope_m.contains(pt):
+        continue
+    R = RADIUS['coords']
+    best = None
+    for k in etree.query(pt, predicate='dwithin', distance=R):
+        code = re.sub(r'[^0-9A-Z]', '', ep[k].get('MOST_SENSITIVE') or (ep[k].get('ESI') or '').split('/')[0])
+        rk = esi_rank(code)
+        if rk and (best is None or rk > best[0]):
+            best = (rk, code)
+    sp = sorted({bio[k][1] for k in btree.query(pt, predicate='dwithin', distance=R)})
+    near = sorted((round(areas[k]['geom'].distance(pt) / 100) * 100, k) for k in atree.query(pt, predicate='dwithin', distance=R))
+    pipes[a['id']] = dict(r=R, e=best[1] if best else None, sp=sp, areas=near, nrc=a['nrc'])
+nrc_to_pipe = {n: pid for pid, x in pipes.items() for n in x['nrc']}
+for a in (json.load(open(PH)) if os.path.exists(PH) else []):
+    for n in a['nrc']:
+        nrc_to_pipe.setdefault(n, a['id'])
+print(f'pipeline accidents in scope {len(pipes)}', flush=True)
+
+# Areas kept for the map and the data file, renumbered.
+used = {k for i in located for _, k in i['areas']} | {k for x in pipes.values() for _, k in x['areas']}
+shore = set(etree.query([a['geom'] for a in areas], predicate='dwithin', distance=1000)[0].tolist())
+keep = sorted(used | shore)
+renum = {k: n for n, k in enumerate(keep)}
+for i in located:
+    i['areas'] = [[renum[k], d] for d, k in i['areas']]
+pipe_out = {pid: dict(r=x['r'], e=x['e'], sp=x['sp'], pa=[[renum[k], d] for d, k in x['areas']]) for pid, x in pipes.items()}
+print(f'protected areas kept {len(keep)} (near a report {len(used)}, on the shore {len(shore)})', flush=True)
 
 # ─── Hotspot cells (5 km) ──────────────────────────────────────────────────────
 C = 5000
@@ -427,10 +512,13 @@ for i in lm:
              g=round(i['gal'], 1) if i['galknown'] else None, sheen=clean(' '.join(x for x in (r['SHEEN_SIZE'], r['SHEEN_SIZE_UNITS']) if x)),
              org=clean(r['RESPONSIBLE_ORG_TYPE']).capitalize(), pot=r['POTENTIAL_FLAG'] == 'Y', desc=clean(r['DESCRIPTION_OF_INCIDENT'], 900),
              match=i['match'], dups=i['dups'])
+    ph = next((nrc_to_pipe[n] for n in [i['seq']] + i['dups'] if n in nrc_to_pipe), None)
+    if ph:
+        p['ph'] = ph
     if i['loc']:
         lon, lat, loc, how = i['loc']
         p.update(lon=round(lon, 5), lat=round(lat, 5), loc=loc, how=how, r=RADIUS[loc],
-                 e=i['esi_max'], en=i['esi_near'], sp=i['species'])
+                 e=i['esi_max'], en=i['esi_near'], sp=i['species'], pa=i['areas'])
     points.append(p)
 
 by_year = collections.Counter(p['y'] for p in points)
@@ -439,18 +527,32 @@ summary = dict(
     located=len(located), by_year=dict(sorted(by_year.items())), by_loc=dict(collections.Counter(p.get('loc') or 'unlocated' for p in points)),
     by_match=dict(collections.Counter(p['match'] for p in points)), vol_known=sum(1 for p in points if p['g']), cells=len(hot),
     near_listed=sum(1 for p in points if any(species[s]['fed'] or species[s]['st'] for s in p.get('sp', []))),
+    near_protected=sum(1 for p in points if p.get('pa')), protected_areas=len(keep),
 )
+area_out = []
+for k in keep:
+    a = areas[k]
+    area_out.append({x: a[x] for x in ('n', 'mt', 'mn', 'lm', 'd', 'ld', 'gap', 'acc', 'fc', 'src', 'sd', 'st')} | dict(ac=round(a['ac'])))
 os.makedirs(OUT, exist_ok=True)
-json.dump(dict(version=VERSION, summary=summary, esi_names=ESI_NAMES, species=species, points=points, hotspots=hot),
+json.dump(dict(version=VERSION, summary=summary, esi_names=ESI_NAMES, species=species, areas=area_out, pipes=pipe_out, points=points, hotspots=hot),
           open(os.path.join(OUT, f'lm-spills-{VERSION}.json'), 'w'), separators=(',', ':'))
-json.dump(dict(type='FeatureCollection', features=[dict(type='Feature', properties={}, geometry=mapping(scope))]),
-          open(os.path.join(OUT, f'lm-scope-{VERSION}.geojson'), 'w'), separators=(',', ':'))
 web = os.path.join(ROOT, 'work', 'esil_web.geojson')
 if os.path.exists(web):
     d = json.load(open(web))
     for f in d['features']:
         f['properties'] = dict(esi=f['properties'].get('ESI'), c=re.sub(r'[^0-9A-Z]', '', f['properties'].get('c') or ''))
     json.dump(d, open(os.path.join(OUT, f'esi-shoreline-{VERSION}.geojson'), 'w'), separators=(',', ':'))
+pa_feats = []
+for n, k in enumerate(keep):
+    a = areas[k]
+    g = transform(TI, a['geom'].simplify(15))
+    if g.is_empty:
+        continue
+    pa_feats.append(dict(type='Feature', properties=dict(i=n, gap=int(a['gap'] or 4), mt=a['mt']), geometry=mapping(g)))
+pa_path = os.path.join(OUT, f'protected-{VERSION}.geojson')
+with open(pa_path, 'w') as f:
+    json.dump(dict(type='FeatureCollection', features=pa_feats), f, separators=(',', ':'))
+os.system(f"ogr2ogr -q -f GeoJSON -lco COORDINATE_PRECISION=5 {pa_path}.tmp {pa_path} && mv {pa_path}.tmp {pa_path}")
 print(json.dumps(summary, indent=1))
 for h in hot[:10]:
     print(h['n'], h['places'], h['prec'], h['esi_max'], h['n_listed'])

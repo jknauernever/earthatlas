@@ -633,13 +633,55 @@ function stormsProxyPlugin() {
 
 // Dev middleware for the endpoints that range-read a local bake and so cannot
 // be mirrored by a fetch: Climate TRACE facility MVT + per-source detail, the
-// precipitation raster pyramids (GSMaP, MRMS), /shiptraffic's vessel tracks, /ships' tracks, /risks' flood scenarios and parcel boundaries.
+// precipitation raster pyramids (GSMaP, MRMS), /shiptraffic's vessel tracks, /ships' tracks, /risks' flood scenarios and parcel boundaries,
+// and the national datasets' tiles (docs/NATIONAL_DATA.md).
 // Runs the Node handlers themselves, so dev and prod share one implementation.
+// Dev middleware for the national datasets (docs/NATIONAL_DATA.md): /dev-national/catalog.json lists the newest local
+// build of each dataset (data/national/<dataset>/build/<version>/dataset.json), in the catalog's production shape, and
+// /dev-national/<dataset>/<version>/<path> serves its files — so localhost shows a build before it is published.
+function nationalDevPlugin() {
+  return {
+    name: 'national-dev',
+    configureServer(server) {
+      server.middlewares.use('/dev-national', async (req, res) => {
+        const fs = await import('node:fs')
+        const path = await import('node:path')
+        const root = path.resolve('data/national')
+        const url = decodeURIComponent((req.url || '').split('?')[0])
+        const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.name.startsWith('.') ? [] : e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]))
+        if (url === '/catalog.json') {
+          const datasets = {}
+          for (const id of fs.existsSync(root) ? fs.readdirSync(root) : []) {
+            const b = path.join(root, id, 'build')
+            if (!fs.existsSync(b)) continue
+            const vs = fs.readdirSync(b).filter((v) => fs.existsSync(path.join(b, v, 'dataset.json'))).sort()
+            const v = vs[vs.length - 1]
+            if (!v) continue
+            const dir = path.join(b, v)
+            const files = Object.fromEntries(walk(dir).filter((f) => !f.endsWith('dataset.json')).map((f) => {
+              const rel = path.relative(dir, f)
+              return [rel, `/dev-national/${id}/${v}/${rel}`]
+            }))
+            datasets[id] = { ...JSON.parse(fs.readFileSync(path.join(dir, 'dataset.json'))), id, version: v, base: `/dev-national/${id}/${v}/`, files }
+          }
+          res.setHeader('Content-Type', 'application/json')
+          return res.end(JSON.stringify({ about: 'local builds (dev)', datasets }))
+        }
+        const m = url.match(/^\/([a-z0-9-]+)\/([\w.-]+)\/(.+)$/)
+        const file = m && path.join(root, m[1], 'build', m[2], m[3])
+        if (!file || !file.startsWith(root) || !fs.existsSync(file)) { res.statusCode = 404; return res.end('not found') }
+        res.setHeader('Content-Type', file.endsWith('.json') || file.endsWith('.geojson') ? 'application/json' : 'application/octet-stream')
+        fs.createReadStream(file).pipe(res)
+      })
+    },
+  }
+}
+
 function traceTilesPlugin() {
   return {
     name: 'trace-tiles',
     configureServer(server) {
-      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles', 'spun-tiles', 'ship-tracks', 'gfw-tiles', 'aerial-tiles', 'cerulean', 'risks-tiles', 'parcel-tiles']) {
+      for (const route of ['trace-tiles', 'trace-detail', 'rain-tiles', 'vessel-tiles', 'spun-tiles', 'ship-tracks', 'gfw-tiles', 'aerial-tiles', 'cerulean', 'risks-tiles', 'parcel-tiles', 'national-tiles']) {
         server.middlewares.use(`/api/${route}`, async (req, res) => {
           try {
             const { default: handler } = await server.ssrLoadModule(`/api/${route}.js`)
@@ -1042,6 +1084,7 @@ export default defineConfig(({ mode }) => {
     inciwebProxyPlugin(),
     stormsProxyPlugin(),
     traceTilesPlugin(),
+    nationalDevPlugin(),
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),

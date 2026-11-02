@@ -17,7 +17,7 @@ import s from './Panel.module.css'
  * Props
  *   storageKey  string    unique per site + dataset, e.g. "ships.tracks" (turndown memory; omit to not persist)
  *   name        string    dataset name (the toggle's label)
- *   sub         node      short one-line descriptor after the name (truncates)
+ *   sub         node      short one-line descriptor after the name (truncates; a string also shows in full on hover)
  *   icon        node      the dataset's icon (≈16 px, drawn with currentColor)
  *   hue         '#rrggbb' the dataset's colour: the icon chip lights up in it when on
  *   on          bool      is the dataset showing
@@ -45,7 +45,7 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
           <span className={`${s.icon} ${on ? s.iconOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true">{icon}</span>
           <span className={s.text}>
             <span className={s.name}>{name}</span>
-            {sub && <span className={s.sub}>{sub}</span>}
+            {sub && <span className={s.sub} title={typeof sub === 'string' ? sub : undefined}>{sub}</span>}
           </span>
           <span className={`${s.switch} ${on ? s.switchOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true" />
         </button>

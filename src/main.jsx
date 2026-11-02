@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import * as Sentry from '@sentry/react'
 import { isMapTileRequest } from './utils/mapTileRequests'
@@ -47,6 +47,8 @@ import PermitsGlossary from './permits/PermitsGlossary.jsx'
 import CarbonApp from './carbon/CarbonApp.jsx'
 import SpeciesOfConcernApp from './speciesOfConcern/SpeciesOfConcernApp.jsx'
 import SpillsApp from './spills/SpillsApp.jsx'
+// The /spills report: its own lazy chunk (Observable Plot + d3-sankey load only on this route).
+const SpillsReport = lazy(() => import('./spills/SpillsReport.jsx'))
 import RisksApp from './risks/RisksApp.jsx'
 import LandValueReport from './risks/LandValueReport.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
@@ -180,6 +182,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/carbon" element={<CarbonApp />} />
           <Route path="/species-of-concern" element={<SpeciesOfConcernApp />} />
           <Route path="/spills" element={<SpillsApp />} />
+          <Route path="/spills/reports" element={<Suspense fallback={null}><SpillsReport /></Suspense>} />
           <Route path="/risks" element={<RisksApp />} />
           <Route path="/risks/reports/land-value" element={<LandValueReport />} />
           <Route path="/birdsong" element={<BirdsongApp />} />

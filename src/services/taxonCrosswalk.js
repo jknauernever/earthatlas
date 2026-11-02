@@ -8,6 +8,17 @@
 import { fetchObservations } from './iNaturalist'
 import { fetchEBirdObservations, searchEBirdTaxa, fetchEBirdTaxonomy } from './eBird'
 import { fetchGBIFOccurrences } from './gbif'
+import { nationalFile } from '../lib/national/catalog.js'
+
+let crosswalkPromise = null
+function loadCrosswalk() {
+  if (!crosswalkPromise) {
+    crosswalkPromise = nationalFile('species', 'crosswalk.json')
+      .then((u) => (u ? fetch(u).then((r) => (r.ok ? r.json() : null)) : null))
+      .catch(() => null)
+  }
+  return crosswalkPromise
+}
 
 // ─── Static crosswalk table ────────────────────────────────────
 // Keyed by lowercase common name for fast case-insensitive lookup.
@@ -98,6 +109,16 @@ export async function resolveSpecies(query) {
   // Static crosswalk lookup
   if (STATIC_CROSSWALK[key]) {
     return { ...STATIC_CROSSWALK[key] }
+  }
+
+  // The EarthAtlas species crosswalk (national dataset `species`, docs/NATIONAL_DATA.md): one identity per species
+  // shared by every subsite. A missing GBIF key is filled from GBIF.
+  const cw = await loadCrosswalk()
+  const i = cw?.by_name?.[key]
+  if (i != null) {
+    const sp = cw.species[i]
+    const gbifKey = sp.gbif || (await resolveGBIF(sp.name))?.key || null
+    return { commonName: sp.common || query, scientificName: sp.name, inatTaxonId: sp.inat, eBirdSpeciesCode: sp.ebird || null, gbifTaxonKey: gbifKey }
   }
 
   // Dynamic resolution — query all three in parallel

@@ -1,18 +1,19 @@
 """
-/spills step 1: pull candidate Lake Michigan reports out of the NRC FOIA spreadsheets (nrc.uscg.mil/FOIAFiles/CY<yy>.xlsx).
+National dataset `nrc` (docs/NATIONAL_DATA.md): pull oil reports out of the NRC FOIA spreadsheets (nrc.uscg.mil/FOIAFiles/CY<yy>.xlsx).
 
-Keeps every report whose incident state is one of the four Lake Michigan states (IL, IN, WI, MI), or whose water-body /
-location text names a Great Lake water. Lake Michigan scope is decided later in analyze.py, from text AND coordinates,
-so this step must not drop reports that only have coordinates. One row per material (the MATERIAL_INVOLVED sheet).
+Keeps every report in the U.S. that names an oil or petroleum material (common.OIL, the same test analyze.py applies),
+plus any report naming a Great Lake water. Regions (Lake Michigan, states) are decided later in analyze.py, from text
+AND coordinates, so this step must not drop reports that only have coordinates. One row per material.
 
-  data/spills/venv/bin/python scripts/bake-spills/extract.py 24          # one year (test)
-  data/spills/venv/bin/python scripts/bake-spills/extract.py 15 16 ... 24
-Inputs: data/spills/CY<yy>.xlsx. Output: data/spills/work/nrc_cand_<yy>.csv (one file per year, so years re-run alone).
+  data/spills/venv/bin/python scripts/national/nrc/extract.py 24          # one year (test)
+  data/spills/venv/bin/python scripts/national/nrc/extract.py 15 16 ... 26
+Inputs: data/national/nrc/raw/CY<yy>.xlsx. Output: data/national/nrc/work/nrc_cand_<yy>.csv (one file per year).
 """
 import csv, os, re, sys
 import openpyxl
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from lib import OIL, ds
 
-ROOT = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'spills')
 SHEETS = ['CALLS', 'INCIDENT_COMMONS', 'INCIDENT_DETAILS', 'MATERIAL_INVOLVED']
 KEEP = {
     'CALLS': ['SEQNOS', 'DATE_TIME_RECEIVED', 'CALLTYPE', 'RESPONSIBLE_COMPANY', 'RESPONSIBLE_ORG_TYPE'],
@@ -44,7 +45,7 @@ def sheet_rows(ws, keep):
 
 
 def run(yy):
-    wb = openpyxl.load_workbook(os.path.join(ROOT, f'CY{yy}.xlsx'), read_only=True)
+    wb = openpyxl.load_workbook(ds('nrc', 'raw', f'CY{yy}.xlsx'), read_only=True)
     data = {}
     for s in SHEETS:
         d = {}
@@ -54,18 +55,18 @@ def run(yy):
             else:
                 d.setdefault(rec['SEQNOS'], rec)
         data[s] = d
-    os.makedirs(os.path.join(ROOT, 'work'), exist_ok=True)
+    os.makedirs(ds('nrc', 'work'), exist_ok=True)
     n = 0
-    with open(os.path.join(ROOT, 'work', f'nrc_cand_{yy}.csv'), 'w', newline='') as out:
+    with open(ds('nrc', 'work', f'nrc_cand_{yy}.csv'), 'w', newline='') as out:
         w = csv.DictWriter(out, fieldnames=COLS, extrasaction='ignore')
         w.writeheader()
         for sq, com in data['INCIDENT_COMMONS'].items():
             det = data['INCIDENT_DETAILS'].get(sq, {})
-            st = str(com.get('LOCATION_STATE') or '').strip().upper()
             txt = ' '.join(str(det.get(k) or '') for k in ('BODY_OF_WATER', 'TRIBUTARY_OF', 'ADDITIONAL_MEDIUM_INFO')) + ' ' + str(com.get('INCIDENT_LOCATION') or '')
-            if st not in STATES and not GL.search(txt.upper()):
+            mats = data['MATERIAL_INVOLVED'].get(sq, [{}])
+            if not any(OIL.search(str(m.get('NAME_OF_MATERIAL') or '').upper()) for m in mats) and not GL.search(txt.upper()):
                 continue
-            for m in data['MATERIAL_INVOLVED'].get(sq, [{}]):
+            for m in mats:
                 row = {'YEAR': 2000 + int(yy)}
                 row.update(data['CALLS'].get(sq, {})); row.update(com); row.update(det); row.update(m)
                 row['DESCRIPTION_OF_INCIDENT'] = str(row.get('DESCRIPTION_OF_INCIDENT') or '')[:1200].replace('\n', ' ')

@@ -1,0 +1,82 @@
+/* /spills/reports (SpillsReport.jsx): the pieces beyond the shared report frame (ScrubberReport.module.css). */
+.topRight { display: inline-flex; align-items: center; gap: 10px; }
+.mapBtn { font-size: 13px; color: #0e7490; text-decoration: none; padding: 7px 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; }
+.mapBtn:hover { background: #ecfeff; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid #fecdd3; background: #fff1f2; color: #9f1239; cursor: pointer; }
+.chip b { font-size: 14px; line-height: 1; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.plot { width: 100%; min-width: 0; }
+.plot svg { max-width: 100%; height: auto; display: block; }
+.plot a:hover circle, .plot a:hover rect { stroke: #0f172a; stroke-width: 1.5; }
+
+.wTile { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; }
+.waffle { width: 64px; height: 64px; display: block; margin-top: 4px; }
+
+.spark { width: 100%; max-width: 140px; height: 24px; display: block; }
+.stack { display: flex; height: 12px; background: #f1f5f9; border-radius: 4px; overflow: hidden; min-width: 80px; }
+.stack > span { display: block; height: 100%; }
+.barTh { width: 26%; }
+.tbl td { vertical-align: top; }
+.wrap { white-space: normal; }
+.linkBtn { font: inherit; font-size: 12px; color: #0369a1; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.more { margin-top: 8px; font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 7px; border: 1px solid #d1d5db; background: #fff; color: #374151; cursor: pointer; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: #374151; }
+.toggles label { display: inline-flex; align-items: center; gap: 5px; }
+
+.flow { width: 100%; min-width: 0; }
+.flowSvg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.flowHeads { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; font-weight: 600; margin-bottom: 4px; }
+.flowHeads span:nth-child(2) { text-align: center; }
+.flowHeads span:last-child { text-align: right; }
+.flowLink { cursor: pointer; }
+.flowLink:hover { stroke-opacity: 0.85; }
+.flowNode { cursor: pointer; }
+.flowLabel { font-size: 11.5px; fill: #111827; paint-order: stroke; stroke: #fff; stroke-width: 3.5px; stroke-linejoin: round; }
+.flowN { fill: #6b7280; font-weight: 400; }
+
+.sectionH { font-size: 20px; color: #0f172a; margin: 28px 0 12px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px 18px; }
+.mult { min-width: 0; }
+.multHead { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 4px; }
+.multHead b { font-variant-numeric: tabular-nums; }
+.mult .spark { max-width: none; height: 30px; }
+.multAxis { display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
+
+.intro { font-size: 13.5px; line-height: 1.6; color: #374151; max-width: 860px; }
+.srcSec { margin-top: 12px; }
+.srcList { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; color: #1f2937; }
+.dim { color: #6b7280; }
+.method { color: #4b5563; font-size: 12.5px; margin-top: 2px; }
+.noPrintCol { width: 1%; }
+
+@media (max-width: 900px) { .three { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  .two { grid-template-columns: 1fr; }
+  .topRight { gap: 6px; }
+  .mapBtn { display: none; }
+  .barTh { width: auto; }
+}
+@media print {
+  .chip, .linkBtn, .more, .toggles, .noPrintCol, .mapBtn { display: none !important; }
+  .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .multiples { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .sectionH { break-after: avoid; font-size: 16px; margin: 14px 0 8px; }
+  .tbl { font-size: 9.5px; }
+  .flowLabel { font-size: 10px; }
+}
+/* The flow chart needs about 640 px for its labels: on phones it scrolls sideways inside its card. */
+.flowScroll { overflow-x: auto; }
+.flowInner { min-width: 640px; }
+@media (max-width: 560px) { .tilesPhone { grid-template-columns: 1fr !important; } }
+@media print { .flowScroll { overflow: visible; } .flowInner { min-width: 0; } }
+@media print { .tilesPhone { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
+
+/* Instant hover values for the hand-drawn charts (HoverTips) */
+.hoverTip { position: fixed; z-index: 50; pointer-events: none; max-width: 320px; padding: 5px 8px; border-radius: 6px;
+  background: #111827; color: #fff; font-size: 12px; line-height: 1.35; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
+@media print { .hoverTip { display: none; } }

@@ -90,13 +90,24 @@ const ROUTES = [
   {
     out: 'spills.html',
     url: 'https://earthatlas.org/spills',
-    title: 'Lake Michigan oil spill exposure — NRC reports on NOAA ESI · EarthAtlas',
+    title: 'Fossil Fuel Spills & Releases — Lake Michigan spill reports and U.S. pipeline accidents · EarthAtlas',
     description:
-      'Oil and petroleum releases reported to the National Response Center around Lake Michigan, 2015–2024, mapped on NOAA’s Environmental Sensitivity Index: shoreline sensitivity and listed species near each report. Exposure from unverified initial reports, not measured impact. An EarthAtlas tool.',
+      'Oil and petroleum spills reported around Lake Michigan since 2015, on NOAA’s shoreline sensitivity map with the listed species and protected areas near each one, plus every U.S. oil and gas pipeline accident reported to PHMSA since 2010. An EarthAtlas tool.',
     image: 'https://earthatlas.org/earthatlas-social.jpg',
-    imageAlt: 'EarthAtlas map of oil spill reports around Lake Michigan on NOAA shoreline sensitivity',
+    imageAlt: 'EarthAtlas Fossil Fuel Spills & Releases map: oil spill reports around Lake Michigan and pipeline accidents',
     keywords:
       'Lake Michigan, oil spill, National Response Center, NRC, Environmental Sensitivity Index, ESI, NOAA, endangered species, Great Lakes',
+  },
+  {
+    out: 'spills-reports.html',
+    url: 'https://earthatlas.org/spills/reports',
+    title: 'Fossil Fuel Spills & Releases report — oil spill reports and pipeline accidents by year · EarthAtlas',
+    description:
+      'Oil spill reports to the National Response Center and U.S. pipeline accidents reported to PHMSA, year by year: where the oil went, the shorelines, listed species and protected areas near each report, and the largest pipeline accidents. Every number links to its source. An EarthAtlas report.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas Fossil Fuel Spills & Releases report: charts of oil spill reports and pipeline accidents by year',
+    keywords:
+      'oil spill report, pipeline accidents, PHMSA, National Response Center, NRC, Lake Michigan, Environmental Sensitivity Index, endangered species, protected areas, natural gas incidents',
   },
   {
     out: 'risks.html',

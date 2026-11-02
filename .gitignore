@@ -63,3 +63,10 @@ scripts/bake-risks/build/
 
 # /spills raw inputs (NRC FOIA spreadsheets, NOAA ESI GDB, gazetteer, work files) — ~600 MB, never commit; bake outputs go to public/spills-data
 data/spills/
+data/national/
+# /spills: per-state, region and PHMSA files are published to Blob (scripts/bake-spills/upload.mjs, the national
+# catalog); only the Lake Michigan fallback files are committed
+public/spills-data/state-*
+public/spills-data/regions-*
+public/spills-data/pipeline-*
+public/spills-data/gas-*

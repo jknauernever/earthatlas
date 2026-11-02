@@ -34,7 +34,7 @@ import {
   nearbyHighlights, statusShort, esiColor, esiNumber, esiShort, esiSentence, esiLevel, isListed, fmtInt, fmtDate, esc, titleCase,
 } from './spillsShared.js'
 import q from '../quakes/QuakesApp.module.css'
-import { padusSource, padusArea, PADUS_FILTER } from '../lib/national/padus.js'
+import { padusSource, padusArea, PADUS_FILTER, PADUS_FILL_OPACITY, PADUS_LINE_OPACITY } from '../lib/national/padus.js'
 import styles from './SpillsApp.module.css'
 
 const MAPBOX_TOKEN = mapboxToken
@@ -49,7 +49,7 @@ const BASEMAPS = [
 const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
 
 const LAYERS = ['reports', 'pipe', 'gas', 'esi', 'pa']
-const LAYERS_OFF_DEFAULT = ['gas']
+const LAYERS_OFF_DEFAULT = ['gas', 'pa']   // protected areas: drawn around a picked report instead (Josh 2026-11-02)
 const MATCHES = [
   { id: 'named', label: 'Names a Lake Michigan water' },
   { id: 'basin', label: 'Reached a river, lake or harbor inside the basin' },
@@ -121,6 +121,7 @@ export default function SpillsApp() {
   const [data, setData] = useState(null)
   const [esi, setEsi] = useState(null)
   const [protectedAreas, setProtectedAreas] = useState(null)
+  const [nearShapes, setNearShapes] = useState({})   // region → its protected-area shapes (the bake's), loaded on first pick
   // National PAD-US tiles (docs/NATIONAL_DATA.md) for every region; the bake's per-region GeoJSON is the fallback.
   const [padus, setPadus] = useState(null)
   const padusRef = useRef(null)
@@ -289,8 +290,8 @@ export default function SpillsApp() {
     const sl = p ? { 'source-layer': 'padus', filter: PADUS_FILTER } : {}
     const key = p ? 'id' : 'i'
     map.addSource('sp-pa', p ? p.source : { type: 'geojson', data: EMPTY, tolerance: 0.5 })
-    map.addLayer({ id: 'sp-pa-fill', type: 'fill', source: 'sp-pa', ...sl, paint: { 'fill-color': PA_COLOR, 'fill-opacity': ['case', ['==', ['to-string', ['get', key]], '-1'], 0.5, 0.22] } }, before)
-    map.addLayer({ id: 'sp-pa-line', type: 'line', source: 'sp-pa', ...sl, paint: { 'line-color': PA_COLOR, 'line-opacity': 0.95, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 9, 1, 12, 2] } }, before)
+    map.addLayer({ id: 'sp-pa-fill', type: 'fill', source: 'sp-pa', ...sl, paint: { 'fill-color': PA_COLOR, 'fill-opacity': ['case', ['==', ['to-string', ['get', key]], '-1'], 0.5, PADUS_FILL_OPACITY] } }, before)
+    map.addLayer({ id: 'sp-pa-line', type: 'line', source: 'sp-pa', ...sl, paint: { 'line-color': PA_COLOR, 'line-opacity': PADUS_LINE_OPACITY, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 9, 1, 12, 2] } }, before)
     map.addLayer({ id: 'sp-pa-hi', type: 'line', source: 'sp-pa', ...sl, filter: ['==', ['to-string', ['get', key]], '-1'], paint: { 'line-color': '#ffffff', 'line-width': 2.2 } }, before)
   }
   useEffect(() => { const map = mapRef.current; if (padus && mapReady && map?.getSource('sp-pa')) { addPaLayers(map); syncRef.current?.() } }, [padus, mapReady])
@@ -321,6 +322,10 @@ export default function SpillsApp() {
     map.addLayer({ id: 'sp-esi', type: 'line', source: 'sp-esi', layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': esiMatch, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 10, 2.4, 14, 4.5] } })
     // The report's search radius: red dashes on a white outline, so it reads on satellite, dark and light maps.
+    // The protected areas inside a picked report's radius (the card's "What could be harmed"), whatever the layer toggle.
+    map.addSource('sp-pa-near', { type: 'geojson', data: EMPTY, tolerance: 0.3 })
+    map.addLayer({ id: 'sp-pa-near-fill', type: 'fill', source: 'sp-pa-near', paint: { 'fill-color': PA_COLOR, 'fill-opacity': ['case', ['get', 'big'], 0, 0.3] } })
+    map.addLayer({ id: 'sp-pa-near-line', type: 'line', source: 'sp-pa-near', paint: { 'line-color': PA_COLOR, 'line-width': 1.5 } })
     map.addLayer({ id: 'sp-ring-casing', type: 'line', source: 'sp-ring', paint: { 'line-color': '#ffffff', 'line-width': 4, 'line-opacity': 0.9 } })
     map.addLayer({ id: 'sp-ring', type: 'line', source: 'sp-ring', paint: { 'line-color': '#ff1f3d', 'line-width': 2.2, 'line-dasharray': [2, 1.5] } })
     // Report points, styled by how precisely the report could be placed: solid = reported coordinates, smaller and
@@ -403,7 +408,7 @@ export default function SpillsApp() {
     const key = vec ? 'id' : 'i'
     const ai = picked?.kind !== 'area' ? '-1' : String(vec ? picked.tile ?? -1 : picked.i)
     map.setFilter('sp-pa-hi', ['==', ['to-string', ['get', key]], ai])
-    map.setPaintProperty('sp-pa-fill', 'fill-opacity', ['case', ['==', ['to-string', ['get', key]], ai], 0.5, 0.22])
+    map.setPaintProperty('sp-pa-fill', 'fill-opacity', ['case', ['==', ['to-string', ['get', key]], ai], 0.5, PADUS_FILL_OPACITY])
     const selPipe = picked?.kind === 'pipe' ? picked.a.id : null
     map.getSource('sp-pipe').setData(on('pipe') ? { type: 'FeatureCollection', features: pipesShown.map((a) => ({
       type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { id: a.id, bbl: a.bbl || 0, hot: a.id === selPipe },
@@ -415,7 +420,22 @@ export default function SpillsApp() {
     const ring = picked?.kind === 'report' && picked.p.loc ? circle(picked.p.lon, picked.p.lat, picked.p.r / 1000)
       : picked?.kind === 'pipe' && data?.pipes?.[picked.a.id] ? circle(picked.a.lon, picked.a.lat, data.pipes[picked.a.id].r / 1000) : EMPTY
     map.getSource('sp-ring').setData(ring)
-  }, [shown, esi, protectedAreas, pipesShown, gasShown, data, layersOff, picked])
+    const nearIds = new Set((picked?.kind === 'report' ? picked.p.pa : picked?.kind === 'pipe' ? data?.pipes?.[picked.a.id]?.pa : null)?.map((x) => x[0]) || [])
+    const shapes = nearShapes[data?.region]
+    // an area bigger than the ring (a national monument, a county-wide marine preserve) is outlined, not filled
+    const ringR = picked?.kind === 'report' ? picked.p.r : picked?.kind === 'pipe' ? data?.pipes?.[picked.a.id]?.r : 0
+    const ringAc = Math.PI * (ringR || 0) ** 2 / 4046.86
+    map.getSource('sp-pa-near').setData(nearIds.size && shapes ? { type: 'FeatureCollection', features: shapes.features.filter((f) => nearIds.has(f.properties.i))
+      .map((f) => ({ ...f, properties: { ...f.properties, big: (data.areas?.[f.properties.i]?.ac || 0) > ringAc } })) } : EMPTY)
+  }, [shown, esi, protectedAreas, nearShapes, pipesShown, gasShown, data, layersOff, picked])
+  // A picked report's nearby areas come from its region's shape file (Lake Michigan's, or the state's), fetched once.
+  useEffect(() => {
+    const rg = data?.region
+    const has = picked?.kind === 'report' ? picked.p.pa?.length : picked?.kind === 'pipe' ? data?.pipes?.[picked.a.id]?.pa?.length : 0
+    if (!has || !files || !rg || nearShapes[rg]) return
+    const url = rg === 'lm' ? files.protected : files.statePaDir && `${files.statePaDir}${rg}.geojson`
+    if (url) fetch(url).then((r) => (r.ok ? r.json() : null)).then((g) => g && setNearShapes((m) => ({ ...m, [rg]: g }))).catch(() => {})
+  }, [picked, data, files, nearShapes])
   const syncRef = useRef(null)
   useEffect(() => { syncRef.current = sync; if (mapReady) sync() }, [sync, mapReady])
 
@@ -436,7 +456,8 @@ export default function SpillsApp() {
     if (gf) return pick(`q:${gf.properties.id}`)
     const line = hits.find((f) => f.layer.id === 'sp-esi')
     if (line) return pick(`e:${line.properties.c}|${line.properties.esi}`)
-    const area = hits.find((f) => f.layer.id === 'sp-pa-fill')
+    // overlapping areas (a wilderness study area on BLM land): the smallest one under the click is the most specific
+    const area = hits.filter((f) => f.layer.id === 'sp-pa-fill').sort((a, b) => (Number(a.properties.GIS_Acres) || Infinity) - (Number(b.properties.GIS_Acres) || Infinity))[0]
     if (area && map.getSource('sp-pa')?.type === 'vector') {
       const a = padusArea(area.properties)
       tileAreaRef.current.set(String(a.id), a)
@@ -544,11 +565,12 @@ export default function SpillsApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basemap, photos.photo, mapView, y0, y1, layersOff, precOff, matchOff, sel, mapReady])
 
+  const areaName = data?.name || (region === 'lm' ? 'Lake Michigan' : null)
   useEffect(() => {
     const prev = document.title
-    document.title = 'Fossil Fuel Spills & Releases — Lake Michigan spill reports and U.S. pipeline accidents · EarthAtlas'
+    document.title = `Fossil Fuel Spills & Releases${areaName ? ` — ${areaName}` : ''} · EarthAtlas`
     return () => { document.title = prev }
-  }, [])
+  }, [areaName])
 
   const toggle = (setter) => (id) => setter((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const toggleLayer = toggle(setLayersOff), togglePrec = toggle(setPrecOff), toggleMatch = toggle(setMatchOff)
@@ -607,7 +629,7 @@ export default function SpillsApp() {
       </SiteBrand>
 
       <MapSearch className={q.searchBox}>
-        <GeoSearch placeholder="Search a place on Lake Michigan…"
+        <GeoSearch placeholder={areaName ? `Search a place ${region === 'lm' ? 'on' : 'in'} ${areaName}…` : 'Search a place…'}
           proximity={() => { const c = mapRef.current?.getCenter(); return c ? { lng: c.lng, lat: c.lat } : undefined }}
           onSelect={(r) => flyToSearchResult(mapRef.current, r)} />
       </MapSearch>

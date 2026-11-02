@@ -90,11 +90,11 @@ const ROUTES = [
   {
     out: 'spills.html',
     url: 'https://earthatlas.org/spills',
-    title: 'Fossil Fuel Spills & Releases — Lake Michigan spill reports and U.S. pipeline accidents · EarthAtlas',
+    title: 'Fossil Fuel Spills & Releases — U.S. oil spill reports and pipeline accidents · EarthAtlas',
     description:
-      'Oil and petroleum spills reported around Lake Michigan since 2015, on NOAA’s shoreline sensitivity map with the listed species and protected areas near each one, plus every U.S. oil and gas pipeline accident reported to PHMSA since 2010. An EarthAtlas tool.',
+      'Oil and petroleum spills reported to the National Response Center across the U.S. since 2015, with the listed species and protected areas near each one, plus every U.S. oil and gas pipeline accident reported to PHMSA since 2010. An EarthAtlas tool.',
     image: 'https://earthatlas.org/earthatlas-social.jpg',
-    imageAlt: 'EarthAtlas Fossil Fuel Spills & Releases map: oil spill reports around Lake Michigan and pipeline accidents',
+    imageAlt: 'EarthAtlas Fossil Fuel Spills & Releases map: oil spill reports and pipeline accidents across the U.S.',
     keywords:
       'Lake Michigan, oil spill, National Response Center, NRC, Environmental Sensitivity Index, ESI, NOAA, endangered species, Great Lakes',
   },

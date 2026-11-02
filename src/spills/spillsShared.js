@@ -45,7 +45,7 @@ export async function loadSpillsFiles() {
 
 async function loadSpillsOwnFiles() {
   const local = { lm: DATA_URL, esi: ESI_URL, protected: PROTECTED_URL, pipe: PIPE_URL, gas: GAS_URL,
-    regions: '/spills-data/regions-v2.json', stateDir: '/spills-data/state-v2/' }
+    regions: '/spills-data/regions-v2.json', stateDir: '/spills-data/state-v2/', statePaDir: '/spills-data/state-pa-v2/' }
   if (!import.meta.env.PROD) return local
   try {
     const m = await fetch(SPILLS_MANIFEST, { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })

@@ -20,6 +20,12 @@ export const GAP = {
 }
 export const MANAGER = { FED: 'Federal', STAT: 'State', LOC: 'Local', DIST: 'Regional district', NGO: 'Nonprofit', TRIB: 'Tribal',
   PVT: 'Private', JNT: 'Jointly managed', UNK: 'Manager unknown', TERR: 'Territorial', DESG: 'Designation' }
+// Agencies PAD-US names by code (Mang_Name), for the ones that show up as bare codes.
+export const AGENCY = { BLM: 'Bureau of Land Management', USFS: 'U.S. Forest Service', NPS: 'National Park Service', FWS: 'U.S. Fish and Wildlife Service',
+  USBR: 'Bureau of Reclamation', DOD: 'Department of Defense', USACE: 'U.S. Army Corps of Engineers', NOAA: 'NOAA', BOEM: 'Bureau of Ocean Energy Management', TVA: 'Tennessee Valley Authority',
+  NRCS: 'Natural Resources Conservation Service', BIA: 'Bureau of Indian Affairs', DOE: 'Department of Energy', ARS: 'Agricultural Research Service',
+  SFW: 'State fish and wildlife agency', SPR: 'State parks agency', SDNR: 'State natural resources department', SLB: 'State land board',
+  SDOL: 'State lands department', SDC: 'State conservation agency' }
 export const ACCESS = { OA: 'Open to the public', RA: 'Open to the public with limits', XA: 'Closed to the public', UK: 'Public access not known' }
 // PAD-US designation types (Des_Tp), as USGS names them.
 export const DESIGNATION = {"NP": "National Park", "NM": "National Monument", "NCA": "Conservation Area", "NF": "National Forest", "NG": "National Grassland", "PUB": "National Public Lands", "NT": "National Scenic or Historic Trail", "NWR": "National Wildlife Refuge", "WA": "Wilderness Area", "WSR": "Wild and Scenic River", "WSA": "Wilderness Study Area", "MPA": "Marine Protected Area", "NRA": "National Recreation Area", "NSBV": "National Scenic, Botanical or Volcanic Area", "NLS": "National Lakeshore or Seashore", "IRA": "Inventoried Roadless Area", "ACEC": "Area of Critical Environmental Concern", "RNA": "Research Natural Area", "REC": "Recreation Management Area", "RMA": "Resource Management Area", "WPA": "Watershed Protection Area", "REA": "Research or Educational Area", "HCA": "Historic or Cultural Area", "MIT": "Mitigation Land or Bank", "MIL": "Military Land", "ACC": "Access Area", "SDA": "Special Designation Area", "PROC": "Approved or Proclamation Boundary", "FOTH": "Federal Other or Unknown", "ND": "Not Designated", "TRIBL": "Native American Land Area", "SP": "State Park", "SW": "State Wilderness", "SCA": "State Conservation Area", "SREC": "State Recreation Area", "SHCA": "State Historic or Cultural Area", "SRMA": "State Resource Management Area", "SOTH": "State Other or Unknown", "LP": "Local Park", "LCA": "Local Conservation Area", "LREC": "Local Recreation Area", "LHCA": "Local Historic or Cultural Area", "LRMA": "Local Resource Management Area", "LOTH": "Local Other or Unknown", "PCON": "Private Conservation", "PPRK": "Private Park", "PREC": "Private Recreation or Education", "PHCA": "Private Historic or Cultural", "PAGR": "Private Agricultural", "PRAN": "Private Ranch", "PFOR": "Private Forest Stewardship", "POTH": "Private Other or Unknown", "CONE": "Conservation Easement", "RECE": "Recreation or Education Easement", "HCAE": "Historic or Cultural Easement", "AGRE": "Agricultural Easement", "RANE": "Ranch Easement", "FORE": "Forest Stewardship Easement", "OTHE": "Other Easement", "UNKE": "Unknown Easement", "UNK": "Unknown", "OCS": "Outer Continental Shelf Area", "FACY": "Facility"}
@@ -30,26 +36,35 @@ export async function padusSource() {
   return d ? { version: d.version, source: { type: 'vector', tiles: [nationalTilesUrl('padus', d.version)], minzoom: 0, maxzoom: 13, attribution: 'USGS PAD-US 4.1' } } : null
 }
 
-// Not drawn: Outer Continental Shelf areas (offshore leasing zones, not protected land), and, in tiles 4.1-20261101,
-// the shapes that cross the 180° line (Aleutians, Pacific monuments), which that build stretched into bands around the
-// world. A rebuild that splits them at the line (scripts/national/padus/build.sh, -wrapdateline) lets them come back.
-const DATELINE_IDS = [6938,7869,4154,6937,6939,7870,4153,4418,4419,310290,3447,3449,3453,3477,3451,3475,3473,3729,3977,3684,3498,3739,3956,3980,3564,3563,3561,3555,3491,3483,3482,3489,3487,4072,3494,3952,7570,4463,310667,310575,8525,4340,8520,7565]
-export const PADUS_FILTER = ['all', ['!=', ['get', 'Des_Tp'], 'OCS'], ['!', ['in', ['to-number', ['get', 'id']], ['literal', DATELINE_IDS]]]]
+// Not drawn: Outer Continental Shelf areas (offshore leasing zones, not protected land).
+export const PADUS_FILTER = ['!=', ['get', 'Des_Tp'], 'OCS']
+
+// PAD-US stacks designations (wilderness study areas, roadless areas, scenic rivers…) on top of the land they sit on,
+// so filling both doubles the green. Designations are drawn as outlines only; ownership, easements and marine areas fill.
+export const PADUS_FILL_OPACITY = ['case', ['==', ['get', 'FeatClass'], 'Designation'], 0, 0.22]
+// Outlines only up close: none below z8 (fills alone read cleanly at state scale), designations' from z10.
+export const PADUS_LINE_OPACITY = ['step', ['zoom'], 0, 8, ['case', ['==', ['get', 'FeatClass'], 'Designation'], 0, 0.95], 10, 0.95]
 
 /** Fill + outline layers for the `padus` source layer (one clear green; protection level is told in words, not color). */
 export function padusLayers(sourceId, prefix = 'padus') {
   return [
-    { id: `${prefix}-fill`, type: 'fill', source: sourceId, 'source-layer': 'padus', filter: PADUS_FILTER, paint: { 'fill-color': PADUS_COLOR, 'fill-opacity': 0.22 } },
+    { id: `${prefix}-fill`, type: 'fill', source: sourceId, 'source-layer': 'padus', filter: PADUS_FILTER, paint: { 'fill-color': PADUS_COLOR, 'fill-opacity': PADUS_FILL_OPACITY } },
     { id: `${prefix}-line`, type: 'line', source: sourceId, 'source-layer': 'padus', filter: PADUS_FILTER,
-      paint: { 'line-color': PADUS_COLOR, 'line-opacity': 0.95, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 9, 1, 12, 2] } },
+      paint: { 'line-color': PADUS_COLOR, 'line-opacity': PADUS_LINE_OPACITY, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 9, 1, 12, 2] } },
   ]
 }
 
 /** A clicked `padus` tile feature in the plain-language shape cards use (same keys as the /spills bake's areas). */
 export function padusArea(props) {
   const p = props || {}
+  // BLM and some state lands carry the managing office as the area's name ("Lakeview Office"): name it for the agency's
+  // land instead, and keep the office as who manages it.
+  const unit = (p.Unit_Nm || '').trim()
+  const office = /\b(field|district|regional|area|forestry)?\s*office$/i.test(unit) ? unit : ''
+  const agency = AGENCY[p.Mang_Name] || ''
   return {
-    id: p.id, n: (p.Unit_Nm || '').trim() || 'Unnamed protected area', mt: p.Mang_Type || 'UNK', mn: p.Mang_Name || '', lm: (p.Loc_Mang || '').trim(),
+    id: p.id, n: office ? `${agency || MANAGER[p.Mang_Type] || 'Public'} land` : unit || 'Unnamed protected area', office,
+    agency, fc: p.FeatClass || '', mt: p.Mang_Type || 'UNK', mn: p.Mang_Name || '', lm: (p.Loc_Mang || '').trim(),
     d: DESIGNATION[p.Des_Tp] || p.Des_Tp || '', ld: (p.Loc_Ds || '').trim(), gap: p.GAP_Sts, acc: p.Pub_Access || 'UK',
     ac: Number(p.GIS_Acres) || 0, st: p.State_Nm || '',
   }

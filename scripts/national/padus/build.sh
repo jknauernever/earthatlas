@@ -6,6 +6,13 @@
 # Each feature keeps the fields a map or card needs (name, manager, designation, GAP protection status, public access,
 # acres, state) plus `id` (the record's row in the source file).
 #
+# Zoom tiers (Josh 2026-11-02): each area first appears at the zoom its manager and size call for, so a national view
+# shows the big federal and state lands crisply instead of a speckle of 257,000 city parks (avg 60 acres):
+#   z0+  federal or joint management, or 100,000+ acres
+#   z5+  state, or 10,000+ acres
+#   z8+  nonprofit, special district, tribal, territorial
+#   z10+ everything else (local parks, private, unknown)
+#
 # Input: data/national/padus/raw/padus41_combined.parquet — the Source Cooperative copy (data.source.coop/cboettig/padus)
 # of the USGS release (doi:10.5066/P96WBCHS); USGS's own national files need a ScienceBase sign-in (docs/NATIONAL_DATA.md).
 # Output: data/national/padus/build/<version>/tiles.pmtiles + dataset.json (the catalog entry). Publish with
@@ -17,7 +24,7 @@ set -euo pipefail
 ROOT=${0:A:h:h:h:h}
 SRC=$ROOT/data/national/padus/raw/padus41_combined.parquet
 VERSION=${1:-4.1-$(date +%Y%m%d)}
-WORK=$ROOT/data/national/padus/work        # the FlatGeobuf inputs (offload drive, through the link)
+WORK=${PADUS_WORK:-$ROOT/data/national/padus/work}        # the FlatGeobuf inputs (offload drive, through the link)
 OUT=$ROOT/data/national/padus/build/$VERSION
 mkdir -p $WORK $WORK/tmp $OUT
 FIELDS='_cng_fid,FeatClass,Own_Type,Mang_Type,Mang_Name,Loc_Mang,Des_Tp,Loc_Ds,Unit_Nm,GAP_Sts,Pub_Access,GIS_Acres,State_Nm,IUCN_Cat,Date_Est'
@@ -29,7 +36,11 @@ for part in padus proclamation; do
     $WORK/$part.fgb $SRC
   print "$part: $(ogrinfo -ro -so $WORK/$part.fgb $part 2>/dev/null | sed -n 's/Feature Count: //p') features"
 done
-tippecanoe -o $OUT/tiles.pmtiles --force -t $WORK/tmp -Z0 -z13 \
+TIERS='{"padus":["any",["in","Mang_Type","FED","JNT"],[">=","GIS_Acres",100000],
+  ["all",[">=","$zoom",5],["any",["==","Mang_Type","STAT"],[">=","GIS_Acres",10000]]],
+  ["all",[">=","$zoom",8],["in","Mang_Type","NGO","DIST","TRIB","TERR"]],
+  [">=","$zoom",10]]}'
+tippecanoe -o $OUT/tiles.pmtiles -j $TIERS --force -t $WORK/tmp -Z0 -z13 \
   --drop-smallest-as-needed --extend-zooms-if-still-dropping --simplification=4 --detect-shared-borders \
   --attribution='USGS GAP PAD-US 4.1' \
   -L padus:$WORK/padus.fgb -L proclamation:$WORK/proclamation.fgb
@@ -43,6 +54,7 @@ cat > $OUT/dataset.json <<JSON
  "cadence": "USGS releases about once a year",
  "layers": { "padus": "fee land, easements, designations, marine areas", "proclamation": "approved or proclamation boundaries" },
  "fields": "id, FeatClass, Own_Type, Mang_Type, Mang_Name, Loc_Mang, Des_Tp, Loc_Ds, Unit_Nm, GAP_Sts, Pub_Access, GIS_Acres, State_Nm, IUCN_Cat, Date_Est",
+ "zoom_tiers": { "0": "federal or joint management, or 100,000+ acres", "5": "state, or 10,000+ acres", "8": "nonprofit, district, tribal, territorial", "10": "everything else" },
  "summary": { "records": 656986 }
 }
 JSON

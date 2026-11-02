@@ -247,7 +247,7 @@ export function AreaCard({ a, onClose, onBack }) {
   const g = gapOf(a)
   // PAD-US gives the manager as an agency name or a short code ("CNTY"); the local manager name is clearer when there is one
   const known = (v) => (v && !/^unknown$/i.test(v) && !/^[A-Z]{2,6}$/.test(v) ? v : '')
-  const manager = known(a.lm) || known(a.mn)
+  const manager = [known(a.lm) || a.agency || known(a.mn), a.office].filter(Boolean).join(', ')
   const localDes = a.ld && /\s/.test(a.ld) && a.ld !== a.d ? a.ld : ''
   return (
     <div className={s.card}>

@@ -36,8 +36,7 @@ import { TIERS, GAPS } from './review.js'
 import ProjectPicker from './ProjectPicker.jsx'
 import { processOf, statusShown } from './process.js'
 import { addFriendsHabitat, LAYERS_OF, CLICK_LAYERS } from '../friends/habitatOverlay.js'
-import { buildFriendsHabitatPopup, installPopupFrameHandlers, preloadFriendsContent, POPUP_CLOSE_EVENT } from '../friends/habitatPopups.js'
-import '../friends/ssx.css'
+import { buildFriendsHabitatPopup, installPopupCardHandlers, preloadFriendsContent } from '../friends/habitatPopups.js'
 import q from '../quakes/QuakesApp.module.css'
 import styles from './PermitsApp.module.css'
 import SiteBrand from '../components/SiteBrand.jsx'
@@ -395,7 +394,7 @@ export default function PermitsApp() {
   const [off, setOff] = useState(() => new Set(initial.off == null ? DEFAULT_OFF : initial.off.split(',').filter((x) => x && x !== 'none')))
 
   // ─── Data ─────────────────────────────────────────────────────────────────
-  useEffect(() => { installPopupFrameHandlers(); preloadFriendsContent() }, [])
+  useEffect(() => { installPopupCardHandlers(); preloadFriendsContent() }, [])
   useEffect(() => {
     Promise.all(['permits.json', 'wq303d.geojson', 'shellfish.geojson'].map(fetchPermitsJson))
       .then(([d, wq, shell]) => { setData(d); setWaters({ wq, shell }) })
@@ -449,19 +448,14 @@ export default function PermitsApp() {
     if (fly && mapRef.current) mapRef.current.easeTo({ center: [r.lon, r.lat], zoom: Math.max(mapRef.current.getZoom(), 12) })
     showPopup([r.lon, r.lat], recordHtml(r, data.docs, data.tags, byId, unmappedById), r.id)
   }, [byId, data, unmappedById, showPopup])
-  // A Friends habitat feature: Salish Sea Explorer's own popup (src/friends/habitatPopups.js), plus the Friends logo
-  // in its footer (required wherever Friends data shows).
+  // A Friends habitat feature: Salish Sea Explorer's popup content in the EarthAtlas card (src/friends/habitatPopups.js),
+  // which carries the Friends logo in its footer (required wherever Friends data shows).
   const showHabitatPopup = useCallback((lngLat, props) => {
     const map = mapRef.current
     if (!map) return
-    const { mid, lengthRank, ...own } = props // eslint-disable-line no-unused-vars
-    const html = () => buildFriendsHabitatPopup(own.h, own).replace('<div class="ssx-foot">',
-      `<div class="ssx-foot"><a class="ssx-friends" href="${FRIENDS_PAGE}" target="_blank" rel="noopener noreferrer"><img src="${FRIENDS_LOGO}" alt="Friends of the San Juans"></a>`)
+    const html = () => buildFriendsHabitatPopup(props.h, props)
     popupRef.current?.remove()
-    const popup = new mapboxgl.Popup({ className: 'ssx-host', maxWidth: '380px', closeButton: false, offset: 10 }).setLngLat(lngLat).setHTML(html()).addTo(map)
-    const close = () => popup.remove()
-    window.addEventListener(POPUP_CLOSE_EVENT, close)
-    popup.on('close', () => window.removeEventListener(POPUP_CLOSE_EVENT, close))
+    const popup = new mapboxgl.Popup({ maxWidth: '360px', offset: 10 }).setLngLat(lngLat).setHTML(html()).addTo(map)
     preloadFriendsContent().then(() => { if (popup.isOpen()) popup.setHTML(html()) })
     popupRef.current = keepPopupOnMap(popup)
     setSelected(null)

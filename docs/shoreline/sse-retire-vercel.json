@@ -1,0 +1,24 @@
+{
+  "redirects": [
+    {
+      "source": "/reports/living-with-the-shoreline.html",
+      "destination": "https://sanjuans.earthatlas.org/friends/reports/living-with-the-shoreline.html",
+      "permanent": true
+    },
+    {
+      "source": "/reports/kelp-habitat-value-and-threats.html",
+      "destination": "https://sanjuans.earthatlas.org/friends/reports/kelp-habitat-value-and-threats.html",
+      "permanent": true
+    },
+    {
+      "source": "/reports/shoreline-images/:file",
+      "destination": "https://sanjuans.earthatlas.org/friends/reports/shoreline-images/:file",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://sanjuans.earthatlas.org/shoreline",
+      "permanent": false
+    }
+  ]
+}

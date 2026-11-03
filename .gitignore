@@ -70,3 +70,6 @@ public/spills-data/state-*
 public/spills-data/regions-*
 public/spills-data/pipeline-*
 public/spills-data/gas-*
+
+# /shoreline county downloads + bake outputs (scripts/shoreline) — re-fetchable, never commit; outputs go to Blob
+data/shoreline/

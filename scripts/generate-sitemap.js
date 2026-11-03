@@ -73,6 +73,8 @@ addUrl('/spills/reports')
 // Sea-level rise risks (San Juan County)
 addUrl('/risks')
 addUrl('/risks/reports/land-value')
+// Shoreline Explorer (San Juan County, Friends of the San Juans)
+addUrl('/shoreline')
 
 // Carbon
 addUrl('/carbon')

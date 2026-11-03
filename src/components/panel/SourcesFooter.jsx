@@ -20,8 +20,9 @@ import PoweredBy from '../PoweredBy.jsx'
  *   title     string    'How this is sourced'
  *   changelog node      optional { href, label } — a quiet "What's new" link at the foot of the sources dialog (e.g. /ships/changelog)
  *   reports   array     optional [{ href, label }] — the site's reports, linked under the sources button and in the dialog's foot
+ *   poweredBy bool      "Powered by EarthAtlas" on every host, not only white-label ones (a partner's own tool, e.g. /shoreline)
  */
-export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes, changelog, reports = [] }) {
+export default function SourcesFooter({ title = 'How this is sourced', intro, sections, notes, changelog, reports = [], poweredBy = false }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef(null)
   return (
@@ -33,7 +34,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
         <a key={r.href} href={r.href} className={`${s.sourcesBtn} ${s.reportLink}`}><ReportIcon /> Report: {r.label}</a>
       ))}
       <div className={s.builtBy}>
-        <PoweredBy />
+        <PoweredBy always={poweredBy} />
         EarthAtlas is built by{' '}
         <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a>
       </div>

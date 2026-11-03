@@ -5,6 +5,14 @@
       "**": false
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "sanjuans.earthatlas.org" }],
+      "destination": "/shoreline",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/eapipe/static/(.*)",
@@ -57,6 +65,10 @@
     {
       "source": "/risks/reports/:path*",
       "destination": "/risks.html"
+    },
+    {
+      "source": "/shoreline",
+      "destination": "/shoreline.html"
     },
     {
       "source": "/permits/source/:key",

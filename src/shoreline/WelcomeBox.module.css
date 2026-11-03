@@ -1,0 +1,27 @@
+/* Welcome box + "About this map" pill (WelcomeBox.jsx): top center of the map, white EarthAtlas card */
+.card, .pill { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 12; }
+.card {
+  width: 380px; max-width: calc(100% - 24px); background: rgba(255, 255, 255, 0.97); color: #1f2937; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28); font-size: 13px; line-height: 1.5;
+}
+.body { padding: 13px 34px 4px 15px; max-height: 55vh; overflow-y: auto; }
+.body h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: #111827; }
+.body p { margin: 0 0 8px; }
+.body ul { margin: 0 0 8px; padding-left: 18px; }
+.body li { margin-bottom: 4px; }
+.body a { color: #0369a1; }
+.x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: #6b7280; font-size: 20px; line-height: 1; cursor: pointer; }
+.x:hover { background: #f3f4f6; color: #111827; }
+.done { display: block; width: calc(100% - 30px); margin: 2px 15px 13px; padding: 7px; border: 0; border-radius: 6px; background: #1f2937; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.done:hover { background: #374151; }
+.pill {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.95);
+  color: #1f2937; font: inherit; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; white-space: nowrap;
+}
+.pill svg { color: #0e7490; }
+.pill:hover { background: #fff; }
+@media (max-width: 600px) {
+  .card, .pill { top: 64px; }
+  /* Clear of the right-hand button column (search, share, layers) */
+  .card { left: 52px; right: 56px; width: auto; max-width: none; transform: none; }
+}

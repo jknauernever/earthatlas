@@ -12,7 +12,7 @@ function RedirectKeepingQuery({ to }) {
   return <Navigate to={`${to}${search}${hash}`} replace />
 }
 import App from './App.jsx'
-import { onBrandHost } from './lib/brand.js'
+import { brand, onBrandHost } from './lib/brand.js'
 import ExploreApp from './explore/ExploreApp.jsx'
 import whalesConfig from './explore/configs/whales.js'
 import sharksConfig from './explore/configs/sharks.js'
@@ -51,6 +51,7 @@ import SpillsApp from './spills/SpillsApp.jsx'
 const SpillsReport = lazy(() => import('./spills/SpillsReport.jsx'))
 import RisksApp from './risks/RisksApp.jsx'
 import LandValueReport from './risks/LandValueReport.jsx'
+import ShorelineApp from './shoreline/ShorelineApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
 import HappyWhaleApp from './happywhale/HappyWhaleApp.jsx'
 import ShipTrafficApp from './shiptraffic/ShipTrafficApp.jsx'
@@ -142,8 +143,8 @@ if (phKey) {
   })
 }
 
-// Partner hosts (lib/brand.js) have no home page of their own yet: "/" goes to earthatlas.org.
-if (onBrandHost && window.location.pathname === '/') window.location.replace('https://earthatlas.org/')
+// Partner hosts (lib/brand.js): "/" opens the brand's home tool, or earthatlas.org when it has none.
+if (onBrandHost && window.location.pathname === '/') window.location.replace(brand?.home ? brand.home + window.location.search : 'https://earthatlas.org/')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -185,6 +186,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/spills/reports" element={<Suspense fallback={null}><SpillsReport /></Suspense>} />
           <Route path="/risks" element={<RisksApp />} />
           <Route path="/risks/reports/land-value" element={<LandValueReport />} />
+          <Route path="/shoreline" element={<ShorelineApp />} />
           <Route path="/birdsong" element={<BirdsongApp />} />
           <Route path="/happywhale" element={<HappyWhaleApp />} />
           <Route path="/shiptraffic" element={<ShipTrafficApp />} />

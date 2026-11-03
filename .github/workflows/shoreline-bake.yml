@@ -1,0 +1,84 @@
+# /shoreline yearly parcel refresh (docs/SHORELINE_PORT_PLAN.md decision 9): fresh San Juan County parcels, buildings and
+# address points, the Friends habitat distances and NAIP greenery recomputed for them, baked into PMTiles + popup
+# detail shards, published to Blob as a new dated bake, then shoreline/latest.json is flipped to it
+# (src/shoreline/bake.js reads it). No commit or Vercel build. A run that fails or is refused by upload.mjs's gates
+# (sample download, missing shards, a count down >10%) leaves the previous bake serving.
+#
+# Cost per run: ~150 county map-service requests, ~77 Earth Engine batches (~4 min, earthatlas project), ~37 MB to Blob.
+# Secrets: SHORELINE_GEE_KEY (service account shoreline-bake@earthatlas, Earth Engine Resource Viewer + Service Usage
+# Consumer only; created 2026-11-02), CRON_SECRET (one-file upload passes from api/cron/permits-upload-token.js).
+# Run by hand: Actions → shoreline-bake → Run workflow. "pins" bakes just those parcels as a check and uploads nothing.
+name: shoreline-bake
+
+on:
+  schedule:
+    - cron: '17 15 15 2 *'   # Feb 15, 15:17 UTC: after the county's assessor roll for the year; GitHub may start it late
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Bake and run the gates; upload nothing'
+        type: boolean
+        default: false
+      pins:
+        description: 'Only these parcel PINs, comma-separated (a check; never uploaded)'
+        type: string
+        default: ''
+
+concurrency:
+  group: shoreline-bake
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PERMITS_TOKEN_URL: https://earthatlas.org/api/cron/permits-upload-token
+      PINS: ${{ inputs.pins }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet 'shapely>=2' pyproj numpy earthengine-api
+
+      - name: Restore tippecanoe
+        id: tippecanoe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/tippecanoe-bin
+          key: tippecanoe-2.79.0-${{ runner.os }}
+      - name: Build tippecanoe 2.79.0
+        if: steps.tippecanoe-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j4
+          mkdir -p ~/tippecanoe-bin && cp /tmp/tippecanoe/tippecanoe ~/tippecanoe-bin/
+      - run: echo "$HOME/tippecanoe-bin" >> "$GITHUB_PATH"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.SHORELINE_GEE_KEY }}
+
+      - run: echo "VERSION=$(date -u +%F)" >> "$GITHUB_ENV"
+      - name: Download the county layers
+        run: node scripts/shoreline/fetch-county.mjs ${PINS:+--pins "$PINS"}
+      - name: Habitat distances
+        run: python3 scripts/shoreline/nearshore-stats.py
+      - name: Greenery (Earth Engine)
+        run: python3 scripts/shoreline/greenery-stats.py
+      - name: Bake
+        run: python3 scripts/shoreline/bake-parcels.py "$VERSION"
+      - name: Publish (gates, upload, pointer)
+        if: ${{ inputs.pins == '' || inputs.pins == null }}
+        run: node scripts/shoreline/upload.mjs "$VERSION" --pointer ${{ inputs.dry_run && '--dry-run' || '' }}

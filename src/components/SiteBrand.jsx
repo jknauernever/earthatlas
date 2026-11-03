@@ -1,4 +1,4 @@
-import { brand } from '../lib/brand.js'
+import { brand as hostBrand } from '../lib/brand.js'
 import s from './SiteBrand.module.css'
 
 /**
@@ -8,8 +8,9 @@ import s from './SiteBrand.module.css'
  *   styles    the site's CSS module (its .branding / .brandingLink / .wordmark, unchanged)
  *   children  the tool badge, e.g. <span className={q.subBadge}>Sea-Level Rise Risks</span>
  *   wholeLink true where the whole chip is one link home (/live, /live-local)
+ *   brand     a lib/brand.js entry to show on every host: a partner's own tool (/shoreline is Friends of the San Juans')
  */
-export default function SiteBrand({ styles, children, wholeLink = false }) {
+export default function SiteBrand({ styles, children, wholeLink = false, brand = hostBrand }) {
   if (!brand) {
     const mark = <span className={styles.wordmark}>Earth<em>Atlas</em></span>
     return wholeLink

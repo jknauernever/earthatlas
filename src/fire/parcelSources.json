@@ -10,5 +10,13 @@
     "sourceLayer": "parcels",
     "version": "2025",
     "updatedAt": "2026-06-16"
+  },
+  "shoreline-sjc": {
+    "pmtilesUrl": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/parcels/shoreline-sjc-2026-11.pmtiles",
+    "sourceLayer": "parcels",
+    "version": "2026-11",
+    "detailBase": "https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shoreline/2026-11/detail/",
+    "detailShards": 256,
+    "updatedAt": "2026-11-03"
   }
 }

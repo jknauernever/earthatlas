@@ -1,0 +1,48 @@
+# Quarterly refresh of the Friends of the San Juans article index behind "Related content" in /shoreline's and
+# /permits' habitat and property popups (docs/SHORELINE_PORT_PLAN.md decision 9). Reads sanjuans.org's public WordPress
+# REST API (~6 requests), keeps the tags already in the index, tags new articles by rules (no AI), and publishes
+# shoreline/friends-content.json to Blob (src/friends/friendsContent.js reads it). No commit or Vercel build. A run the
+# gates refuse (too few articles, >10% fewer, a habitat layer left with none) leaves the previous index serving.
+# Secrets: CRON_SECRET (one-file upload pass from api/cron/permits-upload-token.js).
+# Run by hand: Actions → friends-content → Run workflow.
+name: friends-content
+
+on:
+  schedule:
+    - cron: '29 16 5 1,4,7,10 *'   # the 5th of Jan, Apr, Jul, Oct, 16:29 UTC; GitHub may start it late
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Harvest and run the gates; upload nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: friends-content
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PERMITS_TOKEN_URL: https://earthatlas.org/api/cron/permits-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet beautifulsoup4
+      - name: Harvest + tag
+        run: python3 scripts/shoreline/friends-content.py
+      - name: Publish (gates, upload)
+        run: node scripts/shoreline/upload-friends-content.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Living with the Shoreline — Friends of the San Juans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #0D4F4F;
+      --teal-light: #1A7F7F;
+      --teal-bg: #F0FDFA;
+      --teal-border: #99F6E4;
+      --dark: #1A2530;
+      --mid: #3D4F5F;
+      --light: #8B95A1;
+      --lighter: #ADB5BD;
+      --bg: #F8F9FA;
+      --border: #E5E7EB;
+      --green: #4A7C59;
+      --green-dark: #2D5A3D;
+      --green-bg: #F0FDF4;
+      --green-border: #BBF7D0;
+      --orange: #E8850C;
+      --orange-bg: #FFFBEB;
+      --orange-border: #FDE68A;
+      --ocean: #1B6B93;
+      --slate: #475569;
+      --fog: #CBD5E1;
+      --forest: #2D5A3D;
+      --font: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--dark);
+      background: #EFF2F5;
+      line-height: 1.7;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---- Hero ---- */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: var(--dark);
+      max-width: 1400px;
+      margin: 0 auto;
+      border-radius: 0 0 12px 12px;
+    }
+    .hero-img {
+      width: 100%;
+      display: block;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13,79,79,0.92) 0%, rgba(26,37,48,0.45) 40%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 48px 48px;
+    }
+    .hero-org {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-size: 52px;
+      font-weight: 800;
+      color: white;
+      line-height: 1.08;
+      margin-bottom: 10px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: #7DCFB6;
+    }
+    .hero-sub {
+      font-size: 20px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.75);
+      max-width: 520px;
+    }
+    @media (max-width: 700px) {
+      .hero h1 { font-size: 34px; }
+      .hero-overlay { padding: 24px; }
+      .hero-sub { font-size: 17px; }
+    }
+
+
+    /* ---- Container ---- */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .container-narrow {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ---- Introduction ---- */
+    .intro {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.05);
+      padding: 44px 48px;
+      margin: -40px auto 0;
+      position: relative;
+      max-width: 960px;
+    }
+    .intro p {
+      font-size: 18px;
+      color: var(--mid);
+      line-height: 1.75;
+      margin-bottom: 14px;
+    }
+    .intro p:first-child {
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--teal);
+      line-height: 1.5;
+    }
+    .intro p:last-child { margin-bottom: 0; }
+    @media (max-width: 700px) {
+      .intro { padding: 28px 24px; }
+      .intro p:first-child { font-size: 18px; }
+    }
+
+    /* ---- Table of contents ---- */
+    .toc {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.05);
+      padding: 40px 48px;
+      margin: 32px auto 0;
+      max-width: 960px;
+    }
+    .toc h2 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--teal);
+      margin-bottom: 20px;
+    }
+    .toc-list {
+      list-style: none;
+      columns: 2;
+      column-gap: 32px;
+    }
+    @media (max-width: 600px) { .toc-list { columns: 1; } }
+    .toc-list li { break-inside: avoid; }
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 9px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--dark);
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toc-item:hover { background: var(--bg); color: var(--teal); }
+    .toc-page {
+      font-weight: 400;
+      color: var(--lighter);
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    /* TOC intro quote */
+    .toc-quote {
+      margin-top: 28px;
+      padding: 24px 28px;
+      background: var(--teal-bg);
+      border-left: 4px solid var(--teal);
+      border-radius: 0 10px 10px 0;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .toc-quote .quote-portrait {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .toc-quote .quote-text {
+      flex: 1;
+    }
+    .toc-quote .quote-text p {
+      font-size: 15px;
+      font-style: italic;
+      color: var(--teal);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .toc-quote .quote-text cite {
+      font-style: normal;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--teal-light);
+    }
+    @media (max-width: 600px) {
+      .toc-quote { flex-direction: column; align-items: center; text-align: center; }
+    }
+    @media (max-width: 700px) {
+      .toc { padding: 28px 24px; }
+    }
+
+    /* ---- Infographic ---- */
+    .infographic {
+      margin: 40px auto;
+      max-width: 1400px;
+    }
+    .infographic img {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    .infographic figcaption {
+      text-align: center;
+      font-size: 14px;
+      color: var(--light);
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    /* ---- Section ---- */
+    .section {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.05);
+      margin: 32px auto;
+      overflow: hidden;
+      max-width: 1400px;
+    }
+    /* Sections without hero images (erosion, wildlife, restoration, storms, resources) */
+    .section-text-only {
+      max-width: 960px;
+    }
+    /* Side-by-side layout: image left, text right on desktop */
+    .section-layout {
+      display: flex;
+      align-items: stretch;
+    }
+    .section-media {
+      flex: 0 0 45%;
+      max-width: 45%;
+      position: relative;
+    }
+    .section-media img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    .section-media .photo-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 32px 20px 14px;
+      background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+    .section-media .photo-credit {
+      position: absolute;
+      bottom: 2px;
+      right: 12px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      padding: 0;
+      text-align: right;
+    }
+    .section-text {
+      flex: 1;
+      min-width: 0;
+    }
+    @media (max-width: 960px) {
+      .section { max-width: 960px; }
+      .section-layout { flex-direction: column; }
+      .section-media { flex: none; max-width: 100%; }
+      .section-media img { height: auto; }
+      .section-media .photo-caption {
+        position: static;
+        background: none;
+        color: var(--mid);
+        padding: 10px 24px 0;
+      }
+      .section-media .photo-credit {
+        position: static;
+        color: var(--lighter);
+        padding: 2px 24px 0;
+        text-align: right;
+      }
+    }
+
+    .section-body { padding: 36px 48px 44px; }
+    @media (max-width: 700px) { .section-body { padding: 28px 24px 32px; } }
+
+    .section h2 {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+    .section-subtitle {
+      font-size: 17px;
+      font-weight: 600;
+      font-style: italic;
+      color: var(--green);
+      margin-bottom: 20px;
+    }
+    .section h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--dark);
+      margin: 28px 0 10px;
+    }
+    .section p { margin-bottom: 14px; color: var(--mid); }
+    .section p:last-child { margin-bottom: 0; }
+
+    .two-col {
+      columns: 2;
+      column-gap: 32px;
+    }
+    @media (max-width: 960px) { .two-col { columns: 1; } }
+
+    /* ---- Photo caption (standalone, used on mobile fallback) ---- */
+    .photo-caption {
+      font-size: 13px;
+      color: var(--mid);
+      padding: 10px 48px 0;
+      font-style: italic;
+      line-height: 1.5;
+    }
+    .photo-credit {
+      font-size: 12px;
+      color: var(--lighter);
+      padding: 2px 48px 0;
+      text-align: right;
+    }
+    @media (max-width: 700px) {
+      .photo-caption { padding: 8px 24px 0; }
+      .photo-credit { padding: 2px 24px 0; }
+    }
+
+    /* ---- Fact callout ---- */
+    .fact {
+      margin: 24px 0;
+      padding: 20px 24px 20px 28px;
+      background: var(--orange-bg);
+      border-left: 5px solid var(--orange);
+      border-radius: 0 10px 10px 0;
+    }
+    .fact-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+    .fact p {
+      font-size: 15px;
+      line-height: 1.65;
+      color: #92400E;
+      margin: 0;
+    }
+
+    /* ---- Key point callout ---- */
+    .key-point {
+      margin: 24px 0;
+      padding: 20px 24px 20px 28px;
+      background: var(--green-bg);
+      border-left: 5px solid var(--green);
+      border-radius: 0 10px 10px 0;
+    }
+    .key-point-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green-dark);
+      margin-bottom: 6px;
+    }
+    .key-point p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #15803D;
+      margin: 0;
+    }
+
+    /* ---- Quote ---- */
+    .quote {
+      margin: 28px 0;
+      padding: 24px 28px;
+      background: var(--teal-bg);
+      border-left: 4px solid var(--teal);
+      border-radius: 0 10px 10px 0;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .quote-portrait {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .quote-content {
+      flex: 1;
+    }
+    .quote-content p {
+      font-size: 15px;
+      font-style: italic;
+      color: var(--teal);
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+    .quote-content cite {
+      font-style: normal;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--teal-light);
+    }
+    /* Quote without portrait */
+    .quote-simple {
+      margin: 28px 0;
+      padding: 24px 28px;
+      background: var(--teal-bg);
+      border-left: 4px solid var(--teal);
+      border-radius: 0 10px 10px 0;
+    }
+    .quote-simple p {
+      font-size: 15px;
+      font-style: italic;
+      color: var(--teal);
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+    .quote-simple cite {
+      font-style: normal;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--teal-light);
+      display: block;
+    }
+    @media (max-width: 600px) {
+      .quote { flex-direction: column; align-items: center; text-align: center; }
+    }
+
+    /* ---- Before/after pair ---- */
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0;
+    }
+    @media (max-width: 600px) { .before-after { grid-template-columns: 1fr; } }
+    .ba-card {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .ba-card img { width: 100%; display: block; }
+    .ba-label {
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ba-before .ba-label { color: #B91C1C; background: #FEF2F2; }
+    .ba-after .ba-label { color: var(--green-dark); background: var(--green-bg); }
+    .ba-location {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--teal);
+      margin-top: 8px;
+    }
+    .ba-description {
+      text-align: center;
+      font-size: 14px;
+      color: var(--mid);
+      margin-top: 6px;
+      line-height: 1.55;
+      font-style: italic;
+    }
+
+    /* ---- Adaptation grid ---- */
+    .adapt-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0;
+    }
+    @media (max-width: 600px) { .adapt-grid { grid-template-columns: 1fr; } }
+    .adapt-card {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .adapt-card img {
+      width: 100%;
+      display: block;
+    }
+    .adapt-card-body { padding: 16px 18px; }
+    .adapt-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 6px;
+    }
+    .adapt-card p { font-size: 14px; line-height: 1.55; color: var(--mid); margin: 0; }
+
+    /* ---- Stats strip ---- */
+    .stats {
+      display: flex;
+      gap: 12px;
+      margin: 24px 0;
+      flex-wrap: wrap;
+    }
+    .stat {
+      flex: 1;
+      min-width: 130px;
+      text-align: center;
+      padding: 16px 12px;
+      background: var(--bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .stat-val {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1.1;
+    }
+    .stat-lbl {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--lighter);
+      margin-top: 4px;
+    }
+
+    /* ---- Resources ---- */
+    .resource-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--teal);
+      margin: 32px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    .resource-section-title:first-of-type { margin-top: 24px; }
+    .resource-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 0 0 8px;
+    }
+    @media (max-width: 600px) { .resource-grid { grid-template-columns: 1fr; } }
+    .resource-card {
+      padding: 16px 18px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .resource-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 4px;
+    }
+    .resource-card p { font-size: 13px; color: var(--mid); margin: 0; line-height: 1.5; }
+    .resource-card a { color: var(--teal-light); text-decoration: none; }
+    .resource-card a:hover { text-decoration: underline; }
+
+    /* ---- Back cover / Footer ---- */
+    .back-cover {
+      position: relative;
+      overflow: hidden;
+      margin: 32px auto;
+      max-width: 1400px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.05);
+    }
+    .back-cover img {
+      width: 100%;
+      display: block;
+    }
+    .back-cover-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13,79,79,0.95) 0%, rgba(13,79,79,0.6) 50%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 40px 48px;
+    }
+    .back-cover-overlay p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+    .back-cover-overlay .org-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 4px;
+    }
+    .back-cover-overlay .org-mission {
+      font-size: 16px;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 12px;
+    }
+    .back-cover-overlay .credits {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+    }
+    @media (max-width: 700px) {
+      .back-cover-overlay { padding: 24px; }
+    }
+
+    /* ---- Site header ---- */
+    .site-header {
+      height: 84px;
+      background: #2C3E50;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .site-header a { text-decoration: none; }
+    .site-header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+    }
+    .site-header-icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .site-header-icon svg { width: 16px; height: 16px; color: white; }
+    .site-header-title { font-size: 16px; font-weight: 600; line-height: 1.2; }
+    .site-header-tagline { font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.2; }
+    .site-header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .site-header-nav {
+      position: relative;
+    }
+    .site-header-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .site-header-nav-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+    .site-header-nav-btn svg { width: 16px; height: 16px; }
+    .site-header-nav-btn .chevron { width: 12px; height: 12px; transition: transform 0.15s; }
+    .site-header-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      width: 260px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      border: 1px solid #E5E7EB;
+      padding: 4px 0;
+      z-index: 200;
+    }
+    .site-header-dropdown.open { display: block; }
+    .site-header-dropdown a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #374151;
+      transition: background 0.1s, color 0.1s;
+    }
+    .site-header-dropdown a:hover { background: #F0FDFA; color: var(--teal); }
+    .site-header-dropdown a svg { width: 16px; height: 16px; color: #9CA3AF; flex-shrink: 0; }
+    .site-header-dropdown a .ext-icon { margin-left: auto; width: 12px; height: 12px; color: #D1D5DB; }
+    .site-header-logo { height: 44px; opacity: 0.7; }
+    @media (max-width: 600px) {
+      .site-header-logo { display: none; }
+      .site-header-titles { display: none; }
+    }
+
+    /* ---- Site footer ---- */
+    .site-footer {
+      background: #2C3E50;
+      position: relative;
+      padding: 10px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .site-footer p {
+      color: white;
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      padding-right: 144px;
+      margin: 0;
+    }
+    .site-footer-logo {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.9;
+      transition: opacity 0.15s;
+    }
+    .site-footer-logo:hover { opacity: 1; }
+    .site-footer-logo img { height: 24px; }
+    @media (max-width: 600px) {
+      .site-footer p { padding-right: 0; }
+      .site-footer-logo { display: none; }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 32px 20px 60px;
+    }
+    .footer p { font-size: 13px; color: var(--lighter); margin-bottom: 4px; }
+    .footer a { color: var(--teal-light); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ---- Print ---- */
+    @media print {
+      body { background: white; }
+      .section, .toc, .intro { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    }
+  
+    .site-header-dropdown { width: 320px; }
+    .site-header-group-sep { border-top: 1px solid #E8ECEF; margin-top: 4px; padding-top: 4px; }
+    .site-header-group-head { padding: 6px 14px 2px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #6B7B8A; }
+    .site-header-item { display: flex; flex-direction: column; min-width: 0; }
+    .site-header-item-label { font-weight: 500; line-height: 1.25; }
+    .site-header-item-note { font-size: 11px; color: #6B7B8A; line-height: 1.3; margin-top: 1px; }
+    .site-header-dropdown a { align-items: flex-start; }
+    .site-header-dropdown a svg { margin-top: 2px; }
+    .site-header-dropdown a .ext-icon { margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ====================== SITE HEADER ====================== -->
+<div class="site-header">
+  <a href="/shoreline" class="site-header-brand">
+    <div class="site-header-titles">
+      <div class="site-header-title">Shoreline Explorer</div>
+      <div class="site-header-tagline">Friends of the San Juans</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <a href="https://sanjuans.org" target="_blank" rel="noopener noreferrer"><img src="/friends/friends-logo-white.webp" alt="Friends of the San Juans" class="site-header-logo"></a>
+  </div>
+</div>
+
+<!-- ====================== HERO ====================== -->
+<header class="hero">
+  <img class="hero-img" src="shoreline-images/cover-family.jpg" alt="Family enjoying a natural shoreline in the San Juan Islands" loading="eager">
+  <div class="hero-overlay">
+    <div class="hero-org">Friends of the San Juans</div>
+    <h1>Living <em>with the</em> Shoreline</h1>
+    <p class="hero-sub">A stewardship guide for property owners in the San Juan Islands</p>
+  </div>
+</header>
+
+
+<!-- ====================== INTRODUCTION ====================== -->
+<div class="container-narrow">
+  <div class="intro">
+    <p>Your waterfront property is part of a beautiful, complex, and increasingly fragile marine ecosystem that supports salmon, rockfish, seabirds, whales, and human communities.</p>
+    <p>Outside your window, where your family finds inspiration and recreational opportunities, fish and wildlife find food and shelter.</p>
+    <p>Explore this guide to learn about cost effective and natural approaches to protecting your property for people and nature.</p>
+  </div>
+</div>
+
+<!-- ====================== TABLE OF CONTENTS ====================== -->
+<div class="container-narrow">
+  <nav class="toc">
+    <h2>Stewardship Guide</h2>
+    <ul class="toc-list">
+      <li><a class="toc-item" href="#forage-fish">Forage fish feed the marine food web <span class="toc-page">5</span></a></li>
+      <li><a class="toc-item" href="#salmon">Shorelines are a nursery for salmon <span class="toc-page">7</span></a></li>
+      <li><a class="toc-item" href="#eelgrass">Eelgrass is a haven for fish, crabs, and wildlife <span class="toc-page">9</span></a></li>
+      <li><a class="toc-item" href="#kelp">Kelp beds are the rainforests of the seas <span class="toc-page">11</span></a></li>
+      <li><a class="toc-item" href="#trees">Trees and shrubs are silent heroes <span class="toc-page">13</span></a></li>
+      <li><a class="toc-item" href="#feeder-bluffs">Feeder bluffs are beach builders <span class="toc-page">15</span></a></li>
+      <li><a class="toc-item" href="#wetlands">Wetlands provide essential services <span class="toc-page">17</span></a></li>
+      <li><a class="toc-item" href="#clean-water">Clean and clear waters benefit all <span class="toc-page">19</span></a></li>
+      <li><a class="toc-item" href="#erosion">Erosion is natural and can be influenced by your choices <span class="toc-page">20</span></a></li>
+      <li><a class="toc-item" href="#help-wildlife">You can help fish and wildlife <span class="toc-page">22</span></a></li>
+      <li><a class="toc-item" href="#restoration">Are there restoration opportunities on your property? <span class="toc-page">24</span></a></li>
+      <li><a class="toc-item" href="#preserve">Preserve healthy shorelines for now and the future <span class="toc-page">27</span></a></li>
+      <li><a class="toc-item" href="#sea-level">Healthy shorelines can adjust to rising seas <span class="toc-page">29</span></a></li>
+      <li><a class="toc-item" href="#storms">Are you worried about storms and erosion? <span class="toc-page">30</span></a></li>
+      <li><a class="toc-item" href="#resources">Landowner resources <span class="toc-page">32</span></a></li>
+    </ul>
+    <div class="toc-quote">
+      <img class="quote-portrait" src="shoreline-images/quote-mariluz-tom.jpg" alt="Mariluz Villa and Tom Reynolds" loading="lazy">
+      <div class="quote-text">
+        <p>&ldquo;I always wondered what can I, as one small person, do to help all of the animals that live in the water. It turns out that the orca feed on salmon, and salmon feed on the tiny little fish that spawn on my beach. For this reason we will do all we can to keep our shoreline natural.&rdquo;</p>
+        <cite>&mdash; Mariluz Villa and Tom Reynolds, Brown Island</cite>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<!-- ====================== INFOGRAPHIC ====================== -->
+<div class="container">
+  <figure class="infographic">
+    <img src="shoreline-images/infographic.jpg" alt="Wide illustration comparing natural shoreline practices on the left with harmful development practices on the right, showing that orcas need salmon, salmon need forage fish, and forage fish need healthy shorelines" loading="lazy">
+    <figcaption>Shoreline development practices versus natural practices: the choices you make on your property affect the entire marine food web, from forage fish to orca.</figcaption>
+  </figure>
+</div>
+
+<!-- ====================== FORAGE FISH ====================== -->
+<div class="container">
+<article id="forage-fish" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/forage-fish.jpg" alt="Rhinoceros Auklet with forage fish in its beak" loading="lazy">
+      <p class="photo-caption">Beach spawning forage fish come in on a high tide and lay their eggs on sand and gravel; the survival of these fish is especially vulnerable to changes on the land.</p>
+      <span class="photo-credit">Photo: Andrew Reding</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Forage fish feed the marine food web</h2>
+        <p class="section-subtitle">your choices impact this vital link in the food chain</p>
+        <p>Forage fish are small schooling fish that are eaten by larger fish, seabirds, and marine mammals. They play an essential role in marine food webs by transferring energy from plankton to larger species. Forage fish are staples in the diets of Chinook and Coho salmon, lingcod, Marbled Murrelets, Rhinoceros Auklets, and Minke whales.</p>
+        <p>Forage fish do not spawn just anywhere. Pacific herring deposit transparent, adhesive eggs on eelgrass and marine algae. Surf smelt and Pacific sand lance incubate their eggs in sand and small gravel on the upper third of beaches.</p>
+        <p>Forage fish utilize the same shoreline areas that humans do, which makes them vulnerable to modifications such as bulkheads, docks, roads, and the removal of vegetation. You can help forage fish by keeping beaches natural with overhanging trees, shrubs, and large driftwood which maintain cool and moist conditions.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>A NOAA Fisheries study in northern Puget Sound found that surf smelt egg survival was <strong>reduced by 50%</strong> in places where the beach habitat was both warmer and drier as a result of the presence of hard armored bulkheads and the absence of trees and shrubs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== SALMON ====================== -->
+<article id="salmon" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/salmon.jpg" alt="Man holding a salmon caught in San Juan Islands waters" loading="lazy">
+      <p class="photo-caption">Shorelines with native vegetation, eelgrass, and kelp help young salmon feed, grow, and avoid predators as they migrate to the open ocean.</p>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Shorelines are a nursery for salmon</h2>
+        <p class="section-subtitle">your vegetation and nearshore habitats provide food and shelter for salmon</p>
+        <p>The San Juans are important rearing habitat for out-migrating juvenile salmon. The time young salmon spend in the marine nearshore is critical to their ability to survive as adults. People and marine mammals such as southern resident orcas depend on adult salmon for food when the salmon pass back through the San Juans on their way to spawn in their natal rivers.</p>
+        <p>Juvenile salmon often avoid swimming under docks, and instead move out into deeper waters where they are at risk from predators. To reduce demand for new docks, consider using a marina, mooring buoy, or sharing an existing dock with neighbors. If you already have a dock, look into improvements that can increase light penetration such as grating.</p>
+        <p>You can also help salmon by retaining overhanging vegetation, detritus and driftwood; these natural shoreline features support insects and forage fish that young salmon eat.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>Researchers have found juvenile salmon from <strong>twenty of the twenty two populations</strong> of threatened Puget Sound Chinook salmon (along with many other species and populations of young salmon) throughout the shallow waters of the San Juans.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== EELGRASS ====================== -->
+<article id="eelgrass" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/eelgrass.jpg" alt="Researchers in a boat monitoring eelgrass beds in the San Juan Islands" loading="lazy">
+      <p class="photo-caption">Eelgrass provides food and shelter for many juvenile fish and shellfish of ecological, cultural, commercial, and recreational importance.</p>
+      <span class="photo-credit">Photo: West Howland</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Eelgrass is a haven for fish, crabs, and wildlife</h2>
+        <p class="section-subtitle">you can help eelgrass thrive by protecting water quality</p>
+        <p>Eelgrass is a flowering plant that grows in shallow, light-filled marine waters. Eelgrass abundance varies seasonally with some winter die-off and spring/summer growth.</p>
+        <p>Eelgrass supports marine food webs. The long blades of eelgrass are home to incubating eggs and animals, including crabs and juvenile fish. Eelgrass beds are also important feeding areas for birds. In addition, eelgrass mitigates wave energy and traps sediments, protecting shorelines from wave driven erosion.</p>
+        <p>You can help improve eelgrass health by limiting use of lawn and garden chemicals and controlling upland runoff to avoid excessive sedimentation that clouds the water. If you are a boater, anchor your boat in 30 foot or deeper water to avoid ripping up eelgrass. Since eelgrass needs light to grow, use a marina or mooring buoy instead of building a new dock which can shade out marine vegetation. If you already have a dock, upgrade to best design practices.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p><strong>Significant losses of eelgrass</strong> have occurred in many bays in the San Juans. Due to eelgrass's sensitivity to environmental stressors, it is an indicator of changing water conditions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== KELP ====================== -->
+<article id="kelp" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/kelp.jpg" alt="Underwater kelp forest with a shark swimming through" loading="lazy">
+      <p class="photo-caption">Kelp helps reduce wave energy that causes beach erosion and provides protected feeding areas for marine mammals, birds, and fish.</p>
+      <span class="photo-credit">Photo: Chris Teren</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Kelp beds are the rainforests of the seas</h2>
+        <p class="section-subtitle">avoid impacts to kelp to protect and feed wildlife</p>
+        <p>Clusters of bull kelp can be seen offshore of almost any high energy rocky coastline in the San Juans. Bull kelp grows in subtidal waters to depths of over 60 feet and is the most well known of the kelps due to its high visibility at the surface. There are also numerous species of understory kelps that grow along rocky bottoms, providing additional habitat complexity to the kelp forest. Kelp shelters urchins, crabs, juvenile rockfish, anemones, starfish, sea cucumbers, octopuses, and many other marine creatures.</p>
+        <p>Kelp needs clean water and light to thrive. It is very sensitive to pollution from small and large oil spills, soil erosion, and yard chemicals. You can help by making sure your septic system is in good working order and reducing use of chemicals. If you are a boater, keep your engine clean, steer clear of kelp beds when underway, and avoid locating docks in kelp habitat.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>Bull kelp is <strong>one of the fastest growing organisms on earth!</strong> Growth rates of 5.5 inches per day have been documented. The San Juans are home to one-third of all floating kelp in the inland waters of Washington State.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== TREES ====================== -->
+<article id="trees" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/trees.jpg" alt="Shoreline with a house nestled among native trees and vegetation" loading="lazy">
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Trees and shrubs are silent heroes</h2>
+        <p class="section-subtitle">use vegetation to protect slope stability, water quality, and wildlife habitat</p>
+        <p>Trees and shrubs do a lot of work. Roots provide 70% to 95% of a slope's sheer strength! An undisturbed forest can intercept up to 40% of rainfall, protecting against erosion while also slowing surface runoff, increasing infiltration, and protecting water quality.</p>
+        <p>Overhanging vegetation also provides shade, a key factor in keeping beach conditions cool, moist, and organically rich. These conditions support food webs and forage fish egg survival. The insects that live in the trees and shrubs then become food for small fish.</p>
+        <p>Shoreline vegetation is feeding, nesting, roosting, breeding, and migratory habitat for hundreds of wildlife species including eagles, herons, and osprey.</p>
+        <p>On your shoreline property, retain as many of the native trees and shrubs as possible. Careful limbing and pruning techniques are ideal for creating and maintaining views while protecting shorelines for you and wildlife.</p>
+        <div class="stats">
+          <div class="stat"><div class="stat-val">70&ndash;95%</div><div class="stat-lbl">Slope strength from roots</div></div>
+          <div class="stat"><div class="stat-val">40%</div><div class="stat-lbl">Rainfall intercepted by forest</div></div>
+        </div>
+        <div class="quote">
+          <img class="quote-portrait" src="shoreline-images/quote-george-peggy.jpg" alt="George and Peggy Hunt" loading="lazy">
+          <div class="quote-content">
+            <p>&ldquo;The native trees and shrubs between our home and the ocean amplify our connections to nature. Through the seasons, our views of the water are both dramatically and intimately enhanced by the abundance of wildlife that use our nearshore vegetation.&rdquo;</p>
+            <cite>&mdash; George and Peggy Hunt, San Juan Island</cite>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== FEEDER BLUFFS ====================== -->
+<article id="feeder-bluffs" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/feeder-bluffs.jpg" alt="Sunset over a feeder bluff with driftwood on the beach" loading="lazy">
+      <p class="photo-caption">Feeder bluffs provide the sand that forms and maintains beaches and marine habitats.</p>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Feeder bluffs are beach builders</h2>
+        <p class="section-subtitle">maintain vegetation and control runoff to preserve a healthy bank or bluff</p>
+        <p>Erosion is a natural process. This is especially true for feeder bluffs. Both the classic high bluffs and the much lower and slower receding banks provide the majority of the sand and gravel that form and maintain local beaches. Experts estimate that over 90% of the sand and gravel that comprise the beaches of Puget Sound and the San Juans comes from eroding banks and bluffs.</p>
+        <p>If your property has a feeder bluff, be sure to set structures far away from the bluff. Large erosive events on bluffs are frequently caused by heavy, saturated soils, so it is important to direct all home drainage into well vegetated areas away from the bluff crest. Maintaining native vegetation will also help reduce the impact of heavy rains and provide habitat for wildlife.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>The San Juans are geologically diverse. Within its 400+ miles of shoreline, there are <strong>30 miles of feeder bluffs</strong>, 34 miles of transport zones, 25 miles of barrier or accretionary beaches and spits, 48 miles of pocket beaches, 17 miles of embayment estuaries and lagoons, and 250 miles of rocky shores.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== WETLANDS ====================== -->
+<article id="wetlands" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/wetlands.jpg" alt="Coastal wetland with people exploring the habitat" loading="lazy">
+      <p class="photo-caption">Coastal wetlands, including estuaries, salt marshes, and lagoons, provide numerous ecosystem functions that benefit people and nature.</p>
+      <span class="photo-credit">Photo: Mark Gardner</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Wetlands provide essential services for people, fish, and wildlife</h2>
+        <p class="section-subtitle">protect water quality to help wetlands thrive</p>
+        <p>Coastal wetlands are critical to the survival of many species of fish and wildlife. They provide key services like producing organic nutrients, filtering out sediment, limiting flooding, and cleaning water. Coastal wetlands are also a major source of the insects which are an important food source for juvenile fish.</p>
+        <p>Wetland distribution across Puget Sound is at just 18% of historic conditions, and the San Juans have even fewer remaining intact wetlands than the regional average. If you own property with a wetland, be sure to leave adequate vegetation between any improvements and the wetland, ensuring space to allow it to fully function. Reduce or eliminate the use of lawn and garden fertilizers, and maintain the wetland's connection between the marine environment to ensure the proper flushing and exchange of species and nutrients.</p>
+        <div class="quote">
+          <img class="quote-portrait" src="shoreline-images/quote-nancy-tyler.jpg" alt="Nancy and Tyler Gazecki" loading="lazy">
+          <div class="quote-content">
+            <p>&ldquo;Every morning the wetland looks different with more birds and wildlife than one would normally see. Since the wetland's connection to the marine environment was restored, we also see small fish that were not there before. The wetland is truly one of Mother Earth's great artistic manifestations.&rdquo;</p>
+            <cite>&mdash; Nancy and Tyler Gazecki, Shaw Island</cite>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== CLEAN WATER ====================== -->
+<article id="clean-water" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/clean-water.jpg" alt="Shellfish and clams in clear water along the San Juan Islands shore" loading="lazy">
+      <p class="photo-caption">Adequate setbacks for structures, low impact development techniques, and vegetated buffers protect water quality and marine habitats.</p>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Clean and clear waters benefit all</h2>
+        <p class="section-subtitle">use permeable surfaces and native vegetation to help keep waters clean</p>
+        <p>Stormwater that runs off the land (runoff) carries sediments, debris, and pollutants like fecal coliform bacteria, petroleum, and heavy metals directly to local waters. These contaminants don't just break down and disappear &mdash; they can persist and adversely affect the health of shellfish, fish, and wildlife &mdash; as well as of people. While the San Juans do not have large industrial sources of pollution, cars, creosote pilings, failing septic systems, sedimentation, fertilizers, and household chemicals all cause water quality issues.</p>
+        <p>Individual and onsite efforts to control stormwater and the pollutants it carries are essential in San Juan County, as public infrastructure is extremely limited. You can help by maintaining or restoring native vegetation along the shore to slow and filter runoff, installing pervious walks and driveways to allow filtration, directing stormwater flow from gutters and roads into vegetated areas, maintaining onsite sewage systems, and using compost instead of chemical fertilizers.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>Stormwater pollution and excessive nutrients from failing septic systems and fertilizers are some of the factors behind ocean water's <strong>unbalanced acidity levels</strong>. Reducing local sources of these inputs can decrease acidity in Washington's marine waters and help reduce the effects of ocean acidification on local marine species such as shellfish.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== EROSION ====================== -->
+<article id="erosion" class="section section-text-only">
+  <div class="section-body">
+    <h2>Erosion is natural and can be influenced by your choices</h2>
+    <p class="section-subtitle">consult a coastal geologist if you have concerns</p>
+
+    <div class="before-after">
+      <div class="ba-card ba-before">
+        <img src="shoreline-images/erosion-before.jpg" alt="Before: old bulkhead armoring along the shoreline on Brown Island" loading="lazy">
+        <div class="ba-label">Before</div>
+      </div>
+      <div class="ba-card ba-after">
+        <img src="shoreline-images/erosion-after.jpg" alt="After: restored natural bluff and wider sandy beach on Brown Island" loading="lazy">
+        <div class="ba-label">After</div>
+      </div>
+    </div>
+    <p class="ba-location">Brown Island</p>
+    <p class="ba-description">Three property owners came together to remove an unnecessary bulkhead and restore a small historic feeder bluff. The project resulted in a wider and sandier beach for use by people, fish, and wildlife.</p>
+
+    <div class="two-col" style="margin-top: 24px;">
+      <p>Erosion is a natural condition of healthy shorelines that is essential to overall marine health. Clearing vegetation and modifying site drainage can dramatically increase erosion rates. Rock bulkheads, or hard armoring, can reduce erosion caused by wave action but does not address runoff-induced erosion from the top of the bank, a common source of problems. And bulkheads actually cause erosion of the beach itself when waves reflect off the hard structure.</p>
+      <p>Engineered solutions such as bulkheads might be appropriate for some sites, but are often unnecessary and can be very expensive. Fortunately, there are other options. Plants can help stabilize eroding areas while maintaining important habitat. Nourishing the beach with gravel and/or large wood can reduce wave action and create a more accessible beach. Moving threatened structures away from risks may be less expensive than protecting them in place, especially over the long term.</p>
+    </div>
+
+    <div class="quote">
+      <img class="quote-portrait" src="shoreline-images/quote-jim-johannessen.jpg" alt="Jim Johannessen, Coastal Geologic Services" loading="lazy">
+      <div class="quote-content">
+        <p>&ldquo;In San Juan County, there are hundreds of unnecessary bulkheads on beaches, placed in areas with low natural erosion rates. Bulkheads not only have direct habitat impacts but also interrupt or alter the actual processes that are essential to maintaining our beaches over the long term.&rdquo;</p>
+        <cite>&mdash; Engineering Geologist Jim Johannessen of Coastal Geologic Services</cite>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== HELP FISH & WILDLIFE ====================== -->
+<article id="help-wildlife" class="section section-text-only">
+  <div class="section-body">
+    <h2>You can help fish and wildlife</h2>
+    <p class="section-subtitle">protect your investment, restore habitat, and support marine ecosystem recovery</p>
+
+    <div class="before-after">
+      <div class="ba-card ba-before">
+        <img src="shoreline-images/wildlife-before.jpg" alt="Before: rock armoring along North Beach, Orcas Island" loading="lazy">
+        <div class="ba-label">Before</div>
+      </div>
+      <div class="ba-card ba-after">
+        <img src="shoreline-images/wildlife-after.jpg" alt="After: restored natural beach at North Beach, Orcas Island" loading="lazy">
+        <div class="ba-label">After</div>
+      </div>
+    </div>
+    <p class="ba-location">North Beach, Orcas Island</p>
+    <p class="ba-description">This pioneering project removed large rock armoring and constructed a gravel berm along multiple residential properties. After 25 years, residents are still enjoying a much more accessible beach, reduced erosion rates, and intact habitat.</p>
+
+    <div class="two-col" style="margin-top: 24px;">
+      <p>Over 18 miles (and 700 parcels!) along San Juan County's shores are already armored with hard bulkheads. Hardened shorelines and derelict structures negatively impact fish, seabirds, and marine mammals. Our island community is profoundly influenced by the health of these animals and our environment.</p>
+      <p>Numerous private, public, and tribal landowners have joined with groups like Friends of the San Juans to restore habitat for people, fish, and wildlife.</p>
+    </div>
+
+    <h3>Armor Removal</h3>
+    <p>Many shoreline structures are outdated or unnecessary and can be removed or redesigned to better protect property and help feed forage fish, salmon, and orca.</p>
+
+    <h3>Debris Removal</h3>
+    <p>Removal of degraded structures such as derelict docks, boathouses, and creosote pilings can reduce known sources of toxic materials in our waters and recover habitat for fish, shellfish, and people.</p>
+
+    <div class="quote">
+      <img class="quote-portrait" src="shoreline-images/quote-hank-joyce.jpg" alt="Hank and Joyce Landau" loading="lazy">
+      <div class="quote-content">
+        <p>&ldquo;We are very pleased that the Friends of San Juans worked in collaboration with the Tulalip Nation and the Department of Natural Resources to remove debris and creosote piles from Barlow Bay. These efforts on behalf of natural resources and future generations have improved the environment we cherish.&rdquo;</p>
+        <cite>&mdash; Hank and Joyce Landau, Lopez Island</cite>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== RESTORATION ====================== -->
+<article id="restoration" class="section section-text-only">
+  <div class="section-body">
+    <h2>Are there restoration opportunities on your property?</h2>
+    <p class="section-subtitle">small actions can make a big difference</p>
+
+    <div class="before-after">
+      <div class="ba-card ba-before">
+        <img src="shoreline-images/restoration-before.jpg" alt="Before: rock fill covering coastal wetland at Turn Point, San Juan Island" loading="lazy">
+        <div class="ba-label">Before</div>
+      </div>
+      <div class="ba-card ba-after">
+        <img src="shoreline-images/restoration-after.jpg" alt="After: restored beach and tidal channel at Turn Point, San Juan Island" loading="lazy">
+        <div class="ba-label">After</div>
+      </div>
+    </div>
+    <p class="ba-location">Turn Point, San Juan Island</p>
+    <p class="ba-description">12 dump truck loads of unnecessary rock were removed from a coastal wetland to unbury the beach and reconnect a small tidal channel. This improved the usability of the beach for property owners and fish.</p>
+
+    <h3 style="margin-top: 28px;">Coastal Wetland Reconnection</h3>
+    <p>Removal of barriers to restore connectivity between the uplands and the sea can improve water quality, fish passage, the transfer of nutrients and sediments, and reduce the risk of flooding. Coastal wetland reconnection projects include a wide range of alternatives, depending on the site: from removal of fill, tide gates, or culverts, to the installation of large open culverts or short span bridges.</p>
+
+    <h3>Beach Nourishment</h3>
+    <p>Beach nourishment projects add appropriate sized material to eroded beaches. Nourishment can restore the natural beach slope and substrate, resulting in a more beautiful and accessible beach that also benefits fish and wildlife by replacing lost habitat.</p>
+
+    <div class="quote">
+      <img class="quote-portrait" src="shoreline-images/quote-gary-patty.jpg" alt="Gary and Patty Bergren" loading="lazy">
+      <div class="quote-content">
+        <p>&ldquo;To our surprise, excitement, and amazement, all of the effort involved with our restoration project came to fruition as we watched surf smelt spawn on our beach. We also observed two salmon foraging on the surf smelt, which is all part of this marine environment life cycle! We have such a feeling of fulfillment.&rdquo;</p>
+        <cite>&mdash; Gary and Patty Bergren, Lopez Island</cite>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== PRESERVE ====================== -->
+<article id="preserve" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/preserve.jpg" alt="Aerial view of a forested peninsula shoreline in the San Juan Islands" loading="lazy">
+      <p class="photo-caption">Shoreline conservation programs honor a family's legacy and preserve the property for future generations.</p>
+      <span class="photo-credit">Photo: Chris Teren</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Preserve healthy shorelines for now and the future</h2>
+        <p class="section-subtitle">you can leave a legacy for your family, fish, and wildlife</p>
+        <p>Protecting marine habitat is the most efficient and effective thing you can do to support the marine environment. A conservation easement is a voluntary tool that can provide permanent protection and be fully compatible with residential activities. Easements are legal, recorded documents that protect key scenic and natural features while the property remains in private ownership and use. In addition, preservation may entitle waterfront property owners to economic benefits.</p>
+        <p>As 80% of the waterfront tax parcels in San Juan County are in private, residential ownership, voluntary stewardship is an essential component of maintaining a healthy community for people and nature. San Juan County is fortunate to have two organizations that work with interested property owners to permanently protect priority habitats, species, and processes: the San Juan Preservation Trust (360.378.2461) and the San Juan County Land Bank (360.378.4402).</p>
+        <div class="quote">
+          <img class="quote-portrait" src="shoreline-images/quote-terrigal-burns.jpg" alt="Terrigal Burns and Christine Dunn" loading="lazy">
+          <div class="quote-content">
+            <p>&ldquo;What makes our land so special is the feeling we get as we sit on our veranda and observe with our family's low-impact way of interacting with the land&mdash;enjoying the fruits of our stewardship. Our being able to grant a conservation easement has allayed the deep worry we had about our property's future when as personal conservation easements.&rdquo;</p>
+            <cite>&mdash; Terrigal Burns and Christine Dunn, Waldron Island</cite>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== SEA LEVEL RISE ====================== -->
+<article id="sea-level" class="section">
+  <div class="section-layout">
+    <div class="section-media">
+      <img src="shoreline-images/sea-level.jpg" alt="Coastal landscape with mountains showing areas vulnerable to sea level rise" loading="lazy">
+      <p class="photo-caption">The &ldquo;coastal squeeze&rdquo; is when hard armoring prevents the beach from naturally adjusting landward in response to rising seas, causing the beach to be under water even at lower tides.</p>
+      <span class="photo-credit">Photo: Chris Teren</span>
+    </div>
+    <div class="section-text">
+      <div class="section-body">
+        <h2>Healthy shorelines can adjust to rising seas</h2>
+        <p class="section-subtitle">planning for change will protect people and the environment</p>
+        <p>Coastal communities around the globe are increasingly talking about and feeling the impacts of climate change and sea level rise. Forward-thinking individuals and governments are taking steps to prepare.</p>
+        <p>In our area, the most likely impacts associated with sea level rise are higher water levels/high tides and increased frequency and magnitude of coastal flooding and erosion events.</p>
+        <p>Beach habitat for recreation, shellfish, and forage fish spawning will also be lost in a process known as the coastal squeeze.</p>
+        <p>Everyone can play a proactive role addressing increased erosion and flood hazards &mdash; whether as individuals or as a community in terms of public infrastructure and the siting of new development. How we adapt will impact how our shorelines look and function for generations to come.</p>
+        <div class="fact">
+          <div class="fact-label">Fact</div>
+          <p>Many places in the San Juans, especially low lying shoreline roads, are already impacted by coastal erosion and flooding. The numbers are expected to increase dramatically &mdash; with <strong>11 miles of county roads</strong> threatened by increased flooding or erosion from rising sea levels by 2050, and <strong>20 miles vulnerable by 2100</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== STORMS AND EROSION ====================== -->
+<article id="storms" class="section section-text-only">
+  <div class="section-body">
+    <h2>Are you worried about storms and erosion?</h2>
+    <p class="section-subtitle">you can help your property adapt to changing conditions</p>
+    <div class="two-col">
+      <p>It is important to understand potential impacts of sea level rise on your shoreline and the best management options for your site.</p>
+      <p>Common adaptation strategies include fortifying with hard armoring, setting infrastructure back out of harm's way, elevating structures, and using natural protection approaches such as gravel berms and vegetation. Each solution is site-specific.</p>
+      <p>For many, simple, low cost steps such as setting back development and retaining a buffer of native trees and shrubs between your home and the water can help avoid or reduce storm driven erosion and flood impacts associated with rising seas. For others, a coastal geologist can advise you on the best option to protect your home, maintain habitat, and save you money in the long term.</p>
+    </div>
+
+    <h3>Adaptation Approaches</h3>
+    <div class="adapt-grid">
+      <div class="adapt-card">
+        <img src="shoreline-images/adapt-relocate.jpg" alt="Diagram showing a structure being relocated away from the shoreline" loading="lazy">
+        <div class="adapt-card-body">
+          <h4>Relocate Structures</h4>
+          <p>Moving a structure away from an eroding or low lying shore will protect your home, maintain habitat, and save you money in the long term.</p>
+        </div>
+      </div>
+      <div class="adapt-card">
+        <img src="shoreline-images/adapt-fortify.jpg" alt="Diagram showing hard armoring along a shoreline" loading="lazy">
+        <div class="adapt-card-body">
+          <h4>Fortify</h4>
+          <p>Hard shoreline armoring can reduce short-term wave erosion hazards, but it also starves nearby beaches, impacts fish and wildlife habitat, requires maintenance, and does not address flooding.</p>
+        </div>
+      </div>
+      <div class="adapt-card">
+        <img src="shoreline-images/adapt-elevate.jpg" alt="Diagram showing a structure elevated above flood level" loading="lazy">
+        <div class="adapt-card-body">
+          <h4>Elevate Structures</h4>
+          <p>Raising the elevation of vulnerable structures can reduce flood hazards in low lying areas and protect fish and wildlife habitat; however, it does not address erosion.</p>
+        </div>
+      </div>
+      <div class="adapt-card">
+        <img src="shoreline-images/adapt-nourish.jpg" alt="Diagram showing beach nourishment with gravel and vegetation" loading="lazy">
+        <div class="adapt-card-body">
+          <h4>Beach Nourishment</h4>
+          <p>Natural materials such as gravel and vegetation can be used to build a storm berm to absorb wave energy, reduce erosion, and protect structures and shoreline habitats.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote">
+      <img class="quote-portrait" src="shoreline-images/quote-john-maia.jpg" alt="John and Maia Vechey" loading="lazy">
+      <div class="quote-content">
+        <p>&ldquo;When we were looking at our options for redeveloping our property, one of the things we took into account was sea level rise. We wanted to get rid of the big seawall and make sure both the house and beach would be around in 100 years. By moving the house back, we were able to restore the beach for now and the future.&rdquo;</p>
+        <cite>&mdash; John and Maia Vechey, Orcas</cite>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ====================== RESOURCES ====================== -->
+<article id="resources" class="section section-text-only">
+  <div class="section-body">
+    <h2>Landowner Resources</h2>
+    <p class="section-subtitle">there are many resources available to help you understand and manage your shoreline</p>
+
+    <div class="resource-section-title">Regulatory Agencies</div>
+    <p style="margin-bottom: 16px;">To protect your property, your safety, and our region's natural and cultural resources, landowners are required to check with the County Planning Department before proceeding with any tree and vegetation removal, clearing, grading, drainage alteration, erosion control, or other construction activities within 200 feet of the shoreline.</p>
+
+    <div class="resource-grid">
+      <div class="resource-card">
+        <h4>Office of Regulatory Innovation &amp; Assistance</h4>
+        <p>Coordinates between state, local, and federal permits.<br>800.917.0043 &middot; <a href="https://www.oria.wa.gov" target="_blank">www.oria.wa.gov</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>Army Corps of Engineers</h4>
+        <p>Requires a permit for any beach structures/modifications occurring below mean higher high water.<br>206.764.3495 &middot; <a href="https://www.nws.usace.army.mil" target="_blank">www.nws.usace.army.mil</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>WA Dept. of Fish &amp; Wildlife</h4>
+        <p>Reviews and permits hydraulic permits for activities that occur or impact habitat below ordinary high water.<br>360.902.2534 &middot; <a href="https://wdfw.wa.gov/licensing/hpa/" target="_blank">wdfw.wa.gov/licensing/hpa/</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>WA Dept. of Ecology</h4>
+        <p>Provides assistance with water quality certifications (360.407.6068) and State Environmental Policy Act review (360.407.6922).<br><a href="https://www.ecy.wa.gov" target="_blank">www.ecy.wa.gov</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>SJC Community Development</h4>
+        <p>Manages permits, exemptions, variances and code violations.<br>360.378.2354 &middot; <a href="https://www.sanjuanco.com" target="_blank">www.sanjuanco.com</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>WA Dept. of Natural Resources</h4>
+        <p>Authorizes and/or provides leases for projects on or over state-owned aquatic lands. Orca Straits District.<br>360.856.3500 &middot; <a href="https://www.dnr.wa.gov" target="_blank">www.dnr.wa.gov</a></p>
+      </div>
+    </div>
+
+    <div class="resource-section-title">Local Resources</div>
+
+    <div class="resource-grid">
+      <div class="resource-card">
+        <h4>Friends of the San Juans</h4>
+        <p>Researches, protects, and restores local shoreline habitats and provides resources to landowners.<br>360.378.2319 &middot; <a href="https://www.sanjuans.org" target="_blank">www.sanjuans.org</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>Northwest Straits Foundation</h4>
+        <p>Offers incentives and services to shoreline landowners.<br>360.733.1725 &middot; <a href="https://www.nwstraitsfoundation.org" target="_blank">www.nwstraitsfoundation.org</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>SJC Environmental Services</h4>
+        <p>Home to stormwater, salmon recovery, derelict vessel program, and the Marine Resources Committee.<br>360.370.0500 &middot; <a href="https://sanjuanco.com/839/Environmental-Services" target="_blank">sanjuanco.com/839/Environmental-Services</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>SJC Marine Resources Committee (MRC)</h4>
+        <p>Advisory board to the County Council on the marine environment; serves as the local salmon recovery citizen committee.<br>360.370.7592 &middot; <a href="https://www.sjcmrc.org" target="_blank">www.sjcmrc.org</a></p>
+      </div>
+      <div class="resource-card">
+        <h4>San Juan Islands Conservation District</h4>
+        <p>Works with landowners to improve stewardship and conservation in the islands.<br>360.378.6621 &middot; <a href="https://www.sanjuanislandscd.org" target="_blank">www.sanjuanislandscd.org</a></p>
+      </div>
+    </div>
+
+    <div class="quote">
+      <img class="quote-portrait" src="shoreline-images/quote-val-leslie.jpg" alt="Val and Leslie Veirs" loading="lazy">
+      <div class="quote-content">
+        <p>&ldquo;We both strongly support strengthening shoreline protections. Why? We believe that our property is more valuable if we and our neighbors protect the shoreline. Orcas need salmon. Salmon need forage fish. Salmon and forage fish need the protection of eelgrass and kelp. Eelgrass and kelp need clean water. Shoreline protections are good for ecosystems and for the long-term economy of these lovely islands.&rdquo;</p>
+        <cite>&mdash; Val and Leslie Veirs, San Juan Island</cite>
+      </div>
+    </div>
+  </div>
+</article>
+
+</div><!-- .container -->
+
+<!-- ====================== BACK COVER ====================== -->
+<div class="container">
+  <div class="back-cover">
+    <img src="shoreline-images/back-cover.jpg" alt="Woman walking on a rocky shoreline in the San Juan Islands" loading="lazy">
+    <div class="back-cover-overlay">
+      <div class="org-name">Friends of the San Juans</div>
+      <p class="org-mission">Friends of the San Juans works to protect and restore the San Juan Islands and the Salish Sea for people and nature.</p>
+      <p>PO Box 1344, Friday Harbor, WA 98250 &middot; (360) 378-2319 &middot; <a href="https://www.sanjuans.org" target="_blank" style="color: #7DCFB6; text-decoration: none;">www.sanjuans.org</a></p>
+      <p class="credits">This stewardship guide was created by Friends of the San Juans with the generous support of The Wheeler Family Foundation, The Mountaineers Foundation, The Burning Foundation, LUSH Cosmetics, and Friends members.</p>
+      <p class="credits">Design: Shew Design &middot; shewdesign.com &nbsp;|&nbsp; Illustrations: Corbet Curfman &middot; riverbeddesign.com &nbsp;|&nbsp; Cover photos: Mark Gardner and Chris Teren</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== FOOTER ====================== -->
+<footer class="footer">
+  <p>Originally published by Friends of the San Juans</p>
+  <p><a href="https://www.sanjuans.org" target="_blank">sanjuans.org</a></p>
+</footer>
+
+<div class="site-footer">
+  <p>&copy; 2026 Friends of the San Juans. Friends is a 501(c)3 nonprofit. EIN #91-1087153. Friends stewards charitable contributions and complex gifts responsibly, and we are proud to hold a Platinum rating from Candid. All donations to Friends are tax-deductible.</p>
+  <a href="https://sanjuans.org" target="_blank" rel="noopener noreferrer" class="site-footer-logo">
+    <img src="/friends/friends-logo-white.webp" alt="Friends of the San Juans">
+  </a>
+</div>
+
+</body>
+</html>

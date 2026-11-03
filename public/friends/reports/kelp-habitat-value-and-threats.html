@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kelp Value and Threats — Friends of the San Juans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-dark: #1A2530;
+      --color-mid: #3D4F5F;
+      --color-light: #ADB5BD;
+      --color-teal: #0D4F4F;
+      --color-teal-light: #1A7F7F;
+      --color-ocean: #1B6B93;
+      --color-bg: #F8F9FA;
+      --color-border: #E5E7EB;
+      --color-kelp-green: #166534;
+      --color-kelp-bg: #F0FDF4;
+      --color-kelp-border: #BBF7D0;
+      --color-orange: #F97316;
+      --color-warm-bg: #FFFBEB;
+      --color-warm-border: #FDE68A;
+      --font: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      color: var(--color-dark);
+      background: #EFF2F5;
+      line-height: 1.7;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --- Hero banner --- */
+    .hero {
+      background: linear-gradient(135deg, #0D4F4F 0%, #1A2530 60%, #1B3A4B 100%);
+      color: white;
+      padding: 60px 24px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 200'%3E%3Cpath d='M0 120 Q200 60 400 120 T800 120 V200 H0Z' fill='%23ffffff08'/%3E%3Cpath d='M0 140 Q200 90 400 140 T800 140 V200 H0Z' fill='%23ffffff05'/%3E%3C/svg%3E") bottom/cover no-repeat;
+    }
+    .hero-content { position: relative; max-width: 680px; margin: 0 auto; }
+    .hero-org {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: 42px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    .hero-subtitle {
+      font-size: 20px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
+    }
+    .hero-meta {
+      margin-top: 24px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* --- Main content --- */
+    .container {
+      max-width: 760px;
+      margin: -30px auto 60px;
+      padding: 0 20px;
+      position: relative;
+    }
+
+    article {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 30px rgba(0,0,0,0.06);
+      padding: 48px 52px;
+    }
+
+    @media (max-width: 640px) {
+      article { padding: 32px 24px; }
+      .hero h1 { font-size: 30px; }
+    }
+
+    /* --- Typography --- */
+    h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--color-teal);
+      margin: 44px 0 18px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--color-kelp-border);
+    }
+    h2:first-child { margin-top: 0; }
+
+    h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-dark);
+      margin: 32px 0 12px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: var(--color-mid);
+    }
+
+    p:last-child { margin-bottom: 0; }
+
+    .lead {
+      font-size: 19px;
+      line-height: 1.75;
+      color: var(--color-dark);
+    }
+
+    /* --- Scientific names --- */
+    .sci { font-style: italic; }
+
+    /* --- Callout boxes --- */
+    .callout {
+      position: relative;
+      padding: 20px 24px 20px 28px;
+      border-radius: 10px;
+      border-left: 4px solid;
+      margin: 28px 0;
+    }
+    .callout-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .callout p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .callout-key {
+      background: var(--color-kelp-bg);
+      border-color: var(--color-kelp-green);
+    }
+    .callout-key .callout-label { color: var(--color-kelp-green); }
+    .callout-key p { color: #15803D; }
+
+    .callout-legal {
+      background: #F0F9FF;
+      border-color: var(--color-ocean);
+    }
+    .callout-legal .callout-label { color: var(--color-ocean); }
+    .callout-legal p { color: #1E5C85; }
+
+    .callout-threat {
+      background: var(--color-warm-bg);
+      border-color: var(--color-orange);
+    }
+    .callout-threat .callout-label { color: #B45309; }
+    .callout-threat p { color: #92400E; }
+
+    /* --- Key stats strip --- */
+    .stats-strip {
+      display: flex;
+      gap: 12px;
+      margin: 28px 0;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1;
+      min-width: 140px;
+      background: var(--color-bg);
+      border-radius: 10px;
+      padding: 18px 16px;
+      text-align: center;
+      border: 1px solid var(--color-border);
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-teal);
+      line-height: 1.1;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-light);
+      margin-top: 6px;
+    }
+
+    /* --- Species list --- */
+    .species-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin: 16px 0 24px;
+    }
+    .species-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--color-bg);
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .species-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-teal);
+      flex-shrink: 0;
+    }
+    .species-item .sci {
+      color: var(--color-light);
+      font-size: 13px;
+      display: block;
+    }
+
+    /* --- Threat cards --- */
+    .threat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 20px 0 24px;
+    }
+    @media (max-width: 580px) {
+      .threat-grid { grid-template-columns: 1fr; }
+    }
+    .threat-card {
+      padding: 16px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--color-warm-border);
+      background: var(--color-warm-bg);
+    }
+    .threat-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #92400E;
+      margin-bottom: 6px;
+    }
+    .threat-card p {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #A16207;
+      margin: 0;
+    }
+
+    /* --- References --- */
+    .references {
+      margin-top: 44px;
+      padding-top: 28px;
+      border-top: 2px solid var(--color-border);
+    }
+    .references h2 {
+      border-bottom: none;
+      margin-top: 0;
+      padding-bottom: 0;
+      font-size: 22px;
+    }
+    .ref-list {
+      list-style: none;
+      padding: 0;
+    }
+    .ref-list li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-mid);
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-bg);
+    }
+    .ref-list li:last-child { border-bottom: none; }
+    .ref-list .sci { font-style: italic; }
+
+    /* ---- Site header ---- */
+    .site-header {
+      height: 84px;
+      background: #2C3E50;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .site-header a { text-decoration: none; }
+    .site-header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+    }
+    .site-header-icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--color-teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .site-header-icon svg { width: 16px; height: 16px; color: white; }
+    .site-header-title { font-size: 16px; font-weight: 600; line-height: 1.2; }
+    .site-header-tagline { font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.2; }
+    .site-header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .site-header-nav {
+      position: relative;
+    }
+    .site-header-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .site-header-nav-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+    .site-header-nav-btn svg { width: 16px; height: 16px; }
+    .site-header-nav-btn .chevron { width: 12px; height: 12px; transition: transform 0.15s; }
+    .site-header-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      width: 260px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      border: 1px solid #E5E7EB;
+      padding: 4px 0;
+      z-index: 200;
+    }
+    .site-header-dropdown.open { display: block; }
+    .site-header-dropdown a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #374151;
+      transition: background 0.1s, color 0.1s;
+    }
+    .site-header-dropdown a:hover { background: #F0FDFA; color: var(--color-teal); }
+    .site-header-dropdown a svg { width: 16px; height: 16px; color: #9CA3AF; flex-shrink: 0; }
+    .site-header-dropdown a .ext-icon { margin-left: auto; width: 12px; height: 12px; color: #D1D5DB; }
+    .site-header-logo { height: 44px; opacity: 0.7; }
+    @media (max-width: 600px) {
+      .site-header-logo { display: none; }
+      .site-header-titles { display: none; }
+    }
+
+    /* ---- Site footer ---- */
+    .site-footer {
+      background: #2C3E50;
+      position: relative;
+      padding: 10px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .site-footer p {
+      color: white;
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      padding-right: 144px;
+      margin: 0;
+    }
+    .site-footer-logo {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.9;
+      transition: opacity 0.15s;
+    }
+    .site-footer-logo:hover { opacity: 1; }
+    .site-footer-logo img { height: 24px; }
+    @media (max-width: 600px) {
+      .site-footer p { padding-right: 0; }
+      .site-footer-logo { display: none; }
+    }
+
+    /* --- Footer --- */
+    .footer {
+      text-align: center;
+      padding: 24px 20px 48px;
+      font-size: 13px;
+      color: var(--color-light);
+    }
+    .footer a {
+      color: var(--color-teal-light);
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
+
+    /* --- Print --- */
+    @media print {
+      body { background: white; }
+      .hero { padding: 30px 20px; }
+      .container { margin-top: 0; }
+      article { box-shadow: none; border: 1px solid #ddd; }
+    }
+  
+    .site-header-dropdown { width: 320px; }
+    .site-header-group-sep { border-top: 1px solid #E8ECEF; margin-top: 4px; padding-top: 4px; }
+    .site-header-group-head { padding: 6px 14px 2px; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #6B7B8A; }
+    .site-header-item { display: flex; flex-direction: column; min-width: 0; }
+    .site-header-item-label { font-weight: 500; line-height: 1.25; }
+    .site-header-item-note { font-size: 11px; color: #6B7B8A; line-height: 1.3; margin-top: 1px; }
+    .site-header-dropdown a { align-items: flex-start; }
+    .site-header-dropdown a svg { margin-top: 2px; }
+    .site-header-dropdown a .ext-icon { margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ====================== SITE HEADER ====================== -->
+<div class="site-header">
+  <a href="/shoreline" class="site-header-brand">
+    <div class="site-header-titles">
+      <div class="site-header-title">Shoreline Explorer</div>
+      <div class="site-header-tagline">Friends of the San Juans</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <a href="https://sanjuans.org" target="_blank" rel="noopener noreferrer"><img src="/friends/friends-logo-white.webp" alt="Friends of the San Juans" class="site-header-logo"></a>
+  </div>
+</div>
+
+  <header class="hero">
+    <div class="hero-content">
+      <div class="hero-org">Friends of the San Juans</div>
+      <h1>Kelp Value and Threats</h1>
+      <p class="hero-subtitle">Assessment and Protection of Kelp Project &mdash; An initial compilation of scientific understanding related to kelp ecology, benefits, and anthropogenic threats in San Juan County</p>
+      <p class="hero-meta">Published 2007 &middot; San Juan County, Washington</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <article>
+
+      <!-- ============================================ -->
+      <!-- INTRODUCTION -->
+      <!-- ============================================ -->
+      <h2>Introduction</h2>
+
+      <p class="lead">This document represents an initial compilation of scientific understanding related to the ecological function, benefits and anthropogenic threats for understory and floating kelps in San Juan County, Washington.</p>
+
+      <p>The objective of the report is to provide a summary of known scientific information on kelps to inform relevant planning processes including the San Juan County Critical Areas Ordinance Update, Marine Stewardship Area Strategic Plan and Shoreline Master Program Update.</p>
+
+      <div class="callout callout-legal">
+        <div class="callout-label">Legal Protections</div>
+        <p>Kelps are protected under the <strong>Environmentally Sensitive Areas</strong> section of the San Juan County Unified Development Code (SJCC 18.30.110.5) and are listed as a <strong>priority habitat type</strong> by the Department of Fish and Wildlife's Priority Habitats and Species Program.</p>
+        <p>Washington State Administrative Code (WAC 220-110-250.1.d and e) also specifically protects kelps used as spawning substrate by Pacific herring and as settlement/nursery grounds for juvenile rockfish.</p>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- ECOLOGICAL FUNCTION -->
+      <!-- ============================================ -->
+      <h2>Ecological Function</h2>
+
+      <p>Kelp is defined as benthic brown algae in the order Laminariales (Duggins et al. 2003, Gabrielson 2006). In lay terms, most large brown algae attached to the seabed in this region are kelps.</p>
+
+      <h3>San Juan County Kelp Species</h3>
+
+      <p>The kelps found in San Juan County include understory species and the canopy-forming bull kelp:</p>
+
+      <div class="species-list">
+        <div class="species-item">
+          <span class="species-dot"></span>
+          <div>
+            Costaria
+            <span class="sci">Costaria costata</span>
+          </div>
+        </div>
+        <div class="species-item">
+          <span class="species-dot"></span>
+          <div>
+            Sieve-kelp
+            <span class="sci">Agarum fimbriatum</span>
+          </div>
+        </div>
+        <div class="species-item">
+          <span class="species-dot"></span>
+          <div>
+            Sugar kelp
+            <span class="sci">Saccharina subsimplex</span>
+          </div>
+        </div>
+        <div class="species-item">
+          <span class="species-dot"></span>
+          <div>
+            Kelp
+            <span class="sci">Laminaria complanata</span>
+          </div>
+        </div>
+        <div class="species-item">
+          <span class="species-dot"></span>
+          <div>
+            <strong>Bull kelp</strong>
+            <span class="sci">Nereocystis luetkeana</span>
+          </div>
+        </div>
+      </div>
+
+      <p>It does not include the common benthic brown algae <span class="sci">Fucus</span>, brown algae in the order Desmarestiales, or the invasive species <span class="sci">Sargassum muticum</span>.</p>
+
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-value">~45 ft</div>
+          <div class="stat-label">Max depth (understory)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">10-30 ft</div>
+          <div class="stat-label">Bull kelp holdfast depth</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">80 ft</div>
+          <div class="stat-label">Max depth (bull kelp)</div>
+        </div>
+      </div>
+
+      <p>Understory kelps grow to a meter or two in length on rocky substrate from the intertidal to depths of approximately 45 ft (~14 m). Bull kelp attach to rock with a holdfast usually in 10&ndash;30 ft (~3&ndash;9 m) water depths to a maximum of 80 ft (~24 m), and grow to the surface with a gas-filled float which holds the blades where energy from the sun for photosynthesis is greatest.</p>
+
+      <h3>Life History</h3>
+
+      <p>The life history of kelp species includes alternation of generations, with the large plant (sporophyte) producing planktonic spores which remain in the water column for a period of time before settling onto the bottom (Mumford 2006). Once on the bottom, the spores germinate into small plants (male and female gametophytes) that require certain environmental conditions to produce eggs or sperm which fertilize then grow quickly into the large kelp plant.</p>
+
+      <!-- ============================================ -->
+      <!-- KELP VALUE AND BENEFITS -->
+      <!-- ============================================ -->
+      <h2>Kelp Value and Benefits</h2>
+
+      <p class="lead">Kelps provide many ecosystem services, such as primary ecosystem productivity as well as habitat for many organisms, including marine mammals, fish and invertebrates (Dayton 1985, Steneck et al. 2002).</p>
+
+      <div class="callout callout-key">
+        <div class="callout-label">Key Ecosystem Services</div>
+        <p><strong>Carbon cycling:</strong> Kelp-derived carbon is found throughout nearshore food webs, and growth rates of benthic suspension feeders increase in the presence of organic detritus originating from kelps (Duggins et al. 1989). Many invertebrates in San Juan County rely on drift algae as a food supply, especially urchins.</p>
+        <p><strong>Physical habitat:</strong> Understory kelps provide habitat structure on the seabed, including reduced fluid transport near the bottom, greater rates of particulate deposition and penetration of suspended particles from the water column to the bottom (Eckman et al. 1989).</p>
+        <p><strong>Wave dampening:</strong> Kelp dampens waves and alters the energy regime on beaches, influencing beach sediment grain size and sediment&ndash;biotic suitability such as suitability for beach spawners.</p>
+      </div>
+
+      <h3>Salmon &amp; Fish Habitat</h3>
+
+      <p>Salmon use kelp habitats. Simenstad et al. (1979) found chinook, coho, and chum salmon in kelp beds of the Strait of Juan de Fuca. Murphy et al. (2000) found greater densities of seven species of salmonids in habitat with kelp than without in Southeast Alaska. A similar study by Dean et al. (2000) found sculpins and rockfish primarily associated with kelps.</p>
+
+      <p>In the Strait of Juan de Fuca, Washington Department of Fish and Wildlife research found that juvenile salmon and surf smelt, an important forage fish, preferentially utilized kelp bed habitats (Shaffer 2003).</p>
+
+      <div class="callout callout-key">
+        <div class="callout-label">Juvenile Fish Habitat</div>
+        <p>Kelp habitats are very important to juvenile fishes. Young-of-the-year copper and quillback rockfish strongly associate with understory kelp (Hayden-Spear 2006). Bull kelp forests are especially important habitat for very young copper rockfish that settle into shallow reef habitats from the plankton (Haldorson and Richards 1987). These fish eventually migrate down plants to the reef habitat (Buckley 1997).</p>
+        <p>Leaman (1980) documented extensive use of kelp habitat by fishes in Barkley Sound, British Columbia and found a <strong>higher diversity and abundance of fishes in kelp beds than elsewhere</strong>.</p>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- THREATS -->
+      <!-- ============================================ -->
+      <h2>Threats</h2>
+
+      <p class="lead">Kelp faces multiple anthropogenic and environmental threats in San Juan County waters, ranging from sedimentation and development to climate change and invasive species.</p>
+
+      <div class="threat-grid">
+        <div class="threat-card">
+          <h4>Sedimentation</h4>
+          <p>Inhibits spore settlement, reduces light, smothers young plants, and buries rocky substrate. Caused by poor land use practices and boat wakes.</p>
+        </div>
+        <div class="threat-card">
+          <h4>Freshwater Inputs</h4>
+          <p>Kelp exposed to freshwater for a week shows tissue deterioration. Bull kelp develops blisters from rapid salinity reductions.</p>
+        </div>
+        <div class="threat-card">
+          <h4>Climate Change</h4>
+          <p>The 1997 El Ni&ntilde;o caused a 75% reduction in bull kelp bed size on the outer coast. Warming reduces upwelling and increases temperatures.</p>
+        </div>
+        <div class="threat-card">
+          <h4>Over-water Structures</h4>
+          <p>Docks and other structures reduce light reaching the seabed, reducing kelp and the prey resources that juvenile salmon depend on.</p>
+        </div>
+        <div class="threat-card">
+          <h4>Petroleum Products</h4>
+          <p>Diesel fuel, intermediate fuel oil, and crude oil all cause direct tissue damage and greatly reduce photosynthesis rates in bull kelp.</p>
+        </div>
+        <div class="threat-card">
+          <h4>Invasive Species</h4>
+          <p><em>Sargassum muticum</em>, introduced from Japan in the 1940s, reduces kelp abundance primarily through shading competition.</p>
+        </div>
+      </div>
+
+      <h3>Sedimentation</h3>
+
+      <p>Sedimentation impacts kelp in two primary ways. First, it affects the microscopic kelp life history stages by inhibiting settlement of spores, reducing light availability in the water column and smothering gametophytes and young sporophytes after they have settled (Mumford 2006, Britton-Simmons pers. com., Duggins pers. com.). Suspended sediments also reduce the amount of light available to the plants, reducing growth rates and eliminating the plants in the lowest regions.</p>
+
+      <p>In the second primary impact, large inputs of sediment can reduce the rocky habitat substrate available for kelps by directly burying it. Studies have shown reduced bull kelp density in areas associated with landslides (Shaffer and Parks 1994).</p>
+
+      <h3>Climate Change</h3>
+
+      <div class="callout callout-threat">
+        <div class="callout-label">Documented Impact</div>
+        <p>Annual surveys conducted by the Washington Department of Natural Resources since 1989 showed a <strong>75% reduction in bed size</strong> for bull kelp on the outer coast during the 1997 El Ni&ntilde;o event (Berry et al. 2001). El Ni&ntilde;o events also cause less coastal upwelling, which stratifies the upper water column, causing lower nutrient conditions and high temperatures.</p>
+        <p>However, elevated atmospheric carbon dioxide appears to increase the photosynthetic rate of bull kelp (Thom 1996).</p>
+      </div>
+
+      <h3>Over-water Structures</h3>
+
+      <p>Over-water structures reduce benthic vegetation, such as kelp, presumably due to reduction in light energy reaching the benthos. Less kelp thereby reduces epibenthic prey resources which use this vegetation for habitat and are prey items for juvenile salmon (Haas 2002). The overall effect is reduced prey availability for juvenile salmon under over-water structures, such as docks.</p>
+
+      <h3>Invasive Species</h3>
+
+      <p>The invasive alga <span class="sci">Sargassum muticum</span>, introduced to Puget Sound from Japan in the 1940s (Giver 1999), poses a significant threat to kelp habitat. In a removal experiment in the San Juan Islands, kelp was more abundant in plots without <span class="sci">S. muticum</span> (Britton-Simmons 2004). The most abundant brown alga (<span class="sci">Saccharina subsimplex</span>) grew more than twice as fast in plots where the invasive species was absent. The negative effect appears to be shading, rather than changes in water flow, sedimentation or nutrient availability.</p>
+
+      <h3>Harvesting</h3>
+
+      <p>Kelps are harvested for many reasons, including human consumption, fertilizer production, and for feed at aquaculture farms (Kalvass et al. 2004). Harvest of kelp and all other seaweeds is regulated by law (RCW 77.32.520, 79.135.400-430). Most harvest of kelp in Washington State is associated with the harvest of herring roe, primarily in mariculture facilities in the Strait of Juan de Fuca and other locations outside of San Juan County.</p>
+
+      <p>Recreational harvest allows for collection of up to 10 pounds of algae (wet weight) per person per day. While limited experimental harvest in British Columbia showed no significant effects on recruitment (Foreman 1984), another study found that harvest could negatively influence both canopy biomass available as habitat and recruitment to the bed in subsequent years (Roland 1985).</p>
+
+      <h3>Grazing &amp; Predator Dynamics</h3>
+
+      <p>Fishery removals of grazers by humans, especially urchins and abalone, affect kelp abundance by reducing grazing. Population fluctuations in predators of these invertebrates, such as sea otters, also cause fluctuations in kelp density (Vanblaricom and Estes 1988).</p>
+
+      <h3>Monitoring</h3>
+
+      <p>Researchers with the Washington Department of Natural Resources Nearshore Habitat Program have inventoried canopy-forming kelp distribution since 1989 (Berry et al. 2005). Between 1994 and 2000, DNR characterized all Washington State shorelines through the ShoreZone inventory, which included categories for both understory and canopy kelp habitat distribution (Berry et al. 2001). Much less is known about the status and trends of understory kelp because it is more difficult to monitor and historical information is not available.</p>
+
+      <!-- ============================================ -->
+      <!-- REFERENCES -->
+      <!-- ============================================ -->
+      <div class="references">
+        <h2>References</h2>
+        <ul class="ref-list">
+          <li>Antrim LD, Thom RM, Gardiner WW, Cullinan VI, Shreffler DK, Bienert RW (1995) Effects of petroleum products on bull kelp (<span class="sci">Nereocystis luetkeana</span>). Marine Biology 122:23&ndash;31.</li>
+          <li>Berry HD, Sewell A, Wagenen BV (2001) Temporal Trends in the Areal Extent of Canopy-forming Kelp beds along the Strait of Juan de Fuca and Washington's Outer Coast. Proceedings of 2001 Puget Sound Research Conference.</li>
+          <li>Berry HD, Harper J, Mumford TF, Bookhiem B, Sewell A, Tamayo L (2001) Washington State ShoreZone Inventory. Washington State Department of Natural Resources Nearshore Habitat Program. Olympia, WA.</li>
+          <li>Berry HD, Mumford TF, Dowty P (2005) Using historical data to estimate changes in floating kelp (<span class="sci">Nereocystis luetkeana</span> and <span class="sci">Macrocystis integrifolia</span>) in Puget Sound, Washington. Proceedings of 2005 Puget Sound Research Conference.</li>
+          <li>Blackmon D, Wyllie-Echeverria T, Shafer D (2006) The role of seagrasses and kelps in marine fish support. Wetlands Regulatory Assistance Program. ERDC TN-WRAP-1.</li>
+          <li>Britton-Simmons KH (2007) Personal Communication. University of Washington Friday Harbor Marine Laboratories. Friday Harbor, WA.</li>
+          <li>Britton-Simmons KH (2004) Direct and indirect effects of the introduced alga <span class="sci">Sargassum muticum</span> on benthic, subtidal communities of Washington State, USA. Mar Ecol Prog Ser 277:61&ndash;78.</li>
+          <li>Brown LB (1915) Experiments with Marine Algae in Freshwater. Puget Sound Biological Station Publication 1:31&ndash;34.</li>
+          <li>Buckley RM (1997) Substrate associated recruitment of juvenile <span class="sci">Sebastes</span> in artificial reef and natural habitats in Puget Sound and the San Juan Archipelago, Washington. Dissertation. University of Washington, Seattle, WA. 320 p.</li>
+          <li>Dayton PK (1985) Ecology of kelp communities. Annual Review of Ecological Systematics 16:215&ndash;45.</li>
+          <li>Dean TA, Haldorson L, Laur DR, Jewett SC, Blanchard A (2000) The distribution of nearshore fishes in kelp and eelgrass communities in Prince William Sound, Alaska. Environmental Biology of Fishes 57:271&ndash;287.</li>
+          <li>Duggins DO (2007) Personal Communication. University of Washington Friday Harbor Marine Laboratories. Friday Harbor, WA.</li>
+          <li>Duggins DO, Eckman JE, Siddon CE, Klinger T (2003) Population, morphometric and biomechanical studies of three understory kelps along a hydrodynamic gradient. Mar Ecol Prog Ser 265:57&ndash;76.</li>
+          <li>Duggins DO, Simenstad CA, Estes JA (1989) Magnification of Secondary Production by Kelp Detritus in Coastal Marine Ecosystems. Science 245:170&ndash;173.</li>
+          <li>Eckman JE, Duggins DO, Sewell AT (1989) Ecology of understory kelp environments: Effects of kelps on flow and particle transport near the bottom. J Exp Mar Biol Ecol 129:173&ndash;187.</li>
+          <li>Foreman RE (1984) Studies on <span class="sci">Nereocystis</span> Growth in British Columbia, Canada. Hydrobiologia 116:325&ndash;332.</li>
+          <li>Gabrielson PW, Widdowson TB, Lindstrom SC (2006) Keys to the Seaweeds and Seagrasses of Southeast Alaska, British Columbia, Washington and Oregon. Phycological Contribution No. 7, University of British Columbia. 209 pp.</li>
+          <li>Giver K (1999) Effects of the Invasive Seaweed <span class="sci">Sargassum muticum</span> on Marine Communities in Northern Puget Sound, Washington. Thesis. Western Washington University, Bellingham, WA. 93 p.</li>
+          <li>Haas ME (2002) Effects of large over-water structures on epibenthic juvenile prey assemblages in Puget Sound, Washington. Thesis. University of Washington, Seattle, WA.</li>
+          <li>Haldorson L, Richards LJ (1986) Post-larval copper rockfish in the Strait of Georgia: Habitat use, feeding, and growth in the first year. Proc Int Rockfish Symposium. Alaska Sea Grant College Program, Anchorage, AK. 87-2:129&ndash;141.</li>
+          <li>Hayden-Spear J (2006) Nearshore habitat associations of young-of-the-year copper (<span class="sci">Sebastes caurinus</span>) and quillback (<span class="sci">S. maliger</span>) rockfish in the San Juan Channel, Washington. Thesis. University of Washington, Seattle, WA. 30 p.</li>
+          <li>Hurd AM (1916) Factors Influencing the Growth and Distribution of <span class="sci">Nereocystis luetkeana</span>. Puget Sound Marine Station Publications 1:185&ndash;197.</li>
+          <li>Lance MM, Richardson SA, Allen HL (2004) Washington State Recovery Plan for the Sea Otter. Washington Department of Fish and Wildlife, Olympia. 91 pp.</li>
+          <li>Leaman BM (1980) The Ecology of Fishes in British Columbia Kelp Beds. I. Barkley Sound <span class="sci">Nereocystis</span> Beds. Fisheries Development Report. British Columbia Ministry of the Environment, Nanaimo, BC. pp. 1&ndash;100.</li>
+          <li>Mumford TF (2007) Personal Communication. Washington Department of Natural Resources, Olympia, WA.</li>
+          <li>Mumford TF (2006) Kelp and Eelgrass: A valued ecosystem component white paper. Puget Sound Nearshore Partnership. Technical Report 2006-11. Olympia, WA.</li>
+          <li>Murphy ML, Johnson SW, Csepp DJ (2000) A comparison of fish assemblages in eelgrass and adjacent subtidal habitats near Craig, Alaska. Alaska Fishery Research Bulletin 7:11&ndash;21.</li>
+          <li>Roland WG (1985) Effects of Lamina Harvest on the Bull Kelp, <span class="sci">Nereocystis luetkeana</span>. Canadian Journal of Botany 62:2229&ndash;2236.</li>
+          <li>Shaffer A (2003) Preferential use of Nearshore Kelp Habitats by Juvenile Salmon and Forage Fish. Proceedings, Georgia Basin/Puget Sound Research Conference, Vancouver, BC.</li>
+          <li>Shaffer JA, Parks DS (1994) Seasonal Variations in and Observations of Landslide Impacts on the Algal Composition of a Puget Sound Nearshore Kelp Forest. Botanica Marina 37:315&ndash;323.</li>
+          <li>Simenstad CA, Miller MS, Nyblade CF, Thornburgh K, Bledsoe LJ (1979) Food web relationships of northern Puget Sound and the Strait of Juan de Fuca: a synthesis of the available knowledge. EPA DOC Research Report EPS-600/7-79-259.</li>
+          <li>Steneck RS, Graham MH, Bourque BJ, Corbett D, Erlandson JM, Estes JA, Tegner MJ (2002) Kelp forest ecosystems: biodiversity, stability, resilience and future. Environmental Conservation 29(4):436&ndash;459.</li>
+          <li>Thom RM (1996) CO<sub>2</sub>-enrichment effects on eelgrass (<span class="sci">Zostera marina</span>) and bull kelp (<span class="sci">Nereocystis luetkeana</span>). Water Air and Soil Pollution 88:383&ndash;391.</li>
+          <li>Vanblaricom GR, Estes JA (1988) Community Ecology of Sea Otters. Springer-Verlag, Heidelberg.</li>
+        </ul>
+      </div>
+
+    </article>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2007 Friends of the San Juans &middot; Assessment and Protection of Kelp Project</p>
+    <p><a href="https://sanjuans.org" target="_blank">sanjuans.org</a></p>
+  </footer>
+
+  <div class="site-footer">
+    <p>&copy; 2026 Friends of the San Juans. Friends is a 501(c)3 nonprofit. EIN #91-1087153. Friends stewards charitable contributions and complex gifts responsibly, and we are proud to hold a Platinum rating from Candid. All donations to Friends are tax-deductible.</p>
+    <a href="https://sanjuans.org" target="_blank" rel="noopener noreferrer" class="site-footer-logo">
+      <img src="/friends/friends-logo-white.webp" alt="Friends of the San Juans">
+    </a>
+  </div>
+
+</body>
+</html>

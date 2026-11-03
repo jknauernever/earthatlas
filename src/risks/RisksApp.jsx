@@ -38,6 +38,7 @@ import q from '../quakes/QuakesApp.module.css'
 import p from '../speciesOfConcern/SpeciesOfConcernApp.module.css'
 import styles from './RisksApp.module.css'
 import SiteBrand from '../components/SiteBrand.jsx'
+import parcelSources from '../fire/parcelSources.json'
 
 installPopupSheet()
 
@@ -57,7 +58,7 @@ const DEFAULT_OPACITY = 60   // percent
 const LAYERS = ['flood', 'buildings', 'lots', 'roads', 'erosion']
 const COLORS = { flood: '#ef4444', buildings: '#facc15', roads: '#f97316', erosion: '#c084fc' }
 // Property lines: the San Juan County Assessor parcels EarthAtlas already serves for /fire (src/fire/parcelSources.json)
-const LOTS_TILES = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/parcel-tiles?r=sanjuan-wa&v=2025&z={z}&x={x}&y={y}`
+const LOTS_TILES = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/parcel-tiles?r=sanjuan-wa&v=${parcelSources['sanjuan-wa'].version}&z={z}&x={x}&y={y}`
 // The county's four flood layers are bands that don't overlap: each holds only the ground a worse scenario adds to the
 // milder ones (SCENARIOS is mildest first). A scenario's flood extent is therefore its band plus every milder band.
 const rankOf = (id) => SCENARIOS.findIndex((s) => s.id === id) + 1

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "updated_at": "2026-09-20T01:05:13Z",
+  "landing_intro": {
+    "html": "<h3>Welcome to the Salish Sea Explorer!</h3><p>Explore shoreline habitats, public lands, and property information across San Juan County.</p><ul><li><p><strong>Search an address</strong> above to open a property report.</p></li><li><p><strong>Zoom in</strong> with the <strong>+</strong> / <strong>\u2212</strong> buttons or your scroll wheel to explore an area.</p></li><li><p>Open the <strong>layers panel</strong> (menu icon, top left) to turn datasets on and off.</p></li></ul><p>Brought to you by <a target=\"_blank\" href=\"https://sanjuans.org\" rel=\"noopener noreferrer\">Friends of the San Juans</a>.</p>"
+  }
+}

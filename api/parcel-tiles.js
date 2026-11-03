@@ -63,10 +63,18 @@ export default async function handler(req, res) {
   if (!region || !region.pmtilesUrl) { res.statusCode = 404; return res.end('unknown region') }
   if (![z, x, y].every(Number.isInteger)) { res.statusCode = 400; return res.end('bad tile coords') }
   const version = v || region.version
+  // A newer dated bake published by a refresh Action (e.g. /shoreline's, which flips a Blob pointer instead of this
+  // manifest) sits beside the recorded one on Blob under the same name with its own version.
+  let blobUrl = region.pmtilesUrl
+  // Anything else (an old /fire tab's stale version) keeps being served from the recorded file, as before.
+  const recorded = `-${region.version}.pmtiles`
+  if (version !== region.version && /^\d{4}-\d{2}-\d{2}$/.test(version) && blobUrl.endsWith(recorded)) {
+    blobUrl = blobUrl.slice(0, -recorded.length) + `-${version}.pmtiles`
+  }
 
   let tile
   try {
-    tile = await pmtilesFor(r, version, region.pmtilesUrl).getZxy(z, x, y)
+    tile = await pmtilesFor(r, version, blobUrl).getZxy(z, x, y)
   } catch {
     cache.delete(`${r}-${version}`) // drop a stale instance (e.g. file replaced)
     res.statusCode = 502

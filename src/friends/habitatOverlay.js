@@ -12,8 +12,8 @@
 
 // SSE runs on Google Maps (256 px world at zoom 0); Mapbox's world is 512 px, so the same scale is one zoom level lower
 // here. Every zoom below is SSE's (Google) zoom; GZ converts.
-const GZ = 1
-const gzoom = (map) => map.getZoom() + GZ
+export const GZ = 1
+export const gzoom = (map) => map.getZoom() + GZ
 
 // ─── SSE layer styles (layers.ts), keyed by our habitat id ───
 export const SSE_STYLE = {
@@ -37,21 +37,24 @@ export const CLICK_LAYERS = ['fhab-hkb-pins', 'fhab-hee-pins', 'fhab-hfd', 'fhab
 const haloWidth = (h) => ['interpolate', ['linear'], ['zoom'], h.zoomWide - GZ, h.weightWide, h.zoomNarrow - GZ, h.weightNarrow]
 
 // ─── Pins (markerIcons.ts): white teardrop, colored disc, white glyph; 24×26 CSS px, anchor at the nub tip (12, 23) ───
+// spec = { color, glyph (white, in a box×box square, default 24), stroke (draw the glyph as a line), strokeExtra (a
+// second white line over a filled glyph) }; /shoreline adds SSE's other pins (src/shoreline/shorelineLayers.js).
 const PIN = {
   eelgrass: { color: '#12A38E', glyph: 'M12 20c-.3-3.5.2-7.6 1.4-11.1.3-.9 1.6-.7 1.5.3-.4 3.4-1.4 7.2-2.9 10.8zM11.4 20C9.6 16.4 7.9 12.5 7.3 8.1c-.1-1 1.2-1.3 1.6-.4 1.6 3.9 2.7 8 2.5 12.3zM12.6 20c.6-3.3 2.2-6.5 4.8-8.9.7-.7 1.7.2 1.2 1-2.2 3-4.3 5.5-6 7.9z' },
   kelp: { color: '#B89A3A', stroke: true, glyph: 'M3.5 9.5c2.8-4.5 5.7-4.5 8.5 0s5.7 4.5 8.5 0M3.5 15.5c2.8-4.5 5.7-4.5 8.5 0s5.7 4.5 8.5 0' },
 }
-function pinSvg({ color, glyph, stroke }) {
-  const g = 16 / 24
+function pinSvg({ color, glyph, stroke, box = 24, strokeExtra }) {
+  const g = 16 / box
   return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 26">
   <defs><filter id="sh" x="-25%" y="-15%" width="150%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="0.9" flood-color="#000" flood-opacity="0.32"/></filter></defs>
   <path d="M12 0a11 11 0 0 1 4.2 21.2L12 24.2 7.8 21.2A11 11 0 0 1 12 0z" fill="#FFFFFF" filter="url(#sh)"/>
   <circle cx="12" cy="11" r="9" fill="${color}"/>
-  <g transform="translate(${12 - 12 * g} ${11 - 12 * g}) scale(${g})">${stroke
+  <g transform="translate(${12 - (box / 2) * g} ${11 - (box / 2) * g}) scale(${g})">${stroke
     ? `<path d="${glyph}" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<path d="${glyph}" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0.9" stroke-linejoin="round"/>`}</g></svg>`
+    : `<path d="${glyph}" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="${strokeExtra ? 0.6 : 0.9}" stroke-linejoin="round"/>`}${strokeExtra
+    ? `<path d="${strokeExtra}" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</g></svg>`
 }
-function addPinImage(map, name, spec) {
+export function addPinImage(map, name, spec) {
   if (map.hasImage(name)) return Promise.resolve()
   return new Promise((resolve) => {
     const img = new Image(48, 52)
@@ -65,7 +68,7 @@ function addPinImage(map, name, spec) {
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(spec))}`
   })
 }
-export const pinDataUri = (kind) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(PIN[kind]))}`
+export const pinDataUri = (kind) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(typeof kind === 'string' ? PIN[kind] : kind))}`
 
 // Pin positions (createMidpointMarkers): one per line at its middle, one per kelp patch ≥ 0.05 ac at an interior point;
 // lengthRank 0 = longest line / biggest patch, which wins the zoom thinning.
@@ -101,17 +104,22 @@ function interiorPoint(rings) {
   if (Number.isFinite(bx)) return [bx, cy]
   return [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length]
 }
-function pinPoints(features, minAcres = 0) {
+// `placement` (SSE markerPlacement): { along: 0–1 position on the line, repeatEveryM: long lines get one pin per that
+// many metres, at most 8; the extras rank behind every line's own pin }.
+export function pinPoints(features, minAcres = 0, placement = null) {
   const pts = []
+  const along = placement?.along ?? 0.5, repeat = placement?.repeatEveryM ? placement.repeatEveryM / 111320 : 0
   for (const f of features) {
     const g = f.geometry
+    if (!g) continue
     if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
       if (minAcres && Number(f.properties.acres) < minAcres) continue
       let best = null
       for (const rings of g.type === 'Polygon' ? [g.coordinates] : g.coordinates) { const a = Math.abs(ringArea(rings[0])); if (!best || a > best.a) best = { rings, a } }
       if (best) pts.push({ at: interiorPoint(best.rings), len: best.a, props: f.properties })
     } else for (const c of g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []) {
-      pts.push({ at: linePointAt(c), len: lineLength(c), props: f.properties })
+      const len = lineLength(c), n = repeat ? Math.min(8, Math.max(1, Math.floor(len / repeat))) : 1, first = Math.floor((n - 1) / 2)
+      for (let k = 0; k < n; k++) pts.push({ at: linePointAt(c, (k + along) / n), len: k === first ? len : len * 1e-6, props: f.properties })
     }
   }
   const rank = new Array(pts.length)
@@ -120,20 +128,46 @@ function pinPoints(features, minAcres = 0) {
 }
 // Zoom thinning (selectFromMeta): below zoom 16 one pin per world-pixel grid cell, the longest line's; all pins from 16.
 const gridPx = (z) => (z <= 10 ? 180 : z <= 11 ? 150 : z <= 12 ? 120 : z <= 13 ? 100 : z <= 14 ? 84 : 70)
-function worldPx0([lng, lat]) {
+export function worldPx0([lng, lat]) {
   const s = Math.sin((lat * Math.PI) / 180)
   return [((lng + 180) / 360) * 256, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256]
 }
-function chosenPins(pins, zoom) {
-  if (zoom >= 16) return null
-  const q = Math.round(zoom * 2) / 2, scale = 2 ** q, cell = gridPx(q), best = new Map()
+/** Pin metadata for selectPins: { mid, rank, w: world px at zoom 0 } per pin feature. */
+export const pinMeta = (pins) => pins.map((f) => ({ mid: f.properties.mid, rank: f.properties.lengthRank, w: worldPx0(f.geometry.coordinates) }))
+/**
+ * SSE selectFromMeta: the `mid`s of the pins to show at this (SSE) zoom. One per grid cell (the longest line's) below
+ * zoom 16, or always with `alwaysThin`; `gridScale` widens the cells; a pin within 26 px of an `avoid` pin (world px at
+ * zoom 0, another layer's chosen pins) yields. Returns null for "all".
+ */
+export function selectPins(pins, zoom, { alwaysThin = false, gridScale = 1, avoid = [] } = {}) {
+  const q = Math.round(zoom * 2) / 2, scale = 2 ** q, cell = gridPx(q) * gridScale, CLEAR = 26
+  const showAll = !alwaysThin && zoom >= 16
+  const taken = new Map()
+  for (const [ax, ay] of avoid) {
+    const x = ax * scale, y = ay * scale, k = `${Math.floor(x / CLEAR)}:${Math.floor(y / CLEAR)}`
+    ;(taken.get(k) || taken.set(k, []).get(k)).push([x, y])
+  }
+  const near = (x, y) => {
+    if (!avoid.length) return false
+    const cx = Math.floor(x / CLEAR), cy = Math.floor(y / CLEAR)
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      for (const [ax, ay] of taken.get(`${cx + i}:${cy + j}`) || []) if (Math.abs(x - ax) < CLEAR && Math.abs(y - ay) < CLEAR) return true
+    }
+    return false
+  }
+  if (showAll && !avoid.length) return null
+  const best = new Map(), all = []
   for (const p of pins) {
-    const [x, y] = p.w, key = `${Math.floor((x * scale) / cell)}:${Math.floor((y * scale) / cell)}`
+    const x = p.w[0] * scale, y = p.w[1] * scale
+    if (near(x, y)) continue
+    if (showAll) { all.push(p.mid); continue }
+    const key = `${Math.floor(x / cell)}:${Math.floor(y / cell)}`
     const cur = best.get(key)
     if (!cur || p.rank < cur.rank) best.set(key, p)
   }
-  return [...best.values()].map((p) => p.mid)
+  return showAll ? all : [...best.values()].map((p) => p.mid)
 }
+const chosenPins = (pins, zoom) => selectPins(pins, zoom)
 
 // ─── The 2D overlays (KelpOverlay.ts) ───
 const PHONE = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
@@ -411,7 +445,7 @@ export function addFriendsHabitat(map, fc, beforeId, { minZoom = 0 } = {}) {
 
   // Pins: kelp beds ≥ 0.05 ac and eelgrass edges, thinned by zoom like SSE.
   const pins = { hkb: pinPoints(of('hkb'), 0.05), hee: pinPoints(of('hee')) }
-  const meta = Object.fromEntries(Object.entries(pins).map(([h, list]) => [h, list.map((f) => ({ mid: f.properties.mid, rank: f.properties.lengthRank, w: worldPx0(f.geometry.coordinates) }))]))
+  const meta = Object.fromEntries(Object.entries(pins).map(([h, list]) => [h, pinMeta(list)]))
   for (const [h, img] of [['hkb', 'kelp'], ['hee', 'eelgrass']]) {
     map.addSource(`fhab-${h}-pins`, { type: 'geojson', data: { type: 'FeatureCollection', features: pins[h] } })
     addPinImage(map, `fhab-pin-${img}`, PIN[img])
@@ -419,15 +453,19 @@ export function addFriendsHabitat(map, fc, beforeId, { minZoom = 0 } = {}) {
       layout: { 'icon-image': `fhab-pin-${img}`, 'icon-anchor': 'bottom', 'icon-offset': [0, 3], 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
   }
   let tier = ''
+  // thin.chosen: each pin layer's shown pins (world px at zoom 0), so a host's own pins can yield to them (/shoreline)
   const thin = () => {
     const z = gzoom(map), t = z >= 16 ? 'all' : String(Math.round(z * 2) / 2)
-    if (t === tier) return
+    if (t === tier) return false
     tier = t
     for (const h of ['hkb', 'hee']) {
-      const ids = chosenPins(meta[h], z)
+      const ids = chosenPins(meta[h], z), keep = ids && new Set(ids)
+      thin.chosen[h] = (keep ? meta[h].filter((m) => keep.has(m.mid)) : meta[h]).map((m) => m.w)
       if (map.getLayer(`fhab-${h}-pins`)) map.setFilter(`fhab-${h}-pins`, ids ? ['in', ['get', 'mid'], ['literal', ids]] : null)
     }
+    return true
   }
+  thin.chosen = {}
   thin()
   return thin
 }

@@ -1,14 +1,16 @@
 /**
  * Friends of the San Juans website content index, ported from salish-sea-propmapper src/services/friendsContent.ts
- * (the parts the habitat popups use). public/friends/friends-content.json is a straight copy of SSE's
- * public/data/friends-content.json (built by SSE's harvest + index scripts); refresh it from there.
+ * (the parts the habitat popups use). The live index is on Blob (shoreline/friends-content.json), refreshed
+ * quarterly by .github/workflows/friends-content.yml (scripts/shoreline/friends-content.py: new articles tagged by
+ * rules, no AI). public/friends/friends-content.json, SSE's original, is the fallback when Blob can't be read.
  *
  * Shape: { generated, items: {id: {id, url, title, date 'YYYY-MM-DD', summary, excerpt?, topics, islands, places,
  * projectMatch, kind, quality, image {url, caption} | null, images []}}, byLayer: {layerId: [ids best first]},
  * byUrl }. Article and image URLs are absolute sanjuans.org links.
  */
 
-const INDEX_URL = '/friends/friends-content.json'
+const INDEX_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/shoreline/friends-content.json'
+const FALLBACK_URL = '/friends/friends-content.json'
 
 let promise = null
 let cached = null
@@ -16,8 +18,10 @@ let cached = null
 // Start loading (idempotent). Call early so popups usually have it synchronously.
 export function preloadFriendsContent() {
   if (!promise) {
-    promise = fetch(INDEX_URL)
-      .then((r) => (r.ok ? r.json() : null))
+    const get = (url) => fetch(url).then((r) => (r.ok ? r.json() : null))
+    promise = get(INDEX_URL)
+      .catch(() => null)
+      .then((idx) => idx?.items ? idx : get(FALLBACK_URL))
       .then((idx) => { cached = idx; return idx })
       .catch(() => null)
   }

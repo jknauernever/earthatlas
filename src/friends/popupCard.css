@@ -1,0 +1,102 @@
+/* Friends layer popup cards (src/friends/popupCard.js) inside EarthAtlas's shared popup frame (src/index.css).
+   Type and color follow the other EarthAtlas cards (white, #1f2937 text, small grey uppercase eyebrows);
+   --accent is the layer's map color. */
+
+.fp { --accent: #0e7490; width: 340px; max-width: 100%; color: #1f2937; font-size: 13px; line-height: 1.5; box-sizing: border-box; }
+.fp *, .fp *::before, .fp *::after { box-sizing: border-box; }
+.fp [hidden] { display: none !important; }
+.fp a { color: #0369a1; }
+@media (min-width: 601px) {
+  /* Tall cards (photo + story) scroll inside the card, as every EarthAtlas site's body does */
+  .fp { max-height: min(74vh, 640px); overflow-y: auto; overscroll-behavior: contain; border-radius: 8px; }
+}
+@media (max-width: 600px) { .fp { width: 100%; } }
+
+.fp-photo { position: relative; aspect-ratio: 16 / 9; background: #e5e7eb; overflow: hidden; }
+.fp-slide { position: absolute; inset: 0; }
+.fp-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 7px; font-size: 11px; color: #fff; background: linear-gradient(transparent, rgba(10, 14, 23, 0.7)); }
+.fp-cap i { font-style: normal; opacity: 0.8; }
+.fp-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0 0 2px;
+  background: rgba(255, 255, 255, 0.9); color: #111827; font-size: 20px; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+.fp-prev { left: 8px; } .fp-next { right: 8px; }
+.fp-count { position: absolute; left: 10px; top: 8px; padding: 1px 7px; border-radius: 999px; background: rgba(10, 14, 23, 0.55); color: #fff; font-size: 11px; }
+
+.fp-body { padding: 11px 13px 12px; }
+.fp-layer { display: flex; align-items: center; gap: 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; margin: 0 18px 5px 0; }
+.fp-sw { display: inline-block; flex: none; }
+.fp-sw-line { width: 14px; height: 4px; border-radius: 2px; }
+.fp-sw-fill { width: 14px; height: 10px; border-radius: 2px; }
+.fp-sw-pt { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.fp-sw-icon { width: 14px; height: 15px; object-fit: contain; flex: none; }
+.fp-title { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.25; margin-right: 14px; }
+.fp-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+.fp-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.fp-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+.fp-chip-warn { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+.fp-chip-teal { background: #ccfbf1; border-color: #5eead4; color: #115e59; }
+.fp-chip-on { background: #dcfce7; border-color: #86efac; color: #166534; }
+
+.fp-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
+.fp-v { font-size: 17px; font-weight: 700; color: #111827; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.fp-v small { font-size: 11px; font-weight: 600; color: #6b7280; margin-left: 2px; }
+.fp-v-text { font-size: 13px; }
+.fp-l { font-size: 10.5px; color: #6b7280; }
+
+.fp-lead { margin-top: 9px; }
+.fp-k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; margin-bottom: 3px; }
+.fp-block { margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
+.fp-story { background: #f9fafb; border-left: 3px solid var(--accent); }
+.fp-act { background: #f0f9ff; border: 1px solid #e0f2fe; }
+.fp-text { font-size: 12.5px; color: #374151; }
+.fp-cite { margin-top: 4px; font-size: 11px; color: #6b7280; }
+.fp-btn { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 6px; border: 1px solid #0284c7; background: #e0f2fe; color: #0369a1 !important;
+  font-size: 12px; font-weight: 600; text-decoration: none; }
+.fp-btn:hover { background: #bae6fd; }
+.fp-btn-quiet { border-color: #d1d5db; background: #fff; color: #374151 !important; font-weight: 500; }
+
+/* Related articles from Friends */
+.fp-from { margin-top: 10px; }
+.fp-art { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid #f3f4f6; text-decoration: none; color: inherit !important; }
+.fp-art:hover .fp-art-title { text-decoration: underline; }
+.fp-art-img { width: 52px; height: 40px; object-fit: cover; border-radius: 4px; flex: none; }
+.fp-art-body { display: flex; flex-direction: column; min-width: 0; }
+.fp-art-title { font-size: 12.5px; font-weight: 600; color: #111827; line-height: 1.3; }
+.fp-art-meta { font-size: 11px; color: #6b7280; }
+.fp-art-sum { font-size: 11.5px; color: #4b5563; margin-top: 2px; }
+
+.fp-details { margin-top: 10px; }
+.fp-tg { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 5px 0; border: 0; border-top: 1px solid #f3f4f6; background: none;
+  font: inherit; font-size: 12px; font-weight: 600; color: #374151; cursor: pointer; }
+.fp-tg span:last-child { font-weight: 400; color: #6b7280; display: inline-flex; align-items: center; gap: 4px; }
+.fp-caret { display: inline-block; width: 7px; height: 7px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform 0.15s; }
+.fp-tg.open .fp-caret { transform: rotate(-135deg) translateY(-1px); }
+.fp-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.fp-table td { padding: 3px 0; border-top: 1px solid #f3f4f6; vertical-align: top; }
+.fp-table td:first-child { color: #6b7280; padding-right: 10px; width: 42%; }
+.fp-table td:last-child { color: #111827; word-break: break-word; }
+
+.fp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
+.fp-src { font-size: 11px; color: #6b7280; min-width: 0; }
+.fp-friends img { height: 26px; width: auto; display: block; }
+.fp-foot-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Fish-use species list */
+.fp-fish { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #f3f4f6; }
+.fp-fish-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: #111827; }
+.fp-fish-quiet { opacity: 0.72; }
+.fp-fish-quiet .fp-fish-name { font-weight: 400; }
+.fp-pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.6; white-space: nowrap; }
+.fp-note { font-size: 11.5px; color: #4b5563; margin-top: 6px; }
+
+/* "What's here" chooser */
+.fp-chooser { width: 300px; }
+.fp-picks { margin-top: 8px; }
+.fp-pick { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 6px 2px; border: 0; border-top: 1px solid #f3f4f6; background: none; cursor: pointer; font: inherit; color: inherit; }
+.fp-pick:hover { background: #f9fafb; }
+.fp-pick-sw { flex: none; width: 18px; display: flex; justify-content: center; }
+.fp-pick-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fp-pick-layer { font-size: 10.5px; color: #6b7280; }
+.fp-pick-title { font-size: 12.5px; font-weight: 600; color: #111827; }
+.fp-pick-go { color: #9ca3af; font-size: 18px; }

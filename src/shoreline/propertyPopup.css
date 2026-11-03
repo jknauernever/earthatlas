@@ -1,0 +1,142 @@
+/* /shoreline property popup (propertyPopup.js): SSE's tabbed parcel report inside the EarthAtlas card (.fp, popupCard.css).
+   Cards are light grey panels in the white card; type follows the other EarthAtlas cards. */
+
+.fp.pp { width: 580px; }
+@media (min-width: 601px) { .fp.pp { max-height: min(78vh, 720px); } }
+@media (max-width: 600px) { .fp.pp { width: 100%; } }
+
+.pp-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 10px 0 8px; border-bottom: 1px solid #e5e7eb; }
+.pp-tab { border: 0; background: none; padding: 6px 8px 7px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pp-tab:hover { color: #111827; }
+.pp-tab.on { color: #111827; border-bottom-color: var(--accent); }
+
+.pp-card { background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 12.5px; color: #1f2937; }
+.pp-card p { margin: 0; }
+.pp-card.pp-flush { padding: 0; overflow: hidden; }
+.pp-card.pp-fill { height: 100%; margin-bottom: 0; }
+.pp-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 700; margin-bottom: 6px; }
+.pp-para { margin-top: 6px !important; line-height: 1.5; }
+.pp-muted { color: #6b7280; }
+.pp-small { font-size: 11.5px; color: #6b7280; margin-top: 8px !important; line-height: 1.45; }
+.pp-center { text-align: center; margin-top: 6px !important; }
+.pp-cite { font-size: 11px; color: #6b7280; }
+.pp-pill { color: #0e7490; font-weight: 700; }
+.pp-big { font-size: 26px; font-weight: 700; color: #0e7490; line-height: 1.1; }
+
+/* Summary: At a Glance beside the mini-map */
+.pp-two { display: flex; gap: 8px; margin-bottom: 8px; align-items: stretch; }
+.pp-two > .pp-card { flex: 1; min-width: 0; }
+.pp-mini { width: 200px; height: 200px; flex: none; border-radius: 8px; overflow: hidden; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 11.5px; position: relative; }
+.pp-mini .mapboxgl-canvas-container, .pp-mini .mapboxgl-canvas { width: 100% !important; height: 100% !important; }
+@media (max-width: 600px) {
+  .pp-two { flex-direction: column; }
+  .pp-mini { width: 100%; height: 180px; }
+}
+.pp-glance { border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 6px; }
+.pp-glance-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 0; }
+.pp-glance-row span { color: #4b5563; font-weight: 600; }
+.pp-glance-row b { font-size: 14px; color: #0e7490; font-variant-numeric: tabular-nums; }
+.pp-glance-text p { margin-top: 3px; line-height: 1.45; }
+
+/* Shoreline type */
+.pp-sf { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.pp-sf b { font-size: 14px; color: #111827; }
+.pp-sf span:last-child { color: #6b7280; }
+.pp-sf-sw { width: 24px; height: 6px; border-radius: 3px; flex: none; }
+.pp-kvs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.pp-kv { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: #fff; border: 1px solid #e5e7eb; color: #4b5563; }
+.pp-kv b { color: #111827; }
+
+/* Present / absent rows (nearshore habitat, modifications) */
+.pp-rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.pp-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex: none; margin-top: 5px; }
+.pp-dot-on { background: #22c55e; margin: 0 6px 0 0; }
+.pp-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: #fff; border: 1px solid #e5e7eb; color: #4b5563; line-height: 1.4; }
+.pp-row-on { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+.pp-row-on .pp-dot { background: #16a34a; }
+.pp-absent { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; background: #fff; border: 1px solid #e5e7eb; color: #4b5563; margin-top: 6px; }
+.pp-absent .pp-dot { margin-top: 0; }
+.pp-note { margin-top: 8px; padding: 8px 10px; border-radius: 6px; line-height: 1.5; }
+.pp-note-sand { background: #fefce8; border-left: 3px solid #ca8a04; }
+.pp-note-green { background: #f0fdf4; border-left: 3px solid #22c55e; }
+
+.pp-box { margin-top: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid; line-height: 1.45; }
+.pp-box p { margin-top: 4px !important; }
+.pp-box ul { margin: 4px 0 0 18px; padding: 0; }
+.pp-box-h { display: flex; align-items: center; font-weight: 700; color: #111827; }
+.pp-box-green { background: #f0fdf4; border-color: #bbf7d0; }
+.pp-box-teal { background: #f0fdfa; border-color: #99f6e4; }
+.pp-box-blue { background: #ecfeff; border-color: #a5f3fc; }
+.pp-box-sand { background: #fffbeb; border-color: #fde68a; }
+.pp-reason { font-size: 11.5px; color: #6b7280; }
+.pp-quote { font-size: 12px; color: #4b5563; }
+.pp-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pp-stat { flex: 1; min-width: 70px; text-align: center; padding: 5px; background: #fff; border-radius: 6px; }
+.pp-stat b { display: block; font-size: 15px; color: #111827; }
+.pp-stat span { font-size: 10.5px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+
+.pp-mod { display: flex; gap: 8px; align-items: flex-start; padding: 7px 9px; margin-top: 6px; border-radius: 6px; background: #fff; border: 1px solid #e5e7eb; }
+.pp-mod-on { background: #fff7ed; border-color: #fed7aa; }
+.pp-mod-on .pp-dot { background: #c2410c; }
+.pp-mod > div { min-width: 0; flex: 1; }
+.pp-mod-h { font-weight: 700; color: #111827; }
+.pp-mod-h span { font-weight: 500; font-size: 11.5px; color: #6b7280; margin-left: 6px; }
+.pp-mod-d { margin-top: 2px; line-height: 1.45; }
+.pp-mod-d .fp-chip { margin-left: 2px; }
+.fp.pp .fp-block .fp-btn + .fp-btn { margin-left: 4px; }
+
+/* Inland: Friends' projects on the island */
+.pp-proj { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid #e5e7eb; }
+.pp-proj:first-of-type { margin-top: 6px; }
+.pp-proj-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 5px; }
+.pp-proj-name { font-weight: 600; }
+.pp-proj-name a { color: #111827 !important; text-decoration: none; }
+.pp-proj-name a:hover { text-decoration: underline; }
+.pp-proj-meta { font-size: 11.5px; color: #6b7280; }
+
+/* Greenery */
+.pp-green { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.pp-ring { width: 56px; height: 56px; border-radius: 50%; border: 4px solid; display: grid; place-items: center; flex: none; }
+.pp-ring b { font-size: 18px; color: #0e7490; }
+.pp-ring small { font-size: 11px; color: #4b5563; margin-left: 1px; }
+.pp-green-r { font-size: 15px; font-weight: 700; color: #111827; }
+.pp-green-s { color: #4b5563; }
+.pp-cmp { margin-top: 10px; }
+.pp-cmp-bar { position: relative; height: 12px; border-radius: 4px; background: linear-gradient(to right, #d73027, #fc8d59, #fee08b, #d9ef8b, #66bd63, #1a9850, #006837); }
+.pp-cmp-bar span { position: absolute; top: -3px; width: 4px; height: 18px; transform: translateX(-50%); background: #111827; border-radius: 2px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+.pp-cmp-ends { display: flex; justify-content: space-between; margin-top: 3px; font-size: 11.5px; color: #4b5563; }
+.pp-cmp-n { text-align: center; font-size: 11.5px; color: #4b5563; margin-top: 2px; }
+.pp-cover { margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb; }
+.pp-cover-h { font-weight: 600; margin-bottom: 6px; }
+.pp-cover-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: #e5e7eb; margin-bottom: 6px; }
+.pp-cover-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.pp-cover-row span:first-child { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.pp-cover-row span:nth-child(2) { flex: 1; }
+
+/* Property */
+.pp-table { width: 100%; border-collapse: collapse; }
+.pp-table td { padding: 4px 0; border-top: 1px solid #e5e7eb; vertical-align: top; }
+.pp-table tr:first-child td { border-top: 0; }
+.pp-table td:first-child { color: #6b7280; padding-right: 12px; white-space: nowrap; }
+.pp-table td:last-child { color: #111827; word-break: break-word; }
+.pp-bigstats { display: flex; justify-content: space-around; gap: 8px; margin-bottom: 6px; }
+.pp-bigstat { text-align: center; }
+.pp-bigstat b { display: block; font-size: 24px; color: #0e7490; line-height: 1.1; }
+.pp-bigstat span { font-size: 11.5px; color: #4b5563; font-weight: 600; }
+.pp-bldg { padding: 6px 0; border-top: 1px solid #e5e7eb; line-height: 1.45; }
+.pp-bldg-h { font-weight: 600; color: #111827; }
+
+/* Birds */
+.pp-birds-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.pp-birds-h > b { font-size: 14px; color: #111827; }
+.pp-birds-h select { font: inherit; font-size: 12px; padding: 2px 4px; margin-left: 4px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #111827; }
+.pp-birds-sub { margin: 2px 0 6px; }
+.pp-bird { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 10px; border-top: 1px solid #e5e7eb; }
+.pp-bird:first-child { border-top: 0; }
+.pp-bird > div { min-width: 0; display: flex; flex-direction: column; }
+.pp-bird a { font-weight: 600; color: #111827 !important; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-bird a:hover { text-decoration: underline; }
+.pp-bird i { font-size: 11.5px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-bird > b { min-width: 32px; text-align: center; padding: 1px 8px; border-radius: 999px; background: #ecfeff; color: #0e7490; }
+.pp-attr { font-size: 11px; color: #6b7280; text-align: center; margin: 4px 0 8px; }

@@ -146,7 +146,9 @@ if (upload) {
   const put = async (pathname, body, o) => blob.put(pathname, body, { ...o, token: await tokenFor(pathname) })
   const stamp = meta.baked.slice(0, 19).replace(/[-:T]/g, '')
   const base = `species-of-concern/critical-habitat/wa-${stamp}`
-  const opts = (type) => ({ access: 'public', contentType: type, addRandomSuffix: false, ...(rw ? { cacheControlMaxAge: 31536000 } : {}) })
+  // A client token (CI) carries addRandomSuffix/allowOverwrite/cacheControlMaxAge itself (api/cron/permits-upload-token.js);
+  // @vercel/blob/client's put throws if they are passed again.
+  const opts = (type) => ({ access: 'public', contentType: type, ...(rw ? { addRandomSuffix: false, cacheControlMaxAge: 31536000 } : {}) })
   const files = fs.readdirSync(path.join(outDir, 't'))
   for (let i = 0; i < files.length; i += 8) {
     await Promise.all(files.slice(i, i + 8).map((f) => put(`${base}/t/${f}`, fs.readFileSync(path.join(outDir, 't', f)), opts('application/gzip'))))
@@ -154,6 +156,6 @@ if (upload) {
   }
   const idx = await put(`${base}/index.json`, JSON.stringify(index), opts('application/json'))
   const latest = { base: idx.url.replace(/\/index\.json$/, ''), baked: meta.baked, source_edited: edited, features: features.length, designations: designations.length, tiles: tiles.size, bytes }
-  await put('species-of-concern/critical-habitat/wa-latest.json', JSON.stringify(latest), { access: 'public', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, ...(rw ? { cacheControlMaxAge: 300 } : {}) })
+  await put('species-of-concern/critical-habitat/wa-latest.json', JSON.stringify(latest), { access: 'public', contentType: 'application/json', ...(rw ? { addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 300 } : {}) })
   console.log(`\nuploaded -> ${latest.base}`)
 }

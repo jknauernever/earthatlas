@@ -79,6 +79,24 @@
 .info a:hover { color: rgba(160, 220, 255, 1); }
 .info strong { color: #fff; }
 
+/* ─── List look (DatasetRow look="list"; /shoreline, after Salish Sea Explorer) ─
+   One slim line per dataset: bare 18 px icon, no switch, off = dimmed, on = a hue bar down the left. */
+.list { position: relative; padding-left: 10px; }
+.list::before {
+  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px; width: 3px; border-radius: 2px;
+  background: var(--hue, rgba(255, 255, 255, 0.5)); opacity: 0; transition: opacity 0.12s;
+}
+.list.datasetOn::before { opacity: 1; }
+.list .toggle { gap: 8px; padding-top: 5px; padding-bottom: 5px; }
+.listIcon { width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; transition: opacity 0.12s, filter 0.12s; }
+.list:not(.datasetOn) .listIcon { opacity: 0.45; filter: grayscale(0.7); }
+.list .name { font-size: 13.5px; color: rgba(255, 255, 255, 0.5); font-weight: 500; }
+.list.datasetOn .name { color: #fff; font-weight: 600; }
+.list .controls, .list .legend, .list .info { margin-left: 28px; }
+.list .controls { margin-top: 0; margin-bottom: 6px; }
+.list .legend { margin-bottom: 6px; }
+.list .legendBody { padding-top: 2px; padding-bottom: 4px; }
+
 /* ─── Legend turndown ────────────────────────────────────────────────────── */
 .legend { margin: 0 0 6px 38px; }
 .legendFlush { margin-left: 0; } /* LegendTurndown flush: panels not built from DatasetRows (no icon column to clear) */
@@ -98,6 +116,23 @@
 .legendRow { display: contents; }
 .legendBody > :not(.legendRow) { grid-column: 1 / -1; } /* notes span both columns */
 .legendSwatch { min-width: 18px; display: inline-flex; justify-content: center; align-items: center; }
+
+/* Flow legend: entries wrap side by side (LegendFlow), each one swatch + label. */
+.legendFlow {
+  display: flex; flex-wrap: wrap; column-gap: 14px; row-gap: 4px; padding: 1px 0 4px;
+  font-size: 11.5px; color: rgba(255, 255, 255, 0.8); line-height: 1.35;
+}
+.legendFlow .legendRow { display: inline-flex; align-items: center; gap: 6px; }
+.legendFlow .legendSwatch { min-width: 16px; }
+/* A legend line that toggles its own item (LegendToggleRow) */
+.legendToggle {
+  display: contents; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.legendFlow .legendToggle, .legendBody .legendToggle { border-radius: 5px; }
+.legendFlow .legendToggle { padding: 1px 4px 1px 0; }
+.legendToggle:hover > span:last-child { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.legendToggleOff > span { opacity: 0.4; }
+.legendToggle:focus-visible { outline: 2px solid rgba(103, 232, 249, 0.6); outline-offset: 1px; }
 
 /* ─── Footer: sources rollup + credit (from /shiptraffic's .methodology / .builtBy) ─ */
 .footer { margin-top: 14px; }

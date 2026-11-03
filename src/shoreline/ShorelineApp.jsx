@@ -30,7 +30,7 @@ import ShareControl from '../components/ShareControl.jsx'
 import SiteBrand from '../components/SiteBrand.jsx'
 import { BRANDS } from '../lib/brand.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
-import { DatasetRow, LegendTurndown, LegendSwatchRow, SourcesFooter } from '../components/panel/index.js'
+import { DatasetRow, LegendTurndown, LegendSwatchRow, LegendFlow, LegendToggleRow, SourcesFooter } from '../components/panel/index.js'
 import { pinDataUri } from '../friends/habitatOverlay.js'
 import { buildChooserCard, swatchHtml, escapeHtml } from '../friends/popupCard.js'
 import {
@@ -86,6 +86,8 @@ function writeUrlQuery(qs) {
 const pinImg = (spec, size = 18) => <img src={pinDataUri(spec)} alt="" width={Math.round(size * 24 / 26)} height={size} className={styles.pin} />
 const ext = (href, text) => <a className={p.src} href={href} target="_blank" rel="noopener noreferrer">{text}</a>
 const line = (color, h = 4, opacity = 1) => <span className={styles.line} style={{ background: color, height: h, opacity }} />
+// Filled-box icon for area layers (Salish Sea Explorer's swatches)
+const box = (fill, stroke = fill) => <span className={styles.box} style={{ background: fill, borderColor: stroke }} />
 // Each row's pin (the chooser's swatch); rows without one get a line / fill swatch in the layer's color
 const ROW_PIN = { kelp: 'kelp', eelgrass: 'eelgrass', fish: PIN_SPECS.fish, geology: PIN_SPECS.shoreform, armor: PIN_SPECS.armor, docks: PIN_SPECS.dock,
   buoys: PIN_SPECS.buoy, ramps: PIN_SPECS.ramp, railway: PIN_SPECS.railway, groins: PIN_SPECS.groin, pilings: PIN_SPECS.piling }
@@ -285,7 +287,7 @@ export default function ShorelineApp() {
 
   useEffect(() => {
     const prev = document.title
-    document.title = 'Shoreline Explorer — San Juan County shoreline habitat · EarthAtlas'
+    document.title = 'Salish Sea Explorer: Shoreline Ecosystems — San Juan County · EarthAtlas'
     return () => { document.title = prev }
   }, [])
 
@@ -301,7 +303,6 @@ export default function ShorelineApp() {
   // One line per dataset, as on Salish Sea Explorer: no descriptor, only a hint while zoom hides the layer
   const gate = (g) => (zoom < mapboxZoom(g) ? `shows from zoom ${mapboxZoom(g)}` : null)
   const loading = !data && !loadError
-  const chip = (id, label) => <button key={id} type="button" className={isOn(id) ? p.chipOn : p.chip} onClick={() => toggle(id)}>{label}</button>
 
   return (
     <div className={q.container}>
@@ -311,7 +312,7 @@ export default function ShorelineApp() {
 
       {/* Friends of the San Juans' tool on every host: their logo in the chip, "Powered by EarthAtlas" in the panel */}
       <SiteBrand styles={q} brand={FRIENDS_BRAND}>
-        <span className={q.subBadge}>Shoreline Explorer</span>
+        <span className={q.subBadge}>Shoreline Ecosystems</span>
       </SiteBrand>
 
       <MapSearch className={q.searchBox}>
@@ -326,55 +327,58 @@ export default function ShorelineApp() {
       <ImageryLine photos={photos} mapRef={mapRef} />
       <WelcomeBox defaultDismissed={!!initialCamera} />
 
-      <MapSheet title="On the map" summary="San Juan County shorelines" className={p.panel}>
+      <MapSheet title="On the map" summary="San Juan County shorelines" className={`${p.panel} ${styles.panel}`} desktopCollapse="side">
         <div className={p.panelBody}>
           <div className={p.title}>On the map</div>
           <a className={styles.friends} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">Shoreline data from Friends of the San Juans</a>
 
           <div className={p.section}>
-            <DatasetRow storageKey="shoreline.kelp" name="Bull Kelp" hue="#B89A3A" icon={pinImg('kelp', 16)} on={isOn('kelp')} onToggle={() => toggle('kelp')} disabled={loading}
+            <DatasetRow look="list" storageKey="shoreline.kelp" name="Bull Kelp" hue="#B89A3A" icon={pinImg('kelp', 18)} on={isOn('kelp')} onToggle={() => toggle('kelp')} disabled={loading}
               info={<>Canopy (floating) kelp mapping by the Washington Department of Natural Resources and Friends of the San Juans. Zoomed in, beds are drawn with the nautical-chart kelp symbol. {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
 
-            <DatasetRow storageKey="shoreline.eelgrass" name="Deepwater/Edge Eelgrass" hue="#20B2AA" icon={pinImg('eelgrass', 16)} on={isOn('eelgrass')} onToggle={() => toggle('eelgrass')} disabled={loading}
+            <DatasetRow look="list" storageKey="shoreline.eelgrass" name="Deepwater/Edge Eelgrass" hue="#20B2AA" icon={pinImg('eelgrass', 18)} on={isOn('eelgrass')} onToggle={() => toggle('eelgrass')} disabled={loading}
               info={<>Friends of the San Juans, Washington DNR and Friday Harbor Labs (countywide eelgrass study). {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
 
-            <DatasetRow storageKey="shoreline.parcels" name="Properties" hue="#F97316"
+            <DatasetRow look="list" storageKey="shoreline.parcels" name="Properties" hue="#F97316" icon={box('rgba(249,115,22,0.35)', '#F97316')}
               sub={gate(MIN_ZOOM.parcels)} on={isOn('parcels')} onToggle={() => toggle('parcels')}
               info={<>Property boundaries from the San Juan County Assessor’s parcel layer. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/OpenData/Parcels/MapServer/1', 'San Juan County GIS')}</>} />
 
-            <DatasetRow storageKey="shoreline.buildings" name="Building Footprints" hue="#60A5FA"
+            <DatasetRow look="list" storageKey="shoreline.buildings" name="Building Footprints" hue="#60A5FA" icon={box('rgba(96,165,250,0.45)', '#60A5FA')}
               sub={gate(MIN_ZOOM.buildings)} on={isOn('buildings')} onToggle={() => toggle('buildings')}
               info={<>Building outlines across San Juan County. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/Polaris/Buildings/MapServer/3', 'San Juan County GIS')}</>} />
 
-            <DatasetRow storageKey="shoreline.fish" name="Priority Shorelines for Fish" hue="#F97316" icon={pinImg(PIN_SPECS.fish, 16)}
+            <DatasetRow look="list" storageKey="shoreline.fish" name="Priority Shorelines for Fish" hue="#F97316" icon={pinImg(PIN_SPECS.fish, 18)}
               sub={gate(MIN_ZOOM.fish)} on={isOn('fish')} onToggle={() => toggle('fish')} disabled={loading}
               controls={<label className={styles.select}>Color by
                 <select value={fishMode} onChange={(e) => setFishMode(e.target.value)}>
                   {FISH_COLOR_MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select></label>}
-              legend={<LegendTurndown storageKey="shoreline.fish.legend" label="Priority levels (3)" flush>
-                {[3, 2, 1].map((t) => <LegendSwatchRow key={t} swatch={line(FISH_TIERS[t].color, FISH_TIERS[t].weight - 1)}>{FISH_TIERS[t].label}</LegendSwatchRow>)}
-              </LegendTurndown>}
+              legend={<LegendFlow>
+                {[1, 2, 3].map((t) => <LegendSwatchRow key={t} swatch={line(FISH_TIERS[t].color, 3)}>{FISH_TIERS[t].label}</LegendSwatchRow>)}
+              </LegendFlow>}
               info={<>How likely juvenile salmon, forage fish, and greenlings and cods are to be present and abundant along each stretch of shoreline, from 1,350 beach seine sets at 80 sites across the San Juan Islands (high-resolution model). Friends of the San Juans groups the model scores into moderate, high and highest priority, as in the countywide salmon recovery prioritization. Salmon levels are for rearing juveniles. Nothing is ranked low: fish can and do use every shoreline. Beamer &amp; Fresh 2012, Skagit River System Cooperative. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/Habitat/SRSC_ShorelineFishPresence/MapServer', 'San Juan County map service')}</>} />
 
-            <DatasetRow storageKey="shoreline.forage" name="Forage Fish Spawning" hue="#E11D74"
+            <DatasetRow look="list" storageKey="shoreline.forage" name="Forage Fish Spawning" hue="#E11D74" icon={box('rgba(139,92,246,0.45)', '#8B5CF6')}
               sub={gate(MIN_ZOOM.forage)} on={groupOn(forageIds)} onToggle={() => toggleGroup(forageIds)} disabled={loading}
-              controls={<div className={p.chips}>{FORAGE.map((f) => chip(f.id, f.name))}</div>}
+              legend={<LegendFlow>
+                {FORAGE.map((f) => <LegendToggleRow key={f.id} on={isOn(f.id)} onToggle={() => toggle(f.id)}
+                  swatch={f.id === 'herring' ? box('rgba(139,92,246,0.45)', f.color) : line(f.color, 3)}>{f.name}</LegendToggleRow>)}
+              </LegendFlow>}
               info={<>Where forage fish spawn in San Juan County: Pacific herring on eelgrass and algae in sheltered bays (WDFW), and surf smelt and Pacific sand lance on upper-beach sand and gravel (Friends of the San Juans and WDFW surveys). Documented beaches have been surveyed with eggs found; potential habitat is beach substrate suitable for spawning that fronts the shore. {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
 
-            <DatasetRow storageKey="shoreline.geology" name="Shoreline Geology: Shoreforms" hue="#9A3412" icon={pinImg(PIN_SPECS.shoreform, 16)}
+            <DatasetRow look="list" storageKey="shoreline.geology" name="Shoreline Geology: Shoreforms" hue="#9A3412" icon={pinImg(PIN_SPECS.shoreform, 18)}
               sub={gate(MIN_ZOOM.geology)} on={isOn('geology')} onToggle={() => toggle('geology')} disabled={loading}
-              legend={<LegendTurndown storageKey="shoreline.geology.legend" label={`Shoreform classes (${SHOREFORM_GROUP_ORDER.length})`} flush>
+              legend={<LegendFlow>
                 {SHOREFORM_GROUP_ORDER.map((g) => <LegendSwatchRow key={g} swatch={line(SHOREFORM_GROUPS[g].color, 3)}>{SHOREFORM_GROUPS[g].label}</LegendSwatchRow>)}
-              </LegendTurndown>}
+              </LegendFlow>}
               info={<>Geomorphic shoreforms: the primary geologic features of the marine shoreline. Coastal processes affect each shore form differently, so each carries different management concerns and priorities. Friends of the San Juans geomorphic shoreform mapping. {ext(GUIDE_URL, 'Living with the Shoreline')}</>} />
 
-            <DatasetRow storageKey="shoreline.mods" name="Shoreline Modifications" hue="#8B0000" icon={pinImg(PIN_SPECS.armor, 16)}
+            <DatasetRow look="list" storageKey="shoreline.mods" name="Shoreline Modifications" hue="#8B0000" icon={pinImg(PIN_SPECS.armor, 18)}
               sub={gate(MIN_ZOOM.modifications)} on={groupOn(modIds)} onToggle={() => toggleGroup(modIds)} disabled={loading}
-              controls={<div className={p.chips}>{MODIFICATIONS.map((m) => chip(m.id, m.name))}</div>}
-              legend={<LegendTurndown storageKey="shoreline.mods.legend" label={`Structure types (${MODIFICATIONS.filter((m) => isOn(m.id)).length})`} flush>
-                {MODIFICATIONS.filter((m) => isOn(m.id)).map((m) => (
-                  <LegendSwatchRow key={m.id} swatch={<span className={styles.pinSwatch}>{m.line && line(m.line, 3)}{pinImg(PIN_SPECS[m.pin], 16)}</span>}>{m.name}</LegendSwatchRow>
+              legend={<LegendTurndown storageKey="shoreline.mods.legend" label={`Structure types (${MODIFICATIONS.filter((m) => isOn(m.id)).length} of ${MODIFICATIONS.length})`} flush>
+                {MODIFICATIONS.map((m) => (
+                  <LegendToggleRow key={m.id} on={isOn(m.id)} onToggle={() => toggle(m.id)}
+                    swatch={<span className={styles.pinSwatch}>{m.line && line(m.line, 3)}{pinImg(PIN_SPECS[m.pin], 16)}</span>}>{m.name}</LegendToggleRow>
                 ))}
               </LegendTurndown>}
               info={<>Hard armor and in- and over-water structures along the shore, from Friends of the San Juans’ Inventory of Shoreline Modifications (2010) and the 2019 countywide armor survey. {ext(GUIDE_URL, 'Living with the Shoreline')}</>} />

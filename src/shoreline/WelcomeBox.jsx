@@ -31,10 +31,10 @@ export default function WelcomeBox({ defaultDismissed = false }) {
     )
   }
   return (
-    <div className={styles.card} role="dialog" aria-label="Welcome to the Shoreline Explorer">
+    <div className={styles.card} role="dialog" aria-label="Welcome to the Salish Sea Explorer: Shoreline Ecosystems">
       <button type="button" className={styles.x} onClick={close} aria-label="Close introduction">×</button>
       <div className={styles.body}>
-        <h3>Welcome to the Shoreline Explorer!</h3>
+        <h3>Welcome to the Salish Sea Explorer: Shoreline Ecosystems</h3>
         <p>Explore shoreline habitats and property information across San Juan County.</p>
         <ul>
           <li><strong>Search an address</strong> above to open a property report.</li>

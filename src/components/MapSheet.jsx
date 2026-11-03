@@ -21,6 +21,9 @@ import styles from './MapSheet.module.css'
  *              (e.g. "3 of 11 layers on"); keep it short, it truncates
  *   className— the tool's desktop panel class (from its own CSS module)
  *   children — panel contents, unchanged between layouts
+ *   desktopCollapse — 'pill' (default): the ⌃ button shrinks the panel to a titled pill;
+ *              'side': a small ‹ tab on the panel's right edge slides it off to the left and
+ *              back (Salish Sea Explorer's panel; /shoreline)
  *   collapseSignal / expandSignal — bump these counters to drive the drawer
  *              from the app: collapse when an action hands the map back to the
  *              user (carbon's "Draw area"), expand when a result arrives worth
@@ -33,7 +36,7 @@ const SNAP_RIGHT_GAP = 56
 const TAP_SLOP = 8        // px of movement still counted as a tap, not a drag
 const TAP_MS = 500
 
-export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange, desktopCollapsible = true }) {
+export default function MapSheet({ title, summary, className, children, id, collapseSignal = 0, expandSignal = 0, onSnapChange, desktopCollapsible = true, desktopCollapse = 'pill' }) {
   const isMobile = useIsMobile()
   const [snap, setSnap] = useState('peek')
   // Desktop: the floating panel can be minimized to a small titled pill so the
@@ -142,6 +145,28 @@ export default function MapSheet({ title, summary, className, children, id, coll
   }, [isMobile, snap])
 
   if (!isMobile) {
+    if (desktopCollapse === 'side') {
+      return (
+        <aside className={className} aria-label={title} id={id}
+          // The tab hangs outside the panel's right edge, so the panel can't clip; its body scrolls on its own
+          style={{ overflow: 'visible', transform: deskCollapsed ? 'translateX(calc(-100% - 20px))' : 'none', transition: 'transform 0.25s ease' }}>
+          <button
+            type="button"
+            className={styles.deskSideTab}
+            onClick={() => setDeskCollapsed((c) => !c)}
+            aria-expanded={!deskCollapsed}
+            aria-label={deskCollapsed ? `Show ${title}` : `Hide ${title}`}
+            title={deskCollapsed ? `Show ${title}` : `Hide ${title}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+              style={{ transform: deskCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease' }}>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div className={styles.deskSideBody} inert={deskCollapsed ? '' : undefined}>{children}</div>
+        </aside>
+      )
+    }
     if (deskCollapsed) {
       return (
         <aside

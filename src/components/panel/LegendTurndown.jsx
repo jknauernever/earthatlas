@@ -34,3 +34,19 @@ export function LegendSwatchRow({ swatch, children }) {
     </div>
   )
 }
+
+/** Legend lines that wrap side by side (two short entries to a line), as on Salish Sea Explorer. */
+export function LegendFlow({ children }) {
+  return <div className={s.legendFlow}>{children}</div>
+}
+
+/** A legend line that also turns its own item on/off (dimmed while off). */
+export function LegendToggleRow({ swatch, on, onToggle, children }) {
+  return (
+    <button type="button" className={`${s.legendRow} ${s.legendToggle} ${on ? '' : s.legendToggleOff}`} aria-pressed={!!on} onClick={onToggle}
+      title={`${on ? 'Hide' : 'Show'} ${typeof children === 'string' ? children : ''}`.trim()}>
+      <span className={s.legendSwatch} aria-hidden="true">{swatch}</span>
+      <span>{children}</span>
+    </button>
+  )
+}

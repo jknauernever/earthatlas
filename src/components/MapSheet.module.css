@@ -202,6 +202,21 @@
 }
 .deskCollapse:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
 
+/* desktopCollapse="side": a tab stuck to the panel's right edge (Salish Sea Explorer's) slides it left and back. */
+.deskSideTab {
+  position: absolute; left: 100%; top: 14px; z-index: 2;
+  width: 22px; height: 44px; padding: 0; margin-left: 1px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-left: 0; border-radius: 0 8px 8px 0;
+  background: inherit; backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.8); cursor: pointer;
+  box-shadow: 2px 1px 6px rgba(0, 0, 0, 0.25);
+}
+.deskSideTab:hover { color: #fff; }
+.deskSideTab:focus-visible { outline: 2px solid rgba(103, 232, 249, 0.6); outline-offset: 1px; }
+/* Keeps the tool's flex column (title, scrolling body) intact inside the slide-away panel */
+.deskSideBody { display: flex; flex-direction: column; flex: 1; min-height: 0; border-radius: inherit; overflow: hidden; }
+
 /* Collapsed pill: title + summary; click anywhere to restore. */
 .deskPill {
   display: flex;

@@ -123,11 +123,11 @@ const ROUTES = [
   {
     out: 'shoreline.html',
     url: 'https://earthatlas.org/shoreline',
-    title: 'Shoreline Explorer — San Juan County shoreline habitat · EarthAtlas',
+    title: 'Salish Sea Explorer: Shoreline Ecosystems — San Juan County · EarthAtlas',
     description:
       'San Juan County’s marine shoreline for property owners: bull kelp, eelgrass, forage fish spawning beaches, priority shorelines for salmon and forage fish, shoreforms and shoreline structures from Friends of the San Juans, over County property lines and buildings. An EarthAtlas tool.',
     image: 'https://earthatlas.org/earthatlas-social.jpg',
-    imageAlt: 'EarthAtlas Shoreline Explorer map of San Juan County shoreline habitat',
+    imageAlt: 'Salish Sea Explorer: Shoreline Ecosystems map of San Juan County shoreline habitat',
     keywords:
       'San Juan County, San Juan Islands, shoreline, forage fish, surf smelt, sand lance, herring, bull kelp, eelgrass, salmon, feeder bluff, shoreline armor, Friends of the San Juans',
   },

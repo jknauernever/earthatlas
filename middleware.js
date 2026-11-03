@@ -97,7 +97,7 @@ const TOOLS = {
                    description: 'Click any spot in Washington to see the endangered, threatened, sensitive and candidate species recorded nearby — state and federal lists, with every record linked to iNaturalist, GBIF, eBird or the whale-sighting network that reported it. An EarthAtlas tool.' },
   risks:         { title: 'Sea-Level Rise Risks — San Juan County flooding scenarios · EarthAtlas',
                    description: 'Coastal flooding and erosion risk in San Juan County, WA: the four flood extents from the County’s 2024 sea-level-rise assessment (2 or 5 feet of sea-level rise with the 1-year or 100-year storm), the roads at risk of flooding and the places most at risk of erosion. An EarthAtlas tool.' },
-  shoreline:     { title: 'Shoreline Explorer — San Juan County shoreline habitat · EarthAtlas',
+  shoreline:     { title: 'Salish Sea Explorer: Shoreline Ecosystems — San Juan County · EarthAtlas',
                    description: 'San Juan County’s marine shoreline for property owners: bull kelp, eelgrass, forage fish spawning beaches, priority shorelines for salmon and forage fish, shoreforms and shoreline structures from Friends of the San Juans, over County property lines and buildings. An EarthAtlas tool.' },
   birdsong:      { title: 'Birdsong — Live bird-audio map · EarthAtlas',
                    description: 'Hear what birds are calling anywhere on Earth — a live map of BirdWeather’s global acoustic monitoring network. An EarthAtlas tool.' },

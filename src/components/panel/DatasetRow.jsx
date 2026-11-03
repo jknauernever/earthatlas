@@ -27,8 +27,11 @@ import s from './Panel.module.css'
  *   info        node      the explanatory text, with its inline source links (omit if none)
  *   status      node      a short always-visible line under the row while on (loading / error / live stamp); optional
  *   disabled    bool      the toggle can't be used (e.g. data still loading)
+ *   look        'list'    the slim list look (/shoreline, after Salish Sea Explorer): no switch, no icon box, off rows
+ *                         dimmed, a hue bar down the left of an on dataset, controls shown inline (no chevron)
  */
-export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onToggle, controls, legend, info, status, disabled = false }) {
+export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onToggle, controls, legend, info, status, disabled = false, look }) {
+  const list = look === 'list'
   const uid = useId()
   const k = (part) => (storageKey ? `${storageKey}.${part}` : null)
   const [controlsOpen, toggleControls] = usePanelToggle(k('controls'))
@@ -37,17 +40,20 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
   const hasControls = controls != null && controls !== false
   const hasInfo = info != null && info !== false
   const hasLegend = legend != null && legend !== false
+  const showControls = on && hasControls && (list || controlsOpen)
   return (
-    <div className={`${s.dataset} ${on ? s.datasetOn : ''}`}>
+    <div className={`${s.dataset} ${on ? s.datasetOn : ''} ${list ? s.list : ''}`} style={list && on && hue ? hueVars(hue) : undefined}>
       <div className={s.row}>
         <button type="button" className={s.toggle} aria-pressed={!!on} onClick={onToggle} disabled={disabled}
           title={`${on ? 'Hide' : 'Show'} ${name}`}>
-          <span className={`${s.icon} ${on ? s.iconOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true">{icon}</span>
+          {list
+            ? <span className={s.listIcon} aria-hidden="true">{icon}</span>
+            : <span className={`${s.icon} ${on ? s.iconOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true">{icon}</span>}
           <span className={s.text}>
             <span className={s.name}>{name}</span>
             {sub && <span className={s.sub} title={typeof sub === 'string' ? sub : undefined}>{sub}</span>}
           </span>
-          <span className={`${s.switch} ${on ? s.switchOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true" />
+          {!list && <span className={`${s.switch} ${on ? s.switchOn : ''}`} style={on && hue ? hueVars(hue) : undefined} aria-hidden="true" />}
         </button>
         {hasInfo ? (
           <button type="button" className={`${s.iconBtn} ${infoOpen ? s.iconBtnActive : ''}`} onClick={toggleInfo}
@@ -55,7 +61,7 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
             <InfoGlyph />
           </button>
         ) : <span className={s.iconBtnSpacer} aria-hidden="true" />}
-        {hasControls && on ? (
+        {list ? null : hasControls && on ? (
           <button type="button" className={`${s.iconBtn} ${controlsOpen ? s.iconBtnActive : ''}`} onClick={toggleControls}
             aria-expanded={controlsOpen} aria-controls={`${uid}-controls`} aria-label={`${name} options`}
             title={controlsOpen ? `Hide ${name} options` : `${name} options`}>
@@ -64,7 +70,7 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
         ) : hasControls ? <span className={s.iconBtnSpacer} aria-hidden="true" /> : null}
       </div>
       {on && status}
-      {on && hasControls && controlsOpen && <div className={s.controls} id={`${uid}-controls`}>{controls}</div>}
+      {showControls && <div className={s.controls} id={`${uid}-controls`}>{controls}</div>}
       {on && hasLegend && <div className={s.legend}><div className={s.legendBody}>{legend}</div></div>}
       {hasInfo && infoOpen && <div className={s.info} id={`${uid}-info`}>{info}</div>}
     </div>

@@ -84,8 +84,12 @@ export default async function handler(req, res) {
   // An empty tile is a 200 with no body, not a 204: Vercel's edge doesn't cache 204s, so every visitor's open-ocean tiles
   // went through to SkyTruth (~0.4 s each, 2026-10-15). Mapbox reads a zero-length tile as empty.
   const empty = () => { res.statusCode = 200; res.setHeader('Content-Type', 'application/x-protobuf'); res.setHeader('Content-Length', '0'); res.setHeader('Cache-Control', cache); return res.end() }
-  if (upstream.status === 204 || upstream.status === 404) return empty()
+  // SkyTruth answers an empty tile with a 200 of 0 bytes (checked 2026-11-03). A 404 isn't its normal answer, so it is
+  // served empty but kept only minutes; any other 200 must be a vector tile, or a maintenance page gets cached for days.
+  if (upstream.status === 204) return empty()
+  if (upstream.status === 404) { res.statusCode = 200; res.setHeader('Content-Type', 'application/x-protobuf'); res.setHeader('Content-Length', '0'); res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300'); return res.end() }
   if (!upstream.ok) return fail(upstream.status === 429 ? 429 : 502, `Cerulean ${upstream.status}`)
+  if (!/vector-tile|protobuf/.test(upstream.headers.get('content-type') || '')) return fail(502, `Cerulean sent ${upstream.headers.get('content-type')}, not a tile`)
   const body = Buffer.from(await upstream.arrayBuffer())
   if (!body.length) return empty()
   res.statusCode = 200

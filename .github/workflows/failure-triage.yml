@@ -73,7 +73,7 @@ jobs:
             --model claude-sonnet-5-5
             --max-turns 25
             --allowedTools "Read,Grep,Glob,Bash(gh run view:*),Bash(gh run list:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(tail:*),Bash(grep:*),Bash(head:*)"
-            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["transient","upstream_outage","needs_josh"]},"confidence":{"type":"number","minimum":0,"maximum":1},"summary":{"type":"string"},"fix":{"type":"string"}},"required":["verdict","confidence","summary","fix"]}'
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["transient","upstream_outage","needs_josh"]},"confidence":{"type":"number","description":"0 to 1"},"summary":{"type":"string"},"fix":{"type":"string"}},"required":["verdict","confidence","summary","fix"],"additionalProperties":false}'
 
       - name: Act on the verdict
         env:
@@ -117,6 +117,10 @@ jobs:
 
       - name: Triage itself failed
         if: failure()
+        env:
+          EXEC_FILE: ${{ steps.triage.outputs.execution_file }}
         run: |
+          # Only the final result line (an API error, say): the repo is public, so the full transcript is never printed.
+          [ -f "$EXEC_FILE" ] && jq -r '[.[] | select(.type == "result")][-1].result // empty' "$EXEC_FILE" | head -c 500 || true
           gh issue comment "$ISSUE" --body "@$JOSH automatic triage couldn't run for this failure (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}), so it needs a look."
           gh issue edit "$ISSUE" --add-assignee "$JOSH"

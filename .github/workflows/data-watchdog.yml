@@ -6,6 +6,10 @@
 #   2. opens an issue when published data goes stale (GFW tracks, the /ships changelog numbers);
 #   3. opens an issue when the aisstream recorder stops (live snapshot 20+ minutes old), closed when it records again.
 # Issues carry the label "data-alert" so Claude sessions can list them too: gh issue list --label data-alert
+#
+# Failed-run issues (1) open UNASSIGNED and hand each new failure to failure-triage.yml (Josh 2026-11-04: one email per
+# failure was too many). Triage re-runs blips, waits out upstream outages, and assigns Josh only when something needs
+# him. Stale data (2) and a stopped recorder (3) are always real, so those still assign him straight away.
 name: data-watchdog
 
 on:
@@ -15,7 +19,7 @@ on:
 
 permissions:
   issues: write
-  actions: read
+  actions: write   # dispatches failure-triage.yml
   contents: read
 
 concurrency:
@@ -39,7 +43,7 @@ jobs:
           import datetime as dt, glob, json, os, subprocess, urllib.request
 
           ASSIGNEE = 'jknauernever'
-          SKIP = {'data-watchdog.yml', 'gisis-monthly-reminder.yml'}
+          SKIP = {'data-watchdog.yml', 'gisis-monthly-reminder.yml', 'failure-triage.yml'}
           BAD = {'failure', 'timed_out', 'startup_failure'}
           now = dt.datetime.now(dt.timezone.utc)
 
@@ -54,19 +58,33 @@ jobs:
           def open_issue(title):
               return OPEN.get(title)
 
-          def alert(title, lines, key):
-              """One open issue per title; a new comment only for news not already in it (key = run URL or check date)."""
+          def alert(title, lines, key, assign=True):
+              """One open issue per title; a new comment only for news not already in it (key = run URL or check date).
+              Returns the issue number when this call added news, else None."""
               iss = open_issue(title)
               text = '\n'.join(lines)
               if iss is None:
-                  url = gh('issue', 'create', '--title', title, '--label', 'data-alert', '--assignee', ASSIGNEE, '--body', text).strip()
-                  OPEN[title] = {'number': int(url.rsplit('/', 1)[-1]), 'title': title, 'body': text}
+                  args = ['issue', 'create', '--title', title, '--label', 'data-alert', '--body', text]
+                  url = gh(*args, *(['--assignee', ASSIGNEE] if assign else [])).strip()
+                  n = int(url.rsplit('/', 1)[-1])
+                  OPEN[title] = {'number': n, 'title': title, 'body': text}
                   print('opened:', title)
-                  return
+                  return n
               seen = iss['body'] + ''.join(c['body'] for c in json.loads(gh('issue', 'view', str(iss['number']), '--json', 'comments'))['comments'])
               if key not in seen:
                   gh('issue', 'comment', str(iss['number']), '--body', text)
+                  iss['body'] += text
                   print('commented:', title)
+                  return iss['number']
+              return None
+
+          def triage(issue, run_id):
+              try:
+                  gh('workflow', 'run', 'failure-triage.yml', '-f', f'issue={issue}', '-f', f'run_id={run_id}')
+                  print('triage dispatched:', issue, run_id)
+              except subprocess.CalledProcessError as e:   # triage unavailable: fall back to telling Josh directly
+                  gh('issue', 'edit', str(issue), '--add-assignee', ASSIGNEE)
+                  print('triage dispatch failed, assigned:', issue, e.stderr)
 
           def resolve(title, text):
               iss = open_issue(title)
@@ -81,7 +99,11 @@ jobs:
               if wf in SKIP:
                   continue
               runs = json.loads(gh('run', 'list', '--workflow', wf, '--limit', '15', '--json',
-                                   'databaseId,conclusion,status,createdAt,displayTitle,url,event'))
+                                   'databaseId,attempt,conclusion,status,createdAt,displayTitle,url,event'))
+              # A re-run (triage's) in progress drops out of the completed list and an older success would read as
+              # "recovered": leave this workflow's issue alone until the re-run finishes.
+              if any(r['status'] != 'completed' and (r.get('attempt') or 1) > 1 for r in runs):
+                  continue
               done = [r for r in runs if r['status'] == 'completed']
               if not done:
                   continue
@@ -102,8 +124,14 @@ jobs:
                       resolve(title, 'Recovered: no failed runs in the last 48 hours.')
                   continue
               for r in failing:
-                  alert(title, [f'**{r["displayTitle"]}** {r["conclusion"]} at {r["createdAt"]} ({r["event"]})', r['url'], '',
-                                'Opened by .github/workflows/data-watchdog.yml. Closes itself when this workflow succeeds again.'], r['url'])
+                  # The attempt is part of the key: a re-run that fails again is the same URL but is news (triage escalates it).
+                  key = f'{r["url"]} (attempt {r.get("attempt") or 1})'
+                  n = alert(title, [f'**{r["displayTitle"]}** {r["conclusion"]} at {r["createdAt"]} ({r["event"]})', key, '',
+                                    'Opened by .github/workflows/data-watchdog.yml; failure-triage.yml reviews each failure and '
+                                    'assigns Josh only if something needs doing. Closes itself when this workflow succeeds again.'],
+                            key, assign=False)
+                  if n:
+                      triage(n, r['databaseId'])
 
           # 2. Stale published data
           def get(url):

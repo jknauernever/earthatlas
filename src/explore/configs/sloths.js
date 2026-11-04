@@ -65,7 +65,6 @@ const config = {
     { name: 'Iquitos, Peru', lat: -3.75, lng: -73.25, emoji: '🇵🇪' },
   ],
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'sloths wildlife conservation',
   postFilter: isSloth,
 }
 

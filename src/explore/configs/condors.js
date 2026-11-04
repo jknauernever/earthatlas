@@ -65,7 +65,6 @@ const config = {
     { name: 'Torres del Paine, Chile', lat: -51.00, lng: -73.00, emoji: '🇨🇱' },
   ],
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'condor conservation endangered',
   postFilter: isCondor,
 }
 

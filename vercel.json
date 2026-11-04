@@ -11,6 +11,21 @@
       "has": [{ "type": "host", "value": "sanjuans.earthatlas.org" }],
       "destination": "/shoreline",
       "permanent": false
+    },
+    {
+      "source": "/news/:species(bears|birds|butterflies|condors|dolphins|elephants|fungi|hippos|lions|monkeys|sharks|sloths|tigers|whales|wolves)/:slug*",
+      "destination": "/:species",
+      "permanent": true
+    },
+    {
+      "source": "/news/:path*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/news",
+      "destination": "/",
+      "permanent": true
     }
   ],
   "rewrites": [

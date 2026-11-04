@@ -57,7 +57,6 @@ const config = {
   },
 
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'fungi mushrooms mycology',
   localizable: true,
   hotspots: [
     { name: 'Olympic National Park, USA', lat: 47.80, lng: -123.60, emoji: '🇺🇸' },

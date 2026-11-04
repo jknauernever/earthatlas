@@ -58,7 +58,6 @@ const config = {
   },
 
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'butterflies moths pollinators',
   postFilter: null,
 }
 

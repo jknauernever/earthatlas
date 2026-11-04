@@ -36,7 +36,6 @@ const config = {
   loading: { emoji: '🐺', message: 'Searching for wolves near {location}…', detail: 'Querying global biodiversity records for wolf and wild canid sightings' },
   empty: { emoji: '🐺', text: 'No sightings found nearby', sub: 'Try switching to Seasonal patterns to see historical data,<br />or search a different region.' },
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'wolves wildlife conservation',
   postFilter: null,
 }
 

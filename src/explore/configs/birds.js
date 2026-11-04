@@ -65,7 +65,6 @@ const config = {
     { name: 'Bharatpur, India', lat: 27.19, lng: 77.52, emoji: '🇮🇳' },
   ],
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'birds wildlife birding',
   postFilter: null,
 }
 

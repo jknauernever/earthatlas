@@ -8,8 +8,7 @@
  * Pair with /api/geo/retrieve.
  *
  * Runs on Vercel Edge so it doesn't count against the Hobby plan's
- * 12-serverless-function ceiling. Matches the runtime used by
- * api/news-legacy.js.
+ * 12-serverless-function ceiling.
  */
 
 export const config = { runtime: 'edge' }

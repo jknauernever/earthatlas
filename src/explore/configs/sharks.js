@@ -57,7 +57,6 @@ const config = {
   },
 
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'sharks ocean marine',
   postFilter: isShark,
 }
 

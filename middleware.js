@@ -7,7 +7,6 @@
  * shell and React hydrates client-side.
  *
  * Covered routes:
- *   /news/:species/:slug  — NewsArticle schema (fetches article from DB)
  *   /species/:taxonId     — Taxon / CreativeWork schema (fetches from iNaturalist)
  *   /<subsite>            — CollectionPage schema (e.g. /whales, /sharks)
  *   /<any page>?<state>   — per-view share cards, on EVERY page of the site: if a
@@ -110,9 +109,6 @@ async function route(req, url) {
   const path = url.pathname
 
   try {
-    if (path.startsWith('/news/')) {
-      return await handleNews(req, url)
-    }
     const slug = path.replace(/^\//, '').replace(/\/$/, '')
     // Same test as src/lib/shareCard.js: query params, or a path below a site's own route (/permits/report/<id>).
     if (url.search || /^\/[^/]+\/./.test(path)) {
@@ -152,58 +148,6 @@ async function brandPreview(res, brand, url) {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': res.headers.get('cache-control') || 'public, max-age=0, s-maxage=3600',
     },
-  })
-}
-
-// ─── /news/:species/:slug ────────────────────────────────────────────────────
-async function handleNews(req, url) {
-  const segments = url.pathname.split('/')
-  const species = segments[2]
-  const slug = segments[3]
-  if (!slug) return
-
-  const apiUrl = new URL('/api/news/article', req.url)
-  apiUrl.searchParams.set('slug', slug)
-  const res = await fetch(apiUrl.toString())
-  if (!res.ok) return
-  const { article } = await res.json()
-  if (!article) return
-
-  const title = `${article.title} — EarthAtlas`
-  const description = article.summary
-    ? article.summary.replace(/<[^>]+>/g, '').slice(0, 160)
-    : ''
-  const canonical = `${SITE}/news/${species}/${slug}`
-  const image = article.image || DEFAULT_IMAGE
-
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    headline: article.title,
-    image: article.image ? [article.image] : [],
-    datePublished: article.date,
-    description,
-    publisher: {
-      '@type': 'Organization',
-      name: 'EarthAtlas',
-      url: SITE,
-    },
-  }
-
-  return botHtml({
-    title,
-    description,
-    canonical,
-    image,
-    ogType: 'article',
-    jsonLd,
-    body: `
-      <h1>${escapeHtml(article.title)}</h1>
-      ${article.image ? `<img src="${escapeAttr(article.image)}" alt="" />` : ''}
-      <div>${article.summary || ''}</div>
-      ${article.sourceUrl ? `<p>Source: <a href="${escapeAttr(article.sourceUrl)}">${escapeHtml(article.source || 'Original article')}</a></p>` : ''}
-      <p><a href="${canonical}">View on EarthAtlas</a></p>
-    `,
   })
 }
 

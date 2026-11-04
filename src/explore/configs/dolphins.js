@@ -57,7 +57,6 @@ const config = {
   },
 
   inatTaxonId: INAT_TAXON_ID,
-  newsQuery: 'dolphins ocean marine',
   postFilter: null,
 }
 

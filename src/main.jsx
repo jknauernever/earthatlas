@@ -30,7 +30,6 @@ import slothsConfig from './explore/configs/sloths.js'
 import fungiConfig from './explore/configs/fungi.js'
 import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
-import NewsArticlePage from './news/NewsArticlePage.jsx'
 // Account pages load only when an /account URL is opened (one shared chunk).
 const lazyAccount = (name) => lazy(() => import('./accounts/AccountPages.jsx').then((m) => ({ default: m[name] })))
 const SignInPage = lazyAccount('SignInPage'), SignUpPage = lazyAccount('SignUpPage'), ForgotPage = lazyAccount('ForgotPage'),
@@ -182,7 +181,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/fungi" element={<ExploreApp config={fungiConfig} />} />
           <Route path="/birds" element={<ExploreApp config={birdsConfig} />} />
           <Route path="/species/:taxonId" element={<SpeciesDetailPage />} />
-          <Route path="/news/:species/:slug" element={<NewsArticlePage />} />
           <Route path="/live" element={<LiveGlobe />} />
           <Route path="/live-local" element={<LiveLocal />} />
           <Route path="/forestmonitor" element={<ForestMonitor />} />

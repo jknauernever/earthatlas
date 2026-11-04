@@ -44,10 +44,18 @@ async function upload(pathname, file, contentType) {
       const token = await tokenFor(pathname)
       const body = size > 8e6 ? createReadStream(file) : readFileSync(file)
       const res = await put(pathname, body, { access: 'public', token, contentType, multipart: size > 8e6 })
-      const probe = await fetch(`${res.url}?verify=${Date.now()}`, { headers: { Range: `bytes=${size - 1}-${size - 1}` }, cache: 'no-store' })
-      const total = Number((probe.headers.get('content-range') || '').split('/')[1])
-      await probe.arrayBuffer()
-      if (probe.status !== 206 || total !== size) throw new Error(`verify ${pathname}: HTTP ${probe.status}, total ${total || 'missing'} vs ${size}`)
+      // Blob reads can lag a fresh overwrite (2026-11-04: identity.ndjson.gz read back at the old size for 16 s+), so
+      // re-read for up to 2 min before treating the upload itself as bad.
+      let status, total
+      for (let i = 0; i < 13; i++) {
+        if (i) await new Promise((r) => setTimeout(r, 10_000))
+        const probe = await fetch(`${res.url}?verify=${Date.now()}`, { headers: { Range: `bytes=${size - 1}-${size - 1}` }, cache: 'no-store' })
+        status = probe.status
+        total = Number((probe.headers.get('content-range') || '').split('/')[1])
+        await probe.arrayBuffer()
+        if (status === 206 && total === size) break
+      }
+      if (status !== 206 || total !== size) throw new Error(`verify ${pathname}: HTTP ${status}, total ${total || 'missing'} vs ${size}`)
       console.log(`  ✓ ${pathname} (${(size / 1e6).toFixed(1)} MB)`)
       return res.url
     } catch (err) {

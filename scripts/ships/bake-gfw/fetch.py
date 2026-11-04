@@ -102,7 +102,12 @@ def report(tok, box, day, span, stats):
             # 520–523: Cloudflare in front of GFW lost the origin for a moment (2026-10-01 killed July's fetch); retry.
             if e.code in (429, 500, 502, 503, 520, 521, 522, 523):
                 time.sleep(30 * (attempt + 1)); continue
-            raise RuntimeError(f'http {e.code}: {e.read()[:300]!r}')
+            # GFW gzips error bodies too; unzip so the log (and failure triage) can read the reason (2026-11-04 outage).
+            err = e.read()
+            if err[:2] == b'\x1f\x8b':
+                try: err = gzip.decompress(err)
+                except (OSError, EOFError): pass
+            raise RuntimeError(f'http {e.code}: {err[:300].decode("utf-8", "replace")}')
         # A body cut off mid-stream (gzip EOFError / IncompleteRead) is transient too (2026-10-06 killed September's backfill).
         except (TimeoutError, OSError, EOFError, http.client.IncompleteRead):
             time.sleep(30 * (attempt + 1))

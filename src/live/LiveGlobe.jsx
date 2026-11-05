@@ -5,6 +5,7 @@ import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchAllRecent } from './liveService'
 import { useQueryParams } from '../hooks/useQueryParams'
+import { autoViewCard } from '../lib/shareCard.js'
 import styles from './LiveGlobe.module.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import SiteBrand from '../components/SiteBrand.jsx'
@@ -655,6 +656,7 @@ export default function LiveGlobe() {
     // Update photo overlay positions as globe moves
     map.on('move', () => updatePhotoOverlays())
 
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
     mapRef.current = map
 
     return () => {
@@ -664,6 +666,7 @@ export default function LiveGlobe() {
       clearInterval(renderTimerRef.current)
       clearTimeout(flyTimerRef.current)
       clearInterval(fetchTickRef.current)
+      offViewCard()
       map.remove()
       mapRef.current = null
     }

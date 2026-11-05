@@ -261,7 +261,31 @@ function patchHead(html, r) {
   return html
 }
 
+// Every page with a map saves a picture of its view for link previews (src/lib/shareCard.js: autoViewCard, or
+// scheduleViewCard with the page's own capture). The build fails on a map that doesn't, so no page ships without it.
+// Not page views: maps inside a popup or modal, and helpers that only mention the constructor.
+const NO_VIEW_CARD = {
+  'src/shoreline/propertyPopup.js': 'mini map inside a property popup',
+  'src/components/SpeciesMapModal.jsx': 'map inside a modal over another page',
+  'src/components/MapView.jsx': 'not imported by any page',
+  'src/utils/webglSupport.js': 'mentions the constructor in a comment',
+}
+async function checkViewCards() {
+  const root = path.resolve(__dirname, '..')
+  const files = (await fs.readdir(path.join(root, 'src'), { recursive: true })).filter((f) => /\.(jsx?|tsx?)$/.test(f)).map((f) => `src/${f}`)
+  const missing = []
+  for (const f of files) {
+    const src = await fs.readFile(path.join(root, f), 'utf8')
+    if (src.includes('new mapboxgl.Map(') && !NO_VIEW_CARD[f] && !/autoViewCard|scheduleViewCard/.test(src)) missing.push(f)
+  }
+  if (missing.length) {
+    console.error(`[generate-route-html] these maps never save a view picture for link previews; add autoViewCard(map) (src/lib/shareCard.js):\n  ${missing.join('\n  ')}`)
+    process.exit(1)
+  }
+}
+
 async function main() {
+  await checkViewCards()
   let template
   try {
     template = await fs.readFile(INDEX, 'utf8')

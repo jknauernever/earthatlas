@@ -10,6 +10,7 @@ import { useParams } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import { autoViewCard } from '../lib/shareCard.js'
 import { STATUS_WORDS, statusKey } from '../ships/permitStatus.js'
 import { fetchPermitsJson } from './permitsData.js'
 import { LAW, fmtDate, docHref, permitKindOf, whyItems, calm, whatOf } from './permitLogic.js'
@@ -93,7 +94,8 @@ export default function PermitsReport() {
     const map = new mapboxgl.Map({ container: mapEl.current, style: 'mapbox://styles/mapbox/satellite-streets-v12', center: [r.lon, r.lat], zoom: 15,
       interactive: false, attributionControl: true, preserveDrawingBuffer: true })
     new mapboxgl.Marker({ color: '#dc2626' }).setLngLat([r.lon, r.lat]).addTo(map)
-    return () => map.remove()
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
+    return () => { offViewCard(); map.remove() }
   }, [r?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <div className={c.page}><main className={c.main}><p className={c.error}>{error}</p></main></div>

@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { fetchRecentINat, fetchRecentEBird } from './liveService'
+import { autoViewCard } from '../lib/shareCard.js'
 import GeoSearch from '../components/GeoSearch.jsx'
 import styles from './LiveGlobe.module.css'
 import localStyles from './LiveLocal.module.css'
@@ -349,6 +350,7 @@ export default function LiveLocal() {
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.on('move', () => updatePhotoOverlays())
 
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
     mapRef.current = map
 
     return () => {
@@ -356,6 +358,7 @@ export default function LiveLocal() {
       clearInterval(renderTimerRef.current)
       clearInterval(pollIntervalRef.current)
       pollCancelledRef.current = true
+      offViewCard()
       map.remove()
       mapRef.current = null
       mapReadyRef.current = false

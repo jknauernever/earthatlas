@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
+import { autoViewCard } from '../lib/shareCard.js'
 import { fetchPermitsJson } from './permitsData.js'
 import { fmtDate, permitKindOf, activityYears } from './permitLogic.js'
 import { QUESTIONS, QUESTION_BY_ID, rankFor, priorityHits, latestPast, PRIORITY, PRIORITY_M } from './dashboardLogic.js'
@@ -66,7 +67,8 @@ export default function PermitsDashboard() {
       setMapReady(true)
     })
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
+    return () => { offViewCard(); map.remove(); mapRef.current = null }
   }, [data])
   useEffect(() => {
     const src = mapReady && mapRef.current?.getSource('rows')

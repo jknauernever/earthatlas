@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import { useSEO } from '../hooks/useSEO.js'
 import { useQueryParams } from '../hooks/useQueryParams.js'
+import { autoViewCard } from '../lib/shareCard.js'
 
 const SPECIES_QP_SCHEMA = {
   mode: { type: 'string', default: 'heatmap' }, // 'recent' | 'heatmap'
@@ -404,7 +405,8 @@ export default function SpeciesDetailPage() {
     })
 
     mapRef.current = map
-    return () => { map.remove(); mapRef.current = null }
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
+    return () => { offViewCard(); map.remove(); mapRef.current = null }
   }, [gbifPoints, gbifTaxonKey, inatTaxonId, mapMode, buildGeoJSON, findDenseCenter])
 
   // ─── Update dots when date range slider changes (no map recreation) ─

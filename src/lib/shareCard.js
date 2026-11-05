@@ -13,11 +13,13 @@
  *
  * Key = SHA-1( pathname + search ) of the URL exactly as the app writes it
  * (the app's own canonical serialization, so client and middleware always
- * agree). Views without query params are skipped — bare routes keep their
- * designed static hero cards.
+ * agree). A view is a URL with query params or a sub-path (/permits/report/<id>);
+ * bare routes (/spills) are skipped and keep their designed static hero cards.
  */
 
 const DEBOUNCE_MS = 2500
+// Same test as middleware.js: query params, or a path below the site's own route.
+const isView = () => !!window.location.search || /^\/[^/]+\/./.test(window.location.pathname)
 const uploaded = new Set() // ids confirmed present this session
 let timer = 0
 let inflight = null
@@ -29,7 +31,7 @@ export async function viewCardId(key = window.location.pathname + window.locatio
 }
 
 async function uploadCard(capture) {
-  if (!window.location.search) return // bare route → designed hero card
+  if (!isView()) return // bare route → designed hero card
   if (document.hidden) return // hidden tabs render blank canvases
   const key = window.location.pathname + window.location.search
   const id = await viewCardId(key)
@@ -93,4 +95,23 @@ export function captureMapImage(map, quality = 0.82) {
     })
     map.triggerRepaint()
   })
+}
+
+/**
+ * Standard Mapbox maps with no capture of their own: keep the view's card current with no other wiring. Each new URL
+ * gets a capture scheduled on its first drawn frame, and again on its first 'idle' (everything drawn). Once per URL
+ * each: a turning globe draws every frame and goes idle between steps, and rescheduling on every one of those would
+ * keep restarting the countdown forever (a card is uploaded once per URL anyway). Returns a function that detaches it.
+ */
+export function autoViewCard(map) {
+  const capture = () => captureMapImage(map)
+  const seen = { render: '', idle: '' }
+  const on = (ev) => () => {
+    const key = window.location.pathname + window.location.search
+    if (seen[ev] !== key) { seen[ev] = key; scheduleViewCard(capture) }
+  }
+  const drawn = on('render'), settled = on('idle')
+  map.on('render', drawn)
+  map.on('idle', settled)
+  return () => { map.off('render', drawn); map.off('idle', settled) }
 }

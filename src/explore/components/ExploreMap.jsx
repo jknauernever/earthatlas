@@ -5,6 +5,7 @@ import { ensureWebGLSupport } from '../../utils/webglSupport'
 import { keepPopupOnMap } from '../../lib/popupFit.js'
 import { addJourneyPathLayers, addJourneyStopLayers, setJourneyOnMap, fitJourney } from '../../happywhale/whaleJourney.jsx'
 import { drawWhalePaths } from '../../lib/whalePathsLayer.js'
+import { autoViewCard } from '../../lib/shareCard.js'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = mapboxToken
@@ -387,6 +388,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+    const offViewCard = autoViewCard(map) // per-view share cards (src/lib/shareCard.js)
 
     // Layer/fog setup on style.load, NOT the one-shot 'load' event — 'load'
     // waits for tiles and can be missed entirely (isStyleLoaded() can stay
@@ -631,6 +633,7 @@ export default function ExploreMap({ sightings = [], center, activeSpecies, onCe
     return () => {
       ro.disconnect()
       clearTimeout(debounceTimer)
+      offViewCard()
       if (popupRef.current) popupRef.current.remove()
       map.remove()
       mapRef.current = null

@@ -10,52 +10,23 @@
  *   /news/:species/:slug  — NewsArticle schema (fetches article from DB)
  *   /species/:taxonId     — Taxon / CreativeWork schema (fetches from iNaturalist)
  *   /<subsite>            — CollectionPage schema (e.g. /whales, /sharks)
- *   /<map tool>?<state>   — per-view share cards: if a snapshot of this exact
- *                           view was uploaded (src/lib/shareCard.js keys it by
- *                           SHA-1 of pathname+search), serve it as og:image so
- *                           a plain copy/pasted URL unfurls with the actual
- *                           view. No snapshot / no params → fall through to
- *                           the tool's static SEO html.
+ *   /<any page>?<state>   — per-view share cards, on EVERY page of the site: if a
+ *                           snapshot of this exact view was uploaded
+ *                           (src/lib/shareCard.js keys it by SHA-1 of
+ *                           pathname+search), serve it as og:image so a plain
+ *                           copy/pasted URL unfurls with the actual view. No
+ *                           per-site list to keep: the matcher takes every page
+ *                           (not /api or files), and the title comes from TOOLS,
+ *                           SUBSITES or the page's own static html. No snapshot /
+ *                           no params → fall through to the static SEO html.
  */
 
 import { BRANDS, brandTitle } from './src/lib/brand.js'
 
 export const config = {
-  matcher: [
-    '/news/:path*',
-    '/species/:path*',
-    '/inmotion',
-    '/fire',
-    '/quakes',
-    '/permits',
-    '/forestmonitor',
-    '/carbon',
-    '/species-of-concern',
-    '/spills',
-    '/risks',
-    '/shoreline',
-    '/sanjuan-docks',
-    '/birdsong',
-    '/happywhale',
-    '/shiptraffic',
-    '/whalewatch',
-    '/ships',
-    '/bears',
-    '/birds',
-    '/butterflies',
-    '/condors',
-    '/dolphins',
-    '/elephants',
-    '/fungi',
-    '/hippos',
-    '/lions',
-    '/monkeys',
-    '/sharks',
-    '/sloths',
-    '/tigers',
-    '/whales',
-    '/wolves',
-  ],
+  // Every page (not /api, /assets or files): any page's link can carry a view, and every view's link unfurls with
+  // its own picture. Non-bot requests return at once.
+  matcher: ['/((?!api/|assets/|_vercel/|.*\\.[A-Za-z0-9]+$).*)'],
 }
 
 const BOT_RE = /bot|crawl|spider|slurp|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|discord|preview|embed|gptbot|claudebot|claude-web|perplexitybot|cohere|anthropic|ccbot|google-extended|applebot/i
@@ -142,12 +113,14 @@ async function route(req, url) {
     if (path.startsWith('/news/')) {
       return await handleNews(req, url)
     }
+    const slug = path.replace(/^\//, '').replace(/\/$/, '')
+    // Same test as src/lib/shareCard.js: query params, or a path below a site's own route (/permits/report/<id>).
+    if (url.search || /^\/[^/]+\/./.test(path)) {
+      const shared = await handleViewShare(url, slug)
+      if (shared) return shared
+    }
     if (path.startsWith('/species/')) {
       return await handleSpecies(req, url)
-    }
-    const slug = path.replace(/^\//, '').replace(/\/$/, '')
-    if (TOOLS[slug]) {
-      return await handleToolShare(url, TOOLS[slug])
     }
     if (SUBSITES[slug]) {
       return handleSubsite(slug)
@@ -324,9 +297,8 @@ async function handleSpecies(req, url) {
   })
 }
 
-// ─── /<map tool>?<view state> — per-view share card ──────────────────────────
-async function handleToolShare(url, tool) {
-  if (!url.search) return // bare route → static SEO html (designed hero card)
+// ─── /<any page>?<view state> — per-view share card ──────────────────────────
+async function handleViewShare(url, slug) {
   // The app keys snapshots by its own URL, where URLSearchParams writes spaces
   // as '+' (?q=linnea+rose), but Vercel hands middleware that query with
   // '%20' — so try the '+' form too or searched views never find their card.
@@ -341,6 +313,7 @@ async function handleToolShare(url, tool) {
     if (check.ok && (await check.json()).exists) { id = candidate; break }
   }
   if (!id) return // no snapshot → static html
+  const tool = TOOLS[slug] || (SUBSITES[slug] && { title: `${SUBSITES[slug].title} — EarthAtlas`, description: SUBSITES[slug].description }) || await pageMeta(url)
   const canonical = `${SITE}${url.pathname}${url.search}`
   return botHtml({
     title: tool.title,
@@ -368,6 +341,18 @@ async function handleToolShare(url, tool) {
     `,
     cacheSeconds: 3600,
   })
+}
+
+// A page in neither table: its title and description from its own static html (scripts/generate-route-html.js), or
+// the site's index.html. Fetched as a browser, so this middleware lets it straight through.
+async function pageMeta(url) {
+  const text = (v) => (v || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim()
+  let html = ''
+  try { html = await (await fetch(`${url.origin}${url.pathname}`, { headers: { 'user-agent': 'Mozilla/5.0' } })).text() } catch { /* defaults below */ }
+  return {
+    title: text((html.match(/<title>([^<]*)<\/title>/) || [])[1]) || 'EarthAtlas',
+    description: text((html.match(/<meta\s+name="description"\s+content="([^"]*)"/) || [])[1]) || 'Life on Earth, mapped.',
+  }
 }
 
 async function sha1Hex(s) {

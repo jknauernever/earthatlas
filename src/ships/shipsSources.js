@@ -207,6 +207,9 @@ export const SHIPS_SOURCES = [
       { name: 'Critical habitat for Southern Resident killer whales (2006 designation, 2021 revision)', href: 'https://www.arcgis.com/home/item.html?id=fe1e0f42587f437b93e6168929f03593',
         publisher: 'NOAA Fisheries West Coast Region', licence: 'U.S. Government work, public domain', licenceHref: USC105,
         method: 'The areas designated under the Endangered Species Act (71 FR 69054, 2006; 86 FR 41668, 2021), as NOAA Fisheries maps them. Not the legal definition: that is 50 CFR 226.206.' },
+      { name: 'Critical Habitat for Aquatic Species at Risk: Killer Whale, Northeast Pacific Southern and Northern Resident populations', href: 'https://open.canada.ca/data/en/dataset/db177a8c-5d7d-49eb-8290-31e6a45d786c',
+        publisher: 'Fisheries and Oceans Canada', licence: 'Open Government Licence – Canada', licenceHref: 'https://open.canada.ca/en/open-government-licence-canada',
+        method: 'Critical habitat identified in the recovery strategy and protected under the Species at Risk Act by Critical Habitat Orders SOR/2018-278 (Southern Residents) and SOR/2018-279 (Northern Residents), as Fisheries and Oceans Canada maps it.' },
     ],
   },
 ]

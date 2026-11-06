@@ -336,10 +336,33 @@ function mpaPopupHTML(p) {
 // PMTiles file, served by /api/ship-tracks?r=srkw. Bright green at 35% opacity, on top with the protected areas (Josh 2026-10-19).
 const SRKW_ICON = '<path d="M4 18c3-1 5-3 6-7 .6-2.4.8-4.8 1-7 1.4 3.4 2.6 6.6 3 10 2 .8 4 2.2 6 4"/><path d="M3 21c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/>'
 const SRKW = {
-  id: 'srkw', name: 'Orca critical habitat', sub: 'Southern Resident killer whales, NOAA Fisheries', hue: '#39ff14', iconSvg: SRKW_ICON,
+  id: 'srkw', name: 'Orca critical habitat', sub: 'Resident killer whales, NOAA Fisheries and Fisheries and Oceans Canada', hue: '#39ff14', iconSvg: SRKW_ICON,
   sourceName: 'NOAA Fisheries West Coast Region', sourceUrl: 'https://www.fisheries.noaa.gov/west-coast/endangered-species-conservation/critical-habitat-southern-resident-killer-whales',
   dataUrl: 'https://www.arcgis.com/home/item.html?id=fe1e0f42587f437b93e6168929f03593',
   cfrUrl: 'https://www.ecfr.gov/current/title-50/chapter-II/subchapter-C/part-226/section-226.206',
+  dfoName: 'Fisheries and Oceans Canada', dfoDataUrl: 'https://open.canada.ca/data/en/dataset/db177a8c-5d7d-49eb-8290-31e6a45d786c',
+  dfoLicenseUrl: 'https://open.canada.ca/en/open-government-licence-canada',
+}
+// Canada (Josh 2026-11-06): Species at Risk Act critical habitat orders, one per population (DFO shapes carry ag='dfo').
+const SRKW_DFO_ORDERS = {
+  'Northeast Pacific Southern Resident': ['SOR/2018-278', 'https://laws-lois.justice.gc.ca/eng/regulations/SOR-2018-278/'],
+  'Northeast Pacific Northern Resident': ['SOR/2018-279', 'https://laws-lois.justice.gc.ca/eng/regulations/SOR-2018-279/'],
+}
+function srkwDfoPopupHTML(p) {
+  const s = styles
+  const pop = String(p.POP || '').replace('Northeast Pacific ', '')
+  const order = SRKW_DFO_ORDERS[p.POP]
+  return (
+    `<div class="${s.popup}">` +
+    `<div class="${s.popupHead}">Critical habitat (Species at Risk Act, Canada)</div>` +
+    `<div class="${s.popupTitle}">${escapeHtml(pop || 'Resident')} killer whales</div>` +
+    `<div class="${s.popupMeta}">${escapeHtml(p.SARASTAT || '')}${p.CH_STATUS ? ` · ${escapeHtml(p.CH_STATUS.toLowerCase())}` : ''}</div>` +
+    (order ? `<div class="${s.popupRow}"><span class="${s.popupK}">Protected by</span><span class="${s.popupV}"><a href="${order[1]}" target="_blank" rel="noopener noreferrer">Critical Habitat Order ${order[0]}</a></span></div>` : '') +
+    (p.AREASqKm != null ? `<div class="${s.popupRow}"><span class="${s.popupK}">Area</span><span class="${s.popupV}">${fmtN(p.AREASqKm)} km²</span></div>` : '') +
+    (p.PROFILE ? `<div class="${s.popupMeta}"><a href="${escapeHtml(p.PROFILE)}" target="_blank" rel="noopener noreferrer">Species at Risk Public Registry profile</a></div>` : '') +
+    `<div class="${s.popupNote}">Data: <a href="${SRKW.dfoDataUrl}" target="_blank" rel="noopener noreferrer">${SRKW.dfoName}, Critical Habitat for Aquatic Species at Risk</a> (data as of ${fmtIsoDay(trackSource.srkw.dfoAsOf)}), <a href="${SRKW.dfoLicenseUrl}" target="_blank" rel="noopener noreferrer">Open Government Licence – Canada</a>.</div>` +
+    `</div>`
+  )
 }
 // The two rules, as NOAA's data describes them (each polygon's PUBDATE says which one designated it).
 const SRKW_RULES = { 2006: ['71 FR 69054', 'https://www.govinfo.gov/link/fr/71/69054'], 2021: ['86 FR 41668', 'https://www.govinfo.gov/link/fr/86/41668'] }
@@ -354,6 +377,7 @@ function raiseTopLayers(map) {
   for (const id of want) map.moveLayer(id)
 }
 function srkwPopupHTML(p) {
+  if (p.ag === 'dfo') return srkwDfoPopupHTML(p)
   const s = styles
   const row = (k, v) => (v == null || v === '' ? '' : `<div class="${s.popupRow}"><span class="${s.popupK}">${k}</span><span class="${s.popupV}">${escapeHtml(v)}</span></div>`)
   const year = String(p.PUBDATE || '').slice(-4)
@@ -369,7 +393,7 @@ function srkwPopupHTML(p) {
     row('Area', p.AREASqKm != null ? `${fmtN(Math.round(p.AREASqKm))} km²` : null) +
     row('Depths', p.NOTES) +
     `<div class="${s.popupMeta}"><a href="${SRKW.sourceUrl}" target="_blank" rel="noopener noreferrer">About this critical habitat</a> · <a href="${SRKW.cfrUrl}" target="_blank" rel="noopener noreferrer">Legal description (50 CFR 226.206)</a></div>` +
-    `<div class="${s.popupNote}">Data: <a href="${SRKW.dataUrl}" target="_blank" rel="noopener noreferrer">${SRKW.sourceName}</a> (record ${escapeHtml(String(p.ID ?? '?'))}, data as of ${fmtIsoDay(trackSource.srkw.version)}), US government work.</div>` +
+    `<div class="${s.popupNote}">Data: <a href="${SRKW.dataUrl}" target="_blank" rel="noopener noreferrer">${SRKW.sourceName}</a> (record ${escapeHtml(String(p.ID ?? '?'))}, data as of ${fmtIsoDay(trackSource.srkw.noaaAsOf)}), US government work.</div>` +
     `</div>`
   )
 }
@@ -1582,7 +1606,7 @@ export default function ShipsApp() {
     if (!srkwOn && !map.getSource('srkw')) return
     if (!map.getSource('srkw')) {
       map.addSource('srkw', { type: 'vector', tiles: [srkwTileUrl], minzoom: 0, maxzoom: trackSource.srkw.maxzoom,
-        attribution: `<a href="${SRKW.dataUrl}" target="_blank" rel="noopener">NOAA Fisheries critical habitat</a>` })
+        attribution: `<a href="${SRKW.dataUrl}" target="_blank" rel="noopener">NOAA Fisheries</a> and <a href="${SRKW.dfoDataUrl}" target="_blank" rel="noopener">Fisheries and Oceans Canada</a> critical habitat` })
       map.addLayer({ id: 'srkw-fill', type: 'fill', source: 'srkw', 'source-layer': trackSource.srkw.sourceLayer,
         paint: { 'fill-color': SRKW.hue, 'fill-opacity': 0.35 } })
       map.addLayer({ id: 'srkw-line', type: 'line', source: 'srkw', 'source-layer': trackSource.srkw.sourceLayer, layout: { 'line-join': 'round' },
@@ -1602,7 +1626,7 @@ export default function ShipsApp() {
     if (!map || !mapReady || !srkwOn) return
     const pick = (e) => {
       const f = map.getLayer('srkw-fill') && map.queryRenderedFeatures(e.point, { layers: ['srkw-fill'] })[0]
-      return f ? [{ layer: f.layer.id, label: f.properties.UNIT || 'Critical habitat', kind: 'Orca critical habitat', color: SRKW.hue, open: () => {
+      return f ? [{ layer: f.layer.id, label: f.properties.UNIT || (f.properties.ag === 'dfo' ? `${String(f.properties.POP || '').replace('Northeast Pacific ', '')} killer whales (Canada)` : 'Critical habitat'), kind: 'Orca critical habitat', color: SRKW.hue, open: () => {
         srkwPopupRef.current?.remove()
         srkwPopupRef.current = keepPopupOnMap(new mapboxgl.Popup({ offset: 8, maxWidth: '310px' }).setLngLat(e.lngLat).setHTML(srkwPopupHTML(f.properties)).addTo(map))
       } }] : []
@@ -2822,7 +2846,7 @@ export default function ShipsApp() {
                 <DatasetRow storageKey="ships.srkw" name={SRKW.name} sub={SRKW.sub} hue={SRKW.hue}
                   icon={<Icon svg={SRKW.iconSvg} size={16} />} on={srkwOn} onToggle={() => setSrkwOn((o) => !o)}
                   legend={<LegendSwatchRow swatch={<span style={{ width: 22, height: 10, borderRadius: 2, background: SRKW.hue, opacity: 0.35 }} />}>
-                    Critical habitat under the Endangered Species Act
+                    Critical habitat under the Endangered Species Act (US) and the Species at Risk Act (Canada)
                   </LegendSwatchRow>}
                   info={<>
                     Critical habitat NOAA Fisheries designated for the endangered Southern Resident killer whales: in 2006 the inland
@@ -2831,7 +2855,13 @@ export default function ShipsApp() {
                     NOAA Fisheries on anything they carry out, fund or permit here. Click an area for its rule, dates and depths. Military
                     areas the rules exclude are inside the inland shapes (NOAA did not clip them out). Not the legal boundary:{' '}
                     <a href={SRKW.cfrUrl} target="_blank" rel="noopener noreferrer">50 CFR 226.206</a> is. Data:{' '}
-                    <a href={SRKW.dataUrl} target="_blank" rel="noopener noreferrer">{SRKW.sourceName}</a>, as of {fmtIsoDay(trackSource.srkw.version)}, US government work.
+                    <a href={SRKW.dataUrl} target="_blank" rel="noopener noreferrer">{SRKW.sourceName}</a>, as of {fmtIsoDay(trackSource.srkw.noaaAsOf)}, US government work.
+                    In Canada, critical habitat Fisheries and Oceans Canada identified for the endangered Southern Residents and the
+                    threatened Northern Residents, protected under the Species at Risk Act by Critical Habitat Orders{' '}
+                    <a href={SRKW_DFO_ORDERS['Northeast Pacific Southern Resident'][1]} target="_blank" rel="noopener noreferrer">SOR/2018-278</a> and{' '}
+                    <a href={SRKW_DFO_ORDERS['Northeast Pacific Northern Resident'][1]} target="_blank" rel="noopener noreferrer">SOR/2018-279</a>. Data:{' '}
+                    <a href={SRKW.dfoDataUrl} target="_blank" rel="noopener noreferrer">{SRKW.dfoName}</a>, as of {fmtIsoDay(trackSource.srkw.dfoAsOf)},{' '}
+                    <a href={SRKW.dfoLicenseUrl} target="_blank" rel="noopener noreferrer">Open Government Licence – Canada</a>.
                   </>} />
                 <DatasetRow storageKey="ships.identity" name={IDENTITY.name} sub={IDENTITY.sub} hue={IDENTITY.hue}
                   icon={<Icon svg={IDENTITY.iconSvg} size={16} />} on={identityOn} onToggle={toggleIdentity}

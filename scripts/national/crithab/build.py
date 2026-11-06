@@ -149,7 +149,31 @@ else:
                 idx.append(f['i'])
         raw[z[0]] = (shapely.to_wkb(geoms), idx)
     pickle.dump(raw, open(ZONE_CACHE, 'wb'))
-print(f'critical habitat: {sum(len(v[1]) for v in raw.values())} zone shapes, {len(ch_species)} species', flush=True)
+# Canada (fetch_dfo.py → raw/dfo.geojson): DFO Species at Risk Act critical habitat, added on top of the cached U.S. shapes
+# every run (a few shapes, so no rebuild of the U.S. part). Earlier DFO entries are dropped first; they sit at the end of
+# the species list. `fed` stays empty (it means U.S. listing to consumers); `sara` carries the Canadian status.
+DFO_SRC = 'Fisheries and Oceans Canada'
+n_us = next((k for k, s in enumerate(ch_species) if s.get('src') == DFO_SRC), len(ch_species))
+ch_species = ch_species[:n_us]
+raw = {zid: (shapely.to_wkb([g for g, i in zip(shapely.from_wkb(w), idx) if i < n_us]), [i for i in idx if i < n_us])
+       for zid, (w, idx) in raw.items()}
+DFO = ds('crithab', 'raw', 'dfo.geojson')
+if os.path.exists(DFO):
+    for f in json.load(open(DFO))['features']:
+        p, g = f['properties'], make_valid(shape(f['geometry']))
+        st = clean(p.get('SARASTAT_E')).lower()
+        ch_species.append(dict(n=f"{clean(p.get('COMMON_E')).capitalize()} ({clean(p.get('POP_E')).replace('Northeast Pacific ', '')}, Canada)",
+                               sci=clean(p.get('SCIENTIFIC')), fed=None,
+                               sara='E' if 'endangered' in st else 'T' if 'threatened' in st else None, src=DFO_SRC,
+                               url='https://open.canada.ca/data/en/dataset/db177a8c-5d7d-49eb-8290-31e6a45d786c'))
+        for z in ZONES:  # zones are U.S.-shaped: Canadian habitat north of 50°N (or east of -129° above it) is clipped off
+            zb = box(z[2], z[3], z[4], z[5])
+            if g.intersects(zb):
+                w, idx = raw.get(z[0], ([], []))
+                raw[z[0]] = (list(w) + [shapely.to_wkb(transform(FWD[z[0]], g.intersection(zb)))], list(idx) + [len(ch_species) - 1])
+pickle.dump(raw, open(ZONE_CACHE, 'wb'))
+json.dump(ch_species, open(SPECIES_CACHE, 'w'))
+print(f'critical habitat: {sum(len(v[1]) for v in raw.values())} zone shapes, {len(ch_species)} species ({len(ch_species) - n_us} DFO)', flush=True)
 
 
 out = ds('crithab', 'build', VERSION)

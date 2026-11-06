@@ -122,8 +122,8 @@ const getJson = (u) => fetch(u).then((x) => { if (!x.ok) throw new Error(`HTTP $
 async function loadRegionReports(files, region = 'lm') {
   const d = await loadRegion(files, region)
   if (d.species.length || !d.ch_species?.length) return d
-  const species = d.ch_species.map((x) => ({ n: x.n, g: x.src === 'NOAA Fisheries' ? 'critical habitat (NOAA Fisheries)' : 'critical habitat (FWS)',
-    fed: x.fed, st: {}, url: x.url, sci: x.sci, crit: true }))
+  const species = d.ch_species.map((x) => ({ n: x.n, g: `critical habitat (${x.src === 'NOAA Fisheries' || x.src === 'Fisheries and Oceans Canada' ? x.src : 'FWS'})`,
+    fed: x.fed, sara: x.sara, st: {}, url: x.url, sci: x.sci, crit: true }))
   return { ...d, species, points: d.points.map((p) => (p.ch?.length ? { ...p, sp: p.ch.map(([i]) => i) } : p)) }
 }
 // Which file a scope reads: a region, or the state a state/county/place scope names; areas and species stay on the last.
@@ -506,6 +506,7 @@ export default function SpillsReport() {
         seen.add(sp.n)
         const r = by.get(sp.n) || { sp: { ...sp, st: { ...sp.st } }, exact: 0, near: 0, city: 0, n: 0 }
         if (!r.sp.fed && sp.fed) r.sp.fed = sp.fed
+        if (!r.sp.sara && sp.sara) r.sp.sara = sp.sara
         for (const [k, v] of Object.entries(sp.st)) if (!r.sp.st[k] || v === 'E') r.sp.st[k] = v
         if (!r.sp.tx && sp.tx) { r.sp.tx = sp.tx; r.sp.txn = sp.txn }
         r[PREC_GROUP[p.loc]]++; r.n++

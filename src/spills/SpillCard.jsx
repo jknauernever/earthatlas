@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import s from './SpillsApp.module.css'
 import pick from '../ships/ShipPicker.module.css'   // the ship card's tab row, shared
 import {
-  NRC_HOME, ESI_HOME, WBD, PRECISION_BY_ID, esiShort, esiSentence, esiLevel, esiColor, esiNumber, isListed, locationSource, fmtDate, fmtInt, titleCase, nearbyHighlights, statusShort, statusFull, speciesHref, critNear, chStatus, gapOf, PA_COLOR, MANAGER, ACCESS, PADUS_HOME, PADUS_DATA,
+  NRC_HOME, ESI_HOME, WBD, PRECISION_BY_ID, esiShort, esiSentence, esiLevel, esiColor, esiNumber, isListed, locationSource, fmtDate, fmtInt, titleCase, nearbyHighlights, statusShort, statusFull, speciesHref, critNear, chStatus, chSrcShort, gapOf, PA_COLOR, MANAGER, ACCESS, PADUS_HOME, PADUS_DATA,
   PHMSA_HOME, PIPE_COLOR, COMMODITY_PLAIN, bblText, pipeDetailUrl, gasDetailUrl, mcfText, GAS_SYSTEM,
 } from './spillsShared.js'
 import { padusLabel, padusKind } from '../lib/national/padus.js'
@@ -111,7 +111,7 @@ function AtRisk({ p, species, areas, onArea, chSpecies = [] }) {
             <li key={sp.n}>
               {(speciesHref(sp) || sp.url) ? <a className={s.spLink} href={speciesHref(sp) || sp.url} target="_blank" rel="noopener noreferrer" title={speciesHref(sp) ? `${sp.txn} on EarthAtlas` : `${sp.sci} · ${sp.src}`}><b>{sp.n}</b></a> : <b>{sp.n}</b>}{' '}
               <span className={s.spStatusInline}>{chStatus(sp)}</span>{' '}
-              {speciesHref(sp) && sp.url && <Src href={sp.url} title={`${sp.sci}: species profile, ${sp.src}`}>{sp.src === 'NOAA Fisheries' ? 'NOAA' : 'FWS'}</Src>}{' '}
+              {speciesHref(sp) && sp.url && <Src href={sp.url} title={`${sp.sci}: species profile, ${sp.src}`}>{chSrcShort(sp)}</Src>}{' '}
               <span className={s.dim}>{m === 0 ? 'report is inside' : `${m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`} away`}</span>
             </li>
           )} />

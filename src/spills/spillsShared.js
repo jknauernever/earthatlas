@@ -134,7 +134,7 @@ export function locationSource(p) {
 
 export const STATUS_WORD = { E: 'Endangered', T: 'Threatened' }
 export const STATE_NAMES = { IL: 'Illinois', IN: 'Indiana', MI: 'Michigan', WI: 'Wisconsin' }
-export const isListed = (sp) => !!sp.fed || Object.keys(sp.st).length > 0
+export const isListed = (sp) => !!sp.fed || !!sp.sara || Object.keys(sp.st || {}).length > 0
 
 export const fmtInt = (n) => (n == null ? '—' : n.toLocaleString('en-US'))
 export function fmtDate(d) {
@@ -191,7 +191,7 @@ export const esiSentence = (code) => ESI_PLAIN[code]?.[1] || ''
 // of other mapped resources. `ids` are indexes into data.species.
 export function nearbyHighlights(ids, species) {
   const all = [...new Set(ids)].map((i) => species[i])
-  const rank = (sp) => (sp.fed === 'E' ? 0 : sp.fed ? 1 : Object.values(sp.st).includes('E') ? 2 : 3)
+  const rank = (sp) => (sp.fed === 'E' || sp.sara === 'E' ? 0 : sp.fed || sp.sara ? 1 : Object.values(sp.st || {}).includes('E') ? 2 : 3)
   const listed = all.filter(isListed).sort((a, b) => rank(a) - rank(b) || a.n.localeCompare(b.n))
   const seen = new Set()
   const names = listed.filter((sp) => (seen.has(sp.n) ? false : seen.add(sp.n)))
@@ -201,6 +201,7 @@ export function nearbyHighlights(ids, species) {
 const listedIn = (code, places) => `${(STATUS_WORD[code] || code).toLowerCase()} in ${places.join(' and ')}`
 export function statusShort(sp, home) {
   if (sp.fed) return `Listed as ${listedIn(sp.fed, ['the U.S.'])}`
+  if (sp.sara) return `Listed as ${listedIn(sp.sara, ['Canada'])}`
   // the report's own state first, then an Endangered listing in another state
   const [st, code] = (home && sp.st[home] ? [home, sp.st[home]] : Object.entries(sp.st).sort((a, b) => (a[1] === 'E' ? -1 : 1))[0]) || []
   return st ? `Listed as ${listedIn(code, [st])}` : ''
@@ -209,7 +210,8 @@ export function statusShort(sp, home) {
 export function statusFull(sp) {
   const by = {}
   if (sp.fed) (by[sp.fed] ||= []).push('the U.S.')
-  for (const [st, code] of Object.entries(sp.st).sort()) (by[code] ||= []).push(st)
+  if (sp.sara) (by[sp.sara] ||= []).push('Canada')
+  for (const [st, code] of Object.entries(sp.st || {}).sort()) (by[code] ||= []).push(st)
   const parts = Object.keys(by).sort((a, b) => (a === 'E' ? -1 : b === 'E' ? 1 : 0)).map((c) => listedIn(c, by[c]))
   return parts.length ? `Listed as ${parts.join('; ')}` : ''
 }
@@ -245,4 +247,8 @@ export async function loadRegion(files, region) {
 
 // Critical habitat near a report: [{ sp, m }] with the species record (n, sci, fed, src, url) and meters away.
 export const critNear = (p, chSpecies) => (p.ch || []).map(([i, m]) => ({ sp: chSpecies[i], m })).filter((x) => x.sp)
-export const chStatus = (sp) => (sp.fed ? `Listed as ${STATUS_WORD[sp.fed].toLowerCase()} in the U.S.` : 'Listed in the U.S.')
+// Canadian critical habitat (Fisheries and Oceans Canada, Species at Risk Act) carries `sara` instead of `fed`.
+export const DFO_SRC = 'Fisheries and Oceans Canada'
+export const chStatus = (sp) => (sp.sara ? `Listed as ${STATUS_WORD[sp.sara].toLowerCase()} in Canada`
+  : sp.fed ? `Listed as ${STATUS_WORD[sp.fed].toLowerCase()} in the U.S.` : sp.src === DFO_SRC ? 'Listed in Canada' : 'Listed in the U.S.')
+export const chSrcShort = (sp) => (sp.src === 'NOAA Fisheries' ? 'NOAA' : sp.src === DFO_SRC ? 'DFO Canada' : 'FWS')

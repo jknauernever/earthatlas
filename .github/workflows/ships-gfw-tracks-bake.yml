@@ -227,6 +227,11 @@ jobs:
           else
             python3 fetch.py --stage "$STAGE" --from "${{ matrix.job.from }}" --to "${{ matrix.job.to }}" --span 7 --raw "$GFW_RAW" --budget 20000
           fi
+      # When the fetch fails, ask GFW what it is serving right now (3 tiny requests) so the log says whether it is their outage,
+      # our token, or something else; failure-triage.yml reads the PROBE lines (2026-11-06).
+      - name: Check GFW right now (fetch failed)
+        if: failure()
+        run: cd scripts/ships/bake-gfw && python3 probe.py
       # Keep the month's downloads for tomorrow's run (only months a daily run will touch again), then drop older copies
       # of the same month so the cache holds one per month.
       - name: Keep ${{ matrix.job.month }}'s downloads for the next daily run

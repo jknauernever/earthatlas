@@ -368,14 +368,43 @@ function srkwDfoPopupHTML(p) {
 const SRKW_RULES = { 2006: ['71 FR 69054', 'https://www.govinfo.gov/link/fr/71/69054'], 2021: ['86 FR 41668', 'https://www.govinfo.gov/link/fr/86/41668'] }
 const srkwTileUrl = `${TILES_BASE}/api/ship-tracks?r=srkw&v=${trackSource.srkw.version}${import.meta.env.DEV ? '&dev=1' : ''}&z={z}&x={x}&y={y}`
 const SRKW_LAYERS = ['srkw-fill', 'srkw-line']
-// Critical habitat, then protected areas, on top of every other layer (Josh 2026-10-19), in this order.
-const TOP_LAYERS = [...SRKW_LAYERS, 'mpa-fill', 'mpa-line']
-function raiseTopLayers(map) {
-  const ids = (map.getStyle()?.layers || []).map((l) => l.id)
-  const want = TOP_LAYERS.filter((id) => ids.includes(id))
-  if (want.every((id, i) => ids[ids.length - want.length + i] === id)) return
-  for (const id of want) map.moveLayer(id)
+// ─── Layer order = the left panel's order (Josh 2026-11-06) ──────────────────
+// The higher a dataset sits in the panel, the higher it draws on the map. Two bands, each in panel order: areas and
+// lines go just under the basemap's place names; dots, icons and labels go above them (so one dataset's lines never
+// hide another's markers). Selections (a picked ship's own track, an open slick's focus layers) stay on top of all.
+// One function owns the order; it runs whenever the style changes (replaces the 2026-09/10 one-off "on top" rules).
+const PANEL_ORDER = [ // top of the panel first
+  ['tracks', (id) => /^(shiptrk-|ghost[SC]-|noaa-edge|gfwproto-|gfw-presence)/.test(id) && !id.startsWith('shiptrk-own-')],
+  ['ports', (id) => /^(ports-|terminals-|anchorages-|anchorage-bunker|projects-)/.test(id)],
+  ['mpa', (id) => id.startsWith('mpa-')],
+  ['srkw', (id) => id.startsWith('srkw-')],
+  ['identity', () => false], // its map layer is the picked ship's own track: a selection (below)
+  ['dark', (id) => id.startsWith('gfw-dark')],
+  ['slicks', (id) => id === 'slick-radar' || /^slick-(fill|line|dot)$/.test(id)],
+  ['offshore', (id) => id.startsWith('offshore-')],
+]
+const isSelectionLayer = (id) => id.startsWith('shiptrk-own-') || id.startsWith('slick-focus-')
+const isPointLayer = (l) => l.type === 'symbol' || l.type === 'circle'
+function applyPanelOrder(map) {
+  const layers = map.getStyle()?.layers
+  if (!layers) return
+  const group = (id) => PANEL_ORDER.findIndex(([, m]) => m(id))
+  const ours = (l) => isSelectionLayer(l.id) || group(l.id) >= 0
+  const labels = layers.find((l) => l.type === 'symbol' && !ours(l))
+  // bottom → top within each band: lower panel rows first; inside a row, today's relative order (radar under the slicks)
+  const byPanel = (list) => list.map((l, i) => [l, i]).sort(([a, i], [b, j]) => group(b.id) - group(a.id)
+    || (a.id === 'slick-radar' ? -1 : b.id === 'slick-radar' ? 1 : i - j)).map(([l]) => l.id)
+  const area = byPanel(layers.filter((l) => !isSelectionLayer(l.id) && group(l.id) >= 0 && !isPointLayer(l)))
+  const point = byPanel(layers.filter((l) => !isSelectionLayer(l.id) && group(l.id) >= 0 && isPointLayer(l)))
+  const sel = layers.filter((l) => isSelectionLayer(l.id)).map((l) => l.id)
+  const base = layers.filter((l) => !ours(l)).map((l) => l.id)
+  const cut = labels ? base.indexOf(labels.id) : base.length
+  const want = [...base.slice(0, cut), ...area, ...base.slice(cut), ...point, ...sel]
+  if (want.join() === layers.map((l) => l.id).join()) return
+  for (const id of area) map.moveLayer(id, labels?.id)
+  for (const id of [...point, ...sel]) map.moveLayer(id)
 }
+const raiseTopLayers = applyPanelOrder
 function srkwPopupHTML(p) {
   if (p.ag === 'dfo') return srkwDfoPopupHTML(p)
   const s = styles
@@ -426,12 +455,7 @@ const SLICK_SCORE = ['coalesce', ['get', 'max_source_collated_score'], 0]
 const SLICK_FILL = '#ff1a1a'
 const SLICK_FILL_OPACITY = ['interpolate', ['linear'], SLICK_SCORE, 0, 0.55, 0.5, 0.72, 1.5, 0.9]
 const SLICK_LAYERS = ['slick-fill', 'slick-line', 'slick-dot']
-function keepSlicksOnTop(map) {
-  const ids = map.getStyle()?.layers?.map((l) => l.id)
-  if (!ids || !SLICK_LAYERS.every((id) => ids.includes(id))) return
-  if (ids.slice(-SLICK_LAYERS.length).join() === SLICK_LAYERS.join()) return
-  for (const id of SLICK_LAYERS) map.moveLayer(id) // no beforeId = to the very top, in this order
-}
+const keepSlicksOnTop = (map) => applyPanelOrder(map) // slicks follow the panel order too (Josh 2026-11-06)
 // Slick focus layers (SlickCard.jsx holds the card): the shown ship's track, where it was at the image time, its closest
 // approach, the "within" ring around the slick, and the radar image. All under the slick layers (slicks stay on top).
 const FOCUS_SRC = 'slick-focus', FOCUS_RADAR = 'slick-radar'
@@ -805,6 +829,9 @@ export default function ShipsApp() {
     if (import.meta.env.DEV) window.__shipsMap = map // dev-only QA handle (as /inmotion's __systemsMap)
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
+    // Every layer add/move/basemap swap → restack once in the panel's order (applyPanelOrder; no-op when already right).
+    let orderRaf = 0
+    map.on('styledata', () => { if (!orderRaf) orderRaf = setTimeout(() => { orderRaf = 0; applyPanelOrder(map) }, 0) })
     map.on('style.load', () => {
       map.setFog({ color: 'rgb(10, 14, 23)', 'high-color': 'rgb(20, 30, 60)', 'horizon-blend': 0.08, 'space-color': 'rgb(6, 8, 16)', 'star-intensity': 0.7 })
       setMapReady(true)

@@ -62,7 +62,9 @@ jobs:
               """One open issue per title; a new comment only for news not already in it (key = run URL or check date).
               Returns the issue number when this call added news, else None."""
               iss = open_issue(title)
-              text = '\n'.join(lines)
+              # The key rides along as a hidden marker: stale-data keys ("stale-2026-10-30") never appeared in the text, so
+              # the check below never matched and every hourly run commented again (an email each, 2026-11-05).
+              text = '\n'.join(lines) + f'\n<!-- watchdog-key: {key} -->'
               if iss is None:
                   args = ['issue', 'create', '--title', title, '--label', 'data-alert', '--body', text]
                   url = gh(*args, *(['--assignee', ASSIGNEE] if assign else [])).strip()
@@ -137,14 +139,19 @@ jobs:
           def get(url):
               with urllib.request.urlopen(f'{url}?t={int(now.timestamp())}', timeout=60) as r:
                   return json.load(r)
+          # The last field names the workflows (file-name prefixes) that publish the data. When one of them already has an
+          # open failure alert, staleness is that failure's consequence: triage handles it there (and escalates outages after
+          # 48 h), so the stale alert stays unassigned instead of emailing Josh a second time for the same cause.
           checks = [
               ('GFW ship tracks', 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/gfw-v1/index.json',
-               lambda d: d.get('fetched_through'), 6, 'newest GFW positions published'),
+               lambda d: d.get('fetched_through'), 6, 'newest GFW positions published', ('ships-gfw-',)),
               ('/ships changelog numbers', 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/changelog-counts.json',
-               lambda d: d.get('asOf'), 2, 'counts last refreshed'),
+               lambda d: d.get('asOf'), 2, 'counts last refreshed', ('ships-counts.yml',)),
           ]
-          for name, url, pick, max_days, what in checks:
+          failing_alerts = {t.split(': ', 1)[1]: i['number'] for t, i in OPEN.items() if t.startswith('Data import failing: ')}
+          for name, url, pick, max_days, what, makers in checks:
               title = f'Data stale: {name}'
+              cause = next(((wf, n) for wf, n in failing_alerts.items() if wf.startswith(makers)), None)
               try:
                   day = pick(get(url))
                   age = (now.date() - dt.date.fromisoformat(day)).days
@@ -152,7 +159,13 @@ jobs:
                   alert(title, [f'Could not read {url}: {e}'], f'read-error-{now.date()}')
                   continue
               if age > max_days:
-                  alert(title, [f'{what}: **{day}** ({age} days ago; alert after {max_days}).', url], f'stale-{day}')
+                  lines = [f'{what}: **{day}** ({age} days ago; alert after {max_days}).', url]
+                  if cause:
+                      lines.append(f'Caused by the open failure alert #{cause[1]} ({cause[0]}); that issue is where Josh gets told.')
+                  alert(title, lines, f'stale-{day}', assign=not cause)
+                  iss = open_issue(title)
+                  if iss:   # follow the cause as it comes and goes (no-op edits make no notification)
+                      gh('issue', 'edit', str(iss['number']), '--remove-assignee' if cause else '--add-assignee', ASSIGNEE)
               else:
                   resolve(title, f'Fresh again: {what} {day}.')
 

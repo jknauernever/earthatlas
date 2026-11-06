@@ -57,6 +57,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # data-watchdog dispatches this as the github-actions bot; without this the action refuses non-human actors
+          # (every watchdog-started triage failed this way until 2026-11-05). Dispatch itself needs repo write access.
+          allowed_bots: github-actions
           prompt: |
             A scheduled data workflow in this repository failed. Decide whether a person needs to act.
 

@@ -8,6 +8,10 @@ on:
   # Started by ships-gfw-identities.yml and ships-noaa-month.yml (their last job): GitHub never fires workflow_run for runs
   # another workflow started, so the earlier workflow_run trigger never ran this (2026-10-10).
   workflow_dispatch:
+  # Also daily on its own: when the GFW chain stops (GFW outage, 2026-11-04) nothing started this and the numbers went
+  # stale for days. The counts come from our database, so they are worth refreshing whatever GFW is doing.
+  schedule:
+    - cron: '50 17 * * *'
 
 concurrency:
   group: ships-counts

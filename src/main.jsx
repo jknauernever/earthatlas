@@ -63,6 +63,7 @@ import ShipsChangelogPage from './ships/ChangelogPage.jsx'
 import ShipsIntakePage from './ships/IntakePage.jsx'
 import ScrubberReport from './ships/ScrubberReport.jsx'
 import BunkeringReport from './ships/BunkeringReport.jsx'
+import OilTransfersReport from './ships/OilTransfersReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
 
@@ -198,6 +199,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/intake" element={<ShipsIntakePage />} />
           <Route path="/ships/reports/scrubbers" element={<ScrubberReport />} />
           <Route path="/ships/reports/bunkering" element={<BunkeringReport />} />
+          <Route path="/ships/reports/oil-transfers" element={<OilTransfersReport />} />
           <Route path="/ships/reports/scrubbers/:edition" element={<ScrubberReport />} />
           <Route path="/inmotion" element={<SystemsApp />} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />

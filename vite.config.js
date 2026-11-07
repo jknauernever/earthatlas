@@ -708,7 +708,7 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
       // Dev only: the scrubber report's READ queries, run by this checkout's code against the production ships database
       // (SHIPS_PROD_DATABASE_URL), so a localhost change can be checked on production's data before it is pushed
       // (/ships/reports/scrubbers?data=prod). Only these GET ops; nothing writes.
-      const PROD_READ_OPS = new Set(['scrubberReport', 'scrubberReportDays', 'scrubberWorldPorts', 'scrubberEdition', 'scrubberEditions', 'bunkerReport'])
+      const PROD_READ_OPS = new Set(['scrubberReport', 'scrubberReportDays', 'scrubberWorldPorts', 'scrubberEdition', 'scrubberEditions', 'bunkerReport', 'oilTransfers'])
       server.middlewares.use('/__prodread/api/ships', async (req, res) => {
         const sp = new URL(req.url, 'http://localhost').searchParams
         const op = sp.get('op')
@@ -745,6 +745,7 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
               const r = await B.readBunkerReport(q, S, { from: ym(sp.get('from')), to: ym(sp.get('to')) })
               return r
             })()
+            : op === 'oilTransfers' ? await (await server.ssrLoadModule('/lib/ships/oilTransfers.js')).readOilTransfers(q, S)
             : op === 'scrubberEdition' ? await R.readScrubberEdition(q, S, sp.get('id'))
             : { editions: await R.listScrubberEditions(q, S) }
           res.end(JSON.stringify(out))

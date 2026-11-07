@@ -66,6 +66,7 @@ import { terminalsLayer, readTerminalCard, ensureTerminalCard, terminalEmissions
 import { storeCtStays, pruneCtStays, CT_VOYAGES_SOURCE } from '../lib/ships/ctStays.js'
 import { anchoragesLayer, readAnchorageCard } from '../lib/ships/anchorageCard.js'
 import { bunkeringAnchorages } from '../lib/ships/bunkerEvents.js'
+import { readOilTransfers } from '../lib/ships/oilTransfers.js'
 import { readBunkerReport, readCountedFuelings } from '../lib/ships/bunkerMatch.js'
 import { terminalPermits, permitPage } from '../lib/ships/facilities.js'
 import { typeLookup } from '../lib/ships/typeLookup.js'
@@ -582,6 +583,9 @@ export default async function handler(req, res) {
       const r = await readBunkerReport(q, S, { from: ym(p.get('from')), to: ym(p.get('to')), anchorage: an && /^[a-z0-9-]{2,60}\|[A-Za-z0-9()._ -]{1,80}$/.test(an) ? an : null })
       return send(res, 200, r, 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     }
+    // /api/ships?op=oilTransfers → the "Planned vs. observed over-water oil transfers in Washington" report (lib/ships/oilTransfers.js):
+    //      every Ecology ANT operation in the AIS months with its AIS check; operations packed (lib/ships/oilTransfersPack.js).
+    if (op === 'oilTransfers') return send(res, 200, await readOilTransfers(q, S), 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400')
     if (op === 'bunkerAnchorages') {
       const win = parseCardWindow(p.get('from'), p.get('to'))
       if (win.error) return send(res, 400, { error: win.error })

@@ -2978,7 +2978,7 @@ export default function ShipsApp() {
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
                 changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}
-                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }, { href: '/ships/reports/bunkering', label: 'Planned vs. observed bunkering at Washington anchorages' }]} />
+                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }, { href: '/ships/reports/bunkering', label: 'Planned vs. observed bunkering at Washington anchorages' }, { href: '/ships/reports/oil-transfers', label: 'Planned vs. observed over-water oil transfers in Washington' }]} />
             </div>
           )}
         </MapSheet>

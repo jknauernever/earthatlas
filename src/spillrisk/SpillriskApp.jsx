@@ -36,7 +36,10 @@ import styles from './SpillriskApp.module.css'
 installPopupSheet()
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const DATA = '/spillrisk-data/'
+// Scenario files: public/spillrisk-data on localhost; Vercel Blob in production (scripts/spillrisk/upload.mjs <stamp>).
+// A re-bake goes live by uploading under a new stamp and changing DATA_STAMP.
+const DATA_STAMP = '20261106'
+const DATA = import.meta.env.DEV ? '/spillrisk-data/' : `https://fxj3imydg9misw9w.public.blob.vercel-storage.com/spillrisk/${DATA_STAMP}/`
 const DEFAULT_VIEW = { center: [-123.05, 48.5], zoom: 8.6 }
 const BASEMAPS = [
   { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },

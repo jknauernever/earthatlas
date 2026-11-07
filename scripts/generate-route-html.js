@@ -121,6 +121,17 @@ const ROUTES = [
       'sea-level rise, coastal flooding, San Juan County, San Juan Islands, flood map, 100-year storm, erosion, climate change, Environmental Science Associates, vulnerability assessment',
   },
   {
+    out: 'spillrisk.html',
+    url: 'https://earthatlas.org/spillrisk',
+    title: 'Oil Spill Scenarios — Salish Sea tanker routes, hour by hour · EarthAtlas',
+    description:
+      'What an oil spill on a Salish Sea tanker route could reach, hour by hour: ten places along the routes, each modeled with NOAA’s PyGNOME under the real winds and currents of a 2025 winter storm and a typical summer, at the federal 2,500-barrel planning size or the 257,000 barrels of the Exxon Valdez. Shows the Friends of the San Juans shoreline habitat, killer whale and other critical habitat, and protected areas the oil reaches, next to how long responders are required to take. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'EarthAtlas map of a modeled oil spill spreading through the San Juan Islands',
+    keywords:
+      'oil spill, oil spill model, Salish Sea, San Juan Islands, tanker, Rosario Strait, Haro Strait, PyGNOME, SSCOFS, Southern Resident killer whales, critical habitat, oil spill response time, Exxon Valdez',
+  },
+  {
     out: 'shoreline.html',
     url: 'https://earthatlas.org/shoreline',
     title: 'Salish Sea Explorer: Shoreline Ecosystems — San Juan County · EarthAtlas',

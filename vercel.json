@@ -67,6 +67,10 @@
       "destination": "/risks.html"
     },
     {
+      "source": "/spillrisk",
+      "destination": "/spillrisk.html"
+    },
+    {
       "source": "/shoreline",
       "destination": "/shoreline.html"
     },

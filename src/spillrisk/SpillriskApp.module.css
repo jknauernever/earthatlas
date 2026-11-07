@@ -1,0 +1,70 @@
+.lead { font-size: 12px; color: rgba(255, 255, 255, 0.75); margin-bottom: 4px; }
+.factDim { font-size: 11px; color: rgba(255, 255, 255, 0.55); margin-top: 4px; line-height: 1.4; }
+.dim { color: rgba(255, 255, 255, 0.55); }
+.select {
+  width: 100%; background: rgba(255, 255, 255, 0.06); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px; padding: 5px 6px; font-size: 12px;
+}
+.select option { background: #0f172a; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stats > div { background: rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 5px 7px; }
+.stats b { display: block; font-size: 16px; color: #fff; }
+.stats span { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); line-height: 1.25; display: block; }
+.budget { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(255, 255, 255, 0.08); margin-top: 8px; }
+.budget span { display: block; height: 100%; }
+.ramp { display: inline-flex; gap: 1px; }
+.ramp span { width: 9px; height: 11px; display: inline-block; border-radius: 1px; }
+.dots { display: inline-flex; gap: 4px; align-items: center; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); }
+.imp { margin: 4px 0 6px; font-size: 12px; color: #fff; }
+.likely { color: #fdba74; }
+.logo { height: 14px; vertical-align: -3px; margin-right: 5px; background: #fff; border-radius: 2px; padding: 1px; }
+.notice { font-size: 10.5px; color: rgba(255, 255, 255, 0.5); margin-top: 10px; line-height: 1.4; }
+.tip b { color: #fff; }
+.tip div { font-size: 12px; }
+.markLink { background: none; border: 0; padding: 0; color: #7dd3fc; cursor: pointer; font: inherit; font-weight: 600; }
+
+/* Time bar */
+.timebar {
+  position: absolute; left: 392px; right: 70px; bottom: 30px; z-index: 5; max-width: 780px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: rgba(10, 14, 23, 0.86); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px; color: #fff; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+@media (max-width: 760px) { .timebar { left: 10px; right: 10px; bottom: 96px; } }
+.play {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer;
+  background: #f97316; color: #0a0e17; display: grid; place-items: center;
+}
+.trackWrap { flex: 1; min-width: 0; }
+.hourLine { font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { position: relative; height: 22px; }
+.track input[type='range'] { position: absolute; inset: 0; width: 100%; margin: 0; accent-color: #f97316; z-index: 1; }
+.mark {
+  position: absolute; top: -4px; width: 14px; height: 30px; margin-left: -7px; background: none; border: 0; padding: 0;
+  cursor: pointer; z-index: 2;
+}
+.markTick { position: absolute; left: 5px; top: 0; width: 3px; height: 10px; border-radius: 1px; }
+.tickRule { background: #38bdf8; }
+.tickRecord { background: #f87171; }
+.markPast .markTick { height: 13px; }
+.ticks { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255, 255, 255, 0.45); }
+.speeds { display: flex; gap: 3px; flex: none; }
+.speed, .speedOn {
+  border: 1px solid rgba(255, 255, 255, 0.25); background: transparent; color: #fff; border-radius: 5px;
+  font-size: 11px; padding: 2px 6px; cursor: pointer;
+}
+.speedOn { background: #f97316; border-color: #f97316; color: #0a0e17; font-weight: 600; }
+.check { font-size: 11.5px; color: rgba(255, 255, 255, 0.75); display: flex; gap: 6px; align-items: center; }
+.respLine { font-size: 11.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255, 255, 255, 0.85); }
+.kRule { color: #7dd3fc; font-weight: 600; }
+.kRecord { color: #fca5a5; font-weight: 600; }
+.kNone { color: #fdba74; font-weight: 600; }
+.markLinkRec { background: none; border: 0; padding: 0; color: #fca5a5; cursor: pointer; font: inherit; font-weight: 600; }
+
+/* spill volume: at a glance under the point picker */
+.volume { margin-top: 4px; padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); border-left: 3px solid #f97316; }
+.volume { font-size: 12px; color: rgba(255, 255, 255, 0.8); line-height: 1.4; }
+.volume b { font-size: 15px; color: #fff; }
+.volume span { font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+.volumeBig { background: rgba(220, 38, 38, 0.16); border-left-color: #dc2626; }

@@ -1,0 +1,15 @@
+{
+  "note": "Spill scenario release points approved by Josh 2026-11-05 (v3). Each sits on the busiest cell of its route segment in 2025 large-tanker AIS traffic (MarineCadastre.gov via the /ships archive, salish-v6 points; tankers >=150 m, underway >4 kn; 0.02 deg cells). tanker_days = distinct ship-days in the cell in 2025. volume: key into VOLUMES in bake_scenarios.py (Josh 2026-11-06: even-numbered points Exxon Valdez size, odd-numbered the federal 2,500 bbl).",
+  "points": [
+    {"id": "jdf-west",       "name": "Strait of Juan de Fuca, west entrance",            "lon": -124.68, "lat": 48.46, "group": "spread",    "tanker_days": 892, "ships": 310, "volume": "federal"},
+    {"id": "port-angeles",   "name": "Port Angeles (pilot station / anchorage)",         "lon": -123.38, "lat": 48.16, "group": "town",      "tanker_days": 796, "ships": 181, "volume": "valdez"},
+    {"id": "haro",           "name": "Haro Strait",                                      "lon": -123.22, "lat": 48.58, "group": "san-juans", "tanker_days": 933, "ships": 211, "volume": "federal"},
+    {"id": "boundary-pass",  "name": "Boundary Pass",                                    "lon": -123.02, "lat": 48.78, "group": "san-juans", "tanker_days": 946, "ships": 211, "volume": "valdez"},
+    {"id": "south-lopez",    "name": "South of Lopez Island (Rosario approach)",         "lon": -122.90, "lat": 48.36, "group": "san-juans", "tanker_days": 872, "ships": 171, "volume": "federal"},
+    {"id": "rosario",        "name": "Rosario Strait",                                   "lon": -122.74, "lat": 48.48, "group": "san-juans", "tanker_days": 883, "ships": 170, "volume": "valdez"},
+    {"id": "guemes",         "name": "Guemes Channel (Anacortes)",                       "lon": -122.58, "lat": 48.52, "group": "town",      "tanker_days": 440, "ships": 90, "volume": "federal"},
+    {"id": "lummi",          "name": "Off Lummi Island (nearest tanker lane to Bellingham)", "lon": -122.74, "lat": 48.72, "group": "town", "tanker_days": 530, "ships": 122, "volume": "valdez"},
+    {"id": "burrard",        "name": "Burrard Inlet entrance (Westridge route)",         "lon": -123.16, "lat": 49.32, "group": "spread",    "tanker_days": 964, "ships": 190, "volume": "federal"},
+    {"id": "admiralty",      "name": "Admiralty Inlet (Puget Sound gateway)",            "lon": -122.56, "lat": 47.96, "group": "spread",    "tanker_days": 59,  "ships": 14, "volume": "valdez"}
+  ]
+}

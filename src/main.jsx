@@ -50,6 +50,7 @@ import SpillsApp from './spills/SpillsApp.jsx'
 // The /spills report: its own lazy chunk (Observable Plot + d3-sankey load only on this route).
 const SpillsReport = lazy(() => import('./spills/SpillsReport.jsx'))
 import RisksApp from './risks/RisksApp.jsx'
+import SpillriskApp from './spillrisk/SpillriskApp.jsx'
 import LandValueReport from './risks/LandValueReport.jsx'
 import ShorelineApp from './shoreline/ShorelineApp.jsx'
 import BirdsongApp from './birdsong/BirdsongApp.jsx'
@@ -186,6 +187,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/spills" element={<SpillsApp />} />
           <Route path="/spills/reports" element={<Suspense fallback={null}><SpillsReport /></Suspense>} />
           <Route path="/risks" element={<RisksApp />} />
+          <Route path="/spillrisk" element={<SpillriskApp />} />
           <Route path="/risks/reports/land-value" element={<LandValueReport />} />
           <Route path="/shoreline" element={<ShorelineApp />} />
           <Route path="/birdsong" element={<BirdsongApp />} />

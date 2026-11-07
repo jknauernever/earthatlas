@@ -614,7 +614,7 @@ const Icon = ({ svg, size = 19 }) => (
 //   tm  track months: 'YYYY-MM' or 'YYYY-MM_YYYY-MM' (default: all)   tk  track kinds (comma list; default tanker, 'all' = every kind)
 //   mp  '1' = Protected areas on (default off)   dk '1' = Dark vessels on (default off; '0' also read as off)
 //   pt  '0' = Ports off (default on; '1' also read as on)      pc  open port card (our port id)      pm  its listed month 'YYYY-MM'      pf '1' = port card folded      pk  port card tab: 'ships' | 'emissions' | 'trade' (default traffic)
-//   oy  'm' = the picked ship's tracks for the selected months only (default: all years)
+//   oy  'a' = the picked ship's tracks for all years (default: selected months only)
 //   tl  open terminal card (terminal key, e.g. bc-westridge)   tf '1' = terminal card folded   tb  terminal card tab: 'emissions' | 'permits' | 'about' (default ships)
 //   ct  ship card tab: 'history' | 'incidents' | 'ports' | 'emissions' | 'matches' (default overview)       cf  '1' = ship card folded
 function readUrlState() {
@@ -765,8 +765,8 @@ export default function ShipsApp() {
     map.on('click', onClick)
     return () => { map.off('click', onClick); herePopupRef.current?.remove() }
   }, [mapReady])
-  // A picked ship's own tracks: every year we have (default, Josh 2026-09-27) or just the selected months.
-  const [ownAllYears, setOwnAllYears] = useState(initial.oy !== 'm')
+  // A picked ship's own tracks: just the selected months (default, Josh 2026-11-06) or every year we have.
+  const [ownAllYears, setOwnAllYears] = useState(initial.oy === 'a')
   const [ownLoading, setOwnLoading] = useState(false)
   const [portsOn, setPortsOn] = useState(initial.pt !== '0') // default on (Josh, 2026-09-27); pt=0 off, pt=1 on
   // One row, not one per source (Josh 2026-09-27): Climate TRACE's refineries & oil/gas sites ride the Ports row.
@@ -795,6 +795,13 @@ export default function ShipsApp() {
   const [query, setQuery] = useState(initial.q || '')
   const [kinds, setKinds] = useState(() => (initial.k ? initial.k.split(',').filter(Boolean) : []))
   const [vesselId, setVesselId] = useState(initial.v || null)
+  // Every newly opened ship card starts on the selected months (a shared oy=a link keeps All years on load only).
+  const ownForRef = useRef(vesselId)
+  useEffect(() => {
+    if (ownForRef.current === vesselId) return
+    ownForRef.current = vesselId
+    setOwnAllYears(false)
+  }, [vesselId])
   // The ship card reopens where the user left it: tab (ct) and folded (cf).
   const [cardTab, setCardTab] = useState(['history', 'incidents', 'ports', 'matches', 'emissions', 'slicks'].includes(initial.ct) ? initial.ct : 'overview')
   const [cardFolded, setCardFolded] = useState(initial.cf === '1')
@@ -2415,7 +2422,7 @@ export default function ShipsApp() {
     if (slicksOn && slickKinds.length) sp.set('sk', slickKinds.join(','))
     if (slicksOn && slickDist !== NEAR_DEFAULT) sp.set('sd', String(slickDist))
     if (slicksOn && slickId) sp.set('slk', slickId)
-    if (vesselId && !ownAllYears) sp.set('oy', 'm')
+    if (vesselId && ownAllYears) sp.set('oy', 'a')
     if (!portsOn) sp.set('pt', '0')
     if (ghProto) sp.set('gh', ghProto)
     if (terminalKey) { sp.set('tl', terminalKey); if (terminalFolded) sp.set('tf', '1'); if (terminalTab !== 'ships') sp.set('tb', terminalTab) }

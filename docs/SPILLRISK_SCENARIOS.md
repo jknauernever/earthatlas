@@ -61,6 +61,7 @@ the tanker routes, prebaked, with an hour-by-hour player and the habitats, speci
 
 ## Page
 
-`src/spillrisk/SpillriskApp.jsx`, route `/spillrisk` (localhost only so far). Not yet wired: `vercel.json`, route
-HTML, sitemap, Blob upload. Response-time milestones on the time bar come from `src/spillrisk/responseTimes.js`, which uses only the primary-sourced
+`src/spillrisk/SpillriskApp.jsx`, route `/spillrisk`, LIVE on earthatlas.org since 2026-11-07 (7003c5c). Production reads
+Blob `spillrisk/<DATA_STAMP>/` (uploaded with `scripts/spillrisk/upload.mjs`); `vercel.json` rewrite, route HTML and
+sitemap are wired. Response-time milestones on the time bar come from `src/spillrisk/responseTimes.js`, which uses only the primary-sourced
 rows of `docs/SPILLRISK_RESPONSE_TIMES.md`. Results by scenario: `docs/spillrisk-scenarios-summary.md`.

@@ -74,8 +74,9 @@ import { liveBriefs } from '../lib/ships/liveBriefs.js'
 import { importBatch } from '../lib/ships/gfwAis.js'
 import { normalizeStops, storeActivityEstimates } from '../lib/ships/activityEstimates.js'
 import { storeTerminalCalls, BAKE_VERSION as CALLS_VERSION, TERMINAL_CALLS_SOURCE } from '../lib/ships/terminalCalls.js'
+import { storeDockCalls, DOCK_BAKE_VERSION, DOCK_CALLS_SOURCE } from '../lib/ships/dockCalls.js'
 import { storeAnchorageStays, STAY_BAKE_VERSION, ANCHORAGE_STAYS_SOURCE } from '../lib/ships/anchorageStays.js'
-import { startRun, finishRun } from '../lib/ships/store.js'
+import { startRun, finishRun, upsertSource } from '../lib/ships/store.js'
 import { importMcBatch } from '../lib/ships/mcMonths.js'
 import { searchPlaces } from '../lib/ships/placeSearch.js'
 import { readFleet } from '../lib/ships/fleets.js'
@@ -189,7 +190,7 @@ export default async function handler(req, res) {
         return send(res, 200, r, 'no-store')
       } catch (e) { return send(res, 400, { error: String(e.message) }) } finally { await pool.end() }
     }
-    //   POST /api/ships?op=importAisMonth { kind: terminal|anchorage, month, version, bake, rows }  (CRON_SECRET bearer only) → one
+    //   POST /api/ships?op=importAisMonth { kind: terminal|anchorage|dock, month, version, bake, rows }  (CRON_SECRET bearer only) → one
     //        month of terminal calls / anchorage stays counted from NOAA AIS by the ships-noaa-month workflow (terminal-calls.mjs /
     //        anchorage-stays.mjs --post), replacing that month and adding it to the version's months (Part 1, 2026-10-07)
     //   POST /api/ships?op=importMcIdentity { offset }  (CRON_SECRET bearer only) → one resumable batch of the NOAA ship-identity import
@@ -252,16 +253,18 @@ export default async function handler(req, res) {
       const { kind, month, version, bake, rows } = body
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '')) return send(res, 400, { error: 'month must be YYYY-MM' })
       if (!Array.isArray(rows) || !bake || typeof bake !== 'object') return send(res, 400, { error: 'rows and bake required' })
-      const want = kind === 'terminal' ? CALLS_VERSION : kind === 'anchorage' ? STAY_BAKE_VERSION : null
-      if (!want) return send(res, 400, { error: 'kind must be terminal or anchorage' })
+      const want = kind === 'terminal' ? CALLS_VERSION : kind === 'anchorage' ? STAY_BAKE_VERSION : kind === 'dock' ? DOCK_BAKE_VERSION : null
+      if (!want) return send(res, 400, { error: 'kind must be terminal, anchorage or dock' })
       if (version !== want) return send(res, 400, { error: `version ${version} is not the current ${want}` })
-      const src = kind === 'terminal' ? TERMINAL_CALLS_SOURCE : ANCHORAGE_STAYS_SOURCE
+      const src = kind === 'terminal' ? TERMINAL_CALLS_SOURCE : kind === 'dock' ? DOCK_CALLS_SOURCE : ANCHORAGE_STAYS_SOURCE
       const pool = shipsPool()
       try {
         const r = await withTx(pool, async (c) => {
+          if (kind === 'dock') await upsertSource(c, S, DOCK_CALLS_SOURCE)   // registered on its first import
           const runId = await startRun(c, S, src.id, { bake_version: version, month, via: 'importAisMonth' })
           const out = kind === 'terminal'
             ? await storeTerminalCalls(c, S, { calls: rows, bake, runId, months: [month] })
+            : kind === 'dock' ? await storeDockCalls(c, S, { calls: rows, bake, runId, months: [month] })
             : await storeAnchorageStays(c, S, { stays: rows, bake, runId, months: [month] })
           await finishRun(c, S, runId, { status: 'succeeded', stats: { rows: rows.length, month }, datasetVersion: version })
           return out

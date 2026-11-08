@@ -24,7 +24,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REGION = "salish-v6"
 POINTS = os.path.join(HERE, "cache", "points", REGION)
 BOX = dict(w=-126.2, s=47.0, e=-122.05, n=49.6)  # region.py salish-v6 (read-only copy; region.py is not imported to keep its env default untouched)
-OUT = os.path.join(HERE, "cache", "terminal-calls")
+# --set dock-calls (2026-11-07, Josh: track the docks Ecology's oil-transfer notices name that no terminal covers): the same scan over
+# cache/dock-calls/berths.json (lib/ships/dockCalls.js, scripts/ships/dock-calls.mjs). That berths file says "overlap": "all": a
+# position counts for EVERY dock whose radius holds it (neighbouring docks share piers), not only the nearest. Default: terminal-calls.
+SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "terminal-calls"
+if SET not in ("terminal-calls", "dock-calls"):
+    sys.exit(f"--set must be terminal-calls or dock-calls, not {SET}")
+OUT = os.path.join(HERE, "cache", SET)
 # Other points caches whose berths are counted too (2026-10-07: wa-columbia-v1, Grays Harbor + lower Columbia River). A berth
 # belongs to the region berths.json names for it; each region's day file is read alongside salish-v6's.
 EXTRA = {"wa-columbia-v1": os.path.join(HERE, "cache", "points", "wa-columbia-v1")}
@@ -43,7 +49,8 @@ def connect():
 def load_berths():
     with open(os.path.join(OUT, "berths.json")) as f:
         bj = json.load(f)
-    raw = json.dumps(bj["berths"], sort_keys=True).encode()
+    # call_radius_m (dock-calls) is applied at export only, so changing it never invalidates the scanned days.
+    raw = json.dumps([{k: v for k, v in b.items() if k != "call_radius_m"} for b in bj["berths"]], sort_keys=True).encode()
     return bj, hashlib.sha256(raw).hexdigest()[:8]
 
 
@@ -52,7 +59,7 @@ def hits_dir(bj, sha):
 
 
 def setup(con, bj):
-    rule = bj["rule"]
+    rule = dict(bj["rule"], overlap=bj.get("overlap"))
     inside = [b for b in bj["berths"] if b["in_box"]]
     con.execute("CREATE TEMP TABLE berths (terminal VARCHAR, berth VARCHAR, lat DOUBLE, lon DOUBLE, radius_m DOUBLE, s DOUBLE, n DOUBLE, w DOUBLE, e DOUBLE)")
     import math
@@ -85,14 +92,14 @@ WITH p AS (
 SELECT terminal, berth, mmsi, t, round(m, 1) AS m,
        nullif(array_to_string(list_sort(list_filter(terms, x -> x <> terminal)), '|'), '') AS also,
        vessel_name AS name, imo, vessel_type AS type, length
-  FROM w WHERE rn = 1
+  FROM w WHERE rn = 1 OR $all
 """
 
 
 def bake_day(con, day_files, out_file, rule):
     tmp = out_file + ".tmp"
     src = "[" + ",".join("'" + f.replace("'", "''") + "'" for f in day_files) + "]"
-    sql = HITS_SQL.replace("$file", src).replace("$sog", str(float(rule["sogKn"])))
+    sql = HITS_SQL.replace("$file", src).replace("$sog", str(float(rule["sogKn"]))).replace("$all", "true" if rule.get("overlap") == "all" else "false")
     con.execute(f"COPY ({sql}) TO '{tmp}' (FORMAT parquet)")
     os.replace(tmp, out_file)
     return con.execute("SELECT count(*) FROM read_parquet(?)", [out_file]).fetchone()[0]
@@ -121,8 +128,14 @@ def export(con, bj, sha):
     # Explicit file list (Python's glob skips dotfiles): macOS writes AppleDouble "._<day>.parquet" files on the external drive,
     # which DuckDB's own glob would read as parquet.
     src = "[" + ",".join("'" + f.replace("'", "''") + "'" for f in files) + "]"
+    # dock-calls: hits are collected at a wide radius; only positions inside each dock's own call_radius_m are exported.
+    keep = ""
+    if bj.get("overlap") == "all":
+        con.execute("CREATE OR REPLACE TEMP TABLE call_r (terminal VARCHAR, r DOUBLE)")
+        con.executemany("INSERT INTO call_r VALUES (?, ?)", [(b["terminal"], float(b["call_radius_m"])) for b in bj["berths"]])
+        keep = "WHERE m <= (SELECT r FROM call_r WHERE call_r.terminal = h.terminal)"
     con.execute(f"""COPY (SELECT terminal, berth, mmsi, strftime(t, '%Y-%m-%dT%H:%M:%SZ') AS t, m, also, name, imo, type, length
-                            FROM read_parquet({src}) ORDER BY terminal, mmsi, t) TO '{csv}' (HEADER, DELIMITER ',')""")
+                            FROM read_parquet({src}) h {keep} ORDER BY terminal, mmsi, t) TO '{csv}' (HEADER, DELIMITER ',')""")
     n = con.execute(f"SELECT count(*) FROM read_parquet({src})").fetchone()[0]
     months = []
     for ym in month_range(min(days)[:7], max(days)[:7]):
@@ -149,6 +162,8 @@ def export(con, bj, sha):
 
 def main():
     args = sys.argv[1:]
+    if "--set" in args:
+        i = args.index("--set"); del args[i:i + 2]
     bj, sha = load_berths()
     con = connect()
     rule = setup(con, bj)

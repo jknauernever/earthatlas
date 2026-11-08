@@ -48,12 +48,14 @@ export const REASONS = {
   outside: 'Outside AIS coverage (Grays Harbor, Columbia and Snake rivers)',
   noTerminal: 'At a dock EarthAtlas does not track (ferry terminals, marinas, shipyards)',
   berthGap: 'At a terminal whose berth EarthAtlas’s AIS check does not cover',
-  military: 'Military vessel',
+  military: 'Military vessel not found in AIS (warships often do not broadcast it)',
   anchorageType: 'At an anchorage, not fueling or lightering',
   edge: 'Its window runs past the months of AIS',
+  bargeTug: 'Towed barge whose tug was not at the berth in the window (a towed barge can be left at a dock)',
 }
 const REASON_SHORT = { noAis: 'no vessel with AIS named', outside: 'outside AIS coverage', noTerminal: 'at docks EarthAtlas does not track',
-  berthGap: 'at berths the AIS check does not cover', military: 'military', anchorageType: 'other anchorage operations', edge: 'at the edge of the AIS months' }
+  berthGap: 'at berths the AIS check does not cover', military: 'military', anchorageType: 'other anchorage operations', edge: 'at the edge of the AIS months',
+  bargeTug: 'towed barges, tug not at the berth' }
 /** A party's kind for the direction breakdown, from Ecology's own vessel-type name. */
 const sideOf = (type) => {
   const t = String(type || '').toUpperCase()
@@ -66,6 +68,22 @@ const sideOf = (type) => {
 const shipTypeOf = (t) => (t ? title(t).replace(/\/(\w)/g, (m, x) => `/${x.toUpperCase()}`) : 'Not stated')
 const BANDS = [[1e3, 'Under 1,000 gal'], [25e3, '1,000–25,000 gal'], [250e3, '25,000–250,000 gal'], [2.5e6, '250,000–2.5M gal'], [Infinity, '2.5M gal or more']]
 const bandOf = (g) => (g == null ? null : BANDS.find(([lim]) => g < lim)[1])
+const SCRUBBER_YES = 'Scrubber-fitted ship'
+// The two scrubber lists (as the scrubber report names them).
+const SCRUBBER_SRC = {
+  gisis: { name: 'IMO GISIS scrubber notifications (MARPOL Annex VI Reg. 4.2)', short: 'IMO', href: 'https://gisis.imo.org/' },
+  mep: { name: 'MEP Alliance scrubber lists', short: 'MEP Alliance', href: 'https://www.mepalliance.org/list-of-scrubber-fitted-ships' },
+}
+const ScrubberBadge = ({ r }) => {
+  const ks = r.scrubberSrc === 'both' ? ['gisis', 'mep'] : [r.scrubberSrc]
+  return <div className={b.sub}>{r.scrubberVessel ? <a className={c.src} href={`/ships?v=${r.scrubberVessel}`} target="_blank" rel="noopener noreferrer" title="Open this ship’s card">Scrubber-fitted</a> : 'Scrubber-fitted'}
+    {' '}({ks.map((k, i) => <span key={k}>{i > 0 && ', '}<Src href={SCRUBBER_SRC[k].href} title={SCRUBBER_SRC[k].name}>{SCRUBBER_SRC[k].short}</Src></span>)})</div>
+}
+/** Why this tug stands for this barge: the AIS evidence, and the published source naming the pair where one was found. */
+const PairNote = ({ pair, barge }) => (pair ? <div className={b.sub}>
+  {pair.atb ? 'ATB unit' : 'Tug for this barge'}: at the berth through {pair.full} of the {pair.ops} notified transfers of {title(barge)} (EarthAtlas, from AIS)
+  {pair.source?.url && <> · <Src href={pair.source.url} title={pair.source.name}>{pair.source.short || 'published pairing'}</Src></>}
+</div> : null)
 const KIND_LABEL = { 'Other (incl Lube/Hyd Oil)': 'Other (incl. lube / hydraulic oil)' }
 
 /** One row per operation, with every category it can be filtered by. */
@@ -95,6 +113,7 @@ const DIMS = {
   c: ['Company', (r) => [r.companyLabel]],
   v: ['Volume', (r) => (r.band ? [r.band] : [])],
   x: ['Why not checked', (r) => (r.reason ? [r.reason] : []), (v) => REASONS[v] || v],
+  sc: ['Scrubber', (r) => (r.group !== 'ships' ? [] : [r.scrubberSrc ? SCRUBBER_YES : 'Not listed as scrubber-fitted'])],
   m: ['Month', (r) => [r.month], (v) => monthName(v)],
 }
 const FILTER_KEYS = Object.keys(DIMS)
@@ -208,7 +227,8 @@ function MonthChart({ rows, months, filt, set }) {
 function OpsList({ rows, data }) {
   const [n, setN] = useState(50)
   const sorted = [...rows].sort((a, z) => z.at.localeCompare(a.at))
-  const terminalName = (k) => data.terminals?.[k] || k
+  const terminalName = (k) => data.terminals?.[k] || (data.docks?.[k] ? placeName(data.docks[k]) : k)
+  const recOf = (k) => (data.docks?.[k] ? data.dockRecordId : data.callRecordId)
   return <>
     <div className={b.listWrap}><table className={b.list}>
       <thead><tr><th>Date (Pacific)</th><th>Place</th><th>Ship</th><th>Notified to Ecology</th><th>Seen in AIS</th><th>Status</th></tr></thead>
@@ -216,7 +236,7 @@ function OpsList({ rows, data }) {
         <tr key={r.key}>
           <td><Ant op={r}>{pacific(r.at)}</Ant></td>
           <td>{r.place}<div className={b.sub}>{[r.cityName, r.county].filter(Boolean).join(', ')}</div></td>
-          <td>{r.ship ? <Ant op={r}>{r.ship}</Ant> : '—'}<div className={b.sub}>{r.shipTypeLabel}</div></td>
+          <td>{r.ship ? <Ant op={r}>{r.ship}</Ant> : '—'}<div className={b.sub}>{r.shipTypeLabel}</div>{r.scrubberSrc && <ScrubberBadge r={r} />}</td>
           <td>
             <Ant op={r}>{r.kinds.join(', ')}</Ant> · <Ant op={r}>{r.companyLabel}</Ant>
             <div className={b.sub}><Ant op={r}>{r.deliverers.join(', ') || '—'}</Ant> → <Ant op={r}>{r.receiver || '—'}</Ant></div>
@@ -224,10 +244,14 @@ function OpsList({ rows, data }) {
             <div className={b.sub}>{hrs(r.durationH)} planned · pre-boomed <Ant op={r}>{yesNo(r.isPreboomed)}</Ant> · over 500 gal/min <Ant op={r}>{yesNo(r.rateGt500)}</Ant></div>
             {r.contacts.map((k, i) => <div key={i} className={b.sub}>Contact: <Ant op={r}>{[k.name, k.phone].filter(Boolean).join(', ')}</Ant></div>)}
           </td>
-          <td>{r.seen?.kind === 'call' ? <>
-            At <Ais id={data.callRecordId}>{terminalName(r.seen.terminalKey)}</Ais>
-            <div className={b.sub}><Ais id={data.callRecordId}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
-            <div className={b.sub}>AIS name {r.seen.aisName || '—'} · MMSI {r.seen.mmsi} · arrived {r.seen.delayH > 0 ? '+' : ''}{hrs(r.seen.delayH)} vs. notified start</div>
+          <td>{r.seen?.kind === 'call' || r.seen?.kind === 'dock' ? <>
+            At <Ais id={recOf(r.seen.terminalKey)}>{terminalName(r.seen.terminalKey)}</Ais>
+            <div className={b.sub}><Ais id={recOf(r.seen.terminalKey)}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
+            <div className={b.sub}>AIS name {r.seen.aisName || '—'} · MMSI {r.seen.mmsi}{Math.abs(r.seen.delayH) <= 24 && <> · arrived {r.seen.delayH > 0 ? '+' : ''}{hrs(r.seen.delayH)} vs. notified start</>}</div>
+          </> : r.seen?.kind === 'tug' ? <>
+            Its tug <Ais id={recOf(r.seen.terminalKey)}>{r.seen.aisName || `MMSI ${r.seen.mmsi}`}</Ais> at <Ais id={recOf(r.seen.terminalKey)}>{terminalName(r.seen.terminalKey)}</Ais>
+            <div className={b.sub}><Ais id={recOf(r.seen.terminalKey)}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
+            <PairNote pair={data.bargeTugs?.pairs?.[r.ship]} barge={r.ship} />
           </> : r.seen?.kind === 'alongside' ? <>
             {r.seen.tugs.join(', ')} alongside at <Ais id={data.bunkerRecordId}>{r.seen.place || 'the anchorage'}</Ais>
             <div className={b.sub}><Ais id={data.bunkerRecordId}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais> · {hrs(r.seen.hours)}</div>
@@ -321,7 +345,9 @@ export default function OilTransfersReport() {
   const nSeen = count('seen'), nNot = count('notSeen'), nCant = count('cantCheck')
   const mainGal = main.reduce((g, r) => g + (r.gallons || 0), 0)
   const cantTop = Object.entries(main.filter((r) => r.status === 'cantCheck').reduce((m, r) => ({ ...m, [r.reason]: (m[r.reason] || 0) + 1 }), {})).sort((a, z) => z[1] - a[1])
-  const seenRows = shown.filter((r) => r.status === 'seen' && r.seen)
+  // Arrival times: ships at terminals and docks only, and only where the call began within a day of the notified start (a ferry
+  // that comes and goes within 6 h stays one call for days, so its arrival says nothing about the transfer).
+  const seenRows = shown.filter((r) => r.status === 'seen' && r.seen && (r.seen.kind === 'call' || r.seen.kind === 'dock' || r.seen.kind === 'alongside') && Math.abs(r.seen.delayH) <= 24)
   const months = allMonths.filter((m) => m >= from && m <= to)
   const active = FILTER_KEYS.filter((k) => st[k])
   const tile = (k) => ({ on: st.st === k && st.g !== 'small', onClick: () => set({ g: '', st: st.st === k && st.g !== 'small' ? '' : k }) })
@@ -347,7 +373,7 @@ export default function OilTransfersReport() {
           Every over-water transfer of more than 100 gallons of oil to or from a vessel in Washington is notified in advance to the{' '}
           <Src href={ANT_HOME}>Washington State Department of Ecology</Src>: cargo loaded and unloaded at refineries and terminals, ships fueled,
           lightering between vessels. This report sets every notified operation beside what <Src href={MC_HOME}>NOAA’s AIS ship positions</Src> show:
-          the ship at the notified terminal, or a bunker tug alongside it at an anchorage. Click any number to see the operations behind it.
+          the ship at the notified terminal or dock, a barge’s tug with it at the berth, or a bunker tug alongside a ship at an anchorage. Click any number to see the operations behind it.
           Fueling at anchorages alone is in the <a className={c.src} href="/ships/reports/bunkering">bunkering report</a>.
         </p>
 
@@ -392,6 +418,8 @@ export default function OilTransfersReport() {
           </p>}
 
           <div className={b.filterBar}>
+            {!viewingSmall && st.sc !== SCRUBBER_YES && <button type="button" className={b.chip} onClick={() => set({ sc: SCRUBBER_YES })}
+              title="Ships in the IMO’s scrubber notifications or on the MEP Alliance lists">Scrubber ships only</button>}
             {viewingSmall && <span className={b.chip}><b>Showing:</b> small craft<button type="button" className={b.chipX} onClick={() => set({ g: '' })} aria-label="Back to the main counts">×</button></span>}
             <FilterChips st={st} set={set} clearAll={clearAll} count={shown.length} hint="Click a number, a month or a bar to narrow the whole report." />
           </div>
@@ -413,6 +441,7 @@ export default function OilTransfersReport() {
             <Facet name="By ship type (as notified)" dim="t" rows={facetRows('t')} filt={st} set={set} />
             <Facet name="By company (as notified)" dim="c" rows={facetRows('c')} filt={st} set={set} />
             <Facet name="By volume per operation" dim="v" rows={facetRows('v')} filt={st} set={set} top={5} order={BANDS.map(([, l]) => l)} />
+            {!viewingSmall && <Facet name="Scrubber-fitted ships" dim="sc" rows={facetRows('sc')} filt={st} set={set} sub="operations" />}
             {!viewingSmall && <Facet name="Why some can’t be checked" dim="x" rows={facetRows('x')} filt={st} set={set} sub="operations" />}
           </div>
 
@@ -447,10 +476,21 @@ export default function OilTransfersReport() {
               <dt>Seen in AIS, at a dock</dt>
               <dd>The ship has a call at the notified terminal in <Ais id={data.callRecordId}>MarineCadastre AIS</Ais> positions (stopped, under 0.5 knot,
                 within a berth’s radius for 15 minutes or more) overlapping the notified window widened by {data.rule?.tolH ?? 6} hours on each side. The ship is the
-                same when one of its EarthAtlas records’ MMSIs made the call or the name it broadcast agrees with the notified name.</dd>
+                same when one of its EarthAtlas records’ MMSIs made the call or the name it broadcast agrees with the notified name.
+                At docks that are not terminals (ferry terminals, cruise berths, tug docks, shipyards, marinas), the same rule is applied
+                {data.dockRecordId ? <> to <Ais id={data.dockRecordId}>dock calls</Ais></> : ' to dock calls'} within a radius of the point Ecology gives for the dock.</dd>
               <dt>Seen in AIS, at an anchorage</dt>
               <dd>Fueling and lightering at anchorages are matched as in the <a className={c.src} href="/ships/reports/bunkering">bunkering report</a>: a tug alongside the
                 anchored ship in <Ais id={data.bunkerRecordId}>AIS</Ais> within {data.rule?.tolH ?? 6} hours of the notified window.</dd>
+              <dt>Barges</dt>
+              <dd>Barges carry no AIS. Where a barge works with one tug, the tug that stays at the berth through most of the barge’s notified transfers
+                (escort and assist tugs come and go) is paired with it, and checked against published fleet pages where they exist. A barge transfer is seen when
+                its tug has a call at the notified place in the widened window. An ATB barge and its tug are one unit, so an ATB transfer whose tug is not there
+                is not seen; a towed barge can be left at a dock, so one whose tug is not there can’t be checked.</dd>
+              <dt>Scrubber-fitted ships</dt>
+              <dd>A ship counts as scrubber-fitted when it is in the <Src href={SCRUBBER_SRC.gisis.href}>IMO’s scrubber notifications</Src> or on
+                the <Src href={SCRUBBER_SRC.mep.href}>MEP Alliance lists</Src>, and every ship in EarthAtlas carrying the notified name is (narrowed to
+                the ship whose MMSI AIS saw, where seen).</dd>
               <dt>Can’t be checked</dt>
               <dd>{Object.values(REASONS).join('; ')}.</dd>
             </dl>

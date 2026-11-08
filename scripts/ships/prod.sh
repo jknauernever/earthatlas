@@ -28,6 +28,7 @@
 #   zsh scripts/ships/prod.sh import-wa-air      back up, then WA local clean air agency permits (PSCAA, ORCAA, SWCAA pilot; lib/ships/data/wa-air-permits.json) for the US facilities; run after import-facilities; reuses the cached pages and PDFs in scripts/ships/facilities/cache (0 requests when cached); no migration
 #   zsh scripts/ships/prod.sh import-wa-leases   back up, then WA DNR aquatic land leases + port management areas + county shoreline permits at the docks (lib/ships/data/wa-leases-sites.json; reuses the cache, 0 requests when cached; needs migration 030)
 #   zsh scripts/ships/prod.sh oil-transfer-snapshot  store the oil-transfer report (needs migration 042; run after bunker-snapshot)
+#   zsh scripts/ships/prod.sh import-dock-calls      back up, then dock calls (needs migration 043; cache/dock-calls/hits.csv, lib/ships/dockCalls.js)
 #   zsh scripts/ships/prod.sh import-terminal-calls  back up, then terminal calls counted from our AIS (cache/terminal-calls/hits.csv)
 #   zsh scripts/ships/prod.sh import-anchorage-stays back up, then anchorage stays counted from our AIS (cache/anchorage-stays/hits.csv; needs migration 020)
 #   zsh scripts/ships/prod.sh import-ecology-ant back up, then a Washington Ecology Advance Notice of Transfer release (cache/ecology-ant/ant-rows.json from ant_export.py; --release ant-YYYY-MM-DD; needs migration 039)
@@ -167,6 +168,11 @@ case "${1:-}" in
     need SHIPS_PROD_DATABASE_URL
     backup import-terminal-calls
     prod_node scripts/ships/terminal-calls.mjs import "${@:2}"
+    ;;
+  import-dock-calls)
+    need SHIPS_PROD_DATABASE_URL
+    backup import-dock-calls
+    prod_node scripts/ships/dock-calls.mjs import "${@:2}"
     ;;
   import-anchorage-stays)
     need SHIPS_PROD_DATABASE_URL

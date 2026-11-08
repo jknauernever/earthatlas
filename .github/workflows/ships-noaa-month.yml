@@ -3,7 +3,7 @@
 # isn't in the Salish index yet and whose last day NOAA has published, then for each such month, entirely in Actions:
 #   1. stream the month's daily national files, keep the salish-v6 box   (scripts/ships/bake-ais/fetch_points.py; ~10 GB read, not kept)
 #   2. build tracks + per-ship packs + identities with the same coastline masks as the hand-run months (build_tracks.py)
-#   3. terminal calls + anchorage stays, rules tc4 / as1 (terminal_calls.py, anchorage_stays.py → *.mjs import --post → op=importAisMonth)
+#   3. terminal calls + dock calls + anchorage stays, rules tc4 / dc1 / as1 (terminal_calls.py [--set dock-calls], anchorage_stays.py → *.mjs import --post → op=importAisMonth)
 #   4. publish tiles / pack / identities and add the month to the Salish index (scripts/ships/bake-ais/publish.mjs)
 #   5. NOAA ship identities over every month (op=importMcIdentity, resumable batches)
 # When a month lands, terminal and anchorage cards switch from GFW estimates to NOAA's counts, and the GFW lines step aside in the box.
@@ -130,6 +130,13 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           if [ "$TEST" = true ]; then node scripts/ships/terminal-calls.mjs import --post "$API" --month "${YM:0:7}" --dry-run
           else node scripts/ships/terminal-calls.mjs import --post "$API" --month "$YM"; fi
+      - name: Dock calls (the untracked docks Ecology's oil-transfer notices name; lib/ships/data/antDocks.js, rule dc1)
+        run: |
+          node scripts/ships/dock-calls.mjs docks
+          cd scripts/ships/bake-ais && python3 terminal_calls.py --set dock-calls && python3 terminal_calls.py --set dock-calls --export
+          cd "$GITHUB_WORKSPACE"
+          if [ "$TEST" = true ]; then node scripts/ships/dock-calls.mjs import --post "$API" --month "${YM:0:7}" --dry-run
+          else node scripts/ships/dock-calls.mjs import --post "$API" --month "$YM"; fi
       - name: Anchorage stays
         run: |
           cd scripts/ships/bake-ais && python3 anchorage_stays.py && python3 anchorage_stays.py --export

@@ -50,6 +50,7 @@ import styles from './FireApp.module.css'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 import PoweredBy from '../components/PoweredBy.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -2172,7 +2173,7 @@ export default function FireApp() {
           EarthAtlas is built by{' '}
           <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
             KnauerNever.com
-          </a>
+          </a><LegalLinks linkClassName={styles.builtByLink} />
         </div>
       </MapSheet>
 

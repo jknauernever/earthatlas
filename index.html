@@ -3,26 +3,10 @@
   <head>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-6G13WC6FHH"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-6G13WC6FHH');
-    </script>
+    <script src="/ga-init.js"></script>
     <meta charset="UTF-8" />
-    <!-- Mapbox GL calls Object.hasOwn (ES2022); without this shim, browsers
-         older than Chrome 93 / Safari 15.4 crash every map tool on load. -->
-    <script>
-      if (!Object.hasOwn) {
-        Object.defineProperty(Object, 'hasOwn', {
-          value: function (obj, prop) {
-            return Object.prototype.hasOwnProperty.call(Object(obj), prop)
-          },
-          writable: true,
-          configurable: true,
-        })
-      }
-    </script>
+    <!-- Object.hasOwn shim for older browsers (Mapbox GL needs it). -->
+    <script src="/hasown-shim.js"></script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- viewport-fit=cover lets the full-bleed map tools (/fire, /forestmonitor,
          /carbon, /quakes) paint edge to edge on notched phones; their chrome

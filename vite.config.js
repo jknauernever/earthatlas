@@ -768,6 +768,61 @@ function shipsApiPlugin(shipsDbUrl, gfwToken, shipsProdUrl) {
   }
 }
 
+// Dev middleware for /api/auth/* (user accounts, api/auth.js → lib/accounts/auth.js): converts the Node request
+// to a Web Request and runs the same fetch handler production uses, against the dev users database
+// (USERS_DATABASE_URL in .env.local = earthatlas-users-dev). Emails print to this terminal without RESEND_API_KEY.
+function accountsApiPlugin(env) {
+  return {
+    name: 'accounts-api',
+    configureServer(server) {
+      for (const k of ['USERS_DATABASE_URL', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'RESEND_API_KEY', 'SIGNUPS_OPEN', 'CONTACT_TO']) {
+        if (env[k] && !process.env[k]) process.env[k] = env[k]
+      }
+      server.middlewares.use('/api/auth', async (req, res) => {
+        try {
+          const { handleAuth } = await server.ssrLoadModule('/api/auth.js')
+          const host = req.headers.host || 'localhost:5173'
+          const chunks = []
+          if (req.method !== 'GET' && req.method !== 'HEAD') for await (const c of req) chunks.push(c)
+          const headers = new Headers()
+          for (const [k, v] of Object.entries(req.headers)) if (v != null) headers.set(k, Array.isArray(v) ? v.join(', ') : v)
+          headers.set('x-forwarded-for', req.socket.remoteAddress || '127.0.0.1')
+          const request = new Request(`http://${host}/api/auth${req.url === '/' ? '' : req.url}`, {
+            method: req.method, headers, body: chunks.length ? Buffer.concat(chunks) : undefined,
+          })
+          const out = await handleAuth(request)
+          res.statusCode = out.status
+          const cookies = out.headers.getSetCookie ? out.headers.getSetCookie() : []
+          out.headers.forEach((v, k) => { if (k !== 'set-cookie') res.setHeader(k, v) })
+          if (cookies.length) res.setHeader('set-cookie', cookies)
+          res.end(Buffer.from(await out.arrayBuffer()))
+        } catch (err) {
+          res.statusCode = 502
+          res.end(String(err).slice(0, 200))
+        }
+      })
+      // Same security headers as vercel.json on account / admin pages, so CSP problems show up on
+      // localhost. Dev-only additions: Vite's inline React-refresh preamble and its HMR websocket.
+      server.middlewares.use(async (req, res, next) => {
+        const p = (req.url || '').split('?')[0]
+        if (!/^\/(account(\/.*)?|admin\/users|contact)$/.test(p)) return next()
+        try {
+          const fs = await import('node:fs')
+          const rules = JSON.parse(fs.readFileSync('vercel.json', 'utf8')).headers || []
+          const src = ['/account', '/admin/users', '/contact'].includes(p) ? p : '/account/(.*)'
+          for (const { key, value } of rules.find((r) => r.source === src)?.headers || []) {
+            res.setHeader(key, key !== 'Content-Security-Policy' ? value : value
+              .replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
+              .replace("connect-src 'self'", "connect-src 'self' ws: wss:")
+              .replace('; upgrade-insecure-requests', ''))
+          }
+        } catch { /* best-effort mirror of production headers */ }
+        next()
+      })
+    },
+  }
+}
+
 // Dev middleware for /api/whales: runs the Node handler itself against the whales database
 // (WHALES_DATABASE_URL from .env.local — there is no separate dev DB). WHALES_SCHEMA may point
 // it at a throwaway whales_t_* schema while proving changes.
@@ -1092,6 +1147,7 @@ export default defineConfig(({ mode }) => {
     dockReviewPlugin(),
     shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || '', env.SHIPS_PROD_DATABASE_URL || ''),
     whalesApiPlugin(env.WHALES_DATABASE_URL || process.env.WHALES_DATABASE_URL || '', env.WHALES_SCHEMA || ''),
+    accountsApiPlugin(env),
     speciesOfConcernApiPlugin(ebirdKey),
     // Upload source maps to Sentry during production builds so stack traces
     // show real function names instead of minified gibberish. No-ops in dev

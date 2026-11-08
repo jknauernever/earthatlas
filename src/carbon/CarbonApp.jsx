@@ -36,6 +36,7 @@ import { useIsMobile } from '../hooks/useMediaQuery'
 import styles from './CarbonApp.module.css'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 // Mobile popups get a drag-to-extend grab handle (no-op after first call).
 installPopupSheet()
@@ -496,7 +497,7 @@ export default function CarbonApp() {
             <button type="button" className={styles.methodology} onClick={() => setShowMethodology(true)}>ⓘ How this is calculated</button>
             <p className={styles.disclaimer}>Educational estimate from global satellite datasets — useful for landscape-level awareness, <strong>not</strong> a substitute for field measurement or carbon-credit verification.</p>
 
-            <div className={styles.builtBy}>EarthAtlas is built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>KnauerNever.com</a></div>
+            <div className={styles.builtBy}>EarthAtlas is built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>KnauerNever.com</a><LegalLinks linkClassName={styles.builtByLink} /></div>
           </div>
         )}
       </MapSheet>

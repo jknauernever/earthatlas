@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import s from './Panel.module.css'
 import PoweredBy from '../PoweredBy.jsx'
+import LegalLinks from '../LegalLinks.jsx'
 
 /**
  * Bottom of every EarthAtlas left panel: "ⓘ How this is sourced" (opens the site's sources rollup) and the
@@ -36,7 +37,7 @@ export default function SourcesFooter({ title = 'How this is sourced', intro, se
       <div className={s.builtBy}>
         <PoweredBy always={poweredBy} />
         EarthAtlas is built by{' '}
-        <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a>
+        <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={s.builtByLink}>KnauerNever.com</a><LegalLinks linkClassName={s.builtByLink} />
       </div>
       {open && (
         <SourcesModal title={title} intro={intro} sections={sections} notes={notes} changelog={changelog} reports={reports}
@@ -104,7 +105,7 @@ export function SourcesModal({ title = 'How this is sourced', intro, sections = 
           {reports.map((r) => <span key={r.href}><a href={r.href}>Report: {r.label}</a>{' · '}</span>)}
           {changelog?.href && <><a href={changelog.href}>{changelog.label || 'What’s new (changelog)'}</a>{' · '}</>}
           EarthAtlas is built by{' '}
-          <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+          <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a><LegalLinks />
         </div>
       </div>
     </div>,

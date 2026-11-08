@@ -46,6 +46,7 @@ import MapSheet from '../components/MapSheet.jsx'
 import { LegendTurndown } from '../components/panel'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 const MAPBOX_TOKEN = mapboxToken
 
@@ -605,7 +606,7 @@ export default function BirdsongApp() {
               EarthAtlas is built by{' '}
               <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
                 KnauerNever.com
-              </a>
+              </a><LegalLinks linkClassName={styles.builtByLink} />
             </div>
           </div>
       </MapSheet>

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import c from './IntakePage.module.css'
 import { TAXONOMY, labelOf } from '../../lib/ships/taxonomy.js'
+import { ACCOUNTS_LIVE } from '../accounts/live.js'
 
 const api = (op, { body, query = '' } = {}) => fetch(`/api/ships?op=${op}${query}`, {
   method: body ? 'POST' : 'GET', credentials: 'same-origin',
@@ -51,7 +52,10 @@ function SignIn({ onDone }) {
   return (
     <form className={c.box} onSubmit={submit}>
       <div className={c.h2}>Sign in</div>
-      <p className={c.note}>Use the EarthAtlas admin username and password.</p>
+      {ACCOUNTS_LIVE ? <>
+        <p className={c.note}>Sign in with your EarthAtlas admin account and open the <a href="/admin/users">admin tools</a> (they ask for your authenticator code), then reload this page.</p>
+        <p className={c.note}>Or, until it's retired, the old shared admin username and password:</p>
+      </> : <p className={c.note}>Use the EarthAtlas admin username and password.</p>}
       <input className={c.input} placeholder="Username" value={u} onChange={(e) => setU(e.target.value)} autoComplete="username" />
       <input className={c.input} placeholder="Password" type="password" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" />
       <button className={c.primary} type="submit">Sign in</button>

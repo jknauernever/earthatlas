@@ -30,6 +30,7 @@ import { inBounds } from './wildQuery'
 import { SITE_RUNS_NOTE, SITE_RUNS_SHORT } from '../components/panel/siteRunsNote.js'
 import { fetchWhales, whaleIndex, isWhaleDuplicate, WHALE_SOURCES } from '../lib/whales.js'
 import { chainSightings } from '../../lib/whales/paths.js'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 const SOURCE_URLS = {
   GBIF: 'https://www.gbif.org',
@@ -532,7 +533,7 @@ export default function ExploreApp({ config }) {
             ))}
           </div>
           <div className={styles.footerText}>
-            Built by <a className={styles.footerLink} href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+            Built by <a className={styles.footerLink} href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a><LegalLinks linkClassName={styles.footerLink} />
             {' · '}<span title={SITE_RUNS_NOTE.body}>{SITE_RUNS_SHORT}</span>
           </div>
           <div className={styles.footerText}>
@@ -784,7 +785,7 @@ export default function ExploreApp({ config }) {
           <a className={styles.footerLink} href="/">EarthAtlas.org</a>
         </div>
         <div className={styles.footerBuiltBy}>
-          Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a>
+          Built by <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer">KnauerNever.com</a><LegalLinks />
           {' · '}<span title={SITE_RUNS_NOTE.body}>{SITE_RUNS_SHORT}</span>
         </div>
       </footer>

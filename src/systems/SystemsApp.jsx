@@ -70,6 +70,7 @@ import styles from './SystemsApp.module.css'
 import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 import PoweredBy from '../components/PoweredBy.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 const AI_NOTE = aiExperimentNote('“Explain this view” and the short notes in map popups are')
 
@@ -3412,7 +3413,7 @@ export default function SystemsApp() {
               EarthAtlas is built by{' '}
               <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
                 KnauerNever.com
-              </a>
+              </a><LegalLinks linkClassName={styles.builtByLink} />
             </div>
           </div>
         )}

@@ -36,6 +36,7 @@ import styles from './HappyWhaleApp.module.css'
 import MapSheet from '../components/MapSheet.jsx'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 const MAPBOX_TOKEN = mapboxToken
 
@@ -764,7 +765,7 @@ export default function HappyWhaleApp() {
               EarthAtlas is built by{' '}
               <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={styles.builtByLink}>
                 KnauerNever.com
-              </a>
+              </a><LegalLinks linkClassName={styles.builtByLink} />
             </div>
       </MapSheet>
 

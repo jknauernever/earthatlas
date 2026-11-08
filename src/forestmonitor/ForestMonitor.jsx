@@ -18,6 +18,7 @@ import styles from './ForestMonitor.module.css'
 import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 import PoweredBy from '../components/PoweredBy.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
 
 const AI_NOTE = aiExperimentNote('“Explain this spot in plain language” summaries are')
 
@@ -1559,7 +1560,7 @@ export default function ForestMonitor() {
             className={styles.legendFooterLink}
           >
             KnauerNever.com
-          </a>
+          </a><LegalLinks linkClassName={styles.legendFooterLink} />
         </div>
       </MapSheet>
 

@@ -32,6 +32,13 @@ import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import NewsArticlePage from './news/NewsArticlePage.jsx'
 import AdminApp from './admin/AdminApp.jsx'
+// Account pages load only when an /account URL is opened (one shared chunk).
+const lazyAccount = (name) => lazy(() => import('./accounts/AccountPages.jsx').then((m) => ({ default: m[name] })))
+const SignInPage = lazyAccount('SignInPage'), SignUpPage = lazyAccount('SignUpPage'), ForgotPage = lazyAccount('ForgotPage'),
+  ResetPage = lazyAccount('ResetPage'), InvitePage = lazyAccount('InvitePage'), VerifiedPage = lazyAccount('VerifiedPage'), AccountPage = lazyAccount('AccountPage'), DeletedPage = lazyAccount('DeletedPage'), ContactPage = lazyAccount('ContactPage'), DeleteLinkPage = lazyAccount('DeleteLinkPage')
+const AdminUsersPage = lazy(() => import('./accounts/AdminUsersPage.jsx'))
+const lazyLegal = (name) => lazy(() => import('./accounts/LegalPages.jsx').then((m) => ({ default: m[name] })))
+const PrivacyPage = lazyLegal('PrivacyPage'), TermsPage = lazyLegal('TermsPage')
 import LiveGlobe from './live/LiveGlobe.jsx'
 import LiveLocal from './live/LiveLocal.jsx'
 import ForestMonitor from './forestmonitor/ForestMonitor.jsx'
@@ -67,6 +74,8 @@ import BunkeringReport from './ships/BunkeringReport.jsx'
 import OilTransfersReport from './ships/OilTransfersReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
+import { onPrivatePage, posthogBeforeSend, sentryBeforeSend } from './accounts/privacy.js'
+import { ACCOUNTS_LIVE } from './accounts/live.js'
 
 // Sentry: only initialize in production builds AND when a DSN is configured.
 // Dev still gets noisy errors in the console; prod gets structured capture +
@@ -77,6 +86,7 @@ if (sentryDsn && import.meta.env.PROD) {
     dsn: sentryDsn,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.1,
+    beforeSend: sentryBeforeSend, // one-time tokens out of URLs + breadcrumbs
     replaysSessionSampleRate: 0,        // no idle session replays
     replaysOnErrorSampleRate: 1.0,      // capture replay only when an error fires
     integrations: [
@@ -87,7 +97,8 @@ if (sentryDsn && import.meta.env.PROD) {
       Sentry.browserTracingIntegration({
         shouldCreateSpanForRequest: (url) => !isMapTileRequest(url),
       }),
-      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+      // No replays from account / admin pages (names, emails); see src/accounts/privacy.js.
+      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false, beforeErrorSampling: () => !onPrivatePage() }),
     ],
     // Browser extensions (MetaMask etc.) inject scripts into every page and
     // their internal errors land in our global handlers. Drop any event whose
@@ -142,6 +153,8 @@ if (phKey) {
     person_profiles: 'identified_only',
     capture_pageview: true,
     autocapture: true,
+    // Account / admin pages: pageviews only (no clicks, text or recordings); tokens out of every URL.
+    before_send: posthogBeforeSend,
   })
 }
 
@@ -206,6 +219,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/inmotion" element={<SystemsApp />} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />
           <Route path="/admin" element={<AdminApp />} />
+          {/* Accounts, admin, contact and legal pages: routed only once accounts launch (src/accounts/live.js). */}
+          {ACCOUNTS_LIVE && (<>
+          <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
+          <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
+          <Route path="/contact" element={<Suspense fallback={null}><ContactPage /></Suspense>} />
+          <Route path="/admin/users" element={<Suspense fallback={null}><AdminUsersPage /></Suspense>} />
+          <Route path="/account" element={<Suspense fallback={null}><AccountPage /></Suspense>} />
+          <Route path="/account/signin" element={<Suspense fallback={null}><SignInPage /></Suspense>} />
+          <Route path="/account/signup" element={<Suspense fallback={null}><SignUpPage /></Suspense>} />
+          <Route path="/account/forgot" element={<Suspense fallback={null}><ForgotPage /></Suspense>} />
+          <Route path="/account/reset" element={<Suspense fallback={null}><ResetPage /></Suspense>} />
+          <Route path="/account/invite" element={<Suspense fallback={null}><InvitePage /></Suspense>} />
+          <Route path="/account/verified" element={<Suspense fallback={null}><VerifiedPage /></Suspense>} />
+          <Route path="/account/deleted" element={<Suspense fallback={null}><DeletedPage /></Suspense>} />
+          <Route path="/account/delete-link" element={<Suspense fallback={null}><DeleteLinkPage /></Suspense>} />
+          </>)}
           <Route path="/*" element={<App />} />
         </Routes>
       </BrowserRouter>

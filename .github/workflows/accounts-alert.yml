@@ -1,0 +1,33 @@
+# Opens (or adds to) a GitHub issue when EarthAtlas accounts see unusual activity.
+# Dispatched by lib/accounts/alerts.js with GH_DISPATCH_TOKEN; assigned to Josh so GitHub notifies him.
+name: accounts-alert
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Issue title
+        required: true
+      body:
+        description: Issue text
+        required: true
+permissions:
+  issues: write
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: ${{ inputs.title }}
+          BODY: ${{ inputs.body }}
+        run: |
+          gh label create account-alert --color B60205 --description "Automatic: unusual activity on EarthAtlas accounts" 2>/dev/null || true
+          num=$(gh issue list --label account-alert --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --label account-alert --assignee jknauernever --body "$BODY"
+          fi

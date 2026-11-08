@@ -2,6 +2,7 @@ import panel from './panel/Panel.module.css'
 import s from './BuiltByCredit.module.css'
 import PoweredBy from './PoweredBy.jsx'
 import { SITE_RUNS_NOTE, SITE_RUNS_SHORT } from './panel/siteRunsNote.js'
+import LegalLinks from './LegalLinks.jsx'
 
 /**
  * "EarthAtlas is built by KnauerNever.com" — on every EarthAtlas subsite. Pages with a
@@ -19,7 +20,7 @@ export default function BuiltByCredit({ variant = 'panel', className = '', aiNot
     <div className={`${cls} ${className}`}>
       <PoweredBy onLight={variant === 'light'} />
       EarthAtlas is built by{' '}
-      <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={link}>KnauerNever.com</a>
+      <a href="https://knauernever.com" target="_blank" rel="noopener noreferrer" className={link}>KnauerNever.com</a><LegalLinks linkClassName={link} />
       {aiNote && <> · <span title={SITE_RUNS_NOTE.body}>{SITE_RUNS_SHORT}</span></>}
     </div>
   )

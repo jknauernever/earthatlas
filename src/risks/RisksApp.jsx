@@ -524,7 +524,7 @@ export default function RisksApp() {
             {inViewTotals && !inViewTotals.region && (
               <div className={styles.stats}>
                 <div><b>{ext(`${SLR_SERVICE_URL}/0`, fmt(inViewTotals.buildings))}</b><span>buildings</span></div>
-                <div><b>{ext('https://www.sanjuanco.com/167/Assessor', fmt(inViewTotals.lots))}</b><span>lots</span></div>
+                <div><b>{ext('https://www.sanjuancountywa.gov/149/Assessor', fmt(inViewTotals.lots))}</b><span>lots</span></div>
                 <div><b>{ext(`${reportHref}#how`, money(inViewTotals.value))}</b><span>land + buildings</span></div>
                 <div><b>{ext(ROAD_CENTERLINES_URL, inViewTotals.roadMiles.toFixed(1))}</b><span>road miles</span></div>
               </div>
@@ -574,7 +574,7 @@ export default function RisksApp() {
               sub="from zoom 13" on={!layersOff.has('lots')} onToggle={() => toggleLayer('lots')}
               info={regionHere
                 ? <>Lots the flood reaches in {regionHere.name}, from the {ext(WA_PARCELS_URL, 'Washington State Parcels Project')} (county Assessor data).</>
-                : <>Tax parcel boundaries from the {ext('https://www.sanjuanco.com/167/Assessor', 'San Juan County Assessor')}.</>} />
+                : <>Tax parcel boundaries from the {ext('https://www.sanjuancountywa.gov/149/Assessor', 'San Juan County Assessor')}.</>} />
 
             {/* Roads and erosion: San Juan County (ESA) only, so shown there only */}
             {!regionHere && <>

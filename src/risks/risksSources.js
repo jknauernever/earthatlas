@@ -27,7 +27,7 @@ export const RISKS_SOURCES = [
     sources: [
       { name: 'Building Footprints', href: `${SLR_SERVICE_URL}/0`, publisher: 'San Juan County GIS, via Salish Sea Explorer', licence: LICENCE, licenceHref: STORYMAP_URL,
         method: 'EarthAtlas marks each footprint with the first scenario whose flood extent touches it (exact polygon intersection), and draws each flooded one as a dot at low zoom. “Most flooded on this map” counts those buildings within 700 m of each other, grouped around the densest clusters; place names are the nearest Mapbox map label (a settlement or bay).' },
-      { name: 'Tax parcels', href: 'https://www.sanjuanco.com/167/Assessor', publisher: 'San Juan County Assessor',
+      { name: 'Tax parcels', href: 'https://www.sanjuancountywa.gov/149/Assessor', publisher: 'San Juan County Assessor',
         licence: 'San Juan County public data', method: 'Parcel boundaries, the same tiles EarthAtlas’s /fire map uses.' },
     ],
   },

@@ -36,7 +36,7 @@ const PARCEL_REGISTRY = {
     maxZoom: 16,
     bbox: [-123.25, 48.35, -122.7, 48.8],
     attribution: 'Parcel data: San Juan County Assessor (WA)',
-    citation: { short: 'San Juan County Assessor (WA)', tag: 'San Juan County parcels', url: 'https://www.sanjuanco.com/167/Assessor' },
+    citation: { short: 'San Juan County Assessor (WA)', tag: 'San Juan County parcels', url: 'https://www.sanjuancountywa.gov/149/Assessor' },
   },
 }
 

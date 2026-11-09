@@ -17,7 +17,7 @@ import { SCENARIOS, SLR_LEVELS, STORMS, SLR_SERVICE_URL, EROSION_ZONES_URL, REPO
 import { reportPage } from './risksSources.js'
 import DocBrand from '../components/DocBrand.jsx'
 
-const ASSESSOR_URL = 'https://www.sanjuanco.com/167/Assessor'
+const ASSESSOR_URL = 'https://www.sanjuancountywa.gov/149/Assessor'
 const M2_PER_ACRE = 4046.856
 // Flood scenarios: one hue, light → deep, mildest first (as the map's legend); erosion its own hue (the map's purple).
 const SCEN_COLOR = ['#fca5a5', '#f87171', '#dc2626', '#991b1b']

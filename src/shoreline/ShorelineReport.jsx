@@ -18,7 +18,7 @@ import { COUNTY_PARCELS_URL, COUNTY_BUILDINGS_URL, FISH_USE_URL, GUIDE_URL } fro
 import { FRIENDS_PAGE } from '../permits/habitat.js'
 
 const FRIENDS_BRAND = BRANDS.find((b) => b.id === 'friends') || BRANDS[0]
-const ASSESSOR_URL = 'https://www.sanjuanco.com/167/Assessor'
+const ASSESSOR_URL = 'https://www.sanjuancountywa.gov/149/Assessor'
 const KELP = '#B89A3A', EELGRASS = '#20B2AA', ARMOR = '#8B0000', PARCEL = '#F97316', BUILDING = '#60A5FA'
 const FORAGE_COLOR = Object.fromEntries(FORAGE.map((f) => [f.id, f.color]))
 

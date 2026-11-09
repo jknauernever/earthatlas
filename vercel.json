@@ -13,6 +13,12 @@
       "permanent": false
     },
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "explore.sanjuans.org" }],
+      "destination": "/shoreline",
+      "permanent": false
+    },
+    {
       "source": "/news/:species(bears|birds|butterflies|condors|dolphins|elephants|fungi|hippos|lions|monkeys|sharks|sloths|tigers|whales|wolves)/:slug*",
       "destination": "/:species",
       "permanent": true

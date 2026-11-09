@@ -24,7 +24,7 @@
 export const BRANDS = [
   {
     id: 'friends',
-    hosts: ['sanjuans.earthatlas.org'],
+    hosts: ['sanjuans.earthatlas.org', 'explore.sanjuans.org'],
     title: 'Salish Sea Explorer',
     chip: 'dark',
     logo: { dark: '/brands/friends/logo-white.png', light: '/brands/friends/logo-black.png' },

@@ -54,7 +54,7 @@ function blockHtml(cls, b) {
  * o: { accent, layerName, swatch ('line'|'fill'|'point'), swatchColor, swatchIcon, title, subtitle,
  *      photos [{url, caption, credit}], stats [{value, unit, label}], chips [{label, tone: 'warn'|'teal'|'on'}], lead (trusted),
  *      story / action {kicker, html (trusted), button {label, href}, source {credit, url}}, body (trusted),
- *      fields [{label, value}], detailsOpen, source {credit, url}, friends (bool: show the Friends logo), footerButtons }
+ *      fields [{label, value}], detailsOpen, detailsExpanded (keep the "All details" toggle but start it open), source {credit, url}, friends (bool: show the Friends logo), footerButtons }
  */
 export function buildPopupCard(o) {
   const photos = o.photos?.filter((p) => !!p?.url) ?? []
@@ -62,14 +62,15 @@ export function buildPopupCard(o) {
   const chips = o.chips ?? []
   const fields = o.fields ?? []
   const toggle = !o.detailsOpen && fields.length > 6
+  const expanded = toggle && !!o.detailsExpanded
   const statsHtml = stats.length
     ? `<div class="fp-stats">${stats.map((s) => `<div class="fp-stat"><div class="fp-v${s.value.length > 7 ? ' fp-v-text' : ''}">${escapeHtml(s.value)}${s.unit ? `<small>${escapeHtml(s.unit)}</small>` : ''}</div><div class="fp-l">${escapeHtml(s.label)}</div></div>`).join('')}</div>` : ''
   const chipsHtml = chips.length
     ? `<div class="fp-chips">${chips.map((c) => `<span class="fp-chip${c.tone && c.tone !== 'default' ? ` fp-chip-${c.tone}` : ''}">${escapeHtml(c.label)}</span>`).join('')}</div>` : ''
   const table = fields.length
-    ? `<table class="fp-table"${toggle ? ' hidden' : ''}>${fields.map((f) => `<tr><td>${escapeHtml(f.label)}</td><td>${linkifyText(f.value)}</td></tr>`).join('')}</table>` : ''
+    ? `<table class="fp-table"${toggle && !expanded ? ' hidden' : ''}>${fields.map((f) => `<tr><td>${escapeHtml(f.label)}</td><td>${linkifyText(f.value)}</td></tr>`).join('')}</table>` : ''
   const details = fields.length
-    ? `<div class="fp-details">${toggle ? `<button type="button" class="fp-tg" data-fp-details aria-expanded="false"><span>All details</span><span>${fields.length} fields <i class="fp-caret"></i></span></button>` : '<div class="fp-k">Details</div>'}${table}</div>` : ''
+    ? `<div class="fp-details">${toggle ? `<button type="button" class="fp-tg${expanded ? ' open' : ''}" data-fp-details aria-expanded="${expanded}"><span>All details</span><span>${fields.length} fields <i class="fp-caret"></i></span></button>` : '<div class="fp-k">Details</div>'}${table}</div>` : ''
   const src = o.source?.credit || o.source?.url
     ? `<div class="fp-src">Source: ${o.source.url ? `<a href="${escapeHtml(o.source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(o.source.credit || 'View the dataset')} &#8599;</a>` : escapeHtml(o.source.credit)}</div>` : '<div class="fp-src"></div>'
   // Friends data always carries the Friends logo

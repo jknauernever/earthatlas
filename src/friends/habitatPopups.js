@@ -654,9 +654,10 @@ export function featureTitle(layerId, props, { fishMode } = {}) {
  * attributes. fishMode: the fish line's Color by choice (its species lead the fish popup and pick "why it matters").
  * Before the Friends content index has loaded, photos and the related-articles block are thinner; rebuild once
  * preloadFriendsContent() resolves (as SSE does) if the popup is still open.
+ * detailsExpanded: "All details" starts open (/shoreline, Josh 2026-11-09).
  * related: false drops the "Related content from Friends of the San Juans" block (/shoreline, Josh 2026-11-09).
  */
-export function buildFriendsPopup(layerId, props, { fishMode, related = true } = {}) {
+export function buildFriendsPopup(layerId, props, { fishMode, related = true, detailsExpanded = false } = {}) {
   const config = LAYERS[layerId]
   if (!config) return ''
   const p = Object.fromEntries(Object.entries(props || {}).filter(([k]) => !ownKey(k) && !config.hideKeys?.includes(k))
@@ -700,6 +701,7 @@ export function buildFriendsPopup(layerId, props, { fishMode, related = true } =
     body: spec.dataOnly || !related ? '' : fromFriendsHtml(articles),
     fields: spec.noDetails ? [] : fields,
     detailsOpen: spec.detailsOpen,
+    detailsExpanded,
     source: { credit: config.sourceCredit },
     friends: config.friends !== false,
   })

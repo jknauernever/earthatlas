@@ -153,7 +153,7 @@ export default function ShorelineApp() {
     const map = mapRef.current
     if (!map) return
     if (hit.row === 'parcels') return openParcel(hit.fid, lngLat)
-    const html = () => buildFriendsPopup(hit.sse, hit.props, { fishMode: fishModeRef.current, related: false })  // no "Related content from Friends" on /shoreline (Josh 2026-11-09)
+    const html = () => buildFriendsPopup(hit.sse, hit.props, { fishMode: fishModeRef.current, related: false, detailsExpanded: true })  // /shoreline (Josh 2026-11-09): no "Related content from Friends"; "All details" starts open
     popupRef.current?.remove()
     const popup = new mapboxgl.Popup({ maxWidth: '360px', offset: 10 }).setLngLat(lngLat).setHTML(html()).addTo(map)
     preloadFriendsContent().then(() => { if (popup.isOpen()) popup.setHTML(html()) })

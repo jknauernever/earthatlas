@@ -7,7 +7,7 @@
  *         length from the official record, the radius the rule uses, and whether it lies inside the AIS points box.
  *   cd scripts/ships/bake-ais && python3 terminal_calls.py [--days YYYY-MM-DD ...] [--export]
  *       → stopped positions near a berth (hits), per day, then hits.csv sorted by terminal, MMSI, time.
- *   node --env-file=.env.local scripts/ships/terminal-calls.mjs import [--schema <name>] [--dry-run]
+ *   node --env-file=.env.local scripts/ships/terminal-calls.mjs import [--schema <name>] [--dry-run] [--terminals a,b]
  *       → splits hits.csv into calls (splitCalls) and stores them in <schema>.terminal_calls (DEV DB unless Josh says
  *         otherwise), plus one source record describing the bake (rule, berths + radii, days covered). Idempotent per
  *         BAKE_VERSION: a re-import replaces that version's calls in one transaction.
@@ -26,6 +26,9 @@ const cmd = args[0]
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
 const schema = opt('schema') || DEFAULT_SCHEMA
 const dry = args.includes('--dry-run')
+// --terminals a,b (2026-11-08): replace only these terminals' calls (their berths alone changed); see storeTerminalSubset.
+const only = opt('terminals') ? opt('terminals').split(',').filter(Boolean) : null
+if (only && opt('post')) throw new Error('--terminals is for a database import, not --post')
 const post = opt('post'), postMonthArg = opt('month')
 if (post && !/^\d{4}-(0[1-9]|1[0-2])$/.test(postMonthArg || '')) throw new Error('--post needs --month YYYY-MM')
 
@@ -92,6 +95,7 @@ async function importCalls() {
     n++
   }
   split.end()
+  if (only) { const keep = calls.filter((c) => only.includes(c.terminal)); calls.length = 0; calls.push(...keep) }
   const terminalsN = new Set(calls.map((c) => c.terminal)).size
   console.log(`${n.toLocaleString()} stopped positions → ${calls.length.toLocaleString()} calls at ${terminalsN} terminals`)
   if (dry) { for (const c of calls.slice(0, 5)) console.log(JSON.stringify(c)); return }
@@ -102,9 +106,9 @@ async function importCalls() {
   await withTx(pool, async (c) => {
     await upsertSource(c, schema, TERMINAL_CALLS_SOURCE)
     const runId = await startRun(c, schema, TERMINAL_CALLS_SOURCE.id, { bake_version: BAKE_VERSION, days: meta.days.length })
-    const r = await storeTerminalCalls(c, schema, { calls, bake, runId })
+    const r = await storeTerminalCalls(c, schema, { calls, bake: only ? { ...bake, why: opt('why') || null } : bake, runId, terminals: only })
     await finishRun(c, schema, runId, { status: 'succeeded', stats: { hits: n, calls: calls.length, terminals: terminalsN }, datasetVersion: BAKE_VERSION })
-    console.log(`stored ${r.calls} calls; bake record ${r.recordId}${r.recordCreated ? ' (new)' : ' (unchanged)'}`)
+    console.log(`stored ${r.calls} calls${r.replaced != null ? ` (replacing ${r.replaced} of ${only.join(', ')})` : ''}; bake record ${r.recordId}${r.recordCreated ? ' (new)' : ' (unchanged)'}`)
   })
 }
 

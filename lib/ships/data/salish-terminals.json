@@ -807,7 +807,7 @@
    ],
    "commodities_from": {
     "source": "wa-ecology-facilities",
-    "ref": "OBJECTID 93",
+    "ref": "OBJECTID 92",
     "field": "OilProducts"
    },
    "berths": [
@@ -820,7 +820,7 @@
      "ref": "0UMS",
      "crosscheck": {
       "source": "wa-ecology-facilities",
-      "ref": "OBJECTID 93",
+      "ref": "OBJECTID 92",
       "km": 0.01
      }
     }
@@ -832,7 +832,7 @@
     ],
     "wa-ecology-facilities": [
      {
-      "objectid": 93,
+      "objectid": 92,
       "name": "SeaPort Seattle Terminal (TLP)"
      }
     ]
@@ -842,7 +842,8 @@
     "ship_port_ids": []
    },
    "notes": [
-    "USACE 0UMS title (\"B P OIL CO., SEATTLE TERMINAL, PIER NO. 11\") is stale; Ecology names it \"SeaPort Seattle Terminal (TLP)\"."
+    "USACE 0UMS title (\"B P OIL CO., SEATTLE TERMINAL, PIER NO. 11\") is stale; Ecology names it \"SeaPort Seattle Terminal (TLP)\".",
+    "Ecology renumbered its facility layer: this terminal was OBJECTID 93 until 2026-10, OBJECTID 92 by 2026-11-08 (same name and dock point; 93 is now Kitsap Transit)."
    ]
   },
   {

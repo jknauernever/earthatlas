@@ -49,6 +49,11 @@
   ],
   "wa-nwsa-t18": [
    "way/1208387139"
+  ],
+  "wa-pos-t91-smith-cove": [
+   "relation/5582276",
+   "relation/1241590",
+   "relation/5582277"
   ]
  },
  "berths": [
@@ -1053,6 +1058,136 @@
      "otherRatio": 2
     },
     "osm_base": "2026-10-07T19:49:06Z"
+   }
+  },
+  {
+   "terminal": "wa-pos-t91-smith-cove",
+   "key": "ais-1",
+   "label": "Estimated from AIS stops: where cruise ships moor on the west side of Pier 91",
+   "basis": "ais_inferred",
+   "lat": 47.62893,
+   "lon": -122.38398,
+   "evidence": {
+    "stops": 162,
+    "ships": 12,
+    "first": "2025-04-14T12:31:17Z",
+    "last": "2026-06-30T22:15:01Z",
+    "fit_share": 1,
+    "spread_p50_m": 1.3,
+    "median_length_m": 293,
+    "footprint": {
+     "osm": [
+      "relation/5582276",
+      "relation/1241590",
+      "relation/5582277"
+     ],
+     "distance_m": 22
+    },
+    "nearest_other": {
+     "id": "way/51479120",
+     "name": "Elliott Bay Fishing Pier at Terminal 86 (Closed) (OSM way/51479120)",
+     "m": 751
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.392,
+      "s": 47.618,
+      "e": -122.372,
+      "n": 47.636
+     },
+     "days": {
+      "n": 546,
+      "first": "2025-01-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2.0,
+      "minLengthM": 100.0
+     },
+     "stops_file": "berth-stops-t91.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-11-08T20:57:34Z",
+    "review": "Accepted by hand 2026-11-08 over guard 5 ('already counted'): the cluster centre is 297 m from a 300 m USACE berth radius, but the larger cruise ships (Carnival Spirit, Anthem of the Seas, Celebrity Edge) stop 320-335 m out and were missed."
+   }
+  },
+  {
+   "terminal": "wa-pos-t91-smith-cove",
+   "key": "ais-2",
+   "label": "Estimated from AIS stops: where cruise ships moor on the east side of Pier 91",
+   "basis": "ais_inferred",
+   "lat": 47.62901,
+   "lon": -122.38191,
+   "evidence": {
+    "stops": 137,
+    "ships": 12,
+    "first": "2025-05-04T12:41:09Z",
+    "last": "2026-06-29T22:29:36Z",
+    "fit_share": 1,
+    "spread_p50_m": 1.3,
+    "median_length_m": 330,
+    "footprint": {
+     "osm": [
+      "relation/5582276",
+      "relation/1241590",
+      "relation/5582277"
+     ],
+     "distance_m": 21
+    },
+    "nearest_other": {
+     "id": "way/51479120",
+     "name": "Elliott Bay Fishing Pier at Terminal 86 (Closed) (OSM way/51479120)",
+     "m": 619
+    },
+    "input": {
+     "source": "marinecadastre-ais",
+     "region": "salish-v6",
+     "box": {
+      "w": -122.392,
+      "s": 47.618,
+      "e": -122.372,
+      "n": 47.636
+     },
+     "days": {
+      "n": 546,
+      "first": "2025-01-01",
+      "last": "2026-06-30"
+     },
+     "stops_rule": {
+      "sogKn": 0.5,
+      "gapMinutes": 30,
+      "jumpM": 100,
+      "minHours": 2.0,
+      "minLengthM": 100.0
+     },
+     "stops_file": "berth-stops-t91.csv"
+    },
+    "rule": {
+     "maxSpreadM": 50,
+     "seedRadiusM": 40,
+     "clusterRadiusM": 60,
+     "minStops": 10,
+     "minShips": 5,
+     "minFitShare": 0.8,
+     "footprintMarginM": 80,
+     "otherRatio": 2
+    },
+    "osm_base": "2026-11-08T20:57:34Z",
+    "review": "Accepted by hand 2026-11-08 over guard 5 ('already counted'): the cluster centre is 297 m from a 300 m USACE berth radius, but the larger cruise ships (Carnival Spirit, Anthem of the Seas, Celebrity Edge) stop 320-335 m out and were missed."
    }
   }
  ]

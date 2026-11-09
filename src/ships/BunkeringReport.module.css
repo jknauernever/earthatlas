@@ -75,3 +75,7 @@
 .editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; margin-top: 10px; padding: 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e5e7eb; }
 .editor label { display: grid; gap: 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
 .editor select, .editor input { font: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 7px; background: #fff; color: #111827; min-width: 0; width: 100%; }
+/* Oil-transfer report: ship type / product / transfer type controls above the filter bar. */
+.topFilters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin: 0 0 10px; }
+.topFilter { display: grid; gap: 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+.topFilter select { font: inherit; font-size: 13.5px; font-weight: 400; text-transform: none; letter-spacing: 0; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #111827; min-width: 0; width: 100%; }

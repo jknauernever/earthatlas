@@ -16,6 +16,7 @@ import c from './ScrubberReport.module.css'
 import b from './BunkeringReport.module.css'
 import DocBrand from '../components/DocBrand.jsx'
 import { unpackOps, productGroup } from '../../lib/ships/oilTransfersPack.js'
+import { SHIP_TYPE_GROUPS, shipGroupOf, cruiseSourceOf, CRUISE, PASSENGER_OTHER } from '../../lib/ships/data/shipTypeGroups.js'
 
 // localhost only: ?data=prod reads production's numbers through the dev proxy (vite.config.js), as the other reports do.
 const API = import.meta.env.DEV && new URLSearchParams(window.location.search).get('data') === 'prod' ? '/__prodread/api/ships' : '/api/ships'
@@ -86,6 +87,13 @@ const PairNote = ({ pair, barge }) => (pair ? <div className={b.sub}>
 </div> : null)
 const KIND_LABEL = { 'Other (incl Lube/Hyd Oil)': 'Other (incl. lube / hydraulic oil)' }
 
+/** Ecology's vessel type as its group and subtype; Ecology's "Passenger Ship" split into cruise ships (with their source) and others. */
+function shipTypeFields(o) {
+  const cruiseSrc = cruiseSourceOf(o.shipType, o.ship)
+  const passenger = String(o.shipType || '').trim().toUpperCase() === 'PASSENGER SHIP'
+  return { shipGroup: shipGroupOf(o.shipType), cruiseSrc, shipTypeLabel: cruiseSrc ? CRUISE : passenger ? PASSENGER_OTHER : shipTypeOf(o.shipType) }
+}
+
 /** One row per operation, with every category it can be filtered by. */
 function toRows(data) {
   return unpackOps(data.packed).map((o, i) => {
@@ -94,12 +102,14 @@ function toRows(data) {
     const kinds = o.transferTypes.length ? o.transferTypes.map((k) => KIND_LABEL[k] || k) : ['Not stated']
     return { ...o, key: `o${i}`, at: o.startAt, month: pacMonth(o.startAt), kinds, place: placeName(o.location), county: countyName(o.region), cityName: title(o.city) || null,
       settingLabel: o.setting === 'anchorage' ? 'Anchorage' : 'Dock or terminal', direction: `${sideOf(o.delivererType)} → ${sideOf(o.receiverType)}`,
-      shipTypeLabel: shipTypeOf(o.shipType), companyLabel: o.company ? o.company.replace(/\s+/g, ' ') : 'Not stated',
-      prods: [...prods].map(([k, g]) => ({ group: k, gallons: g })), band: bandOf(o.gallons) }
+      ...shipTypeFields(o), companyLabel: o.company ? o.company.replace(/\s+/g, ' ') : 'Not stated',
+      prods: [...prods].map(([k, g]) => ({ group: k, gallons: g })), rawProds: [...new Set(o.products.map((p) => String(p.product || '').trim()).filter(Boolean))],
+      band: bandOf(o.gallons) }
   })
 }
 
-// Filters: URL key → [label, how a row is tested, its values for the breakdowns].
+// Filters: URL key → [label, a row's values for the breakdowns, how a value is shown, and (when wider) every value a row matches:
+// a ship-type group as well as its type, a product group as well as Ecology's own product name].
 const DIMS = {
   st: ['Status', (r) => [r.status], (v) => STATUS_LABEL[v] || v],
   k: ['Transfer type', (r) => r.kinds],
@@ -107,9 +117,9 @@ const DIMS = {
   p: ['Place', (r) => [r.place]],
   r: ['County', (r) => (r.county ? [r.county] : [])],
   y: ['City', (r) => (r.cityName ? [r.cityName] : [])],
-  f: ['Product', (r) => r.prods.map((x) => x.group)],
+  f: ['Product', (r) => r.prods.map((x) => x.group), null, (r) => [...r.prods.map((x) => x.group), ...r.rawProds]],
   d: ['Direction', (r) => [r.direction]],
-  t: ['Ship type', (r) => [r.shipTypeLabel]],
+  t: ['Ship type', (r) => [r.shipTypeLabel], null, (r) => [r.shipGroup, r.shipTypeLabel]],
   c: ['Company', (r) => [r.companyLabel]],
   v: ['Volume', (r) => (r.band ? [r.band] : [])],
   x: ['Why not checked', (r) => (r.reason ? [r.reason] : []), (v) => REASONS[v] || v],
@@ -123,7 +133,7 @@ function applyFilters(rows, filt, except = null) {
     if (filt.g !== 'all' && (filt.g === 'small') !== (r.group === 'small')) return false
     for (const k of FILTER_KEYS) {
       if (k === except || !filt[k]) continue
-      if (!DIMS[k][1](r).includes(filt[k])) return false
+      if (!(DIMS[k][3] || DIMS[k][1])(r).includes(filt[k])) return false
     }
     return !q || [r.ship, r.receiver, ...r.deliverers].some((n) => String(n || '').toUpperCase().includes(q))
   })
@@ -236,7 +246,7 @@ function OpsList({ rows, data }) {
         <tr key={r.key}>
           <td><Ant op={r}>{pacific(r.at)}</Ant></td>
           <td>{r.place}<div className={b.sub}>{[r.cityName, r.county].filter(Boolean).join(', ')}</div></td>
-          <td>{r.ship ? <Ant op={r}>{r.ship}</Ant> : '—'}<div className={b.sub}>{r.shipTypeLabel}</div>{r.scrubberSrc && <ScrubberBadge r={r} />}</td>
+          <td>{r.ship ? <Ant op={r}>{r.ship}</Ant> : '—'}<div className={b.sub}>{r.cruiseSrc ? <>Passenger ship (<Ant op={r}>Ecology</Ant>), cruise ship (<Src href={r.cruiseSrc.url} title={`${r.cruiseSrc.name} lists this ship as a cruise ship`}>{r.cruiseSrc.name}</Src>)</> : r.shipTypeLabel}</div>{r.scrubberSrc && <ScrubberBadge r={r} />}</td>
           <td>
             <Ant op={r}>{r.kinds.join(', ')}</Ant> · <Ant op={r}>{r.companyLabel}</Ant>
             <div className={b.sub}><Ant op={r}>{r.deliverers.join(', ') || '—'}</Ant> → <Ant op={r}>{r.receiver || '—'}</Ant></div>
@@ -248,6 +258,10 @@ function OpsList({ rows, data }) {
             At <Ais id={recOf(r.seen.terminalKey)}>{terminalName(r.seen.terminalKey)}</Ais>
             <div className={b.sub}><Ais id={recOf(r.seen.terminalKey)}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
             <div className={b.sub}>AIS name {r.seen.aisName || '—'} · MMSI {r.seen.mmsi}{Math.abs(r.seen.delayH) <= 24 && <> · arrived {r.seen.delayH > 0 ? '+' : ''}{hrs(r.seen.delayH)} vs. notified start</>}</div>
+          </> : r.seen?.kind === 'otherPier' ? <>
+            At <Ais id={recOf(r.seen.terminalKey)}>{terminalName(r.seen.terminalKey)}</Ais>, not the pier named in the notice
+            <div className={b.sub}><Ais id={recOf(r.seen.terminalKey)}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
+            <div className={b.sub}>AIS name {r.seen.aisName || '—'} · MMSI {r.seen.mmsi}</div>
           </> : r.seen?.kind === 'tug' ? <>
             Its tug <Ais id={recOf(r.seen.terminalKey)}>{r.seen.aisName || `MMSI ${r.seen.mmsi}`}</Ais> at <Ais id={recOf(r.seen.terminalKey)}>{terminalName(r.seen.terminalKey)}</Ais>
             <div className={b.sub}><Ais id={recOf(r.seen.terminalKey)}>{pacific(r.seen.t0)} – {pacific(r.seen.t1)}</Ais></div>
@@ -293,6 +307,47 @@ function GeoPicker({ st, set, rows }) {
   )
 }
 
+const TOP_KEYS = ['t', 'f', 'k']
+/** Counts per value for a dimension, over every value a row matches. */
+function countsOf(rows, dim) {
+  const m = new Map()
+  for (const r of rows) for (const v of new Set((DIMS[dim][3] || DIMS[dim][1])(r))) m.set(v, (m.get(v) || 0) + 1)
+  return m
+}
+
+/** Ship type, product and transfer type at the top of the report: groups with their subtypes (Josh 2026-11-08). */
+function TopFilters({ st, set, facetRows }) {
+  const sel = (dim, groups, label) => {
+    const n = countsOf(facetRows(dim), dim)
+    const opt = (v, text) => <option key={v} value={v}>{text} ({fmt(n.get(v) || 0)})</option>
+    return (
+      <label className={b.topFilter}>{label}
+        <select value={st[dim]} onChange={(e) => set({ [dim]: e.target.value })}>
+          <option value="">All</option>
+          {groups ? groups.filter(([g]) => n.get(g)).map(([g, all]) => [g, all.filter((v) => n.get(v))]).map(([g, subs]) => subs.length < 2 && !subs.includes(st[dim])
+            // One subtype (in the rows shown): the group alone, named after it, so the same count is not listed twice.
+            ? opt(g, subs.length && subs[0].toLowerCase() !== g.toLowerCase() ? `${g}: ${subs[0]}` : g)
+            : <optgroup key={g} label={g}>
+            {opt(g, `All ${g.charAt(0).toLowerCase()}${g.slice(1)}`)}
+            {subs.filter((v) => n.get(v)).map((v) => opt(v, `\u00a0\u00a0${v}`))}
+          </optgroup>)
+            : [...n].sort((a, z) => z[1] - a[1]).map(([v]) => opt(v, v))}
+        </select>
+      </label>
+    )
+  }
+  const all = facetRows('t')
+  const typeGroups = SHIP_TYPE_GROUPS.map(([g]) => [g, [...new Set(all.filter((r) => r.shipGroup === g).map((r) => r.shipTypeLabel))].sort()])
+  const prodRows = facetRows('f')
+  const prodGroups = [...new Set(prodRows.flatMap((r) => r.prods.map((x) => x.group)))].sort().map((g) =>
+    [g, [...new Set(prodRows.flatMap((r) => r.rawProds.filter((p) => productGroup(p) === g)))].filter((p) => p !== g).sort()])
+  return <div className={b.topFilters}>
+    {sel('t', typeGroups, 'Ship type')}
+    {sel('f', prodGroups, 'Product')}
+    {sel('k', null, 'Transfer type')}
+  </div>
+}
+
 function FilterEditor({ st, set, facetRows }) {
   const opts = (dim) => {
     const m = new Map()
@@ -303,7 +358,7 @@ function FilterEditor({ st, set, facetRows }) {
   }
   return (
     <div className={b.editor}>
-      {FILTER_KEYS.map((dim) => (
+      {FILTER_KEYS.filter((dim) => !TOP_KEYS.includes(dim)).map((dim) => (
         <label key={dim}>{DIMS[dim][0]} <select value={st[dim]} onChange={(e) => set({ [dim]: e.target.value })}>
           <option value="">All</option>
           {opts(dim).map(([v, n]) => <option key={v} value={v}>{(DIMS[dim][2] || ((x) => x))(v)} ({fmt(n)})</option>)}
@@ -417,6 +472,7 @@ export default function OilTransfersReport() {
             Where both agree, the median time between the notified start and the ship’s arrival in AIS is <b>{hrs(median(seenRows.map((r) => r.seen.delayH)))}</b>.
           </p>}
 
+          <TopFilters st={st} set={set} facetRows={facetRows} />
           <div className={b.filterBar}>
             {!viewingSmall && st.sc !== SCRUBBER_YES && <button type="button" className={b.chip} onClick={() => set({ sc: SCRUBBER_YES })}
               title="Ships in the IMO’s scrubber notifications or on the MEP Alliance lists">Scrubber ships only</button>}
@@ -438,7 +494,7 @@ export default function OilTransfersReport() {
             <Facet name="By place" dim="p" rows={facetRows('p')} filt={st} set={set} />
             <Facet name="Dock or anchorage" dim="s" rows={facetRows('s')} filt={st} set={set} />
             <Facet name="By direction (deliverer → receiver)" dim="d" rows={facetRows('d')} filt={st} set={set} />
-            <Facet name="By ship type (as notified)" dim="t" rows={facetRows('t')} filt={st} set={set} />
+            <Facet name="By ship type (as notified; cruise ships split out)" dim="t" rows={facetRows('t')} filt={st} set={set} />
             <Facet name="By company (as notified)" dim="c" rows={facetRows('c')} filt={st} set={set} />
             <Facet name="By volume per operation" dim="v" rows={facetRows('v')} filt={st} set={set} top={5} order={BANDS.map(([, l]) => l)} />
             {!viewingSmall && <Facet name="Scrubber-fitted ships" dim="sc" rows={facetRows('sc')} filt={st} set={set} sub="operations" />}
@@ -467,8 +523,9 @@ export default function OilTransfersReport() {
               <dt>Notices</dt>
               <dd>Every notice in the <Src href={ANT_HOME}>Ecology Advance Notice of Transfer</Src> records released by Ecology, starting in the months shown.
                 A notice can list several products, each its own row; notices for the same ship and place starting within 12 hours are one operation.
-                Times and hours are as planned in the notice (Pacific time); companies, vessel types, products and contacts are as notified. Product groups and
-                directions group Ecology’s own product and vessel-type names.</dd>
+                Times and hours are as planned in the notice (Pacific time); companies, vessel types, products and contacts are as notified. Product groups,
+                ship-type groups and directions group Ecology’s own product and vessel-type names. Ecology’s “Passenger Ship” is split into cruise ships,
+                where Wikidata or Wikimedia Commons lists the ship as a cruise ship (linked on each operation), and other passenger ships.</dd>
               <dt>The ship</dt>
               <dd>The party to the notice that carries AIS: the receiver, else the deliverer. Facilities, fuel trucks and barges carry none (an ATB barge is
                 named apart from its tug). Fishing vessels, work boats, recreational and unregulated vessels are counted as small craft, apart from the
@@ -478,7 +535,10 @@ export default function OilTransfersReport() {
                 within a berth’s radius for 15 minutes or more) overlapping the notified window widened by {data.rule?.tolH ?? 6} hours on each side. The ship is the
                 same when one of its EarthAtlas records’ MMSIs made the call or the name it broadcast agrees with the notified name.
                 At docks that are not terminals (ferry terminals, cruise berths, tug docks, shipyards, marinas), the same rule is applied
-                {data.dockRecordId ? <> to <Ais id={data.dockRecordId}>dock calls</Ais></> : ' to dock calls'} within a radius of the point Ecology gives for the dock.</dd>
+                {data.dockRecordId ? <> to <Ais id={data.dockRecordId}>dock calls</Ais></> : ' to dock calls'} within a radius of the point Ecology gives for the dock.
+                A passenger ship notified at a Seattle dock but moored at Seattle’s other cruise terminal (Smith Cove / Pier 91 or Bell Street / Pier 66) in the window
+                counts as seen, with the pier AIS shows named on the operation. Names Ecology spells out and ships shorten on AIS (“National Geographic” as
+                “Nat Geo”) are treated as the same name.</dd>
               <dt>Seen in AIS, at an anchorage</dt>
               <dd>Fueling and lightering at anchorages are matched as in the <a className={c.src} href="/ships/reports/bunkering">bunkering report</a>: a tug alongside the
                 anchored ship in <Ais id={data.bunkerRecordId}>AIS</Ais> within {data.rule?.tolH ?? 6} hours of the notified window.</dd>

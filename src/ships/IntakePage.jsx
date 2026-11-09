@@ -1,5 +1,5 @@
 /**
- * /ships/intake — add boats from an operator's web page (Josh 2026-10-19, option A). Admin only (the site's /admin login).
+ * /ships/intake — add boats from an operator's web page (Josh 2026-10-19, option A). Admin only: an EarthAtlas admin account with admin tools unlocked.
  * Paste a URL → the server reads the page (and each boat's own page), Claude pulls out the boats in the operator's own
  * words, every value is checked against the page, and each boat is matched against our records (same review as
  * scripts/ships/intake.mjs). Josh picks the match (or none) per boat, can edit facts, drop photos, ask Claude to dig
@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import c from './IntakePage.module.css'
 import { TAXONOMY, labelOf } from '../../lib/ships/taxonomy.js'
-import { ACCOUNTS_LIVE } from '../accounts/live.js'
 
 const api = (op, { body, query = '' } = {}) => fetch(`/api/ships?op=${op}${query}`, {
   method: body ? 'POST' : 'GET', credentials: 'same-origin',
@@ -42,25 +41,14 @@ function KindSelect({ value, onChange, emptyLabel, className }) {
 const MODEL = { 'claude-haiku-5-5': 'Claude Haiku 5.5', 'claude-opus-5-5': 'Claude Opus 5.5' }
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return u } }
 
+/** Not signed in as an unlocked admin: point to the account sign-in and the admin tools' authenticator unlock. */
 function SignIn({ onDone }) {
-  const [u, setU] = useState(''), [p, setP] = useState(''), [err, setErr] = useState(null)
-  const submit = async (e) => {
-    e.preventDefault(); setErr(null)
-    const r = await fetch('/api/admin/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) })
-    if (r.ok) onDone(); else setErr((await r.json().catch(() => ({}))).error || 'Sign-in failed')
-  }
   return (
-    <form className={c.box} onSubmit={submit}>
+    <div className={c.box}>
       <div className={c.h2}>Sign in</div>
-      {ACCOUNTS_LIVE ? <>
-        <p className={c.note}>Sign in with your EarthAtlas admin account and open the <a href="/admin/users">admin tools</a> (they ask for your authenticator code), then reload this page.</p>
-        <p className={c.note}>Or, until it's retired, the old shared admin username and password:</p>
-      </> : <p className={c.note}>Use the EarthAtlas admin username and password.</p>}
-      <input className={c.input} placeholder="Username" value={u} onChange={(e) => setU(e.target.value)} autoComplete="username" />
-      <input className={c.input} placeholder="Password" type="password" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" />
-      <button className={c.primary} type="submit">Sign in</button>
-      {err && <div className={c.error}>{err}</div>}
-    </form>
+      <p className={c.note}><a href="/account/signin">Sign in with your EarthAtlas admin account</a> and open the <a href="/admin/users">admin tools</a> (they ask for your authenticator code), then come back here.</p>
+      <button className={c.primary} type="button" onClick={onDone}>I've done that: check again</button>
+    </div>
   )
 }
 

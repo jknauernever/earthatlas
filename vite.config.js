@@ -1007,6 +1007,33 @@ function systemsExplainPlugin(anthropicKey, mapboxKey) {
   }
 }
 
+// Dev middleware: /api/ai-analysis — runs the production Edge handler
+// (api/ai-analysis.js) as-is, so the /forestmonitor popup's plain-language
+// summary works under `npm run dev`. Needs ANTHROPIC_API_KEY in .env.local;
+// without it the handler returns its 503 not-configured state.
+function forestAiAnalysisPlugin(anthropicKey) {
+  return {
+    name: 'forest-ai-analysis',
+    configureServer(server) {
+      server.middlewares.use('/api/ai-analysis', async (req, res) => {
+        if (anthropicKey) process.env.ANTHROPIC_API_KEY = anthropicKey
+        const chunks = []
+        for await (const c of req) chunks.push(c)
+        const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
+        const { default: handler } = await import('./api/ai-analysis.js')
+        const out = await handler(new Request('http://localhost/api/ai-analysis', {
+          method: req.method,
+          headers: { 'content-type': req.headers['content-type'] || 'application/json' },
+          body: hasBody ? Buffer.concat(chunks) : undefined,
+        }))
+        res.statusCode = out.status
+        out.headers.forEach((v, k) => res.setHeader(k, v))
+        res.end(Buffer.from(await out.arrayBuffer()))
+      })
+    },
+  }
+}
+
 // Dev middleware: the /sanjuan-docks/review labelling page. Serves the dock-detection
 // pilot's local aerial tiles + overlays (data/sanjuan-docks/ml, never deployed) and
 // saves the reviewer's marks to data/sanjuan-docks/ml/review/labels.json. Dev only.
@@ -1144,6 +1171,7 @@ export default defineConfig(({ mode }) => {
     fireHistoryProxyPlugin(),
     geoProxyPlugin(mapboxToken),
     systemsExplainPlugin(anthropicKey, mapboxToken),
+    forestAiAnalysisPlugin(anthropicKey),
     dockReviewPlugin(),
     shipsApiPlugin(env.SHIPS_DATABASE_URL || process.env.SHIPS_DATABASE_URL || '', env.GFW_API_TOKEN || process.env.GFW_API_TOKEN || '', env.SHIPS_PROD_DATABASE_URL || ''),
     whalesApiPlugin(env.WHALES_DATABASE_URL || process.env.WHALES_DATABASE_URL || '', env.WHALES_SCHEMA || ''),

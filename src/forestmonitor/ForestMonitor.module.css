@@ -397,6 +397,16 @@
 .filterSection {
   margin: 4px 0 12px;
 }
+.unconfirmedToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+.unconfirmedToggle input { margin: 0; accent-color: #fbbf24; cursor: pointer; }
 .filterLabel {
   margin-bottom: 4px;
   font-size: 10px;
@@ -432,6 +442,28 @@
   color: #0a0e17;
   font-weight: 600;
 }
+
+/* Land use: 7 chips wrap to two rows; sub-types sit in one smaller row. */
+.presetsWrap { flex-wrap: wrap; margin-bottom: 6px; }
+.presetsWrap > button { flex: 1 1 22%; }
+.subPresets {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 6px;
+}
+.subPreset, .subPresetActive {
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 10px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.subPreset:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.subPresetActive { border-color: #fbbf24; color: #fbbf24; font-weight: 600; }
 
 /* ─── Date range slider ────────────────────────────────────────────────── */
 .sliderWrap {

@@ -649,11 +649,35 @@ CATEGORY_CROPLAND  = 2
 CATEGORY_GRASSLAND = 3
 CATEGORY_BUILT     = 4
 
-LANDUSE_CATEGORY_CODES = {
-    'forest':    CATEGORY_FOREST,
-    'cropland':  CATEGORY_CROPLAND,
-    'grassland': CATEGORY_GRASSLAND,
-    'built':     CATEGORY_BUILT,
+# Sub-types (Josh 2026-11-08). The classifier now emits 2-digit codes =
+# parent*10 + sub, so a parent chip is `code // 10 == parent`. Each dataset's
+# map below still names the PARENT; categorize() turns parent p into p*10+1 and
+# then applies that dataset's *_SUBCLASS overrides. Two more parents: BARE
+# (was lumped into Built) and WETLAND (was never selectable).
+CATEGORY_BARE      = 5
+CATEGORY_WETLAND   = 6
+SUB_TREE_COVER = 11; SUB_MANGROVE = 12
+SUB_FIELD_CROPS = 21; SUB_TREE_CROPS = 22
+SUB_GRASSLAND = 31; SUB_SHRUBLAND = 32
+SUB_BUILT = 41; SUB_BARE = 51; SUB_WETLAND = 61
+
+# Filter id (the page's ?lu=) → how to build its mask from the classifier.
+# ('parent', p) = code//10 == p; ('sub', c) = code == c; 'natural'/'planted'
+# = forest AND Cheng et al. natural/planted class.
+LANDUSE_FILTERS = {
+    'forest':           ('parent', CATEGORY_FOREST),
+    'forest.natural':   ('npf', 1),
+    'forest.planted':   ('npf', 2),
+    'forest.mangrove':  ('sub', SUB_MANGROVE),
+    'cropland':         ('parent', CATEGORY_CROPLAND),
+    'cropland.field':   ('sub', SUB_FIELD_CROPS),
+    'cropland.tree':    ('sub', SUB_TREE_CROPS),
+    'grassland':        ('parent', CATEGORY_GRASSLAND),
+    'grassland.grass':  ('sub', SUB_GRASSLAND),
+    'grassland.shrub':  ('sub', SUB_SHRUBLAND),
+    'built':            ('parent', CATEGORY_BUILT),
+    'bare':             ('parent', CATEGORY_BARE),
+    'wetland':          ('parent', CATEGORY_WETLAND),
 }
 
 # CDL → universal categories. Orchards/tree crops classify as CROPLAND
@@ -791,6 +815,36 @@ EUCROPMAP_CATEGORY_MAP = {
     # OTHER: 700 (Water), 800 (Wetlands)
 }
 
+# ─── Sub-type overrides: dataset class → 2-digit sub-code ──────────────────
+# Anything not listed gets parent*10+1. New classes (wetland, bare) that the
+# parent maps above left out are added here too.
+_TREE_CROPS, _SHRUB, _BARE, _WET, _MANG = (SUB_TREE_CROPS, SUB_SHRUBLAND, SUB_BARE,
+                                            SUB_WETLAND, SUB_MANGROVE)
+CDL_SUBCLASS = {
+    # orchards / vineyards / nut + tree fruit / Christmas trees
+    **{c: _TREE_CROPS for c in (66, 67, 68, 69, 70, 71, 72, 74, 75, 76, 77,
+                                204, 210, 211, 212, 215, 217, 218, 220, 223)},
+    64: _SHRUB, 152: _SHRUB,                      # shrubland
+    65: _BARE, 131: _BARE,                        # barren (was "Built")
+    87: _WET, 190: _WET, 195: _WET,               # wetlands, woody + herbaceous
+}
+MAPBIOMAS_SUBCLASS = {
+    5: _MANG,                                     # mangrove
+    35: _TREE_CROPS, 36: _TREE_CROPS, 46: _TREE_CROPS, 47: _TREE_CROPS, 48: _TREE_CROPS,  # palm, perennial, coffee, citrus, other perennial
+    22: _BARE, 25: _BARE, 29: _BARE,              # non-vegetated, other non-veg, rocky outcrop
+    11: _WET,                                     # wetland
+}
+DYNAMIC_WORLD_SUBCLASS = {5: _SHRUB, 7: _BARE, 3: _WET}
+WORLDCOVER_SUBCLASS = {95: _MANG, 20: _SHRUB, 60: _BARE, 90: _WET}
+AAFC_SUBCLASS = {
+    188: _TREE_CROPS, 190: _TREE_CROPS,           # orchards, vineyards
+    50: _SHRUB,                                   # shrubland
+    30: _BARE,                                    # exposed land / barren
+    80: _WET, 85: _WET,                           # wetland, peatland
+}
+EUCROPMAP_SUBCLASS = {600: _BARE, 800: _WET}
+
+
 # WorldCereal is per-product binary masks; everything that flags positive
 # IS cropland by definition. We handle the categorization inline rather
 # than as a per-code dict.
@@ -805,15 +859,18 @@ def _build_unified_classifier() -> ee.Image:
         Dynamic World (90-day mode) > WorldCover (2021).
     """
 
-    def categorize(img, mapping):
-        # ee.Image.remap converts class codes to category codes. Unmapped
-        # codes default to 0; we then mask 0s so .where() only overwrites
-        # where the higher-priority dataset actually has an opinion.
-        cat = img.remap(list(mapping.keys()), list(mapping.values()), 0)
+    def categorize(img, mapping, sub=None):
+        # ee.Image.remap converts class codes to sub-codes (parent*10+1, then
+        # the dataset's overrides). Unmapped codes default to 0; we then mask
+        # 0s so .where() only overwrites where the higher-priority dataset
+        # actually has an opinion.
+        full = {k: v * 10 + 1 for k, v in mapping.items()}
+        full.update(sub or {})
+        cat = img.remap(list(full.keys()), list(full.values()), 0)
         return cat.updateMask(cat.gt(0))
 
     wc = ee.Image(WORLDCOVER_ASSET).select('Map')
-    wc_cat = categorize(wc, WORLDCOVER_CATEGORY_MAP)
+    wc_cat = categorize(wc, WORLDCOVER_CATEGORY_MAP, WORLDCOVER_SUBCLASS)
 
     today = date.today()
     dw_start = (today - timedelta(days=DYNAMIC_WORLD_LOOKBACK_DAYS)).isoformat()
@@ -821,7 +878,7 @@ def _build_unified_classifier() -> ee.Image:
           .filterDate(dw_start, today.isoformat())
           .select('label')
           .mode())
-    dw_cat = categorize(dw, DYNAMIC_WORLD_CATEGORY_MAP)
+    dw_cat = categorize(dw, DYNAMIC_WORLD_CATEGORY_MAP, DYNAMIC_WORLD_SUBCLASS)
 
     # WorldCereal — flag any of the 3 specific crop products as CROPLAND.
     # Mosaic each product across AEZs, then OR them together.
@@ -831,26 +888,26 @@ def _build_unified_classifier() -> ee.Image:
         prod_img = (wco_coll.filter(ee.Filter.eq('product', product))
                             .select('classification').mosaic())
         wco_any = wco_any.max(prod_img.gte(100).unmask(0))
-    wco_cat = wco_any.gt(0).selfMask().multiply(CATEGORY_CROPLAND).toInt()
+    wco_cat = wco_any.gt(0).selfMask().multiply(SUB_FIELD_CROPS).toInt()   # annual crops
 
     eu = (ee.ImageCollection(EUCROPMAP_ASSET)
           .filter(ee.Filter.calendarRange(EUCROPMAP_LATEST_YEAR, EUCROPMAP_LATEST_YEAR, 'year'))
           .select('classification')
           .mosaic())
-    eu_cat = categorize(eu, EUCROPMAP_CATEGORY_MAP)
+    eu_cat = categorize(eu, EUCROPMAP_CATEGORY_MAP, EUCROPMAP_SUBCLASS)
 
     mb = (ee.Image(MAPBIOMAS_BR_ASSET)
           .select(f'classification_{MAPBIOMAS_BR_LATEST_YEAR}'))
-    mb_cat = categorize(mb, MAPBIOMAS_CATEGORY_MAP)
+    mb_cat = categorize(mb, MAPBIOMAS_CATEGORY_MAP, MAPBIOMAS_SUBCLASS)
 
     aafc = (ee.ImageCollection('AAFC/ACI')
             .filter(ee.Filter.calendarRange(AAFC_LATEST_YEAR, AAFC_LATEST_YEAR, 'year'))
             .select('landcover')
             .mosaic())
-    aafc_cat = categorize(aafc, AAFC_CATEGORY_MAP)
+    aafc_cat = categorize(aafc, AAFC_CATEGORY_MAP, AAFC_SUBCLASS)
 
     cdl = ee.Image(f'USDA/NASS/CDL/{CDL_LATEST_YEAR}').select('cropland')
-    cdl_cat = categorize(cdl, CDL_CATEGORY_MAP)
+    cdl_cat = categorize(cdl, CDL_CATEGORY_MAP, CDL_SUBCLASS)
 
     # Regional MapBiomas — Bolivia/Ecuador/Peru/Chaco/Pampa/Amazon, all use
     # the same legend as Brazil so they go through MAPBIOMAS_CATEGORY_MAP.
@@ -862,7 +919,7 @@ def _build_unified_classifier() -> ee.Image:
     for src in MAPBIOMAS_REGIONAL_SOURCES:
         try:
             img = _mapbiomas_regional_image(src)
-            regional_mb_cats.append((src['source_key'], categorize(img, MAPBIOMAS_CATEGORY_MAP)))
+            regional_mb_cats.append((src['source_key'], categorize(img, MAPBIOMAS_CATEGORY_MAP, MAPBIOMAS_SUBCLASS)))
         except Exception as e:
             # Lazy construction shouldn't actually raise here — but defensive.
             print(f'_build_unified_classifier: failed to build {src["source_key"]}: {e}', flush=True)
@@ -883,18 +940,42 @@ def _build_unified_classifier() -> ee.Image:
     unified = unified.where(mb_cat.mask(), mb_cat)
     unified = unified.where(aafc_cat.mask(), aafc_cat)
     unified = unified.where(cdl_cat.mask(), cdl_cat)
+    # Tropical tree-crop plantations (Forest Data Partnership, ≥50% likely)
+    # read as "trees" in the global maps — call them tree crops, so oil palm
+    # etc. leave the Forest chips and land under Cropland › Tree crops.
+    unified = unified.where(_commodity_any_mask(), SUB_TREE_CROPS)
     return unified.rename('landuse_category')
 
 
+def _commodity_any_mask() -> ee.Image:
+    """1 where any of palm / rubber / cocoa / coffee is ≥ COMMODITY_MIN_PROB in
+    its latest published year (same mosaic as the commodity tile layer)."""
+    out = ee.Image(0)
+    for asset in COMMODITY_ASSET_BY_KEY.values():
+        coll = ee.ImageCollection(asset)
+        yr = ee.Number(ee.Date(coll.aggregate_max('system:time_start')).get('year'))
+        m = (coll.filterDate(ee.Date.fromYMD(yr, 1, 1), ee.Date.fromYMD(yr.add(1), 1, 1))
+             .select('probability').mosaic())
+        out = out.Or(m.gte(COMMODITY_MIN_PROB).unmask(0))
+    return out.selfMask()
+
+
 def _landuse_mask(filter_id):
-    """Binary mask selecting one universal category from the tiered classifier.
+    """Binary mask for one land-use chip / sub-chip (LANDUSE_FILTERS).
     Returns None when no filter is requested (caller skips applying it)."""
     if not filter_id:
         return None
-    code = LANDUSE_CATEGORY_CODES.get(filter_id.lower())
-    if code is None:
+    spec = LANDUSE_FILTERS.get(filter_id.lower())
+    if spec is None:
         return None
-    return _build_unified_classifier().eq(code)
+    kind, val = spec
+    code = _build_unified_classifier()
+    if kind == 'parent':
+        return code.divide(10).floor().eq(val)
+    if kind == 'sub':
+        return code.eq(val)
+    # 'npf': forest per the classifier AND Cheng et al. natural (1) / planted (2)
+    return code.divide(10).floor().eq(CATEGORY_FOREST).And(_npf_class_image().eq(val))
 
 
 def _add_landcover_bands(stack: ee.Image, point: ee.Geometry) -> ee.Image:
@@ -2423,6 +2504,109 @@ def _density_tile_url(value_img: ee.Image, vis: dict, categorical: bool = False,
     return rgb.getMapId()['tile_fetcher'].url_format
 
 
+# Alerts outside forest (savanna fires, grass browning) are drawn in this muted
+# grey on the unfiltered view so they don't read as forest loss. Mirrors
+# NONFOREST_COLOR in ForestMonitor.jsx.
+NONFOREST_RGB = [156, 163, 175]   # #9ca3af
+
+
+def _forest_2021() -> ee.Image:
+    """1 where ESA WorldCover 2021 says tree cover (10) or mangroves (95), else 0.
+    A PRE-alert baseline on purpose: the alert window starts 2023, so forest
+    that has since burned or been cleared still counts as forest here (a
+    recent land-cover map like Dynamic World would already call it bare/grass
+    and grey out the very clearings we care about)."""
+    wc = ee.Image(WORLDCOVER_ASSET).select('Map')
+    return wc.eq(10).Or(wc.eq(95)).unmask(0)
+
+
+def _natural_forest_2021() -> ee.Image:
+    """2021 forest (WorldCover) minus what Cheng et al. map as planted/managed.
+    Used by the zoomed-out hotspots (Josh 2026-11-08): counting all forest made
+    routine rotation harvest (e.g. Landes pine, 2.3%/yr confirmed) outshine
+    actual natural-forest loss. Caveat from the source: fire/beetle-prone
+    natural forest is sometimes mislabeled planted, so some is dropped."""
+    planted = _npf_class_image().eq(2).unmask(0)
+    return _forest_2021().And(planted.Not())
+
+
+def _opera_tile_url(value_img: ee.Image, vis: dict, landuse: str | None,
+                    categorical: bool = False, max_pixels: int = 128) -> str:
+    """Disturbance tiles for the unfiltered view, density-graded like Hansen
+    (see _density_tile_url): each display pixel's opacity ≈ the share of it
+    that's actually disturbed, so scattered savanna alerts no longer bloom into
+    a solid red blanket when zoomed out — and a display pixel whose alerts are
+    mostly outside 2021 forest is painted grey instead of the ramp.
+
+    With a land-use chip set we keep the old full-strength render, masked at
+    30 m: the user asked for that category, and the tiered classifier (Dynamic
+    World mode + 6 more products) is far too heavy to evaluate at 30 m under
+    reduceResolution (a zoomed-out tile timed out at 150 s vs ~5 s). Masking
+    after the density step instead let other land types' alerts bleed into
+    'forest' pixels, so that was worse than the old render."""
+    if landuse and landuse != 'all':
+        return _tile_url(_maybe_apply_landuse(value_img, landuse), vis)
+    # DIST-ALERT is a mosaic of UTM tiles, so the mosaic has no fixed
+    # projection; reduceResolution needs one. 30 m = the product's native scale.
+    proj = ee.Projection('EPSG:4326').atScale(30)
+    value_img = value_img.setDefaultProjection(proj)
+    alert = value_img.mask().gt(0)
+    reducer = ee.Reducer.mode() if categorical else ee.Reducer.mean()
+    density = alert.reduceResolution(ee.Reducer.mean(), maxPixels=max_pixels, bestEffort=True)
+    value = value_img.reduceResolution(reducer, maxPixels=max_pixels, bestEffort=True)
+    rgb = value.visualize(**vis)
+    forest_share = (_forest_2021().updateMask(alert)
+                    .reduceResolution(ee.Reducer.mean(), maxPixels=max_pixels, bestEffort=True))
+    grey = ee.Image.constant(NONFOREST_RGB).toUint8().rename(rgb.bandNames())
+    rgb = grey.where(forest_share.gte(0.5), rgb)
+    return rgb.updateMask(density).getMapId()['tile_fetcher'].url_format
+
+
+# Hotspot heat (Josh 2026-11-08): at national/global zoom the 30 m pixels are
+# ~1-3% of each display pixel even in heavy clearing, so the density-faded
+# layer is invisible. The page shows this instead below z8: one hue, faint →
+# deep, by the share of each display pixel's land that was disturbed.
+HEAT_SHARE_MIN = 0.002    # 0.2% of the area — below this, nothing drawn
+HEAT_SHARE_MAX = 0.05     # 5%+ = deepest color
+HEAT_PALETTE = ['f87171', 'dc2626', 'b91c1c', '7f1d1d']   # light → deep red
+
+
+def _opera_heat_url(value_img: ee.Image, landuse: str | None, max_pixels: int = 32) -> str:
+    """Hotspot tiles: share of each display pixel that's disturbed, on a sqrt
+    scale so 0.2% still reads and 5% is solid. On the unfiltered view only
+    alerts on 2021 NATURAL forest count (_natural_forest_2021), so savanna
+    fires, farm fields and plantation harvest don't swamp natural-forest loss. With a
+    land-use chip set, all alerts count and the chip's mask is applied at
+    display resolution (the classifier is too heavy at 30 m — see
+    _opera_tile_url)."""
+    proj = ee.Projection('EPSG:4326').atScale(30)
+    alert = value_img.setDefaultProjection(proj).mask().gt(0)
+    if not landuse or landuse == 'all':
+        alert = alert.And(_natural_forest_2021())
+    share = alert.reduceResolution(ee.Reducer.mean(), maxPixels=max_pixels, bestEffort=True)
+    # Smooth over ~2 display pixels so clusters read as hotspots instead of
+    # single-pixel speckle (focal ops run at the tile's own resolution).
+    share = share.unmask(0).convolve(ee.Kernel.gaussian(radius=3, sigma=1.5, units='pixels'))
+    lo, hi = math.sqrt(HEAT_SHARE_MIN), math.sqrt(HEAT_SHARE_MAX)
+    s = share.sqrt()
+    rgb = s.visualize(min=lo, max=hi, palette=HEAT_PALETTE)
+    # Alpha rises with the share too (faint → solid), floor 0.25 so the
+    # faintest drawn cell is still visible over satellite imagery.
+    alpha = s.subtract(lo).divide(hi - lo).clamp(0, 1).multiply(0.75).add(0.25)
+    rgb = rgb.updateMask(alpha.updateMask(share.gte(HEAT_SHARE_MIN)))
+    if landuse and landuse != 'all':
+        rgb = _maybe_apply_landuse(rgb, landuse)
+    return rgb.getMapId()['tile_fetcher'].url_format
+
+
+def _opera_response(img: ee.Image, vis: dict, landuse: str | None, heat: bool,
+                    categorical: bool = False) -> tuple:
+    body = {'tileUrl': _opera_tile_url(img, vis, landuse, categorical=categorical)}
+    if heat:
+        body['heatUrl'] = _opera_heat_url(img, landuse)
+    return (jsonify(body), 200, CORS_HEADERS)
+
+
 def _maybe_apply_landuse(img: ee.Image, landuse: str | None) -> ee.Image:
     """AND in a WorldCover-derived land-use mask when the filter is set."""
     lc_mask = _landuse_mask(landuse)
@@ -2461,33 +2645,57 @@ _OPERA_UNAVAILABLE = (
 )
 
 
-def _handle_recency(start_days: int, end_days: int, landuse: str | None) -> tuple:
+# VEG-DIST-STATUS codes NASA has CONFIRMED (seen again on later passes):
+# 3 confirmed, 6 confirmed · substantial loss, 8 finished confirmed.
+CONFIRMED_STATUSES = (3, 6, 8)
+
+
+def _only_confirmed(img: ee.Image, confirmed: bool) -> ee.Image:
+    """With ?confirmed=1, drop alerts NASA hasn't confirmed yet. The page asks
+    for this by default (Josh 2026-11-08): single-pass provisional alerts are
+    where one bad image shows up — e.g. a ~1-pixel-misregistered Sentinel-2
+    pass on 2026-10-21 lit up the south edge of every forest patch and
+    shoreline in the San Juans (south-edge alert rate 19% vs 4% north)."""
+    if not confirmed:
+        return img
+    st = _mosaic_band('VEG-DIST-STATUS')
+    keep = st.eq(CONFIRMED_STATUSES[0])
+    for c in CONFIRMED_STATUSES[1:]:
+        keep = keep.Or(st.eq(c))
+    return img.updateMask(keep)
+
+
+def _handle_recency(start_days: int, end_days: int, landuse: str | None,
+                    confirmed: bool = False, heat: bool = False) -> tuple:
     if not _opera_band_ready('VEG-DIST-DATE'):
         return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-DIST-DATE')
     img = img.updateMask(img.gte(start_days).And(img.lte(end_days)))
-    img = _maybe_apply_landuse(img, landuse)
-    # Palette stays anchored to the FULL data window (2023-01-01 → today) so
-    # colors mean the same thing regardless of slider position. The mask
-    # above hides pixels outside [start_days, end_days]; only colors of the
-    # remaining pixels are shown.
+    img = _only_confirmed(img, confirmed)
+    # Palette stretches across the SELECTED window (Josh 2026-11-08): pale
+    # yellow = start of the range, bright red = its end. Anchoring it to the
+    # full 2023→today span made a one-month view (the default) all one red.
+    # The end is capped at today since the default request runs to today+30.
     today_days = (date.today() - DATE_EPOCH).days
-    vis = {**RECENCY_VIS, 'max': max(today_days, DATE_MIN + 1)}
-    return (jsonify({'tileUrl': _tile_url(img, vis)}), 200, CORS_HEADERS)
+    hi = min(end_days, today_days)
+    vis = {**RECENCY_VIS, 'min': start_days, 'max': max(hi, start_days + 1)}
+    return _opera_response(img, vis, landuse, heat)
 
 
-def _handle_severity(start_days: int, end_days: int, landuse: str | None) -> tuple:
+def _handle_severity(start_days: int, end_days: int, landuse: str | None,
+                     confirmed: bool = False, heat: bool = False) -> tuple:
     if not _opera_band_ready('VEG-ANOM-MAX') or not _opera_band_ready('VEG-DIST-DATE'):
         return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-ANOM-MAX')
     date_img = _mosaic_band('VEG-DIST-DATE')
     img = img.updateMask(img.gt(0))
     img = img.updateMask(date_img.gte(start_days).And(date_img.lte(end_days)))
-    img = _maybe_apply_landuse(img, landuse)
-    return (jsonify({'tileUrl': _tile_url(img, SEVERITY_VIS)}), 200, CORS_HEADERS)
+    img = _only_confirmed(img, confirmed)
+    return _opera_response(img, SEVERITY_VIS, landuse, heat)
 
 
-def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple:
+def _handle_status(start_days: int, end_days: int, landuse: str | None,
+                   confirmed: bool = False, heat: bool = False) -> tuple:
     if not _opera_band_ready('VEG-DIST-STATUS') or not _opera_band_ready('VEG-DIST-DATE'):
         return _OPERA_UNAVAILABLE
     img = _mosaic_band('VEG-DIST-STATUS')
@@ -2496,8 +2704,8 @@ def _handle_status(start_days: int, end_days: int, landuse: str | None) -> tuple
     # usable data) are excluded.
     img = img.updateMask(img.gte(1).And(img.lte(8)))
     img = img.updateMask(date_img.gte(start_days).And(date_img.lte(end_days)))
-    img = _maybe_apply_landuse(img, landuse)
-    return (jsonify({'tileUrl': _tile_url(img, STATUS_VIS)}), 200, CORS_HEADERS)
+    img = _only_confirmed(img, confirmed)
+    return _opera_response(img, STATUS_VIS, landuse, heat, categorical=True)
 
 
 def _handle_commodity_tile(crop: str) -> tuple:
@@ -4102,10 +4310,14 @@ def get_tiles(request):
         start_days, end_days = _parse_date_range(request)
         landuse = request.args.get('landuse')
         mode = (request.args.get('mode') or 'recency').lower()
+        # Opt-in so the deployed page keeps its current behavior until the
+        # new page (which sends confirmed=1 by default) ships.
+        confirmed = request.args.get('confirmed') == '1'
+        heat = request.args.get('heat') == '1'   # also return heatUrl (hotspots)
         if mode == 'severity':
-            return _handle_severity(start_days, end_days, landuse)
+            return _handle_severity(start_days, end_days, landuse, confirmed, heat)
         if mode == 'status':
-            return _handle_status(start_days, end_days, landuse)
-        return _handle_recency(start_days, end_days, landuse)
+            return _handle_status(start_days, end_days, landuse, confirmed, heat)
+        return _handle_recency(start_days, end_days, landuse, confirmed, heat)
     except Exception as e:
         return (jsonify({'error': str(e)}), 500, CORS_HEADERS)

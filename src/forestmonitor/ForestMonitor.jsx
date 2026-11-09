@@ -149,7 +149,10 @@ const EXTRA_LAYERS = [
 // Legend gradients mirror the cloud function's palettes (RECENCY_VIS,
 // STATUS_VIS, SEVERITY_VIS in main.py).
 const RECENCY_GRADIENT = 'linear-gradient(to right, #fde68a, #fbbf24, #fb923c, #ef4444, #f5160a, #ff1500)'
-const SEVERITY_GRADIENT = 'linear-gradient(to right, #fef3c7, #fde68a, #fbbf24, #fb923c, #ef4444, #b91c1c)'
+// Alerts outside 2021 forest, on the unfiltered view. Mirrors NONFOREST_RGB in
+// cloud-functions/opera-dist-alert-global/main.py.
+const NONFOREST_COLOR = '#9ca3af'
+const SEVERITY_GRADIENT ='linear-gradient(to right, #fef3c7, #fde68a, #fbbf24, #fb923c, #ef4444, #b91c1c)'
 
 const STATUS_SWATCHES = [
   { color: '#fde68a', label: 'Provisional (first)' },
@@ -204,17 +207,37 @@ const LANDUSE_PRESETS = [
   { id: 'cropland',  label: 'Cropland' },
   { id: 'grassland', label: 'Grassland' },
   { id: 'built',     label: 'Built' },
+  { id: 'wetland',   label: 'Wetland' },
+  { id: 'bare',      label: 'Bare' },
 ]
+// Sub-types (Josh 2026-11-08) — one row of small chips under the picked
+// parent. Ids are "<parent>.<sub>" and map 1:1 to LANDUSE_FILTERS in main.py.
+const LANDUSE_SUBTYPES = {
+  forest: [
+    { id: 'forest.natural',  label: 'Natural',  hint: 'Natural forest (Cheng et al. 2024, 2021 map). Fire- or beetle-prone natural forest is sometimes labeled planted.' },
+    { id: 'forest.planted',  label: 'Planted',  hint: 'Planted / managed forest — tree farms and plantations (Cheng et al. 2024, 2021 map).' },
+    { id: 'forest.mangrove', label: 'Mangroves', hint: 'Mangroves (ESA WorldCover 2021; MapBiomas in Brazil).' },
+  ],
+  cropland: [
+    { id: 'cropland.field', label: 'Field crops', hint: 'Annual field crops — grains, row crops, vegetables.' },
+    { id: 'cropland.tree',  label: 'Tree crops',  hint: 'Orchards, vineyards, nuts, and tropical oil palm, rubber, cocoa and coffee.' },
+  ],
+  grassland: [
+    { id: 'grassland.grass', label: 'Grassland', hint: 'Grassland and pasture.' },
+    { id: 'grassland.shrub', label: 'Shrubland', hint: 'Shrubland and scrub.' },
+  ],
+}
 
 // ─── URL state encoding ────────────────────────────────────────────────────
 // Every view of the map is fully described by its URL query string, so
 // any view can be copy/pasted to share. Parameters use short keys to keep
 // URLs compact; defaults are omitted so a clean homepage URL stays clean.
 //
-//   m=recency|status|severity       (default: recency)
-//   start=YYYY-MM-DD                (default: 2023-01-01)
+//   m=recency|status|severity       (default: severity)
+//   start=YYYY-MM-DD                (default: 30 days before end — the Month preset)
 //   end=YYYY-MM-DD                  (default: today)
 //   lu=forest|cropland|grassland|built  (default: 'all', omitted)
+//   uc=1                            (also show unconfirmed alerts; default: confirmed only)
 //   bm=satellite|dark|light|outdoors|streets  (default: satellite)
 //   op=0-100                        (default: 85, OPERA layer opacity %)
 //   layers=opera,commodity,radd,hansen,tmf,foresttype  (which datasets are ON;
@@ -253,6 +276,8 @@ function _readUrlState() {
     start:   sp.get('start'),
     end:     sp.get('end'),
     landuse: sp.get('lu'),
+    // uc=1 → also show alerts NASA hasn't confirmed yet (default: confirmed only).
+    unconfirmed: sp.get('uc') === '1',
     basemap: sp.get('bm'),
     opacity: num('op'),
     // null = param absent (use defaults); '' = present-but-empty (all off / none).
@@ -268,14 +293,15 @@ function _readUrlState() {
 // Serialize the current view state to a query string. Defaults are omitted
 // to keep the canonical "no params" URL clean.
 function _viewStateToQuery({
-  mode, start, end, landuse, basemap, photo, opacity, lat, lng, zoom,
+  mode, start, end, landuse, unconfirmed, basemap, photo, opacity, lat, lng, zoom,
   operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity,
 }) {
   const sp = new URLSearchParams()
-  if (mode && mode !== 'recency') sp.set('m', mode)
+  if (mode && mode !== DEFAULT_MODE) sp.set('m', mode)
   if (start) sp.set('start', start)
   if (end) sp.set('end', end)
   if (landuse && landuse !== 'all') sp.set('lu', landuse)
+  if (unconfirmed) sp.set('uc', '1')
   if (basemap && basemap !== DEFAULT_BASEMAP_ID) sp.set('bm', basemap)
   writePhoto(sp, photo)
   if (opacity != null && Math.abs(opacity - 0.85) > 0.005) {
@@ -333,12 +359,19 @@ function _writeUrlQuery(qs) {
   window.history.replaceState(window.history.state, '', url)
 }
 
-// Hydrate the date range from URL params, falling back to "all available
-// data" when either bound is missing or unparseable.
+// Days in the default window — the "Month" preset (Josh 2026-11-08: the full
+// 2023→today range painted whole savanna regions red on first load). Note:
+// with confirmed-only alerts a month is sparse — ~3% of a month's alerts are
+// confirmed even in Rondônia (~15% of a year's).
+const DEFAULT_RANGE_DAYS = 30
+
+// Hydrate the date range from URL params, falling back to the last month when
+// either bound is missing or unparseable. (Shared links always carry
+// start/end, so this only changes what a bare /forestmonitor opens to.)
 function _initialDateRange() {
   const { start, end } = _readUrlState()
-  let s = DATA_START_MS
   let e = todayUtcMs()
+  let s = Math.max(e - DEFAULT_RANGE_DAYS * DAY_MS, DATA_START_MS)
   if (start) {
     const ms = Date.parse(start + 'T00:00:00Z')
     if (Number.isFinite(ms)) s = Math.max(ms, DATA_START_MS)
@@ -352,7 +385,13 @@ function _initialDateRange() {
 }
 
 const VALID_MODES = ['recency', 'status', 'severity']
-const VALID_LANDUSE = ['all', 'forest', 'cropland', 'grassland', 'built']
+// Opening view (Josh 2026-11-08): Severity over the last month. Links made
+// before this omitted m= for Recency, so those now open in Severity.
+const DEFAULT_MODE = 'severity'
+const VALID_LANDUSE = [
+  ...LANDUSE_PRESETS.map((p) => p.id),
+  ...Object.values(LANDUSE_SUBTYPES).flat().map((p) => p.id),
+]
 
 export default function ForestMonitor() {
   const containerRef = useRef(null)
@@ -377,7 +416,7 @@ export default function ForestMonitor() {
   const _lop = _parseLop(_initial.lop)
 
   const [mode, setMode] = useState(
-    VALID_MODES.includes(_initial.mode) ? _initial.mode : 'recency'
+    VALID_MODES.includes(_initial.mode) ? _initial.mode : DEFAULT_MODE
   )
   const [tileLoading, setTileLoading] = useState(true)
   const [tileError, setTileError] = useState(null)
@@ -392,6 +431,11 @@ export default function ForestMonitor() {
   const [landuse, setLanduse] = useState(
     VALID_LANDUSE.includes(_initial.landuse) ? _initial.landuse : 'all'
   )
+  // Default = only alerts NASA has confirmed (seen again on later passes).
+  // Josh 2026-11-08: single-pass alerts are where one bad image shows up — a
+  // slightly misaligned Sentinel-2 pass on Oct 21 lit up every forest edge and
+  // shoreline in the San Juans. CONFIRMED_STATUSES in main.py.
+  const [showUnconfirmed, setShowUnconfirmed] = useState(!!_initial.unconfirmed)
   // Methodology modal — opened from a button rendered inside popups, so we
   // catch clicks via document-level delegation (popups are setHTML strings,
   // can't directly attach React handlers).
@@ -416,6 +460,9 @@ export default function ForestMonitor() {
     }
     return null
   })
+  // Below HEAT_MAX_ZOOM the map shows hotspot heat, not 30 m pixels — the
+  // legend follows. (Bare URL opens at the world view, zoom 1.6.)
+  const heatShowing = (mapView ? mapView.zoom : 1.6) < HEAT_MAX_ZOOM
   // Ref-mirror so applyTileLayer reads the latest value without re-running
   // the tile-fetch effect on opacity changes.
   const opacityRef = useRef(0.85)
@@ -600,6 +647,7 @@ export default function ForestMonitor() {
       start: isoDay(dateRange[0]),
       end:   isoDay(dateRange[1]),
       landuse,
+      unconfirmed: showUnconfirmed,
       basemap,
       photo: photos.photo,
       opacity,
@@ -615,7 +663,7 @@ export default function ForestMonitor() {
     })
     _writeUrlQuery(qs)
     if (mapReady) scheduleViewCard(captureShareImage) // per-view social card
-  }, [mode, dateRange, landuse, basemap, photos.photo, opacity, mapView,
+  }, [mode, dateRange, landuse, showUnconfirmed, basemap, photos.photo, opacity, mapView,
       operaVisible, commodityVisible, extraVisible, commodityCrops, commodityOpacity, extraOpacity, mapReady])
 
   // ─── Fetch tile URL whenever mode or date range changes ──────────────────
@@ -636,6 +684,8 @@ export default function ForestMonitor() {
       end: isoDay(endMs),
     })
     if (landuse && landuse !== 'all') params.set('landuse', landuse)
+    if (!showUnconfirmed) params.set('confirmed', '1')
+    params.set('heat', '1')   // also return the zoomed-out hotspot tiles
 
     const t = setTimeout(() => {
       fetch(`${TILES_API_BASE}?${params}`)
@@ -658,11 +708,10 @@ export default function ForestMonitor() {
         .then((data) => {
           if (cancelled || reqId !== lastTileUrlReqRef.current) return
           if (!data.tileUrl) throw new Error('Empty tileUrl in response')
-          applyTileLayer(map, data.tileUrl, opacityRef.current)
-          if (!operaVisibleRef.current && map.getLayer(RASTER_LAYER_ID)) {
-            map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', 'none')
-          }
-          lastTileUrlRef.current = data.tileUrl
+          const urls = { tileUrl: data.tileUrl, heatUrl: data.heatUrl || null }
+          applyTileLayer(map, urls, opacityRef.current)
+          if (!operaVisibleRef.current) setOperaVisibility(map, false)
+          lastTileUrlRef.current = urls
           setTileLoading(false)
         })
         .catch((err) => {
@@ -683,7 +732,7 @@ export default function ForestMonitor() {
     }, 250)
 
     return () => { cancelled = true; clearTimeout(t) }
-  }, [mode, mapReady, dateRange, landuse])
+  }, [mode, mapReady, dateRange, landuse, showUnconfirmed])
 
   // ─── Click → fetch point sample, draw popup + patch outline ───────────────
   useEffect(() => {
@@ -984,7 +1033,7 @@ export default function ForestMonitor() {
       }
       // Re-check: the user may have toggled the crop off during the fetch.
       if (url && want()) {
-        applyRasterLayer(map, sId, lId, url, commodityOpacityRef.current, RASTER_LAYER_ID)
+        applyRasterLayer(map, sId, lId, url, commodityOpacityRef.current, operaBottomLayer(map))
       } else {
         removeRasterLayer(map, sId, lId)
       }
@@ -1014,7 +1063,7 @@ export default function ForestMonitor() {
         }
       }
       if (url && extraVisibleRef.current[id]) {
-        applyRasterLayer(map, sId, lId, url, extraOpacityRef.current[id] ?? 0.8, RASTER_LAYER_ID)
+        applyRasterLayer(map, sId, lId, url, extraOpacityRef.current[id] ?? 0.8, operaBottomLayer(map))
       } else {
         removeRasterLayer(map, sId, lId)
       }
@@ -1037,9 +1086,7 @@ export default function ForestMonitor() {
       // makes basemap switching feel instant.
       if (lastTileUrlRef.current) {
         applyTileLayer(map, lastTileUrlRef.current, opacityRef.current)
-        if (!operaVisibleRef.current && map.getLayer(RASTER_LAYER_ID)) {
-          map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', 'none')
-        }
+        if (!operaVisibleRef.current) setOperaVisibility(map, false)
       }
       // Commodity + extra rasters were wiped by setStyle — re-add from cache.
       reconcileCommodity(map)
@@ -1057,8 +1104,8 @@ export default function ForestMonitor() {
     const map = mapRef.current
     if (!map) return
     try {
-      if (map.getLayer(RASTER_LAYER_ID)) {
-        map.setPaintProperty(RASTER_LAYER_ID, 'raster-opacity', opacity)
+      for (const id of [RASTER_LAYER_ID, HEAT_LAYER_ID]) {
+        if (map.getLayer(id)) map.setPaintProperty(id, 'raster-opacity', opacity)
       }
     } catch {}
   }, [opacity, mapReady])
@@ -1068,9 +1115,7 @@ export default function ForestMonitor() {
     const map = mapRef.current
     if (!map) return
     try {
-      if (map.getLayer(RASTER_LAYER_ID)) {
-        map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', operaVisible ? 'visible' : 'none')
-      }
+      setOperaVisibility(map, operaVisible)
     } catch {}
   }, [operaVisible, mapReady])
 
@@ -1341,35 +1386,74 @@ export default function ForestMonitor() {
 
               <div className={styles.filterSection}>
                 <div className={styles.filterLabel}>Land use</div>
-                <div className={styles.presets}>
+                <div className={`${styles.presets} ${styles.presetsWrap}`}>
                   {LANDUSE_PRESETS.map((p) => (
                     <button
                       key={p.id}
                       type="button"
-                      className={landuse === p.id ? styles.presetBtnActive : styles.presetBtn}
+                      className={(landuse === p.id || landuse.startsWith(p.id + '.')) ? styles.presetBtnActive : styles.presetBtn}
                       onClick={() => setLanduse(p.id)}
                     >
                       {p.label}
                     </button>
                   ))}
                 </div>
+                {/* Sub-type row for the picked parent (Forest / Cropland / Grassland). */}
+                {(() => {
+                  const parent = landuse.split('.')[0]
+                  const subs = LANDUSE_SUBTYPES[parent]
+                  if (!subs) return null
+                  return (
+                    <div className={styles.subPresets}>
+                      {[{ id: parent, label: 'All', hint: '' }, ...subs].map((p) => (
+                        <button key={p.id} type="button" title={p.hint || undefined}
+                          className={landuse === p.id ? styles.subPresetActive : styles.subPreset}
+                          onClick={() => setLanduse(p.id)}>
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+                <label className={styles.unconfirmedToggle}
+                  title="NASA confirms an alert once later satellite passes see the same change. Unconfirmed alerts are the newest, but also where a single cloudy or misaligned image shows up as false 'loss' — so they're hidden unless you turn them on.">
+                  <input type="checkbox" checked={showUnconfirmed}
+                    onChange={(e) => setShowUnconfirmed(e.target.checked)} />
+                  Show unconfirmed alerts
+                </label>
               </div>
 
-              {mode === 'recency' && (
+              {/* Zoomed out = hotspot heat (HEAT_MAX_ZOOM); the mode legends
+                  apply once the 30 m pixels take over. One line each so the
+                  panel still fits without scrolling. */}
+              {heatShowing && (
                 <>
-                  <div className={styles.legendGradient} style={{ background: RECENCY_GRADIENT }} />
+                  <div className={styles.legendGradient} style={{ background: HEAT_GRADIENT }} />
                   <div className={styles.legendScale}>
-                    <span>Jan 2023</span>
-                    <span>Today</span>
+                    <span>Some</span>
+                    <span>Most</span>
                   </div>
-                  {/* One legend line (Josh 2026-09-29: the panel must fit without scrolling); the longer note is its tooltip. */}
                   <div className={styles.legendBlurb}
-                    title="Same colors as the forest-loss (Hansen) layer. The date slider limits which pixels are shown but doesn’t change the colors.">
-                    <strong>Pale yellow</strong> = oldest, <strong>bright red</strong> = most recent
+                    title="Each spot is colored by how much of the natural forest around it was disturbed in the dates you picked (forest = ESA WorldCover 2021, minus planted forest per Cheng et al. 2024). With a land-use chip picked, it counts that land instead. Zoom in to see the individual 30 m alerts.">
+                    <strong>Forest disturbance hotspots</strong> · zoom in for detail
                   </div>
                 </>
               )}
-              {mode === 'severity' && (
+              {!heatShowing && mode === 'recency' && (
+                <>
+                  <div className={styles.legendGradient} style={{ background: RECENCY_GRADIENT }} />
+                  <div className={styles.legendScale}>
+                    <span>{fmtMonthDay(dateRange[0])}</span>
+                    <span>{fmtMonthDay(dateRange[1])}</span>
+                  </div>
+                  {/* One legend line (Josh 2026-09-29: the panel must fit without scrolling); the longer note is its tooltip. */}
+                  <div className={styles.legendBlurb}
+                    title="Same color direction as the forest-loss (Hansen) layer. The colors stretch across the dates you pick: pale yellow is the start of the range, bright red the end.">
+                    <strong>Pale yellow</strong> = start of range, <strong>bright red</strong> = end
+                  </div>
+                </>
+              )}
+              {!heatShowing && mode === 'severity' && (
                 <>
                   <div className={styles.legendGradient} style={{ background: SEVERITY_GRADIENT }} />
                   <div className={styles.legendScale}>
@@ -1381,7 +1465,7 @@ export default function ForestMonitor() {
                   </div>
                 </>
               )}
-              {mode === 'status' && (
+              {!heatShowing && mode === 'status' && (
                 <>
                   {/* One line while on; the eight statuses fold away (Josh 2026-09-29: the panel must fit without scrolling). */}
                   <div className={styles.legendGradient} style={{ background: `linear-gradient(90deg, ${STATUS_SWATCHES.map((s) => s.color).join(', ')})` }} />
@@ -1401,6 +1485,16 @@ export default function ForestMonitor() {
                     </ul>
                   </LegendTurndown>
                 </>
+              )}
+              {/* Unfiltered view only: the cloud function paints alerts outside
+                  2021 forest grey (NONFOREST_RGB in main.py). With a land-use
+                  chip set, everything keeps the ramp colors. */}
+              {!heatShowing && landuse === 'all' && (
+                <div className={styles.legendBlurb}
+                  title="Alerts on land that wasn’t forest in 2021 (ESA WorldCover) — mostly grass fires, grassland drying out, and farm fields. Shown so nothing is hidden, but muted so they don’t read as forest loss.">
+                  <span className={styles.swatch} style={{ background: NONFOREST_COLOR, verticalAlign: '-2px', marginRight: 6 }} />
+                  <strong>Gray</strong> = outside forest (grass, scrub, farms)
+                </div>
               )}
             </div>
           )}
@@ -1602,10 +1696,10 @@ function MethodologyModal({ onClose }) {
           <p>
             Colored pixels are forest-disturbance alerts from <strong>NASA OPERA L3 DIST-ALERT</strong> (Vegetation Disturbance Alert),
             derived from harmonized Landsat-8 and Sentinel-2 imagery at 30 m resolution. New alerts typically appear within ~5 days
-            of the most recent satellite pass. Color encodes <em>recency</em> (default), <em>status</em>, or <em>severity</em>;
+            of the most recent satellite pass. Color encodes <em>severity</em> (default), <em>recency</em>, or <em>status</em>;
             switch modes at the top of the screen. In recency view the ramp runs from pale yellow (older alerts) to bright red (most
             recent) — the same direction as the Hansen forest-loss layer, so the freshest disturbance reads as urgent red. The
-            date slider in the legend masks which alerts are shown but does not change colors.
+            ramp stretches across the dates picked in the legend: pale yellow is the start of the range and bright red its end.
           </p>
           <p>
             The <strong>Land use filter chips</strong> in the legend (Forest / Cropland / Grassland / Built) run the same tiered land-cover
@@ -2111,23 +2205,53 @@ function DateRangeSlider({ minMs, maxMs, startMs, endMs, onChange }) {
 const RASTER_SOURCE_ID = 'opera-dist-alert'
 const RASTER_LAYER_ID = 'opera-dist-alert-layer'
 
-function applyTileLayer(map, tileUrl, opacity = 0.85) {
+// Zoomed-out hotspot heat (Josh 2026-11-08): below this zoom the 30 m
+// pixels are a few % of each screen pixel even in heavy clearing and vanish,
+// so we show the cloud function's heatUrl (share of forest disturbed, one hue
+// faint → deep) instead, and hand off to the pixel layer from here in.
+const HEAT_MAX_ZOOM = 8
+const HEAT_SOURCE_ID = 'opera-dist-heat'
+const HEAT_LAYER_ID = 'opera-dist-heat-layer'
+// Mirrors HEAT_PALETTE in main.py (light → deep red); legend swatch.
+const HEAT_GRADIENT = 'linear-gradient(to right, rgba(248,113,113,0.35), #dc2626, #b91c1c, #7f1d1d)'
+
+// `urls` = { tileUrl, heatUrl } from the cloud function. Without a heatUrl
+// (older function) the pixel layer simply shows at every zoom.
+function applyTileLayer(map, urls, opacity = 0.85) {
+  const { tileUrl, heatUrl } = urls
   // Replacing the source's tiles requires removing and re-adding it in
   // Mapbox GL — there's no setTiles() method.
-  if (map.getLayer(RASTER_LAYER_ID)) map.removeLayer(RASTER_LAYER_ID)
-  if (map.getSource(RASTER_SOURCE_ID)) map.removeSource(RASTER_SOURCE_ID)
-  map.addSource(RASTER_SOURCE_ID, {
-    type: 'raster',
-    tiles: [tileUrl],
-    tileSize: 256,
-    attribution: 'NASA OPERA L3 DIST-ALERT · GLAD',
-  })
+  for (const [l, src] of [[RASTER_LAYER_ID, RASTER_SOURCE_ID], [HEAT_LAYER_ID, HEAT_SOURCE_ID]]) {
+    if (map.getLayer(l)) map.removeLayer(l)
+    if (map.getSource(src)) map.removeSource(src)
+  }
+  const attribution = 'NASA OPERA L3 DIST-ALERT · GLAD'
+  if (heatUrl) {
+    map.addSource(HEAT_SOURCE_ID, { type: 'raster', tiles: [heatUrl], tileSize: 256, attribution })
+    map.addLayer({
+      id: HEAT_LAYER_ID, type: 'raster', source: HEAT_SOURCE_ID, maxzoom: HEAT_MAX_ZOOM,
+      paint: { 'raster-opacity': opacity },
+    })
+  }
+  map.addSource(RASTER_SOURCE_ID, { type: 'raster', tiles: [tileUrl], tileSize: 256, attribution })
   map.addLayer({
     id: RASTER_LAYER_ID,
     type: 'raster',
     source: RASTER_SOURCE_ID,
+    ...(heatUrl ? { minzoom: HEAT_MAX_ZOOM } : {}),
     paint: { 'raster-opacity': opacity },
   })
+}
+
+// Lowest OPERA layer — other overlays slot beneath it so disturbance stays on top.
+function operaBottomLayer(map) {
+  return map.getLayer(HEAT_LAYER_ID) ? HEAT_LAYER_ID : RASTER_LAYER_ID
+}
+
+function setOperaVisibility(map, on) {
+  for (const id of [RASTER_LAYER_ID, HEAT_LAYER_ID]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
+  }
 }
 
 // ─── Generic raster overlay helpers (commodity crops + future layers) ───────

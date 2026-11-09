@@ -331,7 +331,6 @@ export default function ShorelineApp() {
         <div className={p.panelBody}>
           <div className={p.title}>On the map</div>
           <a className={styles.friends} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">Shoreline data from Friends of the San Juans</a>
-          <a className={styles.friends} href="/shoreline/reports">Shoreline data by island: report →</a>
 
           <div className={p.section}>
             <DatasetRow look="list" storageKey="shoreline.kelp" name="Bull Kelp" hue="#B89A3A" icon={pinImg('kelp', 18)} on={isOn('kelp')} onToggle={() => toggle('kelp')} disabled={loading}
@@ -386,7 +385,8 @@ export default function ShorelineApp() {
             {loadError && <div className={p.error}>{loadError}</div>}
           </div>
 
-          <SourcesFooter intro={SHORELINE_SOURCES_INTRO} sections={SHORELINE_SOURCES} poweredBy />
+          <SourcesFooter intro={SHORELINE_SOURCES_INTRO} sections={SHORELINE_SOURCES} poweredBy
+            reports={[{ href: '/shoreline/reports', label: 'Shoreline data by island' }]} />
         </div>
       </MapSheet>
     </div>

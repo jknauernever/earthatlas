@@ -41,13 +41,37 @@ function KindSelect({ value, onChange, emptyLabel, className }) {
 const MODEL = { 'claude-haiku-5-5': 'Claude Haiku 5.5', 'claude-opus-5-5': 'Claude Opus 5.5' }
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return u } }
 
-/** Not signed in as an unlocked admin: point to the account sign-in and the admin tools' authenticator unlock. */
+/**
+ * Not an unlocked admin yet: show which step is missing (the same admin standing /admin/users uses) and, when the account
+ * only needs unlocking, take the authenticator code right here (POST /api/auth/ea/admin/unlock, 12 hours on this sign-in).
+ */
 function SignIn({ onDone }) {
+  const [st, setSt] = useState(null), [code, setCode] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState(null)
+  useEffect(() => {
+    fetch('/api/auth/ea/admin/status', { credentials: 'same-origin' }).then((r) => r.json()).then(setSt).catch(() => setSt({ state: 'signed-out' }))
+  }, [])
+  const unlock = async (e) => {
+    e.preventDefault(); setErr(null); setBusy(true)
+    const r = await fetch('/api/auth/ea/admin/unlock', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.trim() }) })
+    setBusy(false)
+    if (r.ok) onDone(); else setErr((await r.json().catch(() => ({}))).message || 'That code didn’t work.')
+  }
+  if (!st) return null
   return (
     <div className={c.box}>
       <div className={c.h2}>Sign in</div>
-      <p className={c.note}><a href="/account/signin">Sign in with your EarthAtlas admin account</a> and open the <a href="/admin/users">admin tools</a> (they ask for your authenticator code), then come back here.</p>
-      <button className={c.primary} type="button" onClick={onDone}>I've done that: check again</button>
+      {st.state === 'signed-out' && <p className={c.note}><a href="/account/signin">Sign in with your EarthAtlas admin account</a>, then come back here.</p>}
+      {st.state === 'not-admin' && <p className={c.note}>You’re signed in as {st.email}, which isn’t an admin account.</p>}
+      {st.state === 'needs-2fa' && <p className={c.note}>Admin pages need two-step verification. Turn it on in <a href="/account">Your account</a>, then come back here.</p>}
+      {st.state === 'locked' && (
+        <form onSubmit={unlock} className={c.box} style={{ margin: 0, padding: 0, border: 0 }}>
+          <p className={c.note}>Signed in as {st.email}. Enter the code from your authenticator app to open admin pages on this sign-in for 12 hours.</p>
+          <input className={c.input} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+          <button className={c.primary} disabled={busy || code.trim().length < 6}>Unlock</button>
+          {err && <div className={c.error}>{err}</div>}
+        </form>
+      )}
+      {st.state === 'unlocked' && <div className={c.error}>Admin pages are unlocked for {st.email}, but the intake couldn’t confirm it. Reload the page; if this stays, it’s a bug to report.</div>}
     </div>
   )
 }

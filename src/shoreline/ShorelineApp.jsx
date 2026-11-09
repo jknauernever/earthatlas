@@ -113,7 +113,10 @@ function hitsAt(map, point, fishMode, tol = 6) {
     const key = point0 ? `${row}|${title}` : row
     if (seen.has(key)) continue
     seen.add(key)
-    out.push({ row, sse, props, title, pin: isPinLayer(f.layer.id) })
+    // Pins sit on their point (icon-anchor bottom), so the icon's middle is ~10 px above it: distance from there to the click
+    const at = point0 ? map.project(f.geometry.coordinates) : null
+    const dist = at ? Math.hypot(at.x - point.x, at.y - 10 - point.y) : Infinity
+    out.push({ row, sse, props, title, pin: isPinLayer(f.layer.id), dist })
   }
   const parcel = map.getLayer('sl-parcels-fill') && map.getLayoutProperty('sl-parcels-fill', 'visibility') !== 'none'
     ? map.queryRenderedFeatures(point, { layers: ['sl-parcels-fill'] })[0] : null
@@ -194,7 +197,10 @@ export default function ShorelineApp() {
     const hits = hitsAt(map, e.point, fishModeRef.current)
     popupRef.current?.remove()
     if (!hits.length) return
-    if (hits[0].pin || hits.length === 1) return openFeature(hits[0], e.lngLat)
+    // Pins open directly: the one nearest the cursor, so stacked pins (a dock beside a shoreform pin) are each reachable
+    const pins = hits.filter((h) => h.pin).sort((a, b) => a.dist - b.dist)
+    if (pins.length) return openFeature(pins[0], e.lngLat)
+    if (hits.length === 1) return openFeature(hits[0], e.lngLat)
     const rank = (h) => LEGEND_ORDER.indexOf(h.row)
     const rows = hits.map((h, i) => ({ h, i })).sort((a, b) => rank(a.h) - rank(b.h) || a.i - b.i).map((x) => x.h)
     const card = rows.map((h) => ({

@@ -87,7 +87,6 @@ const LAYER_PHOTOS = {
   'friends-potential-forage-spawning': { url: `${IMG}/forage-fish.jpg`, caption: 'Sand and pea-gravel beach, the substrate forage fish need', credit: FRIENDS },
   'friends-shoreline-geology': { url: `${IMG}/feeder-bluffs.jpg`, caption: 'A feeder bluff supplying the beaches downdrift', credit: FRIENDS },
   'friends-armor': { url: `${IMG}/adapt-fortify.jpg`, caption: 'Hard armoring along the shore', credit: FRIENDS },
-  'friends-docks': { url: `${IMG}/barlow-dock.jpg`, caption: 'The old dock at Barlow Bay, Lopez Island, before Friends removed it', credit: FRIENDS },
   'friends-mooring-buoys': { url: `${IMG}/mooring-float.jpg`, caption: 'A mid-line float keeps the mooring line off the eelgrass', credit: FRIENDS },
   'friends-groins': { url: `${IMG}/erosion-before.jpg`, caption: 'Armored shoreline', credit: FRIENDS },
   'friends-boat-ramps': { url: `${IMG}/preserve.jpg`, caption: 'Shoreline access', credit: FRIENDS },

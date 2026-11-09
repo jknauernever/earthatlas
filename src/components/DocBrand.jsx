@@ -1,4 +1,4 @@
-import { brand } from '../lib/brand.js'
+import { brand as hostBrand } from '../lib/brand.js'
 import s from './DocBrand.module.css'
 
 /**
@@ -9,8 +9,10 @@ import s from './DocBrand.module.css'
  *   tool   the tool's name under the title, e.g. "Ships"
  *   href   the tool's home, e.g. "/ships"
  *   dark   page has a dark background (white logo, light text)
+ *   brand  show this brand on every host (a partner's own report, e.g. /shoreline/reports: Friends logo rule)
  */
-export default function DocBrand({ tool, href, dark = false, children }) {
+export default function DocBrand({ tool, href, dark = false, brand: forced, children }) {
+  const brand = forced || hostBrand
   if (!brand) return children
   return (
     <span className={`${s.row} ${dark ? s.dark : ''}`}>

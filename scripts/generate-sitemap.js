@@ -77,6 +77,7 @@ addUrl('/risks/reports/land-value')
 addUrl('/spillrisk')
 // Shoreline Explorer (San Juan County, Friends of the San Juans)
 addUrl('/shoreline')
+addUrl('/shoreline/reports')
 
 // Carbon
 addUrl('/carbon')

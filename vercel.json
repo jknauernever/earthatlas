@@ -79,6 +79,10 @@
       "destination": "/shoreline.html"
     },
     {
+      "source": "/shoreline/reports",
+      "destination": "/shoreline-reports.html"
+    },
+    {
       "source": "/permits/source/:key",
       "destination": "/permits.html"
     },

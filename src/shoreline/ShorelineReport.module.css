@@ -1,0 +1,66 @@
+/* /shoreline/reports (ShorelineReport.jsx): the pieces beyond the shared report frame (ScrubberReport.module.css). */
+.topRight { display: inline-flex; align-items: center; gap: 10px; }
+.mapBtn { font-size: 13px; color: #0e7490; text-decoration: none; padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; white-space: nowrap; }
+.mapBtn:hover { border-color: #0e7490; }
+
+/* Island filter: chips that wrap (not sticky: the site's html/body overflow-x: hidden stops position: sticky) */
+.filter { flex-wrap: nowrap; align-items: flex-start; }
+.filterLbl { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; font-weight: 600; padding-top: 8px; flex-shrink: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip, .chipOn { border: 1px solid #d1d5db; background: #fff; color: #374151; padding: 5px 11px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+.chip:hover { border-color: #0e7490; color: #0f172a; }
+.chipOn { background: #0e7490; border-color: #0e7490; color: #fff; font-weight: 600; }
+
+/* Measure tables */
+.rows td { vertical-align: middle; }
+.name { display: inline-flex; align-items: center; gap: 8px; color: #111827; }
+.sub { display: block; font-size: 12px; color: #6b7280; margin: 2px 0 0 26px; }
+.unit { color: #6b7280; font-size: 12px; font-weight: 400; }
+.srcTd { font-size: 12.5px; white-space: nowrap; }
+.barTh { min-width: 150px; }
+.barTd { min-width: 150px; white-space: nowrap; }
+.barTd .bar { display: inline-block; width: calc(100% - 52px); vertical-align: middle; }
+.pct { display: inline-block; width: 46px; text-align: right; font-size: 12px; color: #374151; font-variant-numeric: tabular-nums; vertical-align: middle; }
+.bar { display: block; height: 10px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+
+/* The map's swatches */
+.swLine { display: inline-block; width: 18px; height: 4px; border-radius: 2px; background: var(--sw); flex-shrink: 0; }
+.swArea { display: inline-block; width: 16px; height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--sw) 40%, transparent); border: 1.5px solid var(--sw); flex-shrink: 0; }
+.pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
+
+/* Fish priority: one stacked bar per species */
+.key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: #374151; margin-bottom: 10px; }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.stackList { display: grid; gap: 7px; }
+.stackRow { display: grid; grid-template-columns: 210px minmax(0, 1fr) 280px; align-items: center; gap: 12px; font-size: 13px; }
+.stackAll { padding-top: 8px; margin-top: 3px; border-top: 1px solid #e5e7eb; font-weight: 600; }
+.stackName { color: #1f2937; }
+.stackTrack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; min-width: 2px; }
+.stackSeg { display: block; height: 100%; min-width: 1px; }
+.stackNums { font-size: 12.5px; color: #374151; font-variant-numeric: tabular-nums; font-weight: 400; }
+
+/* Shoreforms */
+.barRow { display: grid; grid-template-columns: 250px minmax(0, 1fr) 130px; align-items: center; gap: 12px; font-size: 13px; }
+.barN { font-variant-numeric: tabular-nums; }
+.barN .unit { margin-left: 6px; }
+
+/* By island */
+.islands th { white-space: normal; vertical-align: bottom; }
+.click { cursor: pointer; }
+.click:hover td { background: #f0f9ff; }
+.islandBtn { border: 0; background: transparent; padding: 0; font: inherit; color: #0e7490; font-weight: 600; cursor: pointer; text-align: left; }
+
+.how { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13.5px; color: #1f2937; line-height: 1.5; }
+
+@media (max-width: 760px) {
+  .stackRow { grid-template-columns: 1fr; gap: 4px; }
+  .barRow { grid-template-columns: minmax(0, 1fr) 110px; }
+  .barRow .bar { grid-column: 1 / -1; grid-row: 2; }
+  .filter { flex-wrap: wrap; }
+  .topRight .mapBtn, .printLbl { display: none; }
+}
+@media print {
+  .chip, .mapBtn { display: none; }
+  .chipOn { background: none; color: #0f172a; border: 0; padding: 0; }
+}

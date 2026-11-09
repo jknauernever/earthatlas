@@ -143,6 +143,17 @@ const ROUTES = [
       'San Juan County, San Juan Islands, shoreline, forage fish, surf smelt, sand lance, herring, bull kelp, eelgrass, salmon, feeder bluff, shoreline armor, Friends of the San Juans',
   },
   {
+    out: 'shoreline-reports.html',
+    url: 'https://earthatlas.org/shoreline/reports',
+    title: 'Shoreline data by island — San Juan County · Salish Sea Explorer: Shoreline Ecosystems · EarthAtlas',
+    description:
+      'Everything the Shoreline Ecosystems map shows, counted for each of the San Juan Islands: bull kelp, eelgrass, forage fish spawning beaches, priority shorelines for fish, shoreforms, armor, docks and buoys from Friends of the San Juans, with County parcels and buildings. Every number links to its source. An EarthAtlas report.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'Salish Sea Explorer: Shoreline Ecosystems report of shoreline data by island in San Juan County',
+    keywords:
+      'San Juan Islands, Orcas Island, Lopez Island, San Juan Island, shoreline armor, docks, mooring buoys, bull kelp, eelgrass, forage fish, Friends of the San Juans, shoreline report',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

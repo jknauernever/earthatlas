@@ -207,7 +207,7 @@ All decisions made.
 
 ## Phase 1 build notes (2026-11-05, localhost only)
 
-**Databases:** Neon `earthatlas-users` (store_eItyB1yqhDoQmuFF, production env only) and `earthatlas-users-dev` (store_K8b4ds8PFV4FBhRm, development env), both iad1, Neon Auth off, env `USERS_DATABASE_URL` (+ `_UNPOOLED`). `.env.local` → dev. Tables in schema `auth`; dev migrated (lib/accounts/migrations/20261105T173425Z.sql). **Prod not migrated yet** (at launch).
+**Databases:** Neon `earthatlas-users` (store_eItyB1yqhDoQmuFF, production env only) and `earthatlas-users-dev` (store_K8b4ds8PFV4FBhRm, development env), both iad1, Neon Auth off, env `USERS_DATABASE_URL` (+ `_UNPOOLED`). `.env.local` → dev. Tables in schema `auth`; dev migrated (lib/accounts/migrations/20261105T173425Z.sql). Prod migrated at launch 2026-11-08 (lib/accounts/migrations/20261109T031327Z.sql + sql/001–003).
 
 **Code**
 - `lib/accounts/auth.js` — Better Auth 1.7.18 config (pg Pool + Kysely `PostgresDialect`, `schemaName: "auth"`); invite-only via `SIGNUPS_OPEN`; Google `disableSignUp`; captcha (Turnstile; Cloudflare test keys off Vercel); haveIBeenPwned; admin plugin; DB rate limits; hashed verification tokens; 30-day sessions; `earthatlas.*` cookies, `.earthatlas.org` on Vercel.

@@ -1,14 +1,14 @@
 /**
  * /privacy and /terms — EarthAtlas Privacy Policy and Terms of Use.
- * DRAFT (2026-11-05): written from what the site actually does (docs/USER_ACCOUNTS_PLAN.md); needs Josh's
- * review (and ideally a lawyer's) before launch. Items marked <Todo> are facts only Josh can supply.
+ * In effect from 2026-11-08 (accounts launch). Written from what the site actually does (docs/USER_ACCOUNTS_PLAN.md).
+ * A lawyer's review is still worthwhile. <Todo> marks a fact only Josh can supply (none left).
  * Keep in step with the code: if a vendor, cookie or data field changes, update the matching section.
  */
 import { useEffect } from 'react'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import s from './AccountPages.module.css'
 
-const EFFECTIVE = 'DRAFT — not yet in effect'
+const EFFECTIVE = 'November 8, 2026'
 // eslint-disable-next-line no-unused-vars -- kept for future placeholders
 const Todo = ({ children }) => <mark className={s.todo}>[TO CONFIRM: {children}]</mark>
 const OPERATOR = <a href="https://knauernever.com">KnauerNever</a>

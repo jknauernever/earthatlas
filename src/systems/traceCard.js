@@ -106,7 +106,8 @@ function chart(series, months, idx, color) {
   view.forEach((v, k) => {
     const i = from + k
     const x = left + k * step
-    if (v == null) { bars += `<rect x="${x.toFixed(1)}" y="${base - 1}" width="${bw.toFixed(1)}" height="1" fill="#9ca3af"/>`; return }
+    // no estimate: a grey dash, with a full-height clear box so the month still answers hover
+    if (v == null) { bars += `<rect x="${x.toFixed(1)}" y="${base - 1}" width="${bw.toFixed(1)}" height="1" fill="#9ca3af"/><rect x="${x.toFixed(1)}" y="${top}" width="${bw.toFixed(1)}" height="${base - top}" fill="transparent"><title>${esc(monthWord(months[i]))}: no estimate</title></rect>`; return }
     const h = Math.max(v > 0 ? 1 : 0, ((base - top) * v) / max)
     const title = `<title>${esc(monthWord(months[i]))}: ${esc(t(v))}</title>`
     if (i === idx) bars += `<rect x="${x.toFixed(1)}" y="${(base - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${color}">${title}</rect>`

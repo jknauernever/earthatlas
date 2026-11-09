@@ -7,6 +7,7 @@ import { getTaxonMeta } from '../utils/taxon'
 import { track } from '../utils/analytics'
 import SpeciesMapModal from './SpeciesMapModal'
 import styles from './GlobalStats.module.css'
+import { ChartTipProvider, useChartTip } from './ChartTip.jsx'
 import preloaded from '../data/preloaded-stats.json'
 
 const PRE_INAT = preloaded?.iNaturalist || {}
@@ -118,6 +119,7 @@ function InfoIcon({ statKey, activeInfo, setActiveInfo, counterInfo }) {
   )
 }
 
+const COUNTRY_TIME_WORDS = { all: 'All time', '30d': 'Last 30 days', '24h': 'Last 24 hours' }
 const TIME_OPTIONS = [
   { key: 'all',   label: 'All Time' },
   { key: '30d',   label: 'Last 30 Days' },
@@ -136,7 +138,12 @@ function getDateRange(key) {
   return { d1: localDate(d) }
 }
 
-export default function GlobalStats({ dataSource = 'iNaturalist' }) {
+export default function GlobalStats(props) {
+  return <ChartTipProvider><GlobalStatsBody {...props} /></ChartTipProvider>
+}
+
+function GlobalStatsBody({ dataSource = 'iNaturalist' }) {
+  const tip = useChartTip()
   const posthog = usePostHog()
   const initialCounts = dataSource === 'All' ? (PRE_ALL || PRE_INAT.counts) : PRE_INAT.counts
   const [counts, setCounts] = useState(initialCounts || null)
@@ -376,7 +383,11 @@ export default function GlobalStats({ dataSource = 'iNaturalist' }) {
               <div key={i} className={`${styles.shimmer} ${styles.shimmerCountry}`} />
             ))
           ) : topCountries && topCountries.map((c, i) => (
-            <div key={c.placeId} className={styles.countryRow}>
+            <div key={c.placeId} className={styles.countryRow} {...tip({ head: `${c.flag || ''} ${c.name}`.trim(), rows: [
+              { color: '#22c55e', label: 'Observations', value: c.count.toLocaleString('en-US'), on: true },
+              { label: 'Rank', value: `#${i + 1}` },
+              ...(i > 0 ? [{ label: `vs ${topCountries[0].name}`, value: `${Math.round((c.count / topCountries[0].count) * 100)}%` }] : []),
+            ], foot: `${COUNTRY_TIME_WORDS[countriesTime] || ''} · iNaturalist`.replace(/^ · /, '') })}>
               <span className={styles.rank}>{i + 1}</span>
               <span className={styles.countryFlag}>{c.flag}</span>
               <span className={styles.countryName}>{c.name}</span>

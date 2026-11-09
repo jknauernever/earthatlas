@@ -34,6 +34,7 @@ import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import styles from './CarbonApp.module.css'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
 import SiteBrand from '../components/SiteBrand.jsx'
 import LegalLinks from '../components/LegalLinks.jsx'
@@ -460,11 +461,7 @@ export default function CarbonApp() {
                   <div className={styles.field}>
                     <label className={styles.fieldLabel}>Land cover</label>
                     {result.land_cover.slice(0, 6).map((c) => (
-                      <div key={c.code} className={styles.lcRow}>
-                        <span className={styles.lcLabel}>{c.label}</span>
-                        <span className={styles.lcBarWrap}><span className={styles.lcBar} style={{ width: `${Math.min(100, c.percent)}%` }} /></span>
-                        <span className={styles.lcPct}>{fmt(c.percent, 0)}%</span>
-                      </div>
+                      <LandCoverRow key={c.code} c={c} ha={result?.area?.hectares ?? areaHa} />
                     ))}
                   </div>
                 )}
@@ -581,6 +578,24 @@ function MethodologyModal({ onClose }) {
           <p>{SITE_RUNS_NOTE.body}</p>
         </section>
       </div>
+    </div>
+  )
+}
+
+// One land-cover row; mouseover gives the class's share and area of the parcel (ESA WorldCover)
+function LandCoverRow({ c, ha }) {
+  return <ChartTipProvider><LandCoverRowBody c={c} ha={ha} /></ChartTipProvider>
+}
+function LandCoverRowBody({ c, ha }) {
+  const tip = useChartTip()
+  return (
+    <div className={styles.lcRow} {...tip({ head: c.label, rows: [
+      { label: 'Share', value: `${fmt(c.percent, 1)}%`, on: true },
+      ...(ha ? [{ label: 'Area', value: `${fmt((c.percent / 100) * ha, 2)} ha` }] : []),
+    ], foot: 'ESA WorldCover (10 m)' })}>
+      <span className={styles.lcLabel}>{c.label}</span>
+      <span className={styles.lcBarWrap}><span className={styles.lcBar} style={{ width: `${Math.min(100, c.percent)}%` }} /></span>
+      <span className={styles.lcPct}>{fmt(c.percent, 0)}%</span>
     </div>
   )
 }

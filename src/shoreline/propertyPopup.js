@@ -14,8 +14,7 @@
 import mapboxgl from 'mapbox-gl'
 import { shorelineBake as PARCELS } from './bake.js'
 import { buildPopupCard, escapeHtml as esc } from '../friends/popupCard.js'
-import { getFriendsContentSync, articlesForFeature } from '../friends/friendsContent.js'
-import { SHOREFORM_TYPES, FISH_USE_NAME, fishUseListHtml, fishPill, fromFriendsHtml, extractFields } from '../friends/habitatPopups.js'
+import { SHOREFORM_TYPES, FISH_USE_NAME, fishUseListHtml, fishPill, extractFields } from '../friends/habitatPopups.js'
 import { FISH_SPECIES, fishTier, SHOREFORM_GROUPS } from './shorelineLayers.js'
 import './propertyPopup.css'
 
@@ -274,11 +273,9 @@ function inlandCards(v, gr, island, islandProjects) {
     cards.push(card(`${heading(`Friends' work on ${island} Island`)}
       <p class="pp-para">${islandProjects.length === 1 ? 'One Friends of the San Juans project' : `${islandProjects.length} Friends of the San Juans projects`} on ${esc(island)}, most recent first.</p>${rows}`))
   }
-  const articles = articlesForFeature(getFriendsContentSync(), 'upland-property', { ISLAND: island }, 3).slice().sort((a, b) => b.date.localeCompare(a.date))
   cards.push(card(`${heading('Upland stewardship')}
     <div class="fp-block fp-act"><div class="fp-k">What you can do here</div><div class="fp-text">You can help by maintaining or restoring native vegetation along the shore to slow and filter runoff, installing pervious walks and driveways to allow filtration, directing stormwater flow from gutters and roads into vegetated areas, maintaining onsite sewage systems, and using compost instead of chemical fertilizers. Maintaining native vegetation will also help reduce the impact of heavy rains and provide habitat for wildlife.${lws()}</div>
-      <a class="fp-btn" href="https://sanjuans.org/our-work/landowner-resources/" target="_blank" rel="noopener noreferrer">Landowner resources</a></div>
-    ${fromFriendsHtml(articles)}`))
+      <a class="fp-btn" href="https://sanjuans.org/our-work/landowner-resources/" target="_blank" rel="noopener noreferrer">Landowner resources</a></div>`))  // no "Related content from Friends" on /shoreline (Josh 2026-11-09)
   return cards
 }
 

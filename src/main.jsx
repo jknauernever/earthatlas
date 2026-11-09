@@ -31,7 +31,6 @@ import fungiConfig from './explore/configs/fungi.js'
 import birdsConfig from './explore/configs/birds.js'
 import SpeciesDetailPage from './species/SpeciesDetailPage.jsx'
 import NewsArticlePage from './news/NewsArticlePage.jsx'
-import AdminApp from './admin/AdminApp.jsx'
 // Account pages load only when an /account URL is opened (one shared chunk).
 const lazyAccount = (name) => lazy(() => import('./accounts/AccountPages.jsx').then((m) => ({ default: m[name] })))
 const SignInPage = lazyAccount('SignInPage'), SignUpPage = lazyAccount('SignUpPage'), ForgotPage = lazyAccount('ForgotPage'),
@@ -218,7 +217,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/reports/scrubbers/:edition" element={<ScrubberReport />} />
           <Route path="/inmotion" element={<SystemsApp />} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />
-          <Route path="/admin" element={<AdminApp />} />
           {/* Accounts, admin, contact and legal pages: routed only once accounts launch (src/accounts/live.js). */}
           {ACCOUNTS_LIVE && (<>
           <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />

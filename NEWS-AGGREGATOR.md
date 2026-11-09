@@ -1,3 +1,5 @@
+> **2026-11-08:** the news admin (/admin, `api/admin/*`) and its `ADMIN_SECRET` login were removed. `api/news/process` and `dispatch` accept only `CRON_SECRET` (no cron is scheduled today). The public endpoints (`/api/news/feed`, `/api/news/article`) are unchanged. Admin and auth sections below are historical.
+
 # Earth Atlas News Aggregator
 
 A serverless news aggregation system that fetches species-related articles from curated RSS feeds, rewrites them with AI, resolves images, and serves them through the Earth Atlas frontend — with hosted article pages for SEO.

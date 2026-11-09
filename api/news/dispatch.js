@@ -15,20 +15,19 @@
  *   - Admin "Update Feeds" button
  */
 
-import { authorizeRequest, json } from '../../lib/auth.js'
+const json = (data, status = 200, headers = {}) =>
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } })
 import { migrate, getEnabledFeeds } from '../../lib/db.js'
 
 const CONCURRENCY_LIMIT = 5
 
 export default { async fetch(req) {
-  // Auth: Vercel Cron sends CRON_SECRET, admin via Bearer token or session cookie
+  // Auth: CRON_SECRET only (the news admin and its shared login were removed 2026-11-08)
   const auth = req.headers.get('authorization') || ''
   const cronSecret = process.env.CRON_SECRET
 
   const isCron = cronSecret && auth === `Bearer ${cronSecret}`
-  const isAdmin = authorizeRequest(req)
-
-  if (!isCron && !isAdmin) {
+  if (!isCron) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
@@ -48,16 +47,7 @@ export default { async fetch(req) {
     baseUrl.pathname = '/api/news/process'
     baseUrl.search = ''
 
-    // Forward auth: pass along whichever credential the caller used
-    const headers = { 'Content-Type': 'application/json' }
-    if (isCron) {
-      headers['Authorization'] = `Bearer ${cronSecret}`
-    } else {
-      const cookie = req.headers.get('cookie')
-      if (cookie) headers['Cookie'] = cookie
-      const adminAuth = req.headers.get('authorization')
-      if (adminAuth) headers['Authorization'] = adminAuth
-    }
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${cronSecret}` }
 
     // Dispatch in batches with concurrency limit.
     // We await each batch to ensure requests are accepted by Vercel,

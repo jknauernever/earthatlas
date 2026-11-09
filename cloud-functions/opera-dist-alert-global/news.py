@@ -379,6 +379,77 @@ def _cache_set(key: str, data: list):
     }
 
 
+# ─── Strong-match filter ───────────────────────────────────────────────────
+# The search engines match loosely (a "fire" story anywhere in the state, a
+# "harvest" festival in the county), so results are only shown when the
+# HEADLINE itself names both the place and the event. No strong match → no
+# news block in the popup at all.
+
+# Cause labels that carry no specific event worth searching for.
+_WEAK_CAUSE_RE = re.compile(r'inconclusive|unknown|unclear|not enough', re.I)
+# Admin parts too broad to count as a place anchor on their own.
+# Words too common in local headlines to prove the event ("harvest festival",
+# "forest school", "construction of the new library").
+_WEAK_EVENT_WORDS = {
+    'farm', 'land', 'line', 'field', 'crop', 'operations', 'forest', 'harvest',
+    'agriculture', 'construction', 'structure', 'industrial', 'change',
+    'environment', 'road', 'replanting',
+}
+_PLACE_STOPWORDS = {'united states', 'canada', 'mexico', 'brazil', 'unincorporated'}
+
+
+def _place_terms(named_fire: str | None, location: str | None) -> list:
+    """Place names a headline must contain (any one). Named fire → the fire's
+    name. Otherwise the town and county from "Town, County, State, Country" —
+    never the state or country alone (a state-wide story isn't about here)."""
+    if named_fire:
+        nm = re.sub(r'\s+fire$', '', named_fire.strip(), flags=re.I)
+        return [nm] if len(nm) >= 3 else []
+    if not location:
+        return []
+    parts = [p.strip() for p in location.split(',') if p.strip()]
+    # Drop region + country: keep only the local parts.
+    local = parts[:-2] if len(parts) >= 3 else parts[:1] if len(parts) == 2 else []
+    terms = []
+    for p in local:
+        base = re.sub(r'\s+(county|parish|municipality|district|borough)$', '', p, flags=re.I)
+        if len(base) >= 4 and base.lower() not in _PLACE_STOPWORDS:
+            terms.append(base)
+    return terms
+
+
+def _event_terms(cause: str | None, named_fire: str | None) -> list:
+    if named_fire:
+        return ['fire', 'blaze', 'burn', 'evacuat', 'containment', 'acres']
+    if not cause or _WEAK_CAUSE_RE.search(cause):
+        return []
+    kw = _keywords_for_cause(cause)
+    if kw is _DEFAULT_KEYWORDS:
+        return []
+    # Headlines rarely use the exact phrase; match the head words.
+    words = set()
+    for k in kw:
+        for w in k.lower().split():
+            if len(w) >= 4 and w not in _WEAK_EVENT_WORDS:
+                words.add(w)
+    return sorted(words)
+
+
+def _has_term(text: str, term: str) -> bool:
+    return re.search(r'\b' + re.escape(term.lower()), text) is not None
+
+
+def _strong_matches(articles: list, places: list, events: list) -> list:
+    if not places or not events:
+        return []
+    out = []
+    for a in articles:
+        title = (a.get('title') or '').lower()
+        if any(_has_term(title, p) for p in places) and any(_has_term(title, e) for e in events):
+            out.append(a)
+    return out
+
+
 # ─── Public API ────────────────────────────────────────────────────────────
 
 def fetch_news(
@@ -401,19 +472,21 @@ def fetch_news(
     start, end = _date_window(opera_date, window_days)
     query = _build_query(cause, location, named_fire)
     provider = _pick_provider()
+    places = _place_terms(named_fire, location)
+    events = _event_terms(cause, named_fire)
+    base = {
+        'query': query, 'provider': provider,
+        'window': {'start': start.isoformat(), 'end': end.isoformat()},
+    }
+    # No specific place or event → nothing could match strongly; skip the call.
+    if not places or not events:
+        return {**base, 'articles': [], 'cached': False, 'skipped': True}
     cache_key = _cache_key(query, start, end, provider)
     cached = _cache_get(cache_key)
     if cached is not None:
-        return {
-            'query': query, 'provider': provider,
-            'window': {'start': start.isoformat(), 'end': end.isoformat()},
-            'articles': cached, 'cached': True,
-        }
+        return {**base, 'articles': _strong_matches(cached, places, events), 'cached': True}
     adapter = _ADAPTERS.get(provider, _adapter_gnews_rss)
-    articles = adapter(query, start, end, max_results) or []
+    # Pull a wider set; the headline filter keeps only strong matches.
+    articles = adapter(query, start, end, max(max_results, 20)) or []
     _cache_set(cache_key, articles)
-    return {
-        'query': query, 'provider': provider,
-        'window': {'start': start.isoformat(), 'end': end.isoformat()},
-        'articles': articles, 'cached': False,
-    }
+    return {**base, 'articles': _strong_matches(articles, places, events)[:max_results], 'cached': False}

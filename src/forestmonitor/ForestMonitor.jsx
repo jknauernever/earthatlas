@@ -849,6 +849,7 @@ export default function ForestMonitor() {
           myPopup.setHTML(renderPopupHTML(
             mergedAll, pois, state.admin.value,
             items(extrasPending ? ['patch size', 'likely cause', 'fire history'] : []), state.ai))
+          autoloadNews()
           return
         }
 
@@ -902,6 +903,7 @@ export default function ForestMonitor() {
         myPopup.setHTML(renderPopupHTML(
           merged, pois, state.admin.value,
           pendingItems(extrasPending ? ['patch size', 'likely cause', 'fire history'] : []), state.ai))
+        autoloadNews()
       }
 
       // Fix the popup mode at click time: are any datasets selected?
@@ -1215,54 +1217,6 @@ export default function ForestMonitor() {
       if (!e.target.closest('[data-action="ai-summary"]')) return
       e.preventDefault()
       aiSummaryRef.current?.()
-    }
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
-  }, [])
-
-  // ─── News lookup click delegation ───────────────────────────────────────
-  // Same plain-HTML popup constraint. The "📰 News from this time and
-  // place" button carries the diagnosis (cause, location, named-fire,
-  // OPERA date) as data-* attributes; we fire a /news request to the
-  // cloud function and replace the button with the results in place.
-  useEffect(() => {
-    const handler = async (e) => {
-      const btn = e.target.closest('[data-action="load-news"]')
-      if (!btn) return
-      e.preventDefault()
-      const targetId = btn.dataset.targetId
-      const container = document.getElementById(targetId)
-      if (!container) return
-      // Loading skeleton — 3 placeholder cards.
-      container.innerHTML = `
-        <div class="${styles.popupNewsHeader}">Searching for related news…</div>
-        ${[0, 1, 2].map(() => `
-          <div class="${styles.popupNewsSkel}">
-            <div class="${styles.popupNewsSkelImg}"></div>
-            <div class="${styles.popupNewsSkelText}">
-              <div class="${styles.popupNewsSkelLine}"></div>
-              <div class="${styles.popupNewsSkelLine} ${styles.popupNewsSkelShort}"></div>
-            </div>
-          </div>
-        `).join('')}
-      `
-      const params = new URLSearchParams({
-        news: '1',
-        cause: btn.dataset.cause || '',
-        location: btn.dataset.location || '',
-        named: btn.dataset.named || '',
-        date: btn.dataset.date || '',
-      })
-      try {
-        const res = await fetch(`${TILES_API_BASE}?${params}`)
-        const data = await res.json()
-        container.innerHTML = renderArticleList(data, btn.dataset)
-      } catch (err) {
-        container.innerHTML = `
-          <div class="${styles.popupNewsHeader}">Couldn't load news</div>
-          <div class="${styles.popupNewsEmpty}">${escapeHTML(String(err))}</div>
-        `
-      }
     }
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
@@ -2615,32 +2569,55 @@ function renderArticleList(payload, btnData) {
   `
 }
 
-// "📰 Related news" button + empty container. The container is replaced
-// in-place by the fetch handler with a loading skeleton and then the
-// article list.
-function renderNewsBlock(cause, data, admin) {
-  if (!cause || !cause.label) return ''
-  const id = newsContainerId()
-  // Pull the first named fire (if any) — strongest possible search anchor.
+// News block: only shown when the server finds headlines that name BOTH this
+// place and this event (news.py _strong_matches). Rendered as a hidden
+// placeholder; autoloadNews() fills it after the popup's HTML is set, and
+// removes it when nothing matches. Results are cached per query so the
+// popup's streaming re-renders don't refetch or flicker.
+const NEWS_CACHE = new Map()   // key → payload (resolved) | Promise
+
+function newsParams(cause, data, admin) {
   const firstFire = (data.namedFires && data.namedFires[0]) || null
-  const named = (firstFire && firstFire.name) ? firstFire.name : ''
-  return `
-    <div id="${id}" class="${styles.popupNewsSection}">
-      <button
-        type="button"
-        class="${styles.popupNewsButton}"
-        data-action="load-news"
-        data-cause="${escapeHTML(cause.label)}"
-        data-location="${escapeHTML(admin || '')}"
-        data-named="${escapeHTML(named)}"
-        data-date="${escapeHTML(data.date || '')}"
-        data-target-id="${id}"
-      >
-        <span class="${styles.popupNewsButtonIcon}">📰</span>
-        <span>News from this time and place</span>
-      </button>
-    </div>
-  `
+  return new URLSearchParams({
+    news: '1',
+    cause: cause.label,
+    location: admin || '',
+    named: (firstFire && firstFire.name) ? firstFire.name : '',
+    date: data.date || '',
+  }).toString()
+}
+
+function renderNewsBlock(cause, data, admin) {
+  if (!cause || !cause.label || !data.date) return ''
+  const key = newsParams(cause, data, admin)
+  const cached = NEWS_CACHE.get(key)
+  if (cached && !(cached instanceof Promise)) {
+    if (!cached.articles || !cached.articles.length) return ''
+    return `<div class="${styles.popupNewsSection}">${renderArticleList(cached, { location: admin })}</div>`
+  }
+  return `<div id="${newsContainerId()}" class="${styles.popupNewsSection}" hidden data-news-autoload="${escapeHTML(key)}" data-location="${escapeHTML(admin || '')}"></div>`
+}
+
+function autoloadNews() {
+  document.querySelectorAll('[data-news-autoload]').forEach((el) => {
+    const key = el.dataset.newsAutoload
+    el.removeAttribute('data-news-autoload')
+    let p = NEWS_CACHE.get(key)
+    if (!p) {
+      p = fetch(`${TILES_API_BASE}?${key}`)
+        .then((r) => (r.ok ? r.json() : { articles: [] }))
+        .catch(() => ({ articles: [] }))
+        .then((payload) => { NEWS_CACHE.set(key, payload); return payload })
+      NEWS_CACHE.set(key, p)
+    }
+    Promise.resolve(p).then((payload) => {
+      const live = el.id && document.getElementById(el.id)
+      if (!live) return
+      if (!payload.articles || !payload.articles.length) { live.remove(); return }
+      live.innerHTML = renderArticleList(payload, { location: live.dataset.location })
+      live.hidden = false
+    })
+  })
 }
 
 // Designations where commercial logging is legally prohibited — so a "logging"

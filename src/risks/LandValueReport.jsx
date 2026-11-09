@@ -16,6 +16,7 @@ import r from './LandValueReport.module.css'
 import { SCENARIOS, SLR_LEVELS, STORMS, SLR_SERVICE_URL, EROSION_ZONES_URL, REPORT_URL, STORYMAP_URL, scenarioOf } from './risksLayers.js'
 import { reportPage } from './risksSources.js'
 import DocBrand from '../components/DocBrand.jsx'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 
 const ASSESSOR_URL = 'https://www.sanjuancountywa.gov/149/Assessor'
 const M2_PER_ACRE = 4046.856
@@ -95,6 +96,7 @@ function StepChart({ title, values, label, k, pick, src }) {
 
 /** A breakdown table (island or land use): click a row to filter the page by it. */
 function Breakdown({ title, names, rows, totals, active, onPick, k, erYears, sub, label = (n) => n }) {
+  const tip = useChartTip()
   const data = names.map((name, idx) => {
     const m = measure(rows.filter((p) => p[sub] === idx), k, erYears)
     return { name, idx, m, county: totals[idx] }
@@ -118,7 +120,11 @@ function Breakdown({ title, names, rows, totals, active, onPick, k, erYears, sub
                 <td className={c.num}>{fmt(d.m.half)}</td>
                 <td className={c.num}>{fmt(d.m.m2 / M2_PER_ACRE)}</td>
                 <td className={c.num}><b>{money(d.m.land)}</b></td>
-                <td className={r.barTd}><span className={r.bar}><span style={{ width: `${(d.m.land / max) * 100}%`, background: SCEN_COLOR[k] }} /></span></td>
+                <td className={r.barTd}><span className={r.bar} {...tip({ head: label(d.name), rows: [
+                  { color: SCEN_COLOR[k], label: 'Land value underwater', value: money(d.m.land), on: true },
+                  { label: 'Share of its land value', value: `${pct(d.m.land / (d.county[1] || 1))} of ${money(d.county[1])}` },
+                  { label: 'Lots reached', value: fmt(d.m.reached) },
+                ], foot: 'San Juan County Assessor × County flood layers' })}><span style={{ width: `${(d.m.land / max) * 100}%`, background: SCEN_COLOR[k] }} /></span></td>
                 <td className={c.num}>{pct(d.m.land / (d.county[1] || 1))}<span className={r.of}> of {money(d.county[1])}</span></td>
                 <td className={c.num}>{money(d.m.lb)}</td>
                 <td className={c.num}>{d.m.erLand ? money(d.m.erLand) : '—'}</td>
@@ -133,6 +139,11 @@ function Breakdown({ title, names, rows, totals, active, onPick, k, erYears, sub
 }
 
 export default function LandValueReport() {
+  return <ChartTipProvider><LandValueReportBody /></ChartTipProvider>
+}
+
+function LandValueReportBody() {
+  const tip = useChartTip()
   const [st, setSt] = useState(readUrl)
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
@@ -284,7 +295,10 @@ export default function LandValueReport() {
                 return (
                   <div key={j} className={r.shareRow}>
                     <span className={r.shareLbl}>{SHARE_BANDS[j][1]} of the lot</span>
-                    <span className={r.bar}><span style={{ width: `${(bd.n / max) * 100}%`, background: SHARE_COLOR[j] }} /></span>
+                    <span className={r.bar} {...tip({ head: `${SHARE_BANDS[j][1]} of the lot under water`, rows: [
+                      { color: SHARE_COLOR[j], label: 'Lots', value: fmt(bd.n), on: true },
+                      { label: 'Appraised (land + buildings)', value: money(bd.app) },
+                    ], foot: `${scenName(scen)} · ${where} · Assessor × County flood layer` })}><span style={{ width: `${(bd.n / max) * 100}%`, background: SHARE_COLOR[j] }} /></span>
                     <span className={r.shareN}><b>{fmt(bd.n)}</b> lots<small>appraised {money(bd.app)}</small></span>
                   </div>
                 )

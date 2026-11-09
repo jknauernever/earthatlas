@@ -14,6 +14,7 @@ import c from './ScrubberReport.module.css'
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { inSalishSea } from '../../lib/ships/salishSea.js'
 import DocBrand from '../components/DocBrand.jsx'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 // Lovel's own words for what the report covers (port-authority docks, private terminals, refinery docks), and what is counted: calls.
 const AREA_WORDS = { WA: 'Washington', BC: 'British Columbia', SALISH: 'Salish Sea' }
 const reportTitle = (geo) => `Scrubber-fitted ship calls at ${AREA_WORDS[geo] || AREA_WORDS.WA} ports, terminals and refineries`
@@ -188,6 +189,7 @@ export default function ScrubberReport() {
   }, [view, st.t])
 
   return (
+    <ChartTipProvider>
     <div className={c.page}>
       <header className={c.top}>
         <DocBrand tool="Ships" href="/ships"><a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
@@ -307,6 +309,7 @@ export default function ScrubberReport() {
         <BuiltByCredit variant="light" className={c.builtBy} />
       </main>
     </div>
+    </ChartTipProvider>
   )
 }
 
@@ -712,11 +715,13 @@ function Ships({ view, months, op, setOp }) {
 // ── Where else these ships call (GFW port visits, worldwide) ─────────────────
 
 function WorldPorts({ world, geo }) {
+  const tip = useChartTip()
   const [all, setAll] = useState(false)
   if (!world) return null
   const cov = world.coverage || {}
   const who = geo === 'WA' ? 'the scrubber-fitted ships that called in Washington' : geo === 'BC' ? 'the scrubber-fitted ships that called in British Columbia' : 'the scrubber-fitted ships that called in the Salish Sea'
   const maxC = Math.max(1, ...world.countries.map((x) => x.visits))
+  const allVisits = world.countries.reduce((a, x) => a + x.visits, 0) || 1
   const ports = all ? world.ports : world.ports.slice(0, 25)
   return (
     <section className={c.card} id="world">
@@ -730,7 +735,11 @@ function WorldPorts({ world, geo }) {
             <h3 className={c.h3}>By country</h3>
             <ul className={c.bars}>
               {world.countries.slice(0, 15).map((x) => (
-                <li key={x.iso3 || 'x'}>
+                <li key={x.iso3 || 'x'} {...tip({ head: x.country || x.iso3 || 'Unknown', rows: [
+                  { label: 'Port visits', value: fmt(x.visits), on: true },
+                  { label: 'Ships', value: fmt(x.ships) },
+                  { label: 'Share of all visits', value: `${Math.round((x.visits / allVisits) * 1000) / 10}%` },
+                ], foot: 'Global Fishing Watch port visits' })}>
                   <span className={c.barLabel}>{x.country || x.iso3 || 'Unknown'}</span>
                   <span className={c.barTrack}><span className={c.barFill} style={{ width: `${(x.visits / maxC) * 100}%` }} /></span>
                   <span className={c.barNum}>{fmt(x.visits)}<small> · {fmt(x.ships)} ship{x.ships === 1 ? '' : 's'}</small></span>

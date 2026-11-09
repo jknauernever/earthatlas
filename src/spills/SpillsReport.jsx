@@ -238,7 +238,7 @@ function Spark({ years, counts, max, color = SPILL }) {
 function PrecBar({ row, max }) {
   return (
     <span className={s.stack}>
-      {['exact', 'near', 'city'].map((g) => row[g] > 0 && <span key={g} style={{ width: `${(row[g] / max) * 100}%`, background: PREC_COLOR[g] }} title={`${fmt(row[g])} placed by ${PREC_WORDS[g]}`} />)}
+      {['exact', 'near', 'city'].map((g) => row[g] > 0 && <span key={g} style={{ width: `${(row[g] / max) * 100}%`, background: PREC_COLOR[g] }} data-tip={`${fmt(row[g])} of ${fmt(['exact', 'near', 'city'].reduce((a, k) => a + (row[k] || 0), 0))} placed by ${PREC_WORDS[g]}`} />)}
     </span>
   )
 }
@@ -994,7 +994,7 @@ export default function SpillsReport() {
                   width: w, height: 210, marginLeft: 40, marginBottom: w < 640 ? 46 : 30, style: PLOT_STYLE,
                   color: { domain: ['Deaths', 'Injuries'], range: ['#581c87', '#c084fc'] },
                   x: { type: 'band', label: null, tickFormat: (y) => soFar(y, pl.y1), tickRotate: w < 640 ? -45 : 0, padding: 0.2 }, y: { grid: true, label: 'People' },
-                  marks: [Plot.barY(pl.harm, { x: 'y', y: 'n', fill: 'k', title: (d) => `${soFar(d.y, pl.y1)}: ${fmt(d.n)} ${d.k === 'Deaths' ? 'killed' : 'hurt'}` }), Plot.ruleY([0])],
+                  marks: [Plot.barY(pl.harm, { x: 'y', y: 'n', fill: 'k', tip: true, title: (d) => `${soFar(d.y, pl.y1)}: ${fmt(d.n)} ${d.k === 'Deaths' ? 'killed' : 'hurt'}` }), Plot.ruleY([0])],
                 })} />
                 <div className={c.hint}>{psName === 'the U.S.' ? 'The whole U.S.' : psName} · source: <Src k="phmsa">PHMSA gas incident reports</Src></div>
               </div>

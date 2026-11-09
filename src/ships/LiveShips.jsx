@@ -175,7 +175,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
           src: src || 'aisstream', ...(snap.extras?.[mmsi] ? { ferry: JSON.stringify(snap.extras[mmsi]) } : {}) } })
       const tr = moving ? snap.trails?.[mmsi] : null
       if (tr?.length >= 2) {
-        trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { color, isFerry: ferry ? 1 : 0 } })
+        trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { color, isFerry: ferry ? 1 : 0, name: name || `MMSI ${mmsi}`, n: tr.length, t0: tr[0][2] ?? null, t1: tr[tr.length - 1][2] ?? null } })
         tr.forEach((q, i) => trailPts.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [q[0], q[1]] },
           properties: { color, name: name || `MMSI ${mmsi}`, t: q[2] ?? null, i: i + 1, n: tr.length } }))
       }
@@ -215,6 +215,15 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
           + `<br>Recorded position ${q.i} of ${q.n}${q.t ? ` · ${fmtClock(q.t * 1000)}` : ''}<br><span style="color:#4b5563">${f.geometry.coordinates[1].toFixed(5)}, ${f.geometry.coordinates[0].toFixed(5)} · aisstream.io</span></div>`).addTo(map)
       })
       map.on('mouseleave', TRAIL_PT, () => tip.remove())
+      // The trail line itself: whose, and the span it covers (the dots, from zoom 10, give each position)
+      map.on('mousemove', TRAIL, (e) => {
+        const f = e.features[0]
+        if (!f || map.queryRenderedFeatures(e.point, { layers: [TRAIL_PT, ARROW, DOT].filter((l) => map.getLayer(l)) }).length) return
+        const q = f.properties
+        tip.setLngLat(e.lngLat).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45"><b>${String(q.name).replace(/[<>&]/g, '')}</b>`
+          + `<br>Recent trail · ${q.n} recorded positions${q.t0 && q.t1 ? `<br>${fmtClock(q.t0 * 1000)} – ${fmtClock(q.t1 * 1000)}` : ''}<br><span style="color:#4b5563">aisstream.io</span></div>`).addTo(map)
+      })
+      map.on('mouseleave', TRAIL, () => tip.remove())
       for (const id of [ARROW, DOT]) {
         map.on('mousemove', id, (e) => {
           map.getCanvas().style.cursor = 'pointer'

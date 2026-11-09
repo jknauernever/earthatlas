@@ -16,6 +16,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import { installHoverTip } from '../lib/mapHoverTip.js'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -100,7 +101,7 @@ function reachedGeojson(sc, h) {
       if (seen.has(key)) continue
       seen.add(key)
       const x0 = ix * dlon, y0 = iy * dlat
-      features.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[x0, y0], [x0 + dlon, y0], [x0 + dlon, y0 + dlat], [x0, y0 + dlat], [x0, y0]]] } })
+      features.push({ type: 'Feature', properties: { fh: i }, geometry: { type: 'Polygon', coordinates: [[[x0, y0], [x0 + dlon, y0], [x0 + dlon, y0 + dlat], [x0, y0 + dlat], [x0, y0]]] } })
     }
   }
   return { type: 'FeatureCollection', features }
@@ -176,7 +177,7 @@ export default function SpillriskApp() {
     map.on('moveend', () => { const c = map.getCenter(); setMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }) })
     map.on('style.load', () => { addLayers(map); setMapReady(true); syncRef.current?.() })
     map.on('click', (e) => clickRef.current?.(e))
-    const off = installHoverTip(map, { layers: ['sr-points', 'sr-oil', 'sr-ashore'], html: (f) => hoverRef.current?.(f) || null })
+    const off = installHoverTip(map, { layers: ['sr-points', 'sr-ashore', 'sr-float', 'sr-oil', 'sr-reached'], html: (f) => hoverRef.current?.(f) || null })
     return () => { off(); map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -226,10 +227,17 @@ export default function SpillriskApp() {
   hoverRef.current = (feats) => {
     const pt = feats.find((f) => f.layer.id === 'sr-points')
     if (pt) return `<div class="${styles.tip}"><b>${pt.properties.n}. ${esc(pt.properties.name)}</b><div>${esc(pt.properties.vol)} spilled</div><div>${fmt(pt.properties.td)} tanker-days on this stretch in 2025</div><div class="${styles.dim}">Click to load its spill</div></div>`
-    const ash = feats.find((f) => f.layer.id === 'sr-ashore')
-    if (ash) return `<div class="${styles.tip}"><b>Oil ashore</b><div>Run 1 (recorded winds and currents), hour ${h}</div></div>`
+    // Run 1's particles sit inside the all-runs cells: say both
     const oil = feats.find((f) => f.layer.id === 'sr-oil')
-    if (oil) return `<div class="${styles.tip}"><b>Oil in ${oil.properties.k} of ${oil.properties.n} runs</b><div>at hour ${h} (${esc(sc ? localTime(sc.start, h) : '')})</div></div>`
+    const cellLine = oil ? `<div>Oil in ${oil.properties.k} of ${oil.properties.n} runs in this cell</div>` : ''
+    const when = `hour ${h} (${esc(sc ? localTime(sc.start, h) : '')})`
+    const ash = feats.find((f) => f.layer.id === 'sr-ashore')
+    if (ash) return `<div class="${styles.tip}"><b>Oil ashore</b><div>Run 1 (recorded winds and currents), ${when}</div>${cellLine}</div>`
+    const fl = feats.find((f) => f.layer.id === 'sr-float')
+    if (fl) return `<div class="${styles.tip}"><b>Floating oil</b><div>Run 1 (recorded winds and currents), ${when}</div>${cellLine}</div>`
+    if (oil) return `<div class="${styles.tip}"><b>Oil in ${oil.properties.k} of ${oil.properties.n} runs</b><div>at ${when}</div></div>`
+    const rch = feats.find((f) => f.layer.id === 'sr-reached')
+    if (rch) return `<div class="${styles.tip}"><b>Oil has been here</b><div>First reached at hour ${rch.properties.fh} (${esc(sc ? localTime(sc.start, rch.properties.fh) : '')}) in at least one run</div></div>`
     return null
   }
 
@@ -285,6 +293,7 @@ export default function SpillriskApp() {
   const pickPoint = (id) => { setPointId(id); setHour(0); setPlaying(false) }
 
   return (
+    <ChartTipProvider>
     <div className={q.container}>
       <div className={q.mapWrap} ref={containerRef} />
       {mapReady && <ZoomIndicator map={mapRef.current} />}
@@ -365,12 +374,7 @@ export default function SpillriskApp() {
               </div>
               {bud && (
                 <>
-                  <div className={styles.budget} title="Run 1 oil budget">
-                    <span style={{ width: pct(bud.floating), background: OIL }} />
-                    <span style={{ width: pct(bud.ashore), background: ASHORE }} />
-                    <span style={{ width: pct(bud.evaporated), background: '#94a3b8' }} />
-                    <span style={{ width: pct(bud.dispersed), background: '#38bdf8' }} />
-                  </div>
+                  <BudgetBar bud={bud} amount={sc.amount_bbl} h={h} />
                   <div className={styles.factDim}>
                     Run 1: <b style={{ color: OIL }}>{pct(bud.floating)} floating ({bbl(bud.floating * sc.amount_bbl)} bbl)</b> · <b style={{ color: ASHORE }}>{pct(bud.ashore)} ashore</b> · {pct(bud.evaporated)} evaporated{bud.dispersed >= 0.005 ? ` · ${pct(bud.dispersed)} dispersed` : ''}{bud.off_map > 0.005 ? ` · ${pct(bud.off_map)} left the model area` : ''} · {ext(PYGNOME_URL, 'PyGNOME')}
                   </div>
@@ -432,6 +436,24 @@ export default function SpillriskApp() {
           <SourcesFooter intro={SPILLRISK_SOURCES_INTRO} sections={SPILLRISK_SOURCES} notes={SPILLRISK_SOURCES_NOTES} />
         </div>
       </MapSheet>
+    </div>
+    </ChartTipProvider>
+  )
+}
+
+// Run 1's oil budget as one stacked bar; each part has its own mouseover
+function BudgetBar({ bud, amount, h }) {
+  const tip = useChartTip()
+  const parts = [
+    ['Floating', bud.floating, OIL], ['Ashore', bud.ashore, ASHORE],
+    ['Evaporated', bud.evaporated, '#94a3b8'], ['Dispersed', bud.dispersed, '#38bdf8'],
+  ]
+  const rows = (on) => parts.map(([label, x, color]) => ({ color, label, value: `${pct(x)} · ${bbl(x * amount)} bbl`, on: label === on }))
+  return (
+    <div className={styles.budget}>
+      {parts.map(([label, x, color]) => (
+        <span key={label} style={{ width: pct(x), background: color }} {...tip({ head: `Run 1 oil budget, hour ${h}`, rows: rows(label), foot: `of ${fmt(amount)} barrels spilled` })} />
+      ))}
     </div>
   )
 }

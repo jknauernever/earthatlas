@@ -13,6 +13,7 @@ import MapSheet from '../components/MapSheet.jsx'
 import MapSearch from '../components/MapSearch.jsx'
 import { installPopupSheet } from '../lib/popupSheet.js'
 import { keepPopupOnMap } from '../lib/popupFit.js'
+import { installHoverTip } from '../lib/mapHoverTip.js'
 import { reverseGeocode } from '../explore/utils.js'
 import {
   buildParcelsLayer, addParcelLayers, applyParcelVisibility, applyParcelOpacity,
@@ -603,6 +604,19 @@ const IDENTIFY_API = '/api/arcgis-identify'
 // the nearest color in layer.colormatch (the exact legend colors). Returns the
 // matched entry ({ label, hex, ...extras }) or null (off-coverage/transparent).
 // Used because WRC identify returns the raw un-classed index, not the class.
+const FIRMS_SAT = { N20: 'NOAA-20', N21: 'NOAA-21', N: 'Suomi NPP', '1': 'NOAA-20', Aqua: 'Aqua', Terra: 'Terra' }
+function firmsAgeText(h) {
+  if (h == null) return 'Recent overpass'
+  if (h < 1) return 'Within the last hour'
+  if (h < 24) return `${Math.round(h)} h ago`
+  return h < 48 ? 'About a day ago' : `${Math.round(h / 24)} days ago`
+}
+// Hover card body (shared .ea-hover-tip frame): title, one detail line, source.
+function fireHoverHTML(title, detail, source) {
+  return `<div style="color:#111827;font-size:12px;line-height:1.45"><b>${escapeHtml(title)}</b>` +
+    (detail ? `<div style="color:#374151">${escapeHtml(detail)}</div>` : '') +
+    `<div style="color:#6b7280;margin-top:2px">${escapeHtml(source)} · click for details</div></div>`
+}
 function readRenderedClass(layer, lat, lng) {
   const x = (lng * 20037508.34) / 180
   const y = (Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * 20037508.34) / Math.PI
@@ -1798,6 +1812,48 @@ export default function FireApp() {
     }
     map.on('click', handler)
     return () => map.off('click', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Hover → short card for the vector fire layers ────────────────────────
+  // Reuses the click's synchronous tile queries (no network on hover); the
+  // raster risk readings stay click-only because each one is a server call.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const off = installHoverTip(map, { at: (e) => {
+      if (measureRef.current && measureRef.current.isArmed()) return null
+      let d = null
+      try { d = queryFirmsAt(map, e.point) } catch { /* */ }
+      if (d) return fireHoverHTML('Active fire detection',
+        [firmsAgeText(d.hours_ago), d.frp != null ? `${Number(d.frp).toFixed(1)} MW fire power` : null].filter(Boolean).join(' · '),
+        `${FIRMS_SAT[d.sat] || d.sat || 'VIIRS'} · NASA FIRMS`)
+      try { d = queryUsFiresAt(map, e.point) } catch { d = null }
+      if (d) {
+        const acres = d.acres != null ? `${Number(d.acres).toLocaleString()} acres` : null
+        if (d.source === 'inciweb') return fireHoverHTML(d.name || 'Incident', [d.type, acres].filter(Boolean).join(' · '), 'InciWeb')
+        return fireHoverHTML(d.name ? `${d.name} Fire` : 'Active wildfire',
+          [acres, d.contained != null ? `${d.contained}% contained` : null].filter(Boolean).join(' · '), 'NIFC WFIGS')
+      }
+      try { d = queryCwfisAt(map, e.point) } catch { d = null }
+      if (d) return fireHoverHTML('Active fire (Canada)', d.area_ha != null ? `${Number(d.area_ha).toLocaleString()} ha` : '', 'CWFIS (Canada)')
+      try { d = queryHistoryAt(map, e.point) } catch { d = null }
+      if (d) return fireHoverHTML(d.name ? `${d.name} Fire` : 'Past fire',
+        [d.year ? `Burned ${d.year}` : null, d.acres != null ? `${Number(d.acres).toLocaleString()} acres` : null].filter(Boolean).join(' · '), 'NIFC IFPH')
+      if (PARCELS_LAYER && visibleRef.current[PARCELS_LAYER.id]) {
+        let hit = null
+        try { hit = queryParcelAt(map, e.point) } catch { /* */ }
+        if (hit) {
+          const p = hit.props || {}
+          const where = p.addr || [p.city, p.zip].filter(Boolean).join(' ')
+          return fireHoverHTML(where || 'Property',
+            [p.apn ? `APN ${p.apn}` : null, p.acres != null ? `${Number(p.acres).toLocaleString()} ac` : null, p.land_use].filter(Boolean).join(' · '),
+            PARCEL_SOURCE_CITATION ? PARCEL_SOURCE_CITATION.short : 'County assessor')
+        }
+      }
+      return null
+    } })
+    return off
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

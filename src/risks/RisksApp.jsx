@@ -74,13 +74,13 @@ const erosionLayerId = (y) => `risks-erosion-zone-${y}`
 const EROSION_ZONE_LAYERS = [2060, 2100].map(erosionLayerId)
 // Beyond San Juan County (REGIONS, USGS CoSMoS): each region's tiles carry the same flood bands, buildings and hits, drawn
 // by a twin of each of these layers ("<id>~<region>") that sync() keeps in step with the San Juan one.
-const TWINNED = [...SCENARIOS.flatMap((s) => [floodLayerId(s.id), floodLineId(s.id)]), 'risks-buildings-hit', 'risks-hits-glow', 'risks-hits', 'risks-lots']
+const TWINNED = [...SCENARIOS.flatMap((s) => [floodLayerId(s.id), floodLineId(s.id)]), 'risks-buildings-hit', 'risks-hits-glow', 'risks-hits', 'risks-lots', 'risks-lots-hit']
 const twinId = (id, r) => `${id}~${r.id}`
 const baseId = (id) => id.split('~')[0]
 const regionOf = (id) => REGIONS.find((r) => id.endsWith(`~${r.id}`))
 // v = the region's file name (it carries the bake version), so a re-bake never meets cached tiles
 const regionTilesUrl = (r) => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/risks-tiles?r=${r.id}&v=${r.file.replace(/\.pmtiles$/, '')}&z={z}&x={x}&y={y}`
-const HOVER_BASE = [...ASSESSMENT_LAYERS, ...BUILDING_LAYERS, ...EROSION_ZONE_LAYERS, ...SCENARIOS.map((s) => floodLayerId(s.id))]
+const HOVER_BASE = [...ASSESSMENT_LAYERS, ...BUILDING_LAYERS, ...EROSION_ZONE_LAYERS, ...SCENARIOS.map((s) => floodLayerId(s.id)), 'risks-lots-hit']
 const HOVER_LAYERS = [...HOVER_BASE, ...REGIONS.flatMap((r) => HOVER_BASE.filter((id) => TWINNED.includes(id)).map((id) => twinId(id, r)))]
 
 // ─── Shareable URL state ────────────────────────────────────────────────────
@@ -260,10 +260,19 @@ export default function RisksApp() {
         <div class="${styles.dim}">ESA 2023, from shore type and increased historic erosion rates</div></div>`
     }
     const bandF = feats.find((f) => SCENARIOS.some((s) => f.layer.id === floodLayerId(s.id)))
-    if (!bandF) return null
+    if (!bandF) return lotHtml(feats.find((f) => f.layer.id === 'risks-lots-hit'))
     const band = SCENARIOS.find((s) => bandF.layer.id === floodLayerId(s.id))
     return `<div class="${styles.card}"><div class="${styles.cardTitle}"><span class="${styles.sw}" style="background:${all ? SCENARIO_COLORS[band.id] : COLORS.flood}"></span>Flood extent</div>
       ${firstFloodsLine(rankOf(band.id), bandF.region)}<div class="${styles.dim}">${bandF.region ? `USGS CoSMoS, ${esc(bandF.region.name)} (2025)` : 'ESA 2024 modelled flooding'}</div></div>`
+  }
+
+  // A tax lot (San Juan County Assessor fields baked into the parcel tiles; region lots carry none, so they stay quiet)
+  const lotHtml = (lot) => {
+    const p = lot?.properties
+    if (!p?.apn) return null
+    const facts = [p.acres && `${fmt(Math.round(p.acres * 100) / 100)} acres`, p.land_use].filter(Boolean).map(esc).join(' · ')
+    return `<div class="${styles.card}"><div class="${styles.cardTitle}">${esc(p.addr ? titleCase(p.addr) : 'Tax parcel')}</div>
+      ${facts ? `<div>${facts}</div>` : ''}<div class="${styles.dim}">Parcel ${esc(p.apn)} · San Juan County Assessor</div></div>`
   }
 
   clickRef.current = (e) => {
@@ -297,6 +306,9 @@ export default function RisksApp() {
     }
     map.addLayer({ id: 'risks-lots', type: 'line', source: 'risks-lots', 'source-layer': 'parcels', minzoom: 13,
       paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 1.4], 'line-opacity': 0.6 } })
+    // invisible fill under the lot lines, so a lot answers hover anywhere inside it (last in line after items, buildings, flooding)
+    map.addLayer({ id: 'risks-lots-hit', type: 'fill', source: 'risks-lots', 'source-layer': 'parcels', minzoom: 13,
+      paint: { 'fill-color': '#000000', 'fill-opacity': 0 } })
     map.addLayer({ id: 'risks-buildings', type: 'line', source: 'risks-slr', 'source-layer': 'buildings', minzoom: 13,
       paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 17, 1.6], 'line-opacity': 0.85 } })
     // Buildings within 100 ft of the projected erosion line (filter set in sync): purple fill under the flooded yellow,
@@ -383,6 +395,7 @@ export default function RisksApp() {
     }
     for (const id of ['risks-roadwet-casing', 'risks-roadwet']) map.setFilter(id, ['all', ['==', ['get', 'kind'], 'roadwet'], ['==', ['get', 'rank'], shownRank]])
     map.setLayoutProperty('risks-lots', 'visibility', layersOff.has('lots') ? 'none' : 'visible')
+    map.setLayoutProperty('risks-lots-hit', 'visibility', layersOff.has('lots') ? 'none' : 'visible')
     if (assessment) {
       map.getSource('risks-assessment').setData({ type: 'FeatureCollection',
         features: assessment.features.filter((f) => !layersOff.has(f.properties.kind === 'erosion' ? 'erosion' : 'roads')) })

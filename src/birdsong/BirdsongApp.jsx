@@ -42,6 +42,7 @@ import {
 } from './birdsongService.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import styles from './BirdsongApp.module.css'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 import MapSheet from '../components/MapSheet.jsx'
 import { LegendTurndown } from '../components/panel'
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
@@ -723,12 +724,20 @@ function FeedTurndown({ storageKey, label, children }) {
   )
 }
 
-function TopSpeciesList({ items }) {
+function TopSpeciesList(props) {
+  return <ChartTipProvider><TopSpeciesListBody {...props} /></ChartTipProvider>
+}
+function TopSpeciesListBody({ items }) {
+  const tip = useChartTip()
   const max = Math.max(1, ...items.map((s) => s.count))
+  const total = items.reduce((a, s) => a + s.count, 0) || 1
   return (
     <div className={styles.speciesList}>
       {items.map((s, i) => (
-        <div key={`${s.commonName}-${i}`} className={styles.speciesRow} title={s.scientificName}>
+        <div key={`${s.commonName}-${i}`} className={styles.speciesRow} {...tip({ head: s.commonName, rows: [
+          { color: s.color, label: 'Detections', value: s.count.toLocaleString('en-US'), on: true },
+          { label: 'Share of this list', value: `${Math.round((s.count / total) * 100)}%` },
+        ], foot: [s.scientificName, 'BirdWeather'].filter(Boolean).join(' · ') })}>
           <span className={styles.speciesDot} style={{ background: s.color }} />
           <span className={styles.speciesName}>{s.commonName}</span>
           <span className={styles.speciesBarWrap}>

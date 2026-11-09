@@ -14,6 +14,7 @@ import { ShipLoader } from '../components/panel'
 import c from './ScrubberReport.module.css'
 import b from './BunkeringReport.module.css'
 import DocBrand from '../components/DocBrand.jsx'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 
 // localhost only: ?data=prod reads production's numbers through the dev proxy (vite.config.js), as the scrubber report does.
 const API = import.meta.env.DEV && new URLSearchParams(window.location.search).get('data') === 'prod' ? '/__prodread/api/ships' : '/api/ships'
@@ -168,6 +169,7 @@ function TileBtn({ value, label, sub, src, on, onClick, color }) {
 
 /** One breakdown: count per value (bars split by status), click a value to filter by it. */
 function Facet({ name, dim, rows, filt, set, measure = 'count', top = 7, sub, order = null }) {
+  const tip = useChartTip()
   const [all, setAll] = useState(false)
   const groups = useMemo(() => {
     const m = new Map()
@@ -193,7 +195,12 @@ function Facet({ name, dim, rows, filt, set, measure = 'count', top = 7, sub, or
           const on = filt[dim] === x.v
           const scale = (measure === 'gallons' ? x.g : x.n) / max
           return (
-            <button key={x.v} type="button" className={on ? b.rowOn : b.row} onClick={() => set({ [dim]: on ? '' : x.v })} title={`Show the ${fmt(x.n)} operations: ${label(x.v)}`}>
+            <button key={x.v} type="button" className={on ? b.rowOn : b.row} onClick={() => set({ [dim]: on ? '' : x.v })}
+              {...tip({ head: label(x.v), rows: [
+                ...STATUS.map(([k, l, col]) => ({ color: col, label: l, value: fmt(x.by[k]) })),
+                { label: 'Operations', value: fmt(x.n), on: true },
+                ...(x.g > 0 ? [{ label: 'Gallons notified', value: gal(x.g) }] : []),
+              ], foot: `${on ? 'Click to show all again' : `Click to show only these ${fmt(x.n)}`} · Ecology notices × AIS` })}>
               <span className={b.rowLabel}>{label(x.v)}</span>
               <span className={b.track}>{measure === 'gallons'
                 ? <span className={b.fill} style={{ width: `${scale * 100}%`, background: STATUS_COLOR.seen }} />
@@ -209,6 +216,7 @@ function Facet({ name, dim, rows, filt, set, measure = 'count', top = 7, sub, or
 }
 
 function MonthChart({ rows, months, filt, set }) {
+  const tip = useChartTip()
   const by = new Map(months.map((m) => [m, { seen: 0, notSeen: 0, noNotice: 0, n: 0 }]))
   for (const r of rows) { const x = by.get(r.month); if (x) { x[r.status]++; x.n++ } }
   const max = Math.max(...[...by.values()].map((x) => x.n), 1)
@@ -220,7 +228,10 @@ function MonthChart({ rows, months, filt, set }) {
         const withYear = i === 0 || m.endsWith('-01')
         return (
           <button key={m} type="button" className={`${b.monthCol} ${on ? b.monthOn : ''} ${filt.m && !on ? b.monthDim : ''}`} onClick={() => set({ m: on ? '' : m })}
-            title={`${monthName(m)}: ${STATUS.map(([k, l]) => `${x[k]} ${l.charAt(0).toLowerCase() + l.slice(1)}`).join(', ')}`}>
+            {...tip({ head: monthName(m), rows: [
+              ...STATUS.map(([k, l, col]) => ({ color: col, label: l, value: fmt(x[k]) })),
+              { label: 'Operations', value: fmt(x.n), on: true },
+            ], foot: `${on ? 'Click to show all months again' : 'Click to show only this month'} · Ecology notices × AIS` })}>
             <span className={b.monthN}>{x.n || ''}</span>
             <span className={b.monthStack} style={{ height: `${(x.n / max) * 130}px` }}>
               {STATUS.map(([k, , col]) => x[k] > 0 && <span key={k} className={b.monthSeg} style={{ height: `${(x[k] / x.n) * 100}%`, background: col }} />)}
@@ -360,6 +371,7 @@ export default function BunkeringReport() {
   const clearAll = () => setSt((s) => ({ ...s, q: '', ...Object.fromEntries(FILTER_KEYS.map((k) => [k, ''])) }))
 
   return (
+    <ChartTipProvider>
     <div className={c.page}>
       <header className={c.top}>
         <DocBrand tool="Ships" href="/ships"><a href="/ships" className={c.brand}>EarthAtlas <span>Ships</span></a></DocBrand>
@@ -478,5 +490,6 @@ export default function BunkeringReport() {
         <BuiltByCredit variant="light" className={c.builtBy} />
       </main>
     </div>
+    </ChartTipProvider>
   )
 }

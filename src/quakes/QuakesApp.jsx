@@ -19,6 +19,8 @@ import { mapboxToken } from '../lib/mapboxToken.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { keepPopupOnMap } from '../lib/popupFit.js'
+import { installHoverTip } from '../lib/mapHoverTip.js'
+import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
 import { ensureWebGLSupport } from '../utils/webglSupport'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import GeoSearch from '../components/GeoSearch.jsx'
@@ -125,7 +127,11 @@ function sampleEvenly(arr, max) {
 const COUNT_BAR_COLOR = '#38bdf8'
 
 // ─── Lightweight inline SVG charts (no chart library) ───────────────────────
-function ScatterChart({ events, range }) {
+function ScatterChart(props) {
+  return <ChartTipProvider><ScatterChartBody {...props} /></ChartTipProvider>
+}
+function ScatterChartBody({ events, range }) {
+  const tip = useChartTip()
   const W = 280, H = 110, padL = 22, padB = 16, padT = 6, padR = 6
   const [t0, t1] = range
   const span = Math.max(1, t1 - t0)
@@ -141,13 +147,21 @@ function ScatterChart({ events, range }) {
       ))}
       {events.map((e) => (
         <circle key={e.id} cx={x(e.time)} cy={y(e.mag)} r={Math.max(1.6, 1 + e.mag * 0.8)}
-          fill={magColor(e.mag)} fillOpacity={ageOpacity(e.time)} />
+          fill={magColor(e.mag)} fillOpacity={ageOpacity(e.time)}
+          {...tip({ head: e.place || 'Earthquake', rows: [
+            { color: magColor(e.mag), label: 'Magnitude', value: `M${e.mag.toFixed(1)}`, on: true },
+            ...(e.depth != null ? [{ label: 'Depth', value: `${Number(e.depth).toFixed(1)} km` }] : []),
+          ], foot: `${fmtTime(e.time)} · USGS` })} />
       ))}
     </svg>
   )
 }
 
-function DailyChart({ events }) {
+function DailyChart(props) {
+  return <ChartTipProvider><DailyChartBody {...props} /></ChartTipProvider>
+}
+function DailyChartBody({ events }) {
+  const tip = useChartTip()
   const days = aggregateDaily(events)
   const W = 280, H = 110, padL = 22, padB = 18, padT = 6, padR = 6
   const maxCount = Math.max(1, ...days.map((d) => d.count))
@@ -161,8 +175,15 @@ function DailyChart({ events }) {
       {days.map((d, i) => {
         const h = (d.count / maxCount) * (H - padT - padB)
         return (
-          <rect key={d.key} x={padL + i * bw + 0.5} y={H - padB - h} width={Math.max(1, bw - 1)} height={h}
-            fill={COUNT_BAR_COLOR} fillOpacity="0.85" rx="0.5" />
+          <g key={d.key} {...tip({ head: d.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), rows: [
+            { color: COUNT_BAR_COLOR, label: 'Earthquakes', value: d.count.toLocaleString('en-US'), on: true },
+            { color: magColor(d.maxMag), label: 'Largest', value: `M${d.maxMag.toFixed(1)}` },
+          ], foot: 'USGS' })}>
+            {/* full-height hit area, so short bars are easy to hover */}
+            <rect x={padL + i * bw} y={padT} width={Math.max(1, bw)} height={H - padT - padB} fill="transparent" />
+            <rect x={padL + i * bw + 0.5} y={H - padB - h} width={Math.max(1, bw - 1)} height={h}
+              fill={COUNT_BAR_COLOR} fillOpacity="0.85" rx="0.5" />
+          </g>
         )
       })}
       {days.length > 1 && (
@@ -410,8 +431,15 @@ export default function QuakesApp() {
     // than 'load' (which can be missed under StrictMode's mount/unmount with
     // heavier styles like satellite) — mirrors how /fire wires mapReady.
     map.on('style.load', () => { addLayers(); setMapReady(true) })
+    // Mouseover: the quake's magnitude, place, time and depth (the click popup adds the USGS link)
+    const offHover = installHoverTip(map, { layers: ['quakes-layer'], html: (feats) => {
+      const p = feats[0].properties
+      return `<div class="${styles.popup}"><div class="${styles.popupMag}" style="color:${magColor(Number(p.mag))}">M${Number(p.mag).toFixed(1)}</div>` +
+        `<div class="${styles.popupPlace}">${escapeHtml(p.place)}</div><div class="${styles.popupMeta}">${escapeHtml(fmtTime(Number(p.time)))} · depth ${Number(p.depth).toFixed(1)} km</div>` +
+        `<div class="${styles.popupMeta}">USGS · click for the event page</div></div>`
+    } })
 
-    return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
+    return () => { offHover(); popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

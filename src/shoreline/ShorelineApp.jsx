@@ -244,10 +244,14 @@ export default function ShorelineApp() {
     map.on('click', (e) => clickRef.current?.(e))
     // Hover card (SSE's hover label): "Layer · title", or the fish line's species and levels
     const offTip = installHoverTip(map, {
-      layers: CLICK_LAYERS,
+      layers: [...CLICK_LAYERS, 'sl-parcels-fill'],
       html: (feats) => {
         const f = feats.find((x) => rowOfLayer(x.layer.id))
-        if (!f) return null
+        if (!f) {
+          // Nothing else here: the property under the pointer (its report opens on click)
+          const pc = feats.find((x) => x.layer.id === 'sl-parcels-fill')
+          return pc ? `<div class="${styles.tip}"><b>Property</b> · Parcel ${escapeHtml(pc.properties.PIN)}<div>Click for its property report</div></div>` : null
+        }
         const row = rowOfLayer(f.layer.id), sse = sseLayerId(row)
         if (row === 'fish') return `<div class="${styles.tip}">${fishUseLinesHtml(fishUseEntries(f.properties), fishCodesForMode(fishModeRef.current))}</div>`
         return `<div class="${styles.tip}"><b>${escapeHtml(POPUP_LAYERS[sse].name)}</b> · ${escapeHtml(featureTitle(sse, f.properties))}</div>`

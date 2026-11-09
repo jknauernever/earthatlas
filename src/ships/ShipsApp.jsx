@@ -25,6 +25,7 @@ import GeoSearch from '../components/GeoSearch.jsx'
 import ShareControl from '../components/ShareControl.jsx'
 import { flyToSearchResult } from '../lib/eaGeoSearch.js'
 import { keepPopupOnMap } from '../lib/popupFit.js'
+import { installHoverTip } from '../lib/mapHoverTip.js'
 import PROJECTS from '../../lib/ships/data/salish-projects.json'
 import RBT2_OUTLINE from '../../lib/ships/data/rbt2-outline.json'
 import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
@@ -248,6 +249,15 @@ function herePopupHTML(items) {
     `<div class="${s.popupTitle}">${items.length} things at this spot</div>` +
     `<div class="${s.popupMeta}">From the layers that are on. Pick one to see it.</div>` +
     `<div class="${s.popupList}">${rows}</div></div>`
+}
+// Mouseover card for the What's here pickers: the top item, then a count of the rest (a click lists them all)
+function hoverHTML(items, all = items.length) {
+  const it = items[0]
+  const sw = `<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${it.color};border:1px solid rgba(0,0,0,0.25)"></span>`
+  const more = all - 1
+  return `<div style="color:#111827;font-size:12px;line-height:1.45"><b>${sw}${escapeHtml(it.label)}</b>` +
+    `<div style="color:#4b5563;padding-left:15px">${escapeHtml(it.kind)}</div>` +
+    `<div style="color:#6b7280;margin-top:2px">${more > 0 ? `+ ${more} more here · click to pick` : 'Click to open'}</div></div>`
 }
 function darkPopupHTML({ count, months, period, pct, detail }) {
   const s = styles
@@ -730,16 +740,42 @@ export default function ShipsApp() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    const onClick = (e) => {
+    // Everything the pickers find under the pointer, each tagged with its picker's key
+    const itemsAt = (e) => {
       let items = []
-      for (const fn of pickersRef.current.values()) { try { items.push(...(fn(e) || [])) } catch { /* one layer's hit test failing never blocks the rest */ } }
+      for (const [key, fn] of pickersRef.current) {
+        try { items.push(...(fn(e) || []).map((it) => Object.assign(it, { pickedBy: key }))) } catch { /* one layer's hit test failing never blocks the rest */ }
+      }
       // In the order the map draws them, topmost first (Josh 2026-10-19). layer null = the oil & gas canvas, drawn over the
       // map. Within one layer, the picker's own order. The same ship as a live arrow and as a track: listed once, the upper.
       const order = new Map((map.getStyle()?.layers || []).map((l, i) => [l.id, i]))
       const z = (it) => (it.layer == null ? Infinity : order.get(it.layer) ?? -1)
       items = items.map((it, i) => ({ it, i })).sort((a, b) => z(b.it) - z(a.it) || a.i - b.i).map((x) => x.it)
       const ships = new Set()
-      items = items.filter((it) => { if (it.ship == null) return true; if (ships.has(it.ship)) return false; ships.add(it.ship); return true })
+      return items.filter((it) => { if (it.ship == null) return true; if (ships.has(it.ship)) return false; ships.add(it.ship); return true })
+    }
+    // Mouseover (Josh 2026-11-09: every item on the map has one): what a click here would open, from the same pickers.
+    // Slicks and live ships keep their own richer tips; nothing shows while the picked ship's own track readout does.
+    const OWN_TIP_PICKERS = new Set(['slicks', 'live'])
+    const OWN_TIP_LAYERS = ['live-ships-trail-pt', 'live-ships-trail', ...FOCUS_LAYERS]
+    const offHover = installHoverTip(map, { at: (e) => {
+      if (map.getContainer().classList.contains(styles.hoverCrosshair)) return null
+      const own = OWN_TIP_LAYERS.filter((l) => map.getLayer(l))
+      if (own.length && map.queryRenderedFeatures(e.point, { layers: own }).length) return null
+      // a slick or live ship on any part of the stack shows its own tip: one card at a time
+      const all = itemsAt(e)
+      return all.length && !all.some((it) => OWN_TIP_PICKERS.has(it.pickedBy)) ? hoverHTML(all) : null
+    } })
+    // Slick focus marks (the candidate ship's track, closest pass, image-time position, ring): each feature carries its tip
+    const offFocusHover = installHoverTip(map, { layers: FOCUS_LAYERS.filter((l) => l !== 'slick-focus-label'), html: (feats, ll) => {
+      // the slick's own tip (5 px around the pointer) wins where the two meet: one card at a time
+      const pt = map.project(ll), slk = SLICK_LAYERS.filter((l) => map.getLayer(l) && map.getLayoutProperty(l, 'visibility') !== 'none')
+      if (slk.length && map.queryRenderedFeatures([[pt.x - 5, pt.y - 5], [pt.x + 5, pt.y + 5]], { layers: slk }).length) return null
+      const tip = feats.find((f) => f.properties?.tip)?.properties.tip
+      return tip ? `<div style="color:#111827;font-size:12px;line-height:1.45">${tip}</div>` : null
+    } })
+    const onClick = (e) => {
+      const items = itemsAt(e)
       herePopupRef.current?.remove()
       if (!items.length) return
       if (items.length === 1) { items[0].open(); return }
@@ -763,7 +799,7 @@ export default function ShipsApp() {
       }).catch(() => {})
     }
     map.on('click', onClick)
-    return () => { map.off('click', onClick); herePopupRef.current?.remove() }
+    return () => { offHover(); offFocusHover(); map.off('click', onClick); herePopupRef.current?.remove() }
   }, [mapReady])
   // A picked ship's own tracks: just the selected months (default, Josh 2026-11-06) or every year we have.
   const [ownAllYears, setOwnAllYears] = useState(initial.oy === 'a')
@@ -1892,28 +1928,34 @@ export default function ShipsApp() {
       const corners = [[e, n, 0], [w, n, 90], [w, so, 180], [e, so, 270]]
       for (const [cx, cy, a0] of corners) for (let a = a0; a <= a0 + 90; a += 10) ring.push([cx + dx * Math.cos((a * Math.PI) / 180), cy + dy * Math.sin((a * Math.PI) / 180)])
       ring.push(ring[0])
-      feats.push({ type: 'Feature', properties: { k: 'ring' }, geometry: { type: 'LineString', coordinates: ring } })
+      feats.push({ type: 'Feature', properties: { k: 'ring', tip: `<b>Search ring</b><br>Ships within ${distWords(slickDist)} of the slick` }, geometry: { type: 'LineString', coordinates: ring } })
     }
     if (ship?.track?.length) {
       let run = []
-      const flush = (est) => { if (run.length > 1) feats.push({ type: 'Feature', properties: { k: 'track', est }, geometry: { type: 'LineString', coordinates: run } }) }
+      const shipName = (slickData?.ships?.[ship.mmsi]?.name || ship.name || `MMSI ${ship.mmsi}`).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase())
+      const trackTip = (est) => `<b>${escapeHtml(shipName)}</b><br>${est ? 'Estimated path (dashed): a gap between AIS positions' : 'AIS track'} before the radar image` +
+        `<br><span style="color:#6b7280">Closest pass: ${ship.dist === 0 ? 'crossed the slick' : distWords(ship.dist)} · SkyTruth Cerulean</span>`
+      const flush = (est) => { if (run.length > 1) feats.push({ type: 'Feature', properties: { k: 'track', est, tip: trackTip(est) }, geometry: { type: 'LineString', coordinates: run } }) }
       ship.track.forEach((q, i) => {
         if (i > 0 && q[3] !== ship.track[i - 1][3]) { run.push([q[0], q[1]]); flush(ship.track[i - 1][3]); run = [] }
         run.push([q[0], q[1]])
       })
       flush(ship.track[ship.track.length - 1][3])
-      const name = (slickData?.ships?.[ship.mmsi]?.name || ship.name || `MMSI ${ship.mmsi}`).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase())
       const c = ship.track.find((q) => q[2] * 1000 === Date.parse(ship.closest))
-      if (c) feats.push({ type: 'Feature', properties: { k: 'pt', label: `${ship.dist === 0 ? 'crossed it' : distWords(ship.dist)} · ${beforeWords(ship.closest, near.slick.at)} before` }, geometry: { type: 'Point', coordinates: [c[0], c[1]] } })
+      if (c) {
+        const label = `${ship.dist === 0 ? 'crossed it' : distWords(ship.dist)} · ${beforeWords(ship.closest, near.slick.at)} before`
+        feats.push({ type: 'Feature', properties: { k: 'pt', label, tip: `<b>${escapeHtml(shipName)}: closest to the slick</b><br>${escapeHtml(label)} the radar image` }, geometry: { type: 'Point', coordinates: [c[0], c[1]] } })
+      }
       const last = ship.track[ship.track.length - 1]
-      feats.push({ type: 'Feature', properties: { k: 'now', label: `${name} at the image time` }, geometry: { type: 'Point', coordinates: [last[0], last[1]] } })
+      feats.push({ type: 'Feature', properties: { k: 'now', label: `${shipName} at the image time`, tip: `<b>${escapeHtml(shipName)}</b><br>Where it was when the radar image was taken` }, geometry: { type: 'Point', coordinates: [last[0], last[1]] } })
     }
     // SkyTruth's best candidate when it's a structure: a ring on it, named from the official register when one matches.
     const best = rankedSources(near).find((x) => Number(x.source_collated_score) > 0)
     const infra = slickId && best?.source_type === 'INFRA' ? (near?.others || []).find((o) => o.extId === String(best.mmsi_or_structure_id) && o.lnglat) : null
     if (infra) {
       const f = infra.registered?.facility
-      feats.push({ type: 'Feature', properties: { k: 'infra', label: f ? [f.name, f.operator].filter(Boolean).join(' · ') : 'Structure (not on the register)' }, geometry: { type: 'Point', coordinates: infra.lnglat } })
+      const label = f ? [f.name, f.operator].filter(Boolean).join(' · ') : 'Structure (not on the register)'
+      feats.push({ type: 'Feature', properties: { k: 'infra', label, tip: `<b>${escapeHtml(label)}</b><br>SkyTruth Cerulean’s most likely source for this slick` }, geometry: { type: 'Point', coordinates: infra.lnglat } })
     }
     const data = { type: 'FeatureCollection', features: feats }
     if (map.getSource(FOCUS_SRC)) map.getSource(FOCUS_SRC).setData(data)

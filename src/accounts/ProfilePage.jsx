@@ -94,6 +94,9 @@ function ProfileSection({ user, refetch }) {
             <p className={s.name}>{user.name} <button className={s.link} onClick={() => setEditing(true)}>Edit</button></p>
           )}
           <p className={s.meta}>Member since {fmtDate(user.createdAt)}{user.role === 'admin' ? ' · Administrator' : ''}</p>
+          {user.role === 'admin' && (
+            <p className={s.meta}>Your admin pages: {ADMIN_PAGES.map(([href, label], i) => <span key={href}>{i > 0 && ' · '}<a href={href}>{label}</a></span>)}</p>
+          )}
           {user.image && <button className={s.link} onClick={removePhoto} disabled={a.busy}>Remove photo</button>}
         </div>
       </div>
@@ -101,6 +104,12 @@ function ProfileSection({ user, refetch }) {
     </Section>
   )
 }
+
+// Pages an admin account opens (each needs admin tools unlocked with the authenticator code). Add new admin pages here.
+const ADMIN_PAGES = [
+  ['/admin/users', 'Users, messages and audit log'],
+  ['/ships/intake', 'Ship intake'],
+]
 
 function EmailSection({ user }) {
   const [open, setOpen] = useState(false)

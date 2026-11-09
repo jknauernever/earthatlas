@@ -2,7 +2,11 @@
  * /api/auth/* — EarthAtlas user accounts (Better Auth, lib/accounts/auth.js).
  * vercel.json rewrites /api/auth/:path* here; Better Auth routes on the original pathname.
  *
- * Plus one EarthAtlas endpoint:
+ * On a partner domain outside earthatlas.org (lib/accounts/handoff.js), Better Auth runs as that domain's own
+ * instance (host-only cookie), which also answers GET /api/auth/ea-handoff/finish.
+ *
+ * Plus EarthAtlas endpoints:
+ *   GET /api/auth/ea/handoff?to=<partner URL> — earthatlas.org only: hand the signed-in session to a partner domain
  *   GET /api/auth/ea/form — { formToken, turnstileSiteKey, signupsOpen } for the account forms
  *       (formToken = server-signed render time, lib/accounts/guard.js)
  *   GET /api/auth/ea/export — the signed-in user's own data as a JSON download ("Download my data").
@@ -22,6 +26,8 @@
  */
 import { getAuth, turnstileSiteKey, SIGNUPS_OPEN, usersPool, SCHEMA } from '../lib/accounts/auth.js'
 import { issueFormToken } from '../lib/accounts/guard.js'
+import { isPartnerHost, startHandoff } from '../lib/accounts/handoff.js'
+import { audit, requestIp } from '../lib/accounts/audit.js'
 import { ContactError, submitContact } from '../lib/accounts/contact.js'
 import { AdminError, adminAction, adminStanding, auditLog, contactMessages, getUser, listUsers, lock, unlock } from '../lib/accounts/admin.js'
 
@@ -40,7 +46,7 @@ function withHeaders(res) {
 async function sameOrigin(req) {
   const origin = req.headers.get('origin')
   if (!origin) return false
-  const ctx = await getAuth().$context
+  const ctx = await getAuth(new URL(req.url).host).$context
   return ctx.isTrustedOrigin ? ctx.isTrustedOrigin(origin) : (ctx.trustedOrigins || []).includes(origin)
 }
 
@@ -102,7 +108,17 @@ async function deleteCallback(req) {
 export async function handleAuth(req) {
   // Dark until the accounts launch: without its settings, every accounts route is simply not there.
   if (!process.env.USERS_DATABASE_URL || !process.env.BETTER_AUTH_SECRET) return withHeaders(Response.json({ message: 'Not found.' }, { status: 404 }))
-  const { pathname } = new URL(req.url)
+  const { pathname, host } = new URL(req.url)
+  // Partner domains (lib/accounts/handoff.js): earthatlas.org hands its session over with a one-time code
+  if (pathname === '/api/auth/ea/handoff' && req.method === 'GET') {
+    if (isPartnerHost(host)) return withHeaders(Response.json({ message: 'Not found.' }, { status: 404 }))
+    try {
+      return withHeaders(await startHandoff(req, getAuth(), { audit, requestIp }))
+    } catch (e) {
+      console.error('[accounts] handoff error', e)
+      return withHeaders(Response.json({ message: 'Something went wrong. Please try again.' }, { status: 500 }))
+    }
+  }
   if (pathname === '/api/auth/ea/form' && req.method === 'GET') {
     return withHeaders(Response.json({ formToken: issueFormToken(), turnstileSiteKey: turnstileSiteKey(), signupsOpen: SIGNUPS_OPEN }))
   }
@@ -125,7 +141,7 @@ export async function handleAuth(req) {
   if (pathname.startsWith('/api/auth/admin/')) return withHeaders(Response.json({ message: 'Not found.' }, { status: 404 }))
   if (pathname === '/api/auth/delete-user/callback' && req.method === 'GET') return withHeaders(await deleteCallback(req))
   try {
-    return withHeaders(await getAuth().handler(req))
+    return withHeaders(await getAuth(host).handler(req))
   } catch (e) {
     console.error('[accounts] handler error', e)
     return withHeaders(Response.json({ message: 'Something went wrong. Please try again.' }, { status: 500 }))

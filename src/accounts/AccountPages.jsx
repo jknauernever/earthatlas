@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authClient, errorText, fetchFormConfig, REDIRECT_ERRORS } from './authClient.js'
+import { handoffUrl, hostKind } from './crossSite.js'
 import Turnstile from './Turnstile.jsx'
 import { dropTokenFromAddressBar } from './privacy.js'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
@@ -52,11 +53,11 @@ function Notice({ kind = 'error', children }) {
   return <p className={kind === 'error' ? s.error : s.ok} role={kind === 'error' ? 'alert' : 'status'}>{children}</p>
 }
 
-function GoogleButton({ label = 'Continue with Google', callbackURL = '/account' }) {
+function GoogleButton({ label = 'Continue with Google', callbackURL = '/account', errorCallbackURL = '/account/signin' }) {
   const [busy, setBusy] = useState(false)
   const go = async () => {
     setBusy(true)
-    await authClient.signIn.social({ provider: 'google', callbackURL, errorCallbackURL: '/account/signin' })
+    await authClient.signIn.social({ provider: 'google', callbackURL, errorCallbackURL })
     setBusy(false)
   }
   return (
@@ -76,9 +77,30 @@ const Honeypot = ({ value, onChange }) => (
   </div>
 )
 
-export function SignInPage() {
-  const nav = useNavigate()
+/** ?next= after sign-in: a same-site path only. API paths (the partner-domain handoff) need a full page load. */
+function useNext() {
   const [params] = useSearchParams()
+  const nav = useNavigate()
+  const raw = params.get('next')
+  const next = raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/\\') ? raw : '/account'
+  const go = () => (next.startsWith('/api/') ? window.location.assign(next) : nav(next))
+  return { next, go }
+}
+
+export function SignInPage() {
+  // Partner domains (explore.sanjuans.org) sign in on earthatlas.org and are handed back (src/accounts/crossSite.js)
+  if (typeof window !== 'undefined' && hostKind() === 'partner') {
+    const p = new URLSearchParams(window.location.search).get('next')
+    const back = p && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/api/') ? p : '/'
+    window.location.replace(handoffUrl(window.location.origin + back))
+    return null
+  }
+  return <SignInForm />
+}
+
+function SignInForm() {
+  const [params] = useSearchParams()
+  const { next, go } = useNext()
   const g = useFormGuard()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -94,13 +116,13 @@ export function SignInPage() {
     e.preventDefault()
     setError(''); setBusy(true)
     const { data, error: err } = await authClient.signIn.email(
-      { email, password, callbackURL: '/account' },
+      { email, password, callbackURL: next },
       { headers: { 'x-captcha-response': g.token || '' } },
     )
     setBusy(false); g.spent()
     if (err) return setError(errorText(err))
     if (data?.twoFactorRedirect) return setTwoFactor(true)
-    nav('/account')
+    go()
   }
   const submitCode = async (e) => {
     e.preventDefault()
@@ -110,13 +132,13 @@ export function SignInPage() {
       : await authClient.twoFactor.verifyTotp({ code: code.trim(), trustDevice: trust })
     setBusy(false)
     if (err) return setError(errorText(err))
-    nav('/account')
+    go()
   }
   const passkeySignIn = async () => {
     setError('')
     const { error: err } = await authClient.signIn.passkey()
     if (err) return setError(err.code === 'AUTH_CANCELLED' || /cancel|abort|NotAllowed/i.test(err.message || '') ? '' : errorText(err))
-    nav('/account')
+    go()
   }
 
   if (twoFactor) {
@@ -137,7 +159,7 @@ export function SignInPage() {
 
   return (
     <Shell title="Sign in">
-      <GoogleButton />
+      <GoogleButton callbackURL={next} errorCallbackURL={`/account/signin${next === '/account' ? '' : `?next=${encodeURIComponent(next)}`}`} />
       {typeof window !== 'undefined' && window.PublicKeyCredential && <button type="button" className={`${s.google} ${s.mt8}`} onClick={passkeySignIn}>Sign in with a passkey</button>}
       <Or />
       <form className={`${s.form} ph-no-capture`} onSubmit={submit} noValidate>

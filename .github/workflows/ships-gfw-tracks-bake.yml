@@ -17,6 +17,11 @@
 #   re-fetching and re-baking the whole current month every day.
 # Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET), never a Blob token.
 # Secrets: GFW_API_TOKEN (GFW API, server/CI only), CRON_SECRET (existing).
+# PAUSED BY GFW (2026-11-03, their notice "Changes to the 4Wings report endpoint"): group-by=VESSEL_ID with
+#   spatial-aggregation=false, the request this bake is made of, returns 404 until GFW says otherwise (no date). The plan
+#   job asks GFW first (probe.py --gate, 3 tiny requests): while paused the run fetches nothing and ends green, and the
+#   issue "Data source paused: GFW per-vessel positions" stays open; the first run GFW serves it again closes that issue
+#   and bakes as usual (the daily plan starts 5 days before the index's fetched_through, so it catches up by itself).
 name: ships-gfw-tracks-bake
 on:
   schedule:
@@ -49,13 +54,44 @@ env:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write             # the "Data source paused" issue (opened while GFW's pause lasts, closed when it ends)
     outputs:
       fetch: ${{ steps.plan.outputs.fetch }}     # [{month, from, to}]
       route: ${{ steps.plan.outputs.route }}     # [{month, group, areas}]
-      months: ${{ steps.plan.outputs.months }}
+      months: ${{ steps.gate.outputs.paused == 'true' && '[]' || steps.plan.outputs.months }}   # '[]' = nothing to do (water + fetch skip)
       fetched_through: ${{ steps.plan.outputs.fetched_through }}
     steps:
       - uses: actions/checkout@v4
+      # GFW paused per-vessel reports on 2026-11-03 (header). Paused = skip the fetch and end green; data-watchdog.yml reads
+      # the issue below so the stale-data alert names the pause instead of assigning Josh.
+      - name: Is GFW serving per-vessel positions?
+        id: gate
+        env:
+          GFW_API_TOKEN: ${{ secrets.GFW_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'Data source paused: GFW per-vessel positions'
+        run: |
+          (cd scripts/ships/bake-gfw && python3 probe.py --gate) | tee "$RUNNER_TEMP/probe.txt"
+          paused=$(grep -q '^GATE paused' "$RUNNER_TEMP/probe.txt" && echo true || echo false)
+          echo "paused=$paused" >> "$GITHUB_OUTPUT"
+          gh label create data-alert --repo "$GITHUB_REPOSITORY" --color B60205 2>/dev/null || true
+          n=$(gh issue list --repo "$GITHUB_REPOSITORY" --label data-alert --state open --limit 200 --json number,title \
+                --jq "[.[] | select(.title == \"$TITLE\")][0].number // empty")
+          if [ "$paused" = true ]; then
+            echo "::notice::GFW has per-vessel positions paused: nothing fetched today."
+            if [ -z "$n" ]; then
+              {
+                echo "Global Fishing Watch switched off the request the /ships track bake uses (4Wings report, \`group-by=VESSEL_ID\` with \`spatial-aggregation=false\`) on 2026-11-03, with no restore date: https://globalfishingwatch.org/our-apis/documentation/docs/release-notes"
+                echo
+                echo "While this is open, ships-gfw-tracks-bake.yml checks GFW once a day and fetches nothing. The first day GFW serves the request again, the bake runs, catches up the missing days, and this issue closes itself."
+              } > "$RUNNER_TEMP/body.md"
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label data-alert --body-file "$RUNNER_TEMP/body.md"
+            fi
+          elif [ -n "$n" ] && grep -q 'serves everything the bake needs' "$RUNNER_TEMP/probe.txt"; then
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "GFW serves per-vessel positions again ($(date -u +%F)). The bake is running: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
       - id: plan
         env:
           MODE: ${{ github.event.inputs.mode || 'weekly' }}

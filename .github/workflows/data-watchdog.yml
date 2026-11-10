@@ -149,9 +149,14 @@ jobs:
                lambda d: d.get('asOf'), 2, 'counts last refreshed', ('ships-counts.yml',)),
           ]
           failing_alerts = {t.split(': ', 1)[1]: i['number'] for t, i in OPEN.items() if t.startswith('Data import failing: ')}
+          # A source its publisher has switched off: the bake opens this issue and skips its fetch while it lasts
+          # (ships-gfw-tracks-bake.yml, GFW's pause of 2026-11-03), so its runs are green and staleness has no failing run
+          # to point at. Same treatment as a failure cause: the stale alert names it and stays unassigned.
+          PAUSES = {'GFW ship tracks': 'Data source paused: GFW per-vessel positions'}
           for name, url, pick, max_days, what, makers in checks:
               title = f'Data stale: {name}'
               cause = next(((wf, n) for wf, n in failing_alerts.items() if wf.startswith(makers)), None)
+              pause = OPEN.get(PAUSES.get(name, ''))
               try:
                   day = pick(get(url))
                   age = (now.date() - dt.date.fromisoformat(day)).days
@@ -162,10 +167,12 @@ jobs:
                   lines = [f'{what}: **{day}** ({age} days ago; alert after {max_days}).', url]
                   if cause:
                       lines.append(f'Caused by the open failure alert #{cause[1]} ({cause[0]}); that issue is where Josh gets told.')
-                  alert(title, lines, f'stale-{day}', assign=not cause)
+                  elif pause:
+                      lines.append(f'The source is paused by its publisher (#{pause["number"]}); nothing to fix here.')
+                  alert(title, lines, f'stale-{day}', assign=not (cause or pause))
                   iss = open_issue(title)
                   if iss:   # follow the cause as it comes and goes (no-op edits make no notification)
-                      gh('issue', 'edit', str(iss['number']), '--remove-assignee' if cause else '--add-assignee', ASSIGNEE)
+                      gh('issue', 'edit', str(iss['number']), '--remove-assignee' if cause or pause else '--add-assignee', ASSIGNEE)
               else:
                   resolve(title, f'Fresh again: {what} {day}.')
 

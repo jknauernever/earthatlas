@@ -174,19 +174,22 @@ def publish(files, script_dir, prune=None):
             ingest, data=json.dumps(body).encode(), method="POST",
             headers={"content-type": "application/json",
                      "authorization": f"Bearer {secret}"})
-        # Retry only failures before the request reached us (runner DNS blips,
-        # 2026-11-01); an HTTP error means the endpoint answered, so it stands.
+        # Retry failures where no answer came back: runner DNS blips (2026-11-01) and
+        # read timeouts (2026-11-10 18:50–19:20, four runs in a row, then fine). The
+        # ingest only overwrites fixed paths and prunes ignore missing files, so
+        # sending the same body again is safe. Its maxDuration is 60 s, so a reply
+        # that hasn't come in 120 s is never coming. An HTTP error is an answer: it stands.
         for attempt in range(4):
             try:
-                with urllib.request.urlopen(req, timeout=300) as r:
+                with urllib.request.urlopen(req, timeout=120) as r:
                     print("ingest:", r.read().decode()[:300])
                 break
             except urllib.error.HTTPError:
                 raise
-            except urllib.error.URLError as e:
+            except (urllib.error.URLError, TimeoutError) as e:
                 if attempt == 3:
                     raise
-                print(f"ingest unreachable ({e.reason}); retrying in {10 * (attempt + 1)} s")
+                print(f"ingest no answer ({getattr(e, 'reason', e)}); retrying in {10 * (attempt + 1)} s")
                 time.sleep(10 * (attempt + 1))
     else:
         out = os.path.join(script_dir, "..", "public", "dev-data", "systems")

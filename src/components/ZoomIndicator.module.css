@@ -4,7 +4,7 @@
    drag or click that lands in its little corner. */
 .badge {
   position: absolute;
-  top: 80px;
+  top: calc(80px + var(--ea-avatar-inset, 0px));
   right: 9px;
   z-index: 10;
   display: flex;

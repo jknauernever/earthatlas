@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Notice, Field, useAction, fmtDate, fmtWhen, device } from './ProfilePage.jsx'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import s from './AccountPages.module.css'
+import { rememberAdmin } from '../lib/siteContent.js'
 
 async function api(path, body) {
   const r = await fetch(`/api/auth/ea/admin/${path}`, body
@@ -342,7 +343,8 @@ export default function AdminUsersPage() {
   const [st, setSt] = useState(null)
   const [tab, setTab] = useState('users')
   const [meId, setMeId] = useState(null)
-  const refresh = useCallback(() => api('status').then(setSt).catch(() => setSt({ state: 'error' })), [])
+  // Remember this browser has an admin, so map pages offer "Edit panel" (src/lib/siteContent.js)
+  const refresh = useCallback(() => api('status').then((x) => { rememberAdmin(['locked', 'unlocked', 'needs-2fa'].includes(x.state)); setSt(x) }).catch(() => setSt({ state: 'error' })), [])
   useEffect(() => { document.title = 'Users · EarthAtlas admin'; refresh() }, [refresh])
   useEffect(() => { if (st?.state === 'unlocked') fetch('/api/auth/get-session', { credentials: 'same-origin' }).then((r) => r.json()).then((j) => setMeId(j?.user?.id || null)) }, [st?.state])
   const lockNow = async () => { await api('lock', {}).catch(() => {}); refresh() }

@@ -197,12 +197,18 @@ select:focus, input:focus  { border-color: var(--moss); box-shadow: 0 0 0 3px rg
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib-button { display: none !important; }
 
+/* ─── Signed-in avatar (components/AccountAvatar.jsx) ───
+   The avatar owns the top-right corner on every site while someone is signed in; everything that stacks down the
+   right edge (Mapbox +/−, zoom badge, share, basemap, phone search icon) adds this inset to its top. */
+:root { --ea-avatar-inset: 0px; }
+html.ea-signed-in { --ea-avatar-inset: 46px; }
+
 /* ─── Mapbox controls on touch/phone ───
    Keep the control groups clear of the notch and the home indicator, and drop
    the +/− buttons on phones: pinch-to-zoom covers it, and those two 29px
    buttons were the widest thing competing with the map for thumb space. The
    geolocate button stays — there's no gesture equivalent. */
-.mapboxgl-ctrl-top-right    { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.mapboxgl-ctrl-top-right    { padding-top: calc(env(safe-area-inset-top, 0px) + var(--ea-avatar-inset, 0px)); padding-right: env(safe-area-inset-right, 0px); }
 .mapboxgl-ctrl-top-left     { padding-top: env(safe-area-inset-top, 0px); padding-left: env(safe-area-inset-left, 0px); }
 .mapboxgl-ctrl-bottom-right { padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .mapboxgl-ctrl-bottom-left  { padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); }

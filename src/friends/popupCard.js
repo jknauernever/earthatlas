@@ -34,7 +34,7 @@ export function swatchHtml(kind, accent, fill, icon) {
 function photoHtml(photos) {
   const slides = photos.map((p, i) => {
     const cap = p.caption || p.credit
-      ? `<div class="fp-cap">${p.caption ? escapeHtml(p.caption) : ''}${p.caption && p.credit ? ' · ' : ''}${p.credit ? `<i>${escapeHtml(p.credit)}</i>` : ''}</div>` : ''
+      ? `<div class="fp-cap">${p.caption ? escapeHtml(p.caption) : ''}${p.caption && p.credit ? ' · ' : ''}${p.credit ? `<i>${p.creditHref ? `<a href="${escapeHtml(p.creditHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.credit)}</a>` : escapeHtml(p.credit)}</i>` : ''}</div>` : ''
     return `<div class="fp-slide"${i === 0 ? '' : ' hidden'}><img src="${escapeHtml(p.url)}" alt=""${i < 2 ? '' : ' loading="lazy"'} data-fp-onerror="${i === 0 ? 'hide-photo' : 'remove-slide'}">${cap}</div>`
   }).join('')
   const album = photos.length > 1

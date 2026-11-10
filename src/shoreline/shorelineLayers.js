@@ -157,14 +157,17 @@ const fishKey = (mode) => `t_${mode}`
 const tierMatch = (mode, of) => ['match', ['coalesce', ['get', fishKey(mode)], 1], 3, of(3), 2, of(2), of(1)]
 
 /**
- * Add the whole /shoreline map to `map` (call on every style.load). Returns { setVisible(offSet), setFishMode(mode),
- * thin(), setSelected(fid) } — thin re-chooses the pins for the current zoom.
+ * Add the whole /shoreline map to `map` (call on every style.load). cfg: the panel's colors, pins and zooms
+ * (layerConfig in shorelineTree.js, admin-editable). Returns { setVisible(offSet), setFishMode(mode), thin(),
+ * setSelected(fid) } — thin re-chooses the pins for the current zoom.
  */
-export function addShorelineLayers(map, data) {
+export function addShorelineLayers(map, data, cfg) {
+  const Z = cfg.zoom
+  const tierColor = (t) => cfg.fishTiers[t] || FISH_TIERS[t].color
   // Parcels and buildings (DeckLayers buildMvt): bottom of the stack
   map.addSource('sl-parcels', { type: 'vector', tiles: [tilesUrl()], minzoom: 12, maxzoom: 15, bounds: TILE_EXTENT, promoteId: { parcels: 'fid', buildings: 'bid' },
     attribution: 'San Juan County GIS' })
-  const pz = mapboxZoom(MIN_ZOOM.parcels), bz = mapboxZoom(MIN_ZOOM.buildings), close = mapboxZoom(17)
+  const pz = Z.parcels, bz = Z.buildings, close = mapboxZoom(17)
   map.addLayer({ id: 'sl-parcels-fill', type: 'fill', source: 'sl-parcels', 'source-layer': 'parcels', minzoom: pz,
     paint: { 'fill-color': '#ADB5BD', 'fill-opacity': 0.05 } })
   // deck autoHighlight: the hovered parcel brightens (white, 80/255)
@@ -172,18 +175,18 @@ export function addShorelineLayers(map, data) {
     paint: { 'fill-color': '#FFFFFF', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 80 / 255, 0] } })
   // From zoom 17 the ground itself shows the lot lines: hairline
   map.addLayer({ id: 'sl-parcels-line', type: 'line', source: 'sl-parcels', 'source-layer': 'parcels', minzoom: pz,
-    paint: { 'line-color': '#F97316', 'line-width': ['step', ['zoom'], 1.2, close, 1] } })
+    paint: { 'line-color': cfg.parcels, 'line-width': ['step', ['zoom'], 1.2, close, 1] } })
   // Buildings: solid blue with a dark edge; from zoom 17 ("closeUp") a pale fill with a blue outline
   map.addLayer({ id: 'sl-buildings-fill', type: 'fill', source: 'sl-parcels', 'source-layer': 'buildings', minzoom: bz,
-    paint: { 'fill-color': '#60A5FA', 'fill-opacity': ['step', ['zoom'], 0.7, close, 0.2] } })
+    paint: { 'fill-color': cfg.buildings, 'fill-opacity': ['step', ['zoom'], 0.7, close, 0.2] } })
   map.addLayer({ id: 'sl-buildings-hover', type: 'fill', source: 'sl-parcels', 'source-layer': 'buildings', minzoom: bz,
     paint: { 'fill-color': '#FFFFFF', 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 80 / 255, 0] } })
   map.addLayer({ id: 'sl-buildings-line', type: 'line', source: 'sl-parcels', 'source-layer': 'buildings', minzoom: bz,
-    paint: { 'line-color': ['step', ['zoom'], '#1A252F', close, '#60A5FA'], 'line-width': ['step', ['zoom'], 0.8, close, 1.5] } })
+    paint: { 'line-color': ['step', ['zoom'], '#1A252F', close, cfg.buildings], 'line-width': ['step', ['zoom'], 0.8, close, 1.5] } })
   // The parcel whose property report is open (SSE featureHighlight): orange wash, 4 px edge
   const none = ['==', ['get', 'fid'], -1]
-  map.addLayer({ id: 'sl-parcels-sel-fill', type: 'fill', source: 'sl-parcels', 'source-layer': 'parcels', filter: none, paint: { 'fill-color': '#F97316', 'fill-opacity': 0.25 } })
-  map.addLayer({ id: 'sl-parcels-sel-line', type: 'line', source: 'sl-parcels', 'source-layer': 'parcels', filter: none, paint: { 'line-color': '#F97316', 'line-width': 4 } })
+  map.addLayer({ id: 'sl-parcels-sel-fill', type: 'fill', source: 'sl-parcels', 'source-layer': 'parcels', filter: none, paint: { 'fill-color': cfg.parcels, 'fill-opacity': 0.25 } })
+  map.addLayer({ id: 'sl-parcels-sel-line', type: 'line', source: 'sl-parcels', 'source-layer': 'parcels', filter: none, paint: { 'line-color': cfg.parcels, 'line-width': 4 } })
 
   // Friends habitat (kelp, eelgrass, herring, forage beaches), as on /permits; its pins thin themselves
   map.addSource('sl-fish', { type: 'geojson', data: data.fish })
@@ -193,7 +196,7 @@ export function addShorelineLayers(map, data) {
 
   // Priority Shorelines for Fish (buildFishUse): width by level, 35% at zoom 10 → full from 14; a white casing fading
   // in from zoom 12 to 3 px at 14. zIndex 4.5: over the spawning-beach bands, under geology and armor.
-  const fz = mapboxZoom(MIN_ZOOM.fish)
+  const fz = Z.fish
   const width = (mode, halo) => {
     const w = tierMatch(mode, (t) => FISH_TIERS[t].weight)
     return ['interpolate', ['linear'], ['zoom'], mapboxZoom(10), ['*', w, 0.35], mapboxZoom(12), ['*', w, 0.675], mapboxZoom(14), halo ? ['+', w, 3] : w]
@@ -201,39 +204,41 @@ export function addShorelineLayers(map, data) {
   map.addLayer({ id: 'sl-fish-halo', type: 'line', source: 'sl-fish', minzoom: fz, layout: round,
     paint: { 'line-color': '#FFFFFF', 'line-opacity': 0.9, 'line-width': width(DEFAULT_FISH_MODE, true) } })
   map.addLayer({ id: 'sl-fish', type: 'line', source: 'sl-fish', minzoom: fz, layout: round,
-    paint: { 'line-color': tierMatch(DEFAULT_FISH_MODE, (t) => FISH_TIERS[t].color), 'line-width': width(DEFAULT_FISH_MODE, false) } })
+    paint: { 'line-color': tierMatch(DEFAULT_FISH_MODE, tierColor), 'line-width': width(DEFAULT_FISH_MODE, false) } })
 
   // Shoreforms: 3 px in the class's group color (2 px slate for an unknown class)
   const known = Object.keys(SHOREFORM_GROUP_OF)
-  map.addLayer({ id: 'sl-geology', type: 'line', source: 'sl-geology', minzoom: mapboxZoom(MIN_ZOOM.geology), layout: round,
+  map.addLayer({ id: 'sl-geology', type: 'line', source: 'sl-geology', minzoom: Z.geology, layout: round,
     paint: {
-      'line-color': ['match', ['get', 'PIAT_shoreforms'], ...known.flatMap((k) => [k, SHOREFORM_GROUPS[SHOREFORM_GROUP_OF[k]].color]), SHOREFORM_DEFAULT],
+      'line-color': ['match', ['get', 'PIAT_shoreforms'], ...known.flatMap((k) => [k, cfg.shoreform[SHOREFORM_GROUP_OF[k]] || SHOREFORM_GROUPS[SHOREFORM_GROUP_OF[k]].color]), SHOREFORM_DEFAULT],
       'line-width': ['match', ['get', 'PIAT_shoreforms'], known, 3, 2],
     } })
-  const mz = mapboxZoom(MIN_ZOOM.modifications)
-  map.addLayer({ id: 'sl-armor', type: 'line', source: 'sl-armor', minzoom: mz, layout: round, paint: { 'line-color': '#8B0000', 'line-width': 3 } })
+  map.addLayer({ id: 'sl-armor', type: 'line', source: 'sl-armor', minzoom: Z.armor, layout: round, paint: { 'line-color': cfg.armorLine, 'line-width': 3 } })
   // Invisible wide click targets over the thin lines (SSE hitStrokeWeight 14)
-  for (const [id, z] of [['fish', fz], ['geology', mapboxZoom(MIN_ZOOM.geology)], ['armor', mz]]) {
+  for (const [id, z] of [['fish', fz], ['geology', Z.geology], ['armor', Z.armor]]) {
     map.addLayer({ id: `sl-${id}-hit`, type: 'line', source: `sl-${id}`, minzoom: z, layout: round, paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 14 } })
   }
 
   // The habitat layers sit under the fish line (SSE zIndex: herring 1, eelgrass 2, beaches 3–4, fish 4.5)
-  const thinHabitat = addFriendsHabitat(map, data.habitat, 'sl-fish-halo')
+  const thinHabitat = addFriendsHabitat(map, data.habitat, 'sl-fish-halo', {
+    styles: cfg.habitatStyles, pins: cfg.habitatPins,
+    minZoomOf: { hkb: Z.kelp, hee: Z.eelgrass, hhe: Z.herring, hfd: Z.fdoc, hfp: Z.fpot },
+  })
 
   // Point structures: the layer's pin at each point, every one shown
-  for (const [k, spec] of Object.entries(PINS)) addPinImage(map, `sl-pin-${k}`, spec)
+  for (const [k, spec] of Object.entries(PINS)) addPinImage(map, `sl-pin-${k}`, cfg.pins[k] || spec)
   const pinLayout = (pin, scale) => ({ 'icon-image': `sl-pin-${pin}`, 'icon-size': scale, 'icon-anchor': 'bottom', 'icon-offset': [0, 3],
     'icon-allow-overlap': true, 'icon-ignore-placement': true })
   for (const m of MODIFICATIONS.filter((x) => !x.line)) {
-    map.addLayer({ id: `sl-${m.id}`, type: 'symbol', source: `sl-${m.id}`, minzoom: mz, layout: pinLayout(m.pin, m.scale) })
+    map.addLayer({ id: `sl-${m.id}`, type: 'symbol', source: `sl-${m.id}`, minzoom: Z[m.id], layout: pinLayout(m.pin, m.scale) })
   }
 
   // Pins on lines (createMidpointMarkers): armor at each segment's middle; fish and shoreform pins a third / two thirds
   // along, repeated every 1.2 km, always thinned on a wider grid, and yielding to every other layer's pins.
   const LINE_PINS = [
-    { id: 'armor', layer: 'sl-armor-pins', fc: data.armor, pin: 'armor', scale: 0.85, gate: MIN_ZOOM.modifications },
-    { id: 'fish', layer: 'sl-fish-pins', fc: data.fish, pin: 'fish', gate: MIN_ZOOM.fish, yield: true, placement: { along: 0.33, repeatEveryM: 1200 } },
-    { id: 'geology', layer: 'sl-geology-pins', fc: data.geology, pin: 'shoreform', gate: MIN_ZOOM.geology, yield: true, placement: { along: 0.67, repeatEveryM: 1200 } },
+    { id: 'armor', layer: 'sl-armor-pins', fc: data.armor, pin: 'armor', scale: 0.85, gate: Z.armor + GZ },
+    { id: 'fish', layer: 'sl-fish-pins', fc: data.fish, pin: 'fish', gate: Z.fish + GZ, yield: true, placement: { along: 0.33, repeatEveryM: 1200 } },
+    { id: 'geology', layer: 'sl-geology-pins', fc: data.geology, pin: 'shoreform', gate: Z.geology + GZ, yield: true, placement: { along: 0.67, repeatEveryM: 1200 } },
   ]
   for (const p of LINE_PINS) {
     const pts = pinPoints(p.fc.features, 0, p.placement)
@@ -268,7 +273,7 @@ export function addShorelineLayers(map, data) {
     setVisible(offSet) { off = new Set(offSet); for (const id of ALL_IDS) vis(id, !off.has(id)); thin(true) },
     setFishMode(m) {
       mode = m
-      map.setPaintProperty('sl-fish', 'line-color', tierMatch(mode, (t) => FISH_TIERS[t].color))
+      map.setPaintProperty('sl-fish', 'line-color', tierMatch(mode, tierColor))
       map.setPaintProperty('sl-fish', 'line-width', width(mode, false))
       map.setPaintProperty('sl-fish-halo', 'line-width', width(mode, true))
     },
@@ -279,6 +284,14 @@ export function addShorelineLayers(map, data) {
       for (const id of ['sl-parcels-sel-fill', 'sl-parcels-sel-line']) if (map.getLayer(id)) map.setFilter(id, f)
     },
   }
+}
+
+/** Take every /shoreline layer, source and pin image off `map` (before re-adding them with new admin settings). */
+export function removeShorelineLayers(map) {
+  const mine = (id) => /^(sl-|fhab-)/.test(id)
+  for (const l of [...(map.getStyle()?.layers || [])].reverse()) if (mine(l.id)) map.removeLayer(l.id)
+  for (const id of Object.keys(map.getStyle()?.sources || {})) if (mine(id)) map.removeSource(id)
+  for (const id of map.listImages?.() || []) if (/^(sl-pin-|fhab-pin-)/.test(id)) map.removeImage(id)
 }
 
 /** deck autoHighlight for parcels and buildings: the one under the pointer brightens. Returns an uninstall function. */

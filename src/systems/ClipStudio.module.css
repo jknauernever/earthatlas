@@ -2,7 +2,7 @@
    (SystemsApp.module.css: basemap toggle / menu panel / modal). */
 
 /* Top-right column: zoom badge (80) → share (110) → clip (154) → basemap (198). */
-.launcher { position: absolute; top: 154px; right: 10px; z-index: 10; }
+.launcher { position: absolute; top: calc(154px + var(--ea-avatar-inset, 0px)); right: 10px; z-index: 10; }
 
 .toggle, .toggleActive {
   width: 36px; height: 36px;
@@ -163,6 +163,6 @@
 
 @media (max-width: 640px) {
   /* Mobile column: search (16) → share (62) → clip (106) → basemap (150). */
-  .launcher { top: calc(106px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
+  .launcher { top: calc(106px + env(safe-area-inset-top, 0px) + var(--ea-avatar-inset, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
   .hud { top: calc(104px + env(safe-area-inset-top, 0px)); }
 }

@@ -655,8 +655,10 @@ export function featureTitle(layerId, props, { fishMode } = {}) {
  * preloadFriendsContent() resolves (as SSE does) if the popup is still open.
  * detailsExpanded: "All details" starts open (/shoreline, Josh 2026-11-09).
  * related: false drops the "Related content from Friends of the San Juans" block (/shoreline, Josh 2026-11-09).
+ * Admin-edited content (/shoreline, src/lib/siteContent.js): layerName / accent replace the layer's; photos
+ * ([{url, caption, credit, creditHref}]) lead the album; autoPhotos: false drops the built-in ones after them.
  */
-export function buildFriendsPopup(layerId, props, { fishMode, related = true, detailsExpanded = false } = {}) {
+export function buildFriendsPopup(layerId, props, { fishMode, related = true, detailsExpanded = false, layerName, accent, photos: ownPhotos = [], autoPhotos = true } = {}) {
   const config = LAYERS[layerId]
   if (!config) return ''
   const p = Object.fromEntries(Object.entries(props || {}).filter(([k]) => !ownKey(k) && !config.hideKeys?.includes(k))
@@ -671,8 +673,8 @@ export function buildFriendsPopup(layerId, props, { fishMode, related = true, de
   const idx = spec.dataOnly ? null : getFriendsContentSync()
   const articles = articlesForFeature(idx, layerId, p, 3).slice().sort((a, b) => b.date.localeCompare(a.date))
   // The curated handout photo first, then only Friends photos whose captions name the subject
-  const photos = []
-  if (!spec.dataOnly) {
+  const photos = ownPhotos.map((m) => ({ url: m.url, caption: m.caption, credit: m.credit, creditHref: m.creditHref }))
+  if (!spec.dataOnly && autoPhotos) {
     if (LAYER_PHOTOS[layerId]) photos.push(LAYER_PHOTOS[layerId])
     if (LAYER_PHOTOS_MORE[layerId]) photos.push(...LAYER_PHOTOS_MORE[layerId])
     if (PHOTO_SUBJECTS[layerId]) {
@@ -685,8 +687,8 @@ export function buildFriendsPopup(layerId, props, { fishMode, related = true, de
   const story = !spec.dataOnly && why ? { kicker: 'Why it matters', html: escHtml(why.text), source: why.source } : undefined
 
   return buildPopupCard({
-    accent: config.accent,
-    layerName: config.name,
+    accent: accent || config.accent,
+    layerName: layerName || config.name,
     swatch: config.swatch,
     swatchColor: config.swatchColor,
     title,

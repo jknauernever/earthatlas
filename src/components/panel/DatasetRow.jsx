@@ -27,10 +27,11 @@ import s from './Panel.module.css'
  *   info        node      the explanatory text, with its inline source links (omit if none)
  *   status      node      a short always-visible line under the row while on (loading / error / live stamp); optional
  *   disabled    bool      the toggle can't be used (e.g. data still loading)
+ *   admin       node      admin tools under the row (src/components/panel/NavAdmin.jsx NodeTools); only admins get it
  *   look        'list'    the slim list look (/shoreline, after Salish Sea Explorer): no switch, no icon box, off rows
  *                         dimmed, a hue bar down the left of an on dataset, controls shown inline (no chevron)
  */
-export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onToggle, controls, legend, info, status, disabled = false, look }) {
+export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onToggle, controls, legend, info, status, disabled = false, look, admin }) {
   const list = look === 'list'
   const uid = useId()
   const k = (part) => (storageKey ? `${storageKey}.${part}` : null)
@@ -69,6 +70,7 @@ export default function DatasetRow({ storageKey, name, sub, icon, hue, on, onTog
           </button>
         ) : hasControls ? <span className={s.iconBtnSpacer} aria-hidden="true" /> : null}
       </div>
+      {admin}
       {on && status}
       {showControls && <div className={s.controls} id={`${uid}-controls`}>{controls}</div>}
       {on && hasLegend && <div className={s.legend}><div className={s.legendBody}>{legend}</div></div>}

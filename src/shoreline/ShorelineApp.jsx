@@ -31,6 +31,9 @@ import SiteBrand from '../components/SiteBrand.jsx'
 import { BRANDS } from '../lib/brand.js'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import { DatasetRow, LegendTurndown, LegendSwatchRow, LegendFlow, LegendToggleRow, SourcesFooter } from '../components/panel/index.js'
+import { NavAdminBar, NodeTools, RemovedList } from '../components/panel/NavAdmin.jsx'
+import { useSiteContent, resolveTree } from '../lib/siteContent.js'
+import { SITE, SHORELINE_TREE, GLYPHS, STYLE_LABELS, layerConfig, pinSpecOf } from './shorelineTree.js'
 import { pinDataUri } from '../friends/habitatOverlay.js'
 import { buildChooserCard, swatchHtml, escapeHtml } from '../friends/popupCard.js'
 import {
@@ -39,11 +42,11 @@ import {
 } from '../friends/habitatPopups.js'
 import { FRIENDS_PAGE } from '../permits/habitat.js'
 import {
-  ALL_IDS, FORAGE, MODIFICATIONS, FISH_TIERS, FISH_COLOR_MODES, DEFAULT_FISH_MODE, SHOREFORM_GROUPS, SHOREFORM_GROUP_ORDER,
-  PIN_SPECS, MIN_ZOOM, mapboxZoom, loadShorelineData, addShorelineLayers, installParcelHover,
-  CLICK_LAYERS, LEGEND_ORDER, rowOfLayer, sseLayerId, isPinLayer,
+  ALL_IDS, FISH_COLOR_MODES, DEFAULT_FISH_MODE,
+  mapboxZoom, loadShorelineData, addShorelineLayers, removeShorelineLayers, installParcelHover,
+  CLICK_LAYERS, rowOfLayer, sseLayerId, isPinLayer,
 } from './shorelineLayers.js'
-import { SHORELINE_SOURCES, SHORELINE_SOURCES_INTRO, GUIDE_URL } from './shorelineSources.js'
+import { SHORELINE_SOURCES, SHORELINE_SOURCES_INTRO } from './shorelineSources.js'
 import WelcomeBox from './WelcomeBox.jsx'
 import { fetchParcelDetail, loadFriendsProjects, buildPropertyPopupHtml, mountPropertyPopup, parcelBbox } from './propertyPopup.js'
 import q from '../quakes/QuakesApp.module.css'
@@ -88,16 +91,21 @@ const ext = (href, text) => <a className={p.src} href={href} target="_blank" rel
 const line = (color, h = 4, opacity = 1) => <span className={styles.line} style={{ background: color, height: h, opacity }} />
 // Filled-box icon for area layers (Salish Sea Explorer's swatches)
 const box = (fill, stroke = fill) => <span className={styles.box} style={{ background: fill, borderColor: stroke }} />
-// Each row's pin (the chooser's swatch); rows without one get a line / fill swatch in the layer's color
-const ROW_PIN = { kelp: 'kelp', eelgrass: 'eelgrass', fish: PIN_SPECS.fish, geology: PIN_SPECS.shoreform, armor: PIN_SPECS.armor, docks: PIN_SPECS.dock,
-  buoys: PIN_SPECS.buoy, ramps: PIN_SPECS.ramp, railway: PIN_SPECS.railway, groins: PIN_SPECS.groin, pilings: PIN_SPECS.piling }
-function rowSwatch(row) {
+// '#rrggbb' at an opacity
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})` }
+// Each row's pin (the chooser's swatch); rows without one get a line / fill swatch in the layer's color.
+// node: the row's panel node (shorelineTree.js), so admin edits show here too.
+function rowSwatch(row, node) {
   if (row === 'fish') return fishIconSvg(16)
-  if (row === 'parcels') return swatchHtml('fill', '#F97316', 'rgba(249,115,22,0.25)')
-  if (ROW_PIN[row]) return `<img src="${pinDataUri(ROW_PIN[row])}" alt="" style="width:14px;height:15px;object-fit:contain">`
+  if (row === 'parcels') return swatchHtml('fill', node.style.line, rgba(node.style.line, 0.25))
+  if (node?.style.glyph) return `<img src="${pinDataUri(pinSpecOf(node.style))}" alt="" style="width:14px;height:15px;object-fit:contain">`
   const c = POPUP_LAYERS[sseLayerId(row)]
-  return swatchHtml(c.swatch === 'point' ? 'line' : c.swatch, c.accent, c.swatchColor)
+  return swatchHtml(c.swatch === 'point' ? 'line' : c.swatch, node?.style.line || c.accent, node?.style.fill ? rgba(node.style.fill, 0.3) : c.swatchColor)
 }
+// The panel node behind a map row id (a leaf: 'kelp', 'docks', …)
+const nodeOfLeaf = (tree, leaf) => Object.values(tree.byId).find((n) => n.leaf === leaf && n.kind !== 'class')
+// A renamed layer's name for popups / hover / chooser (the popup's own name when not renamed)
+const renamed = (n) => (n && n.name !== n.defaults.name ? n.name : undefined)
 // Everything a click or hover touches (12 px box, SSE CHOOSER_TOL_PX), top first: one entry per line/area layer, one per
 // layer + title for points, so distinct structures nearby are each offered.
 function hitsAt(map, point, fishMode, tol = 6) {
@@ -149,6 +157,16 @@ export default function ShorelineApp() {
   const [loadError, setLoadError] = useState(null)
   const zoom = mapView?.zoom ?? DEFAULT_VIEW.zoom
   fishModeRef.current = fishMode
+  // Admin-edited panel (order, names, text, colors, icons, zooms, removed, popup images): src/lib/siteContent.js
+  const sc = useSiteContent(SITE)
+  const [editing, setEditing] = useState(false)
+  const tree = useMemo(() => resolveTree(SHORELINE_TREE, sc.content), [sc.content])
+  const cfg = useMemo(() => layerConfig(tree), [tree])
+  const cfgKey = JSON.stringify(cfg)
+  const treeRef = useRef(tree)
+  treeRef.current = tree
+  const effOff = useMemo(() => new Set([...off, ...cfg.removed]), [off, cfg])
+  const effOffKey = [...effOff].sort().join(',')
   useEffect(() => { preloadFriendsContent() }, [])
 
   // ─── Popups (SSE FeaturePopup): a pin opens its card; a line or area with others within reach offers "What's here" ───
@@ -156,7 +174,9 @@ export default function ShorelineApp() {
     const map = mapRef.current
     if (!map) return
     if (hit.row === 'parcels') return openParcel(hit.fid, lngLat)
-    const html = () => buildFriendsPopup(hit.sse, hit.props, { fishMode: fishModeRef.current, related: false, detailsExpanded: true })  // /shoreline (Josh 2026-11-09): no "Related content from Friends"; "All details" starts open
+    const n = nodeOfLeaf(treeRef.current, hit.row)
+    const html = () => buildFriendsPopup(hit.sse, hit.props, { fishMode: fishModeRef.current, related: false, detailsExpanded: true,
+      layerName: renamed(n), photos: n?.media || [], autoPhotos: n?.style.autoPhotos !== false })  // /shoreline (Josh 2026-11-09): no "Related content from Friends"; "All details" starts open
     popupRef.current?.remove()
     const popup = new mapboxgl.Popup({ maxWidth: '360px', offset: 10 }).setLngLat(lngLat).setHTML(html()).addTo(map)
     preloadFriendsContent().then(() => { if (popup.isOpen()) popup.setHTML(html()) })
@@ -201,10 +221,11 @@ export default function ShorelineApp() {
     const pins = hits.filter((h) => h.pin).sort((a, b) => a.dist - b.dist)
     if (pins.length) return openFeature(pins[0], e.lngLat)
     if (hits.length === 1) return openFeature(hits[0], e.lngLat)
-    const rank = (h) => LEGEND_ORDER.indexOf(h.row)
+    const t = treeRef.current, order = layerConfig(t).order
+    const rank = (h) => order.indexOf(h.row)
     const rows = hits.map((h, i) => ({ h, i })).sort((a, b) => rank(a.h) - rank(b.h) || a.i - b.i).map((x) => x.h)
     const card = rows.map((h) => ({
-      swatch: rowSwatch(h.row), layerName: h.row === 'parcels' ? 'Properties' : POPUP_LAYERS[h.sse].name, title: h.title,
+      swatch: rowSwatch(h.row, nodeOfLeaf(t, h.row)), layerName: h.row === 'parcels' ? nodeOfLeaf(t, 'parcels').name : renamed(nodeOfLeaf(t, h.row)) || POPUP_LAYERS[h.sse].name, title: h.title,
       titleHtml: h.row === 'fish' ? fishUseLinesHtml(fishUseEntries(h.props, fishCodesForMode(fishModeRef.current))) : undefined,
     }))
     const popup = new mapboxgl.Popup({ maxWidth: '320px', offset: 10 }).setLngLat(e.lngLat).setHTML(buildChooserCard(card)).addTo(map)
@@ -250,27 +271,34 @@ export default function ShorelineApp() {
         if (!f) {
           // Nothing else here: the property under the pointer (its report opens on click)
           const pc = feats.find((x) => x.layer.id === 'sl-parcels-fill')
-          return pc ? `<div class="${styles.tip}"><b>Property</b> · Parcel ${escapeHtml(pc.properties.PIN)}<div>Click for its property report</div></div>` : null
+          return pc ? `<div class="${styles.tip}"><b>${escapeHtml(nodeOfLeaf(treeRef.current, 'parcels').name)}</b> · Parcel ${escapeHtml(pc.properties.PIN)}<div>Click for its property report</div></div>` : null
         }
         const row = rowOfLayer(f.layer.id), sse = sseLayerId(row)
         if (row === 'fish') return `<div class="${styles.tip}">${fishUseLinesHtml(fishUseEntries(f.properties), fishCodesForMode(fishModeRef.current))}</div>`
-        return `<div class="${styles.tip}"><b>${escapeHtml(POPUP_LAYERS[sse].name)}</b> · ${escapeHtml(featureTitle(sse, f.properties))}</div>`
+        return `<div class="${styles.tip}"><b>${escapeHtml(renamed(nodeOfLeaf(treeRef.current, row)) || POPUP_LAYERS[sse].name)}</b> · ${escapeHtml(featureTitle(sse, f.properties))}</div>`
       },
     })
     return () => { offHover(); offTip(); popupRef.current?.remove(); map.remove(); mapRef.current = null; ctlRef.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Layers go on once the data is in and after every style load (basemap switch)
+  // Layers go on once the data and the panel content are in, after every style load (basemap switch), and again
+  // whenever an admin changes a color, icon or zoom (taken off and re-added with the new settings)
+  const builtRef = useRef('')
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady || !data || map.getSource('sl-parcels')) return
-    ctlRef.current = addShorelineLayers(map, data)
+    if (!map || !mapReady || !data || !sc.ready) return
+    const has = !!map.getSource('sl-parcels')
+    if (has && builtRef.current === cfgKey) return
+    if (has) removeShorelineLayers(map)
+    builtRef.current = cfgKey
+    ctlRef.current = addShorelineLayers(map, data, cfg)
     ctlRef.current.setFishMode(fishMode)
-    ctlRef.current.setVisible(off)
+    ctlRef.current.setVisible(effOff)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, styleLoads, data])
-  useEffect(() => { ctlRef.current?.setVisible(off) }, [off])
+  }, [mapReady, styleLoads, data, sc.ready, cfgKey])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { ctlRef.current?.setVisible(effOff) }, [effOffKey])
   useEffect(() => { ctlRef.current?.setFishMode(fishMode) }, [fishMode])
 
   // ─── Basemap switch ───────────────────────────────────────────────────────
@@ -308,10 +336,48 @@ export default function ShorelineApp() {
   // A group row is on while any member is; its switch turns them all off, or all back on
   const groupOn = (ids) => ids.some(isOn)
   const toggleGroup = (ids) => setOff((s) => { const n = new Set(s); const anyOn = ids.some((id) => !s.has(id)); for (const id of ids) anyOn ? n.add(id) : n.delete(id); return n })
-  const forageIds = FORAGE.map((f) => f.id), modIds = MODIFICATIONS.map((m) => m.id)
   // Before a layer's zoom the row says from which zoom it shows (the zoom badge's numbers)
   // One line per dataset, as on Salish Sea Explorer: no descriptor, only a hint while zoom hides the layer
-  const gate = (g) => (zoom < mapboxZoom(g) ? `shows from zoom ${mapboxZoom(g)}` : null)
+  const gate = (z) => (z && zoom < z ? `shows from zoom ${z}` : null)
+  const kit = { glyphs: GLYPHS, styleLabels: STYLE_LABELS, pinUri: pinDataUri }
+  const leafIds = (n) => n.children?.some((c) => c.kind === 'item') ? n.children.map((c) => c.leaf) : [n.leaf]
+  const itemSwatch = (c) => (c.style.fill ? box(rgba(c.style.fill, 0.45), c.style.line || c.style.fill)
+    : <span className={styles.pinSwatch}>{c.style.line && line(c.style.line, 3)}{c.style.glyph && pinImg(pinSpecOf(c.style), 16)}</span>)
+  const rowIcon = (n) => {
+    if (n.style.glyph) return pinImg(pinSpecOf(n.style), 18)
+    if (n.id === 'parcels') return box(rgba(n.style.line, 0.35), n.style.line)
+    if (n.style.fill) return box(rgba(n.style.fill, 0.45), n.style.fill)
+    const first = n.children?.find((c) => c.kind === 'item')
+    if (first?.style.glyph) return pinImg(pinSpecOf(first.style), 18)
+    if (first?.style.fill) return box(rgba(first.style.fill, 0.45), first.style.fill)
+    return first ? line(first.style.line, 3) : box(rgba(n.style.color, 0.4), n.style.color)
+  }
+  const info = (n) => <>{n.info} {n.source && ext(n.source[0], n.source[1])}</>
+  // Admin tools under a row while editing: the row's own, then each item / legend class inside it
+  const adminFor = (n, siblings) => editing && (
+    <>
+      <NodeTools node={n} siblings={siblings} sc={sc} kit={kit} />
+      {n.children?.map((c) => (
+        <div key={c.id} className={styles.adminChild}>
+          <span className={styles.adminChildName}>{c.kind === 'class' ? line(c.style.line, 3) : itemSwatch(c)} {c.name}</span>
+          <NodeTools node={c} siblings={n.children} sc={sc} kit={kit} compact />
+        </div>
+      ))}
+    </>
+  )
+  const legendOf = (n) => {
+    if (n.id === 'fish') return <LegendFlow>{n.children.map((c) => <LegendSwatchRow key={c.id} swatch={line(c.style.line, 3)}>{c.name}</LegendSwatchRow>)}</LegendFlow>
+    if (n.id === 'geology') return <LegendFlow>{n.children.map((c) => <LegendSwatchRow key={c.id} swatch={line(c.style.line, 3)}>{c.name}</LegendSwatchRow>)}</LegendFlow>
+    if (n.id === 'forage') return <LegendFlow>{n.children.map((c) => <LegendToggleRow key={c.id} on={isOn(c.leaf)} onToggle={() => toggle(c.leaf)} swatch={itemSwatch(c)}>{c.name}</LegendToggleRow>)}</LegendFlow>
+    if (n.id === 'mods') {
+      return <LegendTurndown storageKey="shoreline.mods.legend" label={`Structure types (${n.children.filter((c) => isOn(c.leaf)).length} of ${n.children.length})`} flush>
+        {n.children.map((c) => <LegendToggleRow key={c.id} on={isOn(c.leaf)} onToggle={() => toggle(c.leaf)} swatch={itemSwatch(c)}>{c.name}</LegendToggleRow>)}
+      </LegendTurndown>
+    }
+    return undefined
+  }
+  const STORAGE = { forage: 'shoreline.forage', mods: 'shoreline.mods' }
+  const NEEDS_DATA = new Set(['kelp', 'eelgrass', 'fish', 'forage', 'geology', 'mods'])
   const loading = !data && !loadError
 
   return (
@@ -327,7 +393,7 @@ export default function ShorelineApp() {
 
       <MapSearch className={q.searchBox}>
         <GeoSearch
-          placeholder="Search an address or place in San Juan County…"
+          placeholder="Search an address in San Juan County…"
           proximity={() => { const c = mapRef.current?.getCenter(); return c ? { lng: c.lng, lat: c.lat } : undefined }}
           onSelect={onSearch}
         />
@@ -342,56 +408,24 @@ export default function ShorelineApp() {
           <div className={p.title}>On the map</div>
           <a className={styles.friends} href={FRIENDS_PAGE} target="_blank" rel="noopener noreferrer">Shoreline data from Friends of the San Juans</a>
 
+          <NavAdminBar sc={sc} editing={editing} setEditing={setEditing} />
+
           <div className={p.section}>
-            <DatasetRow look="list" storageKey="shoreline.kelp" name="Bull Kelp" hue="#B89A3A" icon={pinImg('kelp', 18)} on={isOn('kelp')} onToggle={() => toggle('kelp')} disabled={loading}
-              info={<>Canopy (floating) kelp mapping by the Washington Department of Natural Resources and Friends of the San Juans. Zoomed in, beds are drawn with the nautical-chart kelp symbol. {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.eelgrass" name="Deepwater/Edge Eelgrass" hue="#20B2AA" icon={pinImg('eelgrass', 18)} on={isOn('eelgrass')} onToggle={() => toggle('eelgrass')} disabled={loading}
-              info={<>Friends of the San Juans, Washington DNR and Friday Harbor Labs (countywide eelgrass study). {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.parcels" name="Properties" hue="#F97316" icon={box('rgba(249,115,22,0.35)', '#F97316')}
-              sub={gate(MIN_ZOOM.parcels)} on={isOn('parcels')} onToggle={() => toggle('parcels')}
-              info={<>Property boundaries from the San Juan County Assessor’s parcel layer. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/OpenData/Parcels/MapServer/1', 'San Juan County GIS')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.buildings" name="Building Footprints" hue="#60A5FA" icon={box('rgba(96,165,250,0.45)', '#60A5FA')}
-              sub={gate(MIN_ZOOM.buildings)} on={isOn('buildings')} onToggle={() => toggle('buildings')}
-              info={<>Building outlines across San Juan County. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/Polaris/Buildings/MapServer/3', 'San Juan County GIS')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.fish" name="Priority Shorelines for Fish" hue="#F97316" icon={pinImg(PIN_SPECS.fish, 18)}
-              sub={gate(MIN_ZOOM.fish)} on={isOn('fish')} onToggle={() => toggle('fish')} disabled={loading}
-              controls={<label className={styles.select}>Color by
-                <select value={fishMode} onChange={(e) => setFishMode(e.target.value)}>
-                  {FISH_COLOR_MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </select></label>}
-              legend={<LegendFlow>
-                {[1, 2, 3].map((t) => <LegendSwatchRow key={t} swatch={line(FISH_TIERS[t].color, 3)}>{FISH_TIERS[t].label}</LegendSwatchRow>)}
-              </LegendFlow>}
-              info={<>How likely juvenile salmon, forage fish, and greenlings and cods are to be present and abundant along each stretch of shoreline, from 1,350 beach seine sets at 80 sites across the San Juan Islands (high-resolution model). Friends of the San Juans groups the model scores into moderate, high and highest priority, as in the countywide salmon recovery prioritization. Salmon levels are for rearing juveniles. Nothing is ranked low: fish can and do use every shoreline. Beamer &amp; Fresh 2012, Skagit River System Cooperative. {ext('https://gis.sanjuancountywa.gov/arcgis/rest/services/Habitat/SRSC_ShorelineFishPresence/MapServer', 'San Juan County map service')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.forage" name="Forage Fish Spawning" hue="#E11D74" icon={box('rgba(139,92,246,0.45)', '#8B5CF6')}
-              sub={gate(MIN_ZOOM.forage)} on={groupOn(forageIds)} onToggle={() => toggleGroup(forageIds)} disabled={loading}
-              legend={<LegendFlow>
-                {FORAGE.map((f) => <LegendToggleRow key={f.id} on={isOn(f.id)} onToggle={() => toggle(f.id)}
-                  swatch={f.id === 'herring' ? box('rgba(139,92,246,0.45)', f.color) : line(f.color, 3)}>{f.name}</LegendToggleRow>)}
-              </LegendFlow>}
-              info={<>Where forage fish spawn in San Juan County: Pacific herring on eelgrass and algae in sheltered bays (WDFW), and surf smelt and Pacific sand lance on upper-beach sand and gravel (Friends of the San Juans and WDFW surveys). Documented beaches have been surveyed with eggs found; potential habitat is beach substrate suitable for spawning that fronts the shore. {ext(FRIENDS_PAGE, 'Friends of the San Juans')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.geology" name="Shoreline Geology: Shoreforms" hue="#9A3412" icon={pinImg(PIN_SPECS.shoreform, 18)}
-              sub={gate(MIN_ZOOM.geology)} on={isOn('geology')} onToggle={() => toggle('geology')} disabled={loading}
-              legend={<LegendFlow>
-                {SHOREFORM_GROUP_ORDER.map((g) => <LegendSwatchRow key={g} swatch={line(SHOREFORM_GROUPS[g].color, 3)}>{SHOREFORM_GROUPS[g].label}</LegendSwatchRow>)}
-              </LegendFlow>}
-              info={<>Geomorphic shoreforms: the primary geologic features of the marine shoreline. Coastal processes affect each shore form differently, so each carries different management concerns and priorities. Friends of the San Juans geomorphic shoreform mapping. {ext(GUIDE_URL, 'Living with the Shoreline')}</>} />
-
-            <DatasetRow look="list" storageKey="shoreline.mods" name="Shoreline Modifications" hue="#8B0000" icon={pinImg(PIN_SPECS.armor, 18)}
-              sub={gate(MIN_ZOOM.modifications)} on={groupOn(modIds)} onToggle={() => toggleGroup(modIds)} disabled={loading}
-              legend={<LegendTurndown storageKey="shoreline.mods.legend" label={`Structure types (${MODIFICATIONS.filter((m) => isOn(m.id)).length} of ${MODIFICATIONS.length})`} flush>
-                {MODIFICATIONS.map((m) => (
-                  <LegendToggleRow key={m.id} on={isOn(m.id)} onToggle={() => toggle(m.id)}
-                    swatch={<span className={styles.pinSwatch}>{m.line && line(m.line, 3)}{pinImg(PIN_SPECS[m.pin], 16)}</span>}>{m.name}</LegendToggleRow>
-                ))}
-              </LegendTurndown>}
-              info={<>Hard armor and in- and over-water structures along the shore, from Friends of the San Juans’ Inventory of Shoreline Modifications (2010) and the 2019 countywide armor survey. {ext(GUIDE_URL, 'Living with the Shoreline')}</>} />
+            {tree.roots.map((n) => {
+              const ids = leafIds(n).filter(Boolean)
+              const group = ids.length > 1
+              return (
+                <DatasetRow key={n.id} look="list" storageKey={STORAGE[n.id] || `shoreline.${n.id}`} name={n.name} hue={n.style.color} icon={rowIcon(n)}
+                  sub={gate(n.minZoom)} on={group ? groupOn(ids) : isOn(ids[0])} onToggle={() => (group ? toggleGroup(ids) : toggle(ids[0]))}
+                  disabled={loading && NEEDS_DATA.has(n.id)}
+                  controls={n.id === 'fish' && <label className={styles.select}>Color by
+                    <select value={fishMode} onChange={(e) => setFishMode(e.target.value)}>
+                      {FISH_COLOR_MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select></label>}
+                  legend={legendOf(n)} info={info(n)} admin={adminFor(n, tree.roots)} />
+              )
+            })}
+            {editing && <RemovedList tree={tree} sc={sc} />}
             {loadError && <div className={p.error}>{loadError}</div>}
           </div>
 

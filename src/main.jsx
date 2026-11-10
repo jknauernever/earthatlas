@@ -75,6 +75,7 @@ import SystemsApp from './systems/SystemsApp.jsx'
 import './index.css'
 import { onPrivatePage, posthogBeforeSend, sentryBeforeSend } from './accounts/privacy.js'
 import { ACCOUNTS_LIVE } from './accounts/live.js'
+import AccountAvatar from './components/AccountAvatar.jsx'
 
 // Sentry: only initialize in production builds AND when a DSN is configured.
 // Dev still gets noisy errors in the console; prod gets structured capture +
@@ -164,6 +165,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <PostHogProvider client={posthog}>
       <BrowserRouter>
+        {/* Signed-in avatar + account menu, top right on every page (components/AccountAvatar.jsx) */}
+        <AccountAvatar />
         <Routes>
           <Route path="/whales" element={<ExploreApp config={whalesConfig} />} />
           <Route path="/sharks" element={<ExploreApp config={sharksConfig} />} />

@@ -1,0 +1,32 @@
+/* Signed-in avatar, top right on every page (AccountAvatar.jsx). The right-edge map controls sit below it
+   (--ea-avatar-inset in src/index.css). */
+.box {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.avatar {
+  width: 36px; height: 36px; padding: 0; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  background: #0f172a; color: #fff; cursor: pointer; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.02em;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+.menu {
+  position: absolute; top: 44px; right: 0; min-width: 220px; max-width: calc(100vw - 24px);
+  background: #fff; color: #111827; border-radius: 10px; padding: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+.who { padding: 8px 10px 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 4px; }
+.name { font-size: 14px; font-weight: 600; }
+.email { font-size: 12.5px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item {
+  display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 6px;
+  background: none; color: #111827; font: inherit; font-size: 14px; text-decoration: none; cursor: pointer;
+}
+.item:hover, .item:focus-visible { background: #f3f4f6; outline: none; }

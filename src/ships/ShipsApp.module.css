@@ -70,8 +70,8 @@
 }
 
 
-.shareCtl { position: absolute; top: 110px; right: 10px; z-index: 10; }
-.basemapMenu { position: absolute; top: 198px; right: 10px; z-index: 10; }
+.shareCtl { position: absolute; top: calc(110px + var(--ea-avatar-inset, 0px)); right: 10px; z-index: 10; }
+.basemapMenu { position: absolute; top: calc(198px + var(--ea-avatar-inset, 0px)); right: 10px; z-index: 10; }
 .basemapToggle, .basemapToggleActive {
   width: 36px; height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -307,11 +307,11 @@
 
   /* Mobile column: search (16) → share (62) → clip (106) → basemap (150). */
   .shareCtl {
-    top: calc(62px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px) + var(--ea-avatar-inset, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
   .basemapMenu {
-    top: calc(150px + env(safe-area-inset-top, 0px));
+    top: calc(150px + env(safe-area-inset-top, 0px) + var(--ea-avatar-inset, 0px));
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 
@@ -343,7 +343,7 @@
 }
 
 /* ─── /ships specifics ───────────────────────────────────────────────────── */
-.basemapMenu { top: 154px; }                   /* no clip button here: share (110) → basemap (154) */
+.basemapMenu { top: calc(154px + var(--ea-avatar-inset, 0px)); }                   /* no clip button here: share (110) → basemap (154) */
 
 /* Ship card internals (VesselCard.jsx; the card shell is in ShipPicker.module.css). */
 .vesselHead { padding: 2px 0 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 4px; }
@@ -381,7 +381,7 @@
 .attribution { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 11px; color: rgba(255, 255, 255, 0.55); }
 
 @media (max-width: 768px) {
-  .basemapMenu { top: calc(106px + env(safe-area-inset-top, 0px)); }  /* search (16) → share (62) → basemap (106) */
+  .basemapMenu { top: calc(106px + env(safe-area-inset-top, 0px) + var(--ea-avatar-inset, 0px)); }  /* search (16) → share (62) → basemap (106) */
   .valRow { grid-template-columns: minmax(0, 1fr) auto; }
   .period { grid-column: 1 / -1; }
 }

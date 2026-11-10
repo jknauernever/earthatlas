@@ -20,6 +20,10 @@
  *       POST action { action, ...fields }  (invite, update, changeEmail, resendVerification, sendReset,
  *                                           revokeSessions, ban, unban, delete,
  *                                           releaseMessage, deleteMessage)
+ *       GET  content?site            → a site's panel content + removed images (lib/content/siteContent.js)
+ *       POST content-action { site, action, ... }   (edit, reset, order, remove, restore, media*)
+ *       POST content-upload?site&node&caption&credit&creditHref&width&height  (body = image bytes)
+ *   GET /api/auth/ea/content?site — the public read of a site's panel content (CDN-cached ~1 min)
  *
  * Better Auth's own /api/auth/admin/* routes are closed to the web: they would skip the 2FA unlock and
  * the audit log, and include set-user-password / impersonation, which EarthAtlas admins must not have.
@@ -29,6 +33,7 @@ import { issueFormToken } from '../lib/accounts/guard.js'
 import { isPartnerHost, startHandoff } from '../lib/accounts/handoff.js'
 import { audit, requestIp } from '../lib/accounts/audit.js'
 import { ContactError, submitContact } from '../lib/accounts/contact.js'
+import { adminSiteContent, contentAction, siteContent, uploadMedia } from '../lib/content/siteContent.js'
 import { AdminError, adminAction, adminStanding, auditLog, contactMessages, getUser, listUsers, lock, unlock } from '../lib/accounts/admin.js'
 
 const SECURITY_HEADERS = {
@@ -40,7 +45,32 @@ const SECURITY_HEADERS = {
 function withHeaders(res) {
   const out = new Response(res.body, res)
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(k)) out.headers.set(k, v)
+  signedInHint(out.headers)
   return out
+}
+
+/**
+ * The avatar hint (src/components/AccountAvatar.jsx): whenever a response sets or clears the session cookie, set or
+ * clear `earthatlas.signed_in=1` alongside it, same lifetime and domain. It is readable by pages (not HttpOnly) and
+ * carries nothing but "someone may be signed in here": pages use it only to decide whether to ask /get-session, so
+ * visitors never cost a request. The session itself stays in the HttpOnly cookie.
+ */
+const HINT = 'earthatlas.signed_in'
+function signedInHint(headers) {
+  const all = headers.getSetCookie ? headers.getSetCookie() : []
+  const sess = all.find((c) => /^(__Secure-)?earthatlas\.session_token=/.test(c))
+  if (!sess) return
+  const attr = (name) => new RegExp(`;\\s*${name}=([^;]*)`, 'i').exec(sess)?.[1]
+  const value = sess.split(';')[0].split('=').slice(1).join('=')
+  const maxAge = attr('Max-Age'), domain = attr('Domain'), expires = attr('Expires')
+  const clearing = !value || maxAge === '0' || (expires && Date.parse(expires) < Date.now())
+  const parts = [`${HINT}=${clearing ? '' : '1'}`, 'Path=/', 'SameSite=Lax']
+  if (domain) parts.push(`Domain=${domain}`)
+  if (/;\s*Secure/i.test(sess)) parts.push('Secure')
+  if (clearing) parts.push('Max-Age=0')
+  else if (maxAge) parts.push(`Max-Age=${maxAge}`)
+  else if (expires) parts.push(`Expires=${expires}`)
+  headers.append('Set-Cookie', parts.join('; '))
 }
 
 async function sameOrigin(req) {
@@ -68,8 +98,19 @@ async function exportMyData(req) {
 async function adminApi(req, sub) {
   const url = new URL(req.url)
   const GET = req.method === 'GET', POST = req.method === 'POST'
+  if (sub === 'content-upload' && POST) {
+    try {
+      return Response.json(await uploadMedia(req.headers, url.searchParams, Buffer.from(await req.arrayBuffer())))
+    } catch (e) {
+      if (e instanceof AdminError) return Response.json({ message: e.message, code: e.code }, { status: e.status })
+      console.error('[content] upload error', e)
+      return Response.json({ message: 'The image did not upload. Please try again.' }, { status: 500 })
+    }
+  }
   const body = POST ? await req.json().catch(() => ({})) : {}
   try {
+    if (sub === 'content' && GET) return Response.json(await adminSiteContent(req.headers, url.searchParams.get('site')))
+    if (sub === 'content-action' && POST) return Response.json(await contentAction(req.headers, body.action, body))
     if (sub === 'status' && GET) {
       const s = await adminStanding(req.headers)
       return Response.json({ state: s.state, unlockedUntil: s.unlockedUntil || null, email: s.user?.email || null })
@@ -131,6 +172,18 @@ export async function handleAuth(req) {
       if (e instanceof ContactError) return withHeaders(Response.json({ message: e.message }, { status: e.status }))
       console.error('[contact] error', e)
       return withHeaders(Response.json({ message: 'Something went wrong. Please try again.' }, { status: 500 }))
+    }
+  }
+  if (pathname === '/api/auth/ea/content' && req.method === 'GET') {
+    // Public and the same for everyone: the CDN keeps it ~1 minute, so a page load almost never reaches the database.
+    try {
+      const out = Response.json(await siteContent(new URL(req.url).searchParams.get('site')))
+      out.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=600')
+      return withHeaders(out)
+    } catch (e) {
+      if (e instanceof AdminError) return withHeaders(Response.json({ message: e.message }, { status: e.status }))
+      console.error('[content] read error', e)
+      return withHeaders(Response.json({ message: 'Unavailable.' }, { status: 503 }))
     }
   }
   if (pathname.startsWith('/api/auth/ea/admin/')) {

@@ -1,0 +1,50 @@
+/* Admin editing on a map page's left panel (NavAdmin.jsx). Admin-only, so plain and compact. */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 10px; font-size: 13px; color: #cbd5e1; }
+.hint, .note { font-size: 12px; color: #94a3b8; }
+.err { width: 100%; font-size: 12px; color: #fca5a5; margin-top: 4px; }
+
+.btn, .small, .icon, .link {
+  font: inherit; font-size: 12.5px; color: #e2e8f0; background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 6px; cursor: pointer;
+}
+.btn { padding: 5px 12px; font-weight: 600; }
+.small { padding: 3px 9px; }
+.icon { width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.link { background: none; border: none; color: #7dd3fc; padding: 2px 4px; text-decoration: underline; }
+.btn:disabled, .small:disabled, .icon:disabled, .link:disabled { opacity: 0.4; cursor: default; }
+.btn:not(:disabled):hover, .small:not(:disabled):hover, .icon:not(:disabled):hover { background: rgba(148, 163, 184, 0.26); }
+.btnOn { background: rgba(56, 189, 248, 0.22); border-color: rgba(56, 189, 248, 0.6); }
+
+.tools { margin: 2px 0 8px 28px; padding: 6px 8px; border: 1px dashed rgba(56, 189, 248, 0.45); border-radius: 8px; }
+.toolsCompact { margin-left: 0; padding: 4px 6px; }
+.toolRow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tag { font-size: 11px; color: #7dd3fc; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.form { display: flex; flex-direction: column; gap: 9px; margin-top: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #cbd5e1; }
+.inline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #cbd5e1; }
+.input {
+  font: inherit; font-size: 13px; color: #f1f5f9; background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 6px; padding: 5px 8px; min-width: 0;
+}
+textarea.input { resize: vertical; line-height: 1.4; }
+.num { width: 72px; }
+.color { width: 30px; height: 24px; padding: 0; border: 1px solid rgba(148, 163, 184, 0.4); border-radius: 4px; background: none; cursor: pointer; }
+.glyphs { display: flex; flex-wrap: wrap; gap: 4px; }
+.glyph { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: rgba(148, 163, 184, 0.1);
+  border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.glyphOn { border-color: #38bdf8; background: rgba(56, 189, 248, 0.2); }
+
+.photos { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; border-top: 1px solid rgba(148, 163, 184, 0.2); }
+.head { font-size: 12px; font-weight: 600; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
+.photo { display: flex; gap: 8px; align-items: flex-start; }
+.thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #0f172a; }
+.photoFields { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.cap { flex: 1; font-size: 12px; color: #cbd5e1; }
+.add { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #cbd5e1; }
+.removedPhotos summary { cursor: pointer; font-size: 12px; color: #94a3b8; }
+.removedPhotos > .photo { margin-top: 6px; align-items: center; }
+
+.removed { margin: 12px 0 4px; padding: 8px; border: 1px dashed rgba(148, 163, 184, 0.4); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.removedRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: #e2e8f0; }
+.input, .color { color-scheme: dark; }

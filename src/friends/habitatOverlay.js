@@ -39,10 +39,11 @@ const haloWidth = (h) => ['interpolate', ['linear'], ['zoom'], h.zoomWide - GZ, 
 // ─── Pins (markerIcons.ts): white teardrop, colored disc, white glyph; 24×26 CSS px, anchor at the nub tip (12, 23) ───
 // spec = { color, glyph (white, in a box×box square, default 24), stroke (draw the glyph as a line), strokeExtra (a
 // second white line over a filled glyph) }; /shoreline adds SSE's other pins (src/shoreline/shorelineLayers.js).
-const PIN = {
+export const HABITAT_PINS = {
   eelgrass: { color: '#12A38E', glyph: 'M12 20c-.3-3.5.2-7.6 1.4-11.1.3-.9 1.6-.7 1.5.3-.4 3.4-1.4 7.2-2.9 10.8zM11.4 20C9.6 16.4 7.9 12.5 7.3 8.1c-.1-1 1.2-1.3 1.6-.4 1.6 3.9 2.7 8 2.5 12.3zM12.6 20c.6-3.3 2.2-6.5 4.8-8.9.7-.7 1.7.2 1.2 1-2.2 3-4.3 5.5-6 7.9z' },
   kelp: { color: '#B89A3A', stroke: true, glyph: 'M3.5 9.5c2.8-4.5 5.7-4.5 8.5 0s5.7 4.5 8.5 0M3.5 15.5c2.8-4.5 5.7-4.5 8.5 0s5.7 4.5 8.5 0' },
 }
+const PIN = HABITAT_PINS
 function pinSvg({ color, glyph, stroke, box = 24, strokeExtra }) {
   const g = 16 / box
   return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="26" viewBox="0 0 24 26">
@@ -422,13 +423,20 @@ function overlayLayer(id, style, features) {
  * features carry `h`; `minZoom` hides all of it below that Mapbox zoom. Call after each style load. Returns a function
  * that applies the zoom thinning to the pins.
  */
-export function addFriendsHabitat(map, fc, beforeId, { minZoom = 0 } = {}) {
+export function addFriendsHabitat(map, fc, beforeId, { minZoom = 0, styles = {}, pins: pinSpecs = {}, minZoomOf = {} } = {}) {
   const of = (h) => fc.features.filter((f) => f.properties.h === h)
   map.addSource('fhab', { type: 'geojson', data: fc })
-  const S = SSE_STYLE
-  // A host may hide all habitat below its own minZoom (Mapbox zoom); SSE's own gates still apply above it.
-  const add = (layer) => map.addLayer(layer.type === 'custom' ? Object.assign(layer, { hostMinZoom: minZoom })
-    : { ...layer, minzoom: Math.max(layer.minzoom ?? 0, minZoom) }, beforeId)
+  // A host may restyle a habitat (styles: { hee: { stroke }, … }, pins: { kelp: spec }) — /shoreline's admin edits
+  const S = Object.fromEntries(Object.entries(SSE_STYLE).map(([h, st]) => [h, { ...st, ...(styles[h] || {}) }]))
+  const PINS_HERE = { ...PIN, ...pinSpecs }
+  // A host may hide all habitat below its own minZoom (Mapbox zoom), or one habitat below minZoomOf[h]; when it sets
+  // minZoomOf[h], that replaces SSE's own gate for h.
+  const add = (layer) => {
+    const h = /^fhab-(h[a-z]{2})/.exec(layer.id)?.[1]
+    const own = h && minZoomOf[h] != null ? minZoomOf[h] : null
+    const z = Math.max(own ?? layer.minzoom ?? 0, minZoom)
+    map.addLayer(layer.type === 'custom' ? Object.assign(layer, { hostMinZoom: Math.max(minZoom, own ?? 0) }) : { ...layer, minzoom: z }, beforeId)
+  }
   // SSE zIndex order: herring 1, eelgrass 2, potential 3, documented 4; overlays paint over the vector layers.
   add({ id: 'fhab-hhe-fill', type: 'fill', source: 'fhab', minzoom: S.hhe.minZoom - GZ, filter: ['==', ['get', 'h'], 'hhe'], paint: { 'fill-color': S.hhe.fill, 'fill-opacity': S.hhe.fillOpacity } })
   add({ id: 'fhab-hhe-line', type: 'line', source: 'fhab', minzoom: S.hhe.minZoom - GZ, filter: ['==', ['get', 'h'], 'hhe'], paint: { 'line-color': S.hhe.stroke, 'line-width': S.hhe.strokeWeight } })
@@ -448,7 +456,7 @@ export function addFriendsHabitat(map, fc, beforeId, { minZoom = 0 } = {}) {
   const meta = Object.fromEntries(Object.entries(pins).map(([h, list]) => [h, pinMeta(list)]))
   for (const [h, img] of [['hkb', 'kelp'], ['hee', 'eelgrass']]) {
     map.addSource(`fhab-${h}-pins`, { type: 'geojson', data: { type: 'FeatureCollection', features: pins[h] } })
-    addPinImage(map, `fhab-pin-${img}`, PIN[img])
+    addPinImage(map, `fhab-pin-${img}`, PINS_HERE[img])
     add({ id: `fhab-${h}-pins`, type: 'symbol', source: `fhab-${h}-pins`,
       layout: { 'icon-image': `fhab-pin-${img}`, 'icon-anchor': 'bottom', 'icon-offset': [0, 3], 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
   }

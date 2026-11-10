@@ -571,7 +571,7 @@ function accountsApiPlugin(env) {
   return {
     name: 'accounts-api',
     configureServer(server) {
-      for (const k of ['USERS_DATABASE_URL', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'RESEND_API_KEY', 'SIGNUPS_OPEN', 'CONTACT_TO']) {
+      for (const k of ['USERS_DATABASE_URL', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'RESEND_API_KEY', 'SIGNUPS_OPEN', 'CONTACT_TO', 'BLOB_READ_WRITE_TOKEN']) {
         if (env[k] && !process.env[k]) process.env[k] = env[k]
       }
       server.middlewares.use('/api/auth', async (req, res) => {

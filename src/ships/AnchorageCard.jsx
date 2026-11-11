@@ -196,8 +196,8 @@ export default function AnchorageCard({ anchorageKey, months, onClose, onSelectV
                 <strong>{plural(bk.summary.fuelings, 'likely fueling')}</strong> of {plural(bk.summary.ships, 'ship')} · {fmtN(bk.summary.hours)} hours alongside{' '}
                 <Link href={bkHref} title="Found by EarthAtlas in MarineCadastre AIS — click for the count’s record">MarineCadastre AIS</Link>
                 {bk.months.missing.length > 0 && <div className={styles.legendNoteText}>Counted for {span(bk.months.covered)} so far; the other picked months aren’t counted yet (not zero).</div>}
-                {bk.fuelings.some((f) => f.notified) && <div className={styles.legendNoteText}>{plural(bk.fuelings.filter((f) => f.notified).length, 'of them was', 'of them were')} notified to Washington Ecology.{' '}
-                  <a className={styles.sourceLink} href={`/ships/reports/bunkering${bk.reportPlace ? `?p=${encodeURIComponent(bk.reportPlace.replace(/^Anchor - /, '').toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/\b(Atb|Lng|Lpg|Usa)\b/g, (m) => m.toUpperCase()))}&list=1` : ''}`} target="_blank" rel="noopener noreferrer">See the bunkering report →</a></div>}
+                {bk.fuelings.some((f) => f.notified) && <div className={styles.legendNoteText}>{plural(bk.fuelings.filter((f) => f.notified).length, 'of them was', 'of them were')} notified to Washington Ecology.</div>}
+                {/* No link to the bunkering report: it is unlisted for now (Josh 2026-11-10). */}
                 {bk.suppliers.length > 0 && <div className={styles.legendNoteText}>Alongside: {bk.suppliers.slice(0, 8).map((v, i) => <span key={v.vesselId || v.mmsi}>{i > 0 && ' · '}{v.vesselId
                   ? <button type="button" className={styles.pcShipLink} onClick={() => onSelectVessel(v.vesselId)} title="Open this vessel’s card">{v.name || `MMSI ${v.mmsi}`}</button> : (v.name || `MMSI ${v.mmsi}`)} {fmtN(v.fuelings)}</span>)}
                   {bk.suppliers.length > 8 && ' · …'}</div>}

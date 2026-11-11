@@ -32,14 +32,21 @@ REGION = "salish-v6"
 POINTS = os.path.join(HERE, "cache", "points", REGION)
 POLYGONS = os.path.join(HERE, "cache", "anchorage-stays", "anchorages.json")
 OUT = os.path.join(HERE, "cache", "bunker-events")
-RULE = dict(version="be4", sogKn=1.0, receiverMinLen=100, nearM=200, pairS=90, gapMin=15, minMinutes=60,
+RULE = dict(version="be5", sogKn=1.0, receiverMinLen=100, nearM=200, pairS=90, gapMin=15, minMinutes=60,
             receiverTypes=[60, 89], supplierTypes=[31, 32, 52], smallTankerTypes=[80, 89],
             supplierMinLen=15,          # launches and water taxis (e.g. 12 m) bring crew and stores, not fuel
             supplierNameExclude="^YT ?[0-9]",  # US Navy harbor tugs ("YT812 BAKER", "YT 803 RELIANT")
             atAnchorStatus=1, nearestAnchorageKm=6, berthClearM=400,
             # be4 (2026-10-20, from the Ecology ANT comparison): ATB / tug receivers (ANT lists fuelings of "ATB TUG DUBLIN SEA",
             # "LAUREN FOSS"); kept only when a known bunker tug is alongside, decided at read (lib/ships/bunkerMatch.js).
-            tugReceiverMinLen=25, receiverNameExclude="^WSF ")
+            tugReceiverMinLen=25, receiverNameExclude="^WSF ",
+            # be5 (2026-11-10, from the lightering notices AIS missed): (1) outside every polygon a large ship counts when it is
+            # stopped whatever its AIS navigational status, except "moored" (mooredStatus): Port Angeles tankers lightering
+            # beside a barge broadcast "underway" (Overseas Houston 2025-09-06, 2025-11-01) or "not under command" (Louisiana
+            # 2026-05-14); tug receivers still need "at anchor". (2) An ATB (a tug locked into its barge broadcasts as one tanker,
+            # 183-210 m) or any large tanker lying within largeSupplierNearM of the ship is a supplier (Pride beside Pelagic
+            # Turbot 30-36 m for 24 h, 2026-03-28); a ship-to-ship transfer shows both ways, the matcher keeps the notified side.
+            mooredStatus=5, largeSupplierNearM=80)
 
 
 def connect():
@@ -99,36 +106,36 @@ WITH p AS (   -- one position per vessel per timestamp, stopped, inside the anch
   SELECT * EXCLUDE (rn) FROM (
     SELECT c.*, row_number() OVER (PARTITION BY c.mmsi, c.t ORDER BY c.priority, c.key) AS rn
       FROM c JOIN x USING (mmsi, t, key) WHERE x.crossings % 2 = 1) WHERE rn = 1
-), r_anc AS ( -- or "at anchor" outside every polygon, away from terminal berths: filed under the nearest anchorage
+), r_anc AS ( -- or stopped outside every polygon (be5: any status but moored; tugs "at anchor"), away from terminal berths: filed under the nearest anchorage
   SELECT * EXCLUDE (rn, dk) FROM (
     SELECT r0.*, cen.key, 0 AS priority,
            row_number() OVER (PARTITION BY r0.mmsi, r0.t ORDER BY (cen.clat - r0.lat) ^ 2 + ((cen.clon - r0.lon) * 0.66) ^ 2) AS rn,
            sqrt((cen.clat - r0.lat) ^ 2 + ((cen.clon - r0.lon) * 0.66) ^ 2) * 111.2 AS dk
       FROM r0 JOIN cen ON abs(cen.clat - r0.lat) < 0.06 AND abs(cen.clon - r0.lon) < 0.09
-     WHERE r0.status = $anchorstatus
+     WHERE (r0.status = $anchorstatus OR (r0.rclass = 'ship' AND coalesce(r0.status, -1) <> $mooredstatus))
        AND NOT EXISTS (SELECT 1 FROM r_in WHERE r_in.mmsi = r0.mmsi AND r_in.t = r0.t)
        AND NOT EXISTS (SELECT 1 FROM berths b WHERE abs(b.lat - r0.lat) < $bclat AND abs(b.lon - r0.lon) < $bclon))
    WHERE rn = 1 AND dk <= $nearkm
 ), r AS (       -- tug receivers never inside a tug-and-barge holding area (tugs wait there rafted together)
   SELECT * FROM (SELECT *, true AS inside FROM r_in UNION ALL SELECT *, false AS inside FROM r_anc)
    WHERE rclass = 'ship' OR key NOT IN (SELECT key FROM holding)
-), s AS (     -- suppliers: tugs / towing vessels, small tankers; not launches, not Navy harbor tugs
-  SELECT * FROM p WHERE (type IN $stypes OR (type BETWEEN $tlo AND $thi AND coalesce(length, 0) < $rlen))
+), s AS (     -- suppliers: tugs / towing vessels, tankers (large ones and ATBs only very close, be5); not launches, not Navy harbor tugs
+  SELECT *, (type BETWEEN $tlo AND $thi AND coalesce(length, 0) >= $rlen) AS large FROM p WHERE (type IN $stypes OR type BETWEEN $tlo AND $thi)
      AND coalesce(length, 0) >= $slen AND NOT regexp_matches(coalesce(name, ''), '$sexcl')
 ), pair AS (  -- same minute (within pairS seconds), within nearM metres
   SELECT r.key AS anchorage, r.inside, r.rclass, r.mmsi AS receiver, s.mmsi AS supplier, r.t,
          2 * 6371000 * asin(sqrt(pow(sin(radians(s.lat - r.lat) / 2), 2)
            + cos(radians(r.lat)) * cos(radians(s.lat)) * pow(sin(radians(s.lon - r.lon) / 2), 2))) AS d,
          r.name AS r_name, r.imo AS r_imo, r.type AS r_type, r.length AS r_len,
-         s.name AS s_name, s.imo AS s_imo, s.type AS s_type, s.length AS s_len
-    FROM r JOIN s ON s.mmsi <> r.mmsi
+         s.name AS s_name, s.imo AS s_imo, s.type AS s_type, s.length AS s_len, s.large
+    FROM r JOIN s ON s.mmsi <> r.mmsi AND (NOT s.large OR r.rclass = 'ship')   -- a large supplier only beside a ship, never a tug raft
      AND s.t BETWEEN r.t - INTERVAL ($pairs || ' seconds') AND r.t + INTERVAL ($pairs || ' seconds')
      AND abs(s.lat - r.lat) < 0.003 AND abs(s.lon - r.lon) < 0.005
 ), near AS (  -- one row per receiver minute per supplier (closest)
   SELECT anchorage, receiver, supplier, date_trunc('minute', t) AS m, min(d) AS d, bool_or(inside) AS inside, any_value(rclass) AS rclass,
          any_value(r_name) AS r_name, any_value(r_imo) AS r_imo, any_value(r_type) AS r_type, any_value(r_len) AS r_len,
          any_value(s_name) AS s_name, any_value(s_imo) AS s_imo, any_value(s_type) AS s_type, any_value(s_len) AS s_len
-    FROM pair WHERE d <= $near GROUP BY 1, 2, 3, 4
+    FROM pair WHERE d <= CASE WHEN large THEN $lnear ELSE $near END GROUP BY 1, 2, 3, 4
 ), runs AS (
   SELECT *, sum(CASE WHEN prev IS NULL OR m - prev > INTERVAL ($gap || ' minutes') THEN 1 ELSE 0 END)
               OVER (PARTITION BY anchorage, receiver, supplier ORDER BY m) AS run
@@ -151,6 +158,7 @@ def sql_for(day_file):
            "$tlo": str(rp["smallTankerTypes"][0]), "$thi": str(rp["smallTankerTypes"][1]),
            "$tlen": str(rp["tugReceiverMinLen"]), "$rexcl": rp["receiverNameExclude"],
            "$slen": str(rp["supplierMinLen"]), "$sexcl": rp["supplierNameExclude"], "$anchorstatus": str(rp["atAnchorStatus"]),
+           "$mooredstatus": str(rp["mooredStatus"]), "$lnear": str(rp["largeSupplierNearM"]),
            "$nearkm": str(rp["nearestAnchorageKm"]), "$bclat": str(rp["berthClearM"] / 111200), "$bclon": str(rp["berthClearM"] / 74000),
            "$pairs": f"'{rp['pairS']}'", "$near": str(rp["nearM"]), "$gap": f"'{rp['gapMin']}'", "$minmin": f"'{rp['minMinutes']}'"}
     out = EVENTS_SQL

@@ -376,6 +376,12 @@ export default function OilTransfersReport() {
   const [err, setErr] = useState(null)
   const set = (p) => setSt((s) => ({ ...s, ...p, ...(Object.keys(p).some((k) => FILTER_KEYS.includes(k) && p[k]) ? { list: true } : {}) }))
   useEffect(() => { document.title = 'Planned vs. observed over-water oil transfers in Washington · EarthAtlas Ships' }, [])
+  // Unlisted for now (Josh 2026-11-10: Lovel controls who has the URL): not linked anywhere, and search engines are asked not to index it.
+  useEffect(() => {
+    const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex, nofollow'
+    document.head.appendChild(m)
+    return () => m.remove()
+  }, [])
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     for (const k of ['from', 'to', 'g', 'q', ...FILTER_KEYS]) { if (st[k]) q.set(k, st[k]); else q.delete(k) }
@@ -429,7 +435,7 @@ export default function OilTransfersReport() {
           <Src href={ANT_HOME}>Washington State Department of Ecology</Src>: cargo loaded and unloaded at refineries and terminals, ships fueled,
           lightering between vessels. This report sets every notified operation beside what <Src href={MC_HOME}>NOAA’s AIS ship positions</Src> show:
           the ship at the notified terminal or dock, a barge’s tug with it at the berth, or a bunker tug alongside a ship at an anchorage. Click any number to see the operations behind it.
-          Fueling at anchorages alone is in the <a className={c.src} href="/ships/reports/bunkering">bunkering report</a>.
+          Fueling and lightering at anchorages alone are in the <a className={c.src} href="/ships/reports/bunkering">anchorage report</a>.
         </p>
 
         {data?.available && <dl className={c.facts}>
@@ -455,6 +461,14 @@ export default function OilTransfersReport() {
         {data && !data.available && <div className={c.note}>No notices or AIS months are loaded yet.</div>}
 
         {data?.available && <>
+          <TopFilters st={st} set={set} facetRows={facetRows} />
+          <div className={b.filterBar}>
+            {!viewingSmall && st.sc !== SCRUBBER_YES && <button type="button" className={b.chip} onClick={() => set({ sc: SCRUBBER_YES })}
+              title="Ships in the IMO’s scrubber notifications or on the MEP Alliance lists">Scrubber ships only</button>}
+            {viewingSmall && <span className={b.chip}><b>Showing:</b> small craft<button type="button" className={b.chipX} onClick={() => set({ g: '' })} aria-label="Back to the main counts">×</button></span>}
+            <FilterChips st={st} set={set} clearAll={clearAll} count={shown.length} hint="Click a number, a month or a bar to narrow the whole report." />
+          </div>
+
           <section className={b.tiles} aria-label="Headline numbers">
             <TileBtn value={fmt(main.length)} label="Notified operations" sub={`${gal(mainGal)} gallons notified`} src={<Src href={ANT_HOME}>Ecology</Src>}
               on={!st.st && !viewingSmall} onClick={() => set({ g: '', st: '' })} />
@@ -471,14 +485,6 @@ export default function OilTransfersReport() {
           {seenRows.length > 0 && <p className={c.note} style={{ margin: '-6px 0 18px' }}>
             Where both agree, the median time between the notified start and the ship’s arrival in AIS is <b>{hrs(median(seenRows.map((r) => r.seen.delayH)))}</b>.
           </p>}
-
-          <TopFilters st={st} set={set} facetRows={facetRows} />
-          <div className={b.filterBar}>
-            {!viewingSmall && st.sc !== SCRUBBER_YES && <button type="button" className={b.chip} onClick={() => set({ sc: SCRUBBER_YES })}
-              title="Ships in the IMO’s scrubber notifications or on the MEP Alliance lists">Scrubber ships only</button>}
-            {viewingSmall && <span className={b.chip}><b>Showing:</b> small craft<button type="button" className={b.chipX} onClick={() => set({ g: '' })} aria-label="Back to the main counts">×</button></span>}
-            <FilterChips st={st} set={set} clearAll={clearAll} count={shown.length} hint="Click a number, a month or a bar to narrow the whole report." />
-          </div>
 
           <section className={c.card}>
             <div className={c.cardHead}>
@@ -540,7 +546,7 @@ export default function OilTransfersReport() {
                 counts as seen, with the pier AIS shows named on the operation. Names Ecology spells out and ships shorten on AIS (“National Geographic” as
                 “Nat Geo”) are treated as the same name.</dd>
               <dt>Seen in AIS, at an anchorage</dt>
-              <dd>Fueling and lightering at anchorages are matched as in the <a className={c.src} href="/ships/reports/bunkering">bunkering report</a>: a tug alongside the
+              <dd>Fueling and lightering at anchorages are matched as in the <a className={c.src} href="/ships/reports/bunkering">anchorage report</a>: a tug alongside the
                 anchored ship in <Ais id={data.bunkerRecordId}>AIS</Ais> within {data.rule?.tolH ?? 6} hours of the notified window.</dd>
               <dt>Barges</dt>
               <dd>Barges carry no AIS. Where a barge works with one tug, the tug that stays at the berth through most of the barge’s notified transfers

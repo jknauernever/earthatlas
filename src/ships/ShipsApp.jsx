@@ -2886,8 +2886,7 @@ export default function ShipsApp() {
                     they emitted; click one for its card. Round badges are EarthAtlas’s hand-checked Salish Sea terminals (oil, fuel, gas, chemicals,
                     coal, grain and other bulk); click one for the ships of a fitting kind that stopped there, its emissions and every source. A fuel badge on an anchorage marks likely
                     bunkering there in the months picked: a tug (a bunker barge has no AIS of its own) alongside an anchored ship for an hour or more,
-                    found by EarthAtlas in MarineCadastre AIS; click it for each fueling. Washington anchorages are compared with what Washington
-                    Ecology was notified of in the <a href="/ships/reports/bunkering" target="_blank" rel="noopener noreferrer">bunkering report</a>. Data:{' '}
+                    found by EarthAtlas in MarineCadastre AIS; click it for each fueling. Data:{' '}
                     <a href={PORTS.sourceUrl} target="_blank" rel="noopener noreferrer">{PORTS.sourceName}</a>, public domain;
                     port visits <a href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> (CC BY-NC 4.0);{' '}
                     <a href={FOSSIL.sourceUrl} target="_blank" rel="noopener noreferrer">Climate TRACE</a> (CC BY 4.0).
@@ -3020,7 +3019,9 @@ export default function ShipsApp() {
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
                 changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}
-                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }, { href: '/ships/reports/bunkering', label: 'Planned vs. observed bunkering at Washington anchorages' }, { href: '/ships/reports/oil-transfers', label: 'Planned vs. observed over-water oil transfers in Washington' }]} />
+                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }]} />
+                {/* The oil-transfers and bunkering (anchorage) reports are unlisted (Josh 2026-11-10: Lovel controls, for now, who has
+                    their URLs). They stay live at their URLs; don't link them from /ships. */}
             </div>
           )}
         </MapSheet>

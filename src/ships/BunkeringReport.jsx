@@ -1,12 +1,13 @@
 /**
- * /ships/reports/bunkering: planned vs. observed bunkering at Washington anchorages (Josh 2026-10-20). Every operation Washington
+ * /ships/reports/bunkering: planned vs. observed fueling and lightering at Washington anchorages (Josh 2026-10-20; lightering
+ * switch + section 2026-11-10, after Lovel asked how lightering shows). Every operation Washington
  * Ecology was notified of (Advance Notice of Transfer, public records release) beside what AIS shows: the tug of a bunker barge
  * (barges carry no AIS) lying beside the anchored ship. Data: /api/ships?op=bunkerReport (lib/ships/bunkerMatch.js).
  *
  * A topline report (Josh 2026-10-20: "any aggregated number you can click on to see what it summarizes"): headline tiles, a month
  * chart and breakdowns (anchorage, ship type, fuel, volume, company, tug), every number clickable to filter the whole page; the
  * operations themselves only listed when asked for. Factual record only: every value links to its source; no conclusions.
- * URL state: from, to (months, server); st, k, p, t, f, v, c, g, m, q (filters, client).
+ * URL state: from, to (months, server); st, k, p, t, f, v, c, g, m, d, x, q (filters, client).
  */
 import { useEffect, useMemo, useState } from 'react'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
@@ -42,7 +43,7 @@ export const STATUS = [
 ]
 const STATUS_COLOR = Object.fromEntries(STATUS.map(([k, , col]) => [k, col]))
 const STATUS_LABEL = Object.fromEntries(STATUS.map(([k, l]) => [k, l]))
-/** Ship type: the notice's receiver type (lightering: the deliverer, the tanker), else the AIS / EarthAtlas kind. */
+/** Ship type: the notice's type for the ship AIS sees (lightering: the side that is not a barge), else the AIS / EarthAtlas kind. */
 export function shipTypeOf(antType, kind) {
   const t = String(antType || '').toUpperCase()
   if (t) {
@@ -76,6 +77,13 @@ export function fuelOf(product) {
   return 'Other products'
 }
 const BANDS = [[25e3, 'Under 25,000 gal'], [100e3, '25,000–100,000 gal'], [250e3, '100,000–250,000 gal'], [500e3, '250,000–500,000 gal'], [Infinity, '500,000 gal or more']]
+const isBarge = (t) => /BARGE/i.test(String(t || ''))
+/** Lightering direction, from Ecology's vessel types of deliverer and receiver. */
+export function lighterDir(op) {
+  const fromBarge = isBarge(op.delivererType), toBarge = isBarge(op.receiverType)
+  return fromBarge ? (toBarge ? 'Barge to barge' : 'Barge loads a ship') : (toBarge ? 'Ship unloads to a barge' : 'Ship to ship')
+}
+const vesselWord = (t) => String(t || 'vessel').toLowerCase()
 const bandOf = (g) => (g == null ? null : BANDS.find(([lim]) => g < lim)[1])
 const kmBetween = (a, z) => {
   const r = Math.PI / 180, dLat = (z.lat - a.lat) * r, dLon = (z.lon - a.lon) * r
@@ -95,8 +103,10 @@ function toRows(data) {
   const fromOp = (op) => {
     const fuels = new Map()
     for (const p of op.products) { const k = fuelOf(p.product); fuels.set(k, (fuels.get(k) || 0) + (p.gallons || 0)) }
-    return { at: op.startAt, place: placeName(op.location), county: countyName(op.region), city: title(op.city) || null, shipName: op.kind === 'lightering' ? op.ship : op.receiver,
-      shipType: shipTypeOf(op.kind === 'lightering' ? op.delivererType : op.receiverType, null), company: op.company || 'Not stated',
+    const lit = op.kind === 'lightering'
+    const lighter = lit ? { dir: lighterDir(op), from: op.deliverers[0] || '—', fromType: op.delivererType, to: op.receiver, toType: op.receiverType } : null
+    return { at: op.startAt, place: placeName(op.location), county: countyName(op.region), city: title(op.city) || null, shipName: lit ? op.ship : op.receiver,
+      shipType: shipTypeOf(lit ? (op.ship === op.receiver ? op.receiverType : op.delivererType) : op.receiverType, null), company: op.company || 'Not stated', lighter,
       kind: op.kind === 'lightering' ? 'Lightering' : 'Fueling', fuels: [...fuels].map(([k, g]) => ({ fuel: k, gallons: g })), gallons: op.gallons, band: bandOf(op.gallons), op }
   }
   const tugsOf = (f) => (f?.suppliers || []).map((s) => ({ name: s.name || `MMSI ${s.mmsi}`, v: s }))
@@ -123,6 +133,8 @@ const DIMS = {
   c: ['Company', (r) => (r.company ? [r.company] : [])],
   g: ['Tug', (r) => r.tugs.map((x) => x.name)],
   m: ['Month', (r) => [r.month], (v) => monthName(v)],
+  d: ['Lightering direction', (r) => (r.lighter ? [r.lighter.dir] : [])],
+  x: ['Lightering pair', (r) => (r.lighter ? [`${r.lighter.from} → ${r.lighter.to}`] : [])],
 }
 const FILTER_KEYS = Object.keys(DIMS)
 const notified = (r) => r.status !== 'noNotice'
@@ -256,7 +268,8 @@ function OpsList({ rows, aisRecordId, rule }) {
           <td>{r.op ? <Ant op={r.op}>{pacific(r.at)}</Ant> : <Ais id={aisRecordId}>{pacific(r.at)}</Ais>}</td>
           <td>{r.place}{r.f?.outside && <div className={b.sub}>AIS: just outside the charted area</div>}</td>
           <td>{r.vessel ? <Ship v={r.vessel} name={r.shipName} /> : r.op ? <Ant op={r.op}>{r.shipName}</Ant> : r.shipName}
-            <div className={b.sub}>{r.shipType}{r.kind === 'Lightering' ? ` · lightering to ${r.op.receiver}` : ''}</div></td>
+            <div className={b.sub}>{r.shipType}</div>
+            {r.lighter && <div className={b.sub}>Lightering: <Ant op={r.op}>{r.lighter.from}</Ant> ({vesselWord(r.lighter.fromType)}) to <Ant op={r.op}>{r.lighter.to}</Ant> ({vesselWord(r.lighter.toType)})</div>}</td>
           <td>{r.op ? <>
             <Ant op={r.op}>{r.op.company}</Ant>{r.kind !== 'Lightering' && r.op.deliverers.length > 0 && <> · barge <Ant op={r.op}>{r.op.deliverers.join(', ')}</Ant></>}
             <div className={b.sub}><Ant op={r.op}>{fmt(Math.round(r.gallons))} gal</Ant>: {r.fuels.map((x) => `${x.fuel} ${gal(x.gallons)}`).join('; ')}</div>
@@ -333,13 +346,62 @@ function FilterEditor({ st, set, facetRows }) {
   )
 }
 
+/** Fueling / Lightering / Both: the Operation filter (k) as a switch at the top (Lovel, 2026-11-10). */
+const OP_MODES = [['', 'Both'], ['Fueling', 'Fueling'], ['Lightering', 'Lightering']]
+function OpSwitch({ st, set, rows }) {
+  const n = (k) => rows.filter((r) => r.status !== 'noNotice' && (!k || r.kind === k)).length
+  return (
+    <div className={b.seg} role="group" aria-label="Operation">
+      {OP_MODES.map(([k, l]) => (
+        <button key={l} type="button" className={st.k === k ? b.segOn : b.segBtn} aria-pressed={st.k === k} onClick={() => set({ k, d: k === 'Fueling' ? '' : st.d, x: k === 'Fueling' ? '' : st.x })}>
+          {l} <small>{fmt(n(k))} notified</small></button>))}
+    </div>
+  )
+}
+
+/** Lightering at a glance: how much, where, which way, which ship and barge, and how often AIS shows it. Every number filters the page. */
+function LighteringSection({ rows, allRows, facetRows, st, set }) {
+  if (!rows.length) return null
+  const g = (xs) => xs.reduce((t, r) => t + (r.gallons || 0), 0)
+  const lg = g(rows), all = g(allRows.filter((r) => r.status !== 'noNotice'))
+  const seen = rows.filter((r) => r.status === 'seen')
+  const setL = (p) => set({ ...p, k: 'Lightering' })
+  const lit = (dim) => facetRows(dim).filter((r) => r.kind === 'Lightering')
+  return (
+    <section className={c.card} id="lightering">
+      <div className={c.cardHead}><h2 className={c.h2}>Lightering</h2>
+        <div className={b.legend}>{STATUS.slice(0, 2).map(([k, l, col]) => <span key={k}><i className={b.dot} style={{ background: col }} />{l}</span>)}</div></div>
+      <p className={c.note} style={{ margin: '0 0 12px' }}>
+        Lightering moves oil cargo between a ship and a barge at anchor. In this period <b>{fmt(rows.length)}</b> lightering operations were notified to{' '}
+        <Src href={ANT_HOME}>Ecology</Src>, <b>{gal(lg)} gallons</b>{all > 0 && <>: <b>{Math.round((100 * lg) / all)}%</b> of all gallons notified at these anchorages</>}.{' '}
+        <b>{fmt(seen.length)}</b> were seen in AIS{seen.length > 0 && <>: the tug arrived a median <b>{hrs(median(seen.map((r) => r.delayH)))}</b> after the notified
+        start and was alongside a median <b>{hrs(median(seen.map((r) => r.f.hours)))}</b>, against <b>{hrs(median(seen.map((r) => r.op.durationH)))}</b> planned</>}.
+      </p>
+      <div className={b.facets}>
+        <Facet name="By direction (as notified)" dim="d" rows={lit('d')} filt={st} set={setL} />
+        <Facet name="By anchorage" dim="p" rows={lit('p')} filt={st} set={setL} />
+        <Facet name="By ship and barge (as notified)" dim="x" rows={lit('x')} filt={st} set={setL} />
+        <Facet name="By tug alongside (AIS)" dim="g" rows={lit('g')} filt={st} set={setL} sub="operations" />
+      </div>
+      <button type="button" className={b.showBtn} onClick={() => { set({ k: 'Lightering', list: true }); setTimeout(() => document.getElementById('operations')?.scrollIntoView({ behavior: 'smooth' }), 50) }}>
+        Show the {fmt(rows.length)} lightering operations</button>
+    </section>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function BunkeringReport() {
   const [st, setSt] = useState(readUrl)
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const set = (p) => setSt((s) => ({ ...s, ...p, ...(Object.keys(p).some((k) => FILTER_KEYS.includes(k) && p[k]) ? { list: true } : {}) }))
-  useEffect(() => { document.title = 'Planned vs. observed bunkering at Washington anchorages · EarthAtlas Ships' }, [])
+  useEffect(() => { document.title = 'Planned vs. observed fueling and lightering at Washington anchorages · EarthAtlas Ships' }, [])
+  // Unlisted for now (Josh 2026-11-10: Lovel controls who has the URL): live at its URL, not linked from /ships, not indexed.
+  useEffect(() => {
+    const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex, nofollow'
+    document.head.appendChild(m)
+    return () => m.remove()
+  }, [])
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     for (const k of ['from', 'to', 'q', ...FILTER_KEYS]) { if (st[k]) q.set(k, st[k]); else q.delete(k) }
@@ -362,6 +424,10 @@ export default function BunkeringReport() {
   const count = (k) => tileRows.filter((r) => (k === 'notified' ? notified(r) : r.status === k)).length
   const nNotified = count('notified'), nSeen = count('seen')
   const fuelGal = tileRows.filter((r) => r.kind === 'Fueling').reduce((g, r) => g + (r.gallons || 0), 0)
+  const lightGal = tileRows.filter((r) => r.kind === 'Lightering').reduce((g, r) => g + (r.gallons || 0), 0)
+  const galSub = [fuelGal > 0 && `${gal(fuelGal)} gallons of fuel`, lightGal > 0 && `${gal(lightGal)} gallons lightered`].filter(Boolean).join(' · ')
+  const lightRows = st.k === 'Fueling' ? [] : applyFilters(rows, st, 'k').filter((r) => r.kind === 'Lightering')
+  const switchRows = applyFilters(rows, { ...st, d: '', x: '' }, 'k')
   const seenRows = tileRows.filter((r) => r.status === 'seen')
   const months = data?.picked?.length ? data.picked : data?.months || []
   const allMonths = data?.months || []
@@ -384,11 +450,12 @@ export default function BunkeringReport() {
       </header>
       <main className={c.main}>
         <div className={c.kicker}>Report</div>
-        <h1 className={c.title}>Planned vs. observed bunkering at Washington anchorages</h1>
+        <h1 className={c.title}>Planned vs. observed fueling and lightering at Washington anchorages</h1>
         <p className={c.lede}>
-          Every over-water transfer of more than 100 gallons of oil to a vessel in Washington is notified in advance to the{' '}
-          <Src href={ANT_HOME}>Washington State Department of Ecology</Src>. This report sets the fueling and lightering notified at anchorages beside
-          what <Src href={MC_HOME}>NOAA’s AIS ship positions</Src> show: the tug of a bunker barge (a barge carries no AIS of its own) lying beside the anchored ship.
+          Every over-water transfer of more than 100 gallons of oil to or from a vessel in Washington is notified in advance to the{' '}
+          <Src href={ANT_HOME}>Washington State Department of Ecology</Src>. This report sets the fueling (fuel delivered to a ship) and lightering (oil cargo moved
+          between a ship and a barge) notified at anchorages beside what <Src href={MC_HOME}>NOAA’s AIS ship positions</Src> show: the tug of a barge (a barge
+          carries no AIS of its own) lying beside the anchored ship.
           Click any number to see the operations behind it.
         </p>
 
@@ -415,22 +482,25 @@ export default function BunkeringReport() {
         {data && !data.available && <div className={c.note}>No notices or AIS operations are loaded yet.</div>}
 
         {data?.available && <>
+          <OpSwitch st={st} set={set} rows={switchRows} />
+          <div className={b.filterBar}>
+            <FilterChips st={st} set={set} clearAll={clearAll} count={shown.length} hint="Click a number, a month or a bar to narrow the whole report." />
+          </div>
+
           <section className={b.tiles} aria-label="Headline numbers">
-            <TileBtn value={fmt(nNotified)} label="Notified operations" sub={`${gal(fuelGal)} gallons of fuel notified`} src={<Src href={ANT_HOME}>Ecology</Src>} {...tile('notified')} />
+            <TileBtn value={fmt(nNotified)} label="Notified operations" sub={galSub ? `${galSub} notified` : ''} src={<Src href={ANT_HOME}>Ecology</Src>} {...tile('notified')} />
             <TileBtn value={fmt(nSeen)} label="Seen in AIS" sub={nNotified ? `${Math.round((100 * nSeen) / nNotified)}% of notified operations` : ''} color={STATUS_COLOR.seen}
               src={<><Src href={ANT_HOME}>Ecology</Src> · <Ais id={data.aisRecordId}>AIS</Ais></>} {...tile('seen')} />
             <TileBtn value={fmt(count('notSeen'))} label="Notified, not seen in AIS" color={STATUS_COLOR.notSeen} src={<><Src href={ANT_HOME}>Ecology</Src> · <Ais id={data.aisRecordId}>AIS</Ais></>} {...tile('notSeen')} />
-            <TileBtn value={fmt(count('noNotice'))} label="Seen in AIS, no notice found" color={STATUS_COLOR.noNotice} sub={`a known bunker tug alongside ${data.rule?.minUnmatchedHours ?? 2} h or more`}
-              src={<><Ais id={data.aisRecordId}>AIS</Ais> · <Src href={ANT_HOME}>Ecology</Src></>} {...tile('noNotice')} />
+            {!st.k && <TileBtn value={fmt(count('noNotice'))} label="Seen in AIS, no notice found" color={STATUS_COLOR.noNotice} sub={`a known bunker tug alongside ${data.rule?.minUnmatchedHours ?? 2} h or more`}
+              src={<><Ais id={data.aisRecordId}>AIS</Ais> · <Src href={ANT_HOME}>Ecology</Src></>} {...tile('noNotice')} />}
           </section>
+          {st.k && <p className={c.note} style={{ margin: '-6px 0 12px' }}>AIS alone does not tell fueling from lightering, so operations seen in AIS with no notice are
+            counted only under Both.</p>}
           {seenRows.length > 0 && <p className={c.note} style={{ margin: '-6px 0 18px' }}>
             Where both agree, the tug arrived a median <b>{hrs(median(seenRows.map((r) => r.delayH)))}</b> after the notified start and was alongside a median{' '}
             <b>{hrs(median(seenRows.map((r) => r.f.hours)))}</b>, against <b>{hrs(median(seenRows.map((r) => r.op.durationH)))}</b> planned.
           </p>}
-
-          <div className={b.filterBar}>
-            <FilterChips st={st} set={set} clearAll={clearAll} count={shown.length} hint="Click a number, a month or a bar to narrow the whole report." />
-          </div>
 
           <section className={c.card}>
             <div className={c.cardHead}>
@@ -439,6 +509,8 @@ export default function BunkeringReport() {
             </div>
             <MonthChart rows={facetRows('m')} months={months} filt={st} set={set} />
           </section>
+
+          <LighteringSection rows={lightRows} allRows={applyFilters(rows, { ...st, d: '', x: '' }, 'k')} facetRows={facetRows} st={st} set={set} />
 
           <div className={b.facets}>
             <Facet name="By anchorage" dim="p" rows={facetRows('p')} filt={st} set={set} />
@@ -475,14 +547,21 @@ export default function BunkeringReport() {
                 are one operation. Times and hours are as planned in the notice (Pacific time); contacts are as notified. Fuel groups and ship types group
                 Ecology’s own product and vessel-type names.</dd>
               <dt>Seen in AIS</dt>
-              <dd>A tug or towing vessel (15 m or longer) within 200 m of a ship anchored at an anchorage, both under 1 knot, for an hour or more, in{' '}
-                <Ais id={data.aisRecordId}>MarineCadastre AIS</Ais> positions; tugs overlapping on one ship are one operation. A ship reporting “at anchor”
-                just outside an anchorage’s charted area is listed under the nearest anchorage.</dd>
+              <dd>A tug or towing vessel (15 m or longer) within 200 m of a ship stopped at an anchorage, both under 1 knot, for an hour or more, in{' '}
+                <Ais id={data.aisRecordId}>MarineCadastre AIS</Ais> positions. An articulated tug-barge, whose AIS reports the tug and barge as one tanker,
+                counts when it lies within 80 m of the ship. Tugs overlapping on one ship, or the same tug back beside it within an hour, are one operation.
+                A ship stopped just outside an anchorage’s charted area, away from any terminal berth, is listed under the nearest anchorage, whatever
+                navigational status its AIS reports (except moored).</dd>
               <dt>Matching</dt>
               <dd>A notice and an AIS operation match when they name the same ship (by its EarthAtlas record, or by name) and the AIS operation falls within{' '}
-                {data.rule?.tolH ?? 6} hours of the notified window. For lightering the notice’s deliverer, the tanker, is the ship AIS sees.</dd>
+                {data.rule?.tolH ?? 6} hours of the notified window. One ship’s notices and AIS operations are paired in time order. A notice still unpaired
+                matches that ship’s next AIS operation at the same anchorage up to {data.rule?.lateH ?? 30} hours after its window, when that operation
+                starts inside no other notice’s window (the ship arrived late). For lightering, the ship AIS sees is the side that is not a barge: the deliverer when a ship
+                unloads to a barge, the receiver when a barge loads a ship.</dd>
+              <dt>Lightering</dt>
+              <dd>Notices with Ecology’s transfer type “Lightering”. Direction, ship and barge are as notified (Ecology’s deliverer, receiver and vessel types).</dd>
               <dt>No notice found</dt>
-              <dd>An AIS operation of at least {data.rule?.minUnmatchedHours ?? 2} hours with a tug that was alongside in notified operations at least{' '}
+              <dd>An AIS operation of at least {data.rule?.minUnmatchedHours ?? 2} hours with a tug that was alongside in notified fuelings at least{' '}
                 {data.rule?.learnMin ?? 2} times, and no notice for that ship within {data.rule?.tolH ?? 6} hours.</dd>
             </dl>
           </section>

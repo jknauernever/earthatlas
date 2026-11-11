@@ -29,7 +29,7 @@ COLS = {  # NOAA order and types (DESCRIBE of a salish-v6 cache file)
     "sog": "FLOAT", "cog": "FLOAT", "heading": "INTEGER", "vessel_name": "VARCHAR", "imo": "VARCHAR",
     "call_sign": "VARCHAR", "vessel_type": "INTEGER", "status": "INTEGER", "length": "FLOAT", "width": "FLOAT",
     "draft": "FLOAT", "cargo": "INTEGER", "transceiver": "VARCHAR",
-    "source": "VARCHAR",   # EarthAtlas addition after NOAA's columns: which live source recorded the row (aisstream | wsf)
+    "source": "VARCHAR",   # EarthAtlas addition after NOAA's columns: which live source recorded the row (aisstream | wsf | openwaters/<upstream>)
 }
 con = duckdb.connect()
 tmp = os.path.join(data, "tmp"); os.makedirs(tmp, exist_ok=True)
@@ -78,7 +78,7 @@ except Exception:
     idx = {}
 idx.setdefault("version", "aisstream-points-v1")
 idx["source"] = "aisstream.io live AIS, recorded by EarthAtlas (scripts/ships/aisstream/recorder.mjs)"
-idx["schema"] = "NOAA MarineCadastre daily points (scripts/ships/bake-ais/fetch_points.py) plus a last source column (aisstream | wsf); identity fields as broadcast, not USCG-corrected; cargo always null"
+idx["schema"] = "NOAA MarineCadastre daily points (scripts/ships/bake-ais/fetch_points.py) plus a last source column (aisstream | wsf | openwaters/<upstream>); identity fields as broadcast, not USCG-corrected; cargo always null"
 idx["box"] = {"w": -126.2, "s": 47.0, "e": -122.05, "n": 49.6}
 idx.setdefault("days", {})[day] = {
     "rows": rows, "vessels": vessels, "minutesRecorded": min(minutes, 1440), "minutesInDay": 1440,

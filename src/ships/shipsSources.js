@@ -6,6 +6,7 @@
  */
 
 import { SITE_RUNS_NOTE } from '../components/panel/siteRunsNote.js'
+import { OPENWATERS_SOURCE_ENTRY } from './liveSources.js'
 
 const CC_BY_NC = 'https://creativecommons.org/licenses/by-nc/4.0/'
 const CC0 = 'https://creativecommons.org/publicdomain/zero/1.0/'
@@ -34,6 +35,7 @@ export const SHIPS_SOURCES = [
       { name: 'aisstream.io live AIS, recorded by EarthAtlas', href: 'https://aisstream.io',
         publisher: 'AIS Stream; recorded by EarthAtlas',
         method: 'Salish Sea tracks from October 18, 2026, for months NOAA has not published yet: EarthAtlas records the live feed (at most one position per ship per minute) and builds lines with the same rules as the NOAA tracks, updated daily. Positions as the ships broadcast them, not corrected. Coverage is thinner than NOAA’s in the Strait of Juan de Fuca and on the outer coast.' },
+      OPENWATERS_SOURCE_ENTRY,
     ],
   },
   {

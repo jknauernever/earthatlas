@@ -43,6 +43,7 @@ import WhaleTimeBar from './WhaleTimeBar.jsx'
 import { buildTimeline, positionAt, latestPosition, trailAt, homePort, tripsOf } from './timeline.js'
 import { useRecentWhales, drawRecentWhales, nearestWhaleHTML, RECENT_HOURS, PATH_HOURS, WHALE_COLOR } from './recentWhales.js'
 import SiteBrand from '../components/SiteBrand.jsx'
+import { liveSource, OPENWATERS_SOURCE_ENTRY, OPENWATERS_LICENSE_URL } from '../ships/liveSources.js'
 
 const styles = { ...shipsStyles, ...own }
 const MAPBOX_TOKEN = mapboxToken
@@ -72,7 +73,7 @@ const TICK_MS = 450        // playback: one step per tick
 const PORT_BOX = [-125.5, 46.8, -121.8, 50.6]   // ports considered for home ports (Salish Sea + approaches)
 const NO_PORT = 'Home port not found'
 // Each trip says where its positions come from (prime directive: the source beside the value).
-const SOURCE_WORDS = { noaa: 'minute by minute (NOAA)', gfw: 'hourly, positions to about 1 km (Global Fishing Watch)', ais: 'minute by minute (live AIS, aisstream.io)' }
+const SOURCE_WORDS = { noaa: 'minute by minute (NOAA)', gfw: 'hourly, positions to about 1 km (Global Fishing Watch)', ais: 'minute by minute (live AIS: aisstream.io and Open Waters AIS)' }
 const fmtTripDay = (s) => new Date(s * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Vancouver' })
 const fmtTripTime = (s) => new Date(s * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Vancouver' })
 const fmtDur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` }
@@ -87,7 +88,7 @@ function boatTipHTML(p) {
     const motion = p.moving
       ? `${p.kn != null ? `${p.kn.toFixed(1)} kn · ` : ''}heading ${String(Math.round(p.heading) % 360).padStart(3, '0')}°`
       : `<span style="color:#4b5563">${p.kn != null && p.kn >= 1 ? `${p.kn.toFixed(1)} kn when last reported` : 'Not under way when last reported'}</span>`
-    return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">${head}<br><b style="color:#047857">Live AIS</b>, reported ${ago} (${fmtWhen(p.at)})<br>${motion}<br><span style="color:#4b5563">Source: aisstream.io live AIS</span></div>`
+    return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">${head}<br><b style="color:#047857">Live AIS</b>, reported ${ago} (${fmtWhen(p.at)})<br>${motion}<br><span style="color:#4b5563">Source: ${liveSource(p.liveSrc).name}</span></div>`
   }
   // LIVE, not heard now: how long since it was last heard (Josh 2026-10-26), above the time itself.
   const when = `${p.heardH != null ? `<b>Last heard ${fmtAgo(p.heardH * 3600)}</b><br>` : ''}${p.exact ? '' : '≈ '}${fmtWhen(p.at)}`
@@ -259,7 +260,7 @@ export default function WhaleWatchApp() {
     const m = new Map()
     for (const r of liveSnap?.ships || []) {
       const [mmsi, at, lon, lat, sog, cog, heading] = r
-      m.set(mmsi, { mmsi, at, lngLat: [lon, lat], sog, cog, heading })
+      m.set(mmsi, { mmsi, at, lngLat: [lon, lat], sog, cog, heading, src: r[12] || 'aisstream' })   // live-v2: src is field 12
     }
     return m
   }, [liveSnap])
@@ -392,7 +393,7 @@ export default function WhaleWatchApp() {
         const age = nowS - lv.at
         const moving = (lv.sog ?? 0) >= 1 && age <= LIVE_MOVING_S
         points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: lv.lngLat },
-          properties: { vid, heading: lv.heading ?? lv.cog ?? 0, kn: lv.sog ?? null, at: lv.at, exact: 1, added: isAddedBoat ? 1 : 0, moving: moving ? 1 : 0, live: 1, ageH: age / 3600,
+          properties: { vid, heading: lv.heading ?? lv.cog ?? 0, kn: lv.sog ?? null, at: lv.at, exact: 1, added: isAddedBoat ? 1 : 0, moving: moving ? 1 : 0, live: 1, liveSrc: lv.src, ageH: age / 3600,
             name: memberById.get(vid)?.name || added.find((x) => x.id === vid)?.name || '', company: memberById.get(vid)?.company || '' } })
         const tr = moving && (!sel || sel === vid) ? liveSnap?.trails?.[lv.mmsi] : null   // with a card open, only its own boat's trail
         if (tr?.length >= 2) trails.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) }, properties: { vid, added: isAddedBoat ? 1 : 0, live: 1 } })
@@ -676,6 +677,7 @@ export default function WhaleWatchApp() {
     sources: [
       { name: 'aisstream.io live AIS feed', href: AISSTREAM, publisher: 'AIS Stream',
         method: 'Boats’ AIS broadcasts as received by aisstream.io’s receiver network, relayed by EarthAtlas every minute. LIVE shows a boat at its newest report from the last 24 hours, with how long ago it was received.' },
+      OPENWATERS_SOURCE_ENTRY,
     ],
   }
 
@@ -709,7 +711,7 @@ export default function WhaleWatchApp() {
       {startS != null && endS != null && (
         <WhaleTimeBar start={startS} end={endS} t={t} onT={setT} playing={playing} onPlaying={setPlaying} speed={speed} onSpeed={setSpeed}
           shifted={!isMobile} newestFix={endS}
-          liveStatus={liveSnap ? `live AIS (aisstream.io) updated ${fmtClock(liveSnap.generated)}` : null} />
+          liveStatus={liveSnap ? `live AIS (aisstream.io + Open Waters) updated ${fmtClock(liveSnap.generated)}` : null} />
       )}
 
       <MapSheet id="whalewatch-panel" title="Whale-watching boats" summary={fleet ? `${members.length} boats` : ''} className={styles.panel} desktopCollapsible={false}>
@@ -725,7 +727,7 @@ export default function WhaleWatchApp() {
           )}
           <div className={styles.wwWhen}>
             {liveSnap
-              ? <>Live now: {liveNow} of {members.length} boats reported by AIS in the last hour · <a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a> live AIS, updated {fmtClock(liveSnap.generated)}</>
+              ? <>Live now: {liveNow} of {members.length} boats reported by AIS in the last hour · <a href={AISSTREAM} target="_blank" rel="noopener noreferrer">aisstream.io</a> and <a href={OPENWATERS_LICENSE_URL} target="_blank" rel="noopener noreferrer">Open Waters AIS</a> live AIS, updated {fmtClock(liveSnap.generated)}</>
               : <>Live AIS not available right now; LIVE shows each boat’s newest position recorded by live AIS.</>}
           </div>
           <label className={`${styles.wwCheck} ${styles.wwAllTracks}`}>

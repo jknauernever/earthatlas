@@ -12,13 +12,10 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import styles from './ShipsApp.module.css'
+import { liveSource } from './liveSources.js'
 
 const LIVE_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/live/salish-v6.json'
 export const LIVE_MAX_H = 6
-const SOURCE = {
-  aisstream: { name: 'aisstream.io live AIS', url: 'https://aisstream.io' },
-  wsf: { name: 'Washington State Ferries (WSDOT) vessel positions', url: 'https://wsdot.wa.gov/travel/washington-state-ferries' },
-}
 
 let cache = null // { at, promise }
 function snapshot(force = false) {
@@ -61,7 +58,7 @@ export default function LivePosition({ vessel, getMap }) {
 
   const age = live ? Date.now() / 1000 - live.t : Infinity
   if (!live || !(age <= LIVE_MAX_H * 3600) || !Number.isFinite(live.lon) || !Number.isFinite(live.lat)) return null
-  const src = SOURCE[live.src] || SOURCE.aisstream
+  const src = liveSource(live.src)
   const otherName = live.name && !names.has(key(live.name)) ? live.name : null
 
   const show = async () => {
@@ -89,7 +86,7 @@ export default function LivePosition({ vessel, getMap }) {
     <div className={styles.liveLine}>
       <button type="button" className={styles.liveBtn} onClick={show}>Show live position</button>
       <span className={styles.liveMeta}>
-        {ago(age)} · <a className={styles.sourceLink} href={src.url} target="_blank" rel="noopener noreferrer" title={`${src.name}: MMSI ${live.mmsi}`}>{live.src === 'wsf' ? 'WSF' : 'aisstream.io'}</a>
+        {ago(age)} · <a className={styles.sourceLink} href={src.url} target="_blank" rel="noopener noreferrer" title={`${src.name}: MMSI ${live.mmsi}`}>{src.short}</a>
         {otherName && <> · broadcasting as {otherName}</>}
       </span>
     </div>

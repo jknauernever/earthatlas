@@ -3,7 +3,7 @@
  *
  * EarthAtlas's one intake for live ship positions (Josh 2026-10-18: "one place" for every live location stream). Each
  * source is a module in sources/ (aisstream.mjs: one aisstream.io WebSocket; wsf.mjs: Washington State Ferries' vessel
- * positions, polled) that turns its feed into the same observation and hands it to ingest(). From there, one pipeline for
+ * positions, polled; openwaters.mjs: Open Waters AIS, rows tagged openwaters/<upstream>) that turns its feed into the same observation and hands it to ingest(). From there, one pipeline for
  * all sources: at most one row per MMSI per UTC minute (whichever source it came from), the newest position per MMSI for
  * the live snapshot, one trail per MMSI, and the source on every row. Over the salish-v6 box it writes
  * NOAA MarineCadastre-shaped position rows (plus a `source` column):
@@ -27,7 +27,7 @@
  * BLOB_PREFIX through api/cron/ships-upload-token.js (one-file tokens; the recorder never holds the Blob write token).
  * Uploads retry on every daily check, so days recorded before the endpoint allowed this prefix upload later.
  *
- * Env: AISSTREAM_API_KEY, WSDOT_ACCESS_CODE (each source starts only with its key), DATA_DIR (./data), CRON_SECRET, UPLOAD_TOKEN_URL, BLOB_PREFIX,
+ * Env: AISSTREAM_API_KEY, WSDOT_ACCESS_CODE, OPENWATERS_AIS_TOKEN (each source starts only with its key), DATA_DIR (./data), CRON_SECRET, UPLOAD_TOKEN_URL, BLOB_PREFIX,
  *      ROTATE_SECONDS (3600; a smaller value only for local tests), RAW_KEEP_DAYS (30), PYTHON (python3)
  * Run:  AISSTREAM_API_KEY=… node recorder.mjs
  */
@@ -38,6 +38,7 @@ import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import * as aisstream from './sources/aisstream.mjs'
 import * as wsf from './sources/wsf.mjs'
+import * as openwaters from './sources/openwaters.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const DATA = path.resolve(process.env.DATA_DIR || path.join(HERE, 'data'))
@@ -186,7 +187,8 @@ function ingest(o) {
   const { mmsi, lat, lon, t } = o
   if (!(mmsi >= 100_000_000 && mmsi <= 999_999_999) || Number.isNaN(+t)) { c.invalidDropped++; return }
   if (!(lat >= BOX.s && lat <= BOX.n && lon >= BOX.w && lon <= BOX.e) || (lat === 0 && lon === 0)) { c.invalidDropped++; return }
-  if (o.source !== 'aisstream') (sourceMmsis[o.source] ||= new Set()).add(mmsi)
+  // Fleets are non-AIS sources (a WSF ferry stays a ferry); AIS feeds (aisstream, openwaters/*) cover every vessel.
+  if (!o.ais && o.source !== 'aisstream') (sourceMmsis[o.source] ||= new Set()).add(mmsi)
   const ts = Math.floor(+t / 1000)
   const prev = latest.get(mmsi)
   const minute = t.toISOString().slice(0, 16)
@@ -283,8 +285,8 @@ function liveSnapshot() {
   }
   // lastMessageAt / connected stay aisstream's (the data watchdog reads them); every source's state is in `sources`.
   const ais = health.aisstream || {}
-  return { version: 'live-v2', source: 'aisstream.io + Washington State Ferries', box: BOX,
-    sourceUrls: { aisstream: 'https://aisstream.io', wsf: 'https://wsdot.wa.gov/travel/washington-state-ferries' },
+  return { version: 'live-v2', source: 'aisstream.io + Open Waters AIS + Washington State Ferries', box: BOX,
+    sourceUrls: { aisstream: 'https://aisstream.io', openwaters: 'https://openwaters.io/ais/#license', wsf: 'https://wsdot.wa.gov/travel/washington-state-ferries' },
     generated: new Date().toISOString(), lastMessageAt: ais.lastMessageAt || null, connected: !!ais.connected, sources: health,
     fields: ['mmsi', 't', 'lon', 'lat', 'sog', 'cog', 'heading', 'status', 'cls', 'name', 'vessel_type', 'length', 'src'], ships, trails, extras: ext,
     // vessels by source fleet (every MMSI a non-AIS source has reported), whatever source has the newest position
@@ -400,7 +402,7 @@ function shutdown(sig) {
   stopping = true
   log(sig, 'flushing and exiting')
   try { flush(); saveIdentity(); saveLatest(); saveSourceMmsis(); status() } catch (e) { log('shutdown error', e.message) }
-  aisstream.stop?.(); wsf.stop?.()
+  aisstream.stop?.(); wsf.stop?.(); openwaters.stop?.()
   setTimeout(() => process.exit(0), 500)
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'))
@@ -409,4 +411,5 @@ process.on('SIGINT', () => shutdown('SIGINT'))
 log('recorder starting; data', DATA, 'box', JSON.stringify(BOX), 'uploads', CRON_SECRET ? BLOB_PREFIX : 'off', 'identities', identity.size)
 aisstream.start(ctx)
 wsf.start(ctx)
+openwaters.start(ctx)
 setTimeout(daily, 30_000)

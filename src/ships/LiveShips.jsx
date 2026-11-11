@@ -15,12 +15,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { TRACK_KINDS } from './TrackControls.jsx'
+import { liveSource, LIVE_AIS_CREDIT_HTML, OPENWATERS_LICENSE_URL } from './liveSources.js'
 
 const LIVE_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/live/salish-v6.json'
 const LIVE_DEV_URL = '/dev-data/aisstream-live.json'
 const AISSTREAM = 'https://aisstream.io'
 const WSF = 'https://wsdot.wa.gov/travel/washington-state-ferries'
-const SOURCE_NAME = { aisstream: 'aisstream.io live AIS', wsf: 'Washington State Ferries (WSDOT) vessel positions' }
 const POLL_MS = 60_000
 const SHOW_H = 2              // ships reported in the last 2 hours ("where ships are now")
 const MOVING_KN = 1
@@ -94,7 +94,7 @@ function tipHTML(p, briefs) {
   return `<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45">`
     + `<b>${esc(p.name || 'Name not broadcast')}</b><br>${recordHTML(b, briefs?.sources)}<span style="color:#4b5563">${b ? 'Broadcasts ' : ''}${esc(kind)} (AIS type${p.vtype ? ` ${p.vtype}` : ' not reported'}) · MMSI ${p.mmsi}</span><br>`
     + `<b style="color:#047857">Live</b>, reported ${fmtAgo(p.ageS)} (${fmtClock(p.t * 1000)})${ferryLine(x)}<br>${motion}<br>`
-    + `<span style="color:#4b5563">Source: ${SOURCE_NAME[p.src] || SOURCE_NAME.aisstream} · click for the ship’s card</span></div>`
+    + `<span style="color:#4b5563">Source: ${liveSource(p.src).name} · click for the ship’s card</span></div>`
 }
 
 // A white arrow (pointing north) for an SDF icon, recolored per kind by the layer.
@@ -191,7 +191,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
       map.addSource(TRAILS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addSource(TRAIL_PTS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addSource(SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] },
-        attribution: 'Live ships: AIS from <a href="https://aisstream.io" target="_blank" rel="noopener">aisstream.io</a> and ferry positions from <a href="https://wsdot.wa.gov/travel/washington-state-ferries" target="_blank" rel="noopener">Washington State Ferries</a>, recorded by EarthAtlas' })
+        attribution: `Live ships: AIS from ${LIVE_AIS_CREDIT_HTML} and ferry positions from <a href="https://wsdot.wa.gov/travel/washington-state-ferries" target="_blank" rel="noopener">Washington State Ferries</a>, recorded by EarthAtlas` })
       const fade = ['interpolate', ['linear'], ['get', 'ageS'], 0, 1, 1800, 0.85, SHOW_H * 3600, 0.4]
       map.addLayer({ id: TRAIL, type: 'line', source: TRAILS, layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['==', ['get', 'isFerry'], 1], 1.8, 1], 12, ['case', ['==', ['get', 'isFerry'], 1], 4, 2.5]], 'line-opacity': 0.75 } })
@@ -221,7 +221,7 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
         if (!f || map.queryRenderedFeatures(e.point, { layers: [TRAIL_PT, ARROW, DOT].filter((l) => map.getLayer(l)) }).length) return
         const q = f.properties
         tip.setLngLat(e.lngLat).setHTML(`<div style="padding:6px 10px;color:#111827;font-size:12px;line-height:1.45"><b>${String(q.name).replace(/[<>&]/g, '')}</b>`
-          + `<br>Recent trail · ${q.n} recorded positions${q.t0 && q.t1 ? `<br>${fmtClock(q.t0 * 1000)} – ${fmtClock(q.t1 * 1000)}` : ''}<br><span style="color:#4b5563">aisstream.io</span></div>`).addTo(map)
+          + `<br>Recent trail · ${q.n} recorded positions${q.t0 && q.t1 ? `<br>${fmtClock(q.t0 * 1000)} – ${fmtClock(q.t1 * 1000)}` : ''}<br><span style="color:#4b5563">Live AIS: aisstream.io and Open Waters AIS</span></div>`).addTo(map)
       })
       map.on('mouseleave', TRAIL, () => tip.remove())
       for (const id of [ARROW, DOT]) {
@@ -251,7 +251,8 @@ export default function LiveShips({ map, mapReady, styleVersion, openShipRef, ti
       <div>
         <b style={{ color: '#fbbf24', letterSpacing: 0.5 }}>LIVE</b>{' '}
         {snap ? <>{data.points.length.toLocaleString('en-US')} ships reported in the last {SHOW_H} hours · arrows are under way ·{' '}
-          <a href={AISSTREAM} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>aisstream.io</a> live AIS and{' '}
+          <a href={AISSTREAM} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>aisstream.io</a> and{' '}
+          <a href={OPENWATERS_LICENSE_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Open Waters AIS</a> live AIS and{' '}
           <a href={WSF} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Washington State Ferries</a>, updated {fmtClock(updated)}</>
           : 'Loading live AIS…'}
       </div>

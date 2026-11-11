@@ -126,7 +126,12 @@ jobs:
           if [ $act = escalate ]; then
             gh issue edit "$ISSUE" --add-assignee "$JOSH"
           elif [ "$verdict" = transient ]; then
-            gh run rerun "$RUN_ID" --failed
+            # GitHub refuses to retry some runs (a startup_failure never started any job: "cannot be retried",
+            # 2026-11-11). Say so instead of failing this step, which would assign Josh for a blip.
+            if ! out=$(gh run rerun "$RUN_ID" --failed 2>&1); then
+              echo "$out"
+              gh issue comment "$ISSUE" --body "GitHub won't re-run this one (${out##*; }), so the next scheduled run is the retry. Still no action needed."
+            fi
           fi
 
       - name: Triage itself failed

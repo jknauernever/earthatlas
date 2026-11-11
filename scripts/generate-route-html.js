@@ -291,6 +291,7 @@ const NO_VIEW_CARD = {
   'src/components/SpeciesMapModal.jsx': 'map inside a modal over another page',
   'src/components/MapView.jsx': 'not imported by any page',
   'src/utils/webglSupport.js': 'mentions the constructor in a comment',
+  'src/ships/GeneralReport.jsx': 'small map card partway down a report page, not the page view',
 }
 async function checkViewCards() {
   const root = path.resolve(__dirname, '..')

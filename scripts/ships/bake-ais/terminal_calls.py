@@ -70,7 +70,7 @@ def load_berths():
 
 
 def hits_dir(bj, sha):
-    return os.path.join(OUT, f"hits-{bj['bake_version']}-{sha}")
+    return os.path.join(OUT, f"hits-{bj['bake_version']}-{sha}" + ("-span1" if RECORDED else ""))   # span1: HITS_SQL_RECORDED
 
 
 def setup(con, bj):
@@ -110,11 +110,45 @@ SELECT terminal, berth, mmsi, t, round(m, 1) AS m,
   FROM w WHERE rn = 1 OR $all
 """
 
+# Recorded days (STOPS_INPUT=recorded; Josh 2026-11-11): Open Waters' track archive keeps a ship sitting still at one position every
+# 30 minutes, so a 15-30 minute stop often shows a single stopped position and is lost (tested on NOAA days thinned the same way:
+# 369 → 306 calls, 73 → 24 of 15-30 min). On ARCHIVE rows only (source 'openwaters/archive'), a stopped position at a berth also
+# brings in the ship's position just before and just after it (any speed) when that one is within 30 minutes and inside the same
+# terminal's berth radius, so the call spans arrival to departure (same test: 358 of the 369). The recorder's own days are dense
+# and keep the plain rule (the span would add ~5% there).
+HITS_SQL_RECORDED = """
+WITH p AS (
+  SELECT mmsi, base_date_time AS t, latitude AS lat, longitude AS lon, sog, source, vessel_name, imo, vessel_type, length,
+         row_number() OVER (PARTITION BY mmsi ORDER BY base_date_time) AS i
+    FROM read_parquet($file)
+   WHERE mmsi IS NOT NULL AND base_date_time IS NOT NULL
+     AND latitude BETWEEN (SELECT min(s) FROM berths) AND (SELECT max(n) FROM berths)
+     AND longitude BETWEEN (SELECT min(w) FROM berths) AND (SELECT max(e) FROM berths)
+), d AS (
+  SELECT p.*, b.terminal, b.berth, b.radius_m,
+         2 * 6371008.8 * asin(sqrt(pow(sin(radians(p.lat - b.lat) / 2), 2)
+             + cos(radians(b.lat)) * cos(radians(p.lat)) * pow(sin(radians(p.lon - b.lon) / 2), 2))) AS m
+    FROM p JOIN berths b ON p.lat BETWEEN b.s AND b.n AND p.lon BETWEEN b.w AND b.e
+), w AS (
+  SELECT *, row_number() OVER (PARTITION BY mmsi, t ORDER BY m, terminal, berth) AS rn,
+         list(DISTINCT terminal) OVER (PARTITION BY mmsi, t) AS terms
+    FROM d WHERE m <= radius_m
+), n AS (SELECT * FROM w WHERE rn = 1),
+st AS (SELECT mmsi, i, t, terminal FROM n WHERE sog < $sog)
+SELECT terminal, berth, mmsi, t, round(m, 1) AS m,
+       nullif(array_to_string(list_sort(list_filter(terms, lambda x: x <> terminal)), '|'), '') AS also,
+       vessel_name AS name, imo, vessel_type AS type, length
+  FROM n
+ WHERE sog < $sog
+    OR (source = 'openwaters/archive' AND EXISTS (SELECT 1 FROM st WHERE st.mmsi = n.mmsi AND st.terminal = n.terminal
+          AND abs(st.i - n.i) = 1 AND abs(epoch(st.t) - epoch(n.t)) <= 1800))
+"""
+
 
 def bake_day(con, day_files, out_file, rule):
     tmp = out_file + ".tmp"
     src = "[" + ",".join("'" + f.replace("'", "''") + "'" for f in day_files) + "]"
-    sql = HITS_SQL.replace("$file", src).replace("$sog", str(float(rule["sogKn"]))).replace("$all", "true" if rule.get("overlap") == "all" else "false")
+    sql = (HITS_SQL_RECORDED if RECORDED else HITS_SQL).replace("$file", src).replace("$sog", str(float(rule["sogKn"]))).replace("$all", "true" if rule.get("overlap") == "all" else "false")
     con.execute(f"COPY ({sql}) TO '{tmp}' (FORMAT parquet)")
     os.replace(tmp, out_file)
     return con.execute("SELECT count(*) FROM read_parquet(?)", [out_file]).fetchone()[0]

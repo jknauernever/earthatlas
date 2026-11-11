@@ -1,7 +1,7 @@
 /**
  * Upload passes for the /ships track bakes (.github/workflows/ships-us-tracks-bake.yml, ships-gfw-*.yml; scripts/ships/bake-us/)
  * the Climate TRACE voyage bake (.github/workflows/ct-voyages-bake.yml) and the /shiptraffic overlap bake
- * (.github/workflows/shiptraffic-overlap-bake.yml) and the aisstream recorder on Fly.io (scripts/ships/aisstream/recorder.mjs).
+ * (.github/workflows/shiptraffic-overlap-bake.yml), the ships-per-square grid (.github/workflows/ships-track-grid.yml) and the aisstream recorder on Fly.io (scripts/ships/aisstream/recorder.mjs).
  *
  * Same pattern as api/cron/trace-upload-token.js: the bake runs in GitHub
  * Actions (Vercel can't run tippecanoe or stream 1.6 GB of Parquet), its
@@ -34,6 +34,11 @@ const AIS_LIVE = /^ships\/live\/salish-v\d+\.json$/
 // The recorder's /ships track packs, one folder per UTC day: tracks-HHMM.pack while the day is recorded (a new name each
 // hour, so cached copies never go stale), tracks.pack once it ends. Listed in ships/tracks/aisstream-vN/index.json (INDEX).
 const AIS_PACK = /^ships\/tracks\/aisstream-v\d+\/\d{4}-\d{2}-\d{2}\/tracks(-\d{4})?\.pack$/
+// Ships per 1° square for the general report's map (scripts/ships/track-grid.py, .github/workflows/ships-track-grid.yml):
+// a month's and a source's (cell, mmsi) pairs, and the small grid.json the report reads. all.parquet and grid.json are
+// rewritten in place, so they get the index's 60 s cache.
+const GRID_FILE = /^ships\/track-grid\/(us|gfw|ais)-v\d+\/(\d{4}-(0[1-9]|1[0-2])|all)\.parquet$/
+const GRID_JSON = 'ships/track-grid/grid.json'
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET
@@ -45,16 +50,16 @@ export default async function handler(req, res) {
     for await (const c of req) chunks.push(c)
     const { pathname } = JSON.parse(Buffer.concat(chunks).toString() || '{}')
     const isLive = AIS_LIVE.test(pathname || '')
-    const isIndex = INDEX.test(pathname || '') || pathname === CT_POINTER || ST_INDEX.test(pathname || '') || AIS_SMALL.test(pathname || '')
-    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '') && !AIS_DAY.test(pathname || '') && !AIS_PACK.test(pathname || '') && !isLive) throw new Error(`path not allowed: ${pathname}`)
+    const isIndex = INDEX.test(pathname || '') || pathname === CT_POINTER || ST_INDEX.test(pathname || '') || AIS_SMALL.test(pathname || '') || pathname === GRID_JSON
+    if (!isIndex && !MONTH_FILE.test(pathname || '') && !CT_FILE.test(pathname || '') && !ST_FILE.test(pathname || '') && !AIS_DAY.test(pathname || '') && !AIS_PACK.test(pathname || '') && !GRID_FILE.test(pathname || '') && !isLive) throw new Error(`path not allowed: ${pathname}`)
     const token = await generateClientTokenFromReadWriteToken({
       token: process.env.BLOB_READ_WRITE_TOKEN,
       pathname,
       addRandomSuffix: false,
       allowOverwrite: true, // a re-bake of the same month replaces its own files
-      maximumSizeInBytes: isIndex ? 256 * 1024 : isLive ? 8 * 1024 ** 2 : 5 * 1024 ** 3,
+      maximumSizeInBytes: pathname === GRID_JSON ? 4 * 1024 ** 2 : isIndex ? 256 * 1024 : isLive ? 8 * 1024 ** 2 : 5 * 1024 ** 3,
       // The index must turn over quickly; a month's files change only on a re-bake.
-      cacheControlMaxAge: isIndex || isLive ? 60 : 60 * 60 * 24 * 30,   // 60 s is Blob's minimum
+      cacheControlMaxAge: isIndex || isLive || /\/all\.parquet$/.test(pathname) ? 60 : 60 * 60 * 24 * 30,   // 60 s is Blob's minimum
       validUntil: Date.now() + 2 * 60 * 60 * 1000,
     })
     res.setHeader('content-type', 'application/json')

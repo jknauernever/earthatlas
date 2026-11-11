@@ -41,3 +41,12 @@
   .mapBtn { display: none; }
   .bars li, .two > div, section { break-inside: avoid; }
 }
+
+/* "Where we have ship tracks" map */
+.gridMap { width: 100%; aspect-ratio: 1.9; border-radius: 10px; overflow: hidden; background: #f8fafc; }
+.gridLegend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12px; color: #4b5563; margin: 10px 0 6px; }
+.gridRamp { display: inline-flex; }
+.gridRamp i { width: 30px; height: 10px; display: block; }
+.gridRamp i:first-child { border-radius: 3px 0 0 3px; }
+.gridRamp i:last-child { border-radius: 0 3px 3px 0; }
+@media print { .gridMap { break-inside: avoid; } }

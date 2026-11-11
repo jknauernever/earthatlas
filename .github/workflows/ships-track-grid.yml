@@ -1,0 +1,49 @@
+# Ships per 1° square for the "Where we have ship tracks" map in the /ships general report
+# (scripts/ships/track-grid.py → ships/track-grid/grid.json on Blob).
+#
+# Runs after each workflow that writes a track index (US NOAA, GFW, recorded live) and counts only
+# the months whose tracks were rebuilt since the last count (grid.json records each month's `built`).
+# Run by hand for the first full count, a re-count (`months`), or a union rebuilt from month files.
+# Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET), never a Blob token.
+name: ships-track-grid
+
+on:
+  workflow_run:
+    workflows: [ships-us-tracks-bake, ships-gfw-index, ships-aisstream-month]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tilesets: { description: 'Sources (us-v2,gfw-v1,ais-v1)', default: 'us-v2,gfw-v1,ais-v1' }
+      months: { description: 'Optional: only these months (YYYY-MM, space-separated), counted again', default: '' }
+      limit: { description: 'Optional: at most this many months per source (newest first)', default: '0' }
+      rebuild: { description: 'Rebuild each source total from its month files', type: boolean, default: false }
+
+concurrency:
+  group: ships-track-grid
+  cancel-in-progress: false
+
+jobs:
+  grid:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SHIPS_TOKEN_URL: https://earthatlas.org/api/cron/ships-upload-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install --quiet duckdb numpy
+      - name: Count
+        env:
+          TILESETS: ${{ inputs.tilesets || 'us-v2,gfw-v1,ais-v1' }}
+          MONTHS: ${{ inputs.months || '' }}
+          LIMIT: ${{ inputs.limit || '0' }}
+          REBUILD: ${{ inputs.rebuild && '--rebuild' || '' }}
+        run: |
+          python3 scripts/ships/track-grid.py "$RUNNER_TEMP/grid" --upload --workers 4 \
+            --tilesets "$TILESETS" --limit "$LIMIT" $REBUILD ${MONTHS:+--months $MONTHS}

@@ -6,7 +6,10 @@
  * Data: one JSON built daily by lib/ships/generalReport.js (api/cron/ships-counts.js ?part=report) at REPORT_URL. Localhost reads
  * public/dev-data/ships/general-report.json first (scripts/ships/general-report.mjs; `zsh scripts/ships/prod.sh report` for prod's).
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { mapboxToken } from '../lib/mapboxToken.js'
 import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import DocBrand from '../components/DocBrand.jsx'
 import { ChartTipProvider, useChartTip } from '../components/ChartTip.jsx'
@@ -34,6 +37,10 @@ function Flag({ iso2 }) {
 
 const REPORT_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/general-report.json'
 const DEV_URL = '/dev-data/ships/general-report.json'
+// Ships per 1° square (scripts/ships/track-grid.py, .github/workflows/ships-track-grid.yml); localhost reads its own first.
+const GRID_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/track-grid/grid.json'
+const GRID_DEV_URL = '/dev-data/ships/track-grid.json'
+const getJson = (u) => fetch(u, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
 
 const SRC = {
   gfw: { name: 'Powered by Global Fishing Watch', href: 'https://globalfishingwatch.org' },
@@ -332,6 +339,86 @@ function Tracks({ t }) {
   )
 }
 
+// "Where we have ship tracks": distinct ships whose tracks touch each 1° square, all months, faint → deep blue.
+const GRID_STEPS = [[1, '#dbeafe', '1–9'], [10, '#93c5fd', '10–49'], [50, '#60a5fa', '50–199'], [200, '#2563eb', '200–999'],
+  [1000, '#1e40af', '1,000–4,999'], [5000, '#172554', '5,000+']]
+const GRID_SERIES = [['minute', 'Minute by minute', BLUE], ['hourly', 'Hourly', ORANGE], ['live', 'Recorded live', VIOLET]]
+const deg = (v, pos, neg) => `${Math.abs(v)}°${v >= 0 ? pos : neg}`
+
+function TrackGrid() {
+  const [grid, setGrid] = useState(null)
+  const el = useRef(null)
+  const tip = useChartTip()
+  const tipRef = useRef(tip)
+  tipRef.current = tip
+  useEffect(() => {
+    ;(import.meta.env.DEV ? getJson(GRID_DEV_URL).catch(() => getJson(GRID_URL)) : getJson(GRID_URL)).then(setGrid).catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (!grid || !el.current || !mapboxToken) return
+    const col = Object.fromEntries(grid.columns.map((k, i) => [k, i]))
+    const features = grid.cells.map((r) => {
+      const x = (r[0] % 360) - 180, y = Math.floor(r[0] / 360) - 90
+      const p = { n: r[col.all], x, y }
+      for (const [k] of GRID_SERIES) p[k] = col[k] != null ? r[col[k]] : 0
+      return { type: 'Feature', id: r[0], properties: p, geometry: { type: 'Polygon', coordinates: [[[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1], [x, y]]] } }
+    })
+    mapboxgl.accessToken = mapboxToken
+    const zoomFor = () => Math.log2(el.current.clientWidth / 512) - 0.11
+    const map = new mapboxgl.Map({
+      container: el.current, style: 'mapbox://styles/mapbox/light-v11', projection: 'equalEarth', center: [0, 12], zoom: zoomFor(),
+      renderWorldCopies: false, scrollZoom: false, dragRotate: false, touchPitch: false, preserveDrawingBuffer: true,
+    })
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    let hovered = null
+    const setHover = (id) => {
+      if (hovered != null) map.setFeatureState({ source: 'grid', id: hovered }, { hover: false })
+      hovered = id
+      if (id != null) map.setFeatureState({ source: 'grid', id }, { hover: true })
+    }
+    map.on('load', () => {
+      map.addSource('grid', { type: 'geojson', data: { type: 'FeatureCollection', features } })
+      map.addLayer({ id: 'grid', type: 'fill', source: 'grid', paint: {
+        'fill-color': ['step', ['get', 'n'], GRID_STEPS[0][1], ...GRID_STEPS.slice(1).flatMap(([v, c]) => [v, c])],
+        'fill-opacity': 0.85, 'fill-outline-color': 'rgba(255,255,255,0.25)' } })
+      map.addLayer({ id: 'grid-hover', type: 'line', source: 'grid', paint: {
+        'line-color': '#111827', 'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 1.5, 0] } })
+    })
+    map.on('mousemove', 'grid', (e) => {
+      const f = e.features?.[0]
+      if (!f) return
+      setHover(f.id)
+      map.getCanvas().style.cursor = 'default'
+      const p = f.properties
+      tipRef.current({
+        head: `${deg(p.y, 'N', 'S')} – ${deg(p.y + 1, 'N', 'S')}, ${deg(p.x, 'E', 'W')} – ${deg(p.x + 1, 'E', 'W')}`,
+        rows: GRID_SERIES.filter(([k]) => p[k]).map(([k, label, color]) => ({ color, label, value: fmt(p[k]) })),
+        foot: `${fmt(p.n)} different ${p.n === 1 ? 'ship' : 'ships'} tracked here`,
+      }).onPointerMove(e.originalEvent)
+    })
+    map.on('mouseleave', 'grid', () => { setHover(null); tipRef.current({}).onPointerLeave?.() })
+    const ro = new ResizeObserver(() => { map.resize(); map.setZoom(zoomFor()) })
+    ro.observe(el.current)
+    return () => { ro.disconnect(); map.remove() }
+  }, [grid])
+  if (!grid) return null
+  const S = grid.sources || {}
+  const spanOf = (k) => (S[k] ? span(S[k].from, S[k].through) : null)
+  return (
+    <Card title="Where we have ship tracks" note={`${fmt(grid.ships)} ships · each square is 1° (about 110 km)`}
+      foot={<>{S.minute && <>Minute by minute: <Src k="noaa" />, US waters, {spanOf('minute')} · </>}{S.hourly && <>hourly: <Src k="gfw" />, areas outside US waters, {spanOf('hourly')} · </>}{S.live && <>recorded live: <LiveSrc />, Salish Sea, {spanOf('live')} · </>}<b>blank areas: no ship tracks yet</b> · <How /></>}>
+      <div ref={el} className={g.gridMap} role="img" aria-label="World map of 1-degree squares shaded by how many ships we have tracks for" />
+      <div className={g.gridLegend}>
+        <span>Fewer ships</span>
+        <span className={g.gridRamp}>{GRID_STEPS.map(([v, color, label]) => <i key={v} style={{ background: color }} title={`${label} ships`} />)}</span>
+        <span>More ships</span>
+        <span className={g.unit}>{GRID_STEPS.map(([, , label]) => label).join(' · ')}</span>
+      </div>
+      <p className={g.sub}>Each square counts the different ships whose tracks cross it, over every month we hold. Hover a square for each source’s count; a ship tracked by two sources counts once in the total.</p>
+    </Card>
+  )
+}
+
 function LiveSrc() {
   return <><Src k="aisstream" />, <Src k="openwaters" />, <Src k="wsf" /></>
 }
@@ -510,6 +597,7 @@ function HowCounted({ d }) {
         <li><b>Updated daily</b> from the same data the <a className={c.src} href="/ships">/ships map</a> and its cards use; this edition was built {dayName(d.asOf.slice(0, 10))}. Terminal and anchorage numbers are read by each card’s own code, so they match the cards and the <a className={c.src} href="/ships/changelog">changelog</a>.</li>
         <li><b>Ships:</b> EarthAtlas ship records. Each joins what registries, AIS and other sources say about one ship. Kinds, flags, lengths and years take one value per ship: a registry’s where there is one, otherwise the latest.</li>
         <li><b>Ship tracks:</b> one track is one ship’s path in one month. US waters come from NOAA’s minute-by-minute AIS; other areas from Global Fishing Watch’s hourly positions. Since October 18, 2026 EarthAtlas also records live AIS in the Salish Sea, counted on its own.</li>
+        <li><b>Where we have ship tracks:</b> the world in 1° squares (about 110 km). A square counts the different ships (by MMSI) whose tracks cross it, in every month we hold; a line between two positions counts in each square it passes through. Blank squares have no tracks yet, not no ships.</li>
         <li><b>Port visits and routes:</b> Global Fishing Watch’s port visits for the ships we hold. A route counts one visit and the same ship’s next visit at a different port, in either direction.</li>
         <li><b>Terminal visits and anchorage stays:</b> ships stopped at a berth, or inside an anchorage, counted from NOAA AIS where it covers; in the Salish Sea, for months NOAA hasn’t published yet, counted with the same rule from EarthAtlas’s recording of live AIS (replaced by NOAA’s counts when NOAA publishes); elsewhere estimated from Global Fishing Watch hourly positions. Terminal visits count the kinds of ship each terminal serves.</li>
         <li><b>Emissions:</b> Climate TRACE’s estimates for each ship stopped at a berth, in CO₂e over 100 years.</li>
@@ -562,6 +650,7 @@ export default function GeneralReport() {
           <Headline d={d} />
           <Fleet f={d.fleet} />
           <Tracks t={d.tracks} />
+          <TrackGrid />
           <Ports p={d.ports} />
           <Terminals t={d.terminals} />
           <Anchorages a={d.anchorages} />

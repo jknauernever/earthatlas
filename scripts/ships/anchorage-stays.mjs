@@ -21,10 +21,15 @@ import { createInterface } from 'node:readline'
 import path from 'node:path'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource, startRun, finishRun } from '../../lib/ships/store.js'
+import { RECORDED_ANCHORAGE_STAYS_SOURCE } from '../../lib/ships/recordedStops.js'
 import { STAY_BAKE_VERSION, STAY_RULE, ANCHORAGE_STAYS_SOURCE, bakeAnchorages, polygonEdges, staySplitter, storeAnchorageStays } from '../../lib/ships/anchorageStays.js'
 import { gfwAnchoragePoints, aliasCandidates, storeAnchorageAliases, ALIAS_RULE, vtsManualAliases, storeVtsManualRecord } from '../../lib/ships/anchorageAliases.js'
 
-const DIR = 'scripts/ships/bake-ais/cache/anchorage-stays'
+const BASE_DIR = 'scripts/ships/bake-ais/cache/anchorage-stays'
+// --recorded (2026-11-11, lib/ships/recordedStops.js): the recorded live-AIS bake (anchorage_stays.py with STOPS_INPUT=recorded) for
+// ONE month (--month), never a NOAA month. Polygons always come from the NOAA folder.
+const RECORDED = process.argv.includes('--recorded')
+const DIR = RECORDED ? `${BASE_DIR}-recorded` : BASE_DIR
 const args = process.argv.slice(2)
 const cmd = args[0]
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
@@ -72,7 +77,7 @@ async function polygons() {
 
 async function importStays() {
   const meta = JSON.parse(await readFile(path.join(DIR, 'meta.json'), 'utf8'))
-  const aj = JSON.parse(await readFile(path.join(DIR, 'anchorages.json'), 'utf8'))
+  const aj = JSON.parse(await readFile(path.join(BASE_DIR, 'anchorages.json'), 'utf8'))
   if (meta.bake_version !== STAY_BAKE_VERSION || aj.bake_version !== STAY_BAKE_VERSION) throw new Error(`bake version mismatch: meta ${meta.bake_version}, anchorages ${aj.bake_version}, code ${STAY_BAKE_VERSION}`)
   const stays = []
   const split = staySplitter((s) => stays.push(s))
@@ -89,9 +94,14 @@ async function importStays() {
   split.end()
   const anchN = new Set(stays.map((s) => s.anchorage)).size
   console.log(`${n.toLocaleString()} stopped positions → ${stays.length.toLocaleString()} stays at ${anchN} anchorages`)
+  if (RECORDED) {   // one month only: the recorded cache holds several
+    if (!postMonthArg) throw new Error('--recorded needs --month YYYY-MM')
+    const keep = stays.filter((x) => new Date(x.t0).toISOString().slice(0, 7) === postMonthArg); stays.length = 0; stays.push(...keep)
+    console.log(`${postMonthArg}: ${stays.length.toLocaleString()} stays (recorded live AIS); month complete: ${!!meta.months.find((m) => m.month === postMonthArg)?.complete}`)
+  }
   if (dry) { for (const s of stays.slice(0, 5)) console.log(JSON.stringify(s)); return }
   // Posting: the server resolves each anchorage by its stable key in its own database (storeAnchorageStays) and refuses unknown ones.
-  if (post) return postMonth({ kind: 'anchorage', month: postMonthArg, version: STAY_BAKE_VERSION, rows: stays,
+  if (post) return postMonth({ kind: 'anchorage', month: postMonthArg, version: STAY_BAKE_VERSION, rows: stays, recorded: RECORDED,
     bake: { rule: STAY_RULE, input: meta.input, days: meta.days, months: meta.months, hits: n, baked_at: meta.baked_at, polygons_sha: meta.polygons_sha,
       anchorages: aj.anchorages.filter((a) => a.coverage === 'covered' || stays.some((s) => s.anchorage === a.key)) } })
   // The bake's anchorage ids must be this database's (dev and prod ids differ): re-key by source_id + source_key.
@@ -102,6 +112,13 @@ async function importStays() {
   if (bad.length) throw new Error(`anchorages differ from the bake's polygons (re-run polygons + the bake): ${bad.slice(0, 5).map((a) => a.key).join(', ')}${bad.length > 5 ? ` +${bad.length - 5}` : ''}`)
   const anchorages = aj.anchorages.filter((a) => live.has(a.key)).map((a) => ({ ...a, id: Number(live.get(a.key).id) }))
   const bake = { rule: STAY_RULE, input: meta.input, days: meta.days, months: meta.months, hits: n, baked_at: meta.baked_at, polygons_sha: meta.polygons_sha, anchorages }
+  if (RECORDED) return withTx(pool, async (c) => {
+    await upsertSource(c, schema, RECORDED_ANCHORAGE_STAYS_SOURCE)
+    const runId = await startRun(c, schema, RECORDED_ANCHORAGE_STAYS_SOURCE.id, { bake_version: STAY_BAKE_VERSION, month: postMonthArg, recorded: true })
+    const r = await storeAnchorageStays(c, schema, { stays, bake, runId, months: [postMonthArg], recorded: true })
+    await finishRun(c, schema, runId, { status: 'succeeded', stats: { stays: stays.length, month: postMonthArg }, datasetVersion: STAY_BAKE_VERSION })
+    console.log(`stored ${r.stays} recorded stays for ${postMonthArg}; counted months: ${r.complete.join(', ') || 'none (month incomplete)'}; record ${r.recordId}`)
+  })
   await withTx(pool, async (c) => {
     await upsertSource(c, schema, ANCHORAGE_STAYS_SOURCE)
     const runId = await startRun(c, schema, ANCHORAGE_STAYS_SOURCE.id, { bake_version: STAY_BAKE_VERSION, days: meta.days.length })

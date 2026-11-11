@@ -31,11 +31,26 @@ SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "termina
 if SET not in ("terminal-calls", "dock-calls"):
     sys.exit(f"--set must be terminal-calls or dock-calls, not {SET}")
 OUT = os.path.join(HERE, "cache", SET)
+BERTHS_DIR = OUT
+# STOPS_INPUT=recorded (2026-11-11, lib/ships/recordedStops.js): count the same rule over the recorded live-AIS days (cache/points/ais-v1:
+# the recorder's days + Open Waters' archive days, fetch_aisstream_points.py) into cache/<set>-recorded, never mixing with NOAA's hits.
+RECORDED = os.environ.get("STOPS_INPUT") == "recorded"
+if RECORDED:
+    if SET != "terminal-calls":
+        sys.exit("STOPS_INPUT=recorded: terminal calls only (dock calls stay NOAA-only)")
+    POINTS = os.path.join(HERE, "cache", "points", "ais-v1")
+    OUT = os.path.join(HERE, "cache", SET + "-recorded")
+    os.makedirs(OUT, exist_ok=True)
 # Other points caches whose berths are counted too (2026-10-07: wa-columbia-v1, Grays Harbor + lower Columbia River). A berth
 # belongs to the region berths.json names for it; each region's day file is read alongside salish-v6's.
-EXTRA = {"wa-columbia-v1": os.path.join(HERE, "cache", "points", "wa-columbia-v1")}
+EXTRA = {} if RECORDED else {"wa-columbia-v1": os.path.join(HERE, "cache", "points", "wa-columbia-v1")}
 # Months reported in meta.json: every month from the first to the last day baked (2026-10-07: was fixed to 2025-07 … 2026-06,
 # so a month added by ships-noaa-month could never count as complete).
+
+
+RECORDED_INPUT = dict(source="recorded-live-ais", region="ais-v1", box=BOX, cache="scripts/ships/bake-ais/cache/points/ais-v1",
+                      feeds="aisstream.io, Open Waters AIS (ODbL, incl. AISHub contributors), Washington State Ferries; Open Waters AIS track archive before 2026-10-18",
+                      timestamps="base_date_time, UTC (the recorder and archive both write UTC)")
 
 
 def connect():
@@ -47,7 +62,7 @@ def connect():
 
 
 def load_berths():
-    with open(os.path.join(OUT, "berths.json")) as f:
+    with open(os.path.join(BERTHS_DIR, "berths.json")) as f:
         bj = json.load(f)
     # call_radius_m (dock-calls) is applied at export only, so changing it never invalidates the scanned days.
     raw = json.dumps([{k: v for k, v in b.items() if k != "call_radius_m"} for b in bj["berths"]], sort_keys=True).encode()
@@ -152,7 +167,7 @@ def export(con, bj, sha):
     inside = {b["terminal"] for b in bj["berths"] if b["in_box"] and (b.get("region") or "salish-v6") in full}
     not_covered = sorted({b["terminal"] for b in bj["berths"]} - inside)
     meta = dict(bake_version=bj["bake_version"], berths_sha=sha, baked_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                input=dict(source="marinecadastre-ais", region=REGION, box=BOX, cache="scripts/ships/bake-ais/cache/points/salish-v6",
+                input=RECORDED_INPUT if RECORDED else dict(source="marinecadastre-ais", region=REGION, box=BOX, cache="scripts/ships/bake-ais/cache/points/salish-v6",
                            timestamps="base_date_time, UTC as MarineCadastre publishes it (stored without a zone marker in the cache)"),
                 regions=sorted(full), days=days, months=months, not_covered=not_covered, hits=n)
     with open(os.path.join(OUT, "meta.json"), "w") as f:

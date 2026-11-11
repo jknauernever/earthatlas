@@ -15,12 +15,14 @@ import { MonthBars, About, PORT_HUE } from './PortCard.jsx'
 import PortEmissions, { usePortEmissions, useTerminalStays, TerminalStayEmissions, shortTonnes } from './PortEmissions.jsx'
 import TerminalPermits, { useTerminalPermits } from './TerminalPermits.jsx'
 import EstimatedVisits, { EstSource, estKpi, DayBars } from './EstimatedVisits.jsx'
+import { RecordedAisLink, RecordedFeeds } from './RecordedAisCredit.jsx'
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { GLYPH, kindFamily, kindWords, NOT_OPERATING, STATUS_WORDS, TERMINAL_MUTED_RING } from './terminalIcons.js'
 
 const fmtN = (n) => Number(n).toLocaleString('en-US')
 const plural = (n, w, ws = `${w}s`) => `${fmtN(n)} ${n === 1 ? w : ws}`
 const monthName = (ym) => new Date(`${ym}-01T00:00:00Z`).toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+const monthRange = (a, b) => (a === b ? monthName(a) : `${monthName(a)} – ${monthName(b)}`)
 const dateWords = (d) => {
   if (!d) return null
   if (/^\d{4}-\d{2}$/.test(d)) return new Date(`${d}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -229,6 +231,11 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
   }, [autoLocate, onLocate, berthPts, terminalKey])
   const cov = data?.coverage && { missing: [], of: 0, ...data.coverage } // tolerate an older response shape
   const bakeRec = cov?.bake?.recordId
+  // Months counted from recorded live AIS (lib/ships/recordedStops.js), not NOAA: credited apart, with their own bake record.
+  const recMonths = cov?.recorded || []
+  const recRec = cov?.bake?.recordedRecordId ? rec(cov.bake.recordedRecordId) : null
+  const noaaCounted = !cov || !cov.months?.length || cov.months.length > recMonths.length
+  const aisThrough = cov?.recordedTo && !cov?.recordedNotCovered ? cov.recordedTo : cov?.aisTo
   const noAis = cov && (cov.notCovered || !cov.months.length)
   const est = data?.estimated?.estimatedMonths?.length ? data.estimated : null // months estimated from GFW hourly positions
 
@@ -284,8 +291,9 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
             <span>{kpi.label}</span><strong>{kpiValue}</strong></div>
         </div>
         <div className={styles.pcWindow}>{monthName(winMonths[0])} – {monthName(winMonths[winMonths.length - 1])} · the months picked on the map ·{' '}
-          <a className={styles.sourceLink} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
-            title="Visits are counted from MarineCadastre AIS positions (NOAA / BOEM / USCG, CC0) — click for the bake record">MarineCadastre AIS</a>
+          {noaaCounted && <a className={styles.sourceLink} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
+            title="Visits are counted from MarineCadastre AIS positions (NOAA / BOEM / USCG, CC0) — click for the bake record">MarineCadastre AIS</a>}
+          {recMonths.length > 0 && <>{noaaCounted && ' · '}<RecordedAisLink months={recMonths} recordHref={recRec} className={styles.sourceLink} /></>}
           {est && <> · <EstSource e={est} label="≈ Global Fishing Watch" /></>}
           {(co2.state === 'ok' || stayKpi) && <> · <a className={styles.sourceLink} href="https://climatetrace.org" target="_blank" rel="noopener noreferrer">Climate TRACE</a></>}
         </div>
@@ -307,16 +315,20 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
               {cov.notCovered && <div className={styles.capNote}>This terminal lies outside the area our AIS positions cover (MarineCadastre’s US receivers, up to 49.6° N), so its visits aren’t counted: not zero, just not seen.</div>}
               {!cov.notCovered && cov.missing.length > 0 && (
                 est
-                  ? <div className={styles.legendNoteText}>NOAA’s per-minute AIS covers {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}; {cov.missing.length === cov.of ? 'these months are' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months are`} estimated below.</div>
-                  : <div className={styles.capNote}>No AIS for {cov.missing.length === cov.of ? 'these months' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months`} yet: we have {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}. {cov.missing.length < cov.of && 'Those months are left out, not counted as zero.'}</div>
+                  ? <div className={styles.legendNoteText}>{cov.recordedTo && !cov.recordedNotCovered
+                      ? <>Our per-minute AIS covers {monthName(cov.aisFrom)} – {monthName(cov.aisTo)} (NOAA) and {monthRange(cov.recordedFrom, cov.recordedTo)} (recorded live AIS)</>
+                      : <>NOAA’s per-minute AIS covers {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}{cov.recordedNotCovered && cov.recordedTo ? '; our recorded live AIS doesn’t reach this terminal' : ''}</>};{' '}
+                    {cov.missing.length === cov.of ? 'these months are' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months are`} estimated below.</div>
+                  : <div className={styles.capNote}>No AIS for {cov.missing.length === cov.of ? 'these months' : `${fmtN(cov.missing.length)} of these ${fmtN(cov.of)} months`} yet: we have {monthName(cov.aisFrom)} – {monthName(aisThrough)}. {cov.missing.length < cov.of && 'Those months are left out, not counted as zero.'}</div>
               )}
               <EstimatedVisits e={data.estimated} month={month} onMonth={onMonth} onSelectVessel={onSelectVessel} />
               {!noAis && <div className={styles.portSummary}>
                 <span className={styles.pcMuted}>Counted from AIS:</span> <strong>{plural(s.visits, 'call')}</strong> by {plural(s.ships, 'ship')} whose kind fits
                 {s.visits > 0 && <> ({[`${fmtN(s.hours)} h at the berth`, s.oneOf && `${fmtN(s.oneOf)} also near another terminal`, s.tugs && `${fmtN(s.tugs)} by tugs`].filter(Boolean).join(', ')})</>}
                 {s.lastAt && <> · last {dayName(s.lastAt)}</>}{' '}
-                <a className={`${styles.sourceLink} ${styles.srcLink}`} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
-                  title="Counted by EarthAtlas from MarineCadastre AIS positions (CC0) with the rule under “About this data”; each ship below links the same bake record">MarineCadastre AIS</a>
+                {noaaCounted && <a className={`${styles.sourceLink} ${styles.srcLink}`} href={bakeRec ? rec(bakeRec) : 'https://hub.marinecadastre.gov/pages/vesseltraffic'} target="_blank" rel="noopener noreferrer"
+                  title="Counted by EarthAtlas from MarineCadastre AIS positions (CC0) with the rule under “About this data”; each ship below links the same bake record">MarineCadastre AIS</a>}
+                {recMonths.length > 0 && <>{noaaCounted && ' + '}<RecordedAisLink months={recMonths} recordHref={recRec} className={`${styles.sourceLink} ${styles.srcLink}`} /></>}
               </div>}
               {onShowShips && callMmsis?.length > 0 && (
                 <div className={styles.reportLine}>
@@ -358,6 +370,11 @@ export default function TerminalCard({ terminalKey, months, month, onMonth, onCl
                 {' '}Positions: <a className={styles.sourceLink} href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">MarineCadastre AIS</a> (NOAA / BOEM,
                 from U.S. Coast Guard receivers, CC0), {monthName(cov.aisFrom)} – {monthName(cov.aisTo)}, up to 49.6° N. A ship whose AIS was off, or out of range of
                 US receivers, isn’t seen.{' '}
+                {cov.recordedTo && <>For {monthRange(cov.recordedFrom, cov.recordedTo)}, which NOAA hasn’t published yet, the same rule runs on EarthAtlas’s
+                  own recording of live AIS from <RecordedFeeds className={styles.sourceLink} /> and Washington State Ferries (before October 18, 2026, Open Waters’ track
+                  archive: at most one position a minute, one every 30 minutes while a ship sits still), in the same box. Its receivers differ from NOAA’s, so counts can
+                  differ; NOAA’s replace them when it publishes those months.{cov.recordedNotCovered ? ' This terminal lies outside that box, so those months aren’t counted here.' : ''}{' '}
+                  {recRec && <a className={`${styles.sourceLink} ${styles.srcLink}`} href={recRec} target="_blank" rel="noopener noreferrer" title="The recorded bake record: rule, berths, the days read">recorded bake record</a>}{' '}</>}
                 {bakeRec && <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(bakeRec)} target="_blank" rel="noopener noreferrer" title="The bake record: rule, every berth and its radius, the days read">bake record</a>}
                 {data.gfw && <> For comparison, Global Fishing Watch lists {plural(data.gfw.visits, 'port visit')} by {plural(data.gfw.ships, 'ship')} (every kind) with a stop within
                   {' '}{data.gfw.matchKm} km of a berth in these months{data.gfw.labels.length > 0 ? ` (GFW port${data.gfw.labels.length > 1 ? 's' : ''} ${data.gfw.labels.join(', ')}; ${data.gfw.monthsChecked} of ${cov.of} months fetched)` : ''}.

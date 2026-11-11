@@ -3,7 +3,8 @@
 # belongs to with the same bake as the NOAA Salish months (build_tracks.py, region ais-v1: same box, same OSM land masks)
 # and publishes tiles + pack + manifest to ships/tracks/ais-v1/YYYY-MM/, listed in ships/tracks/ais-v1/index.json, which
 # api/ship-tracks.js (op=aisindex, r=aism) and the /ships page read. A month NOAA later publishes is drawn from NOAA instead.
-# Small: one month of one box (~0.5 M rows a day), a few minutes. Writes go through the CRON_SECRET-locked upload-token
+# Then (2026-11-11) the same month's terminal calls + anchorage stays from those days and Open Waters' archive days, for months NOAA
+# hasn't published (lib/ships/recordedStops.js). Small: one month of one box (~0.5 M rows a day), a few minutes. Writes go through the CRON_SECRET-locked upload-token
 # endpoint; CI never holds a Blob credential.
 name: ships-aisstream-month
 on:
@@ -56,19 +57,44 @@ jobs:
         id: months
         run: |
           if [ -n "$ONLY" ]; then echo "list=$ONLY" >> "$GITHUB_OUTPUT"; else echo "list=$(date -u -d yesterday +%Y-%m)" >> "$GITHUB_OUTPUT"; fi
+      - name: Stop-count inputs (production berths and anchorages, as ships-noaa-month)
+        run: |
+          cd scripts/ships/bake-ais
+          mkdir -p cache/terminal-calls cache/anchorage-stays
+          cp inputs/berths.json cache/terminal-calls/berths.json
+          cp inputs/anchorages.json cache/anchorage-stays/anchorages.json
       - name: Bake + publish
         env:
           LIST: ${{ steps.months.outputs.list }}
+          API: https://earthatlas.org/api/ships
+          SALISH_INDEX: https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/salish-v6/index.json
         run: |
           cd scripts/ships/bake-ais
           for ym in $LIST; do
-            echo "::group::$ym"
-            out=$(python3 fetch_aisstream_points.py "$ym") || { rc=$?; [ $rc -eq 3 ] && { echo "no recorded days in $ym"; echo "::endgroup::"; continue; }; exit $rc; }
-            echo "$out"
-            days=$(echo "$out" | tail -1)
-            export AIS_FIRST=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][0])")
-            export AIS_THROUGH=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][-1])")
-            python3 build_tracks.py "$ym"
-            node publish.mjs "$ym" build/ais-v1/track_tiles build/ais-v1
+            echo "::group::$ym tracks"
+            if out=$(python3 fetch_aisstream_points.py "$ym"); then
+              echo "$out"
+              days=$(echo "$out" | tail -1)
+              export AIS_FIRST=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][0])")
+              export AIS_THROUGH=$(echo "$days" | python3 -c "import json,sys; print(json.load(sys.stdin)['days'][-1])")
+              python3 build_tracks.py "$ym"
+              node publish.mjs "$ym" build/ais-v1/track_tiles build/ais-v1
+            else rc=$?; [ $rc -eq 3 ] && echo "no recorded days in $ym" || exit $rc; fi
+            echo "::endgroup::"
+            # Stop counts from recorded live AIS (lib/ships/recordedStops.js, Josh 2026-11-11): terminal calls + anchorage stays for
+            # months NOAA hasn't published, from the recorder's days plus Open Waters' archive days (after the tracks, so the map's
+            # tracks stay the recorder's own). A NOAA month is never touched; a month counts once every day is read.
+            echo "::group::$ym recorded stop counts"
+            if curl -fsS "$SALISH_INDEX?t=$(date +%s)" | python3 -c "import json,sys; sys.exit(0 if sys.argv[1] in json.load(sys.stdin).get('months', {}) else 1)" "$ym"; then
+              echo "NOAA has $ym: its counts stand"
+            else
+              python3 fetch_owarchive_points.py "$ym" || { rc=$?; [ $rc -eq 3 ] || exit $rc; }
+              if ls cache/points/ais-v1/"$ym"-*.parquet >/dev/null 2>&1; then
+                STOPS_INPUT=recorded python3 terminal_calls.py && STOPS_INPUT=recorded python3 terminal_calls.py --export
+                STOPS_INPUT=recorded python3 anchorage_stays.py && STOPS_INPUT=recorded python3 anchorage_stays.py --export
+                ( cd ../../.. && node scripts/ships/terminal-calls.mjs import --recorded --post "$API" --month "$ym" \
+                              && node scripts/ships/anchorage-stays.mjs import --recorded --post "$API" --month "$ym" )
+              else echo "no recorded days in $ym"; fi
+            fi
             echo "::endgroup::"
           done

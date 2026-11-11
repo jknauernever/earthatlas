@@ -10,6 +10,7 @@ import BuiltByCredit from '../components/BuiltByCredit.jsx'
 import { ShipLoader } from '../components/panel'
 import { kindWords } from './terminalIcons.js'
 import c from './ScrubberReport.module.css'
+import { RecordedFeeds } from './RecordedAisCredit.jsx'
 
 import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
 import { inSalishSea } from '../../lib/ships/salishSea.js'
@@ -1060,8 +1061,17 @@ function Method({ data, world }) {
           Washington only. NOAA’s minute-by-minute positions reach just north of Howe Sound; terminals farther north (Squamish, Woodfibre,
           Texada Island) are counted from hourly positions (≈).</dd>
         <dt>NOAA data</dt>
-        <dd>{data.coverage.months.length ? `${monthName(data.coverage.months[0], 'long')} – ${monthName(data.coverage.months.at(-1), 'long')}` : 'None in this period'}.
+        {(() => { const rec = new Set(data.coverage.recorded || []); const noaa = data.coverage.months.filter((m) => !rec.has(m)); return <>
+        <dd>{noaa.length ? `${monthName(noaa[0], 'long')} – ${monthName(noaa.at(-1), 'long')}` : 'None in this period'}.
           NOAA publishes its minute-by-minute positions about three months after the fact.</dd>
+        {rec.size > 0 && <>
+          <dt>Recorded live AIS</dt>
+          <dd>{`${monthName([...rec][0], 'long')} – ${monthName([...rec].at(-1), 'long')}`}, which NOAA hasn’t published yet: the same rule on EarthAtlas’s own
+            recording of live positions from <RecordedFeeds /> and Washington State Ferries (before October 18, 2026, Open Waters’ track archive, at most one
+            position a minute). Its receivers differ from NOAA’s, so counts can differ; NOAA’s replace them when it publishes those months. Grays Harbor and the
+            Columbia River are outside the recording, so their terminals aren’t counted for those months.{' '}
+            {data.coverage.recordedRecordId && <a href={`/ships/source/${data.coverage.recordedRecordId}`} target="_blank" rel="noopener noreferrer">Bake record</a>}</dd>
+        </>}</> })()}
         {data.estimated && <>
           <dt>Estimates (≈)</dt>
           <dd>From hourly ship positions (<Src k="gfw" />), for months NOAA has not published and for terminals beyond the reach of NOAA’s

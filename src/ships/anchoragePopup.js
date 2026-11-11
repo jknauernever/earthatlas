@@ -4,6 +4,7 @@
  * record behind the stays EarthAtlas counted from MarineCadastre AIS (lib/ships/anchorageStays.js).
  */
 import { fmtMonth } from './TrackControls.jsx'
+import { AISSTREAM_URL, OPENWATERS_LICENSE_URL, AISHUB_URL } from './liveSources.js'
 
 export const ANCHORAGE_SRC = 'anchorages'
 export const ANCHORAGE_FILL = 'anchorages-fill'
@@ -54,15 +55,19 @@ function staysHTML(s, months, st) {
   if (s.coverage === 'no_boundary') return `<div class="${st.popupMeta}">No boundary is published for this area, so stays can’t be counted.</div>`
   if (s.coverage === 'not_loaded') return `<div class="${st.popupMeta}">Stays haven’t been counted here yet.</div>`
   if (s.coverage === 'not_covered') return `<div class="${st.popupMeta}">Outside the area our AIS positions cover, so stays aren’t counted here (not zero). ${src()}</div>`
-  if (!s.months.covered.length) return `<div class="${st.popupMeta}">No AIS positions for ${esc(period(months))} yet (we have ${esc(fmtMonth(s.aisFrom))} – ${esc(fmtMonth(s.aisTo))}), so nothing is counted for these months (not zero). ${src()}</div>`
+  // Months counted from recorded live AIS (lib/ships/recordedStops.js), credited apart with their own bake record.
+  const recMs = s.recorded || []
+  const recSrc = (text = 'recorded live AIS') => `<a href="${bake?.recordedRecordId ? `/ships/source/${bake.recordedRecordId}` : OPENWATERS_LICENSE_URL}" target="_blank" rel="noopener noreferrer" title="${esc(period(recMs))}: counted by EarthAtlas with the same rule from its recording of live AIS (aisstream.io; Open Waters AIS, ODbL, incl. AISHub contributors; Washington State Ferries), because NOAA hasn’t published these months yet; NOAA’s counts replace them when it does — click for the bake record">${esc(text)}</a>`
+  const srcAll = (text) => (recMs.length ? (recMs.length === s.months.covered.length ? recSrc(text || undefined) : `${src(text || undefined)} + ${recSrc(text ? 'recorded' : undefined)}`) : src(text || undefined))
+  if (!s.months.covered.length) return `<div class="${st.popupMeta}">No AIS positions for ${esc(period(months))} yet (we have ${esc(fmtMonth(s.aisFrom))} – ${esc(fmtMonth(s.recordedTo || s.aisTo))}), so nothing is counted for these months (not zero). ${src()}</div>`
   const x = s.summary
   const missing = s.months.missing.length ? ` · ${s.months.covered.length} of ${months.length} months have AIS so far` : ''
-  let h = `<div class="${st.popupRow}"><span class="${st.popupK}">Stays</span><span class="${st.popupV}">${n(x.stays)} by ${n(x.ships)} ship${x.ships === 1 ? '' : 's'} ${src('AIS')}</span></div>` +
-    `<div class="${st.popupRow}"><span class="${st.popupK}">Ship-hours stopped here</span><span class="${st.popupV}">${n(x.hours)} h ${src('AIS')}</span></div>`
+  let h = `<div class="${st.popupRow}"><span class="${st.popupK}">Stays</span><span class="${st.popupV}">${n(x.stays)} by ${n(x.ships)} ship${x.ships === 1 ? '' : 's'} ${srcAll('AIS')}</span></div>` +
+    `<div class="${st.popupRow}"><span class="${st.popupK}">Ship-hours stopped here</span><span class="${st.popupV}">${n(x.hours)} h ${srcAll('AIS')}</span></div>`
   if (x.kinds.length) {
-    h += `<div class="${st.popupMeta}" title="Ships of each kind: EarthAtlas’s classification from its ship records, else the type the ship broadcast (AIS)">Ships by kind: ${x.kinds.slice(0, 5).map((k) => `${esc(k.label)} ${n(k.ships)}`).join(' · ')}${x.kinds.length > 5 ? ' · …' : ''} ${src('AIS')}</div>`
+    h += `<div class="${st.popupMeta}" title="Ships of each kind: EarthAtlas’s classification from its ship records, else the type the ship broadcast (AIS)">Ships by kind: ${x.kinds.slice(0, 5).map((k) => `${esc(k.label)} ${n(k.ships)}`).join(' · ')}${x.kinds.length > 5 ? ' · …' : ''} ${srcAll('AIS')}</div>`
   }
-  h += `<div class="${st.popupMeta}">${esc(period(s.months.covered))}: ships stopped (under ${rule.sogKn} kn) inside the area for ${rule.minMinutes} min or more, counted by EarthAtlas from ${src()}${missing}.</div>`
+  h += `<div class="${st.popupMeta}">${esc(period(s.months.covered))}: ships stopped (under ${rule.sogKn} kn) inside the area for ${rule.minMinutes} min or more, counted by EarthAtlas from ${srcAll()}${recMs.length ? ` (${esc(period(recMs))} from <a href="${AISSTREAM_URL}" target="_blank" rel="noopener noreferrer">aisstream.io</a> and <a href="${OPENWATERS_LICENSE_URL}" target="_blank" rel="noopener noreferrer">Open Waters AIS</a>, ODbL, incl. <a href="${AISHUB_URL}" target="_blank" rel="noopener noreferrer">AISHub contributors</a>)` : ''}${missing}.</div>`
   if (s.top?.length) {
     h += `<div class="${st.popupHead}" style="margin:9px 0 2px">Most days here</div>` + s.top.slice(0, 5).map((t) => {
       const name = t.aisName || `MMSI ${t.mmsi}`

@@ -24,7 +24,7 @@ https://openwaters.io/api/ais/, https://openwaters.io/ais/ and https://ais.openw
   message (aisstream/go-ais field names), synthesized}. Optional `snapshot: true` replays last-known state (≤30 min).
 - `wss://ais.openwaters.io/v0/stream`: aisstream.io-compatible drop-in.
 - `GET /v1/vessels?bbox=minLat,minLon,maxLat,maxLon&max_age=30m`: GeoJSON last-known positions (≤500 past 30 min).
-- `GET /v1/vessels/{mmsi}/track?from&to`: up to 366 days per request (archive depth not stated), GeoJSON or GPX.
+- `GET /v1/vessels/{mmsi}/track?from&to`: up to 366 days per request, GeoJSON or GPX. See **Archive** below.
 - MCP server (no auth): https://ais.openwaters.io/mcp.
 
 ## License and credit
@@ -41,6 +41,26 @@ https://openwaters.io/api/ais/, https://openwaters.io/ais/ and https://ais.openw
   aisstream.io relay. ~12 msgs/s.
 - No AISHub events in that window; Open Waters' 30-minute snapshot listed 891 AISHub-sourced vessels (852 stopped),
   all last seen just before the run, consistent with periodic AISHub batches. To confirm from the deployed recorder.
+
+## Archive (tested 2026-11-11) and the stop-count backfill
+
+- History starts **2026-08-20 ~18:00 UTC** (two ships checked: a WSF ferry and a tanker). Nothing before.
+- `interval=60` → at most one position a minute (personal tokens: requests starting > 48 h ago are rounded to whole minutes;
+  ranges > 31 days keep ≤ 1/min). A ship sitting still keeps one position every 30 minutes. Impossible-speed fixes are dropped.
+- `limit` ≤ 1,000 positions per request (personal); when `truncated`, the newest come back: page back by moving `to` to the
+  first `times` value. 120 HTTP requests/min per address.
+- One ship per request: no area history. Tracks carry `name` but no type/IMO/length and no per-position upstream (only an
+  `attribution` map per track).
+- Cost seen: a tanker (in the box 23 of 58 days) 15 requests; a ferry (every day) 42 requests for Aug 20 – Oct 17.
+
+Backfill (lib/ships/recordedStops.js, Josh 2026-11-11): terminal calls + anchorage stays for Aug 21 – Oct 17, 2026 (before
+the live recorder), counted with the NOAA rules and credited as recorded live AIS:
+1. `node --env-file=.env.local scripts/ships/aisstream/owarchive-mmsis.mjs` → ships to ask (every MMSI in our stop counts and
+   GFW estimates, with its last broadcast identity) → `scripts/ships/bake-ais/cache/owarchive/mmsis.json` (5,183 on dev).
+2. `python3 scripts/ships/bake-ais/owarchive.py fetch` (resumable; log in cache/owarchive/fetch.log) then `… build`.
+3. `node --env-file=.env.local scripts/ships/aisstream/owarchive-upload.mjs` → Blob `ships/bake-inputs/salish-v6/owarchive/`.
+4. `ships-aisstream-month` (dispatch with months) reads them via `fetch_owarchive_points.py` after the map tracks are built, so
+   archive days feed only the stop counts, never the map's recorded tracks.
 
 ## Also from Open Waters (not integrated)
 - Seascape bathymetry tiles, CC BY 4.0 "© Open Waters: Seascape", no key: style

@@ -76,6 +76,7 @@ import { normalizeStops, storeActivityEstimates } from '../lib/ships/activityEst
 import { storeTerminalCalls, BAKE_VERSION as CALLS_VERSION, TERMINAL_CALLS_SOURCE } from '../lib/ships/terminalCalls.js'
 import { storeDockCalls, DOCK_BAKE_VERSION, DOCK_CALLS_SOURCE } from '../lib/ships/dockCalls.js'
 import { storeAnchorageStays, STAY_BAKE_VERSION, ANCHORAGE_STAYS_SOURCE } from '../lib/ships/anchorageStays.js'
+import { RECORDED_TERMINAL_CALLS_SOURCE, RECORDED_ANCHORAGE_STAYS_SOURCE } from '../lib/ships/recordedStops.js'
 import { startRun, finishRun, upsertSource } from '../lib/ships/store.js'
 import { importMcBatch } from '../lib/ships/mcMonths.js'
 import { searchPlaces } from '../lib/ships/placeSearch.js'
@@ -250,7 +251,7 @@ export default async function handler(req, res) {
         for await (const c of req) chunks.push(c)
         try { body = JSON.parse(Buffer.concat(chunks).toString() || '{}') } catch { return send(res, 400, { error: 'bad JSON' }) }
       }
-      const { kind, month, version, bake, rows } = body
+      const { kind, month, version, bake, rows, recorded = false } = body   // recorded: counted from recorded live AIS (lib/ships/recordedStops.js)
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '')) return send(res, 400, { error: 'month must be YYYY-MM' })
       if (!Array.isArray(rows) || !bake || typeof bake !== 'object') return send(res, 400, { error: 'rows and bake required' })
       const want = kind === 'terminal' ? CALLS_VERSION : kind === 'anchorage' ? STAY_BAKE_VERSION : kind === 'dock' ? DOCK_BAKE_VERSION : null
@@ -261,11 +262,14 @@ export default async function handler(req, res) {
       try {
         const r = await withTx(pool, async (c) => {
           if (kind === 'dock') await upsertSource(c, S, DOCK_CALLS_SOURCE)   // registered on its first import
-          const runId = await startRun(c, S, src.id, { bake_version: version, month, via: 'importAisMonth' })
+          if (recorded && kind === 'dock') throw new Error('dock calls are NOAA-only for now')
+          const runSrc = !recorded ? src : kind === 'terminal' ? RECORDED_TERMINAL_CALLS_SOURCE : RECORDED_ANCHORAGE_STAYS_SOURCE
+          if (recorded) await upsertSource(c, S, runSrc)
+          const runId = await startRun(c, S, runSrc.id, { bake_version: version, month, via: 'importAisMonth', recorded: !!recorded })
           const out = kind === 'terminal'
-            ? await storeTerminalCalls(c, S, { calls: rows, bake, runId, months: [month] })
+            ? await storeTerminalCalls(c, S, { calls: rows, bake, runId, months: [month], recorded: !!recorded })
             : kind === 'dock' ? await storeDockCalls(c, S, { calls: rows, bake, runId, months: [month] })
-            : await storeAnchorageStays(c, S, { stays: rows, bake, runId, months: [month] })
+            : await storeAnchorageStays(c, S, { stays: rows, bake, runId, months: [month], recorded: !!recorded })
           await finishRun(c, S, runId, { status: 'succeeded', stats: { rows: rows.length, month }, datasetVersion: version })
           return out
         })

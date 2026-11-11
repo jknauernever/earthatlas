@@ -18,9 +18,14 @@ import { createInterface } from 'node:readline'
 import path from 'node:path'
 import { shipsPool, DEFAULT_SCHEMA, withTx } from '../../lib/ships/db.js'
 import { upsertSource, startRun, finishRun } from '../../lib/ships/store.js'
+import { RECORDED_TERMINAL_CALLS_SOURCE } from '../../lib/ships/recordedStops.js'
 import { BAKE_VERSION, CALL_RULE, TERMINAL_CALLS_SOURCE, berthLength, berthLengthOf, officialBerthLength, berthRadiusM, inAisBox, aisRegionOf, callSplitter, storeTerminalCalls } from '../../lib/ships/terminalCalls.js'
 
-const DIR = 'scripts/ships/bake-ais/cache/terminal-calls'
+const BASE_DIR = 'scripts/ships/bake-ais/cache/terminal-calls'
+// --recorded (2026-11-11, lib/ships/recordedStops.js): import the recorded live-AIS bake (terminal_calls.py with STOPS_INPUT=recorded,
+// cache/terminal-calls-recorded) for ONE month (--month), never a NOAA month. Berths always come from the NOAA folder.
+const RECORDED = process.argv.includes('--recorded')
+const DIR = RECORDED ? `${BASE_DIR}-recorded` : BASE_DIR
 const args = process.argv.slice(2)
 const cmd = args[0]
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined }
@@ -80,7 +85,7 @@ async function berths() {
 
 async function importCalls() {
   const meta = JSON.parse(await readFile(path.join(DIR, 'meta.json'), 'utf8'))
-  const bj = JSON.parse(await readFile(path.join(DIR, 'berths.json'), 'utf8'))
+  const bj = JSON.parse(await readFile(path.join(BASE_DIR, 'berths.json'), 'utf8'))
   if (meta.bake_version !== BAKE_VERSION || bj.bake_version !== BAKE_VERSION) throw new Error(`bake version mismatch: meta ${meta.bake_version}, berths ${bj.bake_version}, code ${BAKE_VERSION}`)
   const calls = []
   const split = callSplitter((c) => calls.push(c))
@@ -98,11 +103,23 @@ async function importCalls() {
   if (only) { const keep = calls.filter((c) => only.includes(c.terminal)); calls.length = 0; calls.push(...keep) }
   const terminalsN = new Set(calls.map((c) => c.terminal)).size
   console.log(`${n.toLocaleString()} stopped positions → ${calls.length.toLocaleString()} calls at ${terminalsN} terminals`)
+  if (RECORDED) {   // one month only: the recorded cache holds several
+    if (!postMonthArg) throw new Error('--recorded needs --month YYYY-MM')
+    const keep = calls.filter((c) => new Date(c.t0).toISOString().slice(0, 7) === postMonthArg); calls.length = 0; calls.push(...keep)
+    console.log(`${postMonthArg}: ${calls.length.toLocaleString()} calls (recorded live AIS); month complete: ${!!meta.months.find((m) => m.month === postMonthArg)?.complete}`)
+  }
   if (dry) { for (const c of calls.slice(0, 5)) console.log(JSON.stringify(c)); return }
 
   const bake = { rule: CALL_RULE, input: meta.input, days: meta.days, months: meta.months, notCovered: meta.not_covered, hits: n, baked_at: meta.baked_at,
     berths: bj.berths.map(({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box }) => ({ terminal, berth, lat, lon, basis, length_m, length_from, radius_m, in_box })) }
-  if (post) return postMonth({ kind: 'terminal', month: postMonthArg, version: BAKE_VERSION, bake, rows: calls })
+  if (post) return postMonth({ kind: 'terminal', month: postMonthArg, version: BAKE_VERSION, bake, rows: calls, recorded: RECORDED })
+  if (RECORDED) return withTx(pool, async (c) => {
+    await upsertSource(c, schema, RECORDED_TERMINAL_CALLS_SOURCE)
+    const runId = await startRun(c, schema, RECORDED_TERMINAL_CALLS_SOURCE.id, { bake_version: BAKE_VERSION, month: postMonthArg, recorded: true })
+    const r = await storeTerminalCalls(c, schema, { calls, bake, runId, months: [postMonthArg], recorded: true })
+    await finishRun(c, schema, runId, { status: 'succeeded', stats: { calls: calls.length, month: postMonthArg }, datasetVersion: BAKE_VERSION })
+    console.log(`stored ${r.calls} recorded calls for ${postMonthArg}; counted months: ${r.complete.join(', ') || 'none (month incomplete)'}; record ${r.recordId}`)
+  })
   await withTx(pool, async (c) => {
     await upsertSource(c, schema, TERMINAL_CALLS_SOURCE)
     const runId = await startRun(c, schema, TERMINAL_CALLS_SOURCE.id, { bake_version: BAKE_VERSION, days: meta.days.length })

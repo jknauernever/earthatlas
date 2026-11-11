@@ -25,6 +25,17 @@ REGION = "salish-v6"
 POINTS = os.path.join(HERE, "cache", "points", REGION)
 BOX = dict(w=-126.2, s=47.0, e=-122.05, n=49.6)  # region.py salish-v6 (read-only copy)
 OUT = os.path.join(HERE, "cache", "anchorage-stays")
+POLYS_DIR = OUT
+# STOPS_INPUT=recorded (2026-11-11, lib/ships/recordedStops.js): the same rule over the recorded live-AIS days (cache/points/ais-v1),
+# written to cache/anchorage-stays-recorded so NOAA's hits never mix with them. Polygons come from the NOAA folder.
+RECORDED = os.environ.get("STOPS_INPUT") == "recorded"
+if RECORDED:
+    POINTS = os.path.join(HERE, "cache", "points", "ais-v1")
+    OUT = os.path.join(HERE, "cache", "anchorage-stays-recorded")
+    os.makedirs(OUT, exist_ok=True)
+RECORDED_INPUT = dict(source="recorded-live-ais", region="ais-v1", box=BOX, cache="scripts/ships/bake-ais/cache/points/ais-v1",
+                      feeds="aisstream.io, Open Waters AIS (ODbL, incl. AISHub contributors), Washington State Ferries; Open Waters AIS track archive before 2026-10-18",
+                      timestamps="base_date_time, UTC (the recorder and archive both write UTC)")
 # Months reported in meta.json: every month from the first to the last day baked (2026-10-07: was fixed to 2025-07 … 2026-06,
 # so a month added by ships-noaa-month could never count as complete).
 
@@ -38,7 +49,7 @@ def connect():
 
 
 def load_polygons():
-    with open(os.path.join(OUT, "anchorages.json")) as f:
+    with open(os.path.join(POLYS_DIR, "anchorages.json")) as f:
         aj = json.load(f)
     raw = json.dumps([aj["anchorages"], aj["edges"]], sort_keys=True).encode()
     return aj, hashlib.sha256(raw).hexdigest()[:8]
@@ -129,7 +140,7 @@ def export(con, aj, sha):
         got = sum(1 for d in days if d.startswith(ym))
         months.append(dict(month=ym, days=got, of=days_in_month(ym), complete=got == days_in_month(ym)))
     meta = dict(bake_version=aj["bake_version"], polygons_sha=sha, baked_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                input=dict(source="marinecadastre-ais", region=REGION, box=BOX, cache="scripts/ships/bake-ais/cache/points/salish-v6",
+                input=RECORDED_INPUT if RECORDED else dict(source="marinecadastre-ais", region=REGION, box=BOX, cache="scripts/ships/bake-ais/cache/points/salish-v6",
                            timestamps="base_date_time, UTC as MarineCadastre publishes it (stored without a zone marker in the cache)"),
                 days=days, months=months, hits=n)
     with open(os.path.join(OUT, "meta.json"), "w") as f:

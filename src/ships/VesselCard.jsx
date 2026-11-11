@@ -4,6 +4,7 @@
  * carries its evidence class (AIS / Registry / Model) and a link to the exact
  * raw source record (EarthAtlas inline-provenance rule).
  */
+import { INCIDENT_TYPE } from './incidentTypes.js'
 import { useEffect, useMemo, useState } from 'react'
 import { publicLicense } from './publicLicense.js'
 import { ViewIn } from './viewIn.jsx'
@@ -763,14 +764,6 @@ const INCIDENT_SOURCE = {
   'wa-ecology-spills': 'WA Ecology spill report',
   'uscg-nrc': 'National Response Center report',
   'noaa-incidentnews': 'NOAA IncidentNews',
-}
-const INCIDENT_TYPE = {
-  injury_or_death: 'Injury or death', person_overboard: 'Person overboard', spill: 'Spill', fire: 'Fire',
-  explosion: 'Explosion', collision: 'Collision', allision: 'Allision (hit a fixed object)', grounding: 'Grounding',
-  capsize: 'Capsize', flooding: 'Flooding', sinking: 'Sinking', loss_of_propulsion: 'Loss of propulsion',
-  loss_of_power: 'Loss of power', loss_of_steering: 'Loss of steering', equipment_failure: 'Equipment failure',
-  disabled: 'Disabled vessel', psc_deficiency: 'Inspection deficiencies', cotp_order: 'Coast Guard order',
-  detention: 'Detention', letter_of_deviation: 'Letter of deviation',
 }
 const incidentTitle = (e) => (e.event_types?.length ? e.event_types.map((t) => INCIDENT_TYPE[t] || t.replaceAll('_', ' ')).join(' · ') : (e.event_type_raw || 'Other record'))
 const plural = (n, w) => `${n} ${n === 1 ? w : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`}`

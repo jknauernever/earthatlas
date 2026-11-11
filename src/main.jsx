@@ -69,6 +69,7 @@ import PermitPage from './ships/PermitPage.jsx'
 import ShipsChangelogPage from './ships/ChangelogPage.jsx'
 import ShipsIntakePage from './ships/IntakePage.jsx'
 import ScrubberReport from './ships/ScrubberReport.jsx'
+import GeneralReport from './ships/GeneralReport.jsx'
 import BunkeringReport from './ships/BunkeringReport.jsx'
 import OilTransfersReport from './ships/OilTransfersReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
@@ -214,6 +215,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/permit/:id" element={<PermitPage />} />
           <Route path="/ships/changelog" element={<ShipsChangelogPage />} />
           <Route path="/ships/intake" element={<ShipsIntakePage />} />
+          <Route path="/ships/reports" element={<GeneralReport />} />
           <Route path="/ships/reports/scrubbers" element={<ScrubberReport />} />
           <Route path="/ships/reports/bunkering" element={<BunkeringReport />} />
           <Route path="/ships/reports/oil-transfers" element={<OilTransfersReport />} />

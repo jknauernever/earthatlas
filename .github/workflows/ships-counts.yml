@@ -36,3 +36,16 @@ jobs:
             sleep 60
           done
           echo "counts refresh failed 3 times"; exit 1
+      # The /ships general report (Josh 2026-11-10), same numbers plus the per-terminal / per-anchorage rows behind them.
+      - name: Refresh the general report (up to 3 tries)
+        if: always()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          for i in 1 2 3; do
+            r=$(curl -sS -m 310 -X POST -H "Authorization: Bearer $CRON_SECRET" "https://earthatlas.org/api/cron/ships-counts?part=report") || r=''
+            echo "$r" | head -c 1500; echo
+            if echo "$r" | python3 -c "import json,sys; sys.exit(0 if json.load(sys.stdin).get('ok') else 1)" 2>/dev/null; then exit 0; fi
+            sleep 60
+          done
+          echo "report refresh failed 3 times"; exit 1

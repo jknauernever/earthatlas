@@ -41,6 +41,7 @@
 #   zsh scripts/ships/prod.sh pack-table         write US per-ship shard tables into month manifests (Blob)
 #   zsh scripts/ships/prod.sh index <run id>     add a cloud bake run's finished months to the US index (Blob)
 #   zsh scripts/ships/prod.sh counts             READ ONLY: the /ships changelog's data-card numbers (args pass through, e.g. --limit 2)
+#   zsh scripts/ships/prod.sh report             READ ONLY: the /ships general report from prod into public/dev-data/ships/general-report.json (localhost's copy; args pass through, e.g. --limit 2)
 #   zsh scripts/ships/prod.sh port-names B D   back up, then for box B (w,s,e,n): place names, GeoNames marinas, re-match, WPI positions (GeoNames files in D)
 #   zsh scripts/ships/prod.sh fleet              back up, then a fleet's boats (migration 034): --file lib/ships/data/fleets/whalewatch.json, or --add / --remove one boat (scripts/ships/import-fleet.mjs)
 #   zsh scripts/ships/prod.sh intake             back up, then one reviewed /ship-intake file (migration 037): apply --file lib/ships/data/intake/<name>.json (scripts/ships/intake.mjs; review is read-only)
@@ -321,6 +322,10 @@ case "${1:-}" in
   counts)
     need SHIPS_PROD_DATABASE_URL
     prod_node scripts/ships/changelog-counts.mjs "${@:2}"
+    ;;
+  report)
+    need SHIPS_PROD_DATABASE_URL
+    prod_node scripts/ships/general-report.mjs "${@:2}"
     ;;
   port-names)
     # Place names, GeoNames marinas and better WPI positions for one area (lib/ships/placeNames.js, Josh 2026-10-18):

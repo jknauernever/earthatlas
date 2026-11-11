@@ -47,7 +47,7 @@ import AnchorageCard from './AnchorageCard.jsx'
 import { addTerminalImages, addBadgeImage, GLYPH, iconExpression, TERMINAL_FAMILIES, TERMINAL_MUTED_RING, kindWords, NOT_OPERATING, STATUS_WORDS } from './terminalIcons.js'
 import { ANCHORAGE_SRC, ANCHORAGE_FILL, ANCHORAGE_LINE, ANCHORAGE_LABEL, ANCHORAGE_MINZOOM, ANCHORAGE_LABEL_MINZOOM, ANCHORAGE_COLOR } from './anchoragePopup.js'
 import trackSource from './trackSource.json'
-import { SCRUBBER_REPORT } from './scrubberReportDefaults.js'
+import { SCRUBBER_REPORT, GENERAL_REPORT } from './scrubberReportDefaults.js'
 import { DatasetRow, SourcesFooter, LegendSwatchRow, LegendTurndown, useDockColumns, LoadingInline } from '../components/panel'
 import { SHIPS_SOURCES, SHIPS_SOURCES_INTRO, SHIPS_SOURCES_NOTES } from './shipsSources.js'
 import styles from './ShipsApp.module.css'
@@ -3019,7 +3019,7 @@ export default function ShipsApp() {
                   </>} />
               <SourcesFooter intro={SHIPS_SOURCES_INTRO} sections={SHIPS_SOURCES} notes={SHIPS_SOURCES_NOTES}
                 changelog={{ href: '/ships/changelog', label: 'What’s new (changelog)' }}
-                reports={[{ href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }]} />
+                reports={[{ href: GENERAL_REPORT.path, label: GENERAL_REPORT.title }, { href: SCRUBBER_REPORT.path, label: SCRUBBER_REPORT.title }]} />
                 {/* The oil-transfers and bunkering (anchorage) reports are unlisted (Josh 2026-11-10: Lovel controls, for now, who has
                     their URLs). They stay live at their URLs; don't link them from /ships. */}
             </div>

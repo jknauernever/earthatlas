@@ -16,6 +16,22 @@ import c from './ScrubberReport.module.css'
 import g from './GeneralReport.module.css'
 import { AISSTREAM_URL, OPENWATERS_LICENSE_URL, WSF_URL, liveSource } from './liveSources.js'
 
+// Country flags (flag-icons, MIT): one SVG per ISO 3166-1 alpha-2 code. Lazy, so only the flags shown are fetched and none
+// land in the site's main bundle (eager imports inlined ~200 of them into it, +217 KB on every page).
+const FLAG_SVGS = import.meta.glob('../../node_modules/flag-icons/flags/4x3/*.svg', { query: '?url', import: 'default' })
+const flagLoader = (iso2) => (iso2 ? FLAG_SVGS[`../../node_modules/flag-icons/flags/4x3/${iso2.toLowerCase()}.svg`] || null : null)
+
+function Flag({ iso2 }) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    const load = flagLoader(iso2)
+    let live = true
+    if (load) load().then((u) => { if (live) setSrc(u) }).catch(() => {})
+    return () => { live = false }
+  }, [iso2])
+  return <img className={g.flag} src={src || undefined} alt="" style={src ? undefined : { visibility: 'hidden' }} />
+}
+
 const REPORT_URL = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/general-report.json'
 const DEV_URL = '/dev-data/ships/general-report.json'
 
@@ -86,7 +102,7 @@ function Bars({ rows, color = BLUE, unit = '', of, ofWord }) {
           rows: [{ color, label: unit || 'Count', value: fmt(r.n), on: true }, ...(r.tip || [])],
           foot: of ? `${pct(r.n, of)} of ${fmt(of)} ${ofWord || ''}`.trim() : undefined,
         })}>
-          <span className={g.barLabel}>{r.href ? <a className={c.src} href={r.href}>{r.label}</a> : r.label}{r.sub && <span className={g.sub}>{r.sub}</span>}</span>
+          <span className={g.barLabel}>{r.flag && <Flag iso2={r.flag} />}{r.href ? <a className={c.src} href={r.href}>{r.label}</a> : r.label}{r.sub && <span className={g.sub}>{r.sub}</span>}</span>
           <span className={g.track}><span style={{ width: `${(r.n / max) * 100}%`, background: color }} /></span>
           <span className={g.barN}>{fmt(r.n)}{of ? <span className={g.unit}> {pct(r.n, of)}</span> : null}</span>
         </li>
@@ -245,7 +261,7 @@ function Fleet({ f }) {
         <div className={g.two}>
           <div>
             <h3 className={g.h3}>Flag <span className={g.unit}>{fmt(f.flags.length)} flags</span></h3>
-            <Bars rows={f.flags.slice(0, 12).map((x) => ({ key: x.iso3, label: x.name, n: x.n }))} of={f.flags.reduce((n, x) => n + x.n, 0)} ofWord="ships with a flag" />
+            <Bars rows={f.flags.slice(0, 12).map((x) => ({ key: x.iso3, label: x.name, n: x.n, flag: x.iso2 }))} of={f.flags.reduce((n, x) => n + x.n, 0)} ofWord="ships with a flag" />
           </div>
           <div>
             <h3 className={g.h3}>Length <span className={g.unit}>{fmt(f.withLength)} ships</span></h3>

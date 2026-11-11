@@ -11,7 +11,7 @@
  *                                                                 month's identity file (the NOAA ship-identity import reads every month)
  *
  * Blob: ships/tracks/salish-v6/index.json  { version, months: { YYYY-MM: { tiles, pack, manifest?, built, rules, pmtiles_bytes,
- *       pack_bytes, tracks, vessels } }, updated }. Months are only ever added or replaced, never removed.
+ *       pack_bytes, tracks, vessels, ais-v1 only: first, through, sources } }, updated }. Months are only ever added or replaced, never removed.
  */
 import { createReadStream, readFileSync, statSync, existsSync, writeFileSync, mkdtempSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
@@ -84,6 +84,8 @@ async function uploadIdentity(ym, idDir) {
 
 const entryFrom = (m, urls) => ({ ...urls, built: m.built, rules: m.rules?.version, pmtiles_bytes: m.pmtiles_bytes, pack_bytes: m.pack?.bytes,
   tracks: m.stats?.tracks, vessels: m.stats?.vessels,
+  // ais-v1: ships heard per live feed ({ vessels, only, points }), from build_tracks.py.
+  ...(m.stats?.sources ? { sources: m.stats.sources } : {}),
   // ais-v1 months are partial while they're recorded: the first and last recorded day (set by ships-aisstream-month.yml).
   ...(process.env.AIS_FIRST ? { first: process.env.AIS_FIRST, through: process.env.AIS_THROUGH || null } : {}) })
 

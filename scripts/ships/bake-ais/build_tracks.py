@@ -188,6 +188,17 @@ def build(ym):
     stats["segments_split_over_land"] = land_cross
     tracks, parked = con.execute(f"SELECT count(*), count(*) FILTER (WHERE span_m < {PARKED_M}) FROM trk").fetchone()
     stats.update(tracks=tracks, parked_not_drawn=parked)
+    # Recorded live AIS (ais-v1) tags each position with the feed that heard it (scripts/ships/aisstream/compact.py: aisstream | wsf |
+    # openwaters/<upstream>). Ships heard per feed, and ships only that feed heard, for the inline credit (Josh 2026-11-11).
+    # NOAA's day files have no source column: no split.
+    cols = {r[0] for r in con.execute(f"DESCRIBE SELECT * FROM read_parquet('{files}', union_by_name=true)").fetchall()}
+    if "source" in cols:
+        stats["sources"] = {src: dict(vessels=v, only=o, points=n) for src, v, o, n in con.execute(f"""
+          WITH p AS (SELECT DISTINCT mmsi, coalesce(source, 'aisstream') AS src FROM read_parquet('{files}', union_by_name=true)),
+               k AS (SELECT mmsi, count(*) AS feeds FROM p GROUP BY mmsi),
+               c AS (SELECT coalesce(source, 'aisstream') AS src, count(*) AS n FROM read_parquet('{files}', union_by_name=true) GROUP BY 1)
+          SELECT p.src, count(*), count(*) FILTER (WHERE k.feeds = 1), any_value(c.n)
+            FROM p JOIN k USING (mmsi) JOIN c USING (src) GROUP BY p.src ORDER BY 2 DESC""").fetchall()}
 
     with open(ndjson, "w") as fh:
         rows = con.execute(f"""

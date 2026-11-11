@@ -221,12 +221,28 @@ function Coverage({ d }) {
     ['Protected areas', 'US waters', '', <Src k="mpa" />],
     ['Orca critical habitat', 'Resident killer whales, United States and Canada', '', <Src k="srkw" />],
   ].filter(Boolean)
+  // Closed by default at the end of the page (Josh 2026-11-11): the charts lead. Opens from the top line's link, and for printing.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const show = () => setOpen(true)
+    const fromHash = () => { if (window.location.hash === '#coverage') show() }
+    fromHash()
+    window.addEventListener('hashchange', fromHash); window.addEventListener('beforeprint', show)
+    return () => { window.removeEventListener('hashchange', fromHash); window.removeEventListener('beforeprint', show) }
+  }, [])
   return (
-    <Card title="What the data covers" note="where and when each dataset on /ships has data">
-      <Table head={[['Data'], ['Where'], ['When'], ['Source']]} rows={rows.map(([a, b, when, s]) => (
-        <tr key={a}><td><b>{a}</b></td><td>{b}</td><td className={g.nowrap}>{when}</td><td className={g.srcTd}>{s}</td></tr>
-      ))} />
-    </Card>
+    <section className={c.card} id="coverage">
+      <details className={g.disclose} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+        <summary>
+          <svg className={g.chev} viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          <h2 className={c.h2}>What the data covers</h2>
+          <span className={c.note}>{rows.length} datasets: where and when each has data</span>
+        </summary>
+        <Table head={[['Data'], ['Where'], ['When'], ['Source']]} rows={rows.map(([a, b, when, s]) => (
+          <tr key={a}><td><b>{a}</b></td><td>{b}</td><td className={g.nowrap}>{when}</td><td className={g.srcTd}>{s}</td></tr>
+        ))} />
+      </details>
+    </section>
   )
 }
 
@@ -535,8 +551,8 @@ export default function GeneralReport() {
         </p>
         {d && (
           <dl className={c.facts}>
-            <div><dt>Area</dt><dd>Worldwide, where each dataset covers</dd></div>
-            <div><dt>Updated</dt><dd>{dayName(d.asOf.slice(0, 10))}</dd></div>
+            <div><dt>Area</dt><dd>Worldwide, where each dataset reaches · <a className={c.src} href="#coverage" onClick={() => { const el = document.querySelector('#coverage details'); if (el) el.open = true }}>what each dataset covers ↓</a></dd></div>
+            <div><dt>Updated</dt><dd>Daily; this edition {dayName(d.asOf.slice(0, 10))}</dd></div>
             <div><dt>Other reports</dt><dd><a className={c.src} href="/ships/reports/scrubbers">Scrubber-fitted ship calls</a> · <a className={c.src} href="/ships/changelog">What’s new</a></dd></div>
           </dl>
         )}
@@ -544,7 +560,6 @@ export default function GeneralReport() {
         {!d && !err && <div className={c.loading}>Loading…</div>}
         {d && <>
           <Headline d={d} />
-          <Coverage d={d} />
           <Fleet f={d.fleet} />
           <Tracks t={d.tracks} />
           <Ports p={d.ports} />
@@ -553,6 +568,7 @@ export default function GeneralReport() {
           <OilGas o={d.oilGas} t={d.terminals} />
           <Incidents i={d.incidents} />
           <Slicks s={d.slicks} />
+          <Coverage d={d} />
           <HowCounted d={d} />
         </>}
         <BuiltByCredit variant="light" className={c.builtBy} />

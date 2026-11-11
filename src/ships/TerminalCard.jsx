@@ -144,8 +144,10 @@ function CallShip({ s, onSelectVessel, rule }) {
         {[s.name && `MMSI ${s.mmsi}`].filter(Boolean).join('')}{s.name && ' · '}
         <span title={kindTitle(s)}>{kindText(s)}</span>
         {' · '}last {dayName(s.lastAt)} UTC · {hoursWords(s.hours)} at the berth in all · closest {fmtN(s.nearestM)} m{' '}
-        <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(s.bakeRecordId)} target="_blank" rel="noopener noreferrer"
-          title={`EarthAtlas counted these calls from MarineCadastre AIS positions (CC0): the ship reported under ${rule.sogKn} kn within the berth’s radius for ${rule.minMinutes}+ minutes; a gap of more than ${rule.gapHours} h starts a new call. Name, MMSI and type as the ship broadcast them — click for the bake record (rule, berths and radii, days read)`}>MarineCadastre AIS</a>
+        {s.visits > (s.recordedVisits || 0) && <a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(s.bakeRecordId)} target="_blank" rel="noopener noreferrer"
+          title={`EarthAtlas counted these calls from MarineCadastre AIS positions (CC0): the ship reported under ${rule.sogKn} kn within the berth’s radius for ${rule.minMinutes}+ minutes; a gap of more than ${rule.gapHours} h starts a new call. Name, MMSI and type as the ship broadcast them — click for the bake record (rule, berths and radii, days read)`}>MarineCadastre AIS</a>}
+        {s.recordedVisits > 0 && <>{s.visits > s.recordedVisits && ' + '}<a className={`${styles.sourceLink} ${styles.srcLink}`} href={rec(s.recordedRecordId)} target="_blank" rel="noopener noreferrer"
+          title={`${plural(s.recordedVisits, 'call')} counted with the same rule from EarthAtlas’s recording of live AIS (aisstream.io; Open Waters AIS, ODbL, incl. AISHub contributors; Washington State Ferries), for months NOAA hasn’t published yet — click for the bake record`}>recorded live AIS</a></>}
         {!s.vesselId && <span className={styles.pcMuted}> · {s.ambiguousVessels ? 'several EarthAtlas ships held this MMSI' : 'not in EarthAtlas yet'}</span>}
         {s.oneOf > 0 && <span title="Some of these stopped positions were also within another listed terminal’s berth radius; the nearest berth is counted, never both"> · {fmtN(s.oneOf)} also near {s.oneOfNames.join(' / ')}</span>}
       </div>

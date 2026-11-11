@@ -96,7 +96,7 @@ WITH p AS (
     FROM inside
 )
 SELECT key AS anchorage, mmsi, t,
-       nullif(array_to_string(list_sort(list_filter(keys, k -> k <> key)), '#'), '') AS also,
+       nullif(array_to_string(list_sort(list_filter(keys, lambda k: k <> key)), '#'), '') AS also,
        vessel_name AS name, imo, vessel_type AS type, length
   FROM w WHERE rn = 1
 """

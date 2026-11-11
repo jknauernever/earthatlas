@@ -105,7 +105,7 @@ WITH p AS (
     FROM d WHERE m <= radius_m
 )
 SELECT terminal, berth, mmsi, t, round(m, 1) AS m,
-       nullif(array_to_string(list_sort(list_filter(terms, x -> x <> terminal)), '|'), '') AS also,
+       nullif(array_to_string(list_sort(list_filter(terms, lambda x: x <> terminal)), '|'), '') AS also,
        vessel_name AS name, imo, vessel_type AS type, length
   FROM w WHERE rn = 1 OR $all
 """

@@ -367,9 +367,20 @@ function TrackGrid() {
     const zoomFor = () => Math.log2(el.current.clientWidth / 512) - 0.11
     const map = new mapboxgl.Map({
       container: el.current, style: 'mapbox://styles/mapbox/light-v11', projection: 'equalEarth', center: [0, 12], zoom: zoomFor(),
-      renderWorldCopies: false, scrollZoom: false, dragRotate: false, touchPitch: false, preserveDrawingBuffer: true,
+      renderWorldCopies: false, cooperativeGestures: true, dragRotate: false, touchPitch: false, preserveDrawingBuffer: true,
     })
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    // The whole world shows in Equal Earth; zoomed in, the usual flat (Mercator) map, as on the /ships map.
+    // Zooming back out to the whole world returns to Equal Earth, centered.
+    let flat = false
+    const fitProjection = () => {
+      const wantFlat = map.getZoom() > zoomFor() + 0.4
+      if (wantFlat === flat) return
+      flat = wantFlat
+      map.setProjection(flat ? 'mercator' : 'equalEarth')
+      if (!flat) map.jumpTo({ center: [0, 12], zoom: zoomFor() })
+    }
+    map.on('zoomend', fitProjection)
     let hovered = null
     const setHover = (id) => {
       if (hovered != null) map.setFeatureState({ source: 'grid', id: hovered }, { hover: false })
@@ -378,11 +389,12 @@ function TrackGrid() {
     }
     map.on('load', () => {
       map.addSource('grid', { type: 'geojson', data: { type: 'FeatureCollection', features } })
+      const labels = map.getStyle().layers.find((l) => l.type === 'symbol')?.id // squares under place names
       map.addLayer({ id: 'grid', type: 'fill', source: 'grid', paint: {
         'fill-color': ['step', ['get', 'n'], GRID_STEPS[0][1], ...GRID_STEPS.slice(1).flatMap(([v, c]) => [v, c])],
-        'fill-opacity': 0.85, 'fill-outline-color': 'rgba(255,255,255,0.25)' } })
+        'fill-opacity': 0.85, 'fill-outline-color': 'rgba(255,255,255,0.25)' } }, labels)
       map.addLayer({ id: 'grid-hover', type: 'line', source: 'grid', paint: {
-        'line-color': '#111827', 'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 1.5, 0] } })
+        'line-color': '#111827', 'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 1.5, 0] } }, labels)
     })
     map.on('mousemove', 'grid', (e) => {
       const f = e.features?.[0]
@@ -397,7 +409,7 @@ function TrackGrid() {
       }).onPointerMove(e.originalEvent)
     })
     map.on('mouseleave', 'grid', () => { setHover(null); tipRef.current({}).onPointerLeave?.() })
-    const ro = new ResizeObserver(() => { map.resize(); map.setZoom(zoomFor()) })
+    const ro = new ResizeObserver(() => { map.resize(); if (!flat) map.jumpTo({ center: [0, 12], zoom: zoomFor() }) })
     ro.observe(el.current)
     return () => { ro.disconnect(); map.remove() }
   }, [grid])

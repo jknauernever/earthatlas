@@ -75,11 +75,11 @@ export default async function handler(req) {
   // detail=low: the baked low snapshot first; failing that (cron predates the
   // low variant), simplify the full snapshot right here — still no NIFC pull.
   const snap = await readSnapshot(resolved.layer, resolved.detail)
-  if (snap) return json(snap, { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+  if (snap) return json(snap, { status: 200, headers: { 'cache-control': resolved.snapshotCacheControl } })
   if (resolved.detail === 'low') {
     const full = await readSnapshot(resolved.layer)
     if (full) {
-      return json(simplifyNifc(full), { status: 200, headers: { 'cache-control': resolved.cacheControl } })
+      return json(simplifyNifc(full), { status: 200, headers: { 'cache-control': resolved.snapshotCacheControl } })
     }
   }
 

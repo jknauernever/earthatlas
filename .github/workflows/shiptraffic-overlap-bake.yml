@@ -3,7 +3,9 @@
 # /api/whales; writes small per-month files to Blob shiptraffic/overlap-v1/.
 #
 #   daily (cron): months whose ship sources were rebuilt since the last bake, plus the last 45 days
-#                 (new GFW days and whale reports keep arriving)
+#                 (new GFW days and whale reports keep arriving), plus any month not looked at for 30 days.
+#                 A month whose packs, whale reports and bake code are all unchanged is skipped (no pack reads);
+#                 an old month that is redone reuses its saved ship side (ships-<key>.bin.gz) while its packs are unchanged.
 #   Run workflow: months = "auto" or a list ("2024-01,2024-02")
 #
 # Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET); CI never holds a Blob token.

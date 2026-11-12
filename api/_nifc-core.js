@@ -77,7 +77,10 @@ export function resolveNifcRequest(searchParams) {
   // season, so we keep serving the last good copy for up to a day while a
   // background revalidation retries, rather than blanking the map.
   const cacheControl = 'public, s-maxage=300, stale-while-revalidate=86400'
-  return { layer, detail, url, cacheControl }
+  // The cron-baked snapshot changes only every 3 h (api/cron/nifc-snapshot), so the edge keeps it 30 min and
+  // browsers 5 min (the perimeters file is ~3.7 MB compressed; a 5-min edge life re-read 10.8 MB from Blob).
+  const snapshotCacheControl = 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+  return { layer, detail, url, cacheControl, snapshotCacheControl }
 }
 
 // Normalize the GeoJSON: WFIGS perimeters and incidents use different field

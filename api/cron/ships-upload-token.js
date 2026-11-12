@@ -24,7 +24,8 @@ const INDEX = /^ships\/tracks\/(us|gfw|salish|ais|aisstream)-v\d+\/index\.json$/
 const CT_FILE = /^ships\/ct-voyages\/v\d+-\d{12}\/(ct-voyages-(mmsi|imo)\.pack|ct-stays-matched\.ndjson\.gz|manifest\.json)$/
 const CT_POINTER = 'ships/ct-voyages/latest.json'
 // /shiptraffic overlap + close passes (.github/workflows/shiptraffic-overlap-bake.yml, scripts/shiptraffic/overlap-bake.mjs).
-const ST_FILE = /^shiptraffic\/overlap-v\d+\/\d{4}-(0[1-9]|1[0-2])\/(grid|closepasses)\.json$/
+// ships-<key>.bin.gz: a month's saved ship side (traffic counts + close-pass segments), reused while its packs are unchanged.
+const ST_FILE = /^shiptraffic\/overlap-v\d+\/\d{4}-(0[1-9]|1[0-2])\/((grid|closepasses)\.json|ships-[0-9a-f]{12}\.bin\.gz)$/
 const ST_INDEX = /^shiptraffic\/overlap-v\d+\/index\.json$/
 // aisstream recorder (scripts/ships/aisstream/recorder.mjs): one NOAA-shaped Parquet per recorded UTC day + small index/status.
 const AIS_DAY = /^ships\/bake-inputs\/salish-v\d+\/aisstream\/points\/\d{4}-\d{2}-\d{2}\.parquet$/

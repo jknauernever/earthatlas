@@ -21,8 +21,14 @@ Salish bake's time-based rules (30-min gap, 60 kn jump) can't apply. Instead:
      for the per-ship pack.
   4. `kind` = NOAA/USCG vessel group of vessel_type (same mapping as the Salish
      bake); `vtype` keeps the raw code.
-  NOT applied yet (unlike the Salish bake): the inland / over-land rules. They
-  need a US-wide land grid; recorded in the manifest as not applied.
+  5. (us-v3) Over-land rules, like the Salish bake's: a vertex in a deep-inland
+     cell (land more than 2 km from any river, lake or sea
+     of ~1 km² or more, on a ~250 m grid) is not drawn, and the line is split
+     there (national dataset `deep-inland`, scripts/national/deep-inland/);
+     a segment between two drawn vertices is sampled every LAND_STEP_KM
+     and split where a sample falls inland. So a boat on a trailer, a
+     transponder in a truck or a drifting GPS fix never draws a "ship track"
+     across land. NOAA's file keeps the positions as evidence.
 
 Outputs in OUT_DIR:
   tracks.pmtiles  layer "tracks": z3-8 merged per kind (prop kind only);
@@ -40,11 +46,14 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import shapely
 
+import land_rules  # over-land rules (rule 5), shared with build_us_points.py and add_classes.py --land
+
 SRC = "https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/ais-track-{ym}.parquet"
-RULES_VERSION = "us-v2"  # v2: zoomed-out tiles merge lines per vessel type (nothing dropped)
+RULES_VERSION = "us-v3"  # v2: zoomed-out tiles merge lines per vessel type (nothing dropped); v3: over-land rules
 TILESET = "us-v2"        # Blob folder + index; months from either derivation publish here
 JUMP_KM = 10
 PARKED_M = 100
+LAND_STEP_KM = land_rules.LAND_STEP_KM
 SIMPLIFY_DEG = 0.0002
 PACK_SIMPLIFY_DEG = 0.00005
 PACK_SHARDS = 1024
@@ -104,21 +113,27 @@ def lines_from_batch(tbl, stats):
     if not len(coords): return
     # break where the line changes or two vertices are > JUMP_KM apart
     same = cidx[1:] == cidx[:-1]
-    far = haversine_km(coords[:-1, 0], coords[:-1, 1], coords[1:, 0], coords[1:, 1]) > JUMP_KM
+    seg_km = haversine_km(coords[:-1, 0], coords[:-1, 1], coords[1:, 0], coords[1:, 1])
+    far = seg_km > JUMP_KM
     stats["jump_splits"] += int((same & far).sum())
     starts = np.concatenate([[0], np.nonzero(~same | far)[0] + 1])
     ends = np.concatenate([starts[1:], [len(coords)]])
     for s, e in zip(starts, ends):
         if e - s < 2:
             stats["single_vertex"] += 1; continue
-        c = coords[s:e]
-        lat = c[:, 1]
-        span = np.hypot((lat.max() - lat.min()) * 111320,
-                        (c[:, 0].max() - c[:, 0].min()) * 111320 * np.cos(np.radians(lat.mean())))
-        if span < PARKED_M:
-            stats["parked_not_drawn"] += 1; continue
         r = prow[cidx[s]]
-        yield int(mmsi[r]), vt[r], int(t0[r]), int(t1[r]), c
+        for c in land_split(coords[s:e], stats):
+            if span_m(c) < PARKED_M:
+                stats["parked_not_drawn"] += 1; continue
+            yield int(mmsi[r]), vt[r], int(t0[r]), int(t1[r]), c
+
+
+def span_m(c):
+    return land_rules.span_m(c)
+
+
+def land_split(c, stats):
+    return land_rules.land_split(c, stats)
 
 
 class LineWriter:
@@ -195,7 +210,8 @@ def build(ym, out_dir):
         download(ym, src)
     src_bytes = os.path.getsize(src)
     w = LineWriter(out_dir, ym)
-    stats = dict(rows=0, parts=0, jump_splits=0, single_vertex=0, parked_not_drawn=0, lines=0, vessels=0)
+    land_rules.grid()
+    stats = dict(rows=0, parts=0, jump_splits=0, **land_rules.stats(), single_vertex=0, parked_not_drawn=0, lines=0, vessels=0)
     pf = pq.ParquetFile(src)
     done = 0
     for batch in pf.iter_batches(batch_size=50_000, columns=["mmsi", "vessel_type", "start_time", "end_time", "geometry"]):
@@ -212,7 +228,7 @@ def build(ym, out_dir):
                     source=dict(name="MarineCadastre monthly vessel tracks (NOAA / BOEM / USCG)", license="CC0",
                                 url=url, bytes=src_bytes),
                     rules=dict(version=RULES_VERSION, jump_km=JUMP_KM, parked_m=PARKED_M, simplify_deg=SIMPLIFY_DEG,
-                               inland_rules="not applied (no US-wide land grid yet)",
+                               inland_rules=land_rules.describe(),
                                tippecanoe=" ".join(TIPPECANOE)),
                     pack=dict(shards=PACK_SHARDS, simplify_deg=PACK_SIMPLIFY_DEG, bytes=os.path.getsize(pack)),
                     pmtiles_bytes=os.path.getsize(pm), stats=stats,

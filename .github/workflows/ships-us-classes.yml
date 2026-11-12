@@ -16,6 +16,10 @@ on:
         type: choice
         options: [rebuild, splice-z34]
         default: rebuild
+      land:
+        description: 'Also apply the over-land rules (national deep-inland grid): drop positions deep inland, cut lines crossing land; rebuild z9-10 + the pack'
+        type: boolean
+        default: false
 
 concurrency:
   group: ships-us-classes
@@ -63,7 +67,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.months != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 120   # months from NOAA's daily files: ~1 h on one core (2026-10-09), now spread over all cores
+    timeout-minutes: 240   # ~1 h per month from the pack; --land adds the line filter + z9-10 (2021-07: 28 min on a Mac)
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -106,7 +110,8 @@ jobs:
           if [ "${{ inputs.mode }}" = "splice-z34" ]; then
             python3 scripts/ships/bake-us/splice_z34.py --month "$M" --out "$RUNNER_TEMP/cls"
           else
-            python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls" $CUT
+            LAND=$([ "${{ inputs.land }}" = "true" ] && echo --land || true)
+            python3 scripts/ships/bake-us/add_classes.py --month "$M" --types "$RUNNER_TEMP/types.json" --out "$RUNNER_TEMP/cls" $CUT $LAND
           fi
       - name: Upload ${{ matrix.month }}
         run: |

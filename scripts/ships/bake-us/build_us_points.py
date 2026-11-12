@@ -16,7 +16,9 @@ build_tracks.py) without its Salish-only land grid:
      counted, not drawn.
   4. Simplified like the monthly-file bake; `kind` from the track's most common
      vessel_type.
-  NOT applied: inland / over-land rules (need a US-wide land grid).
+  5. (us-v3-points) Over-land rules, shared with the monthly-file bake (common.land_split, national dataset
+     `deep-inland`): positions deep inland are not drawn and a track is cut there or where a straight segment
+     crosses land.
 
 Memory: positions are staged per day into MMSI buckets (mmsi % BUCKETS), then each
 bucket is turned into tracks on its own, so no step holds a whole month.
@@ -31,7 +33,7 @@ import duckdb
 import build_us_tracks as common
 
 URL = "https://noaaocm.blob.core.windows.net/ais/csv2/csv{y}/ais-{d}.csv.zst"
-RULES = "us-v2-points"
+RULES = "us-v3-points"
 GAP_MIN = 30
 MAX_KNOTS = 60
 MIN_DT_S = 30
@@ -132,7 +134,10 @@ def tracks_for_bucket(stage, b, tmp, stats):
                 stats["single_point"] += 1; continue
             if span < PARKED_M:
                 stats["parked_not_drawn"] += 1; continue
-            yield int(mmsi), v, int(a), int(z), np.column_stack([lons, lats]), None
+            for c in common.land_split(np.column_stack([lons, lats]), stats):
+                if common.span_m(c) < PARKED_M:
+                    stats["parked_not_drawn"] += 1; continue
+                yield int(mmsi), v, int(a), int(z), c, None
     con.close()
 
 
@@ -150,7 +155,8 @@ def build(ym, out_dir):
     missing = [d for d, s in staged.items() if s == "missing"]
     t_stage = round(time.time() - t_start)
 
-    stats = dict(points=0, tracks=0, single_point=0, parked_not_drawn=0, lines=0, vessels=0)
+    common.land_rules.grid()
+    stats = dict(points=0, tracks=0, single_point=0, parked_not_drawn=0, **common.land_rules.stats(), lines=0, vessels=0)
     w = common.LineWriter(out_dir, ym)
     batch = []
     for b in range(BUCKETS):
@@ -170,7 +176,8 @@ def build(ym, out_dir):
                     source=dict(name="MarineCadastre daily AIS points (NOAA / BOEM / USCG)", license="CC0",
                                 url=URL.format(y=ym[:4], d=f"{ym}-DD"), days=len(days), days_missing=missing),
                     rules=dict(version=RULES, gap_min=GAP_MIN, max_knots=MAX_KNOTS, min_dt_s=MIN_DT_S, parked_m=PARKED_M,
-                               simplify_deg=common.SIMPLIFY_DEG, inland_rules="not applied (no US-wide land grid yet)",
+                               simplify_deg=common.SIMPLIFY_DEG,
+                               inland_rules=common.land_rules.describe(),
                                tippecanoe=" ".join(common.TIPPECANOE)),
                     pack=dict(shards=common.PACK_SHARDS, simplify_deg=common.PACK_SIMPLIFY_DEG, bytes=os.path.getsize(pack)),
                     pmtiles_bytes=os.path.getsize(pm), stats=stats,

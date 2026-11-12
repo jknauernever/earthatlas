@@ -15,7 +15,13 @@ tells the map this month's zoomed-out lines can be filtered by class (older tile
   python3 add_classes.py --month 2025-12 --types https://earthatlas.org/api/ships?op=typeLookup --out build/us-classes
   (CRON_SECRET in the environment for the type lookup; --index defaults to the published us-v2 index)
 
-Output: <out>/<month>/tracks.pmtiles (+ manifest.json with the counts). Deps: shapely, numpy; tippecanoe + tile-join.
+--land (us-v2-cls6, Josh 2026-11-12): also apply the over-land rules (land_rules.py, national dataset `deep-inland`) to
+every line first: positions deep inland are dropped and lines cut there or where they cross land, so published months
+lose the trailer drives and GPS drift the bake drew before it had a US land grid. z9-10 are rebuilt from the filtered
+lines, and a filtered pack is written (tracks.pack here, published as tracks-cls6.pack: the ship card reads it).
+
+Output: <out>/<month>/tracks.pmtiles [+ tracks.pack with --land] (+ manifest.json with the counts).
+Deps: shapely, numpy; tippecanoe + tile-join.
 """
 import argparse, gzip, json, os, struct, subprocess, sys, time, urllib.request
 from collections import Counter
@@ -26,6 +32,7 @@ import shapely
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'bake-gfw'))
 from bake import ShipTypes  # noqa: E402  the GFW bake's lookup, reused (never a second copy of the rule)
+import land_rules  # noqa: E402  the US bakes' over-land rules (--land)
 
 
 def _bake_constants(*names):
@@ -45,6 +52,9 @@ CLASS_RULES = 'us-v2-cls1'
 # 2026-10-09): inside the box only the Salish lines draw, so a US line crossing the box edge no longer doubles them
 # (the map's `within` filter can't cut a line). z9-10 are then rebuilt from the pack too, with build_us_tracks.py's props.
 CUT_RULES = 'us-v2-cls5'    # cls5 (cls2 + z3-4 uncut); cls2 = the first cut, which left z3-4 empty in the box
+LAND_RULES = 'us-v2-cls6'   # cls6 = cls1/cls5 + the over-land rules on every line, z9-10 and the pack rebuilt (--land)
+PARKED_M = 100              # build_us_tracks.py's: a piece left shorter than this is a moored boat's jitter
+PACK_SHARDS = 1024
 SALISH_BBOX = json.load(open(os.path.join(HERE, '..', '..', '..', 'src', 'ships', 'trackSource.json')))['bbox']
 UA = {'User-Agent': 'earthatlas-bake/1.0 (+https://earthatlas.org)'}
 # Same as TIPPECANOE_LOW, but features also coalesce per class (and keep the cv flag).
@@ -130,6 +140,57 @@ def _simplify(job):
     return out
 
 
+class PackWriter:
+    """A ship-track pack ('SHTP' layout, as build_us_tracks.py writes it), staged per shard on disk."""
+    def __init__(self, wd):
+        self.dir = os.path.join(wd, 'pack-shards'); os.makedirs(self.dir, exist_ok=True)
+        self.fh = {}
+        self.lines, self.vessels = 0, set()
+
+    def add(self, r):
+        sh = r['mmsi'] % PACK_SHARDS
+        f = self.fh.get(sh) or self.fh.setdefault(sh, open(os.path.join(self.dir, f'{sh}.ndjson'), 'a'))
+        f.write(json.dumps(r, separators=(',', ':')) + '\n')
+        self.lines += 1; self.vessels.add(r['mmsi'])
+
+    def finish(self, path):
+        for f in self.fh.values():
+            f.close()
+        offsets, pos = [], 0
+        with open(path + '.tmp', 'wb') as out:
+            out.write(b'SHTP'); out.write(struct.pack('<I', PACK_SHARDS)); out.write(b'\0' * 4 * (PACK_SHARDS + 1))
+            for sh in range(PACK_SHARDS):
+                offsets.append(pos)
+                f = os.path.join(self.dir, f'{sh}.ndjson')
+                if not os.path.exists(f):
+                    continue
+                rows = open(f).read().splitlines()
+                rows.sort(key=lambda r: (lambda o: (o['mmsi'], o['t0']))(json.loads(r)))
+                blob = gzip.compress(('\n'.join(rows) + '\n').encode(), 9)
+                out.write(blob); pos += len(blob); os.remove(f)
+            offsets.append(pos)
+            out.seek(8); out.write(struct.pack(f'<{PACK_SHARDS + 1}I', *offsets))
+        os.replace(path + '.tmp', path)
+        os.rmdir(self.dir)
+
+
+def land_rows(r, st):
+    """One pack row → its rows after the over-land rules (same props, coords cut)."""
+    c = np.asarray(r['c'], dtype=np.float64)
+    pieces = land_rules.land_split(c, st)
+    if len(pieces) == 1 and len(pieces[0]) == len(c):
+        return [r]
+    out = []
+    for p in pieces:
+        if land_rules.span_m(p) < PARKED_M:
+            st['parked_after_cut'] = st.get('parked_after_cut', 0) + 1
+            continue
+        out.append({**r, 'c': np.round(p, 5).tolist()})
+    if not out:
+        st['lines_removed'] = st.get('lines_removed', 0) + 1
+    return out
+
+
 def zoom_range(flags, lo, hi):
     """A tippecanoe flag list with its -Z/-z replaced."""
     return [f'-Z{lo}' if f.startswith('-Z') else f'-z{hi}' if f.startswith('-z') else f for f in flags]
@@ -142,6 +203,7 @@ def main():
     ap.add_argument('--index', default=INDEX)
     ap.add_argument('--out', required=True)
     ap.add_argument('--cut-salish', action='store_true', help='cut lines at the Salish detail box (months with Salish tracks)')
+    ap.add_argument('--land', action='store_true', help='apply the over-land rules; rebuild z9-10 and the pack')
     a = ap.parse_args()
     ym = a.month
     wd = os.path.join(a.out, ym)
@@ -152,6 +214,9 @@ def main():
     tiles = get(entry['tiles'], os.path.join(wd, 'src.pmtiles'))
     types = ShipTypes.load(a.types)
 
+    full_props = a.cut_salish or a.land   # z9-10 rebuilt from these lines: keep build_us_tracks.py's per-line props
+    land_st = land_rules.stats()
+    pw = PackWriter(wd) if a.land else None
     t0 = time.time()
     # Cut months write two inputs: uncut lines (z3-4: the Salish tiles start at z5, so a cut there left the Salish Sea
     # empty when zoomed out; fixed 2026-10-09) and cut lines (z5-10).
@@ -177,7 +242,7 @@ def main():
                 probe = {'mmsi': r['mmsi'], 'kind': r['kind'], 't0': r['t0'], 't1': r['t1']}
                 types.apply(probe)           # only its class is taken; the NOAA kind stays as baked
                 # Cut months rebuild z9-10 from these features too, so they keep build_us_tracks.py's per-line props.
-                props = ({k: v for k, v in r.items() if k != 'c'} | {'month': ym} if a.cut_salish else {'kind': r['kind']}) | {'cv': 1}
+                props = ({k: v for k, v in r.items() if k != 'c'} | {'month': ym} if full_props else {'kind': r['kind']}) | {'cv': 1}
                 if probe.get('cls'):
                     props['cls'] = probe['cls']
                     stats['with_class'] += 1
@@ -193,15 +258,21 @@ def main():
                     out.write(feat(gc, props))
             batch.clear()
 
-        for r in pack_rows(pack):
-            if len(r.get('c') or []) < 2:
+        for r0 in pack_rows(pack):
+            if len(r0.get('c') or []) < 2:
                 continue
-            batch.append(r)
-            if len(batch) >= 20000:
-                flush()
+            for r in (land_rows(r0, land_st) if a.land else [r0]):
+                if pw:
+                    pw.add(r)
+                batch.append(r)
+                if len(batch) >= 20000:
+                    flush()
         if batch:
             flush()
     print(f'lines: {dict(stats)} in {time.time() - t0:.0f} s', flush=True)
+    if pw:
+        print(f'land: {land_st}', flush=True)
+        pw.finish(os.path.join(wd, 'tracks.pack'))
 
     t1 = time.time()
     low, high, pm = (os.path.join(wd, f) for f in ('low.pmtiles', 'high.pmtiles', 'tracks.pmtiles'))
@@ -214,13 +285,19 @@ def main():
         tip(low, 'tracks', zoom_range(TIPPECANOE_LOW_CLS, 5, 8), nd)
         tip(high, 'tracks', [*TIPPECANOE_HIGH, '-x', 'cls', '-x', 'cv'], nd)
         parts.append(low34)
+    elif a.land:
+        # z3-8 merged per kind + class, z9-10 per line, both from the filtered lines
+        tip(low, 'tracks', TIPPECANOE_LOW_CLS, nd)
+        tip(high, 'tracks', [*TIPPECANOE_HIGH, '-x', 'cls', '-x', 'cv'], nd)
     else:
         tip(low, 'tracks', TIPPECANOE_LOW_CLS, nd)
         subprocess.run(['tile-join', '-o', high, '-f', '--no-tile-size-limit', '--minimum-zoom=9', tiles], check=True)   # z9-10 as published
     subprocess.run(['tile-join', '-o', pm, '-f', '--no-tile-size-limit', *parts], check=True)
     for f in (*parts, nd, nd_full):
         os.remove(f)
-    manifest = {'month': ym, 'rules': CUT_RULES if a.cut_salish else CLASS_RULES,
+    manifest = {'month': ym, 'rules': LAND_RULES if a.land else CUT_RULES if a.cut_salish else CLASS_RULES,
+                'land': (land_rules.describe() | {'stats': land_st, 'lines': pw.lines, 'vessels': len(pw.vessels),
+                                                 'pack_bytes': os.path.getsize(os.path.join(wd, 'tracks.pack'))}) if a.land else None,
                 'cut_box': SALISH_BBOX if a.cut_salish else None, 'from_tiles': entry['tiles'], 'from_pack': entry['pack'],
                 'tippecanoe_low': ' '.join(TIPPECANOE_LOW_CLS), 'stats': dict(stats), 'types': dict(types.stats),
                 'pmtiles_bytes': os.path.getsize(pm), 'secs': {'lines': round(t1 - t0), 'tiles': round(time.time() - t1)}}

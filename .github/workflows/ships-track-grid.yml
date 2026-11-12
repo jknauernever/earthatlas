@@ -1,15 +1,15 @@
 # Ships per 1° square for the "Where we have ship tracks" map in the /ships general report
 # (scripts/ships/track-grid.py → ships/track-grid/grid.json on Blob).
 #
-# Runs after each workflow that writes a track index (US NOAA, GFW, recorded live) and counts only
-# the months whose tracks were rebuilt since the last count (grid.json records each month's `built`).
+# Runs after each workflow that writes a track index (US NOAA bake + class/land rebuild, GFW, recorded live) and counts
+# only the months whose tracks changed since the last count (grid.json records a stamp per month).
 # Run by hand for the first full count, a re-count (`months`), or a union rebuilt from month files.
 # Uploads use one-file tokens from api/cron/ships-upload-token.js (CRON_SECRET), never a Blob token.
 name: ships-track-grid
 
 on:
   workflow_run:
-    workflows: [ships-us-tracks-bake, ships-gfw-index, ships-aisstream-month]
+    workflows: [ships-us-tracks-bake, ships-us-classes, ships-gfw-index, ships-aisstream-month]
     types: [completed]
   workflow_dispatch:
     inputs:

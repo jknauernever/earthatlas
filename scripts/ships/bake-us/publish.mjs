@@ -9,6 +9,7 @@
 //   node scripts/ships/bake-us/publish.mjs --classes 2025-06 DIR --entry-out F
 //        a month rebuilt by add_classes.py: upload its tracks-clsN.pmtiles + manifest-clsN.json (N from its rules) beside the month's
 //        published files and write that month's index entry with only tiles / pmtiles_bytes / classes changed
+//        (a --land rebuild also uploads tracks-clsN.pack and points pack / pack_bytes / lines / vessels at it)
 //                                                                         to the index in one write
 //
 // Each file gets a one-file upload token from api/cron/ships-upload-token.js
@@ -98,8 +99,11 @@ if (CLASSES_MODE) {
   if (!stamp) throw new Error(`manifest rules ${manifest.rules} carry no clsN stamp`)
   const tiles = await upload(`${BASE}/${ym}/tracks-${stamp}.pmtiles`, resolve(BUILD, 'tracks.pmtiles'), 'application/vnd.pmtiles')
   const man = await upload(`${BASE}/${ym}/manifest-${stamp}.json`, resolve(BUILD, 'manifest.json'), 'application/json')
+  // --land rebuilds (add_classes.py): the filtered pack too, under its own name (packs are cached for 30 days)
+  const land = manifest.land ? { pack: await upload(`${BASE}/${ym}/tracks-${stamp}.pack`, resolve(BUILD, 'tracks.pack'), 'application/octet-stream'),
+    pack_bytes: manifest.land.pack_bytes, lines: manifest.land.lines, vessels: manifest.land.vessels } : {}
   const e = { tileset: cur.version || BASE.split('/').pop(), month: ym, indexUrl,
-    entry: { ...old, tiles, pmtiles_bytes: manifest.pmtiles_bytes, classes: { rules: manifest.rules, manifest: man,
+    entry: { ...old, tiles, pmtiles_bytes: manifest.pmtiles_bytes, ...land, classes: { rules: manifest.rules, manifest: man,
       lines_with_class: manifest.stats.with_class } } }
   if (ENTRY_OUT) { writeFileSync(ENTRY_OUT, JSON.stringify(e)); console.log(`entry → ${ENTRY_OUT}`) }
   else await writeIndex([e])

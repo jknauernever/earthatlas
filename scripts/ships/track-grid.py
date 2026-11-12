@@ -20,12 +20,14 @@ Rules
   2. A ship = an MMSI. A square's count = distinct MMSIs whose drawn tracks touch it.
   3. Per month:  ships/track-grid/<tileset>/<YYYY-MM>.parquet  (cell, mmsi) pairs.
      Per source: ships/track-grid/<tileset>/all.parquet = the union of its months.
-     A rebuilt month is folded into the union (a union only grows, as months
-     only gain tracks); `--rebuild` recomputes a union from its month files.
+     A NEW month is folded into the union; when a month already counted is
+     counted again (its tracks were re-baked or re-filtered, so pairs can
+     disappear), or with `--rebuild`, the union is recomputed from month files.
   4. ships/track-grid/grid.json: per square, distinct ships per source and in
      all sources together (an MMSI seen by two sources counts once), plus each
-     source's months and the `built` time of every month counted, so the next
-     run only reads months whose tracks were rebuilt.
+     source's months and a stamp of every month counted (its pack URL when the
+     pack was re-filtered under its own name, else its `built` time), so the
+     next run only reads months whose tracks changed.
   Cell id = (floor(lat) + 90) * 360 + (floor(lon) + 180); its south-west corner
   is lon = id % 360 - 180, lat = id // 360 - 90.
 
@@ -167,13 +169,16 @@ def main():
         prev = json.load(open(os.path.join(out, "grid.json")))
     counted = {t: dict((prev.get("sources", {}).get(SOURCES[t]) or {}).get("built") or {}) for t in SOURCES}
 
+    def stamp(e):  # what changes when a month's tracks change (add_classes.py --land renames the pack, keeps `built`)
+        return e["pack"] if "/tracks-cls" in (e.get("pack") or "") else e.get("built")
+
     jobs, indexes = [], {}
     for t in tilesets:
         idx = get_json(f"{BLOB}ships/tracks/{t}/index.json") or {"months": {}}
         indexes[t] = idx["months"]
         months = sorted(idx["months"], reverse=True)
         if a.months: months = [m for m in months if m in a.months]
-        else: months = [m for m in months if counted[t].get(m) != idx["months"][m].get("built")]
+        else: months = [m for m in months if counted[t].get(m) != stamp(idx["months"][m])]
         if a.limit: months = months[: a.limit]
         for m in months:
             jobs.append((t, m, idx["months"][m]["pack"], out, a.shards))
@@ -189,6 +194,7 @@ def main():
 
     con = duckdb.connect()
     con.execute("SET preserve_insertion_order=false")
+    recounted = set()   # sources with a month counted again: their union is rebuilt, not folded
     for r in done:
         p = os.path.join(out, r["tileset"], f"{r['month']}.parquet")
         arr = np.load(r["npy"])
@@ -197,14 +203,16 @@ def main():
                     f"TO '{p}' (FORMAT parquet, COMPRESSION zstd)")
         con.unregister("k"); os.remove(r["npy"])
         put(f"{GRID}/{r['tileset']}/{r['month']}.parquet", p, "application/vnd.apache.parquet", a.upload)
-        counted[r["tileset"]][r["month"]] = indexes[r["tileset"]][r["month"]].get("built")
+        if r["month"] in counted[r["tileset"]]: recounted.add(r["tileset"])
+        counted[r["tileset"]][r["month"]] = stamp(indexes[r["tileset"]][r["month"]])
 
     # Rule 3: per-source unions.
     unions = {}
     for t in SOURCES:
         u = os.path.join(out, t, "all.parquet")
         mine = [os.path.join(out, t, f"{r['month']}.parquet") for r in done if r["tileset"] == t]
-        if a.rebuild and t in tilesets:
+        rebuild = (a.rebuild and t in tilesets) or t in recounted
+        if rebuild:
             files = [os.path.join(out, t, f"{m}.parquet") for m in sorted(counted[t])]
             for m, f in zip(sorted(counted[t]), files):
                 if not os.path.exists(f): download(f"{BLOB}{GRID}/{t}/{m}.parquet", f)
@@ -215,7 +223,7 @@ def main():
                 except urllib.error.HTTPError: pass
             if os.path.exists(u): files.append(u)
         if not files: continue
-        if mine or (a.rebuild and t in tilesets):
+        if mine or rebuild:
             tmp = u + ".new"
             lst = ", ".join(f"'{f}'" for f in files)
             con.execute(f"COPY (SELECT DISTINCT cell, mmsi FROM read_parquet([{lst}]) ORDER BY 1, 2) TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)")

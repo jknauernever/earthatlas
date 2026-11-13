@@ -1,4 +1,6 @@
 [
-  { "id": "san-juan-islands", "name": "San Juan Islands", "bounds": [-123.174, 48.387, -122.73, 48.782] },
-  { "id": "fisherman-bay", "name": "Fisherman Bay, Lopez Island", "bounds": [-122.985, 48.48, -122.87, 48.549] }
+  {"id": "san-juan-islands", "name": "San Juan Islands", "bounds": [-123.174, 48.387, -122.73, 48.782]},
+  {"id": "fisherman-bay", "name": "Fisherman Bay, Lopez Island", "bounds": [-122.985, 48.48, -122.87, 48.549]},
+  {"id": "north-shores", "name": "Orcas, Waldron and the north shores", "bounds": [-123.12, 48.6, -122.84, 48.76]},
+  {"id": "east-sound-lopez", "name": "Lopez, Shaw and Friday Harbor shores", "bounds": [-123.06, 48.45, -122.79, 48.63]}
 ]

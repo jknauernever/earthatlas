@@ -41,7 +41,7 @@ const loadCounts = (subsite) => (countsCache[subsite] ??= fetch(STORY_SUBSITES[s
  *   chapters: [{ id, railLabel, kicker, headline, body, photo, stat, view, actions }]
  *     photo   { src, alt, caption, credit, focalPoint: { x, y }, subject: { x, y } }
  *     stat    { value: '407', unit: 'mi', label } or null
- *     view    { camera: { bounds } | { center, zoom }, layers: [{ id, emphasis, opacity, filter, highlight: { prop, ids } | null }], labels: [{ text, at, small }], frames: [bounds] }
+ *     view    { camera: { bounds } | { center, zoom }, layers: [{ id, emphasis, opacity, filter, highlight: { prop, ids } | null, rings }], labels: [{ text, at, small }], frames: [bounds] }
  *     actions [{ label, href }]
  *   sources:  [{ name, href, publisher }] — every source the story's records cite, then the subsite's report counts
  * }
@@ -83,7 +83,7 @@ export async function loadStory(subsite, slug) {
       },
       view: {
         camera: v.camera.place ? { bounds: place(v.camera.place).bounds } : v.camera,
-        layers: layers.map((l) => ({ id: l.id, emphasis: l.emphasis, opacity: l.emphasis === 'dim' ? (l.opacity ?? 0.5) : 1, filter: l.filter || null, highlight: l.highlight ? countedSet(l.highlight) : null })),
+        layers: layers.map((l) => ({ id: l.id, emphasis: l.emphasis, opacity: l.emphasis === 'dim' ? (l.opacity ?? 0.5) : 1, filter: l.filter || null, highlight: l.highlight ? countedSet(l.highlight) : null, rings: !!(l.highlight && l.rings) })),
         labels: v.labels ? rec('labelSet', v.labels).items : [],
         frames: (v.frames || []).map((f) => place(f).bounds),
       },

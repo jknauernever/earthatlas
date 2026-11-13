@@ -15,7 +15,9 @@ import m from './StoryMap.module.css'
  *   subsite      e.g. 'shoreline'
  *   layerIds     every layer the story shows (loaded once, up front)
  *   view         the chapter's view: { camera: { bounds } | { center, zoom }, layers, labels, frames }; a layer's
- *                highlight ({ prop, ids }) draws those features at full glow and the rest at the layer's emphasis
+ *                highlight ({ prop, ids }) draws those features at full glow and the rest at the layer's emphasis,
+ *                with rings a pulsing ring around each of them. A layer that comes on sweeps in from the middle of
+ *                the chapter's view outward (each feature at its distance from it).
  *   reducedMotion  no camera flight, pulsing or flowing; instant changes
  *   onCamera     ({ lng, lat, zoom }) after each move, for "Open the full map"
  *
@@ -35,6 +37,8 @@ const S2 = BASE_IMAGERY.find((b) => b.id === 's2-2025')
 const LAYER_MS = 1100               // layer opacity change (DESIGN.md Motion)
 const CAMERA_MS = 2400              // camera to and from a detail view
 const DETAIL = { ms: 1200, delay: 600 }  // layers after a camera move
+const SWEEP_MS = 1700             // a layer that comes on spreads out from the middle of the view
+const RING = { ms: 900, after: 700, r: 11 }  // rings round highlighted features: fade/grow, start after the sweep starts, radius px
 
 // CSS cubic-bezier(x1, y1, x2, y2) as a function of t
 function bezier(x1, y1, x2, y2) {
@@ -60,6 +64,16 @@ const ANIM = {
 const STEPS = 16
 const pulse = (t) => 0.55 + 0.45 * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 3.4))
 
+// each feature's middle vertex, as _x/_y: where the sweep reaches it and where its ring goes
+function anchor(fc) {
+  for (const f of fc.features) {
+    const g = f.geometry, lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : null
+    if (!lines) continue
+    const l = lines.reduce((a, b) => (b.length > a.length ? b : a)), c = l[Math.floor(l.length / 2)]
+    f.properties._x = c[0]; f.properties._y = c[1]
+  }
+  return fc
+}
 const rect = ([w, s, e, n]) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[w, s], [e, s], [e, n], [w, n], [w, s]] } })
 const sameCamera = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 // a line width (a number, or the look's zoom interpolation) times k
@@ -68,7 +82,7 @@ const scaled = (v, k) => (k === 1 ? v : typeof v === 'number' ? v * k
 
 export default function StoryMap({ subsite, layerIds, view, reducedMotion = false, onCamera, locked = false, fit, small = false, lineScale = 1 }) {
   const box = useRef(null)
-  const st = useRef({ map: null, ready: false, parts: [], labels: [], view: null, camera: null })
+  const st = useRef({ map: null, ready: false, parts: [], labels: [], view: null, camera: null, data: {}, rings: { cur: 0, from: 0, to: 0, t0: 0, ms: 0 } })
   const [ready, setReady] = useState(false)
   const motion = useRef(reducedMotion)
   motion.current = reducedMotion
@@ -121,13 +135,19 @@ export default function StoryMap({ subsite, layerIds, view, reducedMotion = fals
       if (!data || ac.signal.aborted) return
       layerIds.forEach((id, i) => {
         const L = look.layers[id]
-        map.addSource(`story-${id}`, { type: 'geojson', data: L.prepare ? L.prepare(data[i]) : data[i] })
+        const fc = anchor(L.prepare ? L.prepare(data[i]) : data[i])
+        s.data[id] = fc
+        map.addSource(`story-${id}`, { type: 'geojson', data: fc })
         L.parts.forEach((p, j) => {
           const lid = `story-${id}-${j}`
           map.addLayer({ id: lid, type: 'line', source: `story-${id}`, layout: { ...p.layout }, paint: { ...p.paint, 'line-width': scaled(p.paint['line-width'], lineScale), ...(p.paint['line-blur'] != null && { 'line-blur': scaled(p.paint['line-blur'], lineScale) }), 'line-opacity': 0, 'line-opacity-transition': { duration: 0 } } })
           s.parts.push({ lid, layer: id, role: p.role, base: p.opacity, animate: p.animate, cur: 0, from: 0, to: 0, hi: { cur: 0, from: 0, to: 0 }, set: null, t0: 0, ms: 0, shown: -1, dash: -1 })
         })
       })
+      // rings round a chapter's highlighted features (a view layer's "rings")
+      map.addSource('story-rings', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({ id: 'story-rings-halo', type: 'circle', source: 'story-rings', paint: { 'circle-color': '#FFC74D', 'circle-blur': 1, 'circle-radius': 0, 'circle-opacity': 0, 'circle-opacity-transition': { duration: 0 }, 'circle-radius-transition': { duration: 0 } } })
+      map.addLayer({ id: 'story-rings', type: 'circle', source: 'story-rings', paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#FFEFC2', 'circle-stroke-width': 1.6, 'circle-radius': 0, 'circle-stroke-opacity': 0, 'circle-stroke-opacity-transition': { duration: 0 }, 'circle-radius-transition': { duration: 0 } } })
       map.addSource('story-frames', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addLayer({ id: 'story-frames', type: 'line', source: 'story-frames', paint: { 'line-color': '#FFFFFF', 'line-width': 2, 'line-dasharray': [3.5, 3], 'line-opacity': 0, 'line-opacity-transition': { duration: LAYER_MS } } })
       s.ready = true
@@ -158,10 +178,20 @@ export default function StoryMap({ subsite, layerIds, view, reducedMotion = fals
         p.hi.cur = p.hi.from + (p.hi.to - p.hi.from) * ease(k)
         const beat = p.animate === 'pulse' && !motion.current ? pulse(t) : 1
         const shown = p.cur * beat, hiShown = p.hi.cur * beat
+        // sweeping in: features out to radius r from the view's middle, a soft edge beyond
+        let sweep = null
+        if (p.sweep) {
+          const sk = (now - p.sweep.t0) / p.sweep.ms
+          if (sk >= 1) { p.sweep = null; p.shown = -1 } else {
+            const r = ease(Math.max(0, sk)) * (p.sweep.R + p.sweep.soft)
+            sweep = ['min', 1, ['max', 0, ['/', ['-', r, p.sweep.dist], p.sweep.soft]]]
+          }
+        }
         // a highlighted set: its features on their own opacity, the rest of the layer on the chapter's
-        if (Math.abs(shown - p.shown) > 0.004 || Math.abs(hiShown - p.hiShown) > 0.004) {
-          map.setPaintProperty(p.lid, 'line-opacity', p.set ? ['case', ['in', ['get', p.set.prop], ['literal', p.set.ids]], hiShown, shown] : shown)
-          p.shown = shown; p.hiShown = hiShown
+        if (sweep || Math.abs(shown - p.shown) > 0.004 || Math.abs(hiShown - p.hiShown) > 0.004) {
+          const op = p.set ? ['case', ['in', ['get', p.set.prop], ['literal', p.set.ids]], hiShown, shown] : shown
+          map.setPaintProperty(p.lid, 'line-opacity', sweep ? ['*', op, sweep] : op)
+          p.shown = sweep ? -1 : shown; p.hiShown = hiShown
         }
         const a = ANIM[p.animate]
         if (a) {
@@ -171,8 +201,27 @@ export default function StoryMap({ subsite, layerIds, view, reducedMotion = fals
       }
     }
     raf = requestAnimationFrame(tick)
+    // rings: fade and grow in, a slow pulse while shown
+    s.ringScale = Math.max(lineScale, 0.75)
+    let ringRaf = 0
+    const ringTick = (now) => {
+      ringRaf = requestAnimationFrame(ringTick)
+      if (!s.ready) return
+      const g = s.rings, k = g.ms ? Math.min(1, Math.max(0, (now - g.t0) / g.ms)) : 1
+      g.cur = g.from + (g.to - g.from) * ease(k)
+      if (g.cur < 0.003 && g.shown === 0) return
+      const beat = motion.current ? 0.5 : 0.5 - 0.5 * Math.cos((2 * Math.PI * now) / 1000 / 2.4)
+      const grow = g.to > 0 ? 0.4 + 0.6 * ease(k) : 1
+      const r = RING.r * s.ringScale * grow * (1 + 0.18 * beat)
+      map.setPaintProperty('story-rings', 'circle-radius', r)
+      map.setPaintProperty('story-rings', 'circle-stroke-opacity', g.cur * (0.75 + 0.25 * beat))
+      map.setPaintProperty('story-rings-halo', 'circle-radius', r * 1.5)
+      map.setPaintProperty('story-rings-halo', 'circle-opacity', g.cur * (0.18 + 0.14 * beat))
+      g.shown = g.cur < 0.003 ? 0 : 1
+    }
+    ringRaf = requestAnimationFrame(ringTick)
 
-    return () => { stopCard(); ac.abort(); cancelAnimationFrame(raf); s.labels.forEach((x) => x.remove()); map.remove(); s.ready = false; s.parts = []; s.labels = []; s.labelKey = null; s.view = null; setReady(false) }
+    return () => { stopCard(); ac.abort(); cancelAnimationFrame(raf); cancelAnimationFrame(ringRaf); s.rings = { cur: 0, from: 0, to: 0, t0: 0, ms: 0 }; s.labels.forEach((x) => x.remove()); map.remove(); s.ready = false; s.parts = []; s.labels = []; s.labelKey = null; s.view = null; setReady(false) }
     // the map is made once per story; chapters change it below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subsite, layerIds.join(','), locked, lineScale])
@@ -196,25 +245,52 @@ export default function StoryMap({ subsite, layerIds, view, reducedMotion = fals
     const now = performance.now()
     const timing = instant ? { ms: 0, delay: 0 } : moving ? DETAIL : { ms: LAYER_MS, delay: 0 }
     const byId = Object.fromEntries(view.layers.map((l) => [l.id, l]))
+    // layers coming on (hidden until now) sweep in from the middle of the chapter's view
+    const hidden = (id) => s.parts.every((p) => p.layer !== id || (p.to === 0 && p.hi.to === 0))
+    const sweeping = new Set(instant ? [] : layerIds.filter((id) => byId[id] && byId[id].emphasis !== 'faint' && hidden(id)))
+    let sweepFrom = null
+    if (sweeping.size) {
+      const [w, so, e, n] = view.camera.bounds || (() => { const b = map.getBounds(); return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] })()
+      const cx = (w + e) / 2, cy = (so + n) / 2, k = Math.cos((cy * Math.PI) / 180)
+      const R = Math.hypot(((e - w) / 2) * k, (n - so) / 2) * 1.15
+      const dist = ['sqrt', ['+', ['^', ['*', ['-', ['get', '_x'], cx], k], 2], ['^', ['-', ['get', '_y'], cy], 2]]]
+      sweepFrom = { R, soft: R * 0.3, dist, ms: SWEEP_MS }
+    }
     for (const p of s.parts) {
       const l = byId[p.layer]
       let to = 0
-      if (l) {
+      if (l && l.emphasis !== 'off') {
         const strength = l.emphasis === 'dim' ? l.opacity : 1
-        to = p.role === 'core' ? p.base * strength : l.emphasis === 'on' ? 0 : p.base * strength
+        // faint: only the look's quiet backdrop line; otherwise that line stays off
+        if (l.emphasis === 'faint' || p.role === 'faint') to = l.emphasis === 'faint' && p.role === 'faint' ? p.base : 0
+        else to = p.role === 'core' ? p.base * strength : l.emphasis === 'on' ? 0 : p.base * strength
       }
+      if (sweeping.has(p.layer)) p.sweep = { ...sweepFrom, t0: now + timing.delay }
       // highlighted features: the layer's full glow; without a highlight they follow the rest
       const hiTo = l?.highlight ? p.base : to
       if (l?.highlight) p.set = l.highlight
       if (to === p.to && hiTo === p.hi.to) continue
       p.from = p.cur; p.to = to; p.hi.from = p.hi.cur; p.hi.to = hiTo; p.t0 = now + timing.delay; p.ms = timing.ms
     }
-    // feature filters (e.g. only the highest Chinook level)
+    // feature filters (e.g. only the highest Chinook level); a layer leaving keeps its filter while it fades out
     for (const id of layerIds) {
+      if (!byId[id] && s.view) continue
       const f = byId[id]?.filter
       const expr = f ? ['all', ...Object.entries(f).map(([k, v]) => (Array.isArray(v) ? ['in', ['get', k], ['literal', v]] : ['==', ['get', k], v]))] : null
       for (const p of s.parts.filter((x) => x.layer === id)) map.setFilter(p.lid, expr)
     }
+
+    // rings round the highlighted features of a layer that asks for them
+    const ringed = view.layers.find((l) => l.rings && l.highlight && s.data[l.id])
+    const g = s.rings
+    if (ringed) {
+      const ids = new Set(ringed.highlight.ids)
+      map.getSource('story-rings').setData({ type: 'FeatureCollection', features: s.data[ringed.id].features
+        .filter((f) => ids.has(f.properties[ringed.highlight.prop]) && f.properties._x != null)
+        .map((f) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [f.properties._x, f.properties._y] } })) })
+    }
+    const ringTo = ringed ? 1 : 0
+    if (ringTo !== g.to) { g.from = g.cur; g.to = ringTo; g.t0 = now + (instant ? 0 : ringTo ? timing.delay + RING.after : 0); g.ms = instant ? 0 : RING.ms }
 
     map.getSource('story-frames').setData({ type: 'FeatureCollection', features: view.frames.map(rect) })
     map.setPaintProperty('story-frames', 'line-opacity-transition', { duration: instant ? 0 : LAYER_MS })

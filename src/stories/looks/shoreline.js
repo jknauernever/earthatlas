@@ -8,6 +8,7 @@
  *   glow     wide blurred halo: shown for 'glow' and 'dim', hidden for 'on'
  *   core     the line itself
  *   sparkle  moving highlight along the line: like glow
+ *   faint    a quiet gray backdrop line: shown only for 'faint', in place of the other parts
  * `opacity` is the part's own strength at full emphasis; `animate` is 'pulse' (glow brightens and fades, 3.4 s),
  * 'flow' (dashes run along the line, 1.8 s) or 'sparkle' (sparse dashes drift along it, 7 s).
  *
@@ -36,6 +37,7 @@ export default {
     geology: {
       file: `${DATA}friends-shoreline-geology.json`,
       parts: [
+        { role: 'faint', opacity: 0.5, layout: round, paint: { 'line-color': '#A9B6BF', 'line-width': w(1, 1.3) } },
         { role: 'glow', opacity: 0.35, layout: round, paint: { 'line-color': '#7FD0F0', 'line-width': w(5, 6), 'line-blur': w(2.5, 3) } },
         { role: 'core', opacity: 0.9, layout: round, paint: { 'line-color': '#CFEFFF', 'line-width': w(1.3, 1.7) } },
         { role: 'sparkle', opacity: 0.9, animate: 'sparkle', layout: round, paint: { 'line-color': '#FFFFFF', 'line-width': w(1.5, 1.8) } },

@@ -1,0 +1,9 @@
+.wrap { position: absolute; inset: 0; }
+.map { position: absolute; inset: 0; background: #061624; }
+
+/* Island labels: Inter 600, uppercase, ~.15em tracking, #E4F0F8 with a #04101A halo (DESIGN.md "Map look") */
+.label {
+  font-family: Inter, system-ui, sans-serif; font-weight: 600; text-transform: uppercase; white-space: nowrap;
+  font-size: var(--story-label-size, max(11px, calc(var(--u, 13.15px) * 1))); letter-spacing: var(--story-label-spacing, 0.15em); color: #E4F0F8;
+  -webkit-text-stroke: var(--story-label-stroke, 3px) #04101A; paint-order: stroke fill; pointer-events: none;
+}

@@ -8,12 +8,17 @@ parcels buffered 15 m and unioned give the land masses, each named by the distri
 counted at the nearest land mass: points directly, lines in ≤20 m pieces (by midpoint), kelp beds by their own point, herring
 grounds by a 50 m grid inside, parcels and buildings by the land mass they sit on.
 
-Usage:  python3 scripts/shoreline/report-counts.py
+Places (content/shoreline/places.json, the named areas stories frame and zoom to) are counted too, under places.<id>:
+armor pieces that touch the place's box, and armor miles inside it.
+
+Usage:  python3 scripts/shoreline/report-counts.py                 (everything)
+        python3 scripts/shoreline/report-counts.py --places-only   (recount places in the existing file; needs no raw data)
 Needs:  shapely>=2, pyproj; data/shoreline/raw/{parcels,buildings}.geojson (fetch-county.mjs)
 """
 import json
 import os
 import re
+import sys
 from collections import defaultdict
 from datetime import date
 
@@ -26,6 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 RAW = os.path.join(ROOT, 'data', 'shoreline', 'raw')
 PUB = os.path.join(ROOT, 'public', 'shoreline-data')
 OUT = os.path.join(PUB, 'report-counts.json')
+PLACES = os.path.join(ROOT, 'content', 'shoreline', 'places.json')
 
 M_PER_MI = 1609.344
 M2_PER_ACRE = 4046.856
@@ -53,6 +59,10 @@ FISH_SPECIES = [
     ('herring', 'Herr', 0.0888889, 0.208333), ('smelt', 'Smelt', 0.073333, 0.2), ('sand-lance', 'Lance', 0.113636, 0.27778),
     ('greenlings', 'Hex', 0.357955, 0.614035),
 ]
+
+
+CHINOOK_TIERS = next((mm, hm) for mode, _, mm, hm in FISH_SPECIES if mode == 'chinook')
+CK_NEAR = 25  # m
 
 
 def fish_tier(moderate_max, high_max, v):
@@ -111,7 +121,31 @@ def build_islands(parcels):
     return masses, mass_label, tree, parcel_mass, pg, keep
 
 
+def count_places():
+    """places.<id> → armor_pieces (pieces touching the box) and armor_mi (armor length inside the box)."""
+    places = json.load(open(PLACES)) if os.path.exists(PLACES) else []
+    armor = load(os.path.join(PUB, 'friends-armor.json'))
+    gs = geoms(armor)
+    out = {}
+    for pl in places:
+        w, s_, e, n = pl['bounds']
+        box = utm(shapely.box(w, s_, e, n))
+        hit = [g for g in gs if g is not None and not g.is_empty and g.intersects(box)]
+        out[pl['id']] = {
+            'armor_pieces': len(hit),
+            'armor_mi': round(sum(g.intersection(box).length for g in hit) / M_PER_MI, 2),
+        }
+    return out
+
+
 def main():
+    if '--places-only' in sys.argv:
+        out = json.load(open(OUT))
+        out['places'] = count_places()
+        with open(OUT, 'w') as f:
+            json.dump(out, f, separators=(',', ':'))
+        print(OUT, 'places:', json.dumps(out['places']))
+        return
     parcels = load(os.path.join(RAW, 'parcels.geojson'))
     masses, mass_label, tree, parcel_mass, parcel_geoms, keep = build_islands(parcels)
 
@@ -166,7 +200,8 @@ def main():
 
     lines(load(os.path.join(PUB, 'friends-deepwater-eelgrass.geojson')), lambda p: ['eelgrass_mi'])
     fdoc = load(os.path.join(PUB, 'friends-documented-forage-spawning.json'))
-    for il in lines(fdoc, lambda p: ['fdoc_mi']).values():
+    fdoc_island = lines(fdoc, lambda p: ['fdoc_mi'])
+    for il in fdoc_island.values():
         add(il, 'fdoc_beaches')
     lines(load(os.path.join(PUB, 'friends-potential-forage-spawning.json')), lambda p: ['fpot_mi'])
 
@@ -197,6 +232,17 @@ def main():
         out.append('fish_mi')
         return out
     lines(fish, fish_keys)
+
+    # Egg beaches on highest-priority juvenile Chinook shoreline: documented spawning beaches within CK_NEAR m of a
+    # tier-3 Chinook segment (the two layers drawn together; the count barely moves between 10 and 50 m)
+    ck3 = [g for f, g in zip(fish, geoms(fish)) if g is not None and not g.is_empty
+           and num(f['properties'].get('HRM_Ck')) is not None and fish_tier(*CHINOOK_TIERS, num(f['properties']['HRM_Ck'])) == 3]
+    near = shapely.union_all(ck3).buffer(CK_NEAR)
+    sets = {'fdoc_on_chinook_3': {'layer': 'fdoc', 'prop': 'OBJECTID', 'ids': []}}
+    for fi, g in enumerate(geoms(fdoc)):
+        if fi in fdoc_island and g.intersects(near):
+            add(fdoc_island[fi], 'fdoc_on_chinook_3')
+            sets['fdoc_on_chinook_3']['ids'].append(fdoc[fi]['properties']['OBJECTID'])
 
     # ── Shoreline ──
     lines(load(os.path.join(PUB, 'friends-shoreline-geology.json')),
@@ -251,6 +297,9 @@ def main():
         'bbox': bbox,
         'all': tidy(acc_all),
         'byIsland': {il: tidy(acc[il]) for il in ISLANDS if il in acc},
+        'places': count_places(),
+        # the features behind a count, for maps that show them (story highlights): count key → { layer, prop, ids }
+        'sets': sets,
     }
     with open(OUT, 'w') as f:
         json.dump(out, f, separators=(',', ':'))

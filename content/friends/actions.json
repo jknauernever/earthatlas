@@ -1,0 +1,5 @@
+[
+  { "id": "friends-member", "label": "Become a member", "href": "https://sanjuans.org/member" },
+  { "id": "friends-volunteer", "label": "Volunteer", "href": "https://sanjuans.org/get-involved/volunteer/" },
+  { "id": "friends-action-alerts", "label": "Sign up for action alerts", "href": "https://sanjuans.org/get-involved/sign-up-for-a-newsletter/" }
+]

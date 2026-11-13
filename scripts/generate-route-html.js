@@ -154,6 +154,28 @@ const ROUTES = [
       'San Juan Islands, Orcas Island, Lopez Island, San Juan Island, shoreline armor, docks, mooring buoys, bull kelp, eelgrass, forage fish, Friends of the San Juans, shoreline report',
   },
   {
+    out: 'shoreline-stories.html',
+    url: 'https://earthatlas.org/shoreline/stories',
+    title: 'Stories · Salish Sea Explorer: Shoreline Ecosystems · EarthAtlas',
+    description:
+      'Short, illustrated walks through the Shoreline Ecosystems map of the San Juan Islands, with every number from the map’s own shoreline counts. An EarthAtlas tool.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'Salish Sea Explorer: Shoreline Ecosystems stories',
+    keywords:
+      'San Juan Islands, shoreline, forage fish, salmon, orcas, Friends of the San Juans, story map',
+  },
+  {
+    out: 'shoreline-story-beaches-that-feed-orcas.html',
+    url: 'https://earthatlas.org/shoreline/stories/beaches-that-feed-orcas',
+    title: 'The beaches that feed orcas · Friends of the San Juans',
+    description:
+      'How the San Juan Islands’ beaches feed forage fish, young Chinook salmon and Southern Resident orcas, and what shoreline armoring does to them, in seven chapters on the live shoreline map. A Friends of the San Juans story.',
+    image: 'https://earthatlas.org/earthatlas-social.jpg',
+    imageAlt: 'The beaches that feed orcas: a story on the Shoreline Ecosystems map',
+    keywords:
+      'San Juan Islands, forage fish, surf smelt, sand lance, juvenile Chinook, Southern Resident orcas, shoreline armoring, feeder bluffs, Fisherman Bay, Friends of the San Juans',
+  },
+  {
     out: 'carbon.html',
     url: 'https://earthatlas.org/carbon',
     title: 'Carbon — Land carbon calculator · EarthAtlas',

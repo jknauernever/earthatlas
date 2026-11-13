@@ -1,0 +1,10 @@
+{
+  "$schema": "../../schema/content.schema.json#/$defs/story",
+  "slug": "beaches-that-feed-orcas",
+  "subsite": "shoreline",
+  "title": "The beaches that feed orcas",
+  "layout": "split",
+  "author": "friends",
+  "status": "draft",
+  "chapters": ["shoreline", "eggs", "young-salmon", "orcas", "armoring", "fisherman-bay", "act"]
+}

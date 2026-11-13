@@ -17,6 +17,7 @@
  *             (lib/mapboxToken.js); made by scripts/brand/new-partner.mjs. null → EarthAtlas's own token
  *   shareImage  link-preview picture (1200×630) used in place of the EarthAtlas-logo default one
  *   home      the partner host's "/" (vercel.json redirects it; main.jsx also sends it there)
+ *   wordmark  the organization's name as set in type on its stories (src/stories): { lead, tail } — tail in italic
  * }
  *
  * On localhost, ?brand=<id> previews a brand (kept for the tab via sessionStorage); ?brand= clears it.
@@ -35,6 +36,7 @@ export const BRANDS = [
     shareImage: '/brands/friends/share.jpg',
     // Decision 2 (docs/SHORELINE_PORT_PLAN.md): sanjuans.earthatlas.org/ opens the Shoreline Explorer
     home: '/shoreline',
+    wordmark: { lead: 'Friends', tail: 'of the San Juans' },
   },
 ]
 

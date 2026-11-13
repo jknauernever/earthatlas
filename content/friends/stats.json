@@ -1,0 +1,3 @@
+[
+  { "id": "orca-boat-distance", "value": 1000, "decimals": 0, "unit": "yd", "label": "boats must stay this far from Southern Resident orcas", "source": "friends-impact-report-2021-2025" }
+]

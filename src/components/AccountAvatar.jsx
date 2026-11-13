@@ -66,6 +66,8 @@ export default function AccountAvatar() {
   const [broken, setBroken] = useState(false)
   const boxRef = useRef(null)
   const accountPage = /^\/(account|admin)(\/|$)/.test(pathname)
+  // Story pages (src/stories) show only the story: no avatar (Josh 2026-11-12)
+  const storyPage = /^\/[^/]+\/stories(\/|$)/.test(pathname)
 
   useEffect(() => {
     if (!ACCOUNTS_LIVE) return
@@ -102,7 +104,7 @@ export default function AccountAvatar() {
     return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key) }
   }, [open])
 
-  if (!user) return null
+  if (!user || storyPage) return null
   const base = accountBase()
   const signOut = async () => {
     await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {})

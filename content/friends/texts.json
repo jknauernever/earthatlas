@@ -1,0 +1,9 @@
+[
+  { "id": "beaches-that-feed-orcas", "kicker": "San Juan Islands · Salish Sea", "headline": "The beaches that feed orcas", "body": "Choices made on the shoreline affect the entire marine food web, from forage fish to orca.", "sources": ["living-with-the-shoreline"] },
+  { "id": "forage-fish-food-web", "kicker": "Living with the Shoreline", "headline": "Forage fish feed the marine food web", "body": "Surf smelt and Pacific sand lance lay their eggs in sand and small gravel, on the upper third of the beach.", "sources": ["living-with-the-shoreline"] },
+  { "id": "salmon-nursery", "kicker": "Living with the Shoreline", "headline": "Shorelines are a nursery for salmon", "body": "Young salmon feed, grow and shelter along these shores on their way to the open ocean.", "sources": ["living-with-the-shoreline"] },
+  { "id": "endangered-orca", "kicker": "Keystone species spotlight", "headline": "Critically endangered orca", "body": "Southern Resident orcas rely almost entirely on Chinook salmon. Their survival depends on abundant fish from healthy habitats.", "sources": ["friends-impact-report-2021-2025"] },
+  { "id": "feeder-bluffs", "kicker": "Hard armoring", "headline": "Feeder bluffs are beach builders", "body": "{{shoreline.shoreform_feeder|1}} miles of feeder bluffs supply the sand and gravel that build beaches. Hard armoring starves nearby beaches.", "sources": ["living-with-the-shoreline"] },
+  { "id": "fisherman-bay-restoration", "kicker": "Fisherman Bay, Lopez Island", "headline": "Rebuilding resilient shores", "body": "Friends is restoring marsh and beach habitat here, where sand lance eggs were found in 2018 and 2019." },
+  { "id": "protect-this-place", "kicker": "Our strength comes from you", "headline": "Protect this Place with us", "body": "6,000 feet of shoreline restored for forage fish and eelgrass. Small actions on your own shore can make a big difference.", "sources": ["friends-impact-report-2021-2025"] }
+]

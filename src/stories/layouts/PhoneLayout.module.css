@@ -1,0 +1,119 @@
+/* Phone layout: every value from docs/design/stories-split/phone.html (DESIGN-PHONE.md; approved 2026-11-12). Do not
+   restyle. --s is one pixel of the 390px-wide design; it also shrinks on screens shorter than 640px, where three lines
+   of body text would otherwise run into the stat circle (DESIGN-PHONE.md "Known rough edges"). */
+.stage {
+  --s: min(calc(100vw / 390), calc(100dvh / 640));
+  position: fixed; inset: 0; overflow: hidden; overscroll-behavior: none;
+  background: #040C14; color: #F2F7FA; font-family: Inter, system-ui, sans-serif;
+  touch-action: pan-y; -webkit-tap-highlight-color: transparent;
+  /* island labels on the map (StoryMap.module.css) */
+  --story-label-size: calc(var(--s) * 8); --story-label-stroke: 2.5px; --story-label-spacing: .11em;
+}
+.stage button { font-family: inherit; }
+.stage a { color: #9FE3EE; }
+.stage a:hover { color: #D6F5FA; }
+
+/* Photo pane */
+.photo { position: absolute; left: 0; top: 0; width: 100%; height: 44%; overflow: hidden; }
+.img {
+  position: absolute; left: 0; top: 0; display: block; max-width: none; opacity: 0; transition: opacity .9s ease;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%); mask-image: linear-gradient(180deg, transparent 0, #000 16%);
+}
+.img.now { opacity: 1; }
+.photoShade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(4,12,20,.95) 0%, rgba(4,12,20,.82) 40%, rgba(4,12,20,.5) 58%, rgba(4,12,20,0) 76%), linear-gradient(0deg, rgba(4,12,20,.55) 0%, rgba(4,12,20,0) 14%);
+}
+
+/* Map pane */
+.mapPane { position: absolute; left: 0; bottom: 0; width: 100%; top: 44%; overflow: hidden; background: #061624; }
+.mapShade { position: absolute; inset: 0; pointer-events: none; z-index: 1; background: linear-gradient(0deg, rgba(4,12,20,.96) 0%, rgba(4,12,20,.9) 16%, rgba(4,12,20,0) 34%); }
+
+.seam { position: absolute; left: 0; top: 44%; width: 100%; height: 2px; margin-top: -1px; background: #FFE7A3; opacity: .85; z-index: 2; }
+
+/* Stat circle */
+.stat {
+  position: absolute; left: calc(var(--s) * 18); top: 44%; transform: translateY(-50%);
+  width: calc(var(--s) * 116); height: calc(var(--s) * 116); border-radius: 50%; background: #040C14; border: 2px solid #FFE7A3;
+  box-shadow: 0 0 0 calc(var(--s) * 5) rgba(4,12,20,.55), 0 calc(var(--s) * 10) calc(var(--s) * 30) rgba(0,0,0,.6);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--s) * 4); text-align: center; z-index: 4;
+}
+.statNum { font-family: 'Source Serif 4', Georgia, serif; font-weight: 300; font-size: calc(var(--s) * 36); color: #FFE7A3; line-height: .9; white-space: nowrap; }
+.statUnit { font-size: .36em; margin-left: .12em; }
+.statLabel { font-size: calc(var(--s) * 9.5); line-height: 1.25; color: #D5E0E8; max-width: calc(var(--s) * 94); }
+
+/* Header */
+.head {
+  position: absolute; top: calc(var(--s) * 12 + env(safe-area-inset-top, 0px)); left: calc(var(--s) * 18); right: calc(var(--s) * 18);
+  display: flex; align-items: center; justify-content: space-between; z-index: 5;
+}
+.wordmark { font-family: 'Source Serif 4', Georgia, serif; font-size: calc(var(--s) * 17); text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.wordmarkTail { font-style: italic; font-size: .7em; opacity: .8; }
+.stage .full {
+  display: flex; align-items: center; height: calc(var(--s) * 34); padding: 0 calc(var(--s) * 13); border-radius: calc(var(--s) * 17);
+  font-size: calc(var(--s) * 12); text-decoration: none; border: 1px solid rgba(255,255,255,0.22); background: rgba(4,12,20,0.55); backdrop-filter: blur(8px); color: #E6EEF5;
+}
+
+/* Text block */
+.text { position: absolute; left: calc(var(--s) * 18); right: calc(var(--s) * 18); top: calc(var(--s) * 60 + env(safe-area-inset-top, 0px)); z-index: 3; }
+.rise { display: flex; flex-direction: column; gap: calc(var(--s) * 8); text-shadow: 0 2px 14px rgba(0,0,0,.7); animation: rise .8s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(1.2vh); } to { opacity: 1; transform: none; } }
+.kicker { font-size: calc(var(--s) * 10.5); letter-spacing: .2em; color: #FFE7A3; text-transform: uppercase; }
+.headline { margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-weight: 300; font-size: calc(var(--s) * 30); line-height: 1.04; letter-spacing: -.015em; }
+/* a tight second shadow under the design's soft one: keeps a third line readable where it crosses a bright part of
+   the photo (DESIGN-PHONE.md "Known rough edges", chapters 2 and 5) */
+.body { margin: 0; font-size: calc(var(--s) * 15); line-height: 1.4; color: #E3ECF3; text-shadow: 0 2px 14px rgba(0,0,0,.7), 0 1px 3px rgba(0,0,0,.85); }
+
+/* Photo caption */
+.cap {
+  position: absolute; right: calc(var(--s) * 18); left: calc(var(--s) * 150); text-align: right;
+  bottom: calc(56% + var(--s) * 7); line-height: 1.3; font-size: calc(var(--s) * 8.5);
+  color: rgba(255,255,255,.55); text-shadow: 0 1px 4px rgba(0,0,0,.8); z-index: 3;
+}
+
+/* Under the seam: the last chapter's actions (in place of the stat circle), then the satellite credit */
+.under { position: absolute; left: calc(var(--s) * 18); right: calc(var(--s) * 18); top: 44%; z-index: 4; display: flex; flex-direction: column; }
+.cta { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 8); max-width: calc(var(--s) * 260); margin-top: calc(var(--s) * 14); }
+.stage .cta a {
+  display: flex; align-items: center; height: calc(var(--s) * 40); padding: 0 calc(var(--s) * 15); border-radius: calc(var(--s) * 20);
+  font-size: calc(var(--s) * 13); text-decoration: none; border: 1px solid rgba(255,255,255,0.22); background: rgba(4,12,20,0.55); backdrop-filter: blur(8px); color: #E6EEF5;
+}
+.stage .cta a.primary { background: #FFE7A3; color: #1A1406; font-weight: 600; border: 0; font-size: calc(var(--s) * 14); }
+/* satellite credit: caption style, top right of the map pane, clear of the stat circle */
+.stage .credit {
+  align-self: flex-end; margin: calc(var(--s) * 5) 0 0 calc(var(--s) * 132); text-align: right; line-height: 1.3;
+  font-size: calc(var(--s) * 8.5); color: rgba(255,255,255,.55); text-shadow: 0 1px 4px rgba(0,0,0,.8); text-decoration: none;
+}
+.foot > .credit { margin: 0 0 calc(var(--s) * 6) 0; }
+.stage .credit:hover { color: rgba(255,255,255,.8); }
+
+/* Footer: key and scale, rail, controls */
+.foot {
+  position: absolute; left: calc(var(--s) * 18); right: calc(var(--s) * 18); bottom: calc(var(--s) * 14 + env(safe-area-inset-bottom, 0px));
+  z-index: 5; display: flex; flex-direction: column;
+}
+.keyRow { display: flex; align-items: flex-end; justify-content: space-between; font-size: calc(var(--s) * 10); color: rgba(255,255,255,.82); margin-bottom: calc(var(--s) * 4); }
+.key { display: flex; gap: calc(var(--s) * 11); }
+.keyItem { display: flex; align-items: center; gap: calc(var(--s) * 5); }
+.swatch { width: calc(var(--s) * 13); height: calc(var(--s) * 4); border-radius: 2px; }
+.scale { display: flex; flex-direction: column; align-items: flex-start; gap: calc(var(--s) * 2); font-size: calc(var(--s) * 9); color: #E4F0F8; }
+.scaleBar { display: block; height: calc(var(--s) * 5); border: 1.5px solid #E4F0F8; border-top: 0; }
+.rail { display: grid; gap: calc(var(--s) * 5); }
+.railBtn { height: calc(var(--s) * 22); padding: 0; background: none; border: 0; display: flex; align-items: center; cursor: pointer; }
+.railBar { display: block; width: 100%; height: 3px; border-radius: 2px; transition: background .5s ease; background: rgba(255,255,255,.28); }
+.railBar.done { background: rgba(255,255,255,.75); }
+.railBar.now { background: #FFE7A3; }
+.ctl { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--s) * 4); }
+.where { font-size: calc(var(--s) * 13); color: #FFE7A3; letter-spacing: .02em; }
+.whereNum { color: rgba(255,255,255,.55); margin-right: calc(var(--s) * 8); font-variant-numeric: tabular-nums; }
+.btns { display: flex; gap: calc(var(--s) * 8); }
+.btn {
+  height: calc(var(--s) * 44); min-width: calc(var(--s) * 44); border-radius: calc(var(--s) * 22); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.22); background: rgba(4,12,20,0.55); backdrop-filter: blur(8px); color: #E6EEF5;
+}
+.btn.next { padding: 0 calc(var(--s) * 22); border: 0; background: #FFE7A3; color: #1A1406; font-size: calc(var(--s) * 14); font-weight: 600; }
+.btn svg { width: calc(var(--s) * 16); height: calc(var(--s) * 16); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage *, .stage *::before, .stage *::after { animation: none !important; transition: none !important; }
+}

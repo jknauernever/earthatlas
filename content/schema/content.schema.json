@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://earthatlas.org/schema/stories-content.json",
+  "title": "EarthAtlas story content",
+  "description": "Content records for stories, kept apart from display. Each file under content/<owner>/ holds one record type; the file name says which (photos.json, texts.json, …; stories/<slug>.json holds one story). <owner> is an organization (a lib/brand.js id, e.g. friends) or a subsite (e.g. shoreline). Records point at each other by id. Layouts never read these files directly: src/stories assembles a story from them and hands the layout plain data. scripts/stories/validate.mjs checks every file against this schema, then checks the references (ids, photos, layer ids, data keys, sources).",
+
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "kebab-case; unique among records of the same type, across all owners" },
+    "ref": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "lngLat": { "type": "array", "prefixItems": [{ "type": "number", "minimum": -180, "maximum": 180 }, { "type": "number", "minimum": -90, "maximum": 90 }], "items": false, "minItems": 2 },
+    "bounds": {
+      "description": "[west, south, east, north] in degrees",
+      "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4
+    },
+    "url": { "type": "string", "pattern": "^(https://|/)" },
+    "decimals": { "type": "integer", "minimum": 0, "maximum": 3 },
+
+    "photo": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "src", "alt", "caption", "credit", "focalPoint", "rights"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "src": { "type": "string", "pattern": "^/", "description": "path under public/, e.g. /stories/friends/eggs.jpg" },
+        "alt": { "$ref": "#/$defs/nonEmpty" },
+        "caption": { "$ref": "#/$defs/nonEmpty" },
+        "credit": { "$ref": "#/$defs/nonEmpty" },
+        "focalPoint": {
+          "description": "the point (percent from left, percent from top) kept in view when the photo is cropped",
+          "type": "object", "additionalProperties": false, "required": ["x", "y"],
+          "properties": { "x": { "type": "number", "minimum": 0, "maximum": 100 }, "y": { "type": "number", "minimum": 0, "maximum": 100 } }
+        },
+        "subject": {
+          "description": "where the photo's subject is (percent from left, percent from top), for layouts that place the subject at a set spot (the phone layout puts it below the words); defaults to focalPoint",
+          "type": "object", "additionalProperties": false, "required": ["x", "y"],
+          "properties": { "x": { "type": "number", "minimum": 0, "maximum": 100 }, "y": { "type": "number", "minimum": 0, "maximum": 100 } }
+        },
+        "origin": { "$ref": "#/$defs/url", "description": "where the original file came from" },
+        "rights": { "enum": ["unconfirmed", "confirmed"], "description": "a story with any unconfirmed photo cannot be published" }
+      }
+    },
+
+    "text": {
+      "description": "Wording for one chapter. {{subsite.key}} or {{subsite.key|decimals}} in body inserts a published count (see stat.dataKey).",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kicker", "headline", "body"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kicker": { "$ref": "#/$defs/nonEmpty" },
+        "headline": { "$ref": "#/$defs/nonEmpty" },
+        "body": { "$ref": "#/$defs/nonEmpty" },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "description": "sources for literal facts in the wording" }
+      }
+    },
+
+    "stat": {
+      "description": "The number in the circle. Either bound to a published count (dataKey, in a subsite's stats.json) or a literal fact that is not in the data (value + source, in an organization's stats.json).",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/nonEmpty", "description": "text under the number; may use {{subsite.key}} tokens" },
+        "unit": { "type": "string", "description": "short unit after the number (mi, ft, yd), or empty" },
+        "dataKey": { "type": "string", "pattern": "^[a-z0-9_.-]+$", "description": "a key in the subsite's report counts: a key of 'all' (shore_mi), or places.<place>.<key>" },
+        "decimals": { "$ref": "#/$defs/decimals" },
+        "value": { "type": "number", "description": "literal value" },
+        "source": { "$ref": "#/$defs/ref", "description": "required with a literal value" }
+      },
+      "oneOf": [
+        { "required": ["dataKey"], "not": { "anyOf": [{ "required": ["value"] }, { "required": ["source"] }] } },
+        { "required": ["value", "source"], "not": { "required": ["dataKey"] } }
+      ]
+    },
+
+    "action": {
+      "type": "object", "additionalProperties": false, "required": ["id", "label", "href"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "$ref": "#/$defs/nonEmpty" }, "href": { "$ref": "#/$defs/url" } }
+    },
+
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "href", "publisher"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/nonEmpty" }, "href": { "$ref": "#/$defs/url" }, "publisher": { "$ref": "#/$defs/nonEmpty" } }
+    },
+
+    "place": {
+      "description": "A named area of a subsite: a camera target, a dashed frame, and an area counted in the subsite's report counts (places.<id>).",
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "bounds"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "$ref": "#/$defs/nonEmpty" }, "bounds": { "$ref": "#/$defs/bounds" } }
+    },
+
+    "labelSet": {
+      "description": "Map labels drawn on a story map (island names). Written as they read; layouts set the case.",
+      "type": "object", "additionalProperties": false, "required": ["id", "items"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "items": { "type": "array", "minItems": 1, "items": {
+          "type": "object", "additionalProperties": false, "required": ["text", "at"],
+          "properties": { "text": { "$ref": "#/$defs/nonEmpty" }, "at": { "$ref": "#/$defs/lngLat" }, "small": { "type": "boolean", "description": "also shown on small screens (phones), where only a few labels fit" } }
+        } }
+      }
+    },
+
+    "view": {
+      "description": "What a story map shows: where (camera), which subsite layers and how strongly, labels and frames.",
+      "type": "object", "additionalProperties": false, "required": ["id", "camera", "layers"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "camera": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "place": { "$ref": "#/$defs/ref", "description": "frame this place's bounds" },
+            "bounds": { "$ref": "#/$defs/bounds" },
+            "center": { "$ref": "#/$defs/lngLat" },
+            "zoom": { "type": "number", "minimum": 0, "maximum": 22 }
+          },
+          "oneOf": [
+            { "required": ["place"], "not": { "anyOf": [{ "required": ["bounds"] }, { "required": ["center"] }, { "required": ["zoom"] }] } },
+            { "required": ["bounds"], "not": { "anyOf": [{ "required": ["place"] }, { "required": ["center"] }, { "required": ["zoom"] }] } },
+            { "required": ["center", "zoom"], "not": { "anyOf": [{ "required": ["place"] }, { "required": ["bounds"] }] } }
+          ]
+        },
+        "layers": {
+          "description": "Subsite layer ids (its registry); layers not listed are off.",
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "emphasis"],
+            "properties": {
+              "id": { "type": "string" },
+              "emphasis": { "enum": ["off", "dim", "on", "glow"], "description": "glow: full strength with the layer's glow; on: full strength, line only; dim: line and glow at reduced opacity; off: hidden" },
+              "opacity": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1, "description": "dim only: how strong (default 0.5)" },
+              "highlight": { "type": "string", "description": "a counted set in the subsite's report counts (its 'sets'): those features drawn at full glow, the rest of the layer at this emphasis" },
+              "filter": { "type": "object", "description": "feature property → value or list of values to keep", "minProperties": 1,
+                "additionalProperties": { "anyOf": [{ "type": ["string", "number"] }, { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 1 }] } }
+            }
+          }
+        },
+        "labels": { "$ref": "#/$defs/ref", "description": "a label set id; omit for no labels" },
+        "frames": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "description": "places drawn as a dashed frame" }
+      }
+    },
+
+    "chapter": {
+      "description": "One step of a story: points at a text, a photo, a map view and optionally a stat and actions. Its id is its link anchor (#eggs).",
+      "type": "object", "additionalProperties": false, "required": ["id", "railLabel", "text", "photo", "view"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "railLabel": { "$ref": "#/$defs/nonEmpty" },
+        "text": { "$ref": "#/$defs/ref" },
+        "photo": { "$ref": "#/$defs/ref" },
+        "view": { "$ref": "#/$defs/ref" },
+        "stat": { "$ref": "#/$defs/ref" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "minItems": 1 }
+      }
+    },
+
+    "story": {
+      "type": "object", "additionalProperties": false,
+      "required": ["slug", "subsite", "title", "layout", "author", "status", "chapters"],
+      "properties": {
+        "$schema": { "type": "string" },
+        "slug": { "$ref": "#/$defs/id", "description": "must match the file name" },
+        "subsite": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/nonEmpty" },
+        "layout": { "enum": ["split", "atlas", "cinema"], "description": "only split is built" },
+        "author": { "$ref": "#/$defs/id", "description": "the organization that owns the story: a lib/brand.js id; its wordmark shows on every host" },
+        "status": { "enum": ["draft", "published"], "description": "draft: not listed and not indexed on production" },
+        "chapters": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "minItems": 1, "uniqueItems": true },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "description": "further sources to credit, beyond those the chapters' records cite" }
+      }
+    }
+  },
+
+  "properties": {
+    "photos": { "type": "array", "items": { "$ref": "#/$defs/photo" } },
+    "texts": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "stats": { "type": "array", "items": { "$ref": "#/$defs/stat" } },
+    "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "places": { "type": "array", "items": { "$ref": "#/$defs/place" } },
+    "labels": { "type": "array", "items": { "$ref": "#/$defs/labelSet" } },
+    "views": { "type": "array", "items": { "$ref": "#/$defs/view" } },
+    "chapters": { "type": "array", "items": { "$ref": "#/$defs/chapter" } },
+    "story": { "$ref": "#/$defs/story" }
+  }
+}

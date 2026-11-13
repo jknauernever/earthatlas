@@ -1,0 +1,9 @@
+[
+  { "id": "shoreline", "railLabel": "Shoreline", "text": "beaches-that-feed-orcas", "photo": "orcas-salish-sea", "stat": "shoreline-mapped", "view": "county-shoreline" },
+  { "id": "eggs", "railLabel": "Eggs", "text": "forage-fish-food-web", "photo": "forage-fish-sampling", "stat": "beaches-with-eggs", "view": "county-spawning" },
+  { "id": "young-salmon", "railLabel": "Young salmon", "text": "salmon-nursery", "photo": "juvenile-chinook", "stat": "chinook-highest-priority", "view": "county-chinook" },
+  { "id": "orcas", "railLabel": "Orcas", "text": "endangered-orca", "photo": "j26-lime-kiln", "stat": "egg-beaches-on-chinook-shoreline", "view": "county-spawning-chinook" },
+  { "id": "armoring", "railLabel": "Armoring", "text": "feeder-bluffs", "photo": "armored-shoreline", "stat": "armored-shoreline", "view": "county-armoring" },
+  { "id": "fisherman-bay", "railLabel": "Fisherman Bay", "text": "fisherman-bay-restoration", "photo": "fisherman-bay-restoration", "stat": "fisherman-bay-armoring", "view": "fisherman-bay-detail" },
+  { "id": "act", "railLabel": "Act", "text": "protect-this-place", "photo": "forage-fish-volunteers", "view": "county-everything", "actions": ["friends-member", "friends-volunteer", "friends-action-alerts"] }
+]

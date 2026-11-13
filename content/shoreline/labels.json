@@ -1,0 +1,13 @@
+[
+  { "id": "san-juan-islands", "items": [
+    { "text": "San Juan Island", "small": true, "at": [-123.0784, 48.5235] },
+    { "text": "Orcas Island", "small": true, "at": [-122.938, 48.6549] },
+    { "text": "Lopez Island", "small": true, "at": [-122.8652, 48.4752] },
+    { "text": "Shaw", "at": [-122.9588, 48.5736] },
+    { "text": "Waldron", "at": [-123.0399, 48.6963] },
+    { "text": "Stuart", "at": [-123.1918, 48.6652] },
+    { "text": "Sucia", "at": [-122.9094, 48.7516] },
+    { "text": "Blakely", "at": [-122.8158, 48.5581] },
+    { "text": "Decatur", "at": [-122.8132, 48.5028] }
+  ] }
+]

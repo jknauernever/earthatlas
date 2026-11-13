@@ -1,0 +1,8 @@
+[
+  { "id": "shoreline-mapped", "dataKey": "shore_mi", "decimals": 0, "unit": "mi", "label": "of shoreline mapped" },
+  { "id": "beaches-with-eggs", "dataKey": "fdoc_beaches", "decimals": 0, "unit": "", "label": "beaches with eggs found" },
+  { "id": "chinook-highest-priority", "dataKey": "fish_chinook_3", "decimals": 0, "unit": "mi", "label": "highest-priority shoreline for juvenile Chinook" },
+  { "id": "egg-beaches-on-chinook-shoreline", "dataKey": "fdoc_on_chinook_3", "decimals": 0, "unit": "", "label": "beaches where forage fish spawn on the best young-Chinook shoreline" },
+  { "id": "armored-shoreline", "dataKey": "armor_mi", "decimals": 1, "unit": "mi", "label": "of armored shoreline, in {{shoreline.armor_pieces}} mapped pieces" },
+  { "id": "fisherman-bay-armoring", "dataKey": "places.fisherman-bay.armor_pieces", "decimals": 0, "unit": "", "label": "armoring structures mapped around the bay" }
+]

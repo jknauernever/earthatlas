@@ -1,0 +1,16 @@
+[
+  { "id": "county-shoreline", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands",
+    "layers": [{ "id": "geology", "emphasis": "glow" }] },
+  { "id": "county-spawning", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands",
+    "layers": [{ "id": "geology", "emphasis": "dim", "opacity": 0.5 }, { "id": "fdoc", "emphasis": "glow" }] },
+  { "id": "county-chinook", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands",
+    "layers": [{ "id": "geology", "emphasis": "dim", "opacity": 0.5 }, { "id": "fdoc", "emphasis": "dim", "opacity": 0.35 }, { "id": "fish", "emphasis": "glow", "filter": { "t_chinook": 3 } }] },
+  { "id": "county-spawning-chinook", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands",
+    "layers": [{ "id": "geology", "emphasis": "dim", "opacity": 0.5 }, { "id": "fdoc", "emphasis": "dim", "opacity": 0.12, "highlight": "fdoc_on_chinook_3" }, { "id": "fish", "emphasis": "dim", "opacity": 0.8, "filter": { "t_chinook": 3 } }] },
+  { "id": "county-armoring", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands", "frames": ["fisherman-bay"],
+    "layers": [{ "id": "geology", "emphasis": "dim", "opacity": 0.45 }, { "id": "fdoc", "emphasis": "dim", "opacity": 0.7 }, { "id": "armor", "emphasis": "glow" }] },
+  { "id": "fisherman-bay-detail", "camera": { "bounds": [-122.971, 48.466, -122.866, 48.56] },
+    "layers": [{ "id": "geology", "emphasis": "glow" }, { "id": "fdoc", "emphasis": "glow" }, { "id": "fish", "emphasis": "glow", "filter": { "t_chinook": 3 } }, { "id": "armor", "emphasis": "glow" }] },
+  { "id": "county-everything", "camera": { "place": "san-juan-islands" }, "labels": "san-juan-islands",
+    "layers": [{ "id": "geology", "emphasis": "glow" }, { "id": "fdoc", "emphasis": "glow" }, { "id": "fish", "emphasis": "dim", "opacity": 0.8, "filter": { "t_chinook": 3 } }, { "id": "armor", "emphasis": "dim", "opacity": 0.35 }] }
+]

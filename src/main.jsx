@@ -55,6 +55,8 @@ import SpillsApp from './spills/SpillsApp.jsx'
 // The /spills report: its own lazy chunk (Observable Plot + d3-sankey load only on this route).
 const SpillsReport = lazy(() => import('./spills/SpillsReport.jsx'))
 const ShorelineReport = lazy(() => import('./shoreline/ShorelineReport.jsx'))
+const StoryPage = lazy(() => import('./stories/StoryPage.jsx'))
+const StoriesIndex = lazy(() => import('./stories/StoriesIndex.jsx'))
 import RisksApp from './risks/RisksApp.jsx'
 import SpillriskApp from './spillrisk/SpillriskApp.jsx'
 import LandValueReport from './risks/LandValueReport.jsx'
@@ -238,6 +240,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/account/deleted" element={<Suspense fallback={null}><DeletedPage /></Suspense>} />
           <Route path="/account/delete-link" element={<Suspense fallback={null}><DeleteLinkPage /></Suspense>} />
           </>)}
+          {/* Stories (src/stories): /<subsite>/stories/<slug>; content in content/ */}
+          <Route path="/:subsite/stories" element={<Suspense fallback={null}><StoriesIndex /></Suspense>} />
+          <Route path="/:subsite/stories/:slug" element={<Suspense fallback={null}><StoryPage /></Suspense>} />
           <Route path="/*" element={<App />} />
         </Routes>
       </BrowserRouter>

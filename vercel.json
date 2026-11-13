@@ -104,6 +104,14 @@
       "destination": "/shoreline-reports.html"
     },
     {
+      "source": "/shoreline/stories",
+      "destination": "/shoreline-stories.html"
+    },
+    {
+      "source": "/shoreline/stories/beaches-that-feed-orcas",
+      "destination": "/shoreline-story-beaches-that-feed-orcas.html"
+    },
+    {
       "source": "/permits/source/:key",
       "destination": "/permits.html"
     },

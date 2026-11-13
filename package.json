@@ -7,7 +7,8 @@
   "scripts": {
     "predev": "node scripts/ensure-dev-data.js",
     "dev": "vite",
-    "build": "node scripts/prebuild-stats.js && node scripts/prebuild-species.js && node scripts/generate-sitemap.js && node scripts/generate-birdsong-stations.js && vite build && node scripts/generate-route-html.js",
+    "stories:check": "node scripts/stories/validate.mjs",
+    "build": "node scripts/stories/validate.mjs && node scripts/prebuild-stats.js && node scripts/prebuild-species.js && node scripts/generate-sitemap.js && node scripts/generate-birdsong-stations.js && vite build && node scripts/generate-route-html.js",
     "prebuild:species": "node scripts/prebuild-species.js",
     "preview": "vite preview",
     "permits:bake": "node scripts/permits/bake-permits.mjs",
@@ -86,6 +87,7 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
+    "ajv": "^8.20.0",
     "eslint": "^9.9.0",
     "eslint-plugin-react": "^7.35.0",
     "puppeteer-core": "^23.11.1",

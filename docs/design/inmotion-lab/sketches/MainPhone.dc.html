@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In Motion: Field Guide on a phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0E16}
+a{color:#7FD3EC}a:hover{color:#B5E7F5}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0A0E16; color: #E8ECF2; font-family: Inter, system-ui, sans-serif">
+
+<header style="position: absolute; top: 0; left: 0; right: 0; padding: 18px 16px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; z-index: 2">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">EARTHATLAS · IN MOTION</span>
+<h1 style="margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.15">A planet that never sits still</h1>
+</div>
+<button type="button" aria-label="Search for a place" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: 1px solid #2E3B4E; background: rgba(18,26,38,0.9); color: #E8ECF2; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+</button>
+</header>
+
+<svg width="360" height="360" viewBox="0 0 640 640" role="img" aria-label="Globe showing wind" style="position: absolute; left: 15px; top: {{globeTop}}">
+<defs><radialGradient id="gm" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#14304A"></stop><stop offset="100%" stop-color="#08131F"></stop></radialGradient></defs>
+<circle cx="320" cy="320" r="300" fill="url(#gm)" stroke="#2A4A66" stroke-width="2"></circle>
+<g fill="none" stroke="#1C3550" stroke-width="1.5"><ellipse cx="320" cy="320" rx="300" ry="120"></ellipse><ellipse cx="320" cy="320" rx="120" ry="300"></ellipse></g>
+<path d="M150 210 C 210 170, 260 230, 300 200 S 380 160, 420 220 C 440 260, 400 300, 360 290 C 320 280, 300 330, 250 320 C 200 310, 170 270, 150 210 Z" fill="#1A2B3D"></path>
+<g fill="none" stroke="#9FE0D0" stroke-width="3" stroke-linecap="round" opacity="0.9">
+<path d="M60 360 C 160 330, 260 380, 360 350 S 520 330, 590 360"></path><path d="M80 420 C 180 400, 280 440, 380 410 S 520 400, 570 430"></path><path d="M110 260 C 190 250, 230 280, 300 270"></path><path d="M140 480 C 220 470, 300 500, 360 490"></path>
+</g>
+</svg>
+
+<div style="position: absolute; right: 16px; top: 120px; display: flex; flex-direction: column; gap: 8px; z-index: 2">
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2E6F86; background: rgba(15,34,48,0.92); color: #CFEFF8; font-size: 13px; cursor: pointer">Explain</button>
+</div>
+
+<section aria-label="Layers and legend" style="{{sheetStyle}}">
+<button type="button" onClick="{{cycle}}" aria-label="{{handleLabel}}" style="align-self: center; width: 120px; height: 28px; margin-top: -4px; background: none; border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center">
+<span style="width: 40px; height: 5px; border-radius: 3px; background: #4A5768"></span>
+</button>
+
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-size: 12px; letter-spacing: 0.12em; color: #C9D2DE">WIND AT 10 M</span>
+<span style="font-size: 12px; color: #9AA6B8">Tap to change</span>
+</div>
+<div style="height: 10px; border-radius: 5px; background: linear-gradient(90deg,#1B3A5C,#3E8FB8,#9FE0D0,#F2E37A)"></div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #C9D2DE"><span>0 mph</span><span>[max] mph</span></div>
+<span style="font-size: 12px; color: #9AA6B8">Source: NOAA GFS · [model run time]</span>
+
+<sc-if value="{{showLayers}}" hint-placeholder-val="{{true}}">
+<div style="height: 1px; background: #233041; margin: 6px 0"></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #121A26; border: 1px solid #233041; border-radius: 10px; padding: 4px">
+<button type="button" aria-pressed="true" style="min-height: 40px; border: 0; border-radius: 7px; font-size: 11px; letter-spacing: 0.08em; background: #DCE6F2; color: #0A0E16; cursor: pointer">GLOBE</button>
+<button type="button" aria-pressed="false" style="min-height: 40px; border: 0; border-radius: 7px; font-size: 11px; letter-spacing: 0.08em; background: transparent; color: #C9D2DE; cursor: pointer">ONE OCEAN</button>
+<button type="button" aria-pressed="false" style="min-height: 40px; border: 0; border-radius: 7px; font-size: 11px; letter-spacing: 0.08em; background: transparent; color: #C9D2DE; cursor: pointer">FLAT</button>
+</div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8; margin-top: 8px">{{g.label}}</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{g.items}}" as="it" hint-placeholder-count="4">
+<button type="button" aria-pressed="{{it.on}}" style="{{it.style}}">{{it.name}}</button>
+</sc-for>
+</div>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{showAbout}}" hint-placeholder-val="{{false}}">
+<div style="height: 1px; background: #233041; margin: 10px 0 4px"></div>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #D3DAE4">Wind is the air moving from high pressure to low. These streaks follow it about ten meters above the ground, roughly the height of a two-story house.</p>
+<a href="#" style="font-size: 14px">How we get this data</a>
+</sc-if>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { s: 1 }; }
+  renderVals() {
+    const s = this.state.s; // 0 peek, 1 half, 2 full
+    const top = [664, 430, 150][s];
+    const chip = (name, on) => ({ name, on: on ? 'true' : 'false',
+      style: 'min-height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; cursor: pointer; border: 1px solid ' + (on ? '#F2B544' : '#2E3B4E') + '; background: ' + (on ? 'rgba(242,181,68,0.16)' : '#121A26') + '; color: ' + (on ? '#F7D48C' : '#DCE3EC') });
+    const groups = [
+      { label: 'HOW EARTH MOVES', items: [chip('Wind', true), chip('Ocean currents'), chip('Storms'), chip('Clouds'), chip('Earthquakes')] },
+      { label: 'WHAT IS IN THE AIR', items: [chip('Wildfire smoke'), chip('PM2.5'), chip('Carbon dioxide')] },
+      { label: 'WHAT WE ARE CHANGING', items: [chip('Sea temperature'), chip('Ocean heat'), chip('Active fires')] },
+      { label: 'LIFE ON THE MOVE', items: [chip('Bird migration')] }
+    ];
+    return { groups, showLayers: s >= 1, showAbout: s === 2,
+      globeTop: s === 0 ? '230px' : '96px',
+      handleLabel: ['Show layers', 'Show more about this layer', 'Collapse panel'][s],
+      cycle: () => this.setState({ s: (s + 1) % 3 }),
+      sheetStyle: 'position: absolute; left: 0; right: 0; bottom: 0; top: ' + top + 'px; box-sizing: border-box; padding: 10px 18px 24px; background: rgba(14,20,30,0.97); border-top: 1px solid #2A3647; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; z-index: 3' };
+  }
+}
+</script>
+</body>
+</html>

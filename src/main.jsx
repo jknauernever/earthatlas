@@ -73,6 +73,7 @@ import GeneralReport from './ships/GeneralReport.jsx'
 import BunkeringReport from './ships/BunkeringReport.jsx'
 import OilTransfersReport from './ships/OilTransfersReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
+import StoryLabApp from './storylab/StoryLabApp.jsx'
 import './index.css'
 import { onPrivatePage, posthogBeforeSend, sentryBeforeSend } from './accounts/privacy.js'
 import { ACCOUNTS_LIVE } from './accounts/live.js'
@@ -222,6 +223,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/reports/scrubbers/:edition" element={<ScrubberReport />} />
           <Route path="/inmotion" element={<SystemsApp />} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />
+          <Route path="/storylab/*" element={<StoryLabApp />} />
           {/* Accounts, admin, contact and legal pages: routed only once accounts launch (src/accounts/live.js). */}
           {ACCOUNTS_LIVE && (<>
           <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In Motion: Here, Now direction</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0E16}
+a{color:#7FD3EC}a:hover{color:#B5E7F5}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 900px; width: 100%; box-sizing: border-box; background: #0A0E16; color: #E8ECF2; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px; padding: 28px 36px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="font-weight: 600; font-size: 15px">EarthAtlas</span>
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">IN MOTION · HERE, NOW</span>
+</div>
+<label style="flex: 1 1 360px; max-width: 560px; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 18px; border-radius: 26px; border: 1px solid #2E3B4E; background: #121A26; color: #9AA6B8">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search for a place</span>
+<input type="text" value="San Juan Islands, Washington" style="flex: 1; background: none; border: 0; outline: none; color: #E8ECF2; font-size: 16px; font-family: inherit">
+</label>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #2E3B4E; background: transparent; color: #C9D2DE; font-size: 14px; cursor: pointer">Use my location</button>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8; margin-right: 4px">JUMP TO</span>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #F2B544; background: rgba(242,181,68,0.14); color: #F7D48C; font-size: 13px; cursor: pointer">Salish Sea</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2A3647; background: transparent; color: #C9D2DE; font-size: 13px; cursor: pointer">Gulf of Mexico</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2A3647; background: transparent; color: #C9D2DE; font-size: 13px; cursor: pointer">Amazon</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2A3647; background: transparent; color: #C9D2DE; font-size: 13px; cursor: pointer">Sahara to Caribbean</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2A3647; background: transparent; color: #C9D2DE; font-size: 13px; cursor: pointer">Great Barrier Reef</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #2A3647; background: transparent; color: #C9D2DE; font-size: 13px; cursor: pointer">Whole planet</button>
+</div>
+
+<div style="flex: 1; display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+
+<div style="flex: 1 1 520px; min-width: 0; position: relative; background: #0D1520; border: 1px solid #1E2A3A; border-radius: 16px; display: flex; align-items: center; justify-content: center; min-height: 600px; overflow: hidden">
+<svg width="560" height="560" viewBox="0 0 640 640" role="img" aria-label="Globe zoomed toward the Salish Sea with a pin on the San Juan Islands" style="max-width: 92%; height: auto">
+<defs><radialGradient id="gc" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#14304A"></stop><stop offset="100%" stop-color="#08131F"></stop></radialGradient></defs>
+<circle cx="320" cy="320" r="300" fill="url(#gc)" stroke="#2A4A66" stroke-width="1.5"></circle>
+<g fill="none" stroke="#1C3550" stroke-width="1"><ellipse cx="320" cy="320" rx="300" ry="120"></ellipse><ellipse cx="320" cy="320" rx="120" ry="300"></ellipse></g>
+<path d="M300 120 C 380 110, 460 170, 480 260 C 500 360, 440 470, 360 520 C 330 540, 320 480, 330 430 C 340 380, 290 340, 300 280 C 305 230, 270 160, 300 120 Z" fill="#1A2B3D"></path>
+<g fill="none" stroke="#9FE0D0" stroke-width="1.8" stroke-linecap="round" opacity="0.8">
+<path d="M80 260 C 160 250, 220 280, 290 290"></path><path d="M90 320 C 170 320, 230 330, 300 330"></path><path d="M100 380 C 170 380, 240 370, 310 360"></path>
+</g>
+<circle cx="296" cy="300" r="10" fill="#F2B544" stroke="#0A0E16" stroke-width="3"></circle>
+<circle cx="296" cy="300" r="40" fill="none" stroke="#F2B544" stroke-width="1.5" stroke-dasharray="3 5"></circle>
+</svg>
+<div style="position: absolute; right: 16px; top: 16px; display: flex; flex-direction: column; gap: 6px; background: rgba(16,23,34,0.92); border: 1px solid #2A3647; border-radius: 12px; padding: 6px">
+<button type="button" aria-label="Zoom in" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: #1A2433; color: #E8ECF2; font-size: 20px; cursor: pointer">+</button>
+<button type="button" aria-label="Zoom out" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: #1A2433; color: #E8ECF2; font-size: 20px; cursor: pointer">−</button>
+<button type="button" aria-label="Reset view" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: #1A2433; color: #E8ECF2; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 4v4M12 16v4M4 12h4M16 12h4"></path></svg></button>
+</div>
+<div style="position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 14px; background: rgba(16,23,34,0.92); border: 1px solid #2A3647; border-radius: 12px; padding: 10px 16px">
+<button type="button" aria-label="Play past 30 days" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 22px; background: #F2B544; color: #1A1206; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5l12 7-12 7z"></path></svg></button>
+<label style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9AA6B8">
+<span>30 days ago</span>
+<input type="range" min="0" max="30" value="30" style="width: 100%; accent-color: #F2B544">
+</label>
+<span style="font-size: 13px; color: #E8ECF2; flex: none">Now</span>
+</div>
+</div>
+
+<section aria-label="Conditions here" style="flex: 1 1 420px; max-width: 560px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.15">What is moving around the San Juan Islands</h1>
+<p style="margin: 0; font-size: 14px; color: #9AA6B8">Within 50 km · updated [time] · tap any card to show it on the globe</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="6">
+<button type="button" style="text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 12px; border: 1px solid #2A3647; background: #121A26; color: #E8ECF2; cursor: pointer; min-height: 120px">
+<span style="font-size: 11px; letter-spacing: 0.12em; color: #9AA6B8">{{t.group}}</span>
+<span style="font-size: 15px; color: #DCE3EC">{{t.name}}</span>
+<span style="font-family: 'Source Serif 4', Georgia, serif; font-size: 26px">{{t.value}}</span>
+<span style="font-size: 12px; color: {{t.noteColor}}">{{t.note}}</span>
+</button>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 12px; color: #9AA6B8; line-height: 1.5">Sources are listed on each card's detail view. <a href="#">How we get this data</a></p>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const warm = '#F7B26B', calm = '#9AA6B8';
+    return { tiles: [
+      { group: 'AIR', name: 'Wind', value: '[speed] mph [dir]', note: 'Typical for this week', noteColor: calm },
+      { group: 'AIR', name: 'Fine particles', value: '[PM2.5] µg/m³', note: '[category]', noteColor: calm },
+      { group: 'WATER', name: 'Sea temperature', value: '[temp] °F', note: '[x] °F warmer than normal', noteColor: warm },
+      { group: 'WATER', name: 'Ocean acidity', value: 'pH [value]', note: 'Copernicus + UW LiveOcean', noteColor: calm },
+      { group: 'LAND', name: 'Fires and quakes', value: '[n] fires · [n] quakes', note: 'Past 24 h fires, past 30 days quakes', noteColor: calm },
+      { group: 'LIFE', name: 'Bird migration', value: '[level] tonight', note: 'Radar-observed', noteColor: calm }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

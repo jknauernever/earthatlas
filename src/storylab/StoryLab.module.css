@@ -1,0 +1,306 @@
+/* Story Lab — look from docs/design/inmotion-lab sketches: near-black blue
+   ground, Source Serif 4 headlines, Inter for the rest, amber accent, quiet
+   bordered panels. */
+
+.app {
+  --ground: #0A0E16;
+  --panel: rgba(14, 20, 30, 0.96);
+  --line: #233041;
+  --line2: #2A3647;
+  --text: #E8ECF2;
+  --muted: #9AA6B8;
+  --soft: #B8C2D1;
+  --chip: #C9D2DE;
+  --amber: #F2B544;
+  --amberText: #F7D48C;
+  --amberBg: rgba(242, 181, 68, 0.14);
+  --link: #7FD3EC;
+  --serif: 'Source Serif 4', Georgia, serif;
+  position: fixed;
+  inset: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  overflow: hidden;
+}
+.app a { color: var(--link); }
+.app a:hover { color: #B5E7F5; }
+.app button { font-family: inherit; }
+.app button:focus-visible, .app input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* The one globe. Full window by default; Here, Now re-seats it (inline style). */
+.globeHost { position: absolute; inset: 0; z-index: 1; }
+.mode_here .globeHost { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+
+/* ─── Shared bits ───────────────────────────────────────────────────────── */
+.brand { display: flex; align-items: center; gap: 12px; }
+.brandName { font-weight: 600; font-size: 15px; letter-spacing: 0.01em; color: var(--text) !important; text-decoration: none; }
+.brandSub { font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+.brandBtn { background: none; border: 0; padding: 0; cursor: pointer; color: inherit; text-align: left; }
+.eyebrow { display: block; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+.rule { height: 1px; background: var(--line); }
+.linkBtn { background: none; border: 0; padding: 0; color: var(--link); text-decoration: underline; cursor: pointer; font-size: 14px; text-align: left; }
+.linkBtn:hover { color: #B5E7F5; }
+
+.pillBtn {
+  min-height: 44px; padding: 0 16px; border-radius: 22px; font-size: 14px; cursor: pointer;
+  border: 1px solid var(--line2); background: rgba(10, 14, 22, 0.75); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+}
+.pillBtn:hover { border-color: #4A5A70; }
+.pillBtn:disabled { opacity: 0.45; cursor: default; }
+.iconBtn {
+  width: 46px; height: 46px; flex: none; border-radius: 23px; cursor: pointer;
+  border: 1px solid var(--line2); background: rgba(14, 20, 30, 0.9); color: var(--chip);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.iconBtn:hover { color: var(--text); border-color: #4A5A70; }
+
+.chip, .chipOn {
+  min-height: 40px; padding: 0 14px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line2); background: transparent; color: var(--chip);
+}
+.chip:hover { border-color: #4A5A70; color: var(--text); }
+.chipOn { border-color: var(--amber); background: var(--amberBg); color: var(--amberText); }
+.chipWrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag { padding: 6px 12px; border-radius: 16px; font-size: 13px; background: #1A2433; border: 1px solid var(--line2); color: #DCE3EC; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border: 1px solid var(--line2); border-radius: 10px; background: #0E1520; }
+.segBtn, .segOn { min-height: 40px; border: 0; border-radius: 7px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.segBtn { background: transparent; color: var(--chip); }
+.segBtn:hover { color: var(--text); }
+.segOn { background: #DCE6F2; color: var(--ground); }
+
+.builtBy { margin-top: auto; padding-top: 18px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.builtBy a { color: var(--soft) !important; }
+
+/* Search box (wraps the shared GeoSearch) */
+.search { position: relative; width: 260px; }
+.search :global(input) {
+  width: 100%; box-sizing: border-box; height: 46px; padding: 0 16px 0 40px; border-radius: 23px;
+  border: 1px solid var(--line2) !important; background: rgba(14, 20, 30, 0.92) !important; color: var(--text) !important;
+  font: 14px Inter, system-ui, sans-serif !important; outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239AA6B8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: 15px center !important;
+}
+.search :global(input::placeholder) { color: var(--muted); }
+.geoSearch { width: 100%; }
+
+/* ─── Field Guide ───────────────────────────────────────────────────────── */
+.panel {
+  position: absolute; z-index: 5; left: 0; top: 0; bottom: 0; width: 380px; box-sizing: border-box;
+  padding: 36px 32px 24px; display: flex; flex-direction: column; gap: 24px;
+  background: var(--ground); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A3647 transparent;
+}
+.panelTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.storiesBtn {
+  min-height: 36px; padding: 0 14px; border-radius: 18px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--amber); background: var(--amberBg); color: var(--amberText);
+}
+.storiesBtn:hover { background: rgba(242, 181, 68, 0.24); }
+.intro { display: flex; flex-direction: column; gap: 14px; }
+.h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 40px; line-height: 1.1; }
+.lede { margin: 0; font-size: 15px; line-height: 1.6; color: var(--soft); }
+.group { display: flex; flex-direction: column; gap: 4px; }
+.group .eyebrow { margin-bottom: 6px; }
+
+.toggle {
+  display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 2px 0; border: 0; background: none;
+  color: var(--text); font-size: 16px; cursor: pointer; text-align: left;
+}
+.toggle:hover .toggleName { color: #fff; }
+.track, .trackOn {
+  flex: none; width: 36px; height: 20px; border-radius: 10px; box-sizing: border-box; position: relative;
+  border: 1px solid #3A4658; background: #121A26; transition: background 0.15s, border-color 0.15s;
+}
+.trackOn { border-color: var(--amber); background: rgba(242, 181, 68, 0.18); }
+.knob { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 6px; background: var(--chip); transition: left 0.15s, background 0.15s; }
+.trackOn .knob { left: 19px; background: var(--amber); }
+.toggleName { flex: 1; }
+.toggleNote { font-size: 11px; color: var(--muted); }
+.toggleErr { font-size: 11px; color: #F7B26B; }
+
+.topRight { position: absolute; z-index: 6; top: 32px; right: 32px; display: flex; align-items: center; gap: 10px; }
+.explainBtn {
+  min-height: 46px; padding: 0 18px; border-radius: 23px; font-size: 14px; font-weight: 500; cursor: pointer;
+  border: 1px solid rgba(127, 211, 236, 0.55); background: rgba(16, 42, 52, 0.85); color: #E0F6FC; white-space: nowrap;
+}
+.explainBtn:hover:not(:disabled) { background: rgba(22, 58, 72, 0.95); }
+.explainBtn:disabled { opacity: 0.45; cursor: default; }
+.hint {
+  position: absolute; z-index: 3; left: calc(380px + 50% - 190px); transform: translateX(-50%); top: 84px;
+  font-size: 12px; color: var(--muted); pointer-events: none; text-shadow: 0 1px 4px #000;
+}
+
+/* Legend card */
+.legend, .legendEmbedded { display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+.legend {
+  position: absolute; z-index: 6; right: 32px; bottom: 40px; width: 320px; padding: 16px 18px;
+  background: var(--panel); border: 1px solid var(--line2); border-radius: 14px;
+}
+.legendHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.legendTitleBtn { background: none; border: 0; padding: 0; color: inherit; cursor: default; text-align: left; }
+.legendTitle { font-size: 12px; letter-spacing: 0.12em; font-weight: 600; text-transform: uppercase; }
+.legendMeasure { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.legendBar { height: 10px; border-radius: 5px; }
+.legendEnds { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--soft); }
+.legendSource { font-size: 12px; color: var(--muted); }
+.legendSource a { color: var(--soft) !important; text-decoration: none; }
+.legendSource a:hover { text-decoration: underline; }
+.legendAbout { margin: 0 0 4px; font-size: 13px; line-height: 1.55; color: #DCE3EC; }
+.legendAbout .linkBtn { font-size: 13px; }
+.legendMuted { font-size: 13px; color: var(--muted); }
+.infoBtn { width: 30px; height: 30px; flex: none; border-radius: 15px; border: 1px solid var(--line2); background: transparent; color: var(--chip); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.infoBtn:hover, .infoBtn[aria-expanded='true'] { color: var(--amber); border-color: var(--amber); }
+
+.modalBack { position: fixed; inset: 0; z-index: 50; background: rgba(4, 7, 12, 0.7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal {
+  position: relative; width: min(560px, 100%); max-height: 80vh; overflow-y: auto; box-sizing: border-box; padding: 28px 28px 20px;
+  background: #0E141E; border: 1px solid var(--line2); border-radius: 16px; font-size: 14px; line-height: 1.6; color: #DCE3EC;
+}
+.modalTitle { margin: 6px 0 12px; font-family: var(--serif); font-weight: 400; font-size: 26px; color: var(--text); }
+.modalClose { position: absolute; top: 12px; right: 14px; width: 36px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 24px; cursor: pointer; }
+
+/* ─── Chapters ──────────────────────────────────────────────────────────── */
+.chHead {
+  position: absolute; z-index: 6; left: 36px; right: 36px; top: 28px;
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'brand pills' 'skip .'; align-items: center; gap: 18px 24px;
+}
+.chHead > :first-child { grid-area: brand; }
+.chPills { grid-area: pills; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.chPills .chip, .chPills .chipOn { min-height: 44px; border-radius: 22px; background: rgba(10, 14, 22, 0.7); }
+.chPills .chipOn { background: rgba(242, 181, 68, 0.18); }
+.chHead > .pillBtn { grid-area: skip; justify-self: start; }
+.chHint { position: absolute; z-index: 3; left: 36px; top: 174px; font-size: 13px; color: var(--muted); text-shadow: 0 1px 4px #000; }
+.chCard {
+  position: absolute; z-index: 6; right: 36px; top: 50%; transform: translateY(-40%); width: 380px; box-sizing: border-box;
+  padding: 32px 32px 24px; display: flex; flex-direction: column; gap: 14px;
+  background: var(--panel); border: 1px solid var(--line2); border-radius: 16px;
+}
+.chNum { font-size: 11px; letter-spacing: 0.14em; color: var(--amber); }
+.chTitle { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.15; }
+.chBody { margin: 0; font-size: 16px; line-height: 1.65; color: #DCE3EC; }
+.chNav { display: flex; align-items: center; gap: 14px; justify-content: space-between; }
+.nextBtn { min-height: 44px; padding: 0 24px; border-radius: 22px; border: 0; background: var(--amber); color: #1A1306; font-size: 15px; font-weight: 600; cursor: pointer; }
+.nextBtn:hover { background: #F6C56A; }
+.chCredit, .chSwipe { font-size: 12px; color: var(--muted); }
+.dots { display: flex; gap: 6px; }
+.dot, .dotOn { display: block; height: 6px; width: 6px; border-radius: 3px; background: #4A5768; }
+.dotOn { width: 18px; background: var(--amber); }
+
+/* ─── Here, Now ─────────────────────────────────────────────────────────── */
+.here {
+  position: absolute; inset: 0; z-index: 4; box-sizing: border-box; padding: 28px 36px 20px;
+  display: grid; grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr); grid-template-rows: auto auto 1fr auto;
+  grid-template-areas: 'head head' 'jumps jumps' 'globe cards' 'built cards';
+  gap: 20px 28px; overflow-y: auto; pointer-events: none;
+}
+.here > * { pointer-events: auto; }
+.hereHead { grid-area: head; display: flex; align-items: center; gap: 18px; }
+.hereSearch { flex: 1; max-width: 600px; width: auto; }
+.hereSearch :global(input) { height: 52px; border-radius: 26px; font-size: 16px !important; }
+.jumps { grid-area: jumps; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.jumps .eyebrow { margin-right: 6px; }
+.globeFrame { grid-area: globe; position: relative; min-height: 360px; pointer-events: none; }
+.globeFrame > * { pointer-events: auto; }
+.zoomBtns {
+  position: absolute; top: 14px; right: 14px; z-index: 8; display: flex; flex-direction: column; gap: 6px; padding: 6px;
+  background: rgba(14, 20, 30, 0.9); border: 1px solid var(--line2); border-radius: 12px;
+}
+.zoomBtns button { width: 40px; height: 40px; border: 0; border-radius: 8px; background: #1A2433; color: var(--text); font-size: 20px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.zoomBtns button:hover { background: #24324A; }
+.slider {
+  position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 8; display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px 10px 10px; background: rgba(14, 20, 30, 0.94); border: 1px solid var(--line2); border-radius: 14px;
+}
+.playBtn { width: 44px; height: 44px; flex: none; border-radius: 22px; border: 0; background: var(--amber); color: #1A1306; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.sliderLabel { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--soft); }
+.sliderLabel input { width: 100%; accent-color: var(--amber); height: 22px; margin: 0; cursor: pointer; }
+.sliderNow { font-size: 13px; color: var(--text); }
+.cards { grid-area: cards; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hereTitle { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.15; }
+.hereSub { margin: 0; font-size: 14px; color: var(--muted); }
+.cardGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; min-height: 130px; box-sizing: border-box; text-align: left;
+  border: 1px solid var(--line2); border-radius: 12px; background: #111926; color: var(--text); cursor: pointer;
+}
+.card:hover { border-color: var(--amber); }
+.cardSkeleton { cursor: default; background: linear-gradient(90deg, #111926, #172131, #111926); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.cardName { font-size: 15px; }
+.cardValue { font-family: var(--serif); font-size: 26px; line-height: 1.2; }
+.cardNote { font-size: 12px; color: var(--muted); }
+.cardNoteWarm { font-size: 12px; color: #F7B26B; }
+.hereFoot { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.hereBuilt { grid-area: built; }
+.hereBuilt .builtBy { padding-top: 0; }
+.placeDot { width: 16px; height: 16px; border-radius: 8px; background: var(--amber, #F2B544); border: 2px solid #0A0E16; box-shadow: 0 0 0 6px rgba(242, 181, 68, 0.25); }
+
+/* ─── Phones (≤ 768px): nothing needs hover ─────────────────────────────── */
+.phoneHead { position: absolute; z-index: 6; left: 16px; right: 16px; top: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.phoneTitle { margin: 4px 0 0; font-family: var(--serif); font-weight: 400; font-size: 24px; line-height: 1.15; }
+.phoneTools { position: absolute; z-index: 6; left: 16px; right: 16px; top: 92px; display: flex; gap: 8px; align-items: center; }
+.phoneSearch { flex: 1; width: auto; }
+.phoneTools .explainBtn { padding: 0 14px; }
+.sheet {
+  position: absolute; z-index: 7; left: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 6px 18px 24px;
+  background: rgba(14, 20, 30, 0.97); border-top: 1px solid var(--line2); border-radius: 18px 18px 0 0;
+  display: flex; flex-direction: column; gap: 12px; overflow-y: auto; transition: top 0.25s ease;
+}
+.sheet0 { top: calc(100% - 150px); }
+.sheet1 { top: 52%; }
+.sheet2 { top: 140px; }
+.sheetHandle { align-self: center; width: 100%; height: 28px; border: 0; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex: none; }
+.sheetHandle span { width: 40px; height: 4px; border-radius: 2px; background: #4A5768; }
+.sheetBody { display: flex; flex-direction: column; gap: 16px; }
+.sheet .legendAbout { display: none; }
+.sheet2 .legendAbout { display: block; }
+
+@media (max-width: 768px) {
+  .chHead { left: 16px; right: 16px; top: 14px; display: flex; justify-content: space-between; }
+  .chCard { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; transform: none; padding: 20px 20px 16px; gap: 10px; }
+  .chTitle { font-size: 24px; }
+  .chBody { font-size: 15px; }
+  .here { display: flex; flex-direction: column; padding: 14px 16px 16px; gap: 12px; }
+  .here > * { flex: none; }
+  .hereHead { gap: 8px; }
+  .hereHead .brand { display: none; }
+  .hereHead .brandBtn::before { content: 'EARTHATLAS · HERE, NOW'; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); white-space: nowrap; }
+  .hereHead { flex-wrap: wrap; }
+  .hereHead .brandBtn { flex-basis: 100%; }
+  .hereSearch :global(input) { height: 46px; font-size: 15px !important; }
+  .hereHead .pillBtn { width: 46px; padding: 0; }
+  .jumps { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .here_list .globeFrame { display: none; }
+  .here_globe .globeFrame { flex: 1; min-height: 0; }
+  .hereTitle { font-size: 24px; }
+  .cardGrid { grid-template-columns: 1fr; }
+  .card { min-height: 0; }
+  .search { width: auto; }
+}
+
+/* Scrims so headers stay readable over the globe imagery. */
+.phoneHead::before, .chHead::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  left: -40px; right: -40px; top: -40px; height: calc(100% + 90px);
+  background: linear-gradient(rgba(10, 14, 22, 0.92) 45%, rgba(10, 14, 22, 0));
+}
+.phoneHead::before { height: 230px; }
+
+/* The /inmotion time bar, seated in the globe's open area for each mode
+   (StoryGlobe's .transportSlot spans the bottom; these narrow it). */
+.transportGuide { left: 380px; right: 372px; }
+.transportChapters { right: 440px; }
+.transportGuide > *, .transportChapters > * { width: min(760px, calc(100% - 24px)) !important; }
+.transportGuide > [class*='mini'], .transportChapters > [class*='mini'] { width: auto !important; }
+/* Phones: under the header, clear of the bottom sheet / chapter card. */
+.transportPhoneGuide, .transportPhoneChapters { bottom: auto; height: 60px; }
+.transportPhoneGuide { top: 146px; }
+.transportPhoneChapters { top: 52px; }
+.transportPhoneGuide > *, .transportPhoneChapters > * { bottom: auto !important; top: 6px; }
+/* Narrow laptops: not enough room between the panel and the legend, so the
+   bar rides above the legend card instead. */
+@media (min-width: 769px) and (max-width: 1180px) {
+  .transportGuide { right: 0; bottom: 196px; }
+}

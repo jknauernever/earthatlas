@@ -1,0 +1,3175 @@
+/**
+ * /storylab globe engine: a fork of src/systems/SystemsApp.jsx (the /inmotion page),
+ * forked 2026-11-12 from b481f0b so /inmotion stays untouched. Same layer modules,
+ * same data, same Explain pipeline; the page chrome (dock, panel, search, share,
+ * clips, basemap menu) is removed and the parent StoryLabApp drives it through
+ * props and an imperative handle. Keep fixes in sync with SystemsApp by hand.
+ */
+/**
+ * EarthAtlas In Motion — animated earth-systems globe at /inmotion (code lives under src/systems/).
+ *
+ * Live planetary systems in motion: wind and ocean currents as flowing
+ * particles, sea-surface temperature and wave height as color overlays, on a
+ * true globe with atmosphere. Inspired by earth.nullschool.net, rebuilt
+ * clean-room in the EarthAtlas idiom — with the EarthAtlas emphasis on
+ * explaining WHAT you're seeing, WHY it matters, and where every number
+ * comes from.
+ *
+ * Layer definitions live in src/systems/layerDefs.js; data pipelines in
+ * api/cron/gfs-wind.js + api/cron/systems-bake.js (see SYSTEMS-NOTES.md).
+ * Every layer's animation/overlay AND its click readout sample the same
+ * baked grid from the same model run — one source of truth, stamped in the
+ * panel and popups. A layer with no live data shows an honest "unavailable"
+ * state, never stale or made-up values.
+ */
+
+import { mapboxToken } from '../lib/mapboxToken.js'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import mapboxgl from 'mapbox-gl'
+import { ensureWebGLSupport } from '../utils/webglSupport'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import GeoSearch from '../components/GeoSearch.jsx'
+import { flyToSearchResult } from '../lib/eaGeoSearch.js'
+import ZoomIndicator from '../components/ZoomIndicator.jsx'
+import MapSheet from '../components/MapSheet.jsx'
+import MapSearch from '../components/MapSearch.jsx'
+import { installPopupSheet } from '../lib/popupSheet.js'
+import { fitPopupToMap } from '../lib/popupFit.js'
+import { useIsMobile } from '../hooks/useMediaQuery'
+import { loadGridField, loadSystemsJson, SOURCE_BASES } from '../systems/windField.js'
+import { ParticleLayer } from '../systems/windParticles.js'
+import { ScalarOverlayLayer } from '../systems/scalarOverlay.js'
+import { TapeField } from '../systems/tape.js'
+import { loadLandMask, getLandMaskSync, isLand } from '../systems/landMask.js'
+import { ReplayController } from '../systems/replay.js'
+import { readRadarAt } from '../systems/radarReadout.js'
+import { EventTape } from '../systems/eventTape.js'
+import { RasterTape } from '../systems/rasterTape.js'
+import TransportBar from '../systems/TransportBar.jsx'
+import { formatAiText } from '../systems/aiFormat.js'
+import { EventPingLayer } from '../systems/eventPings.js'
+import { FireEventsOverlay, fireEventName } from '../systems/fireEventsOverlay.js'
+import { StormsOverlay } from '../systems/stormsOverlay.js'
+import { TraceFacilitiesOverlay } from '../systems/traceFacilitiesOverlay.js'
+import MeasurePicker from '../systems/MeasurePicker.jsx'
+import FungiPicker from '../systems/FungiPicker.jsx'
+import { fungiMeasure, loadFungiField } from '../systems/fungiData.js'
+import { FungiTilesOverlay } from '../systems/fungiTiles.js'
+import { FungiThreadsLayer } from '../systems/fungiThreads.js'
+import { MEASURE_INFO, PRIMARY_MEASURE, SECTOR_STYLE, availableMeasures } from '../systems/traceData.js'
+import { probeHover } from '../systems/hoverProbe.js'
+import { FLAME_PATH, FLAME_INNER, FLAME_STATES } from '../components/flameGlyph.js'
+import { FireRawDetectionsOverlay } from '../systems/fireRawDetections.js'
+import { SmokePlumesOverlay } from '../systems/smokePlumesOverlay.js'
+import { MethanePlumesOverlay } from '../systems/methanePlumesOverlay.js'
+import { identifyPlumeSource } from '../systems/plumeSourceLookup.js'
+import { LAYERS, GROUPS, fmtRun, fmtDay, agoWord, rampGradient, tierSees } from '../systems/layerDefs.js'
+import { buildViewFacts } from '../systems/viewFacts.js'
+import { TapeVectorField } from '../systems/flightField.js'
+import ClipStudio from '../systems/ClipStudio.jsx'
+import { captureStill, mapboxBasemapSource } from '../systems/clipRecorder.js'
+import ShareControl from '../components/ShareControl.jsx'
+import { BasemapMenu, ImageryLine, useMapPhotos, photoCreditText } from '../components/basemap/index.js'
+import { scheduleViewCard, captureMapImage } from '../lib/shareCard.js'
+import useDockColumns from '../components/panel/useDockColumns.js'
+import DatasetRow from '../components/panel/DatasetRow.jsx'
+import styles from '../systems/SystemsApp.module.css'
+import labStyles from './StoryGlobe.module.css'
+import { SITE_DATA_NOTE, aiExperimentNote } from '../components/panel/siteRunsNote.js'
+import SiteBrand from '../components/SiteBrand.jsx'
+import PoweredBy from '../components/PoweredBy.jsx'
+import LegalLinks from '../components/LegalLinks.jsx'
+
+const AI_NOTE = aiExperimentNote('“Explain this view” and the short notes in map popups are')
+
+// Mobile popups get a drag-to-extend grab handle (no-op after first call).
+installPopupSheet()
+
+const MAPBOX_TOKEN = mapboxToken
+const WATER_MASK_LAYER = 'systems-water-mask'
+
+// Opens on the Atlantic so both hemispheres' circulation belts are in view.
+const DEFAULT_VIEW = { center: [-40, 24], zoom: 1.9 }
+
+const BASEMAPS = [
+  { id: 'satellite', label: 'Satellite', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  { id: 'dark', label: 'Dark', style: 'mapbox://styles/mapbox/dark-v11' },
+  { id: 'light', label: 'Light', style: 'mapbox://styles/mapbox/light-v11' },
+  { id: 'streets', label: 'Streets', style: 'mapbox://styles/mapbox/streets-v12' },
+]
+const basemapStyleFor = (id) => (BASEMAPS.find((b) => b.id === id) || BASEMAPS[0]).style
+
+// Particle density presets, shared by all particle layers.
+const DENSITIES = [
+  { id: 'low', label: 'Low', count: 1800 },
+  { id: 'med', label: 'Medium', count: 3500 },
+  { id: 'high', label: 'High', count: 6000 },
+]
+const densityCount = (id) => (DENSITIES.find((d) => d.id === id) || DENSITIES[1]).count
+
+// Overlay canvas stack in draw order (bottom → top), mirroring the JSX order —
+// the clip recorder composites these over the basemap in exactly this order.
+const OVERLAY_KEYS = ['scalar', 'smokeplumes', 'methaneplumes', 'methanemars', 'co2plumes', 'aerosol:flow', 'flight', 'currents', 'wind', 'hotspots', 'fireraw', 'fireevents', 'emissions', 'quakes', 'storms']
+
+// Gas layers with observed-emission-source companions. A gas can carry more
+// than one provider: Carbon Mapper (lime reticles) and, for methane, UNEP
+// IMEO's MARS detected sources (cyan) — multi-satellite, all sectors, baked
+// from the public export by scripts/bake-mars.js (CC BY-NC-SA, attribution
+// in the popup). Each def owns one canvas/overlay instance, keyed by `key`.
+const GAS_SOURCE_DEFS = [
+  { id: 'methane', key: 'methaneplumes', dataset: 'methane-plumes', expectKind: 'ch4-sources', product: 'ch4', provider: 'carbonmapper' },
+  { id: 'methane', key: 'methanemars', dataset: 'mars-sources', expectKind: 'mars-sources', product: 'ch4', provider: 'mars', color: '34,211,238' },
+  { id: 'co2', key: 'co2plumes', dataset: 'co2-plumes', expectKind: 'co2-sources', product: 'co2', provider: 'carbonmapper' },
+]
+// Gas layers whose popups get the deterministic fire-proximity line
+// (wildfires emit CH4, CO, CO2 and particulates; CAMS even assimilates
+// satellite fire emissions, so the correlation users see is real).
+const FIRE_CORRELATED = new Set(['methane', 'co', 'co2', 'pm25', 'smoke'])
+
+// The actual imaged gas plume, draped as raster tiles over the basemap for
+// the clicked source's newest scene (public Carbon Mapper XYZ endpoint —
+// absolute URL, per the house Mapbox rule). One at a time; removed with the
+// popup.
+// Basemap dimmer: when a scalar wash is active, the basemap fights it —
+// warm smoke tans vanish on arid terrain, pH blues sink into ocean imagery,
+// street colors shout over everything. A translucent dark veil over the
+// basemap (below all our canvas overlays) lets the data read first, the
+// standard move in serious data viewers. Only while a wash is on.
+const DIMMER_LAYER = 'systems-basemap-dimmer'
+// Streets is already light and low-contrast — a heavy veil makes it murky
+// (Josh, 2026-08-31). Imagery basemaps carry the full veil.
+const DIMMER_OPACITY = { streets: 0.22, light: 0.22 }
+function setBasemapDimmer(map, on, basemapId) {
+  const opacity = DIMMER_OPACITY[basemapId] ?? 0.42
+  try {
+    const has = map.getLayer(DIMMER_LAYER)
+    if (!on) { if (has) map.removeLayer(DIMMER_LAYER); return }
+    // The veil dims the BASEMAP only: it must sit under the first label AND
+    // under every one of our own map layers (US radar, clouds, seams). Placed
+    // only "under the first label", a veil re-added after the radar layers
+    // landed ON TOP of them — prod radar went dark maroon under a 42% black
+    // veil while the satellite canvas above it stayed bright (2026-09-29).
+    const layers = map.getStyle().layers || []
+    const below = layers.find((l) => l.id !== DIMMER_LAYER && (l.type === 'symbol' || l.id.startsWith('systems-')))?.id
+    if (!has) {
+      map.addLayer({
+        id: DIMMER_LAYER,
+        type: 'background',
+        paint: { 'background-color': '#0a0d12', 'background-opacity': opacity },
+      }, below)
+      return
+    }
+    map.setPaintProperty(DIMMER_LAYER, 'background-opacity', opacity)
+    const at = layers.findIndex((l) => l.id === DIMMER_LAYER)
+    const target = layers.findIndex((l) => l.id === below)
+    if (below && target >= 0 && at > target) map.moveLayer(DIMMER_LAYER, below)
+  } catch { /* style mid-swap; the next epoch re-applies */ }
+}
+
+const CM_SCENE_LAYER = 'cm-scene-tiles'
+function showSceneOverlay(map, sceneId, product) {
+  removeSceneOverlay(map)
+  try {
+    map.addSource(CM_SCENE_LAYER, {
+      type: 'raster',
+      tiles: [`https://api.carbonmapper.org/api/v1/layers/scene/${sceneId}/${product}/{z}/{x}/{y}.png`],
+      tileSize: 256,
+    })
+    map.addLayer({ id: CM_SCENE_LAYER, type: 'raster', source: CM_SCENE_LAYER, paint: { 'raster-opacity': 0.85 } })
+  } catch { /* style mid-swap — the reticle still tells the story */ }
+}
+function removeSceneOverlay(map) {
+  try {
+    if (map.getLayer(CM_SCENE_LAYER)) map.removeLayer(CM_SCENE_LAYER)
+    if (map.getSource(CM_SCENE_LAYER)) map.removeSource(CM_SCENE_LAYER)
+  } catch { /* noop */ }
+}
+
+// ─── Plain-language helpers for the fire popups: the data's job is to tell
+// a story a non-expert can read at a glance — jargon (detections, MW,
+// perimeter registers) stays out of the visible text and rides along in the
+// structured facts handed to the AI narrator instead. ──────────────────────
+const firePlainAge = (ageH) => {
+  if (ageH == null) return 'sometime in the last day'
+  if (ageH < 1) return 'within the last hour'
+  if (ageH < 36) return `about ${Math.round(ageH)} hours ago`
+  return `${Math.round(ageH / 24)} days ago`
+}
+const fireHeatWord = (mw) =>
+  mw >= 100 ? 'an intense burst of heat' : mw >= 25 ? 'strong heat' : mw >= 5 ? 'moderate heat' : 'a faint heat signal'
+const fireGrowthWord = (growth) => {
+  if (growth == null || Math.abs(growth) < 25) return ''
+  if (growth >= 150) return 'It is growing fast. '
+  if (growth > 0) return 'It is still growing. '
+  return 'It appears to be dying down. '
+}
+const fireSizePlain = (acres, areaKm2) => {
+  if (acres != null && acres > 0) return `${acres.toLocaleString()} acres burned`
+  if (areaKm2 > 8) return `roughly ${Math.max(1, Math.round(areaKm2 * 0.386))} square miles of active fire`
+  if (areaKm2 > 0) return `roughly ${Math.max(50, Math.round(areaKm2 * 247 / 50) * 50).toLocaleString()} acres of active fire`
+  return 'Active fire'
+}
+// Deep link to the same spot on the full Fire tool.
+const fireMapLink = (lat, lng) => ({
+  href: `/fire?on=usfires%2Cfirms&lat=${lat.toFixed(3)}&lng=${lng.toFixed(3)}&z=11.5`,
+  label: 'Dig deeper on the Fire map ↗',
+})
+const NIFC_LINK = {
+  href: 'https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-current-interagency-fire-perimeters/about',
+  label: 'Official data: NIFC ↗',
+}
+const FIRMS_LINK = { href: 'https://firms.modaps.eosdis.nasa.gov/', label: 'Source: NASA FIRMS ↗' }
+
+// ─── Shareable URL state ────────────────────────────────────────────────────
+// Required convention (docs/MAP_TOOL_CONVENTIONS.md). Per-layer params come
+// from layerDefs (w/c/t/h — written only away from their defaults), plus:
+//   d            particle density id (default 'med')
+//   bm           basemap id (default 'satellite')
+//   lat,lng,z    map camera
+function readUrlState() {
+  if (typeof window === 'undefined') return {}
+  const sp = new URLSearchParams(window.location.search)
+  const num = (k) => {
+    const v = sp.get(k)
+    if (v == null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  const layers = {}
+  for (const def of LAYERS) {
+    layers[def.id] = sp.get(def.param)
+    // A retired key still switches its layer, but only with a layer-flag
+    // value — the key may since have been reused for something else.
+    const legacy = def.legacyParam ? sp.get(def.legacyParam) : null
+    if (layers[def.id] == null && (legacy === '0' || legacy === '1')) layers[def.id] = legacy
+  }
+  return {
+    layers,
+    d: sp.get('d'),
+    bm: sp.get('bm'),
+    eg: sp.get('eg'), // Emission sources: measure (ch4, pm2_5, co2e_20yr, …)
+    es: sp.get('es'), // Emission sources: kinds of site shown (comma list)
+    fgm: sp.get('fgm'), // Underground fungi: which map (hyphae, am-rich, ecm-rare-emp, …)
+    fgt: sp.get('fgt'), // Underground fungi: '0' = living threads off
+    lat: num('lat'), lng: num('lng'), z: num('z'),
+  }
+}
+
+function writeUrlQuery(qs) {
+  if (typeof window === 'undefined') return
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash
+  if (url === window.location.pathname + window.location.search + window.location.hash) return
+  window.history.replaceState(window.history.state, '', url)
+}
+
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+))
+
+// One compact chip per analyzed layer — these are the facts engine's own
+// numbers, shown under the AI prose so readers see the numbers' source.
+function factChip(f) {
+  if (f.no_data_in_view) return `${f.name}: no data in this view`
+  if (f.covered_share_of_view_pct != null) {
+    return `${f.name}: avg ${f.mean?.toLocaleString?.() ?? f.mean} · max ${f.max?.toLocaleString?.() ?? f.max}${f.unit} — over the ${f.covered_share_of_view_pct}% of this view that has data`
+  }
+  if (f.id === 'wind' || f.id === 'currents') {
+    return `${f.name}: avg ${f.mean} · max ${f.max} m/s, ${f.dominant_direction}`
+  }
+  if (f.id === 'quakes') {
+    return f.in_view
+      ? `${f.name}: ${f.in_view} in view · biggest M${f.max_magnitude}`
+      : `${f.name}: none in view (${f.global_count} worldwide this month)`
+  }
+  if (f.id === 'hotspots') {
+    return `${f.name}: ${f.detections_in_view.toLocaleString()} detections in view` +
+      (f.pct_of_global != null ? ` (${f.pct_of_global}% of global)` : '') +
+      (f.est_co2_tonnes_per_day != null
+        ? ` · ~${f.est_co2_tonnes_per_day >= 1e6
+          ? (f.est_co2_tonnes_per_day / 1e6).toFixed(1) + ' Mt'
+          : f.est_co2_tonnes_per_day.toLocaleString() + ' t'} CO₂/day (est.)`
+        : '')
+  }
+  if (f.id === 'emissions') {
+    if (!f.facilities_shown) return `${f.name}: no facilities drawn in this view (${f.month_shown})`
+    const t = f.shown_emissions_tonnes
+    const tw = t >= 1e6 ? `${(t / 1e6).toFixed(1)} Mt` : `${Math.round(t).toLocaleString()} t`
+    return `${f.name}: ${f.facilities_shown.toLocaleString()} facilities shown · ${tw} ${f.measure_short || 'CO₂e'} in ${f.month_shown} (model estimates)` +
+      (f.same_facilities_vs_year_earlier_pct != null ? ` · ${f.same_facilities_vs_year_earlier_pct > 0 ? '+' : ''}${f.same_facilities_vs_year_earlier_pct}% vs a year earlier` : '')
+  }
+  if (f.note) return `${f.name}: 30-day alert overlay`
+  return `${f.name}: ${f.min} to ${f.max} ${f.unit} in view`
+}
+
+const b64url = (s) => btoa(unescape(encodeURIComponent(s)))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+// Dev only: the map layers are long-lived class instances (particles, pings,
+// overlays, replay controllers) that a hot swap leaves running on OLD code —
+// which looked like bugs that "survived" fixes. Any edit under src/systems
+// reloads the page instead.
+if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
+
+// Popup fitting (hang off the roomier side, cap to that room): shared, src/lib/popupFit.js.
+
+// Scroll affordance for tall popups: a subtle ▾ pinned at the card's bottom,
+// shown only while more content is below the fold (the card itself scrolls).
+function attachPopupScrollHint(popup, styles) {
+  const content = popup.getElement()?.querySelector('.mapboxgl-popup-content')
+  const scroller = content?.querySelector(`.${styles.popup.split(' ')[0]}`)
+  if (!content || !scroller) return
+  let hint = content.querySelector(`.${styles.popupScrollHint.split(' ')[0]}`)
+  const update = () => {
+    const more = scroller.scrollHeight - scroller.clientHeight > 8 &&
+      scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 8
+    hint.style.opacity = more ? '1' : '0'
+    hint.style.pointerEvents = more ? 'auto' : 'none'
+  }
+  if (!hint) {
+    hint = document.createElement('button')
+    hint.type = 'button'
+    hint.className = styles.popupScrollHint
+    hint.title = 'More'
+    hint.setAttribute('aria-label', 'Scroll for more')
+    hint.textContent = '▾'
+    hint.addEventListener('click', () => scroller.scrollBy({ top: 160, behavior: 'smooth' }))
+    scroller.addEventListener('scroll', update, { passive: true })
+    // The card resizes after this runs (AI text lands, Mapbox re-anchors) —
+    // re-evaluate whenever its box changes, not just once.
+    new ResizeObserver(update).observe(scroller)
+    content.appendChild(hint)
+  }
+  update()
+  setTimeout(update, 400)
+}
+
+// Monoline layer icon (paths from the design handoff), colored by currentColor.
+function LayerIcon({ svg, size = 19 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
+  )
+}
+// On-state derivations from a layer hue: border .6, background .13, icon = hue.
+function hueStyle(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  return { '--hue': hex, '--hue-border': `rgba(${r},${g},${b},0.6)`, '--hue-bg': `rgba(${r},${g},${b},0.13)` }
+}
+
+function useMediaQuery(q) {
+  const [m, setM] = useState(() => window.matchMedia(q).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(q)
+    const on = () => setM(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [q])
+  return m
+}
+
+
+/**
+ * Is the WHOLE visible map inside one tier's real footprint? Sampled at nine
+ * points on the SCREEN (corners, edge midpoints, centre), unprojected to
+ * lat/lng.
+ *
+ * Not map.getBounds(). On the globe projection getBounds() is a padded box
+ * far larger than what is drawn — at z3.7 over the US it reported a west edge
+ * of -181 while the screen's left edge sat at -180 — so a tier whose footprint
+ * genuinely covered the view was refused, and the zoom at which the ladder
+ * switched depended on where the globe happened to sit in the window.
+ *
+ * Conservative by construction — anything it cannot establish (a throw from
+ * the projection, a point off the planet) reads as OUTSIDE, which leaves the
+ * coarser, honest tier on screen.
+ */
+function viewInsideTier(map, tier, mapView) {
+  if (tier.base) return true
+  // Judged at the zoom the badge DISPLAYS (one decimal). A raw 4.986 reads
+  // "z5.0" on screen, and a tier that switches "at z5" must switch there.
+  const zoom = Math.round((mapView?.zoom ?? map.getZoom()) * 10) / 10
+  if (!(zoom >= tier.minzoom)) return false
+  // A `centre` tier claims the view when the view's CENTRE is over its grid.
+  // Radar takes over from z5, and at z5 a laptop screen spans ~34 degrees of
+  // longitude — the canvas runs under the side panel too — so demanding the
+  // whole view sit inside the CONUS grid kept the 11 km product on screen for
+  // most US views at the zoom Josh asked the radar to appear. Past radar range
+  // the swap shows NO rain rather than a patch of the other product: two
+  // instruments are still never drawn together.
+  //
+  // A tier with a coverage mask is STITCHED beside the parent rather than
+  // replacing it, so it claims the view as soon as any of it can see: a 5×5
+  // sample of the canvas, any hit.
+  if (tier.coverage) {
+    let W, H
+    try { ({ clientWidth: W, clientHeight: H } = map.getCanvas()) } catch { return false }
+    if (!(W > 0 && H > 0)) return false
+    for (const fy of [0, 0.25, 0.5, 0.75, 1]) {
+      for (const fx of [0, 0.25, 0.5, 0.75, 1]) {
+        let ll
+        try { ll = map.unproject([fx * W, fy * H]) } catch { continue }
+        if (ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng) && tierSees(tier, ll.lat, ll.lng)) return true
+      }
+    }
+    return false
+  }
+  if (tier.centre) {
+    let c
+    try { c = map.getCenter() } catch { return false }
+    return !!c && tierSees(tier, c.lat, c.lng)
+  }
+  let W, H
+  try { ({ clientWidth: W, clientHeight: H } = map.getCanvas()) } catch { return false }
+  if (!(W > 0 && H > 0)) return false
+  for (const fy of [0, 0.5, 1]) {
+    for (const fx of [0, 0.5, 1]) {
+      let ll
+      try { ll = map.unproject([fx * W, fy * H]) } catch { return false }
+      if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)) return false
+      if (!tierSees(tier, ll.lat, ll.lng)) return false
+    }
+  }
+  return true
+}
+
+/**
+ * Which ONE tier of a resolution ladder owns the map right now.
+ *
+ * Tiers are listed finest first and the first that qualifies wins, so the
+ * rule reads the way a reader experiences it: show the sharpest thing that
+ * genuinely covers what is on screen, and fall back the moment it does not.
+ *
+ * The ladder also yields to the clock. Every live tier is hidden as soon as
+ * the transport bar leaves Now — they are single frames with no archive —
+ * so scrubbing into the past walks past them to the replay tier, which does
+ * have one. Without that the map went blank at exactly the zooms the reader
+ * had been studying.
+ */
+function activeTierKey(map, payload, mapView, ts) {
+  const tiers = payload?.tiers
+  if (!tiers?.length) return null
+  for (const tier of tiers) {
+    if (ts?.hide.has(tier.key)) continue
+    if (viewInsideTier(map, tier, mapView)) return tier.key
+  }
+  return null
+}
+
+
+
+// How often a time-following raster layer is allowed to fetch a new frame.
+//
+// A replay emits on every animation frame, and a raster swap is not a cheap
+// redraw: it discards the source's tiles and refetches a whole screenful.
+// Measured against GIBS, a viewport takes 2-4 SECONDS to populate. The first
+// cut used 600 ms, so every frame was replaced before it had finished
+// arriving and the map simply stayed empty while the time bar swept along —
+// which reads, correctly, as "nothing is animating".
+//
+// The ReplayController now holds the cursor until RasterTape says the frame
+// is warm (see rasterTape.js), so by the time the follower swaps, the tiles
+// are already in the browser's cache and paint immediately. This only decides
+// how promptly the follower notices the cursor moved — it no longer has to
+// stand in for buffering, which is why it can be short again.
+const RASTER_FOLLOW_MS = 120
+
+// A cursor JUMP, as opposed to playback. Holding the old frame until the
+// new one lands is what stops playback blinking — but through a jump (the
+// loop restarting two days back, a scrub, Now) it drew today's radar under
+// a label two days old. Paints are ~120 ms apart and normal play moves the
+// cursor about half an hour per paint, so a move bigger than this between
+// two consecutive paints is a jump: the old frame goes at once and the map
+// is honestly empty until the right one arrives. (Measuring how far the
+// frame on SCREEN lags instead blinked during ordinary playback: at 4 h/s a
+// half-second swap is already two hours of bar.)
+const RASTER_JUMP_MS = 3 * 3600e3
+
+/**
+ * What each piece of a time-following raster layer should be showing at one
+ * moment on the transport bar.
+ *
+ * Three answers, and they are different. A piece that knows how to address
+ * its own archive (`at`) returns the URL for that moment, or null when the
+ * moment is outside what the archive holds. A piece marked `archiveOnly`
+ * exists ONLY to be scrubbed into, so at Now it stands down for whatever is
+ * younger. A piece with no history at all is HIDDEN the instant the bar
+ * leaves Now — today's rain drawn over last Tuesday's storm track is a
+ * composite of two moments presented as one, which is the thing this project
+ * will not do.
+ */
+function rasterTimeState(payload, cursorMs, atLive, playing = false) {
+  const urls = new Map()
+  const hide = new Set()
+  for (const e of [...(payload?.images || []), ...(payload?.sources || [])]) {
+    if (!e.key) continue
+    if (e.archiveOnly) {
+      const u = atLive || typeof e.at !== 'function' ? null : e.at(cursorMs)
+      if (u) urls.set(e.key, u); else hide.add(e.key)
+    } else if (typeof e.at === 'function') {
+      const u = atLive ? (e.tiles || e.url) : e.at(cursorMs, playing)
+      if (u) urls.set(e.key, u); else hide.add(e.key)
+    } else if (!atLive) {
+      hide.add(e.key)
+    }
+  }
+  return { urls, hide }
+}
+
+/**
+ * Should one piece of a raster layer be on screen? The single rule, applied
+ * by both effects below — the camera one and the clock one. It lived in two
+ * places for one build and they immediately disagreed: the clock hid the
+ * clouds on a scrub and nothing ever turned them back on.
+ */
+/**
+ * A time-following tile source is double-buffered: two Mapbox sources and two
+ * layers per piece, one showing and one being loaded into.
+ *
+ * `setTiles` throws away a source's tiles the moment it is called, so a
+ * single-buffered layer goes EMPTY while the next frame is fetched. Over a
+ * wide view that is seconds of nothing, and playing a loop through it reads
+ * as the layer blinking on and off rather than as weather moving. So the next
+ * frame is loaded into the hidden slot and the two are swapped only once it
+ * has actually arrived — the map is never without a frame.
+ */
+/**
+ * The visible seam where two stitched rain products meet (US radar inside,
+ * satellite outside): one hairline, dashed so it reads as a boundary between
+ * instruments and never as a weather front. Re-added after a style swap.
+ */
+function showStitchSeam(map, id, outline) {
+  const srcId = `systems-${id}-src`
+  const layerId = `systems-${id}-layer`
+  try {
+    if (!outline) {
+      if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none')
+      return
+    }
+    if (!map.getSource(srcId)) map.addSource(srcId, { type: 'geojson', data: outline })
+    else if (map.getSource(srcId)._seamData !== outline) map.getSource(srcId).setData(outline)
+    map.getSource(srcId)._seamData = outline
+    if (!map.getLayer(layerId)) {
+      map.addLayer({
+        id: layerId, type: 'line', source: srcId,
+        paint: { 'line-color': '#ffffff', 'line-opacity': 0.55, 'line-width': 1, 'line-dasharray': [3, 3] },
+      })
+    }
+    map.setLayoutProperty(layerId, 'visibility', 'visible')
+  } catch { /* style swapped mid-flight — next paint re-adds it */ }
+}
+
+const slotIds = (defId, key, slot) => ({
+  srcId: `systems-${defId}-${key}-${slot}-src`,
+  layerId: `systems-${defId}-${key}-${slot}-layer`,
+})
+
+/**
+ * Call back once a source has REALLY finished loading the frame just handed
+ * to it — verified, not signalled.
+ *
+ * Two earlier versions both failed the same way, and both looked right in
+ * every property I read back:
+ *
+ *   isSourceLoaded() right after setTiles returns TRUE, because Mapbox has
+ *   not queued the new tiles yet.
+ *   `idle` fires on the very next frame for the same reason: at that instant
+ *   there are no outstanding requests, so the map is idle by definition.
+ *
+ * Either way the swap moved to an empty slot and hid the one that still had
+ * pixels, and the map blinked out and refilled a second later. Only a
+ * screenshot during playback showed it; visibility, opacity and the frame
+ * URLs all read back perfectly the whole time.
+ *
+ * So this polls instead, and demands the answer hold: nothing before 250 ms
+ * (long enough for the requests to be queued) and then two consecutive
+ * positives. A deadline swaps anyway, so one wedged tile cannot stall the
+ * loop.
+ */
+function onSourceSettled(map, srcId, cb, timeoutMs = 8000) {
+  let done = false
+  let streak = 0
+  let timer = 0
+  const start = performance.now()
+  const finish = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    cb()
+  }
+  const tick = () => {
+    if (done) return
+    const age = performance.now() - start
+    if (age > timeoutMs) return finish()
+    let loaded = false
+    try { loaded = map.isSourceLoaded(srcId) && map.areTilesLoaded() } catch { loaded = false }
+    streak = loaded && age > 250 ? streak + 1 : 0
+    if (streak >= 2) return finish()
+    timer = setTimeout(tick, 150)
+  }
+  timer = setTimeout(tick, 150)
+  return () => { done = true; clearTimeout(timer) }
+}
+
+/**
+ * Slot control for double-buffered raster tiles.
+ *
+ * Selection is by OPACITY, never by `visibility`. Mapbox does not load tiles
+ * for a layer whose visibility is 'none', so a hidden buffer never
+ * pre-loads — and `isSourceLoaded` then answers "nothing pending, therefore
+ * loaded". The swap landed on an empty layer, hid the full one, and only
+ * then did Mapbox start fetching. On screen that is the data switching off,
+ * going blank, and building back in, with the time bar sitting on the SAME
+ * frame throughout.
+ *
+ * `arm` makes a layer visible at zero opacity, which is what gets its tiles
+ * requested while it is still invisible to the reader.
+ */
+const armLayer = (map, layerId) => {
+  if (!map.getLayer(layerId)) return
+  map.setLayoutProperty(layerId, 'visibility', 'visible')
+  map.setPaintProperty(layerId, 'raster-opacity', 0)
+}
+const revealLayer = (map, layerId, opacity) => {
+  if (!map.getLayer(layerId)) return
+  map.setLayoutProperty(layerId, 'visibility', 'visible')
+  map.setPaintProperty(layerId, 'raster-opacity', opacity)
+}
+/**
+ * Swap two frames of the same tier WITHOUT the brightness dip.
+ *
+ * Fading the new frame in while the old one fades out halves both at the
+ * midpoint, so the rain visibly pulsed dark on every step of a replay. The
+ * frame that is DRAWN ON TOP is the only one that may be translucent: if the
+ * new slot is above, it fades in over the old one held at full strength; if
+ * it is below, it is set to full strength at once (hidden under the old one)
+ * and the old one fades out off the top. Either way the composite never drops
+ * below one full frame. Slot 'b' is added after 'a', so it draws above it.
+ */
+const FRAME_FADE_MS = 260
+const swapFrames = (map, fromId, toId, opacity, toIsAbove) => {
+  if (!map.getLayer(toId)) return
+  map.setLayoutProperty(toId, 'visibility', 'visible')
+  if (toIsAbove) {
+    map.setPaintProperty(toId, 'raster-opacity-transition', { duration: FRAME_FADE_MS, delay: 0 })
+    map.setPaintProperty(toId, 'raster-opacity', opacity)
+    setTimeout(() => {
+      try {
+        if (!map.getLayer(fromId)) return
+        map.setPaintProperty(fromId, 'raster-opacity-transition', { duration: 0, delay: 0 })
+        map.setPaintProperty(fromId, 'raster-opacity', 0)
+      } catch { /* style swapped */ }
+    }, FRAME_FADE_MS + 20)
+  } else {
+    map.setPaintProperty(toId, 'raster-opacity-transition', { duration: 0, delay: 0 })
+    map.setPaintProperty(toId, 'raster-opacity', opacity)
+    if (map.getLayer(fromId)) {
+      map.setPaintProperty(fromId, 'raster-opacity-transition', { duration: FRAME_FADE_MS, delay: 0 })
+      map.setPaintProperty(fromId, 'raster-opacity', 0)
+    }
+  }
+}
+const retireLayer = (map, layerId) => {
+  if (!map.getLayer(layerId)) return
+  map.setPaintProperty(layerId, 'raster-opacity', 0)
+}
+
+function rasterPieceShow(payload, key, ts, winner, ready) {
+  if (!ready) return false
+  if (ts?.hide.has(key)) return false
+  // A resolution ladder is exactly ONE product at a time — see activeTierKey.
+  if (payload?.tiers?.length) return key === winner
+  return true
+}
+
+
+const StoryGlobe = forwardRef(function StoryGlobe(props, ref) {
+  const propsRef = useRef(props)
+  propsRef.current = props
+  const containerRef = useRef(null)
+  const canvasEls = useRef({})       // layer id (or 'scalar') → canvas element
+  const popupAiReqRef = useRef(0)    // staleness guard for popup narrations
+  const mapRef = useRef(null)
+  const instancesRef = useRef({})    // layer id → ParticleLayer; 'scalar' slot holds {id, layer}
+  const replayRef = useRef(null)     // ReplayController for the active tape layer
+  const [replay, setReplay] = useState(null) // same, as state for the TransportBar
+  // At Now, a live tier on screen (US radar) is newer than the replay tape's
+  // last frame: the bar must print THAT measurement's time, not the tape's.
+  const [radarShownMs, setRadarShownMs] = useState(null)
+  const [replayRange, setReplayRange] = useState({}) // layer id → 'short' | 'year' (layers with a year tape)
+  const eventReplayRef = useRef(null) // ReplayController over an EventTape (quakes) when no scalar replay owns the bar
+  const fireReplayRef = useRef(null)  // fire time slider: daily presence wide out, raw detections past the handoff
+  const [fireReplay, setFireReplay] = useState(null)
+  const fireLiveEventsRef = useRef(null) // live hotspot bins, restored when the presence cursor returns to Now
+  const fireDailyLoadRef = useRef(false) // fire-daily rollup fetch state
+  const fireSkipBuildRef = useRef(false) // window-extension recreations land at Now, no build replay
+  const [dataEpoch, setDataEpoch] = useState(0) // bumped when a visible layer's data is refreshed
+  // Shared hover: one tooltip for every discrete-feature layer (see
+  // hoverProbe.js). Held in state only when it changes — the probe itself
+  // runs on a coalesced animation frame so a fast drag across the globe
+  // can't queue a render per mouse event.
+  const [hoverTip, setHoverTip] = useState(null)
+  const resumeRef = useRef({}) // layer id → { t, playing } to restore a replay across a data refresh
+  const [eventReplay, setEventReplay] = useState(null)
+  const [popupOpen, setPopupOpen] = useState(false)
+  const fieldsRef = useRef({})       // layer id → GridField
+  // `${layerId}:${pieceKey}` → { active: 'a'|'b', url } for double-buffered
+  // time-following raster tiles (see slotIds / onSourceSettled).
+  const rasterSlotsRef = useRef({})
+  const popupRef = useRef(null)
+  const [mapReady, setMapReady] = useState(false)
+
+  const initial = props.initial || { layers: {} }
+  const initialCamera = (Number.isFinite(initial.lat) && Number.isFinite(initial.lng) && Number.isFinite(initial.z))
+    ? { lat: initial.lat, lng: initial.lng, zoom: initial.z }
+    : null
+
+  const [layerOn, setLayerOn] = useState(() => {
+    const on = {}
+    for (const def of LAYERS) {
+      const p = initial.layers?.[def.id]
+      on[def.id] = def.defaultOn ? p !== '0' : p === '1'
+    }
+    // Scalars are mutually exclusive; if a shared link somehow has both, keep
+    // the first.
+    let seenScalar = false
+    for (const def of LAYERS) {
+      if (def.kind === 'scalar' && on[def.id]) {
+        if (seenScalar) on[def.id] = false
+        seenScalar = true
+      }
+    }
+    for (const def of LAYERS) if (def.companionOf) on[def.id] = !!on[def.companionOf]
+    return on
+  })
+  // A companion layer (no button, no URL key — e.g. the US radar that takes
+  // over the Precipitation button past z5) is on exactly when its parent is,
+  // whichever code path flipped the parent.
+  useEffect(() => {
+    const drift = LAYERS.filter((d) => d.companionOf && !!layerOn[d.id] !== !!layerOn[d.companionOf])
+    if (drift.length) setLayerOn((on) => {
+      const next = { ...on }
+      for (const d of drift) next[d.id] = !!on[d.companionOf]
+      return next
+    })
+  }, [layerOn])
+  const [layerStatus, setLayerStatus] = useState({})   // id → 'loading' | 'ok' | 'error'
+  const [layerMeta, setLayerMeta] = useState({})       // id → meta
+  const [density, setDensity] = useState(() => (DENSITIES.some((d) => d.id === initial.d) ? initial.d : 'med'))
+  const [basemap, setBasemap] = useState(() => (BASEMAPS.some((b) => b.id === initial.bm) ? initial.bm : 'satellite'))
+  // Emission sources: what the discs measure, and which kinds of site show.
+  const [traceMeasure, setTraceMeasure] = useState(() => (MEASURE_INFO[initial.eg] ? initial.eg : PRIMARY_MEASURE))
+  // Underground fungi: the map the pill asked for, and the one on screen.
+  // The layer def's `measure` (which drives its ramp, legend and popup)
+  // changes only when that map's grids have arrived, together with the field.
+  const [fungiWant, setFungiWant] = useState(() => {
+    const m = fungiMeasure(initial.fgm)
+    const def = LAYERS.find((d) => d.id === 'fungi')
+    if (def) def.measure = m
+    return m
+  })
+  const [fungiShown, setFungiShown] = useState(fungiWant)
+  const [fungiThreadsOn, setFungiThreadsOn] = useState(() => initial.fgt !== '0')
+  const [traceSectors, setTraceSectors] = useState(() => {
+    const ks = (initial.es || '').split(',').filter((k) => SECTOR_STYLE[k])
+    return ks.length ? new Set(ks) : null
+  })
+  // The photo picker shared by every site (components/basemap). Its usual URL key `ph` is already the ocean-acidity
+  // layer's here (shared links carry ph=1), so /inmotion keeps the photo choice under `pt` instead.
+  const photos = useMapPhotos(mapRef, { mapReady, basemap, initialPhoto: new URLSearchParams(window.location.search).get('pt') || 'best' })
+  const photosRef = useRef(photos)   // clips stamp the photos on screen per frame
+  photosRef.current = photos
+  // Layer navigation (Claude Design handoff, 2026-08-22): an icon DOCK is the
+  // default everywhere — one monoline icon per dataset, click = toggle, hover
+  // tooltip. Desktop: dock ⇄ expanded panel (panelOpen). Mobile: pill ⇄ dock
+  // ⇄ full drawer (mobileView). Nothing auto-expands.
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [mobileView, setMobileView] = useState('dock') // 'pill' | 'dock' | 'drawer'
+  // Icons per dock row: 2, or up to 6 when the window is too short for the dock (shared panel kit).
+  const dockRef = useRef(null)
+  const [drawerSignal, setDrawerSignal] = useState(0)
+  const [chip, setChip] = useState(null) // mobile tap confirmation { id, on }
+  const chipTimerRef = useRef(0)
+  const [showMethodology, setShowMethodology] = useState(false)
+  const isMobile = useIsMobile()
+  if (import.meta.env.DEV) window.__systemsNav = { panelOpen, mobileView, isMobile } // dev-only QA handle
+  const dockCols = useDockColumns(dockRef, `${isMobile}-${mobileView}-${panelOpen}`)
+  if (import.meta.env.DEV) window.__sys = { fields: fieldsRef, instances: instancesRef, replay: replayRef, layerOn, layerStatus } // dev-only QA handle
+  const [mapView, setMapView] = useState(initialCamera)
+  // Bumped on every style.load; raster overlays live inside the style and
+  // must be re-added after basemap switches.
+  const [styleEpoch, setStyleEpoch] = useState(0)
+
+  // Latest layer state for map event handlers (clicks) outside React's cycle.
+  // 'sky' (global CAMS column) or 'ground' (US 3 km HRRR near-surface) —
+  // the smoke button's altitude handoff, set by the scalar effect below.
+  const [smokeMode, setSmokeMode] = useState('sky')
+  // Mode-switch toast under the Explain button + a persistent chip while a
+  // layer's zoomed-in view is active (the altitude/detail handoff was
+  // invisible outside the panel — even Josh read it as data vanishing).
+  const [modeToast, setModeToast] = useState(null) // { text, key }
+  const modeToastTimer = useRef(0)
+  const prevGroundRef = useRef({ mode: 'sky', id: null })
+  const [smokeGroundTick, setSmokeGroundTick] = useState(0)
+  const smokeGroundLoadRef = useRef({}) // per-layer: false | true | 'failed'
+  const stateRef = useRef({})
+  stateRef.current = { layerOn, layerStatus, layerMeta, smokeMode }
+
+  // ─── Lazy loading: fetch a layer's data the first time it's turned on ─────
+  // Grid layers load the baked meta+bin pair; events/raster layers bring
+  // their own loader (USGS feed, hotspot JSON, GEE tile URL).
+  useEffect(() => {
+    for (const def of LAYERS) {
+      if (layerOn[def.id]) {
+        if (def.tape?.year && replayRange[def.id] === 'year') {
+          const yk = `${def.id}:tape:year`
+          if (!layerStatus[yk]) {
+            setLayerStatus((s) => ({ ...s, [yk]: 'loading' }))
+            TapeField.load(def.tape.year.dataset, def.tape.expectKind)
+              .then((tape) => { fieldsRef.current[yk] = tape; setLayerStatus((s) => ({ ...s, [yk]: 'ok' })) })
+              .catch((err) => { console.warn(`[systems] ${def.id} year tape unavailable:`, err); setLayerStatus((s) => ({ ...s, [yk]: 'error' })) })
+          }
+        }
+      }
+      if (!layerOn[def.id] || layerStatus[def.id]) continue
+      setLayerStatus((s) => ({ ...s, [def.id]: 'loading' }))
+      const loading = def.load ? def.load() : loadGridField(def.dataset, def.expectKind)
+      if (def.tape) {
+        const tk = `${def.id}:tape`
+        if (!layerStatus[tk]) {
+          setLayerStatus((s) => ({ ...s, [tk]: 'loading' }))
+          TapeField.load(def.tape.dataset, def.tape.expectKind)
+            .then((tape) => {
+              fieldsRef.current[tk] = tape
+              setLayerStatus((s) => ({ ...s, [tk]: 'ok' }))
+            })
+            .catch((err) => { console.warn(`[systems] ${def.id} tape unavailable:`, err); setLayerStatus((s) => ({ ...s, [tk]: 'error' })) })
+        }
+      }
+      if (def.flow) {
+        const fk = `${def.id}:flow`
+        if (!layerStatus[fk]) {
+          setLayerStatus((s) => ({ ...s, [fk]: 'loading' }))
+          loadGridField(def.flow.dataset, def.flow.expectKind)
+            .then((payload) => {
+              fieldsRef.current[fk] = payload
+              setLayerMeta((m) => ({ ...m, [fk]: payload.meta }))
+              setLayerStatus((s) => ({ ...s, [fk]: 'ok' }))
+            })
+            .catch(() => setLayerStatus((s) => ({ ...s, [fk]: 'error' })))
+        }
+      }
+      // Companion grid sampled only for popups (e.g. acidity shows pH but
+      // also cites aragonite saturation from a second LiveOcean field).
+      if (def.extraGrid) {
+        const xk = `${def.id}:extra`
+        if (!layerStatus[xk]) {
+          setLayerStatus((s) => ({ ...s, [xk]: 'loading' }))
+          loadGridField(def.extraGrid.dataset, def.extraGrid.expectKind)
+            .then((payload) => { fieldsRef.current[xk] = payload; setLayerStatus((s) => ({ ...s, [xk]: 'ok' })) })
+            .catch(() => setLayerStatus((s) => ({ ...s, [xk]: 'error' })))
+        }
+      }
+      loading
+        .then((payload) => {
+          fieldsRef.current[def.id] = payload
+          setLayerMeta((m) => ({ ...m, [def.id]: payload.meta }))
+          setLayerStatus((s) => ({ ...s, [def.id]: 'ok' }))
+        })
+        .catch(() => setLayerStatus((s) => ({ ...s, [def.id]: 'error' })))
+    }
+  }, [layerOn, layerStatus, replayRange])
+
+  // ─── Map init (once) ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !containerRef.current || mapRef.current) return
+    if (!ensureWebGLSupport(containerRef.current)) return
+    mapboxgl.accessToken = MAPBOX_TOKEN
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: basemapStyleFor(basemap),
+      center: initialCamera ? [initialCamera.lng, initialCamera.lat] : DEFAULT_VIEW.center,
+      zoom: initialCamera ? initialCamera.zoom : DEFAULT_VIEW.zoom,
+      bearing: initial.bearing || 0,
+      pitch: initial.pitch || 0,
+      projection: props.projection || 'globe',
+    })
+    mapRef.current = map
+    if (import.meta.env.DEV) { window.__systemsMap = map; window.__systemsInst = instancesRef.current } // dev-only QA handles
+    loadLandMask().catch(() => {}) // 0.1° land raster: popup land/water flag, ocean masks
+
+    map.on('moveend', () => {
+      const c = map.getCenter()
+      const v = { lat: c.lat, lng: c.lng, zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }
+      setMapView(v)
+      propsRef.current.onCameraChange?.(v)
+    })
+
+    // Click anywhere → readout for every active layer, from the same grids
+    // that drive the visuals.
+    map.on('click', async (e) => {
+      // Story Lab: a click opens Here, Now for that spot (parent decides).
+      if (propsRef.current.onMapClick) { propsRef.current.onMapClick(e.lngLat); return }
+      const { layerOn, layerStatus, layerMeta } = stateRef.current
+      const sections = []
+      let plumeHit = null
+      let coverageWanted = false
+      let fireLineDone = false
+      const aiItems = [] // structured copies of each section, for the popup narration
+      let wideCard = false // a section with its own full card layout (Emission sources)
+      const sectionHtml = (p) => {
+        // `ai` carries the full technical facts for the narrator even when
+        // the visible text is plain-language.
+        aiItems.push({ what: p.head, value: `${p.big} (${p.alt})`, detail: p.ai || p.meta })
+        // A layer-built card (traceCard.js — escapes all upstream text itself)
+        // replaces the standard head/big/meta layout and widens the popup.
+        if (p.cardHtml) { wideCard = true; return `<div class="${styles.popupSection}">${p.cardHtml}</div>` }
+        const links = p.links || (p.link ? [p.link] : [])
+        return `<div class="${styles.popupSection}">` +
+        `<div class="${styles.popupHead}">${escapeHtml(p.head)}</div>` +
+        `<div class="${styles.popupSpeed}">${escapeHtml(p.big)} <span>(${escapeHtml(p.alt)})</span></div>` +
+        // chartSvg: a layer-built SVG from numbers only (e.g. Climate TRACE
+        // traceData.seriesChartSvg) — never upstream text, so not escaped.
+        (p.chartSvg || '') +
+        `<div class="${styles.popupMeta}">${escapeHtml(p.meta)}</div>` +
+        (links.length
+          ? `<div class="${styles.popupMeta}">${links.map((l) =>
+              `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`).join(' · ')}</div>`
+          : '') +
+        `</div>`
+      }
+      for (const def of LAYERS) {
+        if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') continue
+        if (def.kind === 'events') {
+          // Fires: prefer the rich derived event (name, duration, footprint)
+          // over the raw cluster when the click lands on one.
+          if (def.id === 'hotspots') {
+            // Close zoom: a click on an individual VIIRS detection gets its
+            // own section (time, power, satellite) under the fire's section.
+            const rawInst = instancesRef.current.fireraw
+            const raw = rawInst?.isActive() ? rawInst.hitTest(e.point.x, e.point.y, 14) : null
+            const rawSection = raw && {
+              head: 'Flames seen here',
+              big: firePlainAge(raw.ageH),
+              alt: fireHeatWord(raw.frp),
+              meta: `Spotted by the ${raw.sat} satellite, over ${raw.px === '~2 km' ? 'about a 2-kilometer patch' : 'about a 375-meter patch'} of ground. Drag the time bar to replay the fire's spread; the dark shading is ground that already burned.`,
+              ai: `single satellite fire detection: ${raw.frp.toLocaleString()} MW fire radiative power, ${raw.sat}, ${raw.px} pixel, acquired ${raw.ageH == null ? 'within last day' : raw.ageH.toFixed(1) + ' h ago'}`,
+              link: FIRMS_LINK,
+            }
+            const fev = instancesRef.current.fireevents?.hitTest(e.point.x, e.point.y, 18)
+            if (fev && fev.type === 'incident') {
+              // Official NIFC record with NO fresh satellite detections — the
+              // fire is real (acres/containment from the incident system) but
+              // the glows have nothing to show; say both halves plainly.
+              const days = fev.discovered_ms
+                ? Math.max(1, Math.round((Date.now() - fev.discovered_ms) / 8.64e7))
+                : null
+              sections.push(sectionHtml({
+                head: fireEventName(fev),
+                big: fev.acres > 0 ? `${fev.acres.toLocaleString()} acres burned` : 'Active fire',
+                alt: fev.contained != null ? `${fev.contained}% contained` : 'size not yet reported',
+                meta: `${days ? `Started ${fmtDay(fev.discovered_ms)} — ${days === 1 ? 'its first day' : `day ${days}`}. ` : ''}` +
+                  "Satellites haven't spotted active flames here in the past day — it's likely smoldering, mostly contained, or burning too gently to see from space." +
+                  (fev.perimeter_src === 'nifc' ? ' The orange outline is the officially mapped fire boundary.' : ''),
+                ai: `official NIFC incident record: ${fev.acres ?? '?'} acres, ${fev.contained ?? '?'}% contained, discovered ${fev.discovered_ms ? new Date(fev.discovered_ms).toISOString().slice(0, 10) : 'unknown'}, zero VIIRS detections in the last 24 h`,
+                links: [fireMapLink(fev.lat, fev.lng), NIFC_LINK],
+              }))
+              if (rawSection) sections.push(sectionHtml(rawSection))
+              continue
+            }
+            if (fev) {
+              const nowMs = Date.now()
+              // Official discovery date (NIFC join) gives TRUE fire age; our
+              // own tracking only bounds it from below — say which is which.
+              let ageStr
+              if (fev.discovered_ms) {
+                const days = Math.max(1, Math.round((nowMs - fev.discovered_ms) / 8.64e7))
+                ageStr = `Started ${fmtDay(fev.discovered_ms)} — ${days === 1 ? 'its first day' : `day ${days}`}.`
+              } else {
+                const days = Math.max(1, Math.round((nowMs - fev.first_seen_ms) / 8.64e7))
+                ageStr = days <= 1 ? 'A new fire, first seen within the last day.' : `Burning for at least ${days} days.`
+              }
+              // Plain-language CO₂ line (same GFAS-style FRP conversion the
+              // Explain card uses) — the impact number people can hold onto.
+              let co2 = ''
+              if (fev.frp_sum) {
+                const t = (fev.frp_sum / 2) * 86400 * 0.368 * 1.65 / 1000
+                co2 = ` It's putting out roughly ${t >= 1e6 ? (t / 1e6).toFixed(1) + ' million tonnes' : Math.round(t).toLocaleString() + ' tonnes'} of CO₂ a day (a rough satellite estimate).`
+              }
+              sections.push(sectionHtml({
+                head: fireEventName(fev),
+                big: fireSizePlain(fev.acres, fev.area_km2),
+                alt: fev.contained != null ? `${fev.contained}% contained` : 'actively burning',
+                meta: `${ageStr} ${fireGrowthWord(fev.growth)}Satellites are still seeing active flames.${co2} ${fev.perimeter_src === 'nifc' ? 'The orange outline is the officially mapped fire boundary.' : "The outline is the fire's approximate footprint, drawn from where satellites saw flames."}`,
+                ai: `active fire: ${fev.n.toLocaleString()} VIIRS detections in last 24 h, peak ${fev.frp.toLocaleString()} MW, summed FRP ${fev.frp_sum?.toLocaleString?.() ?? '?'} MW, ${fev.acres != null ? fev.acres + ' acres official' : '~' + fev.area_km2 + ' km² derived footprint'}, ${fev.contained != null ? fev.contained + '% contained' : 'containment unknown'}, growth ${fev.growth ?? 'n/a'} detections vs previous update`,
+                links: [
+                  fireMapLink(fev.lat, fev.lng),
+                  ...(fev.name_src === 'nifc' ? [NIFC_LINK] : [FIRMS_LINK]),
+                ],
+              }))
+              if (rawSection) sections.push(sectionHtml(rawSection))
+              continue
+            }
+            if (rawSection) { sections.push(sectionHtml(rawSection)); continue }
+            // Raw overlay active but nothing hit: the glows are hidden, so
+            // don't answer from their stale screen positions.
+            if (rawInst?.isActive()) continue
+          }
+          const ev = instancesRef.current[def.id]?.nearest(e.point.x, e.point.y, 16)
+          // Second argument lets an event layer say something that depends on
+          // what ELSE is on — Storms uses it to reconcile its advisory wind
+          // with the Wind layer's model wind when both are showing.
+          if (ev) sections.push(sectionHtml(def.popupEvent(ev, { layerOn: stateRef.current.layerOn })))
+          continue
+        }
+        // Analyst-drawn smoke plumes ride the smoke layer: a click inside one
+        // gets its own plain-language section above the modeled value.
+        if (def.id === 'smoke' && stateRef.current.smokeMode === 'sky') {
+          const plume = instancesRef.current.smokeplumes?.hitTest(e.point.x, e.point.y)
+          if (plume) {
+            const p = plume.properties
+            const when = p.end_ms ? new Date(p.end_ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null
+            sections.push(sectionHtml({
+              head: 'Smoke overhead',
+              big: `${p.density[0].toUpperCase()}${p.density.slice(1)} smoke`,
+              alt: 'seen in satellite imagery',
+              meta: `NOAA analysts traced this plume from live satellite photos${when ? `, as of ${when} today` : ''}. It describes smoke in the air column overhead — not necessarily what you'd breathe at ground level.`,
+              ai: `NOAA HMS analyst-drawn smoke polygon: density ${p.density}, traced from ${p.satellite || 'GOES'} imagery, analysis window ${p.start_ms ? new Date(p.start_ms).toISOString() : '?'} → ${p.end_ms ? new Date(p.end_ms).toISOString() : '?'}`,
+              link: { href: 'https://www.ospo.noaa.gov/products/land/hms.html', label: 'Source: NOAA HMS ↗' },
+            }))
+          }
+        }
+        const gasDefsHere = GAS_SOURCE_DEFS.filter((g) => g.id === def.id)
+        const gasDef = gasDefsHere[0]
+        if (gasDef) {
+          let pl = null
+          for (const g of gasDefsHere) {
+            pl = instancesRef.current[g.key]?.hitTest(e.point.x, e.point.y)
+            if (pl) break
+          }
+          if (pl && pl.mars) {
+            // UNEP MARS detected source — different provenance and fields
+            // than the Carbon Mapper card below.
+            plumeHit = { ...pl, product: gasDef.product }
+            const MARS_SECTOR_WORDS = {
+              'Oil and Gas': 'oil & gas infrastructure', 'Waste': 'a landfill / waste site',
+              'Met Coal': 'a coal mine', 'Thermal Coal': 'a coal mine',
+              'Thermal and Met Coal': 'a coal mine', 'Steel': 'a steel plant', 'Other': 'an industrial source',
+            }
+            const what = MARS_SECTOR_WORDS[pl.sector] || 'an unclassified source'
+            const lastSeen = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const firstYear = pl.t_first ? new Date(pl.t_first).getFullYear() : null
+            const kgh = Number.isFinite(pl.kgh) && pl.kgh > 0 ? pl.kgh : null
+            const tph = kgh ? (kgh >= 1000 ? `${(kgh / 1000).toFixed(1)} tonnes/hour` : `${kgh} kg/hour`) : `${pl.det} plume${pl.det === 1 ? '' : 's'} detected`
+            const cars = kgh ? Math.round((kgh * 157) / 1000) * 1000 : 0
+            const carsTxt = cars >= 1e6 ? `${(cars / 1e6).toFixed(1)} million cars` : `${cars.toLocaleString()} cars`
+            const typeWord = pl.srcType ? pl.srcType.toLowerCase() : null
+            const story = `UN methane watchdogs have logged ${pl.det} plume${pl.det === 1 ? '' : 's'} from this site — most recently ${lastSeen}${firstYear && firstYear < new Date(pl.t_ms).getFullYear() ? `, going back to ${firstYear}` : ''}.` +
+              (pl.notified ? ' The government or operator has been formally notified.' : '')
+            sections.push(sectionHtml({
+              head: `Methane leak from ${typeWord ? `a ${typeWord}` : what} (${pl.source_name || 'MARS'})`,
+              big: tph,
+              alt: kgh
+                ? (cars >= 1000 ? `each day ≈ a day's driving by ${carsTxt}, at the rate last measured` : `measured from space${pl.unc ? `, ±${pl.unc} kg/h` : ''}`)
+                : 'satellite-confirmed emission site',
+              meta: story,
+              ai: `UNEP IMEO MARS detected methane source ${pl.source_name} (${pl.country}): sector ${pl.sector}${pl.srcType ? `, analyst-identified type ${pl.srcType}` : ''}, ${pl.det} plumes on record, latest ${new Date(pl.t_ms).toISOString()} at ${kgh ?? 'unquantified'} kg/hr${pl.unc ? ` (±${pl.unc})` : ''} seen by ${pl.sat || 'satellite'}${pl.persist != null ? `, 6-month persistency ${pl.persist}%` : ''}${pl.notified ? '; government/operator notified through MARS' : ''}. DIRECT OBSERVATION of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; no jargon, no data-provider names beyond "UN methane monitoring". The visible popup ALREADY shows the rate, the cars comparison and the visit history — do not restate them. The public MARS feed lags about a month behind observation: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
+              link: { href: 'https://methanedata.unep.org/map', label: 'Source: UNEP IMEO MARS ↗' },
+            }))
+          } else if (pl) {
+            plumeHit = { ...pl, product: gasDef.product }
+            const SECTOR_WORDS = {
+              '1B2': 'oil & gas infrastructure', '6A': 'a landfill / waste site',
+              '1B1a': 'a coal mine', '1B1': 'a coal mine', '4B': 'a livestock operation',
+              '1A1': 'a power plant', '1A2': 'an industrial facility', '6B': 'wastewater treatment',
+            }
+            const what = SECTOR_WORDS[pl.sector] || 'an unclassified source'
+            const escName = pl.name ? pl.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : null
+            const lastSeen = new Date(pl.t_ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            const firstYear = new Date(pl.t_first).getFullYear()
+            const tph = pl.kgh >= 1000 ? `${(pl.kgh / 1000).toFixed(1)} tonnes/hour` : `${pl.kgh} kg/hour`
+            const gasWord = gasDef.product === 'co2' ? 'CO₂' : 'Methane'
+            // Make the number mean something: near-term climate impact in
+            // cars' worth of exhaust (CH₄ at 20-yr GWP ≈82; average car
+            // ≈4.6 t CO₂/yr). Both sides are RATES, so the count is the same
+            // over any window — worded as day-for-day so the timeframe is
+            // explicit. Rounded hard — it's an anchor, not a metric.
+            const cars = Math.round((pl.kgh * (gasDef.product === 'co2' ? 1.9 : 157)) / 1000) * 1000
+            const carsTxt = cars >= 1e6 ? `${(cars / 1e6).toFixed(1)} million cars` : `${cars.toLocaleString()} cars`
+            const story = pl.obs > 1
+              ? `Satellites have caught it leaking on ${pl.det} of ${pl.obs} passes — most recently ${lastSeen}${new Date(pl.t_first).getFullYear() < new Date(pl.t_ms).getFullYear() ? `, going back to ${firstYear}` : ''}.`
+              : `Spotted from space on ${lastSeen} — the first satellite pass over this site.`
+            sections.push(sectionHtml({
+              head: escName ? `${gasWord} source: ${escName}` : `${gasWord} leak from ${what}`,
+              big: tph,
+              alt: cars >= 1000 ? `each day ≈ a day's driving by ${carsTxt}, at the rate last measured` : `measured from space, ±${pl.unc} kg/h`,
+              meta: story,
+              ai: `Carbon Mapper persistent ${gasWord} source: rate ${pl.kgh} kg/hr (±${pl.unc}), sector ${pl.sector} (${what}), detected on ${pl.det} of ${pl.obs} overflights (persistence ${pl.persist}%), first ${new Date(pl.t_first).toISOString()}, latest ${new Date(pl.t_ms).toISOString()}${pl.name ? `, facility "${pl.name}" per Climate TRACE ${pl.distKm} km away` : ''}. DIRECT OBSERVATIONS of one facility-scale source, unlike the modeled background field. Explain why it matters to a normal reader; do not use jargon like sector codes, GSD, persistence, or data-provider names. The visible popup ALREADY shows the rate, the cars comparison, and the visit history — do not restate any of them. The rate is from the LATEST DETECTION DATE, not live: use past/dated tense ("was releasing … when last measured"), never "is releasing".`,
+              link: { href: 'https://data.carbonmapper.org/', label: 'Source: Carbon Mapper portal ↗' },
+            }))
+            if (!escName) sections.push(`<div class="${styles.popupAnalysis}" data-plume-src>Identifying the source…</div>`)
+            // Drape the actual imaged plume for this source's newest scene.
+            if (pl.scene_id && map.getZoom() >= 8) showSceneOverlay(map, pl.scene_id, gasDef.product)
+          } else {
+            // No marker here: answer the coverage question honestly —
+            // has Carbon Mapper ever actually looked at this spot?
+            sections.push(`<div class="${styles.popupAnalysis}" data-cm-coverage>Checking survey coverage…</div>`)
+            coverageWanted = true
+          }
+        }
+        if (def.kind === 'raster') continue // raster popups: open the full tool instead
+        // Smoke altitude handoff: in ground mode, sample the HRRR grid with
+        // its own what-you'd-breathe popup instead of the column model.
+        if (def.ground && stateRef.current.smokeMode === 'ground' && fieldsRef.current[`${def.id}:ground`]) {
+          // During ground replay, sample the tape's frame at the cursor.
+          const rc2 = replayRef.current
+          const tapeF = rc2 && rc2.layerId === def.id && rc2.tape?.meta?.kind === def.ground.tape?.tapeKind ? rc2.tape : null
+          const gf = tapeF || fieldsRef.current[`${def.id}:ground`]
+          const s = gf.sampleScalar(e.lngLat.lng, e.lngLat.lat)
+          const gx = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
+          const gxs = gx ? gx.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+          if (s) sections.push(sectionHtml(def.ground.popup(s, tapeF ? tapeF.metaAt() : gf.meta, gxs)))
+          continue
+        }
+        // Stitched US radar on screen AND covering this spot: the satellite
+        // field is hidden here, so its value would describe data that is not
+        // drawn (Josh, 2026-09-29). Read the radar tile that IS drawn.
+        {
+          const cdef = LAYERS.find((d) => d.companionOf === def.id)
+          const sh = cdef && rasterSlotsRef.current[`${cdef.id}:__shown`]
+          const payload = cdef && fieldsRef.current[cdef.id]
+          const tier = sh?.key && sh.key === sh.want ? payload?.tiers?.find((t) => t.key === sh.key) : null
+          if (tier?.coverage && tierSees(tier, e.lngLat.lat, e.lngLat.lng)) {
+            const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+            const atLive = !owner || owner.atLive
+            const ts = rasterTimeState(payload, owner?.t ?? Date.now(), atLive, false)
+            const url = ts.urls.get(tier.key)
+            const src = payload.sources.find((sr) => sr.key === tier.key)
+            const frameMs = atLive ? payload.meta?.valid_ms : src?.frameAt?.(owner.t, false)
+            const when = frameMs ? `${new Date(frameMs).toISOString().slice(0, 16).replace('T', ' ')} UTC` : 'this moment'
+            const rd = url ? await readRadarAt(url, e.lngLat.lng, e.lngLat.lat, src?.maxzoom ?? 7) : null
+            const fmt = (v) => (v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString())
+            const band = rd && !rd.dry ? (rd.hi == null ? `over ${fmt(rd.lo)} mm/h` : `${fmt(rd.lo)}–${fmt(rd.hi)} mm/h`) : null
+            const mid = rd && !rd.dry ? (rd.hi == null ? rd.lo : (rd.lo + rd.hi) / 2) : 0
+            sections.push(sectionHtml({
+              head: !url ? 'No radar frame at this moment' : !rd ? 'Radar reading unavailable' : rd.dry ? 'No rain on radar' : `${(def.words.find((w) => mid < w.max) || def.words[def.words.length - 1]).label} on radar`,
+              big: band || (rd?.dry ? 'under 0.1 mm/h' : '—'),
+              alt: band ? `${(mid / 25.4).toFixed(2)} in/h` : 'NOAA ground radar',
+              meta: `US ground radar + gauges (NOAA MRMS, 1 km), measured ${when}. The rate is the colour band the radar image shows at this spot.`,
+              ai: `NOAA MRMS radar precipitation rate at the clicked point: ${band || (rd?.dry ? 'no rain (below 0.1 mm/h)' : 'unreadable')}, frame ${frameMs ? new Date(frameMs).toISOString() : 'unknown'}. This is a DIRECT radar measurement at 1 km, not the satellite estimate. Use only this value; do not mention satellite or GSMaP for this point.`,
+              link: { href: 'https://www.nssl.noaa.gov/projects/mrms/', label: 'Source: NOAA MRMS ↗' },
+            }))
+            continue
+          }
+        }
+        // Replay layers read the frame on screen, stamped with ITS run/time.
+        const rc = replayRef.current
+        const tapeField = rc && rc.layerId === def.id ? rc.tape : null
+        const field = tapeField || fieldsRef.current[def.id]
+        if (!field) continue
+        const sample = def.kind === 'vector'
+          ? field.sample(e.lngLat.lng, e.lngLat.lat)
+          : field.sampleScalar(e.lngLat.lng, e.lngLat.lat)
+        if (!sample) continue
+        const extraField = def.extraGrid ? fieldsRef.current[`${def.id}:extra`] : null
+        let extraSample = extraField ? extraField.sampleScalar(e.lngLat.lng, e.lngLat.lat) : null
+        // Flight layers hand the popup the heading/speed at the click.
+        const flightInst = instancesRef.current.flight
+        if (def.flight && flightInst?.rc?.layerId === def.id) extraSample = flightInst.field.sample(e.lngLat.lng, e.lngLat.lat)
+        const modeled = def.popup(sample, tapeField ? tapeField.metaAt() : layerMeta[def.id], extraSample)
+        // Under an identified source, "(a source region or plume upwind)" is
+        // dead weight — the marker section above IS the source.
+        if (plumeHit && GAS_SOURCE_DEFS.some((g) => g.id === def.id)) modeled.alt = 'the wider air around this site'
+        sections.push(sectionHtml(modeled))
+        // Correlation, stated plainly: wildfires emit these gases (and CAMS
+        // assimilates satellite fire emissions), so when an active fire sits
+        // near the click, say so — even if the fire layer is off.
+        if (FIRE_CORRELATED.has(def.id) && !fireLineDone) {
+          fireLineDone = true
+          const fe = fieldsRef.current.fireevents
+          if (fe?.events) {
+            // Materiality gate: a 1-acre spot fire 35 km away moves nothing.
+            // Fires must be big enough for their distance to plausibly touch
+            // the field under the click; wording scales with confidence.
+            let best = null
+            for (const ev of fe.events) {
+              if (!ev.label) continue
+              const acres = ev.acres || 0
+              const dLat = (ev.lat - e.lngLat.lat) * 111
+              const dLng = (ev.lng - e.lngLat.lng) * 111 * Math.cos((e.lngLat.lat * Math.PI) / 180)
+              const km = Math.sqrt(dLat * dLat + dLng * dLng)
+              const material = (acres >= 5000 && km <= 80) || (acres >= 300 && km <= 40)
+              if (!material) continue
+              if (!best || km < best.km) best = { ev, km, strong: acres >= 5000 && km <= 50 }
+            }
+            if (best) {
+              const gasName = { methane: 'methane', co: 'carbon monoxide', co2: 'CO₂', pm25: 'fine particles', smoke: 'smoke' }[def.id]
+              const escLabel = String(best.ev.label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              const size = ` (${Math.round(best.ev.acres).toLocaleString()} acres)`
+              const claim = best.strong
+                ? `wildfires release ${gasName}, and a fire this size this close is likely part of what you're seeing`
+                : `wildfires release ${gasName} and may be adding to what you're seeing`
+              sections.push(`<div class="${styles.popupAnalysis} ${styles.popupAnalysisDone}">🔥 The ${escLabel}${size} is ~${Math.round(best.km)} km from here — ${claim}.</div>`)
+              aiItems.push({ layer: 'fire-context', note: `Active fire "${best.ev.label}" ${Math.round(best.km)} km away, ${Math.round(best.ev.acres)} acres. Wildfires emit CH4/CO/CO2/PM2.5; weigh size and distance before attributing the gas values to it.` })
+            }
+          } else if (!fireEventsLoadRef.current) {
+            // Lazy-load the fire feed for next click (fire layer may be off).
+            fireEventsLoadRef.current = true
+            loadSystemsJson('fire-events', 'fire-events')
+              .then((j) => { fieldsRef.current.fireevents = j })
+              .catch(() => { fireEventsLoadRef.current = 'failed' })
+          }
+        }
+        // Companion flow: cite the wind that's carrying the haze (skipped if
+        // the Wind layer itself is on — it already prints the same run).
+        if (def.flow && !layerOn.wind && (!rc || rc.layerId !== def.id || rc.atLive)) {
+          const fk = `${def.id}:flow`
+          const windDef = LAYERS.find((d) => d.dataset === def.flow.dataset)
+          const flowField = fieldsRef.current[fk]
+          const ws = flowField && windDef ? flowField.sample(e.lngLat.lng, e.lngLat.lat) : null
+          if (ws) sections.push(sectionHtml(windDef.popup(ws, layerMeta[fk])))
+        }
+      }
+      if (!sections.length) return
+      popupRef.current?.remove()
+      // No fixed anchor at birth: fitPopupToMap re-anchors to the roomier
+      // side right after mount and caps the height to that room.
+      popupRef.current = new mapboxgl.Popup({ offset: 10, maxWidth: wideCard ? 'min(460px, calc(100vw - 24px))' : '290px' })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div class="${styles.popup}">${sections.join('')}` +
+          // Facility cards carry their own sourced "why it matters here"; the
+          // narrator kept inventing specifics there (cargo types, rail links),
+          // so they get no AI paragraph. Other layers keep theirs.
+          (wideCard ? '' : `<div class="${styles.popupAnalysis}" data-sys-ai>Adding context…</div>`) + '</div>',
+        )
+        .addTo(map)
+      if (wideCard) popupRef.current.getElement()?.querySelector(`.${styles.popup}`)?.style.setProperty('width', 'min(460px, calc(100vw - 24px))')
+      fitPopupToMap(popupRef.current)
+      attachPopupScrollHint(popupRef.current, styles)
+      // A card that fills in after mount (Emission sources) grows the popup:
+      // re-fit and re-anchor when it says so.
+      {
+        const pp = popupRef.current
+        const onGrew = () => {
+          if (popupRef.current !== pp) return
+          fitPopupToMap(pp)
+          try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+          fitPopupToMap(pp)
+          attachPopupScrollHint(pp, styles)
+        }
+        window.addEventListener('systems-popup-grew', onGrew)
+        pp.once('close', () => window.removeEventListener('systems-popup-grew', onGrew))
+      }
+      // Phones: the replay bar shrinks to a pill while a popup is open so the
+      // two never overlap; restored on close.
+      setPopupOpen(true)
+      popupRef.current.once('close', () => setPopupOpen(false))
+
+      // Coverage answer for empty clicks on gas layers: our edge proxy asks
+      // Carbon Mapper how many scenes ever imaged this spot.
+      if (coverageWanted) {
+        const pp = popupRef.current
+        fetch(`/api/geo/cm-coverage?lat=${e.lngLat.lat.toFixed(3)}&lng=${e.lngLat.lng.toFixed(3)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (popupRef.current !== pp) return
+            const el = pp.getElement()?.querySelector('[data-cm-coverage]')
+            if (!el) return
+            if (j?.ok) {
+              el.innerHTML = j.count > 0
+                ? `Leak-hunting satellites have checked this area ${j.count === 1 ? 'once' : `${j.count} times`}${j.latest ? ` (last ${j.latest})` : ''} and found nothing here. Leaks they do find show up as green markers.`
+                : `Leak-hunting satellites haven't checked this exact spot yet, so no one knows either way.`
+              el.classList.add(styles.popupAnalysisDone)
+              fitPopupToMap(pp)
+              try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+              fitPopupToMap(pp)
+            } else el.remove()
+          })
+          .catch(() => {
+            if (popupRef.current === pp) pp.getElement()?.querySelector('[data-cm-coverage]')?.remove()
+          })
+      }
+      // The draped scene imagery lives only as long as its popup.
+      popupRef.current.once('close', () => removeSceneOverlay(map))
+
+      // Named-facility lookup for an observed plume: deterministic (OSM +
+      // reverse geocode), patched in when it lands — "This is almost
+      // certainly the Vancouver Landfill."
+      if (plumeHit) {
+        const pp = popupRef.current
+        identifyPlumeSource(plumeHit.lat, plumeHit.lng, plumeHit.sector)
+          .then((html) => {
+            if (popupRef.current !== pp) return
+            const el = pp.getElement()?.querySelector('[data-plume-src]')
+            if (!el) return
+            if (html) {
+              el.innerHTML = html
+              el.classList.add(styles.popupAnalysisDone)
+              fitPopupToMap(pp)
+              try { pp.setLngLat(pp.getLngLat()) } catch { /* popup closed */ }
+              fitPopupToMap(pp)
+            } else el.remove()
+          })
+          .catch(() => {})
+      }
+
+      // Same facts→narration pipeline as "Explain this view", popup-sized.
+      // Click point rounded to ~10 km so repeat clicks on the same feature
+      // (by anyone) share one cached generation. Failure just removes the
+      // pending line — the deterministic facts above it stand alone.
+      const popup = popupRef.current
+      if (wideCard) return // no narration for facility cards (see setHTML above)
+      const reqId = ++popupAiReqRef.current
+      // Ground the location for the narrator: hemisphere-lettered coordinates
+      // (models misread signed decimals — 4.6°E once became "near Ullapool",
+      // which is 5°W) and a deterministic land/water flag from the basemap's
+      // own water polygons (a "fire" over water is a platform flare or ship,
+      // not a wildfire).
+      const lat = Math.round(e.lngLat.lat * 10) / 10
+      const lng = Math.round((((e.lngLat.lng + 180) % 360 + 360) % 360 - 180) * 10) / 10
+      let overWater = false
+      try {
+        overWater = map.getLayer(WATER_MASK_LAYER)
+          ? map.queryRenderedFeatures(e.point, { layers: [WATER_MASK_LAYER] }).length > 0
+          : map.queryRenderedFeatures(e.point).some((f) => f.sourceLayer === 'water')
+      } catch { /* style not ready — fall through to the raster mask */ }
+      // Basemap tiles may not be loaded yet (or at all, in a hidden tab);
+      // the 0.1° Natural Earth land raster answers the same question offline.
+      if (!overWater) {
+        const bits = getLandMaskSync()
+        if (bits && !isLand(bits, e.lngLat.lng, e.lngLat.lat)) overWater = true
+        else if (!bits) loadLandMask().catch(() => {})
+      }
+      const popupFacts = {
+        v: 1,
+        mode: 'popup',
+        time_utc: new Date(Math.floor(Date.now() / 3.6e6) * 3.6e6).toISOString().slice(0, 13) + ':00Z',
+        point: {
+          label: `${Math.abs(lat)}°${lat < 0 ? 'S' : 'N'}, ${Math.abs(lng)}°${lng < 0 ? 'W' : 'E'}`,
+          lat,
+          lng,
+          surface: overWater ? 'open water (from basemap water polygons)' : 'land or nearshore',
+        },
+        layers: aiItems,
+        ...(replayRef.current && !replayRef.current.atLive
+          ? { replay: { frame_time_utc: new Date(replayRef.current.tape.metaAt().valid_ms).toISOString().slice(0, 16) + 'Z', note: 'archived analysis frame, not live conditions' } }
+          : {}),
+      }
+      fetch(`/api/systems-explain?v=3&f=${b64url(JSON.stringify(popupFacts))}`)
+        .then(async (r) => {
+          const j = await r.json().catch(() => ({}))
+          if (popupAiReqRef.current !== reqId || popupRef.current !== popup) return
+          const el = popup.getElement()?.querySelector('[data-sys-ai]')
+          if (!el) return
+          if (r.ok && j.text) {
+            el.innerHTML = formatAiText(j.text, { headers: false }) // escaped + formatted (aiFormat.js)
+            el.classList.add(styles.popupAnalysisDone)
+            // Re-run Mapbox's layout so the anchor is re-chosen for the GROWN
+            // card — the anchor was picked while the popup still said
+            // "Adding context…", and without this the added text runs off the
+            // top of the map.
+            fitPopupToMap(popup) // cap BEFORE re-anchoring: a full-height card overshoots for a frame
+            try { popup.setLngLat(popup.getLngLat()) } catch { /* popup closed */ }
+            fitPopupToMap(popup)
+            attachPopupScrollHint(popup, styles)
+          } else {
+            el.remove()
+          }
+        })
+        .catch(() => {
+          if (popupAiReqRef.current === reqId && popupRef.current === popup) {
+            popup.getElement()?.querySelector('[data-sys-ai]')?.remove()
+          }
+        })
+    })
+
+    // style.load fires on the initial style AND after every basemap switch —
+    // (re)assert readiness and the globe atmosphere each time (required
+    // convention; the one-shot 'load' can be missed under StrictMode). The
+    // layer canvases are plain DOM above the map, untouched by style swaps.
+    map.on('style.load', () => {
+      map.setFog({
+        color: 'rgb(10, 14, 23)',
+        'high-color': 'rgb(20, 30, 60)',
+        'horizon-blend': 0.08,
+        'space-color': 'rgb(6, 8, 16)',
+        'star-intensity': 0.7,
+      })
+      // Invisible water polygons for clipping ocean overlays to true
+      // shorelines and for the popup's land/water test. Satellite Streets
+      // has NO water fill of its own (learned the hard way — the mask
+      // silently no-op'd), but every Mapbox style's `composite` source is
+      // Mapbox Streets v8, which carries the `water` layer already loaded
+      // for labels/roads — so this costs no extra tiles.
+      try {
+        if (map.getSource('composite') && !map.getLayer(WATER_MASK_LAYER)) {
+          map.addLayer({
+            id: WATER_MASK_LAYER,
+            type: 'fill',
+            source: 'composite',
+            'source-layer': 'water',
+            paint: { 'fill-opacity': 0 },
+          })
+        }
+      } catch (err) {
+        console.warn('[systems] water mask layer unavailable on this style:', err)
+      }
+      setMapReady(true)
+      // Basemap swaps wipe in-style layers (the raster overlays); bumping the
+      // epoch re-runs the instances effect, which re-adds them.
+      setStyleEpoch((n) => n + 1)
+    })
+
+    return () => { popupRef.current?.remove(); map.remove(); mapRef.current = null; setMapReady(false) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ─── Layer instance lifecycle ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady) return
+    const map = mapRef.current
+    const inst = instancesRef.current
+
+    // Vector layers: one particle canvas each; instances persist, visibility
+    // toggles.
+    for (const def of LAYERS) {
+      if (def.kind !== 'vector') continue
+      const ready = layerOn[def.id] && layerStatus[def.id] === 'ok'
+      if (ready && !inst[def.id] && canvasEls.current[def.id]) {
+        try {
+          inst[def.id] = new ParticleLayer(map, canvasEls.current[def.id], fieldsRef.current[def.id], {
+            count: densityCount(density),
+            colorStops: def.stops,
+            ...def.vector,
+          })
+        } catch (err) {
+          console.error(`[systems] ${def.id} particle layer init failed:`, err)
+          continue
+        }
+      }
+      // Live-only fields (wind, currents) have no history: while ANY replay
+      // is scrubbed into the past they hide — today's motion drawn over
+      // yesterday's data tells a false combined story.
+      const liveOwner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+      inst[def.id]?.setVisible(!!layerOn[def.id] && (!liveOwner || liveOwner.atLive))
+    }
+
+    // Wind-carried layers (haze, smoke, dust, PM2.5, CO) no longer spawn a
+    // hidden companion particle layer: their wind IS the Wind layer, which
+    // toggleLayer switches on (button lit) when the user turns them on and
+    // which they can switch off from there. The `flow` def still loads the
+    // wind grid so the popup can cite the run carrying the haze. Anything
+    // left over from an older session is torn down.
+    for (const key of Object.keys(inst)) {
+      if (key.endsWith(':flow') && inst[key]) { inst[key].destroy(); inst[key] = null }
+    }
+
+    // Event layers (quakes, fires): one ping canvas each. Layers with a
+    // resolution ladder are owned by the zoom-swap effect below.
+    for (const def of LAYERS) {
+      // `!def.ping`: Storms is an events layer that brings its own renderer
+      // (animated cyclone glyphs + tracks + cones), so it has no ping config.
+      if (def.kind !== 'events' || def.variants || !def.ping) continue
+      const ready = layerOn[def.id] && layerStatus[def.id] === 'ok'
+      if (ready && !inst[def.id] && canvasEls.current[def.id]) {
+        try {
+          inst[def.id] = new EventPingLayer(map, canvasEls.current[def.id], fieldsRef.current[def.id].events, {
+            maxRender: def.ping.maxRender,
+            ...def.ping,
+          })
+        } catch (err) {
+          console.error(`[systems] ${def.id} ping layer init failed:`, err)
+          continue
+        }
+      }
+      inst[def.id]?.setVisible(!!layerOn[def.id])
+    }
+
+    // Raster overlays (vegetation loss, clouds, rain): live inside the map
+    // style itself — added/removed there and re-added after every basemap
+    // swap (styleEpoch).
+    //
+    // A raster layer may bring ONE tile URL (`tileUrl`) or SEVERAL
+    // (`sources`). Clouds needs several because no single satellite sees the
+    // whole planet: five geostationary discs are laid down side by side, each
+    // transparent outside its own view, and together they close the globe.
+    for (const def of LAYERS) {
+      if (def.kind !== 'raster') continue
+      const payload = fieldsRef.current[def.id]
+      const ready = layerOn[def.id] && layerStatus[def.id] === 'ok'
+      // Three shapes, because three layers want different things: a single
+      // tile template (vegetation loss), several tile templates, or ONE image
+      // pinned to four corners (clouds — NOAA ships the whole globe as one
+      // picture, so there is nothing to tile).
+      const sources = payload?.sources
+        || (payload?.tileUrl ? [{ key: 'main', tiles: payload.tileUrl, attribution: def.attribution }] : [])
+      // Image sources (one picture pinned to four corners) draw ABOVE this
+      // layer's tile sources.
+      const images = payload?.images
+        || (payload?.imageUrl ? [{ key: 'img', url: payload.imageUrl, coordinates: payload.imageCoordinates }] : [])
+
+      // Resolution ladder (precipitation): three products measuring the SAME
+      // quantity at different sharpness and age. They must never draw
+      // together. The first cut layered a sharp 2 km image straight over
+      // the global tiles, and because rain imagery is mostly transparent the
+      // coarse 11 km blocks showed through and around the 2 km field — two
+      // measurements of different ages and resolutions in one picture, which
+      // is exactly the kind of composite this project refuses to draw.
+      //
+      // So it is a SWAP, not an overlay, and activeTierKey names the single
+      // winner. Clipping the tiles instead cannot work — a raster source's
+      // `bounds` culls whole tiles, so the seam would still be one tile wide.
+      // Time-following layers (clouds, precipitation) are ALSO driven by the
+      // follower effect below, which runs on the replay's own clock. Both go
+      // through rasterTimeState and activeTierKey, so a camera move and a
+      // scrub can never disagree about what should be on screen.
+      const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+      const ts = def.raster?.followsTime
+        ? rasterTimeState(payload, owner?.t ?? Date.now(), !owner || owner.atLive, !!owner?.playing)
+        : null
+      const winner = activeTierKey(map, payload, mapView, ts)
+      for (const im of images) {
+        const srcId = `systems-${def.id}-${im.key}-src`
+        const layerId = `systems-${def.id}-${im.key}-layer`
+        try {
+          if (ready && !map.getSource(srcId)) {
+            map.addSource(srcId, { type: 'image', url: im.url, coordinates: im.coordinates })
+            // Clouds are a BACKDROP: everything else on this map is data drawn
+            // on top of the weather, not under it. Without an explicit
+            // beforeId the layer lands wherever its effect happened to run and
+            // could bury precipitation. (Canvas overlays like Storms sit above
+            // the whole map and are unaffected either way.)
+            let beforeId
+            if (im.underlay) {
+              try {
+                beforeId = map.getStyle().layers
+                  .find((l) => l.id.startsWith('systems-') && l.id !== layerId)?.id
+              } catch { beforeId = undefined }
+            }
+            map.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: srcId,
+              ...(im.minzoom != null ? { minzoom: im.minzoom } : {}),
+              paint: {
+                'raster-opacity': im.opacity ?? def.raster.opacity,
+                ...(def.raster.fadeDuration != null ? { 'raster-fade-duration': def.raster.fadeDuration } : {}),
+              },
+            }, beforeId)
+          }
+          if (map.getLayer(layerId)) {
+            const show = rasterPieceShow(payload, im.key, ts, winner, ready)
+            map.setLayoutProperty(layerId, 'visibility', show ? 'visible' : 'none')
+          }
+        } catch (err) {
+          console.error(`[systems] ${def.id} image layer failed:`, err)
+        }
+      }
+
+      try {
+        sources.forEach((src, i) => {
+          const key = src.key || i
+          // Two slots for a time-following layer so the next frame can be
+          // loaded out of sight; one for a static one, which never swaps.
+          const slots = def.raster?.followsTime ? ['a', 'b'] : ['a']
+          const state = (rasterSlotsRef.current[`${def.id}:${key}`] ||= { active: 'a', url: src.tiles })
+          for (const slot of slots) {
+            const { srcId, layerId } = slotIds(def.id, key, slot)
+            if (ready && !map.getSource(srcId)) {
+              map.addSource(srcId, {
+                type: 'raster',
+                tiles: [src.tiles],
+                tileSize: 256,
+                ...(src.maxzoom != null ? { maxzoom: src.maxzoom } : {}),
+                // Clips a source to its own region so neighbouring satellite
+                // discs never overlap, and stops tiles being requested at all
+                // outside it.
+                ...(src.bounds ? { bounds: src.bounds } : {}),
+                attribution: src.attribution || def.attribution || '',
+              })
+              // Weather rasters draw UNDER the place-name labels (the first
+              // symbol layer), like the scalar overlays do. Added on top,
+              // radar and rain buried the town names (Josh, 2026-09-23).
+              let labelsId
+              try { labelsId = map.getStyle().layers.find((l) => l.type === 'symbol')?.id } catch { labelsId = undefined }
+              map.addLayer({
+                id: layerId,
+                type: 'raster',
+                source: srcId,
+                paint: {
+                  // A time-following layer starts INVISIBLE: the follower
+                  // effect alone decides which product and which moment is
+                  // shown. Added visible, every tier drew its live frame on
+                  // load — today's radar under a replay label two days old.
+                  'raster-opacity': slot === state.active && !def.raster?.followsTime ? def.raster.opacity : 0,
+                  'raster-opacity-transition': { duration: 260, delay: 0 },
+                  ...(def.raster.fadeDuration != null ? { 'raster-fade-duration': def.raster.fadeDuration } : {}),
+                },
+              }, def.raster?.belowLabels ? labelsId : undefined)
+            }
+            // Visibility for a time-following layer belongs to the follower
+            // effect ALONE. Two writers is how the map ended up going blank
+            // between a tier being switched off and its replacement having
+            // any tiles: whoever ran second won, and neither waited.
+            if (map.getLayer(layerId) && !def.raster?.followsTime) {
+              const show = rasterPieceShow(payload, key, ts, winner, ready)
+              map.setLayoutProperty(layerId, 'visibility', show ? 'visible' : 'none')
+            }
+          }
+        })
+      } catch (err) {
+        console.error(`[systems] ${def.id} raster layer failed:`, err)
+      }
+    }
+
+    // Scalar layers share one canvas (they're mutually exclusive) — swap the
+    // overlay instance when the active scalar changes.
+    const active = LAYERS.find((d) => d.kind === 'scalar' && layerOn[d.id] && layerStatus[d.id] === 'ok')
+    // Altitude handoff (smoke): zoomed into the US, the smoke button swaps
+    // its scalar source from the global column model to HRRR ground-level
+    // concentration. The ground grid lazy-loads the first time the view
+    // qualifies; until it's in (or if it fails), the sky view stands.
+    const groundDef = active?.ground
+    let wantGround = false
+    if (groundDef && !!layerOn[active.id]) {
+      const zoomNow = mapView?.zoom ?? map.getZoom()
+      if (zoomNow >= groundDef.minZoom - 0.5 && !fieldsRef.current[`${active.id}:ground`] && !smokeGroundLoadRef.current[active.id]) {
+        smokeGroundLoadRef.current[active.id] = true
+        loadGridField(groundDef.dataset, groundDef.expectKind)
+          .then((f) => { fieldsRef.current[`${active.id}:ground`] = f; setSmokeGroundTick((t) => t + 1) })
+          .catch(() => { smokeGroundLoadRef.current[active.id] = 'failed' }) // global view stands
+        // Ground history tape (hourly frames, backfilled from the HRRR
+        // archive) — replay at ground level. Absent tape = Now-only.
+        if (groundDef.tape) {
+          TapeField.load(groundDef.tape.dataset, groundDef.tape.expectKind)
+            .then((tp) => { fieldsRef.current[`${active.id}:ground:tape`] = tp; setSmokeGroundTick((t) => t + 1) })
+            .catch(() => { /* tape not baked yet — the live frame stands */ })
+        }
+      }
+      const gf = fieldsRef.current[`${active.id}:ground`]
+      if (gf && zoomNow >= groundDef.minZoom) {
+        const m = gf.meta
+        const c = map.getCenter()
+        const latIn = c.lat >= Math.min(m.lat0, m.lat0 + m.nLat * m.dLat) && c.lat <= Math.max(m.lat0, m.lat0 + m.nLat * m.dLat)
+        const lngIn = ((((c.lng - m.lon0) % 360) + 360) % 360) <= m.nLon * m.dLon
+        wantGround = latIn && lngIn
+      }
+    }
+    setSmokeMode(wantGround ? 'ground' : 'sky')
+    {
+      const mode = wantGround ? 'ground' : 'sky'
+      const prev = prevGroundRef.current
+      if (active?.ground && prev.id === active.id && prev.mode !== mode) {
+        const text = mode === 'ground' ? active.ground.toastIn : active.ground.toastOut
+        if (text) {
+          setModeToast({ text, key: Date.now() })
+          clearTimeout(modeToastTimer.current)
+          modeToastTimer.current = setTimeout(() => setModeToast(null), 4500)
+        }
+      }
+      prevGroundRef.current = { mode, id: active?.id || null }
+    }
+
+    // Replay-capable layers swap to the tape as soon as it's loaded (the
+    // static "now" wash shows in the meantime). The tape opens parked at
+    // Now, paused — Play runs the replay (ReplayController).
+    // Precipitation opts out (Josh, 2026-09-29): radar and satellite rain
+    // read on the undimmed basemap.
+    setBasemapDimmer(map, !!active && !active.scalar?.noDimmer, basemap)
+    const wantYear = !!active?.tape?.year && replayRange[active.id] === 'year'
+    const tapeKey = wantYear && layerStatus[`${active.id}:tape:year`] === 'ok' ? `${active.id}:tape:year`
+      : layerStatus[`${active?.id}:tape`] === 'ok' ? `${active.id}:tape` : null
+    const tape = active?.tape && tapeKey && !wantGround ? fieldsRef.current[tapeKey] : null
+    const groundTape = wantGround ? fieldsRef.current[`${active.id}:ground:tape`] : null
+    const slotId = active
+      ? (wantGround ? (groundTape ? `${active.id}:ground:tape` : `${active.id}:ground`) : tape ? tapeKey : active.measures ? `${active.id}:${active.measure}` : active.id)
+      : null
+    if (inst.scalar && inst.scalar.id !== slotId) {
+      inst.scalar.layer.destroy()
+      inst.scalar = null
+      if (replayRef.current) { replayRef.current.destroy(); replayRef.current = null; setReplay(null) }
+      for (const g of GAS_SOURCE_DEFS) inst[g.key]?.setTime(null) // cursor gone → live view
+    }
+    if (active && !inst.scalar && canvasEls.current.scalar) {
+      try {
+        if (tape && !active.tape.noLive) tape.appendLive(fieldsRef.current[active.id])
+        const view = wantGround ? groundDef : active
+        const tapeSel = wantGround ? groundTape : tape
+        const layer = new ScalarOverlayLayer(map, canvasEls.current.scalar, tapeSel || (wantGround ? fieldsRef.current[`${active.id}:ground`] : fieldsRef.current[active.id]), {
+          colorStops: view.stops,
+          min: view.legend.min,
+          max: view.legend.max,
+          opacity: active.scalar.opacity,
+          mask: active.scalar.mask,
+          feather: active.scalar.feather,
+          tape: !!tapeSel,
+        })
+        inst.scalar = { id: slotId, layer }
+        if (tapeSel) {
+          const rc = new ReplayController(tapeSel, { windowDays: wantGround ? (groundDef.tape?.windowDays ?? 2) : active.tape.windowDays })
+          rc.layerId = active.id
+          // The bar's provenance line must name what's actually playing.
+          if (wantGround) { rc.sourceName = groundDef.sourceName; rc.sourceUrl = groundDef.sourceUrl }
+          const resume = resumeRef.current[active.id]
+          if (resume) { delete resumeRef.current[active.id]; rc.seek(resume.t); if (resume.playing) rc.play(); else rc.pause() }
+          // Otherwise it opens parked at Now, paused (ReplayController):
+          // current conditions first, replay only on Play.
+          rc.attach(layer)
+          // Observed source markers follow the gas layer's cursor: scrub
+          // into the past and only sources already observed by then exist;
+          // ones detected near the cursor time ping at full strength.
+          const gasFollowers = GAS_SOURCE_DEFS.filter((g) => g.id === active.id)
+          if (gasFollowers.length) {
+            const applySources = (c) => { for (const g of gasFollowers) instancesRef.current[g.key]?.setTime(c.atLive ? null : c.t) }
+            rc.subscribe((c) => { if (!c.holding) applySources(c) })
+            applySources(rc)
+          }
+          rc.subscribe(syncLiveOnly) // the Wind layer itself hides while the replay is in the past
+          replayRef.current = rc
+          if (import.meta.env.DEV) window.__systemsReplay = rc // dev-only QA handle
+          setReplay(rc)
+        }
+      } catch (err) {
+        console.error(`[systems] ${active.id} overlay init failed:`, err)
+      }
+    }
+    // A companion raster that is on screen (the US radar past z5) owns the
+    // map; the parent's scalar field steps aside so two instruments are
+    // never drawn over each other. See applyYield in the follower effect.
+    inst.scalar?.layer.setVisible(!!active && !rasterSlotsRef.current[`${active.id}:yield`])
+
+    // Flight streaks: a particle layer that follows the scalar replay's
+    // cursor through the u/v tapes. Lives and dies with its replay.
+    const flightRc = active?.flight && replayRef.current?.layerId === active.id ? replayRef.current : null
+    const flightReady = !!flightRc?.tape.extraBands
+    if (inst.flight && (!flightReady || inst.flight.rc !== flightRc)) {
+      inst.flight.destroy(); inst.flight = null
+    }
+    if (flightReady && !inst.flight && canvasEls.current.flight) {
+      try {
+        const field = new TapeVectorField({ tape: flightRc.tape, toValue: active.toValue, minValue: active.flight.minMtr })
+        const layer = new ParticleLayer(map, canvasEls.current.flight, field, {
+          count: densityCount(density),
+          colorStops: active.flight.stops,
+          countByCoverage: true,
+          coverageBoost: active.flight.coverageBoost,
+          ...active.flight.vector,
+          glyph: active.flight.glyph,
+        })
+        // Re-read the field as the cursor moves (≤4×/s; a resample is a few
+        // thousand allocation-free byte lookups), and once more when late
+        // frames decode.
+        let last = 0
+        let pending = 0
+        const follow = () => {
+          const now = performance.now()
+          if (now - last < 250) { if (!pending) pending = setTimeout(() => { pending = 0; follow() }, 270); return }
+          last = now
+          if (!field.ready()) { if (!pending) pending = setTimeout(() => { pending = 0; follow() }, 150); return }
+          layer.resample()
+        }
+        const unsub = flightRc.subscribe(follow)
+        follow()
+        // destroy() is the contract every entry in `inst` must honour — the
+        // unmount sweep calls it on whatever it finds. (The first cut stored
+        // a bare { layer, off } here and leaving /inmotion with birds on threw.)
+        inst.flight = { rc: flightRc, layer, field, destroy: () => { unsub(); clearTimeout(pending); layer.destroy() } }
+        if (import.meta.env.DEV) window.__flight = layer // dev-only QA handle
+      } catch (err) {
+        console.error(`[systems] ${active.id} flight layer init failed:`, err)
+      }
+    }
+    inst.flight?.layer.setVisible(!!flightReady)
+
+    // Event timelines (earthquakes): the feed's own timestamps drive a time
+    // cursor. One transport bar: a scalar replay (if any) owns it and the
+    // event layer follows its time; otherwise the event layer gets its own
+    // controller.
+    // A timeline may `yieldsTo` other layers (Climate TRACE's monthly tape
+    // yields to fire, whose cursor is days) and always yields to another
+    // timeline that doesn't — one bar, owned by the finest-grained clock.
+    // `inst[d.id]` for a layer that draws through a canvas overlay; a raster
+    // layer (Precipitation) has no instance and owns the bar anyway — its
+    // tiles follow the cursor through the raster-follower effect below.
+    const tlCands = LAYERS.filter((d) => d.timeline && layerOn[d.id] && layerStatus[d.id] === 'ok'
+      && (d.kind === 'raster' || inst[d.id]))
+    const yields = (d) => !!d.timeline.yieldsTo && (d.timeline.yieldsTo.some((id) => layerOn[id]) || tlCands.some((o) => !o.timeline.yieldsTo))
+    const tlDef = tlCands.find((d) => !yields(d))
+    const ev = eventReplayRef.current
+    if (ev && (!tlDef || ev.layerId !== tlDef.id || replayRef.current)) {
+      ev.destroy(); eventReplayRef.current = null; setEventReplay(null)
+      inst[ev.layerId]?.setTime(null)
+    }
+    if (tlDef) {
+      const ping = inst[tlDef.id]
+      if (replayRef.current) {
+        // Follow the scalar replay's cursor (within the feed's window).
+        const rc = replayRef.current
+        if (!rc.followers?.has(tlDef.id)) {
+          rc.followers = rc.followers || new Set(); rc.followers.add(tlDef.id)
+          rc.subscribe((c) => ping?.setTime(c.atLive ? null : c.t, c.playing ? 'flow' : 'day'))
+        }
+      } else if (!eventReplayRef.current) {
+        // `timeline` may be a function of the feed when the useful window
+        // depends on the data itself. Storms needs this: a fixed 10-day
+        // window opened five days before any current storm existed, so
+        // playback began on an empty ocean. Quakes keeps a plain object.
+        const tl = typeof tlDef.timeline === 'function'
+          ? tlDef.timeline(fieldsRef.current[tlDef.id].events)
+          : tlDef.timeline
+        // A raster layer's "frames" are tile URLs, so it gets a tape that can
+        // answer ready()/prefetch() about them. That is what makes the
+        // ReplayController hold the cursor until a frame is actually there,
+        // exactly as it does for the scalar layers — rather than running
+        // ahead and leaving the map to blink.
+        const payloadFor = fieldsRef.current[tlDef.id]
+        const archiveSrc = tlDef.kind === 'raster'
+          ? (payloadFor.sources || []).find((sr) => typeof sr.at === 'function')
+          : null
+        // For a resolution ladder the tape must warm whatever will actually
+        // be ON SCREEN at each moment for this view — the ladder's winner —
+        // not just the first source with an archive. It used to warm MRMS
+        // alone, whose archive is three hours deep: for the other 45 hours of
+        // the bar there was "nothing to fetch", every frame reported ready,
+        // and the cursor ran ahead of IMERG tiles that had not arrived.
+        const ladderUrlAt = payloadFor?.tiers?.length
+          ? (ms) => {
+              const ts = rasterTimeState(payloadFor, ms, false, true) // warms what PLAYBACK draws
+              const w = activeTierKey(map, payloadFor, null, ts)
+              if (!w) return null
+              const src = payloadFor.sources.find((sr) => sr.key === w)
+              return { url: ts.urls.get(w), maxzoom: src?.maxzoom }
+            }
+          : null
+        const tape = tl.makeTape
+          ? tl.makeTape(payloadFor)
+          : archiveSrc
+            ? new RasterTape({
+                ...tl, map,
+                maxzoom: Math.max(...(payloadFor.sources || []).map((sr) => sr.maxzoom ?? 6)),
+                urlAt: ladderUrlAt || ((ms) => archiveSrc.at(ms)),
+              })
+            : new EventTape(payloadFor.events || [], tl)
+        // maxPasses is forwarded so a timeline can ask for a single run.
+        // Undefined keeps ReplayController's default of three, which is what
+        // quakes wants; Storms asks for one.
+        const rc = new ReplayController(tape, {
+          windowDays: tl.windowDays,
+          rateHoursPerSec: tl.rateHoursPerSec || 24,
+          ...(tl.maxPasses != null ? { maxPasses: tl.maxPasses } : {}),
+        })
+        rc.layerId = tlDef.id
+        const resumeE = resumeRef.current[tlDef.id]
+        if (resumeE) { delete resumeRef.current[tlDef.id]; rc.seek(resumeE.t); if (resumeE.playing) rc.play(); else rc.pause() }
+        const modeOf = (c) => (c.atLive ? 'last24' : c.playing && !c.holding ? 'flow' : 'day')
+        rc.attach({ tick: () => ping?.setTime(rc.t, modeOf(rc)) })
+        rc.subscribe((c) => ping?.setTime(c.t, modeOf(c))) // pause → whole day; Now → past 24 h
+        rc.subscribe(syncLiveOnly)
+        eventReplayRef.current = rc
+        if (import.meta.env.DEV) window.__systemsReplay = rc
+        setEventReplay(rc)
+      }
+    }
+  }, [mapReady, layerOn, layerStatus, density, styleEpoch, replayRange, dataEpoch, mapView, smokeGroundTick, fungiShown])
+
+  // Raster layers follow the transport bar.
+  //
+  // Before this, scrubbing a storm back three days left the clouds and the
+  // rain showing right now: one map displaying two different moments, with
+  // nothing on screen to say so. Whichever replay owns the bar, the raster
+  // weather layers now follow its cursor — precipitation by asking GIBS for
+  // that half-hour, clouds (which have no archive of their own yet) by
+  // standing aside until the bar is back at Now.
+  //
+  // This effect drives the clock; the layer-sync effect above drives the
+  // camera. They share rasterTimeState, so they cannot contradict each other.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return undefined
+    const owner = replayRef.current || eventReplayRef.current || fireReplayRef.current
+
+    let last = 0
+    let trailing = 0
+    const cancelSwap = {}   // piece id → detach its pending sourcedata listener
+
+    // A companion raster ON SCREEN (the US radar past z5) takes the map from
+    // its parent's scalar field — never both at once. "On screen" means the
+    // tier the ladder wants is the one actually drawn, so while radar tiles
+    // are still loading the global field stays up instead of a blank.
+    //
+    // Stitched (Josh, 2026-09-28): a companion tier that knows where it can
+    // actually see (the radar's coverage mask) takes only THAT ground. The
+    // parent stays on screen, clipped out under the radar, so a hurricane
+    // over Baja keeps its satellite rain beside the US radar instead of the
+    // whole view going to an instrument that cannot see it.
+    const applyYield = (def) => {
+      if (!def.companionOf) return
+      const sh = rasterSlotsRef.current[`${def.id}:__shown`]
+      const on = !!(layerOn[def.id] && sh && sh.want && sh.key === sh.want)
+      const tier = on ? fieldsRef.current[def.id]?.tiers?.find((t) => t.key === sh.key) : null
+      const clip = tier?.coverage ? (tier.clipFn ||= (lat, lng) => tierSees(tier, lat, lng)) : null
+      const y = on && !clip // hide the parent outright only when there is no map to stitch along
+      const sc = instancesRef.current.scalar
+      if (sc && sc.id.startsWith(def.companionOf)) sc.layer.setClip?.(clip)
+      showStitchSeam(map, `${def.id}-seam`, clip ? tier.coverage.outline : null)
+      const k = `${def.companionOf}:yield`
+      if (rasterSlotsRef.current[k] === y) return
+      rasterSlotsRef.current[k] = y
+      if (sc && sc.id.startsWith(def.companionOf)) sc.layer.setVisible(!y && !!layerOn[def.companionOf])
+    }
+
+    const paint = () => {
+      const atLive = !owner || owner.atLive
+      const cursor = owner?.t ?? Date.now()
+      let radarMs = null
+      let fineStep = null
+      let lastRadarMs = null
+      for (const def of LAYERS) {
+        if (def.kind !== 'raster' || !def.raster?.followsTime) continue
+        if (!layerOn[def.id] || layerStatus[def.id] !== 'ok') {
+          // Switched off: this effect owns these layers' visibility, so it
+          // must HIDE them — skipping them left the last radar frame on the
+          // map after Precipitation was turned off (Josh, 2026-09-23).
+          if (!layerOn[def.id]) {
+            const pl = fieldsRef.current[def.id]
+            for (const e of [...(pl?.images || []), ...(pl?.sources || [])]) {
+              if (!e.key) continue
+              for (const slot of ['a', 'b']) {
+                const lid = slotIds(def.id, e.key, slot).layerId
+                try {
+                  if (map.getLayer(lid)) {
+                    map.setPaintProperty(lid, 'raster-opacity', 0)
+                    map.setLayoutProperty(lid, 'visibility', 'none')
+                  }
+                } catch { /* style swapped */ }
+              }
+            }
+            const sh = rasterSlotsRef.current[`${def.id}:__shown`]
+            if (sh) { sh.key = null; sh.want = null }
+          }
+          applyYield(def)
+          continue
+        }
+        const payload = fieldsRef.current[def.id]
+        if (!payload) continue
+        const ts = rasterTimeState(payload, cursor, atLive, !!owner?.playing)
+        const winner = activeTierKey(map, payload, null, ts)
+        // "Now · 6:30 PM" over radar measured at 7:24 PM read as a storm
+        // appearing from nothing in half an hour (Josh, 2026-09-28): the bar
+        // prints the companion tier's (radar's) own time beside the tape's.
+        // Stepping back from Now also follows the radar: 10-min archive frames
+        // (Josh, 2026-09-29), and the bar names the radar frame on screen.
+        // Whether the radar owns the VIEW is judged by camera alone (no clock):
+        // gating it on "a frame exists at the cursor" made a step onto a
+        // missing 10-min frame drop the extension, which snapped the cursor
+        // back to Now.
+        const viewKey = def.companionOf ? activeTierKey(map, payload, null, null) : null
+        if (viewKey) {
+          const src = payload.sources?.find((sr) => sr.key === viewKey)
+          fineStep = src?.stepMs || null
+          lastRadarMs = src?.lastFrameMs || null
+          const fr = atLive ? payload.meta?.valid_ms ?? null : src?.frameAt?.(cursor, !!owner?.playing) ?? null
+          // No archived frame at this step (backfill still running, or a
+          // missed scan): name the cursor's own time and say so, rather than
+          // falling back to a satellite time half an hour away.
+          radarMs = fr != null && winner === viewKey ? fr : -Math.round(cursor)
+        }
+        const isImage = new Set((payload.images || []).map((im) => im.key))
+        // EVERY piece, not just the ones with a URL to swap or a reason to
+        // hide: a piece with neither (the live-only cloud image, back at Now)
+        // still has to be told it may come back.
+        const keys = [...(payload.images || []), ...(payload.sources || [])]
+          .map((e) => e.key).filter(Boolean)
+        {
+        // ONE rule owns what is on screen: nothing is hidden until its
+        // replacement is actually drawn. That covers both transitions that
+        // used to leave a hole —
+        //
+        //   frame -> frame  (the next half-hour of the same product)
+        //   tier  -> tier   (leaving Now hands the map from the live product
+        //                    to the archive one, whose layers have never
+        //                    loaded a single tile)
+        //
+        // The tier case is the one that read as "turning off, going blank,
+        // building in": the old tier was switched off the instant the winner
+        // changed, and the new one needed a second or two to fetch anything.
+        const shown = (rasterSlotsRef.current[`${def.id}:__shown`] ||= { key: null })
+        const jumped = shown.lastCursor != null && Math.abs(cursor - shown.lastCursor) > RASTER_JUMP_MS
+        shown.lastCursor = cursor
+        // The tier that SHOULD be on screen now. A load that lands after its
+        // tier lost the ladder must be dropped: at Now, an IMERG frame still
+        // arriving from the replay put itself back on screen and hid GSMaP.
+        shown.want = winner
+        const wantKey = winner
+        const id = `${def.id}:${wantKey}`
+        const state = wantKey ? (rasterSlotsRef.current[`${def.id}:${wantKey}`] ||= { active: 'a', url: null }) : null
+        const wantUrl = wantKey ? ts.urls.get(wantKey) : null
+
+        // Retire by fading to nothing, and only take a layer out of the draw
+        // once it is already invisible. A layer removed while still opaque is
+        // the hole.
+        const hideAllBut = (keepKey) => {
+          for (const k of keys) {
+            if (k === keepKey) continue
+            for (const slot of ['a', 'b']) {
+              const lid = slotIds(def.id, k, slot).layerId
+              retireLayer(map, lid)
+              // A tier that is not in play goes fully dark once it has faded.
+              // Left merely transparent it would keep fetching tiles, and
+              // four tiers loading at once is four times the traffic for one
+              // visible product. Only AFTER the fade, never before it.
+              setTimeout(() => {
+                try {
+                  if (rasterSlotsRef.current[`${def.id}:__shown`]?.key === k) return
+                  if (map.getLayer(lid)) map.setLayoutProperty(lid, 'visibility', 'none')
+                } catch { /* style swapped */ }
+              }, 340)
+            }
+          }
+          // The winner's spare buffer stays armed — it is where the next
+          // frame lands, and it must be able to load before it is shown.
+          const st = keepKey ? rasterSlotsRef.current[`${def.id}:${keepKey}`] : null
+          if (!st) return
+          retireLayer(map, slotIds(def.id, keepKey, st.active === 'a' ? 'b' : 'a').layerId)
+        }
+
+        try {
+          if (!wantKey) { hideAllBut(null); continue }
+          if (isImage.has(wantKey)) {
+            const { srcId, layerId } = slotIds(def.id, wantKey, 'a')
+            if (!map.getLayer(layerId)) continue
+            if (wantUrl && state.url !== wantUrl) { map.getSource(srcId)?.updateImage?.({ url: wantUrl }); state.url = wantUrl }
+            revealLayer(map, layerId, def.raster.opacity)
+            shown.key = wantKey
+            hideAllBut(wantKey)
+            continue
+          }
+
+          const cur = slotIds(def.id, wantKey, state.active)
+          if (!map.getLayer(cur.layerId)) continue
+          const needsLoad = wantUrl && state.url !== wantUrl
+
+          if (!needsLoad) {
+            // Already holding the right frame: show it, then retire whatever
+            // it replaced.
+            revealLayer(map, cur.layerId, def.raster.opacity)
+            shown.key = wantKey
+            hideAllBut(wantKey)
+            continue
+          }
+          // A jump (see RASTER_JUMP_MS): what is on screen belongs to a
+          // different moment, so it goes NOW rather than when the new frame
+          // lands — and an in-flight load for the old moment is abandoned,
+          // or it would land and put the old moment straight back.
+          if (jumped && shown.key) {
+            shown.key = null
+            hideAllBut(wantKey)
+            retireLayer(map, cur.layerId)
+          }
+          if (state.loading && !jumped && performance.now() - (state.loadingAt || 0) < 8000) continue
+          // Mid-swap, the spare slot is still one of the two frames on screen;
+          // loading into it now would blank it and put the dip back.
+          if (!jumped && performance.now() < (state.swapUntil || 0)) continue
+
+          const next = state.active === 'a' ? 'b' : 'a'
+          const nxt = slotIds(def.id, wantKey, next)
+          if (!map.getSource(nxt.srcId)) continue
+          state.loading = wantUrl
+          state.loadingAt = performance.now()
+          map.getSource(nxt.srcId).setTiles([wantUrl])
+          // Visible at zero opacity: invisible to the reader, but Mapbox will
+          // now actually fetch it, which is the whole point of the buffer.
+          armLayer(map, nxt.layerId)
+          cancelSwap[id]?.()
+          cancelSwap[id] = onSourceSettled(map, nxt.srcId, () => {
+            try {
+              if (state.loading !== wantUrl) return // a later frame won the race
+              if (shown.want !== wantKey) { state.loading = null; return } // tier no longer wanted
+              // Same tier, next frame: swap without a dip (see swapFrames).
+              // A tier change, or a jump that already cleared the screen,
+              // simply shows the new frame.
+              const sameTierOnScreen = shown.key === wantKey
+              if (sameTierOnScreen) swapFrames(map, cur.layerId, nxt.layerId, def.raster.opacity, next === 'b')
+              else revealLayer(map, nxt.layerId, def.raster.opacity)
+              state.active = next
+              state.url = wantUrl
+              state.loading = null
+              state.swapUntil = performance.now() + FRAME_FADE_MS + 80
+              shown.key = wantKey
+              // Only NOW is the old frame — and the old tier — redundant.
+              if (!sameTierOnScreen) retireLayer(map, cur.layerId)
+              applyYield(def)
+              setTimeout(() => {
+                try { if (state.active === next) hideAllBut(wantKey) } catch { /* style swapped */ }
+              }, FRAME_FADE_MS + 60)
+            } catch { /* style swapped mid-flight */ }
+          })
+        } catch (err) {
+          console.error(`[systems] ${def.id}/${wantKey} time follow failed:`, err)
+        }
+        }
+      }
+      for (const def of LAYERS) if (def.companionOf) applyYield(def)
+      setRadarShownMs((prev) => (prev === radarMs ? prev : radarMs))
+      if (owner) {
+        owner.fineStepMs = fineStep
+        owner.setEndExtension?.(fineStep ? lastRadarMs : null)
+      }
+    }
+
+    const onTick = () => {
+      const now = performance.now()
+      const wait = RASTER_FOLLOW_MS - (now - last)
+      if (wait <= 0) { last = now; paint(); return }
+      if (!trailing) {
+        trailing = setTimeout(() => { trailing = 0; last = performance.now(); paint() }, wait)
+      }
+    }
+
+    paint()
+    // The camera changes which tier should win just as much as the clock
+    // does — zooming into the US is what promotes the 1 km radar over the
+    // global product. This effect owns visibility for these layers, so it
+    // has to hear about moves too; parked at Now there are no replay ticks
+    // at all, and zooming in did nothing.
+    const onMove = () => onTick()
+    map.on('moveend', onMove)
+    map.on('zoomend', onMove)
+    const off = owner?.subscribe(onTick)
+    return () => {
+      map.off('moveend', onMove)
+      map.off('zoomend', onMove)
+      if (trailing) clearTimeout(trailing)
+      // Detach the pending listeners AND release the in-flight marks they
+      // were going to clear. The slot state outlives this effect, so a
+      // cancelled swap that left `loading` set would wedge the layer.
+      for (const [id, c] of Object.entries(cancelSwap)) {
+        c?.()
+        const st = rasterSlotsRef.current[id]
+        if (st) { st.loading = null; st.loadingAt = 0 }
+      }
+      off?.()
+    }
+  }, [mapReady, layerOn, layerStatus, dataEpoch, styleEpoch, replay, eventReplay, fireReplay])
+
+  // ─── Keep a globe left open current: every 10 min, check each visible
+  // layer's source for a newer bake (tiny metadata/index fetch) and, only if
+  // there is one, reload it and rebuild that layer in place — replay position
+  // and camera untouched. Crons refresh upstream every 3–12 h; Blob/CDN
+  // caches are ≤5 min, so a 10-min poll sees every new run.
+  useEffect(() => {
+    if (!mapReady) return
+    const REFRESH_MS = 10 * 60 * 1000
+    const id = setInterval(async () => {
+      if (document.hidden) return
+      const { layerOn: on, layerStatus: st, layerMeta: lm } = stateRef.current
+      let changed = false
+      for (const def of LAYERS) {
+        if (!on[def.id] || st[def.id] !== 'ok') continue
+        try {
+          if (def.load) {
+            // Event/raster loaders (USGS, hotspots JSON, GEE) are small — reload outright.
+            const payload = await def.load()
+            const newer = !lm[def.id]?.fetched_ms || (payload.meta?.fetched_ms || 0) > lm[def.id].fetched_ms || def.id === 'quakes'
+            if (newer) {
+              fieldsRef.current[def.id] = payload
+              setLayerMeta((m) => ({ ...m, [def.id]: payload.meta }))
+              const inst = instancesRef.current
+              const ev = eventReplayRef.current
+              if (ev && ev.layerId === def.id) { resumeRef.current[def.id] = { t: ev.t, playing: ev.playing }; ev.destroy(); eventReplayRef.current = null; setEventReplay(null) }
+              if (inst[def.id]) { inst[def.id].destroy?.(); inst[def.id] = null }
+              changed = true
+            }
+          } else {
+            const base = fieldsRef.current[def.id]?.meta
+            const metaRes = await fetch(`${SOURCE_BASES[0]}/${def.dataset}-meta.json`, { cache: 'no-cache' }).catch(() => null)
+            const meta = metaRes?.ok ? await metaRes.json() : null
+            let gridNewer = meta && base && (meta.fetched_ms || 0) > (base.fetched_ms || 0)
+            let tapeNewer = false
+            let newTape = null
+            if (def.tape && fieldsRef.current[`${def.id}:tape`]) {
+              const cur = fieldsRef.current[`${def.id}:tape`]
+              const idxRes = await fetch(`${SOURCE_BASES[0]}/${def.tape.dataset}-tape.json`, { cache: 'no-cache' }).catch(() => null)
+              const idx = idxRes?.ok ? await idxRes.json() : null
+              if (idx && (idx.fetched_ms || 0) > (cur.index.fetched_ms || 0)) {
+                newTape = await TapeField.load(def.tape.dataset, def.tape.expectKind)
+                tapeNewer = true
+              }
+            }
+            if (gridNewer) fieldsRef.current[def.id] = await loadGridField(def.dataset, def.expectKind)
+            if (gridNewer || tapeNewer) {
+              if (gridNewer) setLayerMeta((m) => ({ ...m, [def.id]: fieldsRef.current[def.id].meta }))
+              if (newTape) fieldsRef.current[`${def.id}:tape`] = newTape
+              const inst = instancesRef.current
+              const rc = replayRef.current
+              if (rc && rc.layerId === def.id) { resumeRef.current[def.id] = { t: rc.t, playing: rc.playing }; rc.destroy(); replayRef.current = null; setReplay(null) }
+              if (inst.scalar && inst.scalar.id.startsWith(def.id)) { inst.scalar.layer.destroy(); inst.scalar = null }
+              if (inst[def.id]) { inst[def.id].destroy?.(); inst[def.id] = null }
+              if (inst[`${def.id}:flow`]) { inst[`${def.id}:flow`].destroy?.(); inst[`${def.id}:flow`] = null }
+              changed = true
+            }
+          }
+        } catch (err) {
+          console.warn(`[systems] refresh ${def.id} failed:`, err)
+        }
+      }
+      // Re-render regardless so "fetched N min ago" stamps stay honest.
+      setDataEpoch((n) => n + 1)
+      if (changed) console.info('[systems] refreshed layer data')
+    }, REFRESH_MS)
+    return () => clearInterval(id)
+  }, [mapReady])
+
+  // ─── Zoom-dependent resolution ladder for event layers with variants
+  // (fires: 0.5° clusters at world view → 0.25° past z4.5 → ~5 km cells past
+  // z6.5, so fires resolve into their actual shape). Finer files lazy-load on
+  // first need; while one loads, the finest already-loaded tier shows. The
+  // instance is recreated when the active tier changes.
+  const [fineTick, setFineTick] = useState(0)
+  const fineLoadingRef = useRef({})
+  // Bumped by the raw-detection overlay when its data/active-state changes,
+  // so the glow layer's visibility (below) and popups can react.
+  const [rawTick, setRawTick] = useState(0)
+  useEffect(() => {
+    if (!mapReady) return
+    const map = mapRef.current
+    const inst = instancesRef.current
+    for (const def of LAYERS) {
+      if (def.kind !== 'events' || !def.variants) continue
+      const on = !!layerOn[def.id]
+      const ready = on && layerStatus[def.id] === 'ok'
+      if (!ready) { inst[def.id]?.setVisible(false); continue }
+      const zoom = mapView?.zoom ?? map.getZoom()
+      const keyFor = (v) => (v.id === 'coarse' ? def.id : `${def.id}_${v.id}`)
+      const wantIdx = def.variants.reduce((acc, v, i) => (zoom >= v.minZoom ? i : acc), 0)
+      const want = def.variants[wantIdx]
+      if (wantIdx > 0 && !fieldsRef.current[keyFor(want)] && !fineLoadingRef.current[keyFor(want)]) {
+        fineLoadingRef.current[keyFor(want)] = true
+        def.loadVariant(want.dataset)
+          .then((p) => { fieldsRef.current[keyFor(want)] = p; setFineTick((t) => t + 1) })
+          .catch(() => { fineLoadingRef.current[keyFor(want)] = 'failed' }) // stay on a coarser tier
+      }
+      // Finest tier at or below the wanted one that has loaded (coarse always has).
+      let active = def.variants[0]
+      for (let i = wantIdx; i >= 0; i--) {
+        if (fieldsRef.current[keyFor(def.variants[i])]) { active = def.variants[i]; break }
+      }
+      const payload = fieldsRef.current[keyFor(active)]
+      if (def.id === 'hotspots' && payload) fireLiveEventsRef.current = payload.events
+      if (inst[def.id] && inst[def.id]._variant !== active.id) {
+        inst[def.id].destroy()
+        inst[def.id] = null
+      }
+      if (!inst[def.id] && canvasEls.current[def.id]) {
+        try {
+          inst[def.id] = new EventPingLayer(map, canvasEls.current[def.id], payload.events, {
+            ...def.ping,
+            maxRender: active.maxRender ?? def.ping.maxRender,
+          })
+          inst[def.id]._variant = active.id
+        } catch (err) {
+          console.error(`[systems] ${def.id} ping layer init failed:`, err)
+          continue
+        }
+      }
+      // Close-zoom handoff: once the raw-detection overlay is carrying the
+      // fire story for this view, the cluster glows step aside entirely.
+      const rawActive = def.id === 'hotspots' && inst.fireraw?.isActive()
+      inst[def.id]?.setVisible(on && !rawActive)
+    }
+  }, [mapReady, layerOn, layerStatus, mapView, fineTick, rawTick])
+
+  // ─── Fire events: lazy-load with the fires layer; overlay draws hulls +
+  // labels past MIN_DRAW_ZOOM and upgrades fire clicks to rich event popups.
+  const [eventsTick, setEventsTick] = useState(0)
+  const fireEventsLoadRef = useRef(false)
+  useEffect(() => {
+    const on = !!layerOn.hotspots
+    const inst = instancesRef.current
+    if (on && !fieldsRef.current.fireevents && !fireEventsLoadRef.current) {
+      fireEventsLoadRef.current = true
+      loadSystemsJson('fire-events', 'fire-events')
+        .then((j) => { fieldsRef.current.fireevents = j; setEventsTick((t) => t + 1) })
+        .catch(() => { fireEventsLoadRef.current = 'failed' }) // glows still work
+    }
+    if (mapReady && on && fieldsRef.current.fireevents && !inst.fireevents && canvasEls.current.fireevents) {
+      try {
+        inst.fireevents = new FireEventsOverlay(
+          mapRef.current, canvasEls.current.fireevents, fieldsRef.current.fireevents.events,
+        )
+      } catch (err) {
+        console.error('[systems] fire-events overlay init failed:', err)
+      }
+    }
+    inst.fireevents?.setVisible(on)
+  }, [mapReady, layerOn, eventsTick])
+
+  // ─── Storms: NHC tropical cyclones. Its own canvas overlay rather than the
+  // ping layer — a hurricane has to spin, and it carries track lines, a
+  // forecast cone and warning coastlines that a point renderer can't draw.
+  // It exposes `nearest()`, so the generic events click path finds it.
+  useEffect(() => {
+    const def = LAYERS.find((d) => d.id === 'storms')
+    if (!def) return
+    const on = !!layerOn.storms
+    const inst = instancesRef.current
+    if (mapReady && on && layerStatus.storms === 'ok' && fieldsRef.current.storms && !inst.storms && canvasEls.current.storms) {
+      try {
+        inst.storms = new StormsOverlay(mapRef.current, canvasEls.current.storms, fieldsRef.current.storms.events)
+      } catch (err) {
+        console.error('[systems] storms overlay init failed:', err)
+      }
+    }
+    inst.storms?.setVisible(on)
+    // `dataEpoch` is load-bearing, not decoration: the 10-minute refresh
+    // poller re-pulls every `def.load` layer and DESTROYS its instance
+    // (`inst[id].destroy(); inst[id] = null`), relying on the rebuild effects
+    // to construct a new one. Without dataEpoch in these deps this effect
+    // never re-runs, so ten minutes after load the storms overlay is torn
+    // down and never rebuilt — the layer silently vanishes and only a page
+    // reload brings it back. The main instance effect already lists it.
+  }, [mapReady, layerOn, layerStatus, dataEpoch])
+
+  // ─── Emission sources: Climate TRACE facilities, own canvas overlay over
+  // our PMTiles (see traceFacilitiesOverlay.js). `nearest()` feeds the
+  // generic events click path; the monthly tape is wired by the timeline
+  // effect above. dataEpoch: the refresh poller destroys def.load instances.
+  useEffect(() => {
+    const on = !!layerOn.emissions
+    const inst = instancesRef.current
+    if (mapReady && on && layerStatus.emissions === 'ok' && fieldsRef.current.emissions && !inst.emissions && canvasEls.current.emissions) {
+      try {
+        inst.emissions = new TraceFacilitiesOverlay(mapRef.current, canvasEls.current.emissions, fieldsRef.current.emissions.index, { measure: traceMeasure, sectors: traceSectors })
+      } catch (err) {
+        console.error('[systems] emissions overlay init failed:', err)
+      }
+    }
+    inst.emissions?.setVisible(on)
+    if (!on) inst.emissions?.setTime(null)
+  }, [mapReady, layerOn, layerStatus, dataEpoch])
+  useEffect(() => { instancesRef.current.emissions?.setMeasure(traceMeasure) }, [traceMeasure])
+
+  // Underground fungi: swap the map once its grids are in. Until then the
+  // previous map stays up with its own legend — never one map's colours
+  // under another's scale. Grids are cached, so switching back is instant.
+  const fungiWantRef = useRef(fungiWant)
+  fungiWantRef.current = fungiWant
+  useEffect(() => {
+    const def = LAYERS.find((d) => d.id === 'fungi')
+    if (!def || fungiWant === def.measure) { setFungiShown(fungiWant); return }
+    if (layerStatus.fungi !== 'ok') { def.measure = fungiWant; setFungiShown(fungiWant); return } // first load will fetch it
+    loadFungiField(fungiWant)
+      .then((f) => {
+        if (fungiWantRef.current !== fungiWant) return
+        def.measure = fungiWant
+        fieldsRef.current.fungi = f
+        setLayerMeta((m) => ({ ...m, fungi: f.meta }))
+        setFungiShown(fungiWant)
+      })
+      .catch((err) => { console.warn('[systems] fungi map unavailable:', fungiWant, err); setFungiWant(def.measure) })
+  }, [fungiWant, layerStatus.fungi])
+
+  // Underground fungi: SPUN's ~1 km tiles draw the picture (fungiTiles.js)
+  // while the 0.1° field keeps answering clicks and Explain. The layer's
+  // `:yield` flag (the one the US radar raises over precipitation) makes the
+  // scalar wash step aside; if the tile index is missing, the wash stays.
+  const fungiTilesIndexRef = useRef(null)
+  useEffect(() => {
+    const map = mapRef.current
+    const inst = instancesRef.current
+    const setWash = (show) => { if (inst.scalar?.id.startsWith('fungi')) inst.scalar.layer.setVisible(show) }
+    if (!map || !mapReady || !layerOn.fungi || layerStatus.fungi !== 'ok') {
+      inst.fungiTiles?.setVisible(false)
+      rasterSlotsRef.current['fungi:yield'] = false
+      return
+    }
+    let cancelled = false
+    Promise.resolve(fungiTilesIndexRef.current || loadSystemsJson('spun-tiles', 'spun-tiles'))
+      .then((index) => {
+        if (cancelled) return
+        fungiTilesIndexRef.current = index
+        const def = LAYERS.find((d) => d.id === 'fungi')
+        if (!inst.fungiTiles) inst.fungiTiles = new FungiTilesOverlay(map, index, def.scalar.opacity)
+        const ok = inst.fungiTiles.show(fungiShown)
+        inst.fungiTiles.setVisible(ok)
+        rasterSlotsRef.current['fungi:yield'] = ok
+        setWash(!ok)
+      })
+      .catch((err) => {
+        console.warn('[systems] fungi tiles unavailable, drawing the 0.1° field:', err)
+        rasterSlotsRef.current['fungi:yield'] = false
+        setWash(true)
+      })
+    return () => { cancelled = true }
+  }, [mapReady, layerOn.fungi, layerStatus.fungi, fungiShown, styleEpoch])
+
+  // Living threads over the Fungal networks map: an ILLUSTRATION whose
+  // seeding follows SPUN's measured density (fungiThreads.js). Only on the
+  // networks map; the other maps measure kinds of fungi, not network.
+  useEffect(() => {
+    const map = mapRef.current
+    const inst = instancesRef.current
+    const want = !!map && mapReady && layerOn.fungi && layerStatus.fungi === 'ok' && fungiShown === 'hyphae' && fungiThreadsOn
+    if (!want) {
+      if (inst.fungiThreads) { inst.fungiThreads.destroy(); inst.fungiThreads = null }
+      return
+    }
+    let cancelled = false
+    loadFungiField('hyphae')
+      .then((field) => {
+        if (cancelled || inst.fungiThreads || !canvasEls.current.fungithreads) return
+        inst.fungiThreads = new FungiThreadsLayer(map, canvasEls.current.fungithreads, field, () => instancesRef.current.fungiTiles?.sampler('hyphae'))
+      })
+      .catch(() => { /* no field, no threads: the map itself still shows */ })
+    return () => { cancelled = true }
+  }, [mapReady, layerOn.fungi, layerStatus.fungi, fungiShown, fungiThreadsOn])
+  useEffect(() => { instancesRef.current.emissions?.setSectors(traceSectors) }, [traceSectors])
+
+  // ─── Hover: one listener, one tooltip, every discrete layer ──────────────
+  // Continuous fields (wind, currents, every scalar wash) are deliberately
+  // NOT probed — a value exists at every pixel there, so a tooltip would
+  // trail the cursor everywhere saying something nobody asked for. Those
+  // stay click-to-inspect.
+  useEffect(() => {
+    if (!mapReady) return
+    const map = mapRef.current
+    if (!map) return
+    let raf = 0
+    let pt = null
+    const run = () => {
+      raf = 0
+      if (!pt) { setHoverTip(null); return }
+      let hit = null
+      try { hit = probeHover(pt.x, pt.y, instancesRef.current, stateRef.current.layerOn) } catch { hit = null }
+      // The cursor is the cheap half of the affordance and works even for
+      // layers that have no highlight of their own yet.
+      try { map.getCanvas().style.cursor = hit ? 'pointer' : '' } catch { /* map torn down */ }
+      setHoverTip(hit ? { ...hit, x: pt.x, y: pt.y } : null)
+    }
+    const onMove = (e) => {
+      pt = { x: e.point.x, y: e.point.y }
+      if (!raf) raf = requestAnimationFrame(run)
+    }
+    const onOut = () => {
+      pt = null
+      if (!raf) raf = requestAnimationFrame(run)
+    }
+    map.on('mousemove', onMove)
+    map.on('mouseout', onOut)
+    return () => {
+      map.off('mousemove', onMove)
+      map.off('mouseout', onOut)
+      if (raf) cancelAnimationFrame(raf)
+      try { map.getCanvas().style.cursor = '' } catch { /* map torn down */ }
+      setHoverTip(null)
+    }
+  }, [mapReady])
+
+  // ─── Raw detections: the close-zoom rung of the fire ladder. Individual
+  // 375 m VIIRS pixels (colored by recency) replace cluster glows and derived
+  // hulls once you're looking AT a fire; shards lazy-load per viewport.
+  useEffect(() => {
+    const on = !!layerOn.hotspots
+    const inst = instancesRef.current
+    if (mapReady && on && !inst.fireraw && canvasEls.current.fireraw) {
+      try {
+        inst.fireraw = new FireRawDetectionsOverlay(mapRef.current, canvasEls.current.fireraw, {
+          loadJson: loadSystemsJson,
+          onChange: () => setRawTick((t) => t + 1),
+        })
+      } catch (err) {
+        console.error('[systems] raw-detections overlay init failed:', err)
+      }
+    }
+    const shardNames = layerMeta.hotspots?.raw_shards
+    if (shardNames) inst.fireraw?.setShardNames(shardNames)
+    // Fires with a since-discovery history file — the overlay deep-loads the
+    // ones in view so the timeline reaches back to first detection.
+    const histFires = (fieldsRef.current.fireevents?.events || [])
+      .filter((e) => e.hist && e.irwin)
+      .map((e) => ({ irwin: e.irwin, lat: e.lat, lng: e.lng }))
+    if (histFires.length) inst.fireraw?.setHistIndex(histFires)
+    inst.fireraw?.setVisible(on)
+  }, [mapReady, layerOn, layerMeta, eventsTick])
+
+  // ─── NOAA analyst smoke plumes ride the Wildfire smoke layer: the model's
+  // forecast wash below, the humans-looked-at-the-imagery outlines above.
+  // Today's plumes only make sense over today's smoke — when the layer's
+  // replay is scrubbed into the past, the outlines step aside.
+  useEffect(() => {
+    const on = !!layerOn.smoke
+    const inst = instancesRef.current
+    if (mapReady && on && !inst.smokeplumes && canvasEls.current.smokeplumes) {
+      try {
+        inst.smokeplumes = new SmokePlumesOverlay(mapRef.current, canvasEls.current.smokeplumes)
+      } catch (err) {
+        console.error('[systems] smoke plumes overlay init failed:', err)
+      }
+    }
+    // Sky view only: the outlines describe smoke seen from above — drawn
+    // over the ground-level view they'd mix altitudes in one frame.
+    const skyOn = on && smokeMode === 'sky'
+    if (replay && replay.layerId === 'smoke') {
+      inst.smokeplumes?.setVisible(skyOn && replay.atLive)
+      return replay.subscribe((c) => inst.smokeplumes?.setVisible(skyOn && c.atLive))
+    }
+    inst.smokeplumes?.setVisible(skyOn)
+  }, [mapReady, layerOn, replay, smokeMode])
+
+  // ─── Carbon Mapper observed emission sources ride the gas layers: the
+  // modeled field below, persistent observed sources above (reticles from
+  // mid zoom — the overlay handles its own zoom gate). Same machinery for
+  // methane and CO₂; see docs/CARBONMAPPER_API.md.
+  useEffect(() => {
+    const inst = instancesRef.current
+    // Fire feed warms up with any fire-correlated layer so popup correlation
+    // lines are ready on the first click.
+    if ([...FIRE_CORRELATED].some((id) => layerOn[id]) && !fieldsRef.current.fireevents && !fireEventsLoadRef.current) {
+      fireEventsLoadRef.current = true
+      loadSystemsJson('fire-events', 'fire-events')
+        .then((j) => { fieldsRef.current.fireevents = j })
+        .catch(() => { fireEventsLoadRef.current = 'failed' })
+    }
+    for (const g of GAS_SOURCE_DEFS) {
+      const on = !!layerOn[g.id]
+      const key = g.key
+      if (mapReady && on && !inst[key] && canvasEls.current[key]) {
+        try {
+          inst[key] = new MethanePlumesOverlay(mapRef.current, canvasEls.current[key], { dataset: g.dataset, expectKind: g.expectKind, color: g.color })
+        } catch (err) {
+          console.error(`[systems] ${g.id} sources overlay init failed:`, err)
+        }
+      }
+      inst[key]?.setVisible(on)
+    }
+  }, [mapReady, layerOn])
+
+  // One cursor, every fire layer: drive the fire displays (raw detections at
+  // close zoom, daily presence bins wide out) to a moment in time. Used by
+  // the fire layer's own transport AND as a follower when another layer's
+  // replay (smoke) owns the bar — one slider moves every active dataset.
+  const applyFireCursor = useCallback((c) => {
+    const inst = instancesRef.current
+    if (!stateRef.current.layerOn.hotspots) return
+    const raw = inst.fireraw
+    if (raw?.isActive()) {
+      raw.setTime(c.atLive ? null : c.t)
+      return
+    }
+    if (c.atLive) {
+      if (fireLiveEventsRef.current && inst.hotspots) inst.hotspots.setEvents(fireLiveEventsRef.current)
+      inst.fireevents?.setVisible(true)
+      raw?.setTime(null)
+      return
+    }
+    // A scrubbed day shows THAT day's satellite picture alone — today's
+    // names/perimeters over last week's glows would mislead.
+    inst.fireevents?.setVisible(false)
+    raw?.setTime(null)
+    const daily = fieldsRef.current.firedaily
+    if (!daily) {
+      if (!fireDailyLoadRef.current) {
+        fireDailyLoadRef.current = true
+        loadSystemsJson('fire-daily', 'fire-daily')
+          .then((j) => { fieldsRef.current.firedaily = j; applyFireCursor(c) })
+          .catch(() => { fireDailyLoadRef.current = 'failed' }) // live bins stay up
+      }
+      return
+    }
+    const date = new Date(c.t).toISOString().slice(0, 10)
+    const day = daily.days.find((d) => d.date === date)
+    const events = (day?.bins || []).map(([lat, lng, n, frp, frps]) => ({ lat, lng, n, frp, frps: frps || 0, km: 28 }))
+    inst.hotspots?.setEvents(events)
+  }, [])
+
+  // Live-only layers (wind/currents particles) sync to whichever replay owns
+  // the bar on every tick: hidden while it's in the past, back at Now.
+  const syncLiveOnly = useCallback((c) => {
+    const inst = instancesRef.current
+    const { layerOn } = stateRef.current
+    for (const d of LAYERS) {
+      if (d.kind !== 'vector') continue
+      inst[d.id]?.setVisible(!!layerOn[d.id] && c.atLive)
+    }
+  }, [])
+
+  // ─── Fire time slider: one transport bar, two regimes by altitude. Wide
+  // out, the cursor scrubs DAYS of global fire presence (baked daily FIRMS
+  // rollup, up to 31 days); past the raw handoff it scrubs the individual
+  // detections' actual time span. Detail auto-plays once — the "build" — then
+  // holds at Now; presence starts paused at Now and scrubbing is opt-in.
+  // A scalar or quake replay owns the bar when present (site convention).
+  useEffect(() => {
+    const inst = instancesRef.current
+    const on = !!layerOn.hotspots && layerStatus.hotspots === 'ok'
+    const raw = inst.fireraw
+    const rawActive = on && !!raw?.isActive()
+    const regime = !on ? null : rawActive ? 'detail' : 'presence'
+    const otherOwns = !!replayRef.current || !!eventReplayRef.current
+    const cur = fireReplayRef.current
+
+    const restoreLive = () => {
+      if (fireLiveEventsRef.current && inst.hotspots) inst.hotspots.setEvents(fireLiveEventsRef.current)
+      inst.fireevents?.setVisible(!!layerOn.hotspots)
+      inst.fireraw?.setTime(null)
+    }
+    if (cur && (otherOwns || !regime || cur.fireRegime !== regime)) {
+      cur.destroy()
+      fireReplayRef.current = null
+      setFireReplay(null)
+      restoreLive()
+    }
+    // A deep history that loads after the controller was created extends the
+    // reachable past — rebuild the transport window once the user is idle at
+    // Now (never mid-scrub), and land at Now instead of replaying the build.
+    if (fireReplayRef.current && regime === 'detail' && !otherOwns) {
+      const span2 = raw.timeSpan()
+      const spanH2 = span2 ? (span2.end_ms - span2.start_ms) / 3.6e6 : 0
+      const cur2 = fireReplayRef.current
+      if (spanH2 > (cur2.spanH || 0) * 1.25 && cur2.atLive && !cur2.playing) {
+        cur2.destroy()
+        fireReplayRef.current = null
+        setFireReplay(null)
+        fireSkipBuildRef.current = true
+      }
+    }
+    // Another layer's replay owns the bar (smoke, quakes): the fire layers
+    // FOLLOW its cursor instead of sitting frozen at Now — one slider moves
+    // every active dataset.
+    const owner = replayRef.current || eventReplayRef.current
+    if (regime && owner && !owner.fireFollower) {
+      owner.fireFollower = true
+      owner.subscribe(applyFireCursor)
+      applyFireCursor(owner)
+    }
+    if (!regime || otherOwns || fireReplayRef.current) return
+
+    if (regime === 'detail') {
+      const span = raw.timeSpan()
+      if (!span) return
+      const spanH = Math.max(6, (span.end_ms - span.start_ms) / 3.6e6)
+      // Deep histories can stretch the window to a fire's whole life: step
+      // in 6 h strides past 3 days. Playback pace scales with the fire's
+      // age — a day-old fire burning fast and intensely gets ~12 s to tell
+      // its story (5 s made it a blink), tapering to ~7 s for multi-week
+      // fires, with an absolute speed cap so a month never flashes past.
+      const tape = new EventTape([], {
+        stepH: spanH > 72 ? 6 : 1,
+        windowDays: spanH / 24,
+        dayLabel: false,
+        frameKind: 'NASA FIRMS + GOES satellite data',
+        kindLabel: 'where fire had been seen by this time',
+        steadyLabel: 'replaying where satellites saw fire',
+      })
+      const buildSecs = Math.max(7, Math.min(12, 16 - spanH / 24))
+      const rc = new ReplayController(tape, { windowDays: spanH / 24, rateHoursPerSec: Math.min(48, spanH / buildSecs) })
+      rc.layerId = 'hotspots'
+      rc.fireRegime = 'detail'
+      const apply = (c) => raw.setTime(c.atLive ? null : c.t)
+      rc.attach({ tick: () => apply(rc) })
+      // Opens parked on Now like every other replay (ReplayController);
+      // Play runs the build. toLive() below is belt-and-braces for a
+      // hidden tab — a cursor stranded at the window start makes every
+      // back-control a no-op and the bar reads as dead.
+      rc.subscribe(apply)
+      rc.subscribe(syncLiveOnly)
+      rc.spanH = spanH
+      if (document.hidden || fireSkipBuildRef.current) rc.toLive()
+      fireSkipBuildRef.current = false
+      fireReplayRef.current = rc
+      if (import.meta.env.DEV) window.__fireReplay = rc // dev-only QA handle
+      setFireReplay(rc)
+    } else {
+      const tape = new EventTape([], {
+        stepH: 24,
+        windowDays: 31,
+        dayLabel: true,
+        frameKind: 'NASA FIRMS daily rollup',
+        kindLabel: 'where fires were seen this day',
+        steadyLabel: 'daily fire history, day by day',
+      })
+      // The current UTC day is baked mid-day: say so on its frame instead
+      // of letting "Now" read as a lull (the bake stamps partial + hours).
+      tape.setNoteFor((t) => {
+        const d = fieldsRef.current.firedaily?.days?.find((x) => x.date === new Date(t).toISOString().slice(0, 10))
+        return d?.partial ? `so far today (${d.hours} h of satellite passes)` : null
+      })
+      const rc = new ReplayController(tape, { windowDays: 14 })
+      rc.layerId = 'hotspots'
+      rc.fireRegime = 'presence'
+      // Opens parked on Now like every other replay (ReplayController);
+      // toLive() is belt-and-braces for a hidden tab.
+      if (document.hidden) rc.toLive()
+      // Play runs the presence window: three passes, then parked on Now
+      // (ReplayController.maxPasses).
+      rc.subscribe(applyFireCursor)
+      rc.subscribe(syncLiveOnly)
+      fireReplayRef.current = rc
+      if (import.meta.env.DEV) window.__fireReplay = rc // dev-only QA handle
+      setFireReplay(rc)
+    }
+  }, [mapReady, layerOn, layerStatus, rawTick, mapView, replay, eventReplay, fineTick])
+
+  // Destroy the fire transport on unmount — without this an HMR remount
+  // orphans a live controller that keeps driving the overlay against the
+  // new one (dead-feeling transport bar).
+  useEffect(() => () => {
+    fireReplayRef.current?.destroy()
+    fireReplayRef.current = null
+  }, [])
+
+  // Destroy all layer instances on unmount.
+  useEffect(() => () => {
+    const inst = instancesRef.current
+    for (const key of Object.keys(inst)) {
+      if (!inst[key]) continue
+      try {
+        if (key === 'scalar') inst[key].layer.destroy()
+        else inst[key].destroy()
+      } catch (err) { console.error(`[systems] ${key} teardown failed:`, err) }
+      inst[key] = null
+    }
+  }, [])
+
+  useEffect(() => {
+    for (const def of LAYERS) {
+      if (def.kind === 'vector') instancesRef.current[def.id]?.setCount(densityCount(density))
+    }
+    instancesRef.current.flight?.layer.setCount(densityCount(density))
+  }, [density])
+
+  // Mobile: the drawer mounts only in 'drawer' view; open it once mounted.
+  useEffect(() => {
+    if (isMobile && mobileView === 'drawer') { const t = setTimeout(() => setDrawerSignal((n) => n + 1), 0); return () => clearTimeout(t) }
+  }, [isMobile, mobileView])
+
+  // Mobile: no hover, so a tap shows a transient "Name on/off" chip (~1.5 s).
+  const showChip = useCallback((id, on) => {
+    clearTimeout(chipTimerRef.current)
+    setChip({ id, on })
+    chipTimerRef.current = setTimeout(() => setChip(null), 1500)
+  }, [])
+
+  const toggleLayer = useCallback((id) => {
+    setLayerOn((on) => {
+      const def = LAYERS.find((d) => d.id === id)
+      const next = { ...on, [id]: !on[id] }
+      // One "surface color" slot: enabling a scalar layer disables the other.
+      if (def.kind === 'scalar' && next[id]) {
+        for (const other of LAYERS) {
+          if (other.kind === 'scalar' && other.id !== id) next[other.id] = false
+        }
+      }
+      // Companions come on as REAL layers with their buttons lit — never a
+      // hidden clone the user can't switch off. Turning on a wind-carried
+      // layer (haze, smoke, dust, PM2.5, CO) also turns on Wind; fire and
+      // wildfire smoke bring each other (and Wind). Only on the user's
+      // turn-ON — from then on every layer toggles independently.
+      if (next[id]) {
+        if (def.flow) next.wind = true
+        if (id === 'hotspots') {
+          next.smoke = true
+          next.wind = true
+          for (const other of LAYERS) if (other.kind === 'scalar' && other.id !== 'smoke') next[other.id] = false
+        }
+        if (id === 'smoke') next.hotspots = true
+      }
+      return next
+    })
+  }, [])
+  if (import.meta.env.DEV) window.__systemsToggle = toggleLayer // dev-only QA handle
+
+  // ─── Centre the globe in the VISIBLE map, not the whole window: tell Mapbox
+  // the open panel occupies the left edge (padding), so the globe sits in the
+  // middle of what the user can actually see. Re-evaluated on collapse/resize.
+  useEffect(() => {
+    if (!mapReady) return
+    const map = mapRef.current
+    const apply = () => {
+      const pad = { top: 0, right: 0, bottom: 0, left: 0, ...(propsRef.current.padding || {}) }
+      // A camera flight already carries the new padding; easing now would cancel it.
+      if (map.isMoving()) return
+      const cur = map.getPadding()
+      if (cur.left !== pad.left || cur.right !== pad.right || cur.top !== pad.top || cur.bottom !== pad.bottom) map.easeTo({ padding: pad, duration: 350 })
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [mapReady, JSON.stringify(props.padding || {})])
+
+  // ─── Clip recorder + share-card wiring (declared before the URL-persist
+  // effect below, which lists captureShareImage as a dependency) ────────────
+  const getClipMap = useCallback(() => mapRef.current, [])
+  const clipBeforeRecord = useCallback(() => popupRef.current?.remove(), [])
+  const getClipOverlays = useCallback(
+    () => OVERLAY_KEYS.map((k) => canvasEls.current[k]).filter(Boolean),
+    [],
+  )
+  const getClipBrand = useCallback(() => {
+    const fmtD = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const activeNow = () => {
+      const { layerOn, layerStatus } = stateRef.current
+      return LAYERS.filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
+    }
+    // Re-read layers and replay position per frame: a playing replay's date
+    // (and a mid-take layer toggle) must stamp what's actually on screen.
+    const sourceLine = () => {
+      const rc = replayRef.current || eventReplayRef.current
+      const when = rc && !rc.atLive ? `showing ${fmtD(rc.t)}` : fmtD(Date.now())
+      // The photos actually drawn (Sentinel-2, local aerials, Mapbox), as the Photos line on the map says.
+      const imagery = photoCreditText(photosRef.current)
+      return [...activeNow().map((d) => `${d.name}: ${d.sourceName}`), imagery, when].join(' · ')
+    }
+    return { sourceLine, shareUrl: window.location.href, layerIds: activeNow().map((d) => d.id) }
+  }, [basemap])
+
+  // Snapshot of the composited view (branding included) for social cards.
+  const captureShareImage = useCallback(() => {
+    const map = mapRef.current
+    if (!map) return Promise.resolve(null)
+    // Composite capture (basemap + overlay canvases + branding) first; if it
+    // fails or times out (mobile Safari is the usual suspect), fall back to
+    // a plain basemap grab — a card without overlays still beats the
+    // site-generic image a missing card falls through to.
+    return captureStill({ basemap: mapboxBasemapSource(map), overlays: getClipOverlays(), getBrand: getClipBrand })
+      .then((blob) => blob || captureMapImage(map))
+      .catch(() => captureMapImage(map))
+  }, [getClipOverlays, getClipBrand])
+  if (import.meta.env.DEV && window.__sys) window.__sys.capture = captureShareImage // dev-only QA handle
+
+  // ─── Persist the full view to the URL (shareable links) ───────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams()
+    for (const def of LAYERS) {
+      if (!def.param) continue // companions have no URL key of their own
+      if (def.defaultOn && !layerOn[def.id]) sp.set(def.param, '0')
+      if (!def.defaultOn && layerOn[def.id]) sp.set(def.param, '1')
+    }
+    if (density !== 'med') sp.set('d', density)
+    if (basemap !== 'satellite') sp.set('bm', basemap)
+    if (photos.photo !== 'best') sp.set('pt', photos.photo) // not `ph` (the acidity layer's key): see useMapPhotos above
+    if (layerOn.emissions && traceMeasure !== PRIMARY_MEASURE) sp.set('eg', traceMeasure)
+    if (layerOn.emissions && traceSectors) sp.set('es', [...traceSectors].join(','))
+    if (layerOn.fungi && fungiWant !== 'hyphae') sp.set('fgm', fungiWant)
+    if (layerOn.fungi && !fungiThreadsOn) sp.set('fgt', '0')
+    if (mapView) {
+      sp.set('lat', mapView.lat.toFixed(3))
+      sp.set('lng', mapView.lng.toFixed(3))
+      sp.set('z', mapView.zoom.toFixed(1))
+    }
+    // Story Lab: StoryLabApp writes the URL; sp is unused here.
+    // The URL is now canonical for this view — queue its social share card
+    // (debounced + deduped; see src/lib/shareCard.js).
+    if (mapReady) scheduleViewCard(captureShareImage)
+  }, [layerOn, density, basemap, photos.photo, mapView, mapReady, captureShareImage, traceMeasure, traceSectors, fungiWant, fungiThreadsOn])
+
+  // ─── Basemap switch ───────────────────────────────────────────────────────
+  const appliedBasemapRef = useRef(basemap)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (appliedBasemapRef.current === basemap) return
+    appliedBasemapRef.current = basemap
+    map.setStyle(basemapStyleFor(basemap))
+  }, [basemap, mapReady])
+
+  // ─── Per-route SEO (client side; the static systems.html covers crawlers) ─
+  useEffect(() => {
+    const prevTitle = document.title
+    document.title = 'Story Lab — A planet that never sits still · EarthAtlas'
+    const setMeta = (sel, val) => {
+      const el = document.head.querySelector(sel)
+      if (!el) return null
+      const prev = el.getAttribute('content')
+      el.setAttribute('content', val)
+      return prev
+    }
+    const desc = 'Watch Earth’s systems in motion — live winds and ocean currents as flowing particles, sea temperature and waves painted on a globe, with plain-language explanations and inline sources for every value. An EarthAtlas tool.'
+    const prevDesc = setMeta('meta[name="description"]', desc)
+    const prevOgT = setMeta('meta[property="og:title"]', document.title)
+    const prevOgD = setMeta('meta[property="og:description"]', desc)
+    const prevOgU = setMeta('meta[property="og:url"]', 'https://earthatlas.org/storylab')
+    return () => {
+      document.title = prevTitle
+      if (prevDesc != null) setMeta('meta[name="description"]', prevDesc)
+      if (prevOgT != null) setMeta('meta[property="og:title"]', prevOgT)
+      if (prevOgD != null) setMeta('meta[property="og:description"]', prevOgD)
+      if (prevOgU != null) setMeta('meta[property="og:url"]', prevOgU)
+    }
+  }, [])
+
+  const handleSelect = useCallback((r) => {
+    flyToSearchResult(mapRef.current, r)
+  }, [])
+
+  // ─── "Explain this view": facts engine → AI narration ─────────────────────
+  // explain: null | { status: 'loading'|'ok'|'error'|'not_configured', facts, text }
+  const [explain, setExplain] = useState(null)
+  const [revealed, setRevealed] = useState(0)
+  const explainReqRef = useRef(0)
+
+  const handleExplain = useCallback(() => {
+    const map = mapRef.current
+    if (!map) return
+    const active = LAYERS
+      .filter((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
+      .map((d) => {
+        // Smoke altitude handoff: the Explain card must describe what's on
+        // SCREEN — in ground mode that's the HRRR µg/m³ grid, not CAMS.
+        if (d.ground && smokeMode === 'ground' && fieldsRef.current[`${d.id}:ground`]) {
+          const rc = replayRef.current
+          const gt = rc && rc.layerId === 'smoke' && rc.tape?.meta?.kind === 'hrrr-smoke-massden-tape' ? rc.tape : null
+          const gf = gt || fieldsRef.current[`${d.id}:ground`]
+          return { def: { ...d, ...d.ground, tape: null, flow: null }, payload: gf, meta: gt ? gt.metaAt() : gf.meta }
+        }
+        const rc = replayRef.current
+        if (rc && rc.layerId === d.id) return { def: d, payload: rc.tape, meta: rc.tape.metaAt() }
+        // Emission sources: the facts come from what its overlay has drawn.
+        if (d.id === 'emissions') return { def: d, payload: { ...fieldsRef.current[d.id], overlay: instancesRef.current.emissions }, meta: layerMeta[d.id] }
+        return { def: d, payload: fieldsRef.current[d.id], meta: layerMeta[d.id] }
+      })
+    if (!active.length) return
+    // Facts are instant and free — show them immediately while the prose loads.
+    const facts = buildViewFacts(map, active)
+    const reqId = ++explainReqRef.current
+    // Nothing on screen has data here (a U.S.-only layer viewed over Europe):
+    // there are no facts to narrate, so don't ask a model to fill the silence —
+    // given an empty view it invented European migration and claimed no one
+    // else measures it. Say what is true, deterministically.
+    if (facts.layers.every((l) => l.no_data_in_view)) {
+      const lines = facts.layers.map((l) => `**${l.name}** has no data in this view. It only covers ${l.coverage_area}.`)
+      setExplain({ status: 'ok', facts, text: `## What you're seeing\n\n${lines.join(' ')} Nothing was measured here, which is not the same as nothing happening. Turn the globe to the covered area, or switch on another layer, to see data for this region.` })
+      return
+    }
+    setExplain({ status: 'loading', facts, text: null })
+    fetch(`/api/systems-explain?v=3&f=${b64url(JSON.stringify(facts))}`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}))
+        if (explainReqRef.current !== reqId) return
+        if (r.ok && j.text) setExplain({ status: 'ok', facts, text: j.text })
+        else setExplain({ status: j.error === 'not_configured' ? 'not_configured' : 'error', facts, text: null })
+      })
+      .catch(() => {
+        if (explainReqRef.current === reqId) setExplain({ status: 'error', facts, text: null })
+      })
+  }, [layerOn, layerStatus, layerMeta, smokeMode])
+
+  // Typewriter reveal for the narration — time-based (not per-tick) so
+  // browser timer throttling can't slow it down.
+  useEffect(() => {
+    if (explain?.status !== 'ok' || !explain.text) return
+    setRevealed(0)
+    const start = performance.now()
+    const CHARS_PER_SEC = 220
+    const id = setInterval(() => {
+      const n = Math.floor(((performance.now() - start) / 1000) * CHARS_PER_SEC)
+      if (n >= explain.text.length) { clearInterval(id) }
+      setRevealed(Math.min(n, explain.text.length))
+    }, 33)
+    return () => clearInterval(id)
+  }, [explain])
+
+  const anyExplainable = LAYERS.some((d) => layerOn[d.id] && layerStatus[d.id] === 'ok')
+
+  // ─── Story Lab bridge: parent ↔ engine ────────────────────────────────────
+  // The parent mirrors layer state (for the panel, legend and URL) and drives
+  // the engine through this handle. The engine stays the single owner of
+  // layerOn, so the /inmotion companion rules (smoke brings fires + wind, one
+  // colour wash at a time) apply exactly as they do there.
+  useEffect(() => { propsRef.current.onLayersChange?.(layerOn) }, [layerOn])
+  useEffect(() => {
+    propsRef.current.onStatusChange?.({ layerStatus, layerMeta, anyExplainable: LAYERS.some((d) => layerOn[d.id] && layerStatus[d.id] === 'ok'), smokeMode })
+  }, [layerOn, layerStatus, layerMeta, smokeMode])
+  useEffect(() => { propsRef.current.onReplayChange?.(replay || eventReplay || fireReplay || null) }, [replay, eventReplay, fireReplay])
+
+  // The globe's box changes size between modes (full screen ⇄ framed panel).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !mapReady) return
+    const ro = new ResizeObserver(() => { try { mapRef.current?.resize() } catch { /* map gone */ } })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mapReady])
+
+  // Globe / flat map.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const want = props.projection || 'globe'
+    try { if (map.getProjection()?.name !== want) map.setProjection(want) } catch { /* style mid-swap */ }
+  }, [props.projection, mapReady])
+
+  useEffect(() => { if (mapReady) propsRef.current.onReady?.(mapRef.current) }, [mapReady])
+
+  useImperativeHandle(ref, () => ({
+    getMap: () => mapRef.current,
+    toggleLayer,
+    // Exactly these layers on, everything else off (chapters, cards, links).
+    setLayers: (ids) => setLayerOn(() => {
+      const want = new Set(ids)
+      const next = {}
+      let seenScalar = false
+      for (const def of LAYERS) {
+        let on = want.has(def.id)
+        if (on && def.kind === 'scalar') { if (seenScalar) on = false; seenScalar = true }
+        next[def.id] = on
+      }
+      for (const def of LAYERS) if (def.companionOf) next[def.id] = !!next[def.companionOf]
+      return next
+    }),
+    explain: () => handleExplain(),
+    closeExplain: () => setExplain(null),
+    flyTo: (opts) => { try { mapRef.current?.flyTo({ essential: true, ...opts }) } catch { /* noop */ } },
+    easeTo: (opts) => { try { mapRef.current?.easeTo({ essential: true, ...opts }) } catch { /* noop */ } },
+    fields: () => fieldsRef.current,
+    instances: () => instancesRef.current,
+    replay: () => replayRef.current || eventReplayRef.current || fireReplayRef.current,
+  }), [toggleLayer, handleExplain])
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className={`${styles.container} ${labStyles.host}`}>
+        <div className={styles.tokenError}>
+          <strong>Mapbox token missing.</strong> Set <code>VITE_MAPBOX_TOKEN</code> to load the map.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${styles.container} ${labStyles.host} ${props.className || ''}`}>
+      <div className={styles.mapWrap} ref={containerRef} />
+      {/* Overlay stack: identical order to /inmotion (OVERLAY_KEYS). */}
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.scalar = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fungithreads = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.smokeplumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methaneplumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.methanemars = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 6 }} ref={(el) => { canvasEls.current.co2plumes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current['aerosol:flow'] = el }} aria-hidden="true" />
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id="trail-dehaze" colorInterpolationFilters="sRGB">
+          <feComponentTransfer><feFuncA type="linear" slope="1.06" intercept="-0.045" /></feComponentTransfer>
+        </filter>
+      </svg>
+      <canvas className={styles.windCanvas} style={{ filter: 'url(#trail-dehaze)' }} ref={(el) => { canvasEls.current.flight = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.currents = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.wind = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.hotspots = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireraw = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.fireevents = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.emissions = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} ref={(el) => { canvasEls.current.quakes = el }} aria-hidden="true" />
+      <canvas className={styles.windCanvas} style={{ zIndex: 7 }} ref={(el) => { canvasEls.current.storms = el }} aria-hidden="true" />
+      {hoverTip && (() => {
+        const cw = mapRef.current?.getCanvas?.()?.clientWidth || 0
+        const ch = mapRef.current?.getCanvas?.()?.clientHeight || 0
+        const flipX = cw && hoverTip.x > cw - 240
+        const flipY = ch && hoverTip.y > ch - 110
+        return (
+          <div
+            className={styles.hoverTip}
+            style={{
+              left: hoverTip.x,
+              top: hoverTip.y,
+              transform: `translate(${flipX ? 'calc(-100% - 14px)' : '14px'}, ${flipY ? 'calc(-100% - 14px)' : '14px'})`,
+              borderColor: hoverTip.color ? `${hoverTip.color}8c` : 'rgba(255,255,255,0.25)',
+            }}
+            aria-hidden="true"
+          >
+            {hoverTip.lines.map((ln, i) => (
+              <div key={ln + i} className={i === 0 ? styles.hoverTipHead : styles.hoverTipLine} style={i === 0 && hoverTip.color ? { color: hoverTip.color } : undefined}>{ln}</div>
+            ))}
+          </div>
+        )
+      })()}
+      {mapReady && props.showZoom !== false && <div className={labStyles.zoomSlot}><ZoomIndicator map={mapRef.current} /></div>}
+
+      {(() => {
+        const grounded = LAYERS.find((d2) => d2.ground && layerOn[d2.id] && smokeMode === 'ground')
+        return (
+          <div className={`${styles.modeCueWrap} ${labStyles.modeCue}`} aria-live="polite">
+            {grounded?.ground.chip && !modeToast && <div className={styles.modeChip}>{grounded.ground.chip}</div>}
+            {modeToast && <div key={modeToast.key} className={styles.modeToast}>{modeToast.text}</div>}
+          </div>
+        )
+      })()}
+
+      {props.showPickers !== false && layerOn.emissions && layerStatus.emissions === 'ok' && fieldsRef.current.emissions?.index && (
+        <MeasurePicker
+          measure={traceMeasure}
+          onMeasure={setTraceMeasure}
+          sectors={traceSectors}
+          onSectors={setTraceSectors}
+          available={availableMeasures(fieldsRef.current.emissions.index)}
+          sectorCounts={fieldsRef.current.emissions.index.measures?.[traceMeasure]?.sectors}
+        />
+      )}
+      {props.showPickers !== false && layerOn.fungi && layerStatus.fungi === 'ok' && (
+        <FungiPicker
+          measure={fungiWant}
+          onMeasure={setFungiWant}
+          threads={fungiThreadsOn}
+          onThreads={setFungiThreadsOn}
+          loading={fungiWant !== fungiShown}
+          stacked={!!(layerOn.emissions && layerStatus.emissions === 'ok')}
+        />
+      )}
+
+      {/* "Explain this view": the /inmotion card, unchanged; the button lives in the Field Guide header. */}
+      {explain && (
+        <div className={`${styles.explainCard} ${labStyles.explainCard}`}>
+          <button type="button" className={styles.explainClose} onClick={() => setExplain(null)} aria-label="Close">×</button>
+          {explain.status === 'loading' && (
+            <div className={styles.explainLoading}>Reading the view<span className={styles.explainEllipsis} /></div>
+          )}
+          {explain.status === 'ok' && (
+            <div className={styles.explainText}>
+              <div dangerouslySetInnerHTML={{ __html: formatAiText(explain.text.slice(0, revealed)) }} />
+              {revealed < explain.text.length && <span className={styles.explainCursor} />}
+            </div>
+          )}
+          {explain.status === 'not_configured' && (
+            <p className={styles.explainMuted}>
+              The numbers below are computed live from the data on screen. AI narration
+              isn&apos;t configured yet — it activates once an Anthropic API key is set.
+            </p>
+          )}
+          {explain.status === 'error' && (
+            <p className={styles.explainMuted}>
+              AI narration is unavailable right now — the numbers below are still real,
+              computed from the data on screen.
+            </p>
+          )}
+          <div className={styles.explainChips}>
+            {explain.facts.layers.map((f) => (
+              <span key={f.id} className={styles.explainChip}>{factChip(f)}</span>
+            ))}
+          </div>
+          <div className={styles.explainFooter}>
+            <button type="button" className={styles.explainRefresh} onClick={handleExplain}>re-analyze</button>
+          </div>
+        </div>
+      )}
+
+      {/* Photo credit for the imagery on screen (required attribution). */}
+      <ImageryLine photos={photos} mapRef={mapRef} className={labStyles.imageryLine} />
+
+      {props.showTransport && (replay || eventReplay || fireReplay) && (
+        <div className={`${labStyles.transportSlot} ${props.transportClass || ''}`}>
+          <TransportBar
+            controller={replay || eventReplay || fireReplay}
+            radarShownMs={radarShownMs}
+            sourceName={(replay || eventReplay || fireReplay).sourceName || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceName}
+            sourceUrl={(replay || eventReplay || fireReplay).sourceUrl || LAYERS.find((d) => d.id === (replay || eventReplay || fireReplay).layerId)?.sourceUrl}
+            shifted={false}
+            mini={isMobile}
+          />
+        </div>
+      )}
+      {props.children}
+    </div>
+  )
+})
+
+export default StoryGlobe

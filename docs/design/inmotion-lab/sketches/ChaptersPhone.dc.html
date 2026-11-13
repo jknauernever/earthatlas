@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In Motion: Chapters on a phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0E16}
+a{color:#7FD3EC}a:hover{color:#B5E7F5}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0A0E16; color: #E8ECF2; font-family: Inter, system-ui, sans-serif">
+
+<header style="position: absolute; top: 0; left: 0; right: 0; padding: 16px; display: flex; align-items: center; justify-content: space-between; z-index: 2">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">EARTHATLAS · STORIES</span>
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #3A4658; background: rgba(10,14,22,0.8); color: #E8ECF2; font-size: 13px; cursor: pointer">Explore freely</button>
+</header>
+
+<svg width="340" height="340" viewBox="0 0 640 640" role="img" aria-label="{{globeLabel}}" style="position: absolute; left: 25px; top: 64px">
+<defs><radialGradient id="gcp" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#14304A"></stop><stop offset="100%" stop-color="#08131F"></stop></radialGradient></defs>
+<circle cx="320" cy="320" r="300" fill="url(#gcp)" stroke="#2A4A66" stroke-width="2"></circle>
+<g fill="none" stroke="#1C3550" stroke-width="1.5"><ellipse cx="320" cy="320" rx="300" ry="120"></ellipse><ellipse cx="320" cy="320" rx="120" ry="300"></ellipse></g>
+<path d="M120 170 C 200 120, 280 190, 330 160 S 430 130, 470 200 C 490 250, 430 290, 380 280 C 330 270, 300 320, 240 300 C 180 290, 140 240, 120 170 Z" fill="#1A2B3D"></path>
+<g fill="none" stroke="{{c1}}" stroke-width="3.2" stroke-linecap="round" opacity="0.9">
+<path d="M150 190 C 220 220, 300 240, 360 300 S 450 380, 500 430"></path><path d="M170 230 C 240 260, 300 290, 340 340 S 420 420, 470 470"></path><path d="M210 170 C 280 200, 350 220, 400 270"></path>
+</g>
+<g fill="{{c2}}"><circle cx="170" cy="190" r="7"></circle><circle cx="195" cy="205" r="6"></circle><circle cx="210" cy="178" r="8"></circle></g>
+<circle cx="{{pinX}}" cy="{{pinY}}" r="54" fill="none" stroke="#E8ECF2" stroke-width="2" stroke-dasharray="5 6"></circle>
+</svg>
+
+<article style="position: absolute; left: 0; right: 0; bottom: 0; top: 420px; box-sizing: border-box; background: rgba(14,20,30,0.97); border-top: 1px solid #2A3647; border-radius: 18px 18px 0 0; padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #F2B544">CHAPTER {{num}} OF {{total}}</span>
+<div style="display: flex; gap: 6px" aria-hidden="true">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="5"><span style="{{d.style}}"></span></sc-for>
+</div>
+</div>
+<h1 style="margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.15">{{title}}</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: #C9D2DE">{{body}}</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{layers}}" as="l" hint-placeholder-count="3">
+<span style="font-size: 12px; padding: 5px 10px; border-radius: 12px; background: #1A2433; border: 1px solid #2E3B4E; color: #DCE3EC">{{l}}</span>
+</sc-for>
+</div>
+<div style="flex: 1"></div>
+<div style="display: flex; gap: 10px">
+<button type="button" onClick="{{prev}}" style="flex: 1; height: 48px; border-radius: 24px; border: 1px solid #3A4658; background: transparent; color: #E8ECF2; font-size: 15px; cursor: pointer">Back</button>
+<button type="button" onClick="{{next}}" style="flex: 2; height: 48px; border-radius: 24px; border: 0; background: #F2B544; color: #1A1206; font-size: 15px; font-weight: 600; cursor: pointer">Next</button>
+</div>
+<span style="font-size: 12px; color: #9AA6B8; text-align: center">Swipe the card to move between chapters</span>
+</article>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { i: 1 }; }
+  renderVals() {
+    const C = [
+      { short: 'The air moves', title: 'The air is always on the move', body: 'Every breeze is part of a planet-wide circulation, bent by the Earth’s spin into the jet stream and the trade winds.', layers: ['Wind'], c1: '#9FE0D0', c2: '#3E8FB8', x: 300, y: 250 },
+      { short: 'Where smoke goes', title: 'Smoke does not stay where the fire is', body: 'Wind lifts smoke from large fires and carries it across borders and oceans. Follow the haze downwind to see who breathes it.', layers: ['Active fires', 'Wildfire smoke', 'Wind'], c1: '#C98A4A', c2: '#F2A33A', x: 200, y: 195 },
+      { short: 'Ocean conveyor', title: 'Rivers inside the sea', body: 'Surface currents move heat toward the poles and decide where plankton, debris and spilled oil end up.', layers: ['Ocean currents', 'Sea temperature'], c1: '#E58A7A', c2: '#6FA8D6', x: 380, y: 330 },
+      { short: 'A warming sea', title: 'Warmer than it should be', body: 'Today compared with the long-term normal for this date. Patches of unusual heat are marine heatwaves.', layers: ['Ocean heat anomaly'], c1: '#D6463F', c2: '#F2A33A', x: 420, y: 380 },
+      { short: 'Life on the move', title: 'Millions of travelers overnight', body: 'On migration nights, weather radar picks up waves of birds riding the same winds from chapter one.', layers: ['Bird migration', 'Wind'], c1: '#C8EE8A', c2: '#4FB06A', x: 260, y: 230 }
+    ];
+    const i = this.state.i, ch = C[i];
+    return { num: i + 1, total: C.length, title: ch.title, body: ch.body, layers: ch.layers, c1: ch.c1, c2: ch.c2, pinX: ch.x, pinY: ch.y,
+      globeLabel: 'Globe framed for chapter: ' + ch.short,
+      dots: C.map((c, k) => ({ style: 'display: block; height: 6px; border-radius: 3px; width: ' + (k === i ? '18px' : '6px') + '; background: ' + (k === i ? '#F2B544' : '#4A5768') })),
+      prev: () => this.setState({ i: Math.max(0, i - 1) }), next: () => this.setState({ i: Math.min(C.length - 1, i + 1) }) };
+  }
+}
+</script>
+</body>
+</html>

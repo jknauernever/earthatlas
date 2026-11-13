@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In Motion: Field Guide direction</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0E16}
+a{color:#7FD3EC}a:hover{color:#B5E7F5}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 900px; width: 100%; box-sizing: border-box; background: #0A0E16; color: #E8ECF2; font-family: Inter, system-ui, sans-serif; display: flex; flex-wrap: wrap; position: relative; overflow: hidden">
+
+<aside style="flex: 1 1 360px; max-width: 420px; box-sizing: border-box; padding: 40px 36px; display: flex; flex-direction: column; gap: 28px; position: relative; z-index: 2">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="font-weight: 600; font-size: 15px; letter-spacing: 0.01em">EarthAtlas</span>
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">IN MOTION</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-weight: 400; font-size: 40px; line-height: 1.1">A planet that never sits still</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #B8C2D1">Air, water and life are always moving. Pick something below to watch it flow, then click anywhere on the globe to see what is happening there right now.</p>
+</div>
+<div style="height: 1px; background: #233041"></div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">VIEW AS</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #121A26; border: 1px solid #233041; border-radius: 10px; padding: 4px">
+<sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+<button type="button" onClick="{{v.pick}}" aria-pressed="{{v.on}}" style="{{v.style}}">{{v.label}}</button>
+</sc-for>
+</div>
+</div>
+
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 11px; letter-spacing: 0.14em; color: #9AA6B8">{{g.label}}</span>
+<sc-for list="{{g.items}}" as="it" hint-placeholder-count="4">
+<button type="button" onClick="{{it.pick}}" aria-pressed="{{it.on}}" style="display: flex; align-items: center; gap: 12px; min-height: 40px; background: none; border: 0; padding: 0; color: #E8ECF2; font-size: 16px; text-align: left; cursor: pointer">
+<span style="{{it.track}}"><span style="{{it.knob}}"></span></span>
+<span>{{it.name}}</span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; position: relative; min-height: 900px; display: flex; align-items: center; justify-content: center">
+<div style="position: absolute; top: 32px; right: 32px; display: flex; gap: 10px; align-items: center">
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid #2E6F86; background: #0F2230; color: #CFEFF8; font-size: 14px; cursor: pointer">Explain this view</button>
+<label style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #233041; background: #121A26; color: #9AA6B8; font-size: 14px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search for a place</span>
+<input type="text" placeholder="Fly to a place" style="background: none; border: 0; outline: none; color: #E8ECF2; font-size: 14px; width: 180px; font-family: inherit">
+</label>
+</div>
+
+<svg width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="{{globeLabel}}" style="max-width: 90%; height: auto">
+<defs><radialGradient id="ga" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#14304A"></stop><stop offset="100%" stop-color="#08131F"></stop></radialGradient></defs>
+<circle cx="320" cy="320" r="300" fill="url(#ga)" stroke="#2A4A66" stroke-width="1.5"></circle>
+<g fill="none" stroke="#1C3550" stroke-width="1">
+<ellipse cx="320" cy="320" rx="300" ry="90"></ellipse><ellipse cx="320" cy="320" rx="300" ry="190"></ellipse>
+<ellipse cx="320" cy="320" rx="90" ry="300"></ellipse><ellipse cx="320" cy="320" rx="200" ry="300"></ellipse>
+<line x1="20" y1="320" x2="620" y2="320"></line><line x1="320" y1="20" x2="320" y2="620"></line>
+</g>
+<path d="M150 210 C 210 170, 260 230, 300 200 S 380 160, 420 220 C 440 260, 400 300, 360 290 C 320 280, 300 330, 250 320 C 200 310, 170 270, 150 210 Z" fill="#1A2B3D"></path>
+<path d="M380 360 C 420 340, 470 360, 480 410 C 490 460, 440 500, 410 480 C 380 460, 360 400, 380 360 Z" fill="#1A2B3D"></path>
+<g fill="none" stroke="{{streak}}" stroke-width="2.2" stroke-linecap="round" opacity="0.9">
+<path d="M60 360 C 160 330, 260 380, 360 350 S 520 330, 590 360"></path>
+<path d="M80 420 C 180 400, 280 440, 380 410 S 520 400, 570 430"></path>
+<path d="M110 260 C 190 250, 230 280, 300 270"></path>
+<path d="M430 270 C 480 250, 540 270, 580 300"></path>
+<path d="M140 480 C 220 470, 300 500, 360 490"></path>
+<path d="M200 140 C 260 130, 330 150, 400 135"></path>
+</g>
+<g fill="none" stroke="{{streak2}}" stroke-width="1.4" stroke-linecap="round" opacity="0.7">
+<path d="M70 390 C 170 370, 260 400, 350 380"></path><path d="M380 450 C 450 440, 520 450, 575 470"></path><path d="M150 180 C 220 175, 280 190, 330 180"></path>
+</g>
+</svg>
+
+<div style="position: absolute; left: 32px; bottom: 32px; color: #9AA6B8; font-size: 13px">Drag to spin. Click anywhere for conditions there.</div>
+
+<section aria-label="Legend" style="position: absolute; right: 32px; bottom: 32px; width: 340px; box-sizing: border-box; background: rgba(16,23,34,0.94); border: 1px solid #2A3647; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<sc-if value="{{infoOpen}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0 0 6px; font-size: 14px; line-height: 1.55; color: #D3DAE4">{{legend.about}}</p>
+</sc-if>
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-size: 12px; letter-spacing: 0.12em; color: #C9D2DE">{{legend.title}}</span>
+<button type="button" onClick="{{toggleInfo}}" aria-label="About this layer" aria-expanded="{{infoOpen}}" style="width: 44px; height: 44px; margin: -12px -12px -12px 0; background: none; border: 0; color: #9AA6B8; cursor: pointer; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.5"></path></svg>
+</button>
+</div>
+<span style="font-size: 11px; letter-spacing: 0.12em; color: #9AA6B8">{{legend.measure}}</span>
+<div style="{{legend.bar}}"></div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #C9D2DE"><span>{{legend.lo}}</span><span>{{legend.hi}}</span></div>
+<span style="font-size: 12px; color: #9AA6B8; line-height: 1.5">Source: {{legend.source}}</span>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#F2B544","options":["#F2B544","#7FD3EC","#E8ECF2"]},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { active: 'wind', view: 'globe', info: false }; }
+  renderVals() {
+    const accent = this.props.accent ?? '#F2B544';
+    const L = {
+      wind: { name: 'Wind', title: 'WIND AT 10 M', measure: 'SPEED', lo: '0 mph', hi: '[max] mph', bar: 'linear-gradient(90deg,#1B3A5C,#3E8FB8,#9FE0D0,#F2E37A)', source: 'NOAA GFS · [model run time]', about: 'Wind is the air moving from high pressure to low. These streaks follow it about ten meters above the ground, roughly the height of a two-story house.', s1: '#9FE0D0', s2: '#3E8FB8' },
+      currents: { name: 'Ocean currents', title: 'SURFACE CURRENTS', measure: 'SPEED', lo: '0 ft/s', hi: '[max] ft/s', bar: 'linear-gradient(90deg,#2A5D8A,#6FA8D6,#E58A7A,#D6463F)', source: '[current model] · [date]', about: 'Ocean currents carry heat, nutrients and larvae across whole basins. The fastest rivers in the sea glow brightest here.', s1: '#E58A7A', s2: '#6FA8D6' },
+      storms: { name: 'Storms', title: 'TROPICAL CYCLONES', measure: 'CATEGORY', lo: 'Tropical storm', hi: 'Category 5', bar: 'linear-gradient(90deg,#F2E37A,#F2A33A,#D6463F,#8E2A6B)', source: '[advisory feed] · live', about: 'Hurricanes, typhoons and cyclones are the same kind of storm. Their tracks and forecast cones update as advisories are issued.', s1: '#F2A33A', s2: '#D6463F' },
+      clouds: { name: 'Clouds', title: 'CLOUD COVER', measure: 'COVER', lo: 'Clear', hi: 'Overcast', bar: 'linear-gradient(90deg,#0E1A28,#5B6B80,#E8ECF2)', source: '[satellite composite] · hourly', about: 'A whole-Earth view of cloud, stitched together from weather satellites every hour.', s1: '#C9D2DE', s2: '#5B6B80' },
+      smoke: { name: 'Wildfire smoke', title: 'WILDFIRE SMOKE', measure: 'ORGANIC + BLACK CARBON', lo: 'Low', hi: 'High', bar: 'linear-gradient(90deg,#2A2A2A,#7A5A3A,#C98A4A,#F2C27A)', source: 'Copernicus CAMS · [forecast time]', about: 'Smoke from large fires travels thousands of miles. This shows where it is drifting now and where it is forecast to go.', s1: '#C98A4A', s2: '#F2C27A' },
+      pm: { name: 'Fine particles (PM2.5)', title: 'AIR QUALITY', measure: 'PM2.5', lo: 'Good', hi: 'Hazardous', bar: 'linear-gradient(90deg,#4FB06A,#F2E37A,#F2A33A,#D6463F,#8E2A6B)', source: 'Copernicus CAMS · [forecast time]', about: 'Particles small enough to reach deep into the lungs. Dust, smoke and traffic all contribute.', s1: '#F2A33A', s2: '#F2E37A' },
+      co2: { name: 'Carbon dioxide', title: 'CARBON DIOXIDE', measure: 'NEAR-SURFACE PPM', lo: '[low] ppm', hi: '[high] ppm', bar: 'linear-gradient(90deg,#1B3A5C,#6A6FB8,#C47ACF,#F2C2E8)', source: 'Copernicus CAMS · [forecast time]', about: 'The main gas warming the planet, shown as it pools near cities and industry and spreads on the wind.', s1: '#C47ACF', s2: '#6A6FB8' },
+      seatemp: { name: 'Sea temperature', title: 'SEA SURFACE TEMPERATURE', measure: 'DAILY', lo: '[low] °F', hi: '[high] °F', bar: 'linear-gradient(90deg,#2A3F8A,#3E8FB8,#9FE0D0,#F2E37A,#D6463F)', source: '[dataset] · [date]', about: 'How warm the top of the ocean is today. Warm water fuels storms and stresses corals and kelp.', s1: '#F2E37A', s2: '#3E8FB8' },
+      heat: { name: 'Ocean heat anomaly', title: 'OCEAN HEAT VS. NORMAL', measure: 'DIFFERENCE FROM NORMAL', lo: 'Cooler', hi: 'Warmer', bar: 'linear-gradient(90deg,#2A5D8A,#9FC3DE,#E8ECF2,#F2A33A,#D6463F)', source: '[dataset] · baseline [years]', about: 'Not how warm the sea is, but how much warmer or cooler than usual for this date.', s1: '#D6463F', s2: '#F2A33A' },
+      fires: { name: 'Active fires', title: 'ACTIVE FIRES', measure: 'DETECTIONS, LAST 24 H', lo: '', hi: '', bar: 'linear-gradient(90deg,#F2A33A,#D6463F)', source: 'NASA FIRMS · last 24 hours', about: 'Each dot is a hot spot a satellite saw in the past day. Most are wildfires; some are farm burns or industrial heat.', s1: '#F2A33A', s2: '#D6463F' },
+      quakes: { name: 'Earthquakes', title: 'EARTHQUAKES', measure: 'M3.0+, PAST 30 DAYS', lo: 'M3', hi: 'M8+', bar: 'linear-gradient(90deg,#F2E37A,#F2A33A,#D6463F)', source: 'USGS · past 30 days', about: 'Every earthquake magnitude 3 or larger in the past month. Bigger circles mean stronger shaking.', s1: '#F2E37A', s2: '#F2A33A' },
+      birds: { name: 'Bird migration', title: 'BIRD MIGRATION', measure: 'BIRDS IN FLIGHT, RADAR', lo: 'Few', hi: 'Many', bar: 'linear-gradient(90deg,#1B3A5C,#4FB06A,#C8EE8A)', source: '[radar product] · contiguous U.S.', about: 'Weather radar sees millions of birds aloft on migration nights. This shows how many are flying and where they are headed.', s1: '#C8EE8A', s2: '#4FB06A' }
+    };
+    const groups = [
+      { label: 'HOW EARTH MOVES', ids: ['wind', 'currents', 'storms', 'clouds', 'quakes'] },
+      { label: 'WHAT IS IN THE AIR', ids: ['smoke', 'pm', 'co2'] },
+      { label: 'WHAT WE ARE CHANGING', ids: ['seatemp', 'heat', 'fires'] },
+      { label: 'LIFE ON THE MOVE', ids: ['birds'] }
+    ].map(g => ({ label: g.label, items: g.ids.map(id => {
+      const on = this.state.active === id;
+      return { name: L[id].name, on: on ? 'true' : 'false',
+        pick: () => this.setState({ active: id, info: false }),
+        track: 'flex: none; width: 36px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 1px solid ' + (on ? accent : '#3A4658') + '; background: ' + (on ? 'rgba(242,181,68,0.18)' : '#121A26') + '; position: relative',
+        knob: 'position: absolute; top: 3px; left: ' + (on ? '19px' : '3px') + '; width: 12px; height: 12px; border-radius: 6px; background: ' + (on ? accent : '#C9D2DE') };
+    }) }));
+    const lg = L[this.state.active];
+    const views = [['globe', 'Globe'], ['ocean', 'One Ocean'], ['flat', 'Flat map']].map(([id, label]) => {
+      const on = this.state.view === id;
+      return { label, on: on ? 'true' : 'false', pick: () => this.setState({ view: id }),
+        style: 'min-height: 40px; border: 0; border-radius: 7px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; background: ' + (on ? '#DCE6F2' : 'transparent') + '; color: ' + (on ? '#0A0E16' : '#C9D2DE') };
+    });
+    return { groups, views, infoOpen: this.state.info, toggleInfo: () => this.setState({ info: !this.state.info }),
+      legend: { title: lg.title, measure: lg.measure, lo: lg.lo, hi: lg.hi, source: lg.source, about: lg.about, bar: 'height: 10px; border-radius: 5px; background: ' + lg.bar },
+      streak: lg.s1, streak2: lg.s2, globeLabel: 'Globe showing ' + lg.name.toLowerCase() };
+  }
+}
+</script>
+</body>
+</html>

@@ -67,6 +67,7 @@ def get_json(url):
 
 
 def download(url, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     for attempt in range(4):
         try:
             with urllib.request.urlopen(url, timeout=600) as r, open(path, "wb") as f:
@@ -212,16 +213,18 @@ def main():
         u = os.path.join(out, t, "all.parquet")
         mine = [os.path.join(out, t, f"{r['month']}.parquet") for r in done if r["tileset"] == t]
         rebuild = (a.rebuild and t in tilesets) or t in recounted
+        if not rebuild and not os.path.exists(u):
+            try: download(f"{BLOB}{GRID}/{t}/all.parquet?t={int(time.time())}", u)
+            except urllib.error.HTTPError: pass
+            # no union to fold into while older months are counted: folding would keep only this run's months
+            # (live ships fell from 3,557 to 2,079 that way, 2026-11-12), so rebuild from the month files
+            if not os.path.exists(u) and set(counted[t]) - {r["month"] for r in done if r["tileset"] == t}: rebuild = True
         if rebuild:
             files = [os.path.join(out, t, f"{m}.parquet") for m in sorted(counted[t])]
             for m, f in zip(sorted(counted[t]), files):
                 if not os.path.exists(f): download(f"{BLOB}{GRID}/{t}/{m}.parquet", f)
         else:
-            files = list(mine)
-            if not os.path.exists(u):
-                try: download(f"{BLOB}{GRID}/{t}/all.parquet?t={int(time.time())}", u)
-                except urllib.error.HTTPError: pass
-            if os.path.exists(u): files.append(u)
+            files = list(mine) + ([u] if os.path.exists(u) else [])
         if not files: continue
         if mine or rebuild:
             tmp = u + ".new"

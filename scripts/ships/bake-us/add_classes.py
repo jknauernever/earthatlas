@@ -62,8 +62,39 @@ TIPPECANOE_LOW_CLS = [a for a in TIPPECANOE_LOW] + ['-y', 'cls', '-y', 'cv']
 
 
 def get(url, dest):
+    """Download to dest. The Blob CDN can close a long download early without an error (two 0.5 GB packs ended at
+    exactly 60 s, 2026-11-12), so the size is checked against Content-Length and the rest fetched with Range."""
     if os.path.exists(dest):
         return dest
+    t = time.time()
+    part, total = dest + '.part', None
+    if os.path.exists(part):
+        os.remove(part)
+    for attempt in range(8):
+        have = os.path.getsize(part) if os.path.exists(part) else 0
+        if total is not None and have >= total:
+            break
+        hdr = dict(UA, **({'Range': f'bytes={have}-'} if have else {}))
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=600) as r, open(part, 'ab' if have else 'wb') as fh:
+                if have and r.status != 206:
+                    raise IOError(f'server ignored Range (status {r.status})')
+                if total is None:
+                    total = int(r.headers['Content-Length'])
+                while True:
+                    b = r.read(1 << 20)
+                    if not b:
+                        break
+                    fh.write(b)
+        except (OSError, IOError) as e:
+            print(f'download of {os.path.basename(dest)} interrupted ({e}); resuming', flush=True)
+        if total is not None and os.path.getsize(part) < total:
+            print(f'download of {os.path.basename(dest)} ended early at {os.path.getsize(part) / 1e6:.0f} of {total / 1e6:.0f} MB; resuming', flush=True)
+    if total is None or os.path.getsize(part) != total:
+        raise IOError(f'{url}: got {os.path.getsize(part) if os.path.exists(part) else 0} of {total} bytes')
+    os.replace(part, dest)
+    print(f'downloaded {os.path.basename(dest)} {os.path.getsize(dest) / 1e6:.0f} MB in {time.time() - t:.0f} s', flush=True)
+    return dest
     t = time.time()
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=600) as r, open(dest + '.part', 'wb') as fh:
         while True:

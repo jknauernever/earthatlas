@@ -4,7 +4,8 @@
  * One left panel (the shared panel kit, src/components/panel/): the month picker on top drives everything,
  * then three datasets:
  *   - Ship traffic : /ships' track tiles — NOAA MarineCadastre (US-wide, months late) and Global Fishing Watch
- *                    hourly lines (everywhere else and every recent month, ~4 days behind). Yellow, by kind.
+ *                    hourly lines (everywhere else and every recent month, stopped 2026-10-30 when GFW paused), and our
+ *                    aisstream recorder's Salish months (ais-v1, 2026-10-18 on, rebuilt daily). Yellow, by kind.
  *   - Whale reports: our whale database (/api/whales — Whale Alert/Orca Network, SalishSea.io, Orcasound,
  *                    HappyWhale, iNaturalist, OBIS), magenta dots; hydrophone detections as rings. Each popup
  *                    lists the ships that passed within 1 km (close passes, baked daily).
@@ -30,6 +31,8 @@ import TrackMonths, { TRACK_KINDS, fmtMonth } from '../ships/TrackControls.jsx'
 import shipsStyles from '../ships/ShipsApp.module.css'
 import { BasemapMenu, ImageryLine, useMapPhotos, writePhoto } from '../components/basemap/index.js'
 import trackSource from '../ships/trackSource.json'
+import { AISSTREAM_URL, WSF_URL, LIVE_AIS_CREDIT_HTML, OPENWATERS_SOURCE_ENTRY } from '../ships/liveSources.js'
+import { RecordedFeeds } from '../ships/RecordedAisCredit.jsx'
 import WhaleReports from '../components/WhaleReports.jsx'
 import { fetchWhales, whaleCredit, whaleName, whaleSourceLabel, whalePhoto, whaleLinkLabel, WHALE_SOURCES } from '../lib/whales.js'
 import { locationRadiusM, whalesIn, groupSightings, nearPoints, APPROX_M } from '../../lib/whales/precision.js'
@@ -54,12 +57,17 @@ const gfwTileUrl = (ym, built) => `${TILES_BASE}/api/ship-tracks?r=gfw&t=${ym}&v
 // The detailed Salish tracks (/ships' monthly NOAA bake, 2025-01 on): the US-wide tiles leave the Salish box out for
 // those months, so without these the Salish Sea would be empty of NOAA tracks.
 const salishTileUrl = (ym) => `${TILES_BASE}/api/ship-tracks?t=${ym}&v=${trackSource.version}${DEV}&z={z}&x={x}&y={y}`
+// Our aisstream recorder (ais-v1, from 2026-10-18): the Salish box's tracks for months NOAA hasn't published, the same
+// tiles /ships draws (api op=aisindex, r=aism). b = build time (new tile URLs after each daily rebuild).
+const aisTileUrl = (ym, built) => `${TILES_BASE}/api/ship-tracks?r=aism&t=${ym}${built ? `&b=${encodeURIComponent(built)}` : ''}${DEV}&z={z}&x={x}&y={y}`
 const usSrc = (ym) => `st-us-${ym}`
 const gfwSrc = (ym) => `st-gfw-${ym}`
 const salSrc = (ym) => `st-sal-${ym}`
-const shipLayers = (ym) => [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`, `${gfwSrc(ym)}-obs`, `${gfwSrc(ym)}-est`]
+const aisSrc = (ym) => `st-ais-${ym}`
+const shipLayers = (ym) => [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`, `${aisSrc(ym)}-line`, `${gfwSrc(ym)}-obs`, `${gfwSrc(ym)}-est`]
 const SHIP_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 0.35, 10, 0.8, 14, 1.5]
 const NOAA_ATTR = 'Ship tracks: <a href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener">MarineCadastre AIS</a> (NOAA / BOEM / USCG)'
+const AIS_ATTR = `Salish Sea ship tracks after NOAA’s latest month: live AIS from ${LIVE_AIS_CREDIT_HTML} and <a href="${WSF_URL}" target="_blank" rel="noopener">Washington State Ferries</a>, recorded by EarthAtlas`
 const GFW_ATTR = 'Ship tracks outside NOAA coverage: <a href="https://globalfishingwatch.org" target="_blank" rel="noopener">Powered by Global Fishing Watch</a>'
 
 const WHALE_SRC = 'st-whales'
@@ -119,7 +127,12 @@ const SOURCES = [
       { name: 'MarineCadastre AIS vessel traffic', href: 'https://hub.marinecadastre.gov/pages/vesseltraffic', publisher: 'NOAA Office for Coastal Management, BOEM, U.S. Coast Guard', licence: 'Public domain',
         method: 'Ship tracks for US waters, published months after the fact; the same tracks /ships draws.' },
       { name: 'Global Fishing Watch AIS (hourly positions)', href: 'https://globalfishingwatch.org', publisher: 'Global Fishing Watch', licence: 'CC BY-NC 4.0', licenceHref: 'https://creativecommons.org/licenses/by-nc/4.0/',
-        method: 'Hourly ship positions joined into tracks for Canadian waters and every month NOAA has not published yet, about 4 days behind. Dashed = our estimated path along the water between two positions. Powered by Global Fishing Watch.' },
+        method: 'Hourly ship positions joined into tracks for Canadian waters and every month NOAA has not published yet, through October 30, 2026. Dashed = our estimated path along the water between two positions. Powered by Global Fishing Watch.' },
+      { name: 'aisstream.io live AIS, recorded by EarthAtlas', href: AISSTREAM_URL, publisher: 'AIS Stream; recorded by EarthAtlas',
+        method: 'Salish Sea tracks from October 18, 2026, for months NOAA has not published yet: EarthAtlas records the live feed (at most one position per ship per minute) and builds lines with the same rules as the NOAA tracks, updated daily. The same tracks /ships draws.' },
+      OPENWATERS_SOURCE_ENTRY,
+      { name: 'Washington State Ferries vessel positions', href: WSF_URL, publisher: 'Washington State Department of Transportation', licence: 'Public agency data',
+        method: 'The ferries’ own position feed, recorded alongside the live AIS.' },
     ],
   },
   {
@@ -155,11 +168,16 @@ export default function ShipTrafficApp() {
   // ─── Month lists (from /ships' Blob indexes) + the overlap index ────────────
   const [usIdx, setUsIdx] = useState(null)
   const [gfwIdx, setGfwIdx] = useState(null)
+  const [aisIdx, setAisIdx] = useState(null) // month → { built, first, through }
   const [overlapIdx, setOverlapIdx] = useState(null)
   const [salishMonths, setSalishMonths] = useState(trackSource.months || [])
   useEffect(() => {
     fetch('/api/ship-tracks?op=salishindex').then((r) => (r.ok ? r.json() : null))
       .then((j) => { const ms = Object.keys(j?.months || {}).sort(); if (ms.length) setSalishMonths(ms) }).catch(() => {})
+  }, [])
+  useEffect(() => {
+    fetch('/api/ship-tracks?op=aisindex').then((r) => (r.ok ? r.json() : null))
+      .then((j) => setAisIdx(j?.months || {})).catch(() => setAisIdx({}))
   }, [])
   useEffect(() => {
     const get = (u) => fetch(u, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
@@ -173,9 +191,9 @@ export default function ShipTrafficApp() {
       .then((j) => setOverlapIdx(j || { months: {} }))
   }, [])
   const months = useMemo(() => {
-    if (!usIdx || !gfwIdx) return []
-    return [...new Set([...Object.keys(usIdx), ...Object.keys(gfwIdx.months || {})])].filter((m) => m >= FIRST_MONTH).sort()
-  }, [usIdx, gfwIdx])
+    if (!usIdx || !gfwIdx || !aisIdx) return []
+    return [...new Set([...Object.keys(usIdx), ...Object.keys(gfwIdx.months || {}), ...Object.keys(aisIdx)])].filter((m) => m >= FIRST_MONTH).sort()
+  }, [usIdx, gfwIdx, aisIdx])
   const gfwThrough = gfwIdx?.fetched_through || null
 
   // ─── Picks (URL state) ──────────────────────────────────────────────────
@@ -276,13 +294,13 @@ export default function ShipTrafficApp() {
   const shipMonths = useMemo(() => sampleEvenly(pickedMonths, MONTH_CAP), [pickedMonths])
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady || !usIdx || !gfwIdx || !map.style?._loaded) return
+    if (!map || !mapReady || !usIdx || !gfwIdx || !aisIdx || !map.style?._loaded) return
     const opacity = Math.max(0.08, 0.7 / Math.sqrt(Math.max(1, shipMonths.length))) // the /ships + old /shiptraffic rule
     const kindFilter = kinds.length ? ['in', ['get', 'kind'], ['literal', kinds]] : null
     for (const ym of [...addedRef.current]) {
-      if (shipMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)) || map.getSource(salSrc(ym)))) continue
+      if (shipMonths.includes(ym) && (map.getSource(usSrc(ym)) || map.getSource(gfwSrc(ym)) || map.getSource(salSrc(ym)) || map.getSource(aisSrc(ym)))) continue
       for (const l of shipLayers(ym)) if (map.getLayer(l)) map.removeLayer(l)
-      for (const s of [usSrc(ym), gfwSrc(ym), salSrc(ym)]) if (map.getSource(s)) map.removeSource(s)
+      for (const s of [usSrc(ym), gfwSrc(ym), salSrc(ym), aisSrc(ym)]) if (map.getSource(s)) map.removeSource(s)
       addedRef.current.delete(ym)
     }
     const below = map.getLayer(OVERLAP_LAYER) ? OVERLAP_LAYER : undefined
@@ -302,6 +320,14 @@ export default function ShipTrafficApp() {
           layout: { 'line-join': 'round' }, paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, below)
         addedRef.current.add(ym)
       }
+      // Recorder months NOAA hasn't published (as on /ships): same zoom range and box as the NOAA Salish tracks.
+      const ais = aisIdx[ym]
+      if (ais && !salishMonths.includes(ym) && !map.getSource(aisSrc(ym))) {
+        map.addSource(aisSrc(ym), { type: 'vector', tiles: [aisTileUrl(ym, ais.built)], minzoom: 5, maxzoom: 10, bounds: trackSource.bbox, attribution: AIS_ATTR })
+        map.addLayer({ id: `${aisSrc(ym)}-line`, type: 'line', source: aisSrc(ym), 'source-layer': trackSource.sourceLayer,
+          layout: { 'line-join': 'round' }, paint: { 'line-color': SHIP_COLOR, 'line-width': SHIP_WIDTH, 'line-blur': 0.6, 'line-opacity': opacity } }, below)
+        addedRef.current.add(ym)
+      }
       if (gfw && !map.getSource(gfwSrc(ym))) {
         map.addSource(gfwSrc(ym), { type: 'vector', tiles: [gfwTileUrl(ym, gfw.built)], minzoom: trackSource.gfw.minzoom, maxzoom: trackSource.gfw.maxzoom, attribution: GFW_ATTR })
         map.addLayer({ id: `${gfwSrc(ym)}-obs`, type: 'line', source: gfwSrc(ym), 'source-layer': trackSource.gfw.sourceLayer,
@@ -311,7 +337,7 @@ export default function ShipTrafficApp() {
         addedRef.current.add(ym)
       }
       const vis = visible.ships ? 'visible' : 'none'
-      for (const l of [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`]) {
+      for (const l of [`${usSrc(ym)}-line`, `${salSrc(ym)}-line`, `${aisSrc(ym)}-line`]) {
         if (!map.getLayer(l)) continue
         map.setFilter(l, kindFilter)
         map.setLayoutProperty(l, 'visibility', vis)
@@ -324,7 +350,7 @@ export default function ShipTrafficApp() {
         map.setPaintProperty(l, 'line-opacity', est ? opacity * 0.65 : opacity)
       }
     }
-  }, [mapReady, usIdx, gfwIdx, salishMonths, shipMonths, kinds, visible.ships])
+  }, [mapReady, usIdx, gfwIdx, aisIdx, salishMonths, shipMonths, kinds, visible.ships])
 
   // ─── Whale reports (our database) for the view + picked dates ──────────────
   const [whales, setWhales] = useState(null) // { sightings, sources, updated, truncated } for the current view
@@ -537,7 +563,9 @@ export default function ShipTrafficApp() {
 
   const latestYm = months[months.length - 1]
   const pickedLast = pickedMonths[pickedMonths.length - 1]
-  const shipsThrough = pickedLast && gfwIdx?.months?.[pickedLast] && pickedLast === latestYm && gfwThrough ? gfwThrough : null
+  // The latest month's newest ship day, from whichever source reaches furthest (GFW stopped 2026-10-30; the recorder runs daily).
+  const shipsThrough = pickedLast && pickedLast === latestYm
+    ? [gfwIdx?.months?.[pickedLast] ? gfwThrough : null, aisIdx?.[pickedLast]?.through || null].filter(Boolean).sort().pop() || null : null
   const whaleUpdated = whales?.updated ? Object.values(whales.updated).filter(Boolean).sort().pop() : null
   const minsAgo = whaleUpdated ? Math.max(0, Math.round((Date.now() - Date.parse(whaleUpdated)) / 60000)) : null
   const kindChip = (k, label) => (
@@ -591,7 +619,7 @@ export default function ShipTrafficApp() {
                   </div>
                 </div>}
                 legend={<LegendSwatchRow swatch={<span style={{ display: 'inline-block', width: 18, height: 2, background: SHIP_COLOR }} />}>Brighter = busier; dashed = estimated path</LegendSwatchRow>}
-                info={<>Ship tracks from AIS: <a className={shipsStyles.sourceLink} href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre</a> for US waters (public domain, months late) and <a className={shipsStyles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> hourly positions elsewhere and for recent months (CC BY-NC 4.0, about 4 days behind). The same tracks as <a className={shipsStyles.sourceLink} href="/ships">/ships</a>.</>}
+                info={<>Ship tracks from AIS: <a className={shipsStyles.sourceLink} href="https://hub.marinecadastre.gov/pages/vesseltraffic" target="_blank" rel="noopener noreferrer">NOAA MarineCadastre</a> for US waters (public domain, months late), <a className={shipsStyles.sourceLink} href="https://globalfishingwatch.org" target="_blank" rel="noopener noreferrer">Powered by Global Fishing Watch</a> hourly positions elsewhere and for recent months (CC BY-NC 4.0, through October 30, 2026), and since October 18, 2026 EarthAtlas’s own recording of live AIS around the Salish Sea from <RecordedFeeds className={shipsStyles.sourceLink} /> and <a className={shipsStyles.sourceLink} href={WSF_URL} target="_blank" rel="noopener noreferrer">Washington State Ferries</a>, rebuilt daily. The same tracks as <a className={shipsStyles.sourceLink} href="/ships">/ships</a>.</>}
               />
 
               <DatasetRow storageKey="shiptraffic.whales" name="Whale reports" sub={whales ? `${whalesInView.length.toLocaleString()} in view` : 'loading…'}

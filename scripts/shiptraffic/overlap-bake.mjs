@@ -5,7 +5,8 @@
  *
  * For each month it streams /ships' per-MMSI track packs from Blob — NOAA MarineCadastre (us-v2) and
  * Global Fishing Watch hourly lines (gfw-v1; GFW leaves out the boxes NOAA covers in months NOAA has
- * published, so the two never double-count) — keeps the Salish Sea box, and writes:
+ * published, so the two never double-count) and our aisstream recorder (ais-v1, Salish box, 2026-10-18 on; overlaps
+ * GFW's late-October lines, counted once per MMSI) — keeps the Salish Sea box, and writes:
  *
  *   grid.json         every ~1 km cell with traffic or whales: distinct vessels per ship kind, and the
  *                     whale reports in it (from /api/whales, our whale database)
@@ -34,6 +35,8 @@ import { WHALE_SOURCES } from '../../lib/whales/sources.js'
 const BLOB_BASE = process.env.SHIPS_BLOB_BASE || 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com'
 const SITE = process.env.SITE_BASE || 'https://earthatlas.org'
 const TOKEN_URL = `${SITE}/api/cron/ships-upload-token`
+// The aisstream recorder's months (api/ship-tracks.js AISM_INDEX): Salish tracks for months NOAA hasn't published.
+const AIS_INDEX = 'https://fxj3imydg9misw9w.public.blob.vercel-storage.com/ships/tracks/ais-v1/index.json'
 const TRACKS = JSON.parse(readFileSync(new URL('../../src/ships/trackSource.json', import.meta.url), 'utf8'))
 export const VERSION = 'overlap-v1'
 export const BBOX = [-125.5, 46.9, -122.0, 49.9] // w,s,e,n — Salish Sea, Strait of Juan de Fuca, outer coast, southern Strait of Georgia
@@ -177,7 +180,7 @@ function eachCellOf(ax, ay, bx, by, fn) {
 //   (closeMode 1 = endpoints only, 2 = whole segment; never-close segments aren't kept), stats, sources }
 // Old months are redone every 30 days for late whale reports while their packs (0.5–1 GB each) rarely change, so the ship
 // side is saved next to the month (ships-<key>.bin.gz, ~1–3% of the packs' size) and reused while both packs' builds match.
-export async function shipSideFromPacks({ us, gfw }) {
+export async function shipSideFromPacks({ us, gfw, ais }) {
   const vessels = new Map() // cell → Map(kind → Set(vessel id))
   const segList = []
   const stats = { lines: 0, inBox: 0, segments: 0 }
@@ -225,15 +228,19 @@ export async function shipSideFromPacks({ us, gfw }) {
   const sources = {}
   if (us) { sources.us = { built: us.built, ...(await eachLine(us.pack, onLine)) } }
   if (gfw) { sources.gfw = { built: gfw.built, ...(await eachLine(gfw.pack, onLine)) } }
+  // Our aisstream recorder (ais-v1, Salish box, from 2026-10-18): NOAA-style lines (t0/t1), MMSI-keyed, so a ship also in
+  // GFW's lines counts once per square.
+  if (ais) { sources.ais = { built: ais.built, ...(await eachLine(ais.pack, onLine)) } }
   const traffic = new Map()
   for (const [c, byKind] of vessels) traffic.set(c, Uint32Array.from(KINDS, (k) => byKind.get(k)?.size || 0))
   return { traffic, segList, stats, sources }
 }
 
 /** Which packs (and bake rules) a saved ship side was made from; a different key means re-read the packs. */
-export function shipSideKey({ us, gfw }) {
+export function shipSideKey({ us, gfw, ais }) {
   const rules = { format: 1, BBOX, CELL, SEG_MAX_M, KINDS, SHARDS }
-  return createHash('sha1').update(JSON.stringify({ us: us ? [us.pack, us.built] : null, gfw: gfw ? [gfw.pack, gfw.built] : null, rules })).digest('hex').slice(0, 12)
+  // ais only when present, so months without recorder data keep their saved ship sides.
+  return createHash('sha1').update(JSON.stringify({ us: us ? [us.pack, us.built] : null, gfw: gfw ? [gfw.pack, gfw.built] : null, ...(ais ? { ais: [ais.pack, ais.built] } : {}), rules })).digest('hex').slice(0, 12)
 }
 
 // File: 'OVSS', uint32 header bytes, header JSON (space-padded to an 8-byte boundary), then float64 segments
@@ -302,8 +309,8 @@ export function inputsKey(packs, whales) {
 }
 
 /** side: a ship side from shipSideFromPacks or unpackShipSide (else the packs are read here); whales: whalesFor(ym). */
-export async function bakeMonth(ym, { us, gfw }, side = null, whalesIn = null) {
-  const ship = side || (await shipSideFromPacks({ us, gfw }))
+export async function bakeMonth(ym, { us, gfw, ais }, side = null, whalesIn = null) {
+  const ship = side || (await shipSideFromPacks({ us, gfw, ais }))
   const { traffic, segList, sources } = ship
   const stats = { ...ship.stats }
   // cell → [segment index…], in segment order (the close-pass search below).
@@ -453,12 +460,13 @@ async function readIndex() {
 async function sourceIndexes() {
   const us = await (await fetch(TRACKS.us.index, { cache: 'no-store' })).json()
   const gfw = await (await fetch(TRACKS.gfw.index, { cache: 'no-store' })).json()
-  return { us: us.months || {}, gfw: gfw.months || {}, gfwThrough: gfw.fetched_through || null }
+  const ais = await (await fetch(AIS_INDEX, { cache: 'no-store' })).json()
+  return { us: us.months || {}, gfw: gfw.months || {}, gfwThrough: gfw.fetched_through || null, ais: ais.months || {} }
 }
 
 async function main() {
   const src = await sourceIndexes()
-  const all = [...new Set([...Object.keys(src.us), ...Object.keys(src.gfw)])].filter((m) => m >= FIRST_MONTH).sort()
+  const all = [...new Set([...Object.keys(src.us), ...Object.keys(src.gfw), ...Object.keys(src.ais)])].filter((m) => m >= FIRST_MONTH).sort()
   const index = PUBLISH ? await readIndex() : { months: {} }
   const recent = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 7)
   let months
@@ -471,6 +479,7 @@ async function main() {
       if (!have || m >= recent) return true
       if (Date.parse(have.checked || have.built || 0) < stale) return true
       return (src.us[m]?.built || null) !== (have.sources?.us || null) || (src.gfw[m]?.built || null) !== (have.sources?.gfw || null)
+        || (src.ais[m]?.built || null) !== (have.sources?.ais || null)
     })
   } else months = String(args.months).split(',').filter((m) => all.includes(m))
   console.log(`overlap bake: ${months.length} month(s): ${months.join(' ')}${SHARDS ? ` (first ${SHARDS} shards only)` : ''}`)
@@ -479,7 +488,7 @@ async function main() {
   for (const ym of months) {
     const t0 = Date.now()
     // A 500 MB pack stream can be cut mid-way ("other side closed"); redo the month, then move on.
-    const packs = { us: src.us[ym] || null, gfw: src.gfw[ym] || null }
+    const packs = { us: src.us[ym] || null, gfw: src.gfw[ym] || null, ais: src.ais[ym] || null }
     // Same packs, same whale reports, same code → the published files would come out identical: note the check, skip.
     let whales = null
     try { whales = await whalesFor(ym) } catch (e) { console.warn(`  ${ym}: whale reports: ${e.message}`); failed.push(ym); continue }
@@ -544,8 +553,8 @@ async function main() {
     const idx = index
     idx.months[ym] = {
       grid: g, closepasses: c, built: grid.built,
-      sources: { us: src.us[ym]?.built || null, gfw: src.gfw[ym]?.built || null },
-      through: src.gfw[ym] ? src.gfwThrough : null,
+      sources: { us: src.us[ym]?.built || null, gfw: src.gfw[ym]?.built || null, ais: src.ais[ym]?.built || null },
+      through: [src.gfw[ym] ? src.gfwThrough : null, src.ais[ym]?.through || null].filter(Boolean).sort().pop() || null,
       whales: grid.whales,
       inputs,
       ...(shipSide ? { shipSide } : {}),

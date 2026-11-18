@@ -88,6 +88,27 @@ jobs:
                   gh('issue', 'edit', str(issue), '--add-assignee', ASSIGNEE)
                   print('triage dispatch failed, assigned:', issue, e.stderr)
 
+          TRIAGE_EVERY = dt.timedelta(hours=6)
+
+          def recently_triaged(issue):
+              """A triage verdict on this issue within TRIAGE_EVERY: a new failure of the same workflow then waits for the
+              next window instead of commenting and paging again."""
+              cs = json.loads(gh('issue', 'view', str(issue), '--json', 'comments'))['comments']
+              return any(c['body'].startswith('**Triage:') and
+                         now - dt.datetime.fromisoformat(c['createdAt'].replace('Z', '+00:00')) < TRIAGE_EVERY for c in cs)
+
+          def quiet_note(iss, failing):
+              # Written without the "(attempt N)" key form, so the run still counts as news once the window is up.
+              runs = '; '.join(f'{r["displayTitle"]} {r["conclusion"]} at {r["createdAt"]} [run]({r["url"]}), attempt {r.get("attempt") or 1}'
+                               for r in failing)
+              note = (f'<!-- latest -->\n**Still failing** (checked {now:%Y-%m-%d %H:%M} UTC): {runs}. '
+                      f'Triaged within the last {TRIAGE_EVERY.seconds // 3600} h, so this is noted here quietly.\n<!-- /latest -->')
+              body = iss['body'].split('<!-- latest -->')[0].rstrip() + '\n\n' + note
+              if body != iss['body']:
+                  gh('issue', 'edit', str(iss['number']), '--body', body)
+                  iss['body'] = body
+                  print('quiet note:', iss['title'])
+
           def resolve(title, text):
               iss = open_issue(title)
               if iss:
@@ -117,13 +138,19 @@ jobs:
               newest = {}
               for r in done:                       # gh lists newest first
                   newest.setdefault(r['displayTitle'], r)
-              failing = [r for r in recent_bad if newest[r['displayTitle']]['conclusion'] in BAD]
+              # Only each title's NEWEST run is news: older failures of the same title are superseded by it. (2026-11-18:
+              # gsmap runs 3x an hour; every failed run got its own comment and triage, ~20 emails in a JAXA outage.)
+              failing = [newest[t] for t in dict.fromkeys(r['displayTitle'] for r in recent_bad) if newest[t]['conclusion'] in BAD]
               if not failing:
                   if recent_bad:
                       resolve(title, 'Recovered: ' + '; '.join(f'{t} succeeded {newest[t]["createdAt"]} {newest[t]["url"]}'
                                                                for t in sorted({r['displayTitle'] for r in recent_bad})))
                   else:
                       resolve(title, 'Recovered: no failed runs in the last 48 hours.')
+                  continue
+              iss = open_issue(title)
+              if iss and recently_triaged(iss['number']):
+                  quiet_note(iss, failing)        # triaged < 6 h ago: note it in the issue text (an edit sends no email)
                   continue
               for r in failing:
                   # The attempt is part of the key: a re-run that fails again is the same URL but is news (triage escalates it).

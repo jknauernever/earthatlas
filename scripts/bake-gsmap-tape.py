@@ -148,6 +148,21 @@ def live_grid(rate):
 GRID = {"nLat": NY // 2, "nLon": NX // 2, "lat0": 59.9, "dLat": -0.2, "lon0": 0.1, "dLon": 0.2}
 
 
+def jaxa_status():
+    """What JAXA EORC's own site says right now, for the failure log (and failure triage). 2026-11-18 the FTP server
+    reset every connection for hours and their site served a "Sorry Page": "EORC Web and FTP service are temporarily
+    unavailable"; without that line in the log, triage read it as possibly our problem and paged Josh every run."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("https://www.eorc.jaxa.jp/GPM/en/index.html", timeout=30) as r:
+            page = r.read().decode("utf-8", "replace")
+    except Exception as e:  # noqa: BLE001
+        return f"JAXA status: their site is unreachable too ({type(e).__name__}): upstream outage."
+    if "temporarily unavailable" in page:
+        return "JAXA status: UPSTREAM OUTAGE, their site says 'EORC Web and FTP service are temporarily unavailable'."
+    return "JAXA status: their site is up and shows no outage notice."
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     user, pw = os.environ.get("GSMAP_FTP_USER"), os.environ.get("GSMAP_FTP_PASS")
@@ -159,8 +174,11 @@ def main():
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     cutoff = now_ms - DAYS * 86400000
 
-    ftp = FTP(FTP_HOST, timeout=180)
-    ftp.login(user, pw)
+    try:
+        ftp = FTP(FTP_HOST, timeout=180)
+        ftp.login(user, pw)
+    except all_errors as e:
+        raise SystemExit(f"GSMaP FTP failed ({type(e).__name__}: {e}). {jaxa_status()}")
     ftp.set_pasv(True)
     try:
         found = find_frames(ftp, DAYS)

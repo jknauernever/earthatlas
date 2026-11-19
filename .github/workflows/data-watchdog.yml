@@ -88,21 +88,31 @@ jobs:
                   gh('issue', 'edit', str(issue), '--add-assignee', ASSIGNEE)
                   print('triage dispatch failed, assigned:', issue, e.stderr)
 
-          TRIAGE_EVERY = dt.timedelta(hours=6)
+          # How long a triage verdict holds before a still-failing workflow is triaged (and commented on) again. An
+          # announced upstream outage gets a day (2026-11-19: JAXA's facility maintenance, no restore date, still sent
+          # ~4 emails a day at 6 h); anything else is re-checked after 6 h so a real failure still reaches Josh quickly.
+          TRIAGE_EVERY = {'upstream outage': dt.timedelta(hours=24)}
+          TRIAGE_DEFAULT = dt.timedelta(hours=6)
 
           def recently_triaged(issue):
-              """A triage verdict on this issue within TRIAGE_EVERY: a new failure of the same workflow then waits for the
-              next window instead of commenting and paging again."""
+              """The quiet window (a timedelta) when the newest triage verdict on this issue is still within it, else None.
+              A new failure of the same workflow inside the window waits instead of commenting and paging again."""
               cs = json.loads(gh('issue', 'view', str(issue), '--json', 'comments'))['comments']
-              return any(c['body'].startswith('**Triage:') and
-                         now - dt.datetime.fromisoformat(c['createdAt'].replace('Z', '+00:00')) < TRIAGE_EVERY for c in cs)
+              tri = [c for c in cs if c['body'].startswith('**Triage:')]
+              if not tri:
+                  return None
+              last = max(tri, key=lambda c: c['createdAt'])
+              verdict = last['body'][len('**Triage: '):].split('**', 1)[0]
+              window = TRIAGE_EVERY.get(verdict, TRIAGE_DEFAULT)
+              age = now - dt.datetime.fromisoformat(last['createdAt'].replace('Z', '+00:00'))
+              return window if age < window else None
 
-          def quiet_note(iss, failing):
+          def quiet_note(iss, failing, window):
               # Written without the "(attempt N)" key form, so the run still counts as news once the window is up.
               runs = '; '.join(f'{r["displayTitle"]} {r["conclusion"]} at {r["createdAt"]} [run]({r["url"]}), attempt {r.get("attempt") or 1}'
                                for r in failing)
               note = (f'<!-- latest -->\n**Still failing** (checked {now:%Y-%m-%d %H:%M} UTC): {runs}. '
-                      f'Triaged within the last {TRIAGE_EVERY.seconds // 3600} h, so this is noted here quietly.\n<!-- /latest -->')
+                      f'Triaged within the last {int(window.total_seconds() // 3600)} h, so this is noted here quietly.\n<!-- /latest -->')
               body = iss['body'].split('<!-- latest -->')[0].rstrip() + '\n\n' + note
               if body != iss['body']:
                   gh('issue', 'edit', str(iss['number']), '--body', body)
@@ -149,8 +159,9 @@ jobs:
                       resolve(title, 'Recovered: no failed runs in the last 48 hours.')
                   continue
               iss = open_issue(title)
-              if iss and recently_triaged(iss['number']):
-                  quiet_note(iss, failing)        # triaged < 6 h ago: note it in the issue text (an edit sends no email)
+              window = iss and recently_triaged(iss['number'])
+              if window:
+                  quiet_note(iss, failing, window)   # triaged inside the window: note it in the issue text (no email)
                   continue
               for r in failing:
                   # The attempt is part of the key: a re-run that fails again is the same URL but is news (triage escalates it).

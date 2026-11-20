@@ -75,6 +75,7 @@ import GeneralReport from './ships/GeneralReport.jsx'
 import BunkeringReport from './ships/BunkeringReport.jsx'
 import OilTransfersReport from './ships/OilTransfersReport.jsx'
 import SystemsApp from './systems/SystemsApp.jsx'
+const JoshPage = lazy(() => import('./josh/JoshPage.jsx'))
 import './index.css'
 import { onPrivatePage, posthogBeforeSend, sentryBeforeSend } from './accounts/privacy.js'
 import { ACCOUNTS_LIVE } from './accounts/live.js'
@@ -223,6 +224,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/ships/reports/oil-transfers" element={<OilTransfersReport />} />
           <Route path="/ships/reports/scrubbers/:edition" element={<ScrubberReport />} />
           <Route path="/inmotion" element={<SystemsApp />} />
+          <Route path="/josh" element={<Suspense fallback={null}><JoshPage /></Suspense>} />
           <Route path="/systems" element={<RedirectKeepingQuery to="/inmotion" />} />
           {/* Accounts, admin, contact and legal pages: routed only once accounts launch (src/accounts/live.js). */}
           {ACCOUNTS_LIVE && (<>
